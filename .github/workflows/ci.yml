@@ -1,0 +1,101 @@
+# CI (owner: Dev 1). One job block per owner, delimited by comments; owners edit only their own block.
+# After the first green run, the repo admin makes these jobs required on `main` (PRE-003).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------- Dev 1: baseline jobs (TASK-001)
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run lint
+      - run: npm run format:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run build -w @dsa/web
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test:int
+
+  # Applies every migration on the real Supabase image, then runs the Migration Plan §8 checks (RLS lint etc.).
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npx --no-install supabase start
+      - run: npx --no-install supabase db reset
+      - run: npm run db:verify
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 detect --source=/repo --no-banner --redact -v
+
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: npx --no-install commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+  # ---------------------------------------------------------------- Dev 1: isolation (TEST-SEC-001) — add on Day 3
+  # isolation:
+
+  # ---------------------------------------------------------------- Dev 2: bre (TEST-BRE-001) — add with TASK-202
+
+  # ---------------------------------------------------------------- Dev 6: contract (REL-002)
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run gen:openapi
+      - name: openapi/openapi.yaml must be committed and up to date
+        run: git diff --exit-code -- openapi/
+
+  # ---------------------------------------------------------------- Dev 4: e2e (TEST-E2E-001) and ui (Playwright)
+  # e2e:
+  # ui:

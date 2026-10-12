@@ -1,0 +1,22 @@
+{
+  "name": "@dsa/bre-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Business Rule Engine core: pure functions, no I/O. Owner: Dev 2.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@dsa/contracts": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}

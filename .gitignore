@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# build and test output
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.vite/
+
+# environment — only the *.example files are committed (Contracts §14: no secrets in the repo)
+.env
+.env.*
+!.env.example
+
+# supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# logs and OS files
+*.log
+.DS_Store
+Thumbs.db
