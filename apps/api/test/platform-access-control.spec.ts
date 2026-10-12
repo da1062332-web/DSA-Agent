@@ -163,7 +163,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
           code: 'role_invalid',
           name: 'Invalid Role',
         });
-      expect(invalidRes.status).toBe(400);
+      expect(invalidRes.status).toBe(422);
 
       // Duplicate code
       const dupRes = await request(app)
@@ -172,7 +172,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
           code: 'ROLE-ADMIN',
           name: 'Another Admin',
         });
-      expect(dupRes.status).toBe(400);
+      expect(dupRes.status).toBe(422);
       expect(dupRes.body.error.code).toBe('VALIDATION_ERROR');
     });
 
@@ -191,7 +191,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
           permissions: ['system.destroy_everything'],
         });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
@@ -208,7 +208,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
         .set('If-Match', '"999"')
         .send({ name: 'Senior Loan Officer' });
       expect(conflictRes.status).toBe(409);
-      expect(conflictRes.body.error.code).toBe('CONCURRENCY_CONFLICT');
+      expect(conflictRes.body.error.code).toBe('VERSION_CONFLICT');
 
       // Successful update
       const updateRes = await request(app)
@@ -233,7 +233,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
       });
 
       const res = await request(app).delete('/v1/roles/rol_admin');
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.error.message).toContain('Template system roles cannot be deleted');
     });
 
@@ -265,7 +265,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
       });
 
       const res = await request(app).delete('/v1/roles/rol_custom_assigned');
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       expect(res.body.error.message).toContain('currently assigned');
     });
 
@@ -459,6 +459,129 @@ describe('Module 5: Access Control (RBAC API)', () => {
       // Cannot access user permissions of tenant A
       const permRes = await request(app).get('/v1/users/usr_staff_02/permissions');
       expect(permRes.status).toBe(404);
+
+      // Cannot modify role of tenant A
+      const patchRes = await request(app)
+        .patch('/v1/roles/rol_admin')
+        .send({ name: 'Hacked Name' });
+      expect(patchRes.status).toBe(404);
+
+      // Cannot delete role of tenant A
+      const delRes = await request(app).delete('/v1/roles/rol_admin');
+      expect(delRes.status).toBe(404);
+
+      // Cannot assign role to tenant A user
+      const assignPostRes = await request(app)
+        .post('/v1/users/usr_staff_02/roles')
+        .send({ roleId: 'rol_loan_officer', scopeType: 'TENANT' });
+      expect(assignPostRes.status).toBe(404);
+    });
+  });
+
+  describe('TEST-ACL-007: Unauthenticated & Unauthorized Endpoint Guards Matrix', () => {
+    it('rejects unauthenticated requests on all access control routes', async () => {
+      const store = createMockPlatformStore();
+      const app = createTestApp({ deps: { txRunner: store.runner } });
+
+      const endpoints = [
+        () => request(app).get('/v1/roles'),
+        () => request(app).get('/v1/roles/rol_admin'),
+        () => request(app).post('/v1/roles').send({ code: 'ROLE-TEST', name: 'Test' }),
+        () => request(app).patch('/v1/roles/rol_admin').send({ name: 'Test' }),
+        () => request(app).delete('/v1/roles/rol_admin'),
+        () => request(app).get('/v1/users/usr_staff_02/roles'),
+        () => request(app).get('/v1/users/usr_staff_02/permissions'),
+      ];
+
+      for (const call of endpoints) {
+        const res = await call();
+        expect(res.status).toBe(401);
+        expect(res.body.error.code).toBe('UNAUTHENTICATED');
+      }
+    });
+
+    it('rejects unauthorized staff without user.manage from role mutations', async () => {
+      const store = createMockPlatformStore();
+      const app = createTestApp({
+        auth: fakeAuth(staffPrincipal),
+        deps: { txRunner: store.runner },
+      });
+
+      const forbiddenEndpoints = [
+        () => request(app).get('/v1/roles'),
+        () => request(app).get('/v1/roles/rol_admin'),
+        () => request(app).post('/v1/roles').send({ code: 'ROLE-TEST', name: 'Test' }),
+        () => request(app).patch('/v1/roles/rol_loan_officer').send({ name: 'Test' }),
+        () => request(app).delete('/v1/roles/rol_loan_officer'),
+      ];
+
+      for (const call of forbiddenEndpoints) {
+        const res = await call();
+        expect(res.status).toBe(403);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      }
+    });
+  });
+
+  describe('TEST-ACL-008: End-to-End Integration with Module 4 (Users)', () => {
+    it('dynamically reflects role assignment and revocation in effective permissions', async () => {
+      const store = createMockPlatformStore();
+      // Add custom role granting task.read and task.create
+      store.roles.push({
+        id: 'rol_task_admin',
+        tenant_id: 'ten_01JTESTTENANT00000000000000',
+        code: 'ROLE-TASK-ADMIN',
+        name: 'Task Administrator',
+        is_template: false,
+        version: 1,
+        permissions: ['task.read', 'task.create'],
+      });
+
+      const app = createTestApp({
+        auth: fakeAuth(adminPrincipal),
+        deps: { txRunner: store.runner },
+      });
+
+      // 1. Initial effective permissions for staff2 (only has rol_loan_officer: lead.read, lead.create)
+      const initPerms = await request(app).get('/v1/users/usr_staff_02/permissions');
+      expect(initPerms.status).toBe(200);
+      expect(initPerms.body.grants.some((g: any) => g.code === 'task.create')).toBe(false);
+
+      // 2. Assign rol_task_admin to staff2
+      const assignRes = await request(app)
+        .post('/v1/users/usr_staff_02/roles')
+        .send({
+          roleId: 'rol_task_admin',
+          scopeType: 'BRANCH',
+          scopeBranchIds: ['br_mumbai'],
+        });
+      expect(assignRes.status).toBe(201);
+
+      // 3. Verify user's assigned roles list
+      const rolesRes = await request(app).get('/v1/users/usr_staff_02/roles');
+      expect(rolesRes.status).toBe(200);
+      expect(rolesRes.body.data.some((r: any) => r.roleCode === 'ROLE-TASK-ADMIN')).toBe(true);
+
+      // 4. Verify effective permissions recalculated and includes task.create
+      const updatedPerms = await request(app).get('/v1/users/usr_staff_02/permissions');
+      expect(updatedPerms.status).toBe(200);
+      const taskCreateGrant = updatedPerms.body.grants.find((g: any) => g.code === 'task.create');
+      expect(taskCreateGrant).toBeDefined();
+      expect(taskCreateGrant.scope).toBe('BRANCH');
+      expect(taskCreateGrant.branchIds).toContain('br_mumbai');
+
+      // 5. Revoke role from staff2
+      const deleteRes = await request(app).delete('/v1/users/usr_staff_02/roles/rol_task_admin');
+      expect(deleteRes.status).toBe(200);
+
+      // 6. Verify role assignment is removed and permissions revoked
+      const afterRoles = await request(app).get('/v1/users/usr_staff_02/roles');
+      expect(afterRoles.status).toBe(200);
+      expect(afterRoles.body.data.some((r: any) => r.roleCode === 'ROLE-TASK-ADMIN')).toBe(false);
+
+      const afterPerms = await request(app).get('/v1/users/usr_staff_02/permissions');
+      expect(afterPerms.status).toBe(200);
+      expect(afterPerms.body.grants.some((g: any) => g.code === 'task.create')).toBe(false);
     });
   });
 });

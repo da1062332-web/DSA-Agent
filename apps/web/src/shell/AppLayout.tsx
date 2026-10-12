@@ -10,6 +10,7 @@ const NAV = [
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
   { to: '/users', label: 'Users' },
+  { to: '/roles', label: 'Access Control' },
 ];
 
 export function AppLayout() {
