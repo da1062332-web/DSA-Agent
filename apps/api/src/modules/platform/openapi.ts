@@ -2,13 +2,18 @@
 // tools/gen-openapi.ts writes openapi/openapi.yaml (never hand-edited; CI fails on a diff).
 import {
   AssignRoleRequest,
+  BranchConfigSummary,
+  CreateBranchRequest,
   CreateRoleRequest,
   CreateUserRequest,
   ErrorEnvelope,
   ListMeta,
   PermissionSummary,
   RoleSummary,
+  TenantConfigSummary,
+  UpdateBranchRequest,
   UpdateRoleRequest,
+  UpdateTenantConfigRequest,
   UpdateUserRequest,
   UserEffectiveGrants,
   UserRoleAssignmentSummary,
@@ -454,6 +459,144 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
       403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
       404: { description: 'User not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/branches/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/branches/{id}',
+    summary: 'Get branch details by ID',
+    tags: ['Platform', 'Configuration'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Branch details',
+        content: {
+          'application/json': {
+            schema: BranchConfigSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Branch not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/branches
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/branches',
+    summary: 'Create a new branch in tenant',
+    tags: ['Platform', 'Configuration'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: CreateBranchRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: 'Branch created',
+        content: {
+          'application/json': {
+            schema: BranchConfigSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/branches/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/branches/{id}',
+    summary: 'Update branch configuration',
+    tags: ['Platform', 'Configuration'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: {
+          'application/json': {
+            schema: UpdateBranchRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Branch updated',
+        content: {
+          'application/json': {
+            schema: BranchConfigSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Branch not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/config
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/config',
+    summary: 'Get tenant and organisation configuration summary',
+    tags: ['Configuration'],
+    responses: {
+      200: {
+        description: 'Tenant configuration summary',
+        content: {
+          'application/json': {
+            schema: TenantConfigSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Config not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/config
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/config',
+    summary: 'Update tenant and organisation configuration',
+    tags: ['Configuration'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: UpdateTenantConfigRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Tenant configuration updated',
+        content: {
+          'application/json': {
+            schema: TenantConfigSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
     },
   });
 }
