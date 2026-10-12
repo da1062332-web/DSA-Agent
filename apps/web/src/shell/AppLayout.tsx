@@ -9,6 +9,7 @@ const NAV = [
   { to: '/applications', label: 'Applications' },
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
+  { to: '/users', label: 'Users' },
 ];
 
 export function AppLayout() {
