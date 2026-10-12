@@ -19,6 +19,7 @@ const app = createApp({
   deps: { txRunner: createTxRunner(db) },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,
+  db,
 });
 
 const server = app.listen(config.PORT, () => {
