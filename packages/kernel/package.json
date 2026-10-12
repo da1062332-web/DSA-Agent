@@ -1,0 +1,22 @@
+{
+  "name": "@dsa/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel runtime: http, context, auth, authz, db, idempotency, audit, outbox, logging, rate limit. Owner: Dev 1.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@dsa/contracts": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}

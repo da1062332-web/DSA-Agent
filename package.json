@@ -1,0 +1,46 @@
+{
+  "name": "dsa-crm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DSA CRM for NBFCs — 4-day walking-skeleton MVP (npm-workspaces monorepo: React web, Express API, shared contracts, Supabase).",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools"
+  ],
+  "engines": {
+    "node": ">=24",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @dsa/api\" \"npm run dev -w @dsa/web\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:int": "npm run test:int --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "gen:openapi": "npm run gen:openapi -w @dsa/tools",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:verify": "npm run verify:migrations -w @dsa/tools"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@eslint/js": "^9.14.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.14.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3",
+    "supabase": "^2.0.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+package-lock.json
+openapi/openapi.yaml
+supabase/migrations
+supabase/.temp
+supabase/.branches
+playwright-report
+test-results

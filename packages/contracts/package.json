@@ -1,0 +1,26 @@
+{
+  "name": "@dsa/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared zod schemas, kernel types and port interfaces. Frozen at Gate 1 — changes by PR with approval from the affected owners.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fakes": "./src/fakes/index.ts",
+    "./openapi": "./src/openapi/registry.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.0",
+    "kysely": "^0.27.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}

@@ -1,0 +1,11 @@
+name: Setup workspace
+description: Install Node (from .nvmrc), then install dependencies exactly as pinned in package-lock.json.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm ci
+      shell: bash

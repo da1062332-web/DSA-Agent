@@ -1,0 +1,2 @@
+-- Intentionally empty (Migration Plan §0). Demo data comes from the provisioning CLI:
+--   npm run provision:tenant -w @dsa/tools  (TASK-103)
