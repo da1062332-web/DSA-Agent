@@ -42,47 +42,6 @@ export function buildOpenApiDocument() {
     },
   });
 
-  registry.registerPath({
-    method: 'post',
-    path: '/auth/login',
-    summary: 'Database-backed user authentication',
-    security: [],
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: z.object({
-              email: z.string().describe('User email (e.g. admin@dsa.com)'),
-              password: z.string().describe('Password (e.g. admin@123)'),
-            }),
-          },
-        },
-      },
-    },
-    responses: {
-      200: {
-        description: 'Successful authentication',
-        content: {
-          'application/json': {
-            schema: z.object({
-              token: z.string(),
-              user: z.object({
-                id: z.string(),
-                email: z.string(),
-                displayName: z.string(),
-                tenantId: z.string(),
-                authenticatedAt: z.string(),
-              }),
-            }),
-          },
-        },
-      },
-      401: {
-        description: 'Invalid email or password',
-      },
-    },
-  });
-
   for (const m of MODULES) m.registerOpenApi(registry);
 
   return new OpenApiGeneratorV31(registry.definitions).generateDocument({
