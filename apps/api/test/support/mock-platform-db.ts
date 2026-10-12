@@ -26,6 +26,31 @@ export interface MockUserRecord {
   assigned_roles: string[];
 }
 
+export interface MockTenantRecord {
+  id: string;
+  slug: string;
+  legal_name: string;
+  tenant_type: 'DSA_ORG' | 'NBFC_DISTRIBUTION';
+  data_region: string;
+  timezone: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'OFFBOARDING';
+  created_at: Date;
+  created_by: string;
+}
+
+export interface MockOrganisationRecord {
+  id: string;
+  tenant_id: string;
+  legal_name: string;
+  constitution: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  lock_version: number;
+  created_at: Date;
+  created_by: string;
+  updated_at: Date;
+  updated_by: string;
+}
+
 export interface MockBranchRecord {
   id: string;
   tenant_id: string;
@@ -33,7 +58,13 @@ export interface MockBranchRecord {
   code: string;
   name: string;
   pincode: string | null;
+  timezone?: string;
   status: string;
+  lock_version?: number;
+  created_at?: Date;
+  created_by?: string;
+  updated_at?: Date;
+  updated_by?: string;
 }
 
 export interface MockRoleRecord {
@@ -63,8 +94,61 @@ export interface MockPermissionRecord {
 }
 
 export function createMockPlatformStore() {
+  const tenants: MockTenantRecord[] = [
+    {
+      id: 'ten_01JTESTTENANT00000000000000',
+      slug: 'acme-dsa',
+      legal_name: 'Acme Financial Services Private Limited',
+      tenant_type: 'DSA_ORG',
+      data_region: 'IN',
+      timezone: 'Asia/Kolkata',
+      status: 'ACTIVE',
+      created_at: new Date('2026-10-01T00:00:00Z'),
+      created_by: 'usr_system',
+    },
+    {
+      id: 'ten_OTHER_000000000000000000',
+      slug: 'other-corp',
+      legal_name: 'Other Distribution Corp',
+      tenant_type: 'NBFC_DISTRIBUTION',
+      data_region: 'IN',
+      timezone: 'Asia/Kolkata',
+      status: 'ACTIVE',
+      created_at: new Date('2026-10-02T00:00:00Z'),
+      created_by: 'usr_system',
+    },
+  ];
+
+  const organisations: MockOrganisationRecord[] = [
+    {
+      id: 'org_01',
+      tenant_id: 'ten_01JTESTTENANT00000000000000',
+      legal_name: 'Acme Financial Services Private Limited',
+      constitution: 'PVT_LTD',
+      status: 'ACTIVE',
+      lock_version: 0,
+      created_at: new Date('2026-10-01T00:00:00Z'),
+      created_by: 'usr_system',
+      updated_at: new Date('2026-10-01T00:00:00Z'),
+      updated_by: 'usr_system',
+    },
+    {
+      id: 'org_other',
+      tenant_id: 'ten_OTHER_000000000000000000',
+      legal_name: 'Other Distribution Corp',
+      constitution: 'LLP',
+      status: 'ACTIVE',
+      lock_version: 0,
+      created_at: new Date('2026-10-02T00:00:00Z'),
+      created_by: 'usr_system',
+      updated_at: new Date('2026-10-02T00:00:00Z'),
+      updated_by: 'usr_system',
+    },
+  ];
+
   const permissions: MockPermissionRecord[] = [
     { code: 'user.manage', description: 'Manage users', introduced_in: 'MVP-4D' },
+    { code: 'config.manage', description: 'Manage configuration', introduced_in: 'MVP-4D' },
     { code: 'lead.read', description: 'Read leads in scope', introduced_in: 'MVP-4D' },
     { code: 'lead.create', description: 'Create leads', introduced_in: 'MVP-4D' },
     { code: 'task.read', description: 'Read tasks', introduced_in: 'MVP-4D' },
@@ -78,7 +162,13 @@ export function createMockPlatformStore() {
       code: 'MUM01',
       name: 'Mumbai Central',
       pincode: '400001',
+      timezone: 'Asia/Kolkata',
       status: 'ACTIVE',
+      lock_version: 0,
+      created_at: new Date('2026-10-01T00:00:00Z'),
+      created_by: 'usr_system',
+      updated_at: new Date('2026-10-01T00:00:00Z'),
+      updated_by: 'usr_system',
     },
     {
       id: 'br_delhi',
@@ -87,7 +177,13 @@ export function createMockPlatformStore() {
       code: 'DEL01',
       name: 'Delhi North',
       pincode: '110001',
+      timezone: 'Asia/Kolkata',
       status: 'ACTIVE',
+      lock_version: 0,
+      created_at: new Date('2026-10-01T00:00:00Z'),
+      created_by: 'usr_system',
+      updated_at: new Date('2026-10-01T00:00:00Z'),
+      updated_by: 'usr_system',
     },
   ];
 
@@ -99,7 +195,7 @@ export function createMockPlatformStore() {
       name: 'Admin',
       is_template: true,
       version: 1,
-      permissions: ['user.manage'],
+      permissions: ['user.manage', 'config.manage'],
     },
     {
       id: 'rol_loan_officer',
@@ -192,16 +288,153 @@ export function createMockPlatformStore() {
       const tid = params[0] as string;
       const rows = branches
         .filter((b) => b.tenant_id === tid)
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((b) => ({
+          id: b.id,
+          organisation_id: b.organisation_id,
+          code: b.code,
+          name: b.name,
+          pincode: b.pincode,
+          timezone: b.timezone ?? 'Asia/Kolkata',
+          status: b.status,
+          lock_version: b.lock_version ?? 0,
+        }));
       return { rows };
     }
 
-    // 2. Branch existence check
-    if (sqlLower.includes('from app.branch') && sqlLower.includes('where id =')) {
+    // 2. Branch single fetch or existence check
+    if (sqlLower.includes('select') && sqlLower.includes('from app.branch') && sqlLower.includes('where id =')) {
       const branchId = params[0] as string;
       const tid = params[1] as string;
       const found = branches.find((b) => b.id === branchId && b.tenant_id === tid);
+      return {
+        rows: found
+          ? [
+              {
+                id: found.id,
+                tenant_id: found.tenant_id,
+                organisation_id: found.organisation_id,
+                code: found.code,
+                name: found.name,
+                pincode: found.pincode,
+                timezone: found.timezone ?? 'Asia/Kolkata',
+                status: found.status,
+                lock_version: found.lock_version ?? 0,
+              },
+            ]
+          : [],
+      };
+    }
+
+    // 3. Branch code uniqueness check
+    if (sqlLower.includes('select') && sqlLower.includes('from app.branch') && sqlLower.includes('code =')) {
+      const tid = params[0] as string;
+      const code = params[1] as string;
+      const found = branches.find((b) => b.tenant_id === tid && b.code === code);
       return { rows: found ? [{ id: found.id }] : [] };
+    }
+
+    // 4. Branch insert
+    if (sqlLower.includes('insert into app.branch')) {
+      const [id, tenant_id, organisation_id, code, name, pincode, timezone] = params;
+      branches.push({
+        id: id as string,
+        tenant_id: tenant_id as string,
+        organisation_id: organisation_id as string,
+        code: code as string,
+        name: name as string,
+        pincode: (pincode as string) ?? null,
+        timezone: (timezone as string) ?? 'Asia/Kolkata',
+        status: 'ACTIVE',
+        lock_version: 0,
+        created_at: new Date(),
+        created_by: params[10] as string,
+        updated_at: new Date(),
+        updated_by: params[12] as string,
+      });
+      return { rows: [] };
+    }
+
+    // 5. Branch update
+    if (sqlLower.includes('update app.branch')) {
+      const [name, pincode, timezone, status, lock_version, updated_by, id, tenant_id, currentLockVersion] = params;
+      const b = branches.find((x) => x.id === id && x.tenant_id === tenant_id && (x.lock_version ?? 0) === (currentLockVersion as number));
+      if (b) {
+        b.name = name as string;
+        b.pincode = (pincode as string) ?? null;
+        b.timezone = (timezone as string) ?? 'Asia/Kolkata';
+        b.status = status as string;
+        b.lock_version = lock_version as number;
+        b.updated_at = new Date();
+        b.updated_by = updated_by as string;
+      }
+      return { rows: [] };
+    }
+
+    // 6. Tenant select
+    if (sqlLower.includes('select') && sqlLower.includes('from app.tenant') && sqlLower.includes('where id =')) {
+      const tid = params[0] as string;
+      const t = tenants.find((x) => x.id === tid);
+      return {
+        rows: t
+          ? [
+              {
+                id: t.id,
+                slug: t.slug,
+                legal_name: t.legal_name,
+                tenant_type: t.tenant_type,
+                data_region: t.data_region,
+                timezone: t.timezone,
+                status: t.status,
+                created_at: t.created_at,
+              },
+            ]
+          : [],
+      };
+    }
+
+    // 7. Organisation select
+    if (sqlLower.includes('select') && sqlLower.includes('from app.organisation') && sqlLower.includes('tenant_id =')) {
+      const tid = params[0] as string;
+      const org = organisations.find((x) => x.tenant_id === tid);
+      return {
+        rows: org
+          ? [
+              {
+                id: org.id,
+                tenant_id: org.tenant_id,
+                legal_name: org.legal_name,
+                constitution: org.constitution,
+                status: org.status,
+                lock_version: org.lock_version,
+              },
+            ]
+          : [],
+      };
+    }
+
+    // 8. Organisation update
+    if (sqlLower.includes('update app.organisation')) {
+      const [legalName, constitution, updatedBy, tenantId, orgId, lockVersion] = params;
+      const org = organisations.find((x) => x.tenant_id === tenantId && x.id === orgId && x.lock_version === (lockVersion as number));
+      if (org) {
+        if (legalName !== null && legalName !== undefined) org.legal_name = legalName as string;
+        if (constitution !== null && constitution !== undefined) org.constitution = constitution as string;
+        org.lock_version += 1;
+        org.updated_at = new Date();
+        org.updated_by = updatedBy as string;
+      }
+      return { rows: [] };
+    }
+
+    // 9. Tenant update
+    if (sqlLower.includes('update app.tenant')) {
+      const [timezone, tenantId] = params;
+      const t = tenants.find((x) => x.id === tenantId);
+      if (t) {
+        t.timezone = timezone as string;
+      }
+      return { rows: [] };
     }
 
     // Permissions list catalog
@@ -622,5 +855,5 @@ export function createMockPlatformStore() {
     },
   };
 
-  return { runner, users, branches, roles, assignments };
+  return { runner, users, branches, roles, assignments, tenants, organisations };
 }

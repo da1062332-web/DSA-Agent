@@ -11,6 +11,7 @@ const NAV = [
   { to: '/decisions', label: 'Decisions' },
   { to: '/users', label: 'Users' },
   { to: '/roles', label: 'Access Control' },
+  { to: '/config', label: 'Configuration' },
 ];
 
 export function AppLayout() {

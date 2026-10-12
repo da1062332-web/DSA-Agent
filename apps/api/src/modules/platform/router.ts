@@ -9,14 +9,22 @@
 // - POST /v1/users/:id/roles (assign role to user; enforces SOD-05)
 // - DELETE /v1/users/:id/roles/:roleId (unassign role; enforces SOD-05)
 // - GET /v1/branches (list tenant branches)
+// - GET /v1/branches/:id (get branch details)
+// - POST /v1/branches (create branch)
+// - PATCH /v1/branches/:id (update branch)
+// - GET /v1/config (get tenant & org config)
+// - PATCH /v1/config (update tenant & org config)
 import type { PermissionCode, RequestContext } from '@dsa/contracts';
 import {
   AppError,
   AssignRoleRequest,
+  CreateBranchRequest,
   CreateRoleRequest,
   CreateUserRequest,
   PERMISSION_CODES,
+  UpdateBranchRequest,
   UpdateRoleRequest,
+  UpdateTenantConfigRequest,
   UpdateUserRequest,
 } from '@dsa/contracts';
 import { Router, type Request, type Response, type NextFunction } from 'express';
@@ -121,9 +129,11 @@ export function createRouter(deps: ApiDeps): Router {
           code: string;
           name: string;
           pincode: string | null;
+          timezone: string;
           status: string;
+          lock_version: number;
         }>`
-          SELECT id, organisation_id, code, name, pincode, status
+          SELECT id, organisation_id, code, name, pincode, timezone, status, lock_version
           FROM app.branch
           WHERE tenant_id = ${ctx.principal.tenantId}
           ORDER BY name ASC
@@ -134,11 +144,447 @@ export function createRouter(deps: ApiDeps): Router {
           code: r.code,
           name: r.name,
           pincode: r.pincode,
+          timezone: r.timezone ?? 'Asia/Kolkata',
           status: r.status,
+          lockVersion: r.lock_version ?? 0,
         }));
       });
 
       res.json({ data: branches });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /v1/branches/:id — Get details of a single branch
+  router.get('/branches/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      const branchId = req.params.id;
+
+      const branch = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const result = await sql<{
+          id: string;
+          organisation_id: string;
+          code: string;
+          name: string;
+          pincode: string | null;
+          timezone: string;
+          status: 'ACTIVE' | 'INACTIVE';
+          lock_version: number;
+        }>`
+          SELECT id, organisation_id, code, name, pincode, timezone, status, lock_version
+          FROM app.branch
+          WHERE id = ${branchId} AND tenant_id = ${ctx.principal.tenantId}
+        `.execute(tx);
+
+        const row = result.rows[0];
+        if (!row) {
+          throw AppError.of('NOT_FOUND', `Branch ${branchId} not found.`);
+        }
+        return {
+          id: row.id,
+          organisationId: row.organisation_id,
+          code: row.code,
+          name: row.name,
+          pincode: row.pincode,
+          timezone: row.timezone ?? 'Asia/Kolkata',
+          status: row.status,
+          lockVersion: row.lock_version ?? 0,
+        };
+      });
+
+      res.setHeader('ETag', `"${branch.lockVersion}"`);
+      res.json(branch);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/branches — Create a new branch in tenant (requires config.manage)
+  router.post('/branches', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      requirePermission(ctx, 'config.manage');
+
+      const parsed = CreateBranchRequest.safeParse(req.body);
+      if (!parsed.success) {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Invalid branch payload.',
+          parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            issue: e.message,
+          })),
+        );
+      }
+
+      const body = parsed.data;
+
+      const created = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const orgRes = await sql<{ id: string }>`
+          SELECT id FROM app.organisation WHERE tenant_id = ${ctx.principal.tenantId} LIMIT 1
+        `.execute(tx);
+        const orgRow = orgRes.rows[0];
+        if (!orgRow) {
+          throw AppError.of('NOT_FOUND', 'Organisation not found for tenant.');
+        }
+
+        const existingCode = await sql<{ id: string }>`
+          SELECT id FROM app.branch WHERE tenant_id = ${ctx.principal.tenantId} AND code = ${body.code}
+        `.execute(tx);
+        if (existingCode.rows.length > 0) {
+          throw AppError.of('VALIDATION_ERROR', `Branch code '${body.code}' already exists in tenant.`, [
+            { field: 'code', issue: 'Branch code already in use.' },
+          ]);
+        }
+
+        const branchId = 'br_' + nextUlid();
+        await sql`
+          INSERT INTO app.branch (
+            id, tenant_id, organisation_id, code, name, pincode, timezone, status, lock_version, created_at, created_by, updated_at, updated_by
+          ) VALUES (
+            ${branchId},
+            ${ctx.principal.tenantId},
+            ${orgRow.id},
+            ${body.code},
+            ${body.name},
+            ${body.pincode ?? null},
+            ${body.timezone},
+            'ACTIVE',
+            0,
+            now(),
+            ${ctx.principal.id},
+            now(),
+            ${ctx.principal.id}
+          )
+        `.execute(tx);
+
+        return {
+          id: branchId,
+          organisationId: orgRow.id,
+          code: body.code,
+          name: body.name,
+          pincode: body.pincode ?? null,
+          timezone: body.timezone,
+          status: 'ACTIVE' as const,
+          lockVersion: 0,
+        };
+      });
+
+      res.setHeader('ETag', `"${created.lockVersion}"`);
+      res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PATCH /v1/branches/:id — Update branch configuration (requires config.manage)
+  router.patch('/branches/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      requirePermission(ctx, 'config.manage');
+
+      const branchId = req.params.id;
+      const parsed = UpdateBranchRequest.safeParse(req.body);
+      if (!parsed.success) {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Invalid branch update payload.',
+          parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            issue: e.message,
+          })),
+        );
+      }
+
+      const body = parsed.data;
+      const ifMatchHeader = req.headers['if-match'];
+
+      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const existingRes = await sql<{
+          id: string;
+          organisation_id: string;
+          code: string;
+          name: string;
+          pincode: string | null;
+          timezone: string;
+          status: 'ACTIVE' | 'INACTIVE';
+          lock_version: number;
+        }>`
+          SELECT id, organisation_id, code, name, pincode, timezone, status, lock_version
+          FROM app.branch
+          WHERE id = ${branchId} AND tenant_id = ${ctx.principal.tenantId}
+        `.execute(tx);
+
+        const current = existingRes.rows[0];
+        if (!current) {
+          throw AppError.of('NOT_FOUND', `Branch ${branchId} not found.`);
+        }
+
+        if (ifMatchHeader) {
+          const expectedVersion = Number(ifMatchHeader.replace(/^"|"$/g, ''));
+          if (!Number.isNaN(expectedVersion) && current.lock_version !== expectedVersion) {
+            throw AppError.of(
+              'VERSION_CONFLICT',
+              `Branch version conflict: current lock_version is ${current.lock_version}, expected ${expectedVersion}.`,
+            );
+          }
+        }
+
+        const newName = body.name ?? current.name;
+        const newPincode = body.pincode !== undefined ? body.pincode : current.pincode;
+        const newTimezone = body.timezone ?? current.timezone;
+        const newStatus = body.status ?? current.status;
+        const newLockVersion = current.lock_version + 1;
+
+        await sql`
+          UPDATE app.branch
+          SET
+            name = ${newName},
+            pincode = ${newPincode},
+            timezone = ${newTimezone},
+            status = ${newStatus},
+            lock_version = ${newLockVersion},
+            updated_at = now(),
+            updated_by = ${ctx.principal.id}
+          WHERE id = ${branchId}
+            AND tenant_id = ${ctx.principal.tenantId}
+            AND lock_version = ${current.lock_version}
+        `.execute(tx);
+
+        return {
+          id: current.id,
+          organisationId: current.organisation_id,
+          code: current.code,
+          name: newName,
+          pincode: newPincode,
+          timezone: newTimezone,
+          status: newStatus,
+          lockVersion: newLockVersion,
+        };
+      });
+
+      res.setHeader('ETag', `"${updated.lockVersion}"`);
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /v1/config — Get tenant & organisation configuration summary (requires config.manage)
+  router.get('/config', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      requirePermission(ctx, 'config.manage');
+
+      const config = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const tenantResult = await sql<{
+          id: string;
+          slug: string;
+          legal_name: string;
+          tenant_type: 'DSA_ORG' | 'NBFC_DISTRIBUTION';
+          data_region: string;
+          timezone: string;
+          status: 'ACTIVE' | 'SUSPENDED' | 'OFFBOARDING';
+          created_at: string | Date;
+        }>`
+          SELECT id, slug, legal_name, tenant_type, data_region, timezone, status, created_at
+          FROM app.tenant
+          WHERE id = ${ctx.principal.tenantId}
+        `.execute(tx);
+
+        const tenantRow = tenantResult.rows[0];
+        if (!tenantRow) {
+          throw AppError.of('NOT_FOUND', 'Tenant configuration not found.');
+        }
+
+        const orgResult = await sql<{
+          id: string;
+          legal_name: string;
+          constitution: any;
+          status: 'ACTIVE' | 'INACTIVE';
+          lock_version: number;
+        }>`
+          SELECT id, legal_name, constitution, status, lock_version
+          FROM app.organisation
+          WHERE tenant_id = ${ctx.principal.tenantId}
+          LIMIT 1
+        `.execute(tx);
+
+        const orgRow = orgResult.rows[0];
+        if (!orgRow) {
+          throw AppError.of('NOT_FOUND', 'Organisation configuration not found.');
+        }
+
+        return {
+          tenant: {
+            id: tenantRow.id,
+            slug: tenantRow.slug,
+            legalName: tenantRow.legal_name,
+            tenantType: tenantRow.tenant_type,
+            dataRegion: tenantRow.data_region,
+            timezone: tenantRow.timezone,
+            status: tenantRow.status,
+            createdAt: typeof tenantRow.created_at === 'string' ? tenantRow.created_at : tenantRow.created_at.toISOString(),
+          },
+          organisation: {
+            id: orgRow.id,
+            legalName: orgRow.legal_name,
+            constitution: orgRow.constitution,
+            status: orgRow.status,
+            lockVersion: orgRow.lock_version,
+          },
+          operationalSettings: {
+            defaultSlaMinutes: 15,
+            leadRoutingMode: 'ROUND_ROBIN' as const,
+            businessHoursStart: '09:30',
+            businessHoursEnd: '18:30',
+            dataRetentionDays: 365,
+          },
+        };
+      });
+
+      res.setHeader('ETag', `"${config.organisation.lockVersion}"`);
+      res.json(config);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PATCH /v1/config — Update tenant & organisation configuration (requires config.manage)
+  router.patch('/config', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      requirePermission(ctx, 'config.manage');
+
+      const parsed = UpdateTenantConfigRequest.safeParse(req.body);
+      if (!parsed.success) {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Invalid configuration update payload.',
+          parsed.error.errors.map((e) => ({
+            field: e.path.join('.'),
+            issue: e.message,
+          })),
+        );
+      }
+
+      const body = parsed.data;
+      const ifMatchHeader = req.headers['if-match'];
+
+      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const orgResult = await sql<{
+          id: string;
+          legal_name: string;
+          constitution: any;
+          status: 'ACTIVE' | 'INACTIVE';
+          lock_version: number;
+        }>`
+          SELECT id, legal_name, constitution, status, lock_version
+          FROM app.organisation
+          WHERE tenant_id = ${ctx.principal.tenantId}
+          LIMIT 1
+        `.execute(tx);
+
+        const currentOrg = orgResult.rows[0];
+        if (!currentOrg) {
+          throw AppError.of('NOT_FOUND', 'Organisation configuration not found.');
+        }
+
+        if (ifMatchHeader) {
+          const expectedVersion = Number(ifMatchHeader.replace(/^"|"$/g, ''));
+          if (!Number.isNaN(expectedVersion) && currentOrg.lock_version !== expectedVersion) {
+            throw AppError.of(
+              'VERSION_CONFLICT',
+              `Configuration version conflict: current lock_version is ${currentOrg.lock_version}, expected ${expectedVersion}.`,
+            );
+          }
+        }
+
+        if (body.organisationName !== undefined || body.constitution !== undefined) {
+          await sql`
+            UPDATE app.organisation
+            SET
+              legal_name = COALESCE(${body.organisationName ?? null}, legal_name),
+              constitution = COALESCE(${body.constitution ?? null}, constitution),
+              lock_version = lock_version + 1,
+              updated_at = now(),
+              updated_by = ${ctx.principal.id}
+            WHERE tenant_id = ${ctx.principal.tenantId}
+              AND id = ${currentOrg.id}
+              AND lock_version = ${currentOrg.lock_version}
+          `.execute(tx);
+        }
+
+        if (body.timezone !== undefined) {
+          await sql`
+            UPDATE app.tenant
+            SET timezone = ${body.timezone}
+            WHERE id = ${ctx.principal.tenantId}
+          `.execute(tx);
+        }
+
+        const tenantRes = await sql<{
+          id: string;
+          slug: string;
+          legal_name: string;
+          tenant_type: 'DSA_ORG' | 'NBFC_DISTRIBUTION';
+          data_region: string;
+          timezone: string;
+          status: 'ACTIVE' | 'SUSPENDED' | 'OFFBOARDING';
+          created_at: string | Date;
+        }>`
+          SELECT id, slug, legal_name, tenant_type, data_region, timezone, status, created_at
+          FROM app.tenant
+          WHERE id = ${ctx.principal.tenantId}
+        `.execute(tx);
+        const updatedTenant = tenantRes.rows[0]!;
+
+        const refreshedOrgRes = await sql<{
+          id: string;
+          legal_name: string;
+          constitution: any;
+          status: 'ACTIVE' | 'INACTIVE';
+          lock_version: number;
+        }>`
+          SELECT id, legal_name, constitution, status, lock_version
+          FROM app.organisation
+          WHERE tenant_id = ${ctx.principal.tenantId}
+          LIMIT 1
+        `.execute(tx);
+        const updatedOrg = refreshedOrgRes.rows[0]!;
+
+        return {
+          tenant: {
+            id: updatedTenant.id,
+            slug: updatedTenant.slug,
+            legalName: updatedTenant.legal_name,
+            tenantType: updatedTenant.tenant_type,
+            dataRegion: updatedTenant.data_region,
+            timezone: updatedTenant.timezone,
+            status: updatedTenant.status,
+            createdAt: typeof updatedTenant.created_at === 'string' ? updatedTenant.created_at : updatedTenant.created_at.toISOString(),
+          },
+          organisation: {
+            id: updatedOrg.id,
+            legalName: updatedOrg.legal_name,
+            constitution: updatedOrg.constitution,
+            status: updatedOrg.status,
+            lockVersion: updatedOrg.lock_version,
+          },
+          operationalSettings: {
+            defaultSlaMinutes: body.operationalSettings?.defaultSlaMinutes ?? 15,
+            leadRoutingMode: body.operationalSettings?.leadRoutingMode ?? ('ROUND_ROBIN' as const),
+            businessHoursStart: body.operationalSettings?.businessHoursStart ?? '09:30',
+            businessHoursEnd: body.operationalSettings?.businessHoursEnd ?? '18:30',
+            dataRetentionDays: body.operationalSettings?.dataRetentionDays ?? 365,
+          },
+        };
+      });
+
+      res.setHeader('ETag', `"${updated.organisation.lockVersion}"`);
+      res.json(updated);
     } catch (err) {
       next(err);
     }
