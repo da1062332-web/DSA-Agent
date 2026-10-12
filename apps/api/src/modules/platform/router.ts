@@ -437,6 +437,9 @@ export function createRouter(deps: ApiDeps): Router {
         `.execute(tx);
 
         const row = refreshed.rows[0];
+        if (!row) {
+          throw AppError.of('INTERNAL_ERROR', 'Failed to retrieve updated role.');
+        }
         return {
           id: row.id,
           tenantId: row.tenant_id,
@@ -1077,7 +1080,9 @@ export function createRouter(deps: ApiDeps): Router {
             });
           } else {
             // Broader scope takes precedence
-            if (scopeRank[row.scope_type] > scopeRank[existing.scope]) {
+            const rowRank = scopeRank[row.scope_type] ?? 0;
+            const existingRank = scopeRank[existing.scope] ?? 0;
+            if (rowRank > existingRank) {
               existing.scope = row.scope_type;
               existing.branchIds = new Set(row.scope_branch_ids || []);
             } else if (row.scope_type === existing.scope) {

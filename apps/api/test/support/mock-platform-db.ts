@@ -261,7 +261,7 @@ export function createMockPlatformStore() {
     }
 
     // INSERT app.role
-    if (sqlLower.includes('insert into app.role')) {
+    if (sqlLower.includes('insert into app.role') && !sqlLower.includes('role_permission')) {
       const [id, tid, code, name, isTemplate, version] = params;
       roles.push({
         id: id as string,
@@ -315,7 +315,7 @@ export function createMockPlatformStore() {
     }
 
     // DELETE app.role
-    if (sqlLower.includes('delete from app.role') && sqlLower.includes('where id =')) {
+    if (sqlLower.includes('delete from app.role') && !sqlLower.includes('role_permission') && sqlLower.includes('where id =')) {
       const [roleId, tid] = params;
       const idx = roles.findIndex((r) => r.id === roleId && r.tenant_id === tid);
       if (idx >= 0) roles.splice(idx, 1);
@@ -365,7 +365,7 @@ export function createMockPlatformStore() {
     }
 
     // 4. SELECT roles list
-    if (sqlLower.includes('from app.role') && !sqlLower.includes('where id =')) {
+    if (sqlLower.includes('select') && sqlLower.includes('from app.role') && !sqlLower.includes('where id =') && !sqlLower.includes('where r.id =') && !sqlLower.includes('code =')) {
       const tid = params[0] as string;
       const rows = roles
         .filter((r) => r.tenant_id === tid)

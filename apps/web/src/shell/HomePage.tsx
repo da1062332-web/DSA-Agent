@@ -18,6 +18,7 @@ export function HomePage() {
     { title: 'Loan Applications', desc: 'Originate, review and submit NBFC loan files.', to: '/applications', badge: 'Origination' },
     { title: 'Decision Rules', desc: 'Simulate and manage business eligibility rules.', to: '/rules', badge: 'BRE Engine' },
     { title: 'User Management', desc: 'Manage staff accounts, branch assignments, and roles.', to: '/users', badge: 'Users' },
+    { title: 'Access Control', desc: 'Configure tenant roles, permission policies, and RBAC matrix.', to: '/roles', badge: 'Access Control' },
   ];
 
   return (
