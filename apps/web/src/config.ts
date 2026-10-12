@@ -2,13 +2,12 @@
 import { z } from 'zod';
 
 const WebConfigSchema = z.object({
-  VITE_SUPABASE_URL: z.string().url().optional(),
+  VITE_SUPABASE_URL: z.string().url(),
   VITE_SUPABASE_PUBLISHABLE_KEY: z
     .string()
     .min(1)
-    .refine((k) => !k.startsWith('sb_secret_'), 'must be the publishable key, never a secret key')
-    .optional(),
-  VITE_API_BASE_URL: z.string().url().default('http://localhost:3000'),
+    .refine((k) => !k.startsWith('sb_secret_'), 'must be the publishable key, never a secret key'),
+  VITE_API_BASE_URL: z.string().url(),
 });
 
 export type WebConfig = z.infer<typeof WebConfigSchema>;
