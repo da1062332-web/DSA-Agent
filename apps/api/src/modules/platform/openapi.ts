@@ -1,5 +1,459 @@
-// OpenAPI registration for module platform (owner: see router.ts). Register this module's paths with zod schemas;
+// OpenAPI registration for module platform (owner: Akash / Developer 2).
 // tools/gen-openapi.ts writes openapi/openapi.yaml (never hand-edited; CI fails on a diff).
+import {
+  AssignRoleRequest,
+  CreateRoleRequest,
+  CreateUserRequest,
+  ErrorEnvelope,
+  ListMeta,
+  PermissionSummary,
+  RoleSummary,
+  UpdateRoleRequest,
+  UpdateUserRequest,
+  UserEffectiveGrants,
+  UserRoleAssignmentSummary,
+  UserSummary,
+} from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
+import { z } from 'zod';
 
-export function registerOpenApi(_registry: OpenAPIRegistry): void {}
+export function registerOpenApi(registry: OpenAPIRegistry): void {
+  // GET /v1/me
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/me',
+    summary: 'Get current authenticated user identity and permission grants',
+    tags: ['Platform'],
+    responses: {
+      200: {
+        description: 'Current user context',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.object({
+                id: z.string(),
+                kind: z.enum(['USER', 'SERVICE']),
+                tenantId: z.string(),
+                primaryBranchId: z.string().nullable(),
+                grants: z.array(
+                  z.object({
+                    code: z.string(),
+                    scope: z.enum(['OWN', 'TEAM', 'BRANCH', 'TENANT']),
+                    branchIds: z.array(z.string()),
+                  }),
+                ),
+                authTime: z.string().nullable(),
+              }),
+            }),
+          },
+        },
+      },
+      401: {
+        description: 'Unauthenticated',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
+    },
+  });
+
+  // GET /v1/branches
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/branches',
+    summary: 'List branches in caller tenant',
+    tags: ['Platform'],
+    responses: {
+      200: {
+        description: 'List of branches',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(
+                z.object({
+                  id: z.string(),
+                  organisationId: z.string(),
+                  code: z.string(),
+                  name: z.string(),
+                  pincode: z.string().nullable(),
+                  status: z.string(),
+                }),
+              ),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  // GET /v1/roles
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/roles',
+    summary: 'List roles and permissions in caller tenant',
+    tags: ['Access Control'],
+    responses: {
+      200: {
+        description: 'List of roles',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(RoleSummary),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  // GET /v1/permissions
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/permissions',
+    summary: 'List permission catalog',
+    tags: ['Access Control'],
+    responses: {
+      200: {
+        description: 'List of catalog permissions',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(PermissionSummary),
+            }),
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/roles/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/roles/{id}',
+    summary: 'Get role details by ID',
+    tags: ['Access Control'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Role details with permissions',
+        content: {
+          'application/json': {
+            schema: RoleSummary,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Role not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/roles
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/roles',
+    summary: 'Create custom role',
+    tags: ['Access Control'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: CreateRoleRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: 'Created role',
+        content: {
+          'application/json': {
+            schema: RoleSummary,
+          },
+        },
+      },
+      400: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/roles/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/roles/{id}',
+    summary: 'Update role name or permissions',
+    tags: ['Access Control'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: {
+          'application/json': {
+            schema: UpdateRoleRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated role',
+        content: {
+          'application/json': {
+            schema: RoleSummary,
+          },
+        },
+      },
+      400: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Role not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // DELETE /v1/roles/{id}
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/roles/{id}',
+    summary: 'Delete custom role',
+    tags: ['Access Control'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Role deleted',
+        content: {
+          'application/json': {
+            schema: z.object({ status: z.literal('ok') }),
+          },
+        },
+      },
+      400: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Role not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/users
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/users',
+    summary: 'List users in caller tenant with pagination and search',
+    tags: ['Users'],
+    request: {
+      query: z.object({
+        limit: z.coerce.number().int().min(1).max(200).optional(),
+        cursor: z.string().optional(),
+        status: z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional(),
+        search: z.string().optional(),
+      }),
+    },
+    responses: {
+      200: {
+        description: 'Paginated user list',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(UserSummary),
+              meta: ListMeta,
+            }),
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/users/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/users/{id}',
+    summary: 'Get details of a specific user',
+    tags: ['Users'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'User details',
+        headers: {
+          ETag: { schema: { type: 'string' }, description: 'User lock_version' },
+        },
+        content: {
+          'application/json': {
+            schema: UserSummary,
+          },
+        },
+      },
+      404: { description: 'User not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/users
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/users',
+    summary: 'Create a new staff user',
+    tags: ['Users'],
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: CreateUserRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: 'Created user',
+        content: {
+          'application/json': {
+            schema: UserSummary,
+          },
+        },
+      },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/users/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/users/{id}',
+    summary: 'Update user profile, status, or branch',
+    tags: ['Users'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: {
+          'application/json': {
+            schema: UpdateUserRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated user',
+        content: {
+          'application/json': {
+            schema: UserSummary,
+          },
+        },
+      },
+      404: { description: 'User not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/users/{id}/roles
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/users/{id}/roles',
+    summary: 'Assign a role to a user (SOD-05)',
+    tags: ['Users'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: {
+        content: {
+          'application/json': {
+            schema: AssignRoleRequest,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: 'Role assigned',
+        content: {
+          'application/json': {
+            schema: z.object({
+              id: z.string(),
+              alreadyAssigned: z.boolean(),
+            }),
+          },
+        },
+      },
+      403: { description: 'SOD violation', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'User or role not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // DELETE /v1/users/{id}/roles/{roleId}
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/users/{id}/roles/{roleId}',
+    summary: 'Remove a role assignment from a user (SOD-05)',
+    tags: ['Users'],
+    request: {
+      params: z.object({ id: z.string(), roleId: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Role removed',
+        content: {
+          'application/json': {
+            schema: z.object({ status: z.literal('ok') }),
+          },
+        },
+      },
+      403: { description: 'SOD violation', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/users/{id}/roles
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/users/{id}/roles',
+    summary: 'List role assignments for user',
+    tags: ['Access Control'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'User role assignments',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(UserRoleAssignmentSummary),
+            }),
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'User not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/users/{id}/permissions
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/users/{id}/permissions',
+    summary: 'Get effective permissions for user',
+    tags: ['Access Control'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'User effective permissions',
+        content: {
+          'application/json': {
+            schema: UserEffectiveGrants,
+          },
+        },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'User not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+}
