@@ -77,6 +77,396 @@ components:
       required:
         - nextCursor
         - limit
+    CreateLeadInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        mobile:
+          type: string
+          minLength: 8
+          maxLength: 25
+        email:
+          type:
+            - string
+            - "null"
+          format: email
+        productCategory:
+          type: string
+          enum: &a3
+            - PL
+            - BL
+            - MSME
+            - LAP
+            - HL
+            - VL
+            - GL
+            - EL
+            - OTHER
+        indicativeAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        pincode:
+          type:
+            - string
+            - "null"
+          pattern: ^[1-9][0-9]{5}$
+        branchId:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          enum: &a4
+            - WALK_IN
+            - PHONE
+            - WEBSITE
+            - REFERRAL
+            - CAMPAIGN
+            - API
+            - OTHER
+        subSource:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        campaign:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        utm:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        connectorId:
+          type:
+            - string
+            - "null"
+        priority:
+          type: string
+          enum: &a1
+            - HIGH
+            - MEDIUM
+            - LOW
+          default: MEDIUM
+        tags:
+          type: array
+          items:
+            type: string
+          default: &a5 []
+        consent:
+          type: object
+          properties:
+            purpose:
+              type: string
+              enum: &a6
+                - CONTACT
+                - LOAN_PROCESSING
+                - SHARE_WITH_LENDER
+                - VERIFICATION_CHECK
+                - MARKETING
+              default: CONTACT
+            purposeTarget:
+              type:
+                - string
+                - "null"
+            noticeVersion:
+              type: string
+              pattern: ^[a-zA-Z0-9._-]{2,40}$
+            channel:
+              type: string
+              enum: &a7
+                - IN_PERSON
+                - PHONE
+                - WEB_FORM
+                - EMAIL
+                - OTP
+                - DOCUMENT
+            evidenceRef:
+              type:
+                - string
+                - "null"
+          required:
+            - noticeVersion
+            - channel
+      required:
+        - fullName
+        - mobile
+        - productCategory
+        - branchId
+        - source
+        - consent
+    UpdateLeadInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        email:
+          type:
+            - string
+            - "null"
+          format: email
+        indicativeAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        pincode:
+          type:
+            - string
+            - "null"
+          pattern: ^[1-9][0-9]{5}$
+        priority:
+          type: string
+          enum: *a1
+        tags:
+          type: array
+          items:
+            type: string
+        nextFollowUpAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        qualApplicantType:
+          type:
+            - string
+            - "null"
+          enum: &a2
+            - SALARIED
+            - SELF_EMPLOYED_PROFESSIONAL
+            - SELF_EMPLOYED_BUSINESS
+            - NON_INDIVIDUAL
+        qualRequestedAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        qualTenureMonths:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 480
+        qualPurposeCode:
+          type:
+            - string
+            - "null"
+    LeadTransitionInput:
+      type: object
+      properties:
+        transitionCode:
+          type: string
+          enum: &a8
+            - T-LEAD-01
+            - T-LEAD-02
+            - T-LEAD-04
+            - T-LEAD-05
+            - T-LEAD-06
+        reasonCode:
+          type:
+            - string
+            - "null"
+        disqualificationReason:
+          type:
+            - string
+            - "null"
+          enum: &a9
+            - NOT_INTERESTED
+            - NOT_ELIGIBLE
+            - DUPLICATE
+            - UNREACHABLE
+            - OTHER
+        nextFollowUpAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        qualification:
+          type: object
+          properties:
+            applicantType:
+              type: string
+              enum: *a2
+            requestedAmount:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  pattern: ^\d{1,16}\.\d{2}$
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+              required:
+                - amount
+                - currency
+            tenureMonths:
+              type:
+                - integer
+                - "null"
+              minimum: 1
+              maximum: 480
+            purposeCode:
+              type:
+                - string
+                - "null"
+          required:
+            - applicantType
+            - requestedAmount
+      required:
+        - transitionCode
+    AssignLeadInput:
+      type: object
+      properties:
+        toUserId:
+          type:
+            - string
+            - "null"
+        toQueueId:
+          type:
+            - string
+            - "null"
+        reasonCode:
+          type: string
+          enum: &a10
+            - AUTO_ROUTING
+            - ROUTING_FALLBACK
+            - MANUAL
+            - REBALANCE
+            - OWNER_INACTIVE
+          default: MANUAL
+        transferOpenTasks:
+          type: boolean
+    ConvertLeadInput:
+      type: object
+      properties:
+        customerId:
+          type:
+            - string
+            - "null"
+    CreateCustomerInput:
+      type: object
+      properties:
+        partyType:
+          type: string
+          enum: &a11
+            - INDIVIDUAL
+            - ENTITY
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        homeBranchId:
+          type: string
+          minLength: 1
+        primaryMobile:
+          type: string
+        primaryEmail:
+          type: string
+          format: email
+        pan: {}
+        aadhaar: {}
+        dob: {}
+        dateOfBirth: {}
+        bankAccount: {}
+        bankAccountNumber: {}
+      required:
+        - partyType
+        - fullName
+        - homeBranchId
+      additionalProperties: false
+    UpdateCustomerInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        homeBranchId:
+          type: string
+          minLength: 1
+        pan: {}
+        aadhaar: {}
+        dob: {}
+        dateOfBirth: {}
+        bankAccount: {}
+        bankAccountNumber: {}
+      additionalProperties: false
+    CreateConsentInput:
+      type: object
+      properties:
+        purpose:
+          type: string
+          enum: &a12
+            - CONTACT
+            - LOAN_PROCESSING
+            - SHARE_WITH_LENDER
+            - VERIFICATION_CHECK
+            - MARKETING
+        purposeTarget:
+          type: string
+        noticeVersion:
+          type: string
+          pattern: ^[A-Z0-9._-]{2,40}$
+        channel:
+          type: string
+          enum: &a13
+            - IN_PERSON
+            - PHONE
+            - WEB_FORM
+            - EMAIL
+            - OTP
+            - DOCUMENT
+        evidenceRef:
+          type: string
+          maxLength: 255
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - purpose
+        - noticeVersion
+        - channel
+    WithdrawConsentInput:
+      type: object
+      properties:
+        withdrawalReason:
+          type: string
+          maxLength: 500
     IdempotencyKey:
       type: string
       pattern: ^[A-Za-z0-9_-]{8,128}$
@@ -123,4 +513,1954 @@ paths:
                       - ok
                 required:
                   - status
+  /v1/leads:
+    post:
+      summary: Capture a new lead with consent (API-LEAD-001)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                mobile:
+                  type: string
+                  minLength: 8
+                  maxLength: 25
+                email:
+                  type:
+                    - string
+                    - "null"
+                  format: email
+                productCategory:
+                  type: string
+                  enum: *a3
+                indicativeAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                branchId:
+                  type: string
+                  minLength: 1
+                source:
+                  type: string
+                  enum: *a4
+                subSource:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                campaign:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                utm:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                connectorId:
+                  type:
+                    - string
+                    - "null"
+                priority:
+                  type: string
+                  enum: *a1
+                  default: MEDIUM
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  default: *a5
+                consent:
+                  type: object
+                  properties:
+                    purpose:
+                      type: string
+                      enum: *a6
+                      default: CONTACT
+                    purposeTarget:
+                      type:
+                        - string
+                        - "null"
+                    noticeVersion:
+                      type: string
+                      pattern: ^[a-zA-Z0-9._-]{2,40}$
+                    channel:
+                      type: string
+                      enum: *a7
+                    evidenceRef:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - noticeVersion
+                    - channel
+              required:
+                - fullName
+                - mobile
+                - productCategory
+                - branchId
+                - source
+                - consent
+      responses:
+        "201":
+          description: Lead created successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Lead lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - NEW
+                  mobileMasked:
+                    type: string
+                  duplicateFlag:
+                    type: string
+                  lockVersion:
+                    type: number
+                required:
+                  - id
+                  - state
+                  - mobileMasked
+                  - duplicateFlag
+                  - lockVersion
+    get:
+      summary: List and filter leads (API-LEAD-002)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[state]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: state
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[ownerUserId]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: ownerUserId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[branchId]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: branchId
+          in: query
+      responses:
+        "200":
+          description: Paginated list of leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: {}
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/leads/{id}:
+    get:
+      summary: Lead detail (API-LEAD-003)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lead details
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "404":
+          description: Lead not found or outside authorized scope
+    patch:
+      summary: Update lead mutable fields (API-LEAD-004)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                email:
+                  type:
+                    - string
+                    - "null"
+                  format: email
+                indicativeAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                priority:
+                  type: string
+                  enum: *a1
+                tags:
+                  type: array
+                  items:
+                    type: string
+                nextFollowUpAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                qualApplicantType:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a2
+                qualRequestedAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                qualTenureMonths:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 480
+                qualPurposeCode:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        "200":
+          description: Updated lead details
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "409":
+          description: VERSION_CONFLICT
+  /v1/leads/{id}/transitions:
+    post:
+      summary: Lead state transition (API-LEAD-005)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transitionCode:
+                  type: string
+                  enum: *a8
+                reasonCode:
+                  type:
+                    - string
+                    - "null"
+                disqualificationReason:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a9
+                nextFollowUpAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                qualification:
+                  type: object
+                  properties:
+                    applicantType:
+                      type: string
+                      enum: *a2
+                    requestedAmount:
+                      type: object
+                      properties:
+                        amount:
+                          type: string
+                          pattern: ^\d{1,16}\.\d{2}$
+                        currency:
+                          type: string
+                          pattern: ^[A-Z]{3}$
+                      required:
+                        - amount
+                        - currency
+                    tenureMonths:
+                      type:
+                        - integer
+                        - "null"
+                      minimum: 1
+                      maximum: 480
+                    purposeCode:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - applicantType
+                    - requestedAmount
+              required:
+                - transitionCode
+      responses:
+        "200":
+          description: Lead state updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "409":
+          description: INVALID_TRANSITION or VERSION_CONFLICT
+  /v1/leads/{id}/assignments:
+    post:
+      summary: Assign or reassign lead (API-LEAD-006)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                toUserId:
+                  type:
+                    - string
+                    - "null"
+                toQueueId:
+                  type:
+                    - string
+                    - "null"
+                reasonCode:
+                  type: string
+                  enum: *a10
+                  default: MANUAL
+                transferOpenTasks:
+                  type: boolean
+      responses:
+        "200":
+          description: Lead assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "422":
+          description: INVALID_ASSIGNEE
+  /v1/leads/{id}/conversion:
+    post:
+      summary: Convert lead atomically to customer and application (API-LEAD-007)
+      tags:
+        - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customerId:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        "200":
+          description: Atomic conversion succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leadId:
+                    type: string
+                  customerId:
+                    type: string
+                  applicationId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - CONVERTED
+                required:
+                  - leadId
+                  - customerId
+                  - applicationId
+                  - status
+        "409":
+          description: INVALID_STATE or VERSION_CONFLICT
+  /v1/customers:
+    post:
+      summary: Create a new customer party profile (API-CUST-001)
+      tags:
+        - Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                partyType:
+                  type: string
+                  enum: *a11
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                homeBranchId:
+                  type: string
+                  minLength: 1
+                primaryMobile:
+                  type: string
+                primaryEmail:
+                  type: string
+                  format: email
+                pan: {}
+                aadhaar: {}
+                dob: {}
+                dateOfBirth: {}
+                bankAccount: {}
+                bankAccountNumber: {}
+              required:
+                - partyType
+                - fullName
+                - homeBranchId
+              additionalProperties: false
+      responses:
+        "201":
+          description: Customer created successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Customer lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  partyType:
+                    type: string
+                    enum:
+                      - INDIVIDUAL
+                      - ENTITY
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                      - MERGED
+                  lockVersion:
+                    type: number
+                  primaryMobileMasked:
+                    type:
+                      - string
+                      - "null"
+                  primaryEmailMasked:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - partyType
+                  - fullName
+                  - homeBranchId
+                  - status
+                  - lockVersion
+    get:
+      summary: List customers in scope (API-CUST-010)
+      tags:
+        - Customers
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - INDIVIDUAL
+              - ENTITY
+          required: false
+          name: partyType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: homeBranchId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - ACTIVE
+              - MERGED
+          required: false
+          name: status
+          in: query
+      responses:
+        "200":
+          description: Paginated customer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        partyType:
+                          type: string
+                          enum:
+                            - INDIVIDUAL
+                            - ENTITY
+                        fullName:
+                          type: string
+                        homeBranchId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - MERGED
+                        lockVersion:
+                          type: number
+                      required:
+                        - id
+                        - tenantId
+                        - partyType
+                        - fullName
+                        - homeBranchId
+                        - status
+                        - lockVersion
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/customers/{id}:
+    get:
+      summary: Get customer details by ID
+      tags:
+        - Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Customer details
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Customer lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  partyType:
+                    type: string
+                    enum:
+                      - INDIVIDUAL
+                      - ENTITY
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                      - MERGED
+                  lockVersion:
+                    type: number
+                  primaryMobileMasked:
+                    type:
+                      - string
+                      - "null"
+                  primaryEmailMasked:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - partyType
+                  - fullName
+                  - homeBranchId
+                  - status
+                  - lockVersion
+    patch:
+      summary: Update customer profile (API-CUST-003)
+      tags:
+        - Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                homeBranchId:
+                  type: string
+                  minLength: 1
+                pan: {}
+                aadhaar: {}
+                dob: {}
+                dateOfBirth: {}
+                bankAccount: {}
+                bankAccountNumber: {}
+              additionalProperties: false
+      responses:
+        "200":
+          description: Customer profile updated successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Updated lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  lockVersion:
+                    type: number
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                required:
+                  - id
+                  - lockVersion
+                  - fullName
+                  - homeBranchId
+  /v1/customers/{id}/consents:
+    get:
+      summary: List customer consents
+      tags:
+        - Customers
+        - Consent
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: List of customer consents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        subjectType:
+                          type: string
+                          enum:
+                            - CUSTOMER
+                            - LEAD
+                        subjectId:
+                          type: string
+                        purpose:
+                          type: string
+                        noticeVersion:
+                          type: string
+                        channel:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - WITHDRAWN
+                            - EXPIRED
+                      required:
+                        - id
+                        - subjectType
+                        - subjectId
+                        - purpose
+                        - noticeVersion
+                        - channel
+                        - status
+                required:
+                  - data
+    post:
+      summary: Record customer consent (API-CUST-004)
+      tags:
+        - Customers
+        - Consent
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose:
+                  type: string
+                  enum: *a12
+                purposeTarget:
+                  type: string
+                noticeVersion:
+                  type: string
+                  pattern: ^[A-Z0-9._-]{2,40}$
+                channel:
+                  type: string
+                  enum: *a13
+                evidenceRef:
+                  type: string
+                  maxLength: 255
+                expiresAt:
+                  type: string
+                  format: date-time
+              required:
+                - purpose
+                - noticeVersion
+                - channel
+      responses:
+        "201":
+          description: Consent recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  subjectType:
+                    type: string
+                    enum:
+                      - CUSTOMER
+                  subjectId:
+                    type: string
+                  purpose:
+                    type: string
+                  noticeVersion:
+                    type: string
+                  channel:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                required:
+                  - id
+                  - subjectType
+                  - subjectId
+                  - purpose
+                  - noticeVersion
+                  - channel
+                  - status
+  /v1/consents/{id}/withdrawal:
+    post:
+      summary: Withdraw an active consent (API-CUST-005)
+      tags:
+        - Consent
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                withdrawalReason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Consent withdrawn successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - WITHDRAWN
+                  withdrawnAt:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - status
+                  - withdrawnAt
+  /v1/tasks:
+    post:
+      summary: "API-TASK-001: Create Task"
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: &a16
+                    - FOLLOW_UP
+                    - CALL
+                    - MEETING
+                    - DOCUMENT_COLLECTION
+                    - LENDER_QUERY
+                    - REVIEW
+                    - GENERAL
+                title:
+                  type: string
+                  minLength: 3
+                  maxLength: 200
+                ownerUserId:
+                  type: string
+                  minLength: 1
+                ownerQueueId:
+                  type: string
+                  minLength: 1
+                linkedType:
+                  type: string
+                  enum: &a15
+                    - LEAD
+                    - LOAN_APPLICATION
+                    - LENDER_CASE
+                linkedId:
+                  type: string
+                  minLength: 1
+                branchId:
+                  type: string
+                  minLength: 1
+                priority:
+                  type: string
+                  enum: &a14
+                    - HIGH
+                    - MEDIUM
+                    - LOW
+                  default: MEDIUM
+                dueAt:
+                  type: string
+                  format: date-time
+                slaClass:
+                  type: string
+                  enum:
+                    - CUSTOMER_FIRST_CONTACT
+                    - CUSTOMER_FOLLOW_UP
+                    - LENDER_QUERY
+                    - LENDER_PROCESSING
+                    - INTERNAL_REVIEW
+                    - DOCUMENT_REVIEW
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - type
+                - title
+                - linkedType
+                - linkedId
+                - branchId
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      summary: "API-TASK-002: List Tasks"
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - MINE
+              - QUEUES
+              - ALL
+            default: MINE
+          required: false
+          name: view
+          in: query
+        - schema:
+            type: string
+            enum:
+              - OPEN
+              - IN_PROGRESS
+              - SNOOZED
+              - COMPLETED
+              - CANCELLED
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a14
+          required: false
+          name: priority
+          in: query
+        - schema:
+            type: string
+            enum: *a15
+          required: false
+          name: linkedType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: linkedId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: branchId
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: List of tasks matching criteria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        ownerQueueId:
+                          type:
+                            - string
+                            - "null"
+                        linkedType:
+                          type: string
+                        linkedId:
+                          type: string
+                        branchId:
+                          type: string
+                        priority:
+                          type: string
+                        status:
+                          type: string
+                        dueAt:
+                          type: string
+                        slaClass:
+                          type:
+                            - string
+                            - "null"
+                        slaDecisionRecordId:
+                          type:
+                            - string
+                            - "null"
+                        outcomeCode:
+                          type:
+                            - string
+                            - "null"
+                        completionNote:
+                          type:
+                            - string
+                            - "null"
+                        completedAt:
+                          type:
+                            - string
+                            - "null"
+                        completedBy:
+                          type:
+                            - string
+                            - "null"
+                        followUpTaskId:
+                          type:
+                            - string
+                            - "null"
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        lockVersion:
+                          type: number
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - type
+                        - title
+                        - ownerUserId
+                        - ownerQueueId
+                        - linkedType
+                        - linkedId
+                        - branchId
+                        - priority
+                        - status
+                        - dueAt
+                        - slaClass
+                        - slaDecisionRecordId
+                        - outcomeCode
+                        - completionNote
+                        - completedAt
+                        - completedBy
+                        - followUpTaskId
+                        - tags
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  pagination:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      hasMore:
+                        type: boolean
+                    required:
+                      - nextCursor
+                      - hasMore
+                required:
+                  - data
+                  - pagination
+  /v1/tasks/{id}:
+    get:
+      summary: Get Task Detail
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    patch:
+      summary: "API-TASK-003: Update Task"
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                ownerQueueId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                priority:
+                  type: string
+                  enum: *a14
+                dueAt:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                  enum:
+                    - OPEN
+                    - IN_PROGRESS
+                    - CANCELLED
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/tasks/{id}/completion:
+    post:
+      summary: "API-TASK-004: Complete Task"
+      tags:
+        - Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcomeCode:
+                  type: string
+                  enum:
+                    - CONNECTED
+                    - NO_ANSWER
+                    - BUSY
+                    - SWITCHED_OFF
+                    - WRONG_NUMBER
+                    - CALLBACK_REQUESTED
+                    - NOT_INTERESTED
+                    - DONE
+                    - NOT_REQUIRED
+                    - OTHER
+                completionNote:
+                  type: string
+                  maxLength: 2000
+                nextAction:
+                  type: object
+                  properties:
+                    createFollowUp:
+                      type: boolean
+                    followUpType:
+                      type: string
+                      enum: *a16
+                      default: FOLLOW_UP
+                    followUpDueAt:
+                      type: string
+                      format: date-time
+                    followUpTitle:
+                      type: string
+                      minLength: 3
+                      maxLength: 200
+                  required:
+                    - createFollowUp
+                    - followUpDueAt
+      responses:
+        "200":
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      type:
+                        type: string
+                      title:
+                        type: string
+                      ownerUserId:
+                        type:
+                          - string
+                          - "null"
+                      ownerQueueId:
+                        type:
+                          - string
+                          - "null"
+                      linkedType:
+                        type: string
+                      linkedId:
+                        type: string
+                      branchId:
+                        type: string
+                      priority:
+                        type: string
+                      status:
+                        type: string
+                      dueAt:
+                        type: string
+                      slaClass:
+                        type:
+                          - string
+                          - "null"
+                      slaDecisionRecordId:
+                        type:
+                          - string
+                          - "null"
+                      outcomeCode:
+                        type:
+                          - string
+                          - "null"
+                      completionNote:
+                        type:
+                          - string
+                          - "null"
+                      completedAt:
+                        type:
+                          - string
+                          - "null"
+                      completedBy:
+                        type:
+                          - string
+                          - "null"
+                      followUpTaskId:
+                        type:
+                          - string
+                          - "null"
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: number
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - type
+                      - title
+                      - ownerUserId
+                      - ownerQueueId
+                      - linkedType
+                      - linkedId
+                      - branchId
+                      - priority
+                      - status
+                      - dueAt
+                      - slaClass
+                      - slaDecisionRecordId
+                      - outcomeCode
+                      - completionNote
+                      - completedAt
+                      - completedBy
+                      - followUpTaskId
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                  followUpTask:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      type:
+                        type: string
+                      title:
+                        type: string
+                      ownerUserId:
+                        type:
+                          - string
+                          - "null"
+                      ownerQueueId:
+                        type:
+                          - string
+                          - "null"
+                      linkedType:
+                        type: string
+                      linkedId:
+                        type: string
+                      branchId:
+                        type: string
+                      priority:
+                        type: string
+                      status:
+                        type: string
+                      dueAt:
+                        type: string
+                      slaClass:
+                        type:
+                          - string
+                          - "null"
+                      slaDecisionRecordId:
+                        type:
+                          - string
+                          - "null"
+                      outcomeCode:
+                        type:
+                          - string
+                          - "null"
+                      completionNote:
+                        type:
+                          - string
+                          - "null"
+                      completedAt:
+                        type:
+                          - string
+                          - "null"
+                      completedBy:
+                        type:
+                          - string
+                          - "null"
+                      followUpTaskId:
+                        type:
+                          - string
+                          - "null"
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: number
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - type
+                      - title
+                      - ownerUserId
+                      - ownerQueueId
+                      - linkedType
+                      - linkedId
+                      - branchId
+                      - priority
+                      - status
+                      - dueAt
+                      - slaClass
+                      - slaDecisionRecordId
+                      - outcomeCode
+                      - completionNote
+                      - completedAt
+                      - completedBy
+                      - followUpTaskId
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                required:
+                  - task
+                  - followUpTask
 webhooks: {}
