@@ -1,5 +1,10 @@
-// @dsa/kernel — owner: Dev 1. Intentionally empty at Gate 0.
-// TASK-101 moves apps/api/src/kernel-min/* here and adds the kernel primitives (errors, ids, money,
-// pagination, request context, TxRunner, redacting logger). TASK-104 adds authz and scope resolution;
-// TASK-105 adds idempotency, audit, outbox, decision dedupe and rate limiting. See README.md.
-export {};
+// @dsa/kernel — owner: Dev 1.
+// TASK-101 moves apps/api/src/kernel-min/* here (TxRunner, Kysely factory, redacting logger). Still to come:
+// outbox writer and rate limiting (TASK-105). See README.md.
+export * from './ids';
+export * from './auth/verify-token';
+export * from './auth/resolve-principal';
+export * from './authz/authz';
+export * from './audit/audit';
+export * from './idempotency/idempotency';
+export * from './directory/user-directory';
