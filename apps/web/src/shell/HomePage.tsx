@@ -17,6 +17,7 @@ export function HomePage() {
     { title: 'Tasks Management', desc: 'Track underwriting checklist items and follow-ups.', to: '/tasks', badge: 'Tasks' },
     { title: 'Loan Applications', desc: 'Originate, review and submit NBFC loan files.', to: '/applications', badge: 'Origination' },
     { title: 'Decision Rules', desc: 'Simulate and manage business eligibility rules.', to: '/rules', badge: 'BRE Engine' },
+    { title: 'Omnichannel Messaging', desc: 'Templates, dispatch, send-eligibility guard, and delivery tracking.', to: '/messaging', badge: 'Messaging' },
   ];
 
   return (

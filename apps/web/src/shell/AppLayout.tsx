@@ -3,12 +3,15 @@ import { useEffect, useState } from 'react';
 import { AppBar, Box, Button, Chip, Toolbar, Typography } from '@mui/material';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import { NotificationCenter } from '../features/notifications/NotificationCenter';
+
 const NAV = [
   { to: '/leads', label: 'Leads' },
   { to: '/tasks', label: 'Tasks' },
   { to: '/applications', label: 'Applications' },
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
+  { to: '/messaging', label: 'Messaging' },
 ];
 
 export function AppLayout() {
@@ -66,6 +69,7 @@ export function AppLayout() {
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {currentUser ? (
               <>
+                <NotificationCenter />
                 <Chip
                   label={currentUser.email}
                   size="small"
