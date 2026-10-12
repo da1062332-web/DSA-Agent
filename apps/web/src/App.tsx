@@ -3,6 +3,7 @@
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthProvider';
 import { readConfig } from './config';
 import { routes } from './routes';
 import { ConfigError } from './shell/ConfigError';
@@ -17,9 +18,11 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {config.success ? (
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
+        <AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AuthProvider>
       ) : (
         <ConfigError variables={config.error.issues.map((i) => i.path.join('.'))} />
       )}
