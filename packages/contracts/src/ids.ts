@@ -3,8 +3,9 @@
 import { z } from 'zod';
 
 // Prefixes named in the Contracts and Migration Plan pages.
-// TODO(TASK-101, Dev 1): complete this list for every MVP table before Gate 1 (each owner proposes theirs by PR).
 // Platform (Dev 1, TASK-103/104): org, br, team, tm, role, ura, wq, wqm.
+// Follow-ups & Comm (MOD-ACT, MOD-MSG, MOD-NTF): act, tmpl, msg, ntf.
+// CRM (Dev 5): cust, ccp, cnst, pty, ash, lsh, asg.
 export const ID_PREFIXES = [
   'ten',
   'usr',
@@ -23,6 +24,17 @@ export const ID_PREFIXES = [
   'dr',
   'aud',
   'evt',
+  'cust',
+  'ccp',
+  'cnst',
+  'pty',
+  'ash',
+  'lsh',
+  'asg',
+  'act',
+  'tmpl',
+  'msg',
+  'ntf',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

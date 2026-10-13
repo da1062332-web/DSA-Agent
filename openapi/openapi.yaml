@@ -77,6 +77,1069 @@ components:
       required:
         - nextCursor
         - limit
+    CreateLeadInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        mobile:
+          type: string
+          minLength: 8
+          maxLength: 25
+        email:
+          type:
+            - string
+            - "null"
+          format: email
+        productCategory:
+          type: string
+          enum: &a18
+            - PL
+            - BL
+            - MSME
+            - LAP
+            - HL
+            - VL
+            - GL
+            - EL
+            - OTHER
+        indicativeAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        pincode:
+          type:
+            - string
+            - "null"
+          pattern: ^[1-9][0-9]{5}$
+        branchId:
+          type: string
+          minLength: 1
+        source:
+          type: string
+          enum: &a19
+            - WALK_IN
+            - PHONE
+            - WEBSITE
+            - REFERRAL
+            - CAMPAIGN
+            - API
+            - OTHER
+        subSource:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        campaign:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        utm:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        connectorId:
+          type:
+            - string
+            - "null"
+        priority:
+          type: string
+          enum: &a1
+            - HIGH
+            - MEDIUM
+            - LOW
+          default: MEDIUM
+        tags:
+          type: array
+          items:
+            type: string
+          default: &a20 []
+        consent:
+          type: object
+          properties:
+            purpose:
+              type: string
+              enum: &a21
+                - CONTACT
+                - LOAN_PROCESSING
+                - SHARE_WITH_LENDER
+                - VERIFICATION_CHECK
+                - MARKETING
+              default: CONTACT
+            purposeTarget:
+              type:
+                - string
+                - "null"
+            noticeVersion:
+              type: string
+              pattern: ^[a-zA-Z0-9._-]{2,40}$
+            channel:
+              type: string
+              enum: &a22
+                - IN_PERSON
+                - PHONE
+                - WEB_FORM
+                - EMAIL
+                - OTP
+                - DOCUMENT
+            evidenceRef:
+              type:
+                - string
+                - "null"
+          required:
+            - noticeVersion
+            - channel
+      required:
+        - fullName
+        - mobile
+        - productCategory
+        - branchId
+        - source
+        - consent
+    UpdateLeadInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        email:
+          type:
+            - string
+            - "null"
+          format: email
+        indicativeAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        pincode:
+          type:
+            - string
+            - "null"
+          pattern: ^[1-9][0-9]{5}$
+        priority:
+          type: string
+          enum: *a1
+        tags:
+          type: array
+          items:
+            type: string
+        nextFollowUpAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        qualApplicantType:
+          type:
+            - string
+            - "null"
+          enum: &a2
+            - SALARIED
+            - SELF_EMPLOYED_PROFESSIONAL
+            - SELF_EMPLOYED_BUSINESS
+            - NON_INDIVIDUAL
+        qualRequestedAmount:
+          type:
+            - object
+            - "null"
+          properties:
+            amount:
+              type: string
+              pattern: ^\d{1,16}\.\d{2}$
+            currency:
+              type: string
+              pattern: ^[A-Z]{3}$
+          required:
+            - amount
+            - currency
+        qualTenureMonths:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 480
+        qualPurposeCode:
+          type:
+            - string
+            - "null"
+    LeadTransitionInput:
+      type: object
+      properties:
+        transitionCode:
+          type: string
+          enum: &a23
+            - T-LEAD-01
+            - T-LEAD-02
+            - T-LEAD-04
+            - T-LEAD-05
+            - T-LEAD-06
+        reasonCode:
+          type:
+            - string
+            - "null"
+        disqualificationReason:
+          type:
+            - string
+            - "null"
+          enum: &a24
+            - NOT_INTERESTED
+            - NOT_ELIGIBLE
+            - DUPLICATE
+            - UNREACHABLE
+            - OTHER
+        nextFollowUpAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        qualification:
+          type: object
+          properties:
+            applicantType:
+              type: string
+              enum: *a2
+            requestedAmount:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  pattern: ^\d{1,16}\.\d{2}$
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+              required:
+                - amount
+                - currency
+            tenureMonths:
+              type:
+                - integer
+                - "null"
+              minimum: 1
+              maximum: 480
+            purposeCode:
+              type:
+                - string
+                - "null"
+          required:
+            - applicantType
+            - requestedAmount
+      required:
+        - transitionCode
+    AssignLeadInput:
+      type: object
+      properties:
+        toUserId:
+          type:
+            - string
+            - "null"
+        toQueueId:
+          type:
+            - string
+            - "null"
+        reasonCode:
+          type: string
+          enum: &a25
+            - AUTO_ROUTING
+            - ROUTING_FALLBACK
+            - MANUAL
+            - REBALANCE
+            - OWNER_INACTIVE
+          default: MANUAL
+        transferOpenTasks:
+          type: boolean
+    ConvertLeadInput:
+      type: object
+      properties:
+        customerId:
+          type:
+            - string
+            - "null"
+    CreateCustomerInput:
+      type: object
+      properties:
+        partyType:
+          type: string
+          enum: &a26
+            - INDIVIDUAL
+            - ENTITY
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        homeBranchId:
+          type: string
+          minLength: 1
+        primaryMobile:
+          type: string
+        primaryEmail:
+          type: string
+          format: email
+        pan: {}
+        aadhaar: {}
+        dob: {}
+        dateOfBirth: {}
+        bankAccount: {}
+        bankAccountNumber: {}
+      required:
+        - partyType
+        - fullName
+        - homeBranchId
+      additionalProperties: false
+    UpdateCustomerInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        homeBranchId:
+          type: string
+          minLength: 1
+        pan: {}
+        aadhaar: {}
+        dob: {}
+        dateOfBirth: {}
+        bankAccount: {}
+        bankAccountNumber: {}
+      additionalProperties: false
+    CreateConsentInput:
+      type: object
+      properties:
+        purpose:
+          type: string
+          enum: &a27
+            - CONTACT
+            - LOAN_PROCESSING
+            - SHARE_WITH_LENDER
+            - VERIFICATION_CHECK
+            - MARKETING
+        purposeTarget:
+          type: string
+        noticeVersion:
+          type: string
+          pattern: ^[A-Z0-9._-]{2,40}$
+        channel:
+          type: string
+          enum: &a28
+            - IN_PERSON
+            - PHONE
+            - WEB_FORM
+            - EMAIL
+            - OTP
+            - DOCUMENT
+        evidenceRef:
+          type: string
+          maxLength: 255
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - purpose
+        - noticeVersion
+        - channel
+    WithdrawConsentInput:
+      type: object
+      properties:
+        withdrawalReason:
+          type: string
+          maxLength: 500
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^act_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        subjectType:
+          type: string
+          enum: &a3
+            - LEAD
+            - CUSTOMER
+            - LOAN_APPLICATION
+        subjectId:
+          type: string
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: *a3
+              id:
+                type: string
+                minLength: 1
+            required:
+              - type
+              - id
+        kind:
+          type: string
+          enum: &a4
+            - CALL
+            - MEETING
+            - VISIT
+            - NOTE
+        outcomeCode:
+          type:
+            - string
+            - "null"
+          enum: &a5
+            - CONNECTED
+            - NO_ANSWER
+            - BUSY
+            - SWITCHED_OFF
+            - WRONG_NUMBER
+            - CALLBACK_REQUESTED
+            - NOT_INTERESTED
+            - OTHER
+        occurredAt:
+          type: string
+        durationSeconds:
+          type:
+            - integer
+            - "null"
+        note:
+          type:
+            - string
+            - "null"
+        actorId:
+          type: string
+        actorBranchId:
+          type: string
+        actorTeamId:
+          type:
+            - string
+            - "null"
+        lockVersion:
+          type: integer
+        isHidden:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - tenantId
+        - subjectType
+        - subjectId
+        - links
+        - kind
+        - outcomeCode
+        - occurredAt
+        - durationSeconds
+        - note
+        - actorId
+        - actorBranchId
+        - actorTeamId
+        - lockVersion
+        - isHidden
+        - createdAt
+        - updatedAt
+    CreateActivityInput:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: *a4
+        subjectType:
+          type: string
+          enum: *a3
+        subjectId:
+          type: string
+          minLength: 1
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: *a3
+              id:
+                type: string
+                minLength: 1
+            required:
+              - type
+              - id
+        outcomeCode:
+          type:
+            - string
+            - "null"
+          enum: *a5
+        occurredAt:
+          type: string
+          format: date-time
+        durationSeconds:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        duration_s:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        note:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+      required:
+        - kind
+        - occurredAt
+    UpdateActivityInput:
+      type: object
+      properties:
+        outcomeCode:
+          type:
+            - string
+            - "null"
+          enum: *a5
+        durationSeconds:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        duration_s:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        note:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+        isHidden:
+          type: boolean
+      additionalProperties: false
+    MessageTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^tmpl_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        code:
+          type: string
+        channel:
+          type: string
+          enum: &a6
+            - EMAIL
+            - SMS
+            - WHATSAPP
+        language:
+          type: string
+        category:
+          type: string
+          enum: &a7
+            - TRANSACTIONAL
+            - MARKETING
+            - OPERATIONAL
+            - AUTHENTICATION
+        body:
+          type: string
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+              required:
+                type: boolean
+                default: true
+              description:
+                type: string
+                maxLength: 200
+            required:
+              - name
+        providerTemplateId:
+          type:
+            - string
+            - "null"
+        version:
+          type: integer
+          exclusiveMinimum: 0
+        status:
+          type: string
+          enum: &a8
+            - DRAFT
+            - APPROVED
+            - DEPRECATED
+            - ARCHIVED
+        lockVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - tenantId
+        - code
+        - channel
+        - language
+        - category
+        - body
+        - variables
+        - version
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    CreateTemplateInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: ^[a-z0-9._-]+$
+        channel:
+          type: string
+          enum: *a6
+        language:
+          type: string
+          minLength: 2
+          maxLength: 10
+          default: en
+        category:
+          type: string
+          enum: *a7
+          default: TRANSACTIONAL
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+              required:
+                type: boolean
+                default: true
+              description:
+                type: string
+                maxLength: 200
+            required:
+              - name
+          default: &a29 []
+        providerTemplateId:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        status:
+          type: string
+          enum: *a8
+          default: APPROVED
+      required:
+        - code
+        - channel
+        - body
+    MessageRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^msg_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        direction:
+          type: string
+          enum: &a32
+            - OUTBOUND
+            - INBOUND
+        channel:
+          type: string
+          enum: *a6
+        subjectType:
+          type: string
+        subjectId:
+          type: string
+        templateVersionId:
+          type: string
+        recipientHash:
+          type: string
+        recipientMasked:
+          type: string
+        variablesRedacted:
+          type: object
+          additionalProperties: {}
+        provider:
+          type: string
+        providerMessageId:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: &a9
+            - BLOCKED
+            - QUEUED
+            - SENT
+            - DELIVERED
+            - FAILED
+            - UNDELIVERED
+        statusHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: *a9
+              timestamp:
+                type: string
+              reason:
+                type: string
+              providerEventId:
+                type: string
+            required:
+              - status
+              - timestamp
+        blockedReason:
+          type:
+            - string
+            - "null"
+        lockVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - tenantId
+        - direction
+        - channel
+        - subjectType
+        - subjectId
+        - templateVersionId
+        - recipientHash
+        - recipientMasked
+        - variablesRedacted
+        - provider
+        - status
+        - statusHistory
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    SendMessageInput:
+      type: object
+      properties:
+        subjectType:
+          type: string
+          enum: &a30
+            - LEAD
+            - CUSTOMER
+            - LOAN_APPLICATION
+        subjectId:
+          type: string
+          minLength: 1
+        channel:
+          type: string
+          enum: *a6
+        templateCode:
+          type: string
+          minLength: 1
+        templateVersion:
+          type: integer
+          exclusiveMinimum: 0
+        recipient:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+            mobile:
+              type: string
+              pattern: ^\+?[1-9]\d{9,14}$
+            name:
+              type: string
+              maxLength: 100
+        variables:
+          type: object
+          additionalProperties:
+            anyOf:
+              - type: string
+              - type: number
+              - type: boolean
+          default: &a31 {}
+        correlationId:
+          type: string
+      required:
+        - subjectType
+        - subjectId
+        - channel
+        - templateCode
+        - recipient
+    NotificationRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        userId:
+          type: string
+        category:
+          type: string
+          enum: &a10
+            - TASK
+            - LEAD
+            - APPLICATION
+            - SYSTEM
+            - ALERT
+        title:
+          type: string
+          minLength: 1
+          maxLength: 250
+        deepLink:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: ^\/[a-zA-Z0-9_.-]+(\/[a-zA-Z0-9_.-]+)*$
+        readAt:
+          type:
+            - string
+            - "null"
+        lockVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+      required:
+        - id
+        - tenantId
+        - userId
+        - category
+        - title
+        - deepLink
+        - readAt
+        - lockVersion
+        - createdAt
+    NotificationPreferences:
+      type: object
+      properties:
+        channels:
+          type: object
+          properties:
+            inApp:
+              type: boolean
+              default: true
+            email:
+              type: boolean
+              default: false
+            sms:
+              type: boolean
+              default: false
+            whatsapp:
+              type: boolean
+              default: false
+          default: &a11
+            inApp: true
+            email: false
+            sms: false
+            whatsapp: false
+        digestFrequency:
+          type: string
+          enum: &a12
+            - IMMEDIATE
+            - DAILY_DIGEST
+            - MUTED
+          default: IMMEDIATE
+        mutedCategories:
+          type: array
+          items:
+            type: string
+            enum: *a10
+          default: &a13 []
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        userType:
+          type: string
+        status:
+          type: string
+        availability:
+          type: string
+        primaryBranchId:
+          type: string
+        lockVersion:
+          type: integer
+          minimum: 0
+        notificationPreferences:
+          type: object
+          properties:
+            channels:
+              type: object
+              properties:
+                inApp:
+                  type: boolean
+                  default: true
+                email:
+                  type: boolean
+                  default: false
+                sms:
+                  type: boolean
+                  default: false
+                whatsapp:
+                  type: boolean
+                  default: false
+              default: *a11
+            digestFrequency:
+              type: string
+              enum: *a12
+              default: IMMEDIATE
+            mutedCategories:
+              type: array
+              items:
+                type: string
+                enum: *a10
+              default: *a13
+      required:
+        - id
+        - tenantId
+        - email
+        - displayName
+        - userType
+        - status
+        - availability
+        - primaryBranchId
+        - lockVersion
+        - notificationPreferences
+    UpdateProfilePreferencesInput:
+      type: object
+      properties:
+        notificationPreferences:
+          type: object
+          properties:
+            channels:
+              type: object
+              properties:
+                inApp:
+                  type: boolean
+                  default: true
+                email:
+                  type: boolean
+                  default: false
+                sms:
+                  type: boolean
+                  default: false
+                whatsapp:
+                  type: boolean
+                  default: false
+              default: *a11
+            digestFrequency:
+              type: string
+              enum: *a12
+              default: IMMEDIATE
+            mutedCategories:
+              type: array
+              items:
+                type: string
+                enum: *a10
+              default: *a13
+        preferences:
+          type: object
+          properties:
+            channels:
+              type: object
+              properties:
+                inApp:
+                  type: boolean
+                  default: true
+                email:
+                  type: boolean
+                  default: false
+                sms:
+                  type: boolean
+                  default: false
+                whatsapp:
+                  type: boolean
+                  default: false
+              default: *a11
+            digestFrequency:
+              type: string
+              enum: *a12
+              default: IMMEDIATE
+            mutedCategories:
+              type: array
+              items:
+                type: string
+                enum: *a10
+              default: *a13
+    MarkNotificationsReadInput:
+      type: object
+      properties:
+        notificationIds:
+          type: array
+          items:
+            type: string
+            pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+          minItems: 1
+          maxItems: 100
+      required:
+        - notificationIds
     IdempotencyKey:
       type: string
       pattern: ^[A-Za-z0-9_-]{8,128}$
@@ -165,9 +1228,15 @@ paths:
                             - lead.create
                             - lead.update
                             - lead.qualify
+                            - lead.assign
+                            - lead.reopen
                             - customer.read
+                            - customer.create
+                            - customer.update
+                            - customer.reveal_sensitive
                             - consent.record
                             - activity.create
+                            - activity.update
                             - task.read
                             - task.create
                             - task.update
@@ -187,6 +1256,7 @@ paths:
                             - audit.read
                             - config.manage
                             - user.manage
+                            - message.send
                         scope:
                           type: string
                           enum:
@@ -217,6 +1287,284 @@ paths:
                   - mfaVerifiedAt
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
+    patch:
+      operationId: API-USR-009
+      summary: Update user profile notification preferences with concurrency control (API-USR-009)
+      tags:
+        - MOD-USR Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Expected lock_version for optimistic concurrency control
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notificationPreferences:
+                  type: object
+                  properties:
+                    channels:
+                      type: object
+                      properties:
+                        inApp:
+                          type: boolean
+                          default: true
+                        email:
+                          type: boolean
+                          default: false
+                        sms:
+                          type: boolean
+                          default: false
+                        whatsapp:
+                          type: boolean
+                          default: false
+                      default: *a11
+                    digestFrequency:
+                      type: string
+                      enum: *a12
+                      default: IMMEDIATE
+                    mutedCategories:
+                      type: array
+                      items:
+                        type: string
+                        enum: *a10
+                      default: *a13
+                preferences:
+                  type: object
+                  properties:
+                    channels:
+                      type: object
+                      properties:
+                        inApp:
+                          type: boolean
+                          default: true
+                        email:
+                          type: boolean
+                          default: false
+                        sms:
+                          type: boolean
+                          default: false
+                        whatsapp:
+                          type: boolean
+                          default: false
+                      default: *a11
+                    digestFrequency:
+                      type: string
+                      enum: *a12
+                      default: IMMEDIATE
+                    mutedCategories:
+                      type: array
+                      items:
+                        type: string
+                        enum: *a10
+                      default: *a13
+      responses:
+        "200":
+          description: Updated user profile
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Updated lock_version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  displayName:
+                    type: string
+                  userType:
+                    type: string
+                  status:
+                    type: string
+                  availability:
+                    type: string
+                  primaryBranchId:
+                    type: string
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  notificationPreferences:
+                    type: object
+                    properties:
+                      channels:
+                        type: object
+                        properties:
+                          inApp:
+                            type: boolean
+                            default: true
+                          email:
+                            type: boolean
+                            default: false
+                          sms:
+                            type: boolean
+                            default: false
+                          whatsapp:
+                            type: boolean
+                            default: false
+                        default: *a11
+                      digestFrequency:
+                        type: string
+                        enum: *a12
+                        default: IMMEDIATE
+                      mutedCategories:
+                        type: array
+                        items:
+                          type: string
+                          enum: *a10
+                        default: *a13
+                required:
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - lockVersion
+                  - notificationPreferences
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "412":
+          description: Precondition Failed (concurrent update detected)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "428":
+          description: Precondition Required (missing If-Match header)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /v1/users:
     get:
       operationId: API-USR-LIST
@@ -365,7 +1713,7 @@ paths:
                           type: string
                         constitution:
                           type: string
-                          enum: &a1
+                          enum: &a14
                             - PROPRIETORSHIP
                             - PARTNERSHIP
                             - LLP
@@ -424,7 +1772,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a1
+                    enum: *a14
                   status:
                     type: string
                   version:
@@ -460,7 +1808,7 @@ paths:
                   maxLength: 200
                 constitution:
                   type: string
-                  enum: *a1
+                  enum: *a14
               additionalProperties: false
       responses:
         "200":
@@ -476,7 +1824,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a1
+                    enum: *a14
                   status:
                     type: string
                   version:
@@ -598,7 +1946,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a2
+            enum: &a15
               - ACTIVE
               - INACTIVE
           required: false
@@ -956,7 +2304,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a2
+            enum: *a15
           required: false
           name: status
           in: query
@@ -1288,7 +2636,7 @@ paths:
                   maxLength: 120
                 kind:
                   type: string
-                  enum: &a3
+                  enum: &a16
                     - INTAKE
                     - UNASSIGNED
                     - TEAM
@@ -1306,7 +2654,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a4
+                    enum: &a17
                       - LEAD
                       - APPLICATION
                       - TASK
@@ -1333,7 +2681,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a3
+                    enum: *a16
                   branchId:
                     type:
                       - string
@@ -1346,7 +2694,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a4
+                      enum: *a17
                   active:
                     type: boolean
                   memberCount:
@@ -1417,7 +2765,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a2
+            enum: *a15
           required: false
           name: status
           in: query
@@ -1448,7 +2796,7 @@ paths:
                           type: string
                         kind:
                           type: string
-                          enum: *a3
+                          enum: *a16
                         branchId:
                           type:
                             - string
@@ -1461,7 +2809,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a4
+                            enum: *a17
                         active:
                           type: boolean
                         memberCount:
@@ -1522,7 +2870,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a3
+                    enum: *a16
                   branchId:
                     type:
                       - string
@@ -1535,7 +2883,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a4
+                      enum: *a17
                   active:
                     type: boolean
                   memberCount:
@@ -1604,7 +2952,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a4
+                    enum: *a17
                   minItems: 1
               additionalProperties: false
       responses:
@@ -1623,7 +2971,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a3
+                    enum: *a16
                   branchId:
                     type:
                       - string
@@ -1636,7 +2984,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a4
+                      enum: *a17
                   active:
                     type: boolean
                   memberCount:
@@ -1738,7 +3086,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a3
+                    enum: *a16
                   branchId:
                     type:
                       - string
@@ -1751,7 +3099,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a4
+                      enum: *a17
                   active:
                     type: boolean
                   memberCount:
@@ -1805,4 +3153,4555 @@ paths:
           description: VERSION_CONFLICT
         "422":
           description: VALIDATION_ERROR
+  /v1/leads:
+    post:
+      operationId: API-LEAD-001
+      summary: Capture a new lead with consent (API-LEAD-001)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                mobile:
+                  type: string
+                  minLength: 8
+                  maxLength: 25
+                email:
+                  type:
+                    - string
+                    - "null"
+                  format: email
+                productCategory:
+                  type: string
+                  enum: *a18
+                indicativeAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                branchId:
+                  type: string
+                  minLength: 1
+                source:
+                  type: string
+                  enum: *a19
+                subSource:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                campaign:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                utm:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                connectorId:
+                  type:
+                    - string
+                    - "null"
+                priority:
+                  type: string
+                  enum: *a1
+                  default: MEDIUM
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  default: *a20
+                consent:
+                  type: object
+                  properties:
+                    purpose:
+                      type: string
+                      enum: *a21
+                      default: CONTACT
+                    purposeTarget:
+                      type:
+                        - string
+                        - "null"
+                    noticeVersion:
+                      type: string
+                      pattern: ^[a-zA-Z0-9._-]{2,40}$
+                    channel:
+                      type: string
+                      enum: *a22
+                    evidenceRef:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - noticeVersion
+                    - channel
+              required:
+                - fullName
+                - mobile
+                - productCategory
+                - branchId
+                - source
+                - consent
+      responses:
+        "201":
+          description: Lead created successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Lead lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  state:
+                    type: string
+                    enum:
+                      - NEW
+                  mobileMasked:
+                    type: string
+                  duplicateFlag:
+                    type: string
+                  lockVersion:
+                    type: number
+                required:
+                  - id
+                  - state
+                  - mobileMasked
+                  - duplicateFlag
+                  - lockVersion
+    get:
+      operationId: API-LEAD-002
+      summary: List and filter leads (API-LEAD-002)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[state]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: state
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[ownerUserId]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: ownerUserId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: filter[branchId]
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: branchId
+          in: query
+      responses:
+        "200":
+          description: Paginated list of leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: {}
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/leads/{id}:
+    get:
+      operationId: API-LEAD-003
+      summary: Lead detail (API-LEAD-003)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lead details
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "404":
+          description: Lead not found or outside authorized scope
+    patch:
+      operationId: API-LEAD-004
+      summary: Update lead mutable fields (API-LEAD-004)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                email:
+                  type:
+                    - string
+                    - "null"
+                  format: email
+                indicativeAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                priority:
+                  type: string
+                  enum: *a1
+                tags:
+                  type: array
+                  items:
+                    type: string
+                nextFollowUpAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                qualApplicantType:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a2
+                qualRequestedAmount:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                qualTenureMonths:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 480
+                qualPurposeCode:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        "200":
+          description: Updated lead details
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "409":
+          description: VERSION_CONFLICT
+  /v1/leads/{id}/transitions:
+    post:
+      operationId: API-LEAD-005
+      summary: Lead state transition (API-LEAD-005)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transitionCode:
+                  type: string
+                  enum: *a23
+                reasonCode:
+                  type:
+                    - string
+                    - "null"
+                disqualificationReason:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a24
+                nextFollowUpAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                qualification:
+                  type: object
+                  properties:
+                    applicantType:
+                      type: string
+                      enum: *a2
+                    requestedAmount:
+                      type: object
+                      properties:
+                        amount:
+                          type: string
+                          pattern: ^\d{1,16}\.\d{2}$
+                        currency:
+                          type: string
+                          pattern: ^[A-Z]{3}$
+                      required:
+                        - amount
+                        - currency
+                    tenureMonths:
+                      type:
+                        - integer
+                        - "null"
+                      minimum: 1
+                      maximum: 480
+                    purposeCode:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - applicantType
+                    - requestedAmount
+              required:
+                - transitionCode
+      responses:
+        "200":
+          description: Lead state updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "409":
+          description: INVALID_TRANSITION or VERSION_CONFLICT
+  /v1/leads/{id}/assignments:
+    post:
+      operationId: API-LEAD-006
+      summary: Assign or reassign lead (API-LEAD-006)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                toUserId:
+                  type:
+                    - string
+                    - "null"
+                toQueueId:
+                  type:
+                    - string
+                    - "null"
+                reasonCode:
+                  type: string
+                  enum: *a25
+                  default: MANUAL
+                transferOpenTasks:
+                  type: boolean
+      responses:
+        "200":
+          description: Lead assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "422":
+          description: INVALID_ASSIGNEE
+  /v1/leads/{id}/conversion:
+    post:
+      operationId: API-LEAD-007
+      summary: Convert lead atomically to customer and application (API-LEAD-007)
+      tags:
+        - MOD-LEAD Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customerId:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        "200":
+          description: Atomic conversion succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leadId:
+                    type: string
+                  customerId:
+                    type: string
+                  applicationId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - CONVERTED
+                required:
+                  - leadId
+                  - customerId
+                  - applicationId
+                  - status
+        "409":
+          description: INVALID_STATE or VERSION_CONFLICT
+  /v1/customers:
+    post:
+      operationId: API-CUST-001
+      summary: Create a new customer party profile (API-CUST-001)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                partyType:
+                  type: string
+                  enum: *a26
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                homeBranchId:
+                  type: string
+                  minLength: 1
+                primaryMobile:
+                  type: string
+                primaryEmail:
+                  type: string
+                  format: email
+                pan: {}
+                aadhaar: {}
+                dob: {}
+                dateOfBirth: {}
+                bankAccount: {}
+                bankAccountNumber: {}
+              required:
+                - partyType
+                - fullName
+                - homeBranchId
+              additionalProperties: false
+      responses:
+        "201":
+          description: Customer created successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Customer lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  partyType:
+                    type: string
+                    enum:
+                      - INDIVIDUAL
+                      - ENTITY
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                      - MERGED
+                  lockVersion:
+                    type: number
+                  primaryMobileMasked:
+                    type:
+                      - string
+                      - "null"
+                  primaryEmailMasked:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - partyType
+                  - fullName
+                  - homeBranchId
+                  - status
+                  - lockVersion
+    get:
+      operationId: API-CUST-010
+      summary: List customers in scope (API-CUST-010)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - INDIVIDUAL
+              - ENTITY
+          required: false
+          name: partyType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: homeBranchId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - ACTIVE
+              - MERGED
+          required: false
+          name: status
+          in: query
+      responses:
+        "200":
+          description: Paginated customer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        partyType:
+                          type: string
+                          enum:
+                            - INDIVIDUAL
+                            - ENTITY
+                        fullName:
+                          type: string
+                        homeBranchId:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - MERGED
+                        lockVersion:
+                          type: number
+                      required:
+                        - id
+                        - tenantId
+                        - partyType
+                        - fullName
+                        - homeBranchId
+                        - status
+                        - lockVersion
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/customers/{id}:
+    get:
+      operationId: API-CUST-002
+      summary: Get customer details by ID (API-CUST-002)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Customer details
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Customer lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  partyType:
+                    type: string
+                    enum:
+                      - INDIVIDUAL
+                      - ENTITY
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                      - MERGED
+                  lockVersion:
+                    type: number
+                  primaryMobileMasked:
+                    type:
+                      - string
+                      - "null"
+                  primaryEmailMasked:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - partyType
+                  - fullName
+                  - homeBranchId
+                  - status
+                  - lockVersion
+    patch:
+      operationId: API-CUST-003
+      summary: Update customer profile (API-CUST-003)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 2
+                  maxLength: 200
+                homeBranchId:
+                  type: string
+                  minLength: 1
+                pan: {}
+                aadhaar: {}
+                dob: {}
+                dateOfBirth: {}
+                bankAccount: {}
+                bankAccountNumber: {}
+              additionalProperties: false
+      responses:
+        "200":
+          description: Customer profile updated successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Updated lock version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  lockVersion:
+                    type: number
+                  fullName:
+                    type: string
+                  homeBranchId:
+                    type: string
+                required:
+                  - id
+                  - lockVersion
+                  - fullName
+                  - homeBranchId
+  /v1/customers/{id}/consents:
+    get:
+      operationId: API-CUST-006
+      summary: List customer consents (API-CUST-006)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: List of customer consents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        subjectType:
+                          type: string
+                          enum:
+                            - CUSTOMER
+                            - LEAD
+                        subjectId:
+                          type: string
+                        purpose:
+                          type: string
+                        noticeVersion:
+                          type: string
+                        channel:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - WITHDRAWN
+                            - EXPIRED
+                      required:
+                        - id
+                        - subjectType
+                        - subjectId
+                        - purpose
+                        - noticeVersion
+                        - channel
+                        - status
+                required:
+                  - data
+    post:
+      operationId: API-CUST-004
+      summary: Record customer consent (API-CUST-004)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose:
+                  type: string
+                  enum: *a27
+                purposeTarget:
+                  type: string
+                noticeVersion:
+                  type: string
+                  pattern: ^[A-Z0-9._-]{2,40}$
+                channel:
+                  type: string
+                  enum: *a28
+                evidenceRef:
+                  type: string
+                  maxLength: 255
+                expiresAt:
+                  type: string
+                  format: date-time
+              required:
+                - purpose
+                - noticeVersion
+                - channel
+      responses:
+        "201":
+          description: Consent recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  subjectType:
+                    type: string
+                    enum:
+                      - CUSTOMER
+                  subjectId:
+                    type: string
+                  purpose:
+                    type: string
+                  noticeVersion:
+                    type: string
+                  channel:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                required:
+                  - id
+                  - subjectType
+                  - subjectId
+                  - purpose
+                  - noticeVersion
+                  - channel
+                  - status
+  /v1/consents/{id}/withdrawal:
+    post:
+      operationId: API-CUST-005
+      summary: Withdraw an active consent (API-CUST-005)
+      tags:
+        - MOD-CUST Customers
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                withdrawalReason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Consent withdrawn successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - WITHDRAWN
+                  withdrawnAt:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - status
+                  - withdrawnAt
+  /v1/activities:
+    post:
+      operationId: API-ACT-001
+      summary: Record an interaction (API-ACT-001)
+      tags:
+        - MOD-ACT Activities
+      description: Records an interaction (call, meeting, visit, note) against a lead, customer, or loan application.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: *a4
+                subjectType:
+                  type: string
+                  enum: *a3
+                subjectId:
+                  type: string
+                  minLength: 1
+                links:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: *a3
+                      id:
+                        type: string
+                        minLength: 1
+                    required:
+                      - type
+                      - id
+                outcomeCode:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a5
+                occurredAt:
+                  type: string
+                  format: date-time
+                durationSeconds:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                duration_s:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                note:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 4000
+              required:
+                - kind
+                - occurredAt
+      responses:
+        "201":
+          description: Activity successfully recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^act_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  subjectType:
+                    type: string
+                    enum: *a3
+                  subjectId:
+                    type: string
+                  links:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: *a3
+                        id:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - id
+                  kind:
+                    type: string
+                    enum: *a4
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a5
+                  occurredAt:
+                    type: string
+                  durationSeconds:
+                    type:
+                      - integer
+                      - "null"
+                  note:
+                    type:
+                      - string
+                      - "null"
+                  actorId:
+                    type: string
+                  actorBranchId:
+                    type: string
+                  actorTeamId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  isHidden:
+                    type: boolean
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - subjectType
+                  - subjectId
+                  - links
+                  - kind
+                  - outcomeCode
+                  - occurredAt
+                  - durationSeconds
+                  - note
+                  - actorId
+                  - actorBranchId
+                  - actorTeamId
+                  - lockVersion
+                  - isHidden
+                  - createdAt
+                  - updatedAt
+        "400":
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden - missing activity.create permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Subject not found or out of scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation error or S2 PII data rejected in notes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      operationId: API-ACT-004
+      summary: List activities
+      tags:
+        - MOD-ACT Activities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subjectType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - LEAD
+              - CUSTOMER
+              - LOAN_APPLICATION
+        - name: subjectId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of activities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^act_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        subjectType:
+                          type: string
+                          enum: *a3
+                        subjectId:
+                          type: string
+                        links:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                enum: *a3
+                              id:
+                                type: string
+                                minLength: 1
+                            required:
+                              - type
+                              - id
+                        kind:
+                          type: string
+                          enum: *a4
+                        outcomeCode:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a5
+                        occurredAt:
+                          type: string
+                        durationSeconds:
+                          type:
+                            - integer
+                            - "null"
+                        note:
+                          type:
+                            - string
+                            - "null"
+                        actorId:
+                          type: string
+                        actorBranchId:
+                          type: string
+                        actorTeamId:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: integer
+                        isHidden:
+                          type: boolean
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - subjectType
+                        - subjectId
+                        - links
+                        - kind
+                        - outcomeCode
+                        - occurredAt
+                        - durationSeconds
+                        - note
+                        - actorId
+                        - actorBranchId
+                        - actorTeamId
+                        - lockVersion
+                        - isHidden
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/activities/{id}:
+    patch:
+      operationId: API-ACT-002
+      summary: Update or hide an activity (API-ACT-002)
+      tags:
+        - MOD-ACT Activities
+      description: Edits an activity outcome, duration, note, or soft-hides it with optimistic concurrency protection.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcomeCode:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a5
+                durationSeconds:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                duration_s:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                note:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 4000
+                isHidden:
+                  type: boolean
+              additionalProperties: false
+      responses:
+        "200":
+          description: Activity successfully updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^act_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  subjectType:
+                    type: string
+                    enum: *a3
+                  subjectId:
+                    type: string
+                  links:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: *a3
+                        id:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - id
+                  kind:
+                    type: string
+                    enum: *a4
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a5
+                  occurredAt:
+                    type: string
+                  durationSeconds:
+                    type:
+                      - integer
+                      - "null"
+                  note:
+                    type:
+                      - string
+                      - "null"
+                  actorId:
+                    type: string
+                  actorBranchId:
+                    type: string
+                  actorTeamId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  isHidden:
+                    type: boolean
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - subjectType
+                  - subjectId
+                  - links
+                  - kind
+                  - outcomeCode
+                  - occurredAt
+                  - durationSeconds
+                  - note
+                  - actorId
+                  - actorBranchId
+                  - actorTeamId
+                  - lockVersion
+                  - isHidden
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden - missing activity.update permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Activity not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Version conflict - If-Match does not match current version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      operationId: API-ACT-003
+      summary: Get an activity by ID
+      tags:
+        - MOD-ACT Activities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^act_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  subjectType:
+                    type: string
+                    enum: *a3
+                  subjectId:
+                    type: string
+                  links:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: *a3
+                        id:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - id
+                  kind:
+                    type: string
+                    enum: *a4
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a5
+                  occurredAt:
+                    type: string
+                  durationSeconds:
+                    type:
+                      - integer
+                      - "null"
+                  note:
+                    type:
+                      - string
+                      - "null"
+                  actorId:
+                    type: string
+                  actorBranchId:
+                    type: string
+                  actorTeamId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  isHidden:
+                    type: boolean
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - subjectType
+                  - subjectId
+                  - links
+                  - kind
+                  - outcomeCode
+                  - occurredAt
+                  - durationSeconds
+                  - note
+                  - actorId
+                  - actorBranchId
+                  - actorTeamId
+                  - lockVersion
+                  - isHidden
+                  - createdAt
+                  - updatedAt
+        "404":
+          description: Activity not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/message-templates:
+    post:
+      operationId: API-MSG-001
+      summary: Create message template (API-MSG-001)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: ^[a-z0-9._-]+$
+                channel:
+                  type: string
+                  enum: *a6
+                language:
+                  type: string
+                  minLength: 2
+                  maxLength: 10
+                  default: en
+                category:
+                  type: string
+                  enum: *a7
+                  default: TRANSACTIONAL
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+                variables:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+                      required:
+                        type: boolean
+                        default: true
+                      description:
+                        type: string
+                        maxLength: 200
+                    required:
+                      - name
+                  default: *a29
+                providerTemplateId:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                status:
+                  type: string
+                  enum: *a8
+                  default: APPROVED
+              required:
+                - code
+                - channel
+                - body
+      responses:
+        "200":
+          description: Idempotent replay of template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^tmpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  code:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a6
+                  language:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a7
+                  body:
+                    type: string
+                  variables:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+                        required:
+                          type: boolean
+                          default: true
+                        description:
+                          type: string
+                          maxLength: 200
+                      required:
+                        - name
+                  providerTemplateId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                    exclusiveMinimum: 0
+                  status:
+                    type: string
+                    enum: *a8
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - code
+                  - channel
+                  - language
+                  - category
+                  - body
+                  - variables
+                  - version
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^tmpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  code:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a6
+                  language:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a7
+                  body:
+                    type: string
+                  variables:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+                        required:
+                          type: boolean
+                          default: true
+                        description:
+                          type: string
+                          maxLength: 200
+                      required:
+                        - name
+                  providerTemplateId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                    exclusiveMinimum: 0
+                  status:
+                    type: string
+                    enum: *a8
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - code
+                  - channel
+                  - language
+                  - category
+                  - body
+                  - variables
+                  - version
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      operationId: API-MSG-002
+      summary: List message templates (API-MSG-002)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum: *a6
+          required: false
+          name: channel
+          in: query
+        - schema:
+            type: string
+            enum: *a7
+          required: false
+          name: category
+          in: query
+        - schema:
+            type: string
+            enum: *a8
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Templates list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^tmpl_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        code:
+                          type: string
+                        channel:
+                          type: string
+                          enum: *a6
+                        language:
+                          type: string
+                        category:
+                          type: string
+                          enum: *a7
+                        body:
+                          type: string
+                        variables:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                                pattern: ^[a-zA-Z][a-zA-Z0-9_]{0,49}$
+                              required:
+                                type: boolean
+                                default: true
+                              description:
+                                type: string
+                                maxLength: 200
+                            required:
+                              - name
+                        providerTemplateId:
+                          type:
+                            - string
+                            - "null"
+                        version:
+                          type: integer
+                          exclusiveMinimum: 0
+                        status:
+                          type: string
+                          enum: *a8
+                        lockVersion:
+                          type: integer
+                          minimum: 0
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - code
+                        - channel
+                        - language
+                        - category
+                        - body
+                        - variables
+                        - version
+                        - status
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/messages:
+    post:
+      operationId: API-MSG-003
+      summary: Send outbound message (API-MSG-003)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subjectType:
+                  type: string
+                  enum: *a30
+                subjectId:
+                  type: string
+                  minLength: 1
+                channel:
+                  type: string
+                  enum: *a6
+                templateCode:
+                  type: string
+                  minLength: 1
+                templateVersion:
+                  type: integer
+                  exclusiveMinimum: 0
+                recipient:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                    mobile:
+                      type: string
+                      pattern: ^\+?[1-9]\d{9,14}$
+                    name:
+                      type: string
+                      maxLength: 100
+                variables:
+                  type: object
+                  additionalProperties:
+                    anyOf:
+                      - type: string
+                      - type: number
+                      - type: boolean
+                  default: *a31
+                correlationId:
+                  type: string
+              required:
+                - subjectType
+                - subjectId
+                - channel
+                - templateCode
+                - recipient
+      responses:
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^msg_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  direction:
+                    type: string
+                    enum: *a32
+                  channel:
+                    type: string
+                    enum: *a6
+                  subjectType:
+                    type: string
+                  subjectId:
+                    type: string
+                  templateVersionId:
+                    type: string
+                  recipientHash:
+                    type: string
+                  recipientMasked:
+                    type: string
+                  variablesRedacted:
+                    type: object
+                    additionalProperties: {}
+                  provider:
+                    type: string
+                  providerMessageId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a9
+                  statusHistory:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                          enum: *a9
+                        timestamp:
+                          type: string
+                        reason:
+                          type: string
+                        providerEventId:
+                          type: string
+                      required:
+                        - status
+                        - timestamp
+                  blockedReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - direction
+                  - channel
+                  - subjectType
+                  - subjectId
+                  - templateVersionId
+                  - recipientHash
+                  - recipientMasked
+                  - variablesRedacted
+                  - provider
+                  - status
+                  - statusHistory
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "201":
+          description: Message sent / queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^msg_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  direction:
+                    type: string
+                    enum: *a32
+                  channel:
+                    type: string
+                    enum: *a6
+                  subjectType:
+                    type: string
+                  subjectId:
+                    type: string
+                  templateVersionId:
+                    type: string
+                  recipientHash:
+                    type: string
+                  recipientMasked:
+                    type: string
+                  variablesRedacted:
+                    type: object
+                    additionalProperties: {}
+                  provider:
+                    type: string
+                  providerMessageId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a9
+                  statusHistory:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                          enum: *a9
+                        timestamp:
+                          type: string
+                        reason:
+                          type: string
+                        providerEventId:
+                          type: string
+                      required:
+                        - status
+                        - timestamp
+                  blockedReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - direction
+                  - channel
+                  - subjectType
+                  - subjectId
+                  - templateVersionId
+                  - recipientHash
+                  - recipientMasked
+                  - variablesRedacted
+                  - provider
+                  - status
+                  - statusHistory
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Send blocked by eligibility guard or validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      operationId: API-MSG-004
+      summary: List messages for subject (API-MSG-004)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - LEAD
+              - CUSTOMER
+              - LOAN_APPLICATION
+          required: true
+          name: subjectType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: subjectId
+          in: query
+        - schema:
+            type: string
+            enum: *a6
+          required: false
+          name: channel
+          in: query
+        - schema:
+            type: string
+            enum: *a9
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^msg_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        direction:
+                          type: string
+                          enum: *a32
+                        channel:
+                          type: string
+                          enum: *a6
+                        subjectType:
+                          type: string
+                        subjectId:
+                          type: string
+                        templateVersionId:
+                          type: string
+                        recipientHash:
+                          type: string
+                        recipientMasked:
+                          type: string
+                        variablesRedacted:
+                          type: object
+                          additionalProperties: {}
+                        provider:
+                          type: string
+                        providerMessageId:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a9
+                        statusHistory:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              status:
+                                type: string
+                                enum: *a9
+                              timestamp:
+                                type: string
+                              reason:
+                                type: string
+                              providerEventId:
+                                type: string
+                            required:
+                              - status
+                              - timestamp
+                        blockedReason:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: integer
+                          minimum: 0
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - direction
+                        - channel
+                        - subjectType
+                        - subjectId
+                        - templateVersionId
+                        - recipientHash
+                        - recipientMasked
+                        - variablesRedacted
+                        - provider
+                        - status
+                        - statusHistory
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/notifications:
+    get:
+      operationId: API-NTF-001
+      summary: List user notifications (API-NTF-001)
+      tags:
+        - MOD-NTF Notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            enum:
+              - ALL
+              - UNREAD
+              - READ
+            default: ALL
+          required: false
+          name: status
+          in: query
+      responses:
+        "200":
+          description: Paginated list of notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        userId:
+                          type: string
+                        category:
+                          type: string
+                          enum: *a10
+                        title:
+                          type: string
+                          minLength: 1
+                          maxLength: 250
+                        deepLink:
+                          type: string
+                          minLength: 1
+                          maxLength: 500
+                          pattern: ^\/[a-zA-Z0-9_.-]+(\/[a-zA-Z0-9_.-]+)*$
+                        readAt:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: integer
+                          minimum: 0
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - userId
+                        - category
+                        - title
+                        - deepLink
+                        - readAt
+                        - lockVersion
+                        - createdAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: number
+                      unreadCount:
+                        type: number
+                    required:
+                      - nextCursor
+                      - limit
+                      - unreadCount
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/notifications/read:
+    post:
+      operationId: API-NTF-002
+      summary: Mark notifications as read (API-NTF-002)
+      tags:
+        - MOD-NTF Notifications
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notificationIds:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+                  minItems: 1
+                  maxItems: 100
+              required:
+                - notificationIds
+      responses:
+        "200":
+          description: Notifications marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  newlyMarkedRead:
+                    type: number
+                  readAt:
+                    type: string
+                    format: date-time
+                required:
+                  - newlyMarkedRead
+                  - readAt
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/notifications/stream:
+    get:
+      operationId: API-NTF-003
+      summary: Server-Sent Events stream for live notifications (API-NTF-003)
+      tags:
+        - MOD-NTF Notifications
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: SSE stream (text/event-stream)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Stream of SSE events
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/tasks:
+    post:
+      operationId: API-TASK-001
+      summary: "API-TASK-001: Create Task"
+      tags:
+        - MOD-TASK Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: &a35
+                    - FOLLOW_UP
+                    - CALL
+                    - MEETING
+                    - DOCUMENT_COLLECTION
+                    - LENDER_QUERY
+                    - REVIEW
+                    - GENERAL
+                title:
+                  type: string
+                  minLength: 3
+                  maxLength: 200
+                ownerUserId:
+                  type: string
+                  minLength: 1
+                ownerQueueId:
+                  type: string
+                  minLength: 1
+                linkedType:
+                  type: string
+                  enum: &a34
+                    - LEAD
+                    - LOAN_APPLICATION
+                    - LENDER_CASE
+                linkedId:
+                  type: string
+                  minLength: 1
+                branchId:
+                  type: string
+                  minLength: 1
+                priority:
+                  type: string
+                  enum: &a33
+                    - HIGH
+                    - MEDIUM
+                    - LOW
+                  default: MEDIUM
+                dueAt:
+                  type: string
+                  format: date-time
+                slaClass:
+                  type: string
+                  enum:
+                    - CUSTOMER_FIRST_CONTACT
+                    - CUSTOMER_FOLLOW_UP
+                    - LENDER_QUERY
+                    - LENDER_PROCESSING
+                    - INTERNAL_REVIEW
+                    - DOCUMENT_REVIEW
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - type
+                - title
+                - linkedType
+                - linkedId
+                - branchId
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      operationId: API-TASK-002
+      summary: "API-TASK-002: List Tasks"
+      tags:
+        - MOD-TASK Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - MINE
+              - QUEUES
+              - ALL
+            default: MINE
+          required: false
+          name: view
+          in: query
+        - schema:
+            type: string
+            enum:
+              - OPEN
+              - IN_PROGRESS
+              - SNOOZED
+              - COMPLETED
+              - CANCELLED
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a33
+          required: false
+          name: priority
+          in: query
+        - schema:
+            type: string
+            enum: *a34
+          required: false
+          name: linkedType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: linkedId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: branchId
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: List of tasks matching criteria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        ownerQueueId:
+                          type:
+                            - string
+                            - "null"
+                        linkedType:
+                          type: string
+                        linkedId:
+                          type: string
+                        branchId:
+                          type: string
+                        priority:
+                          type: string
+                        status:
+                          type: string
+                        dueAt:
+                          type: string
+                        slaClass:
+                          type:
+                            - string
+                            - "null"
+                        slaDecisionRecordId:
+                          type:
+                            - string
+                            - "null"
+                        outcomeCode:
+                          type:
+                            - string
+                            - "null"
+                        completionNote:
+                          type:
+                            - string
+                            - "null"
+                        completedAt:
+                          type:
+                            - string
+                            - "null"
+                        completedBy:
+                          type:
+                            - string
+                            - "null"
+                        followUpTaskId:
+                          type:
+                            - string
+                            - "null"
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        lockVersion:
+                          type: number
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - type
+                        - title
+                        - ownerUserId
+                        - ownerQueueId
+                        - linkedType
+                        - linkedId
+                        - branchId
+                        - priority
+                        - status
+                        - dueAt
+                        - slaClass
+                        - slaDecisionRecordId
+                        - outcomeCode
+                        - completionNote
+                        - completedAt
+                        - completedBy
+                        - followUpTaskId
+                        - tags
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  pagination:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      hasMore:
+                        type: boolean
+                    required:
+                      - nextCursor
+                      - hasMore
+                required:
+                  - data
+                  - pagination
+  /v1/tasks/{id}:
+    get:
+      operationId: API-TASK-005
+      summary: Get Task Detail (API-TASK-005)
+      tags:
+        - MOD-TASK Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    patch:
+      operationId: API-TASK-003
+      summary: "API-TASK-003: Update Task"
+      tags:
+        - MOD-TASK Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                ownerQueueId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                priority:
+                  type: string
+                  enum: *a33
+                dueAt:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                  enum:
+                    - OPEN
+                    - IN_PROGRESS
+                    - CANCELLED
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  ownerQueueId:
+                    type:
+                      - string
+                      - "null"
+                  linkedType:
+                    type: string
+                  linkedId:
+                    type: string
+                  branchId:
+                    type: string
+                  priority:
+                    type: string
+                  status:
+                    type: string
+                  dueAt:
+                    type: string
+                  slaClass:
+                    type:
+                      - string
+                      - "null"
+                  slaDecisionRecordId:
+                    type:
+                      - string
+                      - "null"
+                  outcomeCode:
+                    type:
+                      - string
+                      - "null"
+                  completionNote:
+                    type:
+                      - string
+                      - "null"
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                  completedBy:
+                    type:
+                      - string
+                      - "null"
+                  followUpTaskId:
+                    type:
+                      - string
+                      - "null"
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: number
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - title
+                  - ownerUserId
+                  - ownerQueueId
+                  - linkedType
+                  - linkedId
+                  - branchId
+                  - priority
+                  - status
+                  - dueAt
+                  - slaClass
+                  - slaDecisionRecordId
+                  - outcomeCode
+                  - completionNote
+                  - completedAt
+                  - completedBy
+                  - followUpTaskId
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/tasks/{id}/completion:
+    post:
+      operationId: API-TASK-004
+      summary: "API-TASK-004: Complete Task"
+      tags:
+        - MOD-TASK Tasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcomeCode:
+                  type: string
+                  enum:
+                    - CONNECTED
+                    - NO_ANSWER
+                    - BUSY
+                    - SWITCHED_OFF
+                    - WRONG_NUMBER
+                    - CALLBACK_REQUESTED
+                    - NOT_INTERESTED
+                    - DONE
+                    - NOT_REQUIRED
+                    - OTHER
+                completionNote:
+                  type: string
+                  maxLength: 2000
+                nextAction:
+                  type: object
+                  properties:
+                    createFollowUp:
+                      type: boolean
+                    followUpType:
+                      type: string
+                      enum: *a35
+                      default: FOLLOW_UP
+                    followUpDueAt:
+                      type: string
+                      format: date-time
+                    followUpTitle:
+                      type: string
+                      minLength: 3
+                      maxLength: 200
+                  required:
+                    - createFollowUp
+                    - followUpDueAt
+      responses:
+        "200":
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      type:
+                        type: string
+                      title:
+                        type: string
+                      ownerUserId:
+                        type:
+                          - string
+                          - "null"
+                      ownerQueueId:
+                        type:
+                          - string
+                          - "null"
+                      linkedType:
+                        type: string
+                      linkedId:
+                        type: string
+                      branchId:
+                        type: string
+                      priority:
+                        type: string
+                      status:
+                        type: string
+                      dueAt:
+                        type: string
+                      slaClass:
+                        type:
+                          - string
+                          - "null"
+                      slaDecisionRecordId:
+                        type:
+                          - string
+                          - "null"
+                      outcomeCode:
+                        type:
+                          - string
+                          - "null"
+                      completionNote:
+                        type:
+                          - string
+                          - "null"
+                      completedAt:
+                        type:
+                          - string
+                          - "null"
+                      completedBy:
+                        type:
+                          - string
+                          - "null"
+                      followUpTaskId:
+                        type:
+                          - string
+                          - "null"
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: number
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - type
+                      - title
+                      - ownerUserId
+                      - ownerQueueId
+                      - linkedType
+                      - linkedId
+                      - branchId
+                      - priority
+                      - status
+                      - dueAt
+                      - slaClass
+                      - slaDecisionRecordId
+                      - outcomeCode
+                      - completionNote
+                      - completedAt
+                      - completedBy
+                      - followUpTaskId
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                  followUpTask:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      type:
+                        type: string
+                      title:
+                        type: string
+                      ownerUserId:
+                        type:
+                          - string
+                          - "null"
+                      ownerQueueId:
+                        type:
+                          - string
+                          - "null"
+                      linkedType:
+                        type: string
+                      linkedId:
+                        type: string
+                      branchId:
+                        type: string
+                      priority:
+                        type: string
+                      status:
+                        type: string
+                      dueAt:
+                        type: string
+                      slaClass:
+                        type:
+                          - string
+                          - "null"
+                      slaDecisionRecordId:
+                        type:
+                          - string
+                          - "null"
+                      outcomeCode:
+                        type:
+                          - string
+                          - "null"
+                      completionNote:
+                        type:
+                          - string
+                          - "null"
+                      completedAt:
+                        type:
+                          - string
+                          - "null"
+                      completedBy:
+                        type:
+                          - string
+                          - "null"
+                      followUpTaskId:
+                        type:
+                          - string
+                          - "null"
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: number
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - type
+                      - title
+                      - ownerUserId
+                      - ownerQueueId
+                      - linkedType
+                      - linkedId
+                      - branchId
+                      - priority
+                      - status
+                      - dueAt
+                      - slaClass
+                      - slaDecisionRecordId
+                      - outcomeCode
+                      - completionNote
+                      - completedAt
+                      - completedBy
+                      - followUpTaskId
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                required:
+                  - task
+                  - followUpTask
 webhooks: {}
