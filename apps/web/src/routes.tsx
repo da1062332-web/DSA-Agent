@@ -3,6 +3,9 @@
 // so feature owners never edit this file.
 import type { RouteObject } from 'react-router-dom';
 import { LoginPage } from './auth/LoginPage';
+import { MfaPage } from './auth/MfaPage';
+import { ForgotPasswordPage, ResetPasswordPage } from './auth/PasswordPages';
+import { SecurityPage } from './auth/SecurityPage';
 import { AppLayout } from './shell/AppLayout';
 import { HomePage } from './shell/HomePage';
 import { Placeholder } from './shell/Placeholder';
@@ -15,11 +18,14 @@ export const featureRoutes: RouteObject[] = Object.values(featureModules).flatMa
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
-  { path: '/mfa', element: <Placeholder name="UI-PLT-001 TOTP challenge" owner="Dev 1" /> },
+  { path: '/mfa', element: <MfaPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <AppLayout />,
     children: [
       { path: '/', element: <HomePage /> },
+      { path: '/account/security', element: <SecurityPage /> },
       ...featureRoutes,
       { path: '*', element: <Placeholder name="Page not found" owner="Dev 1" /> },
     ],
