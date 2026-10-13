@@ -1,14 +1,39 @@
-import type { AuditPort, Authz, IdGenerator, TxRunner, UserDirectoryPort } from '@dsa/contracts';
+import type {
+  ApplicationPort,
+  AuditPort,
+  Authz,
+  Clock,
+  ConsentPort,
+  DecisionPort,
+  IdGenerator,
+  OutboxPort,
+  TaskPort,
+  TxRunner,
+  UserDirectoryPort,
+} from '@dsa/contracts';
 import type { Router } from 'express';
 
 /** Dependencies handed to every module router.
- *  TODO(TASK-105, Dev 1): add OutboxPort and the port registry (PORT_<NAME>=fake|real|noop). */
+ *  Ports and services are optional and resolve to real/fallback when not passed. */
 export interface ApiDeps {
   txRunner: TxRunner;
   authz: Authz;
+  auditPort?: AuditPort;
   audit: AuditPort;
+  outboxPort?: OutboxPort;
+  idGenerator?: IdGenerator;
   ids: IdGenerator;
+  decisionPort?: DecisionPort;
+  applicationPort?: ApplicationPort;
+  taskPort?: TaskPort;
+  userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;
+  consentPort?: ConsentPort;
+  clock?: Clock;
+  leadRepository?: unknown;
+  customerRepository?: unknown;
+  taskRepository?: unknown;
+  partyPort?: unknown;
 }
 
 export interface ApiModule {
