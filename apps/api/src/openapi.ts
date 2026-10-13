@@ -11,9 +11,15 @@ import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as platform from './modules/platform/openapi';
+import { authTags, registerAuthOpenApi } from './openapi-auth';
 import * as rulesApi from './modules/rules/api/openapi';
 
-const MODULES = [
+// Each module exports `tags` (optional) for its Swagger groups; Swagger shows them in this order.
+const MODULES: {
+  registerOpenApi(r: ReturnType<typeof createRegistry>): void;
+  tags?: { name: string; description: string }[];
+}[] = [
+  { registerOpenApi: registerAuthOpenApi, tags: authTags },
   platform,
   leads,
   customers,
@@ -26,12 +32,18 @@ const MODULES = [
   lenderCases,
 ];
 
-export function buildOpenApiDocument() {
+/**
+ * The committed openapi/openapi.yaml is built without options, so it stays the same on every machine. The running
+ * API passes its own SUPABASE_URL, so "Try it out" on the auth operations calls the Supabase project this process uses.
+ */
+export function buildOpenApiDocument(opts: { supabaseUrl?: string } = {}) {
   const registry = createRegistry();
 
   registry.registerPath({
     method: 'get',
     path: '/health',
+    tags: ['System'],
+    operationId: 'SYS-HEALTH',
     summary: 'Liveness probe (the only unauthenticated path)',
     security: [],
     responses: {
@@ -44,10 +56,32 @@ export function buildOpenApiDocument() {
 
   for (const m of MODULES) m.registerOpenApi(registry);
 
-  return new OpenApiGeneratorV31(registry.definitions).generateDocument({
+  const document = new OpenApiGeneratorV31(registry.definitions).generateDocument({
     openapi: '3.1.0',
-    info: { title: 'DSA CRM API', version: '0.1.0' },
+    info: {
+      title: 'DSA CRM API',
+      version: '0.1.0',
+    },
     servers: [{ url: '/' }],
     security: [{ bearerAuth: [] }],
+    tags: [
+      { name: 'System', description: 'Liveness probe. No sign-in needed.' },
+      ...MODULES.flatMap((m) => m.tags ?? []),
+    ],
   });
+
+  if (opts.supabaseUrl) pointAuthAt(document, opts.supabaseUrl);
+  return document;
+}
+
+/** Auth operations are served by Supabase: send them to the project this API process is configured for. */
+function pointAuthAt(document: { paths?: object }, supabaseUrl: string) {
+  const base = `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
+  for (const methods of Object.values(document.paths ?? {}) as object[]) {
+    for (const op of Object.values(methods) as { tags?: string[]; servers?: unknown[] }[]) {
+      if (op.tags?.includes('MOD-AUTH Authentication')) {
+        op.servers = [{ url: base, description: 'This environment (SUPABASE_URL)' }];
+      }
+    }
+  }
 }
