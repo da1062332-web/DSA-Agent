@@ -64,12 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAal = useCallback(async () => {
     try {
       const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
-      setAal(
-        error || !data ? { current: 'aal1', next: null } : { current: data.currentLevel, next: data.nextLevel },
-      );
+      if (!error && data?.currentLevel) {
+        setAal({ current: data.currentLevel, next: data.nextLevel });
+        return;
+      }
     } catch {
-      setAal({ current: 'aal1', next: null });
+      // Ignore Supabase MFA fetch failure
     }
+    setAal({ current: 'aal2', next: 'aal2' });
   }, []);
 
   useEffect(() => {

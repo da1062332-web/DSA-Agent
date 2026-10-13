@@ -35,6 +35,11 @@ export const ID_PREFIXES = [
   'tmpl',
   'msg',
   'ntf',
+  'upl',
+  'shr',
+  'doc',
+  'dsr',
+  'ver',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
