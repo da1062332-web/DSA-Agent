@@ -21,12 +21,18 @@ import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
+import { NotificationCenter } from '../features/notifications/NotificationCenter';
+
 const NAV = [
   { to: '/leads', label: 'Leads' },
   { to: '/tasks', label: 'Tasks' },
   { to: '/applications', label: 'Applications' },
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
+  { to: '/messaging', label: 'Messaging' },
+  { to: '/users', label: 'Users' },
+  { to: '/roles', label: 'Access Control' },
+  { to: '/config', label: 'Configuration' },
 ];
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
@@ -55,11 +61,6 @@ export function AppLayout() {
       </Centered>
     );
 
-  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
-  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
-  if (needsChallenge || needsEnrolment)
-    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
-
   if (me.isError) {
     return (
       <Centered>
@@ -76,6 +77,11 @@ export function AppLayout() {
       </Centered>
     );
   }
+
+  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
+  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
+  if (needsChallenge || needsEnrolment)
+    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
 
@@ -109,7 +115,8 @@ export function AppLayout() {
               </Button>
             )}
 
-            <Box sx={{ ml: 'auto' }}>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <NotificationCenter />
               <Button
                 color="inherit"
                 onClick={(e) => setMenu(e.currentTarget)}

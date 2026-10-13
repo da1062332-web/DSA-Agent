@@ -13,7 +13,7 @@ import {
 } from 'jose';
 
 export const ACCESS_TOKEN_AUDIENCE = 'authenticated';
-const TENANT_ID = /^ten_([0-9A-HJKMNP-TV-Z]{26}|[0-9A-Za-z_-]{4,30})$/;
+const TENANT_ID = /^ten_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 export interface VerifiedToken {
   /** Supabase Auth user id (`sub`); matches app_user.idp_subject. */
