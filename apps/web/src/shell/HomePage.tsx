@@ -30,6 +30,24 @@ export function HomePage() {
       to: '/rules',
       badge: 'BRE Engine',
     },
+    {
+      title: 'User Management',
+      desc: 'Manage staff accounts, branch assignments, and roles.',
+      to: '/users',
+      badge: 'Users',
+    },
+    {
+      title: 'Access Control',
+      desc: 'Configure tenant roles, permission policies, and RBAC matrix.',
+      to: '/roles',
+      badge: 'Access Control',
+    },
+    {
+      title: 'Tenant Configuration',
+      desc: 'Manage organization details, operational SLAs, and branch network.',
+      to: '/config',
+      badge: 'Configuration',
+    },
   ];
 
   return (
