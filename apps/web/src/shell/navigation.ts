@@ -49,6 +49,15 @@ export const OPERATIONAL_NAV: NavItem[] = [
       hasPermission(me, 'verification.perform'),
   },
   {
+    to: '/connectors',
+    label: 'Connectors',
+    testId: 'shell.nav.connectors',
+    isAllowed: (me) =>
+      hasPermission(me, 'connector.read') ||
+      hasPermission(me, 'connector.manage') ||
+      hasPermission(me, 'config.manage'),
+  },
+  {
     to: '/document-sharing',
     label: 'Document Sharing',
     testId: 'shell.nav.document sharing',

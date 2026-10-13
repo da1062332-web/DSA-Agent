@@ -60,6 +60,12 @@ export function HomePage() {
       badge: 'Verification',
     },
     {
+      title: 'Connector Management',
+      desc: 'Onboarding, bank dual-control SOD, agreements, reattribution, and disputes (MOD-CON).',
+      to: '/connectors',
+      badge: 'Connectors',
+    },
+    {
       title: 'Tenant Configuration',
       desc: 'Manage organization details, operational SLAs, and branch network.',
       to: '/config',
