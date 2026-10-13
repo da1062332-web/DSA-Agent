@@ -102,7 +102,8 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
 /** Rows are inserted as the superuser, so the fixture does not depend on the API under test. */
 async function seedTenant(admin: pg.Client, s: string): Promise<TenantFixture> {
   const f: TenantFixture = {
-    tenantId: `ten_01JISOLATION0000000000000${s.toUpperCase()}`,
+    // A valid ULID: 26 characters from the Crockford alphabet (the token check enforces this format).
+    tenantId: `ten_${'0'.repeat(25)}${s === 'a' ? 'A' : 'B'}`,
     orgId: `org_iso_${s}`,
     branchId: `br_iso_${s}`,
     teamId: `team_iso_${s}`,

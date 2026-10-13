@@ -11,6 +11,10 @@ import {
 } from '@dsa/contracts';
 import { z } from 'zod';
 
+export const tags = [
+  { name: 'MOD-MSG Messaging', description: 'Templates, outbox, and delivery status (MOD-MSG).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('MessageTemplate', MessageTemplateSchema);
   registry.register('CreateTemplateInput', CreateTemplateSchema);
@@ -20,8 +24,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/message-templates',
+    operationId: 'API-MSG-001',
     summary: 'Create message template (API-MSG-001)',
-    tags: ['Messaging'],
+    tags: ['MOD-MSG Messaging'],
     security: [{ bearerAuth: [] }],
     parameters: [
       {
@@ -59,8 +64,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/message-templates',
+    operationId: 'API-MSG-002',
     summary: 'List message templates (API-MSG-002)',
-    tags: ['Messaging'],
+    tags: ['MOD-MSG Messaging'],
     security: [{ bearerAuth: [] }],
     request: {
       query: ListTemplatesQuerySchema,
@@ -88,8 +94,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/messages',
+    operationId: 'API-MSG-003',
     summary: 'Send outbound message (API-MSG-003)',
-    tags: ['Messaging'],
+    tags: ['MOD-MSG Messaging'],
     security: [{ bearerAuth: [] }],
     parameters: [
       {
@@ -129,8 +136,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/messages',
+    operationId: 'API-MSG-004',
     summary: 'List messages for subject (API-MSG-004)',
-    tags: ['Messaging'],
+    tags: ['MOD-MSG Messaging'],
     security: [{ bearerAuth: [] }],
     request: {
       query: ListMessagesQuerySchema,

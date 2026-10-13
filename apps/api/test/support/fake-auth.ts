@@ -40,7 +40,8 @@ const unusedTxRunner: TxRunner = {
 
 const ids = createIdGenerator();
 
-export function createTestDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
+/** Module dependencies for route tests. Unit tests never reach the database through these. */
+export function testDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
   return {
     txRunner: unusedTxRunner,
     authz: createAuthz(),
@@ -51,9 +52,11 @@ export function createTestDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
   };
 }
 
+export const createTestDeps = testDeps;
+
 export function createTestApp(opts: { auth?: RequestHandler; deps?: Partial<ApiDeps> } = {}): Express {
   return createApp({
-    deps: createTestDeps(opts.deps),
+    deps: testDeps(opts.deps),
     corsAllowedOrigins: [],
     auth: opts.auth,
   });
