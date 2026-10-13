@@ -7,6 +7,8 @@ export * from './pagination';
 export * from './events';
 export * from './permissions';
 export * from './kernel';
+export * from './users';
+export * from './config';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
