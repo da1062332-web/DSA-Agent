@@ -53,8 +53,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Lenders and products (DOM-D)',
     items: [
-      { label: 'Lenders', to: '/admin/lenders' },
-      { label: 'Products', task: 'TASK-432' },
+      { label: 'Lenders', to: '/lenders' },
+      { label: 'Products', to: '/products' },
     ],
   },
   {

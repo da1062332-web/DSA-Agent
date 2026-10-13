@@ -138,7 +138,16 @@ export function UserListPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+      <Box
+        sx={{
+          mb: 4,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Staff User Management
@@ -213,7 +222,11 @@ export function UserListPage() {
 
       {/* Filter Toolbar */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Box component="form" onSubmit={handleSearchSubmit} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Box
+          component="form"
+          onSubmit={handleSearchSubmit}
+          sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}
+        >
           <TextField
             size="small"
             placeholder="Search name, email, or mobile..."
@@ -258,7 +271,15 @@ export function UserListPage() {
           <Button type="submit" variant="outlined" sx={{ minWidth: 100 }}>
             Search
           </Button>
-          <Button variant="text" onClick={() => { setSearch(''); setStatusFilter(''); setBranchFilter(''); void loadData(); }}>
+          <Button
+            variant="text"
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('');
+              setBranchFilter('');
+              void loadData();
+            }}
+          >
             Reset
           </Button>
         </Box>
@@ -289,7 +310,9 @@ export function UserListPage() {
                 <TableCell sx={{ fontWeight: 600 }}>Roles</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Availability</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -323,8 +346,8 @@ export function UserListPage() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                      {user.assignedRoles.length > 0 ? (
-                        user.assignedRoles.map((role) => (
+                      {(user.assignedRoles ?? []).length > 0 ? (
+                        (user.assignedRoles ?? []).map((role) => (
                           <Chip key={role} label={role} size="small" variant="outlined" sx={{ my: 0.25 }} />
                         ))
                       ) : (
