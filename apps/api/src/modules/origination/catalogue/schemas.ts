@@ -86,8 +86,14 @@ export const EmpanelmentPatch = z
     permittedGeos: z.array(z.string().trim().min(2).max(60)).max(200).optional(),
     agreementDocumentId: z.string().trim().min(2).max(64).nullable().optional(),
     status: EmpanelmentStatus.optional(),
+    // Recorded in the audit log. Required to deactivate (SUSPENDED) or terminate (EXPIRED).
+    reason: safeText(200).nullable().optional(),
   })
   .strict()
+  .refine((p) => (p.status !== 'SUSPENDED' && p.status !== 'EXPIRED') || !!p.reason, {
+    message: 'a reason is required to deactivate or terminate an empanelment',
+    path: ['reason'],
+  })
   .refine(atLeastOne, 'at least one field is required');
 
 export const Empanelment = z.object({

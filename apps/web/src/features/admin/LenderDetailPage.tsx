@@ -1,6 +1,7 @@
-// /admin/lenders/:id (owner: Dev 3; DSA Notion MODULE 14). Lender details, status with reason, empanelments and the
-// contact list. Writes need config.manage. Every save sends the version it was based on (If-Match); a stale save
-// shows the API's version conflict instead of overwriting another user's change.
+// /lenders/:id (owner: Dev 3; DSA Notion MODULE 14). Lender details, status with reason, empanelments and the
+// contact list. Writes need config.manage. Nothing is deleted: an empanelment is deactivated (suspended, reversible)
+// or terminated (ended today, final), and a contact is removed but kept as history. Every save sends the version it
+// was based on (If-Match), so a stale save shows the API's version conflict instead of overwriting someone else.
 import {
   Alert,
   Button,
@@ -11,7 +12,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   MenuItem,
   Stack,
   Table,
@@ -26,7 +26,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, useResource } from './api';
-import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
+import { ConfirmDialog, ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 import type { Lender } from './LendersPage';
 
 interface Empanelment {
@@ -52,8 +52,15 @@ interface Contact {
   escalationLevel: number;
 }
 
+type EmpAction = 'deactivate' | 'reactivate' | 'terminate';
+
 const CATEGORIES = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'];
 const LENDER_TYPES = ['BANK', 'NBFC', 'HFC', 'SFB', 'OTHER'];
+const ACTION_STATUS: Record<EmpAction, Empanelment['status']> = {
+  deactivate: 'SUSPENDED',
+  reactivate: 'ACTIVE',
+  terminate: 'EXPIRED',
+};
 
 export function LenderDetailPage() {
   const { id } = useParams();
@@ -85,7 +92,6 @@ export function LenderDetailPage() {
       <StatusCard lender={l} canEdit={canEdit} />
       <EmpanelmentsCard
         lenderId={l.id}
-        lenderVersion={l.version}
         rows={emps.data?.pages.flatMap((p) => p.data) ?? []}
         loading={emps.isPending}
         canEdit={canEdit}
@@ -246,22 +252,43 @@ function StatusCard({ lender, canEdit }: { lender: Lender; canEdit: boolean }) {
   );
 }
 
+const ACTION_TEXT: Record<EmpAction, { title: string; text: string; button: string; needsReason: boolean }> =
+  {
+    deactivate: {
+      title: 'Deactivate empanelment',
+      text: 'The DSA code stops taking new cases until it is reactivated. Nothing is deleted.',
+      button: 'Deactivate',
+      needsReason: true,
+    },
+    reactivate: {
+      title: 'Reactivate empanelment',
+      text: 'The DSA code can take new cases again, if its validity dates still cover today.',
+      button: 'Reactivate',
+      needsReason: false,
+    },
+    terminate: {
+      title: 'Terminate empanelment',
+      text: 'This ends the empanelment today. It cannot be reactivated afterwards. The record is kept for history.',
+      button: 'Terminate',
+      needsReason: true,
+    },
+  };
+
 function EmpanelmentsCard({
   lenderId,
-  lenderVersion,
   rows,
   loading,
   canEdit,
 }: {
   lenderId: string;
-  lenderVersion: number;
   rows: Empanelment[];
   loading: boolean;
   canEdit: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Empanelment | null>(null);
-  void lenderVersion;
+  const [acting, setActing] = useState<{ empanelment: Empanelment; action: EmpAction } | null>(null);
+
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent>
@@ -285,7 +312,7 @@ function EmpanelmentsCard({
                 <TableCell>Categories</TableCell>
                 <TableCell>Geographies</TableCell>
                 <TableCell>Status</TableCell>
-                {canEdit && <TableCell />}
+                {canEdit && <TableCell align="right">Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -311,10 +338,38 @@ function EmpanelmentsCard({
                     <StatusChip active={e.status === 'ACTIVE'} label={e.status} />
                   </TableCell>
                   {canEdit && (
-                    <TableCell align="right">
-                      <Button size="small" onClick={() => setEditing(e)}>
-                        Edit
-                      </Button>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {e.status !== 'EXPIRED' && (
+                        <Button size="small" onClick={() => setEditing(e)}>
+                          Edit
+                        </Button>
+                      )}
+                      {e.status === 'ACTIVE' && (
+                        <Button
+                          size="small"
+                          color="warning"
+                          onClick={() => setActing({ empanelment: e, action: 'deactivate' })}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                      {e.status === 'SUSPENDED' && (
+                        <Button
+                          size="small"
+                          onClick={() => setActing({ empanelment: e, action: 'reactivate' })}
+                        >
+                          Reactivate
+                        </Button>
+                      )}
+                      {e.status !== 'EXPIRED' && (
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => setActing({ empanelment: e, action: 'terminate' })}
+                        >
+                          Terminate
+                        </Button>
+                      )}
                     </TableCell>
                   )}
                 </TableRow>
@@ -325,7 +380,77 @@ function EmpanelmentsCard({
       </CardContent>
       {adding && <AddEmpanelmentDialog lenderId={lenderId} onClose={() => setAdding(false)} />}
       {editing && <EditEmpanelmentDialog empanelment={editing} onClose={() => setEditing(null)} />}
+      {acting && (
+        <EmpanelmentActionDialog
+          empanelment={acting.empanelment}
+          action={acting.action}
+          onClose={() => setActing(null)}
+        />
+      )}
     </Card>
+  );
+}
+
+function EmpanelmentActionDialog({
+  empanelment,
+  action,
+  onClose,
+}: {
+  empanelment: Empanelment;
+  action: EmpAction;
+  onClose: () => void;
+}) {
+  const copy = ACTION_TEXT[action];
+  const [reason, setReason] = useState('');
+  const save = useCommand<object, Empanelment>(
+    () => ({ path: `/v1/empanelments/${empanelment.id}`, method: 'PATCH', version: empanelment.version }),
+    [[`/v1/lenders/${empanelment.lenderId}/empanelments`]],
+  );
+  const ready = !copy.needsReason || reason.trim().length >= 2;
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {copy.title}: {empanelment.dsaCode}
+      </DialogTitle>
+      <DialogContent>
+        <ErrorAlert error={save.error} />
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Alert severity={action === 'reactivate' ? 'info' : 'warning'}>{copy.text}</Alert>
+          {copy.needsReason && (
+            <TextField
+              label="Reason (required)"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              helperText="Recorded in the audit log."
+              inputProps={{ 'data-testid': 'admin.emp.reason' }}
+            />
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={save.isPending}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color={action === 'reactivate' ? 'primary' : 'error'}
+          disabled={!ready || save.isPending}
+          data-testid="admin.emp.confirm"
+          onClick={() =>
+            save.mutate(
+              {
+                status: ACTION_STATUS[action],
+                ...(copy.needsReason ? { reason: reason.trim() } : {}),
+              },
+              { onSuccess: onClose },
+            )
+          }
+        >
+          {copy.button}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -426,13 +551,18 @@ function AddEmpanelmentDialog({ lenderId, onClose }: { lenderId: string; onClose
   );
 }
 
+/** Edits the end date and permitted categories only. Status changes go through the deactivate/terminate actions. */
 function EditEmpanelmentDialog({ empanelment, onClose }: { empanelment: Empanelment; onClose: () => void }) {
   const [validTo, setValidTo] = useState(empanelment.validTo ?? '');
-  const [status, setStatus] = useState(empanelment.status);
+  const [categories, setCategories] = useState<string[]>(empanelment.permittedCategories);
   const save = useCommand<object, Empanelment>(
     () => ({ path: `/v1/empanelments/${empanelment.id}`, method: 'PATCH', version: empanelment.version }),
     [[`/v1/lenders/${empanelment.lenderId}/empanelments`]],
   );
+  const changed =
+    (validTo || null) !== empanelment.validTo ||
+    categories.slice().sort().join(',') !== empanelment.permittedCategories.slice().sort().join(',');
+
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Edit {empanelment.dsaCode}</DialogTitle>
@@ -448,13 +578,16 @@ function EditEmpanelmentDialog({ empanelment, onClose }: { empanelment: Empanelm
           />
           <TextField
             select
-            label="Status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as Empanelment['status'])}
+            SelectProps={{ multiple: true }}
+            label="Permitted categories"
+            value={categories}
+            onChange={(e) => setCategories(e.target.value as unknown as string[])}
           >
-            <MenuItem value="ACTIVE">Active</MenuItem>
-            <MenuItem value="SUSPENDED">Suspended</MenuItem>
-            <MenuItem value="EXPIRED">Expired</MenuItem>
+            {CATEGORIES.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
           </TextField>
           <Alert severity="info">Start date and DSA code cannot be changed after creation.</Alert>
         </Stack>
@@ -465,8 +598,10 @@ function EditEmpanelmentDialog({ empanelment, onClose }: { empanelment: Empanelm
         </Button>
         <Button
           variant="contained"
-          disabled={save.isPending}
-          onClick={() => save.mutate({ validTo: validTo || null, status }, { onSuccess: onClose })}
+          disabled={!changed || save.isPending || categories.length === 0}
+          onClick={() =>
+            save.mutate({ validTo: validTo || null, permittedCategories: categories }, { onSuccess: onClose })
+          }
         >
           Save
         </Button>
@@ -488,8 +623,17 @@ function ContactsCard({
 }) {
   const [draft, setDraft] = useState<Omit<Contact, 'id'>[]>([]);
   const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState<Contact | null>(null);
   const save = useCommand<{ contacts: Omit<Contact, 'id'>[] }, unknown>(
     () => ({ path: `/v1/lenders/${lender.id}/contacts`, method: 'PUT', version: lender.version }),
+    [[`/v1/lenders/${lender.id}/contacts`], [`/v1/lenders/${lender.id}`]],
+  );
+  const remove = useCommand<object, unknown>(
+    () => ({
+      path: `/v1/lenders/${lender.id}/contacts/${removing?.id ?? ''}`,
+      method: 'DELETE',
+      version: lender.version,
+    }),
     [[`/v1/lenders/${lender.id}/contacts`], [`/v1/lenders/${lender.id}`]],
   );
 
@@ -530,12 +674,13 @@ function ContactsCard({
                   <TableCell>Phone</TableCell>
                   <TableCell>Channel</TableCell>
                   <TableCell>Escalation</TableCell>
+                  {canEdit && <TableCell align="right">Actions</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary' }}>
+                    <TableCell colSpan={canEdit ? 7 : 6} align="center" sx={{ color: 'text.secondary' }}>
                       No contacts yet.
                     </TableCell>
                   </TableRow>
@@ -548,6 +693,18 @@ function ContactsCard({
                     <TableCell>{c.phone ?? '—'}</TableCell>
                     <TableCell>{c.channel ?? '—'}</TableCell>
                     <TableCell>Level {c.escalationLevel}</TableCell>
+                    {canEdit && (
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => setRemoving(c)}
+                          data-testid="admin.contact.remove"
+                        >
+                          Remove
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -602,12 +759,13 @@ function ContactsCard({
                     </MenuItem>
                   ))}
                 </TextField>
-                <IconButton
+                <Button
+                  color="error"
                   onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
-                  aria-label="remove contact"
+                  aria-label="drop from list"
                 >
-                  ×
-                </IconButton>
+                  Drop
+                </Button>
               </Stack>
             ))}
             <Stack direction="row" spacing={1}>
@@ -633,12 +791,25 @@ function ContactsCard({
               </Button>
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              Saving keeps the previous contacts as history. Contact details are never written to the audit
-              log.
+              Saving replaces the list and keeps the previous contacts as history. To remove one contact on
+              its own, use Remove in the table. Contact details are never written to the audit log.
             </Typography>
           </Stack>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={!!removing}
+        title={`Remove ${removing?.name ?? 'contact'}?`}
+        text="The contact is removed from this lender. It stays in the history, and the audit log records the removal without personal details."
+        confirmLabel="Remove"
+        busy={remove.isPending}
+        error={remove.error}
+        onClose={() => {
+          setRemoving(null);
+          remove.reset();
+        }}
+        onConfirm={() => remove.mutate({}, { onSuccess: () => setRemoving(null) })}
+      />
     </Card>
   );
 }

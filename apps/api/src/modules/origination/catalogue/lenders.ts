@@ -226,20 +226,40 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
 
     const emp = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const current = await loadForUpdate(tx, 'empanelment', req.params.id, 'Empanelment');
+      // A terminated empanelment is final: its end date has been set and it cannot come back.
+      if (current.status === 'EXPIRED' && input.status !== undefined && input.status !== 'EXPIRED') {
+        throw AppError.of('INVALID_TRANSITION', 'A terminated empanelment cannot be reactivated.', [
+          { field: 'status', issue: 'TERMINATED_IS_FINAL' },
+        ]);
+      }
+      // Terminating ends the empanelment today unless an end date is given.
+      const today = ctx.now.toISOString().slice(0, 10);
+      const endDate =
+        input.validTo !== undefined ? input.validTo : input.status === 'EXPIRED' ? today : undefined;
+
       let validRange: RawBuilder<unknown> | undefined;
-      if (input.validTo !== undefined) {
+      if (endDate !== undefined) {
         // Keep the start date; only the end changes. One UPDATE, so the version moves exactly once.
         const r = await sql<{
           start: string;
         }>`select lower(valid_range)::text as start from empanelment where id = ${current.id}`.execute(tx);
         const start = r.rows[0]!.start;
-        if (input.validTo && input.validTo < start) {
+        if (endDate && endDate < start) {
           throw AppError.of('VALIDATION_ERROR', 'validTo must not be before the start date.', [
             { field: 'validTo', issue: 'BEFORE_START' },
           ]);
         }
-        validRange = sql`daterange(lower(valid_range), ${input.validTo ?? null}::date, '[]')`;
+        validRange = sql`daterange(lower(valid_range), ${endDate || null}::date, '[]')`;
       }
+
+      const statusChanged = input.status !== undefined && input.status !== current.status;
+      const action = !statusChanged
+        ? 'empanelment.updated'
+        : input.status === 'SUSPENDED'
+          ? 'empanelment.deactivated'
+          : input.status === 'EXPIRED'
+            ? 'empanelment.terminated'
+            : 'empanelment.reactivated';
       const updated = await updateVersioned(tx, ctx.principal.id, 'empanelment', current, version, {
         valid_range: validRange,
         permitted_categories: input.permittedCategories
@@ -250,11 +270,12 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
         status: input.status,
       });
       await deps.audit.record(tx, ctx, {
-        action: 'empanelment.updated',
+        action,
         entityType: 'EMPANELMENT',
         entityId: String(updated.id),
         before: { status: current.status, permittedCategories: current.permitted_categories },
         after: { status: updated.status, permittedCategories: updated.permitted_categories },
+        reason: input.reason ?? undefined,
         permissionUsed: 'config.manage',
       });
       const r = await sql<Row>`select * from ${EMPANELMENT_VIEW} where x.id = ${updated.id}`.execute(tx);

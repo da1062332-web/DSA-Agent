@@ -83,4 +83,37 @@ export function registerContactRoutes(router: Router, deps: ApiDeps): void {
     res.set('ETag', `"${result.version}"`);
     res.json({ data: result.rows.map(toContact), meta: { nextCursor: null, limit: result.rows.length } });
   });
+
+  // Removes one contact. The row is kept with removed_at set, so the history stays (no hard delete).
+  router.delete('/lenders/:id/contacts/:contactId', async (req, res) => {
+    const ctx = requireCtx(req);
+    deps.authz.requirePermission(ctx, 'config.manage');
+    const version = ifMatchVersion(req);
+
+    const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const lender = await loadForUpdate(tx, 'lender', req.params.id, 'Lender');
+      const bumped = await updateVersioned(tx, ctx.principal.id, 'lender', lender, version, {});
+
+      const found = await sql<Row>`
+        select * from lender_contact
+         where id = ${req.params.contactId} and lender_id = ${lender.id} and removed_at is null
+         for update`.execute(tx);
+      const contact = found.rows[0];
+      if (!contact) throw AppError.of('NOT_FOUND', 'Contact not found.');
+
+      await sql`update lender_contact set removed_at = now() where id = ${contact.id}`.execute(tx);
+      // Audit carries the contact id and escalation level only. Names, emails and phones never reach the log.
+      await deps.audit.record(tx, ctx, {
+        action: 'lender.contact_removed',
+        entityType: 'LENDER',
+        entityId: String(lender.id),
+        before: { contactId: String(contact.id), escalationLevel: Number(contact.escalation_level) },
+        after: { contactId: String(contact.id), removed: true },
+        permissionUsed: 'config.manage',
+      });
+      return { version: Number(bumped.lock_version), removedId: String(contact.id) };
+    });
+    res.set('ETag', `"${result.version}"`);
+    res.json({ removedId: result.removedId, lenderVersion: result.version });
+  });
 }
