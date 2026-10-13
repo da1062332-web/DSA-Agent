@@ -46,7 +46,7 @@ export function useTenant() {
   });
 }
 
-export const hasPermission = (me: Me | undefined, code: string) => !!me?.grants.some((g) => g.code === code);
+export const hasPermission = (me: Me | undefined, code: string) => !!me?.grants?.some((g) => g.code === code);
 
 /** Doc 03 §5.1: MFA is mandatory for admin, owner, branch manager, loan ops, verifier, compliance, finance,
  *  rule roles and auditors. In the MVP these are the users holding any of these permissions. */
@@ -63,4 +63,4 @@ const MFA_REQUIRED = [
   'rule.publish',
   'rule.suspend',
 ];
-export const mfaRequired = (me: Me | undefined) => !!me?.grants.some((g) => MFA_REQUIRED.includes(g.code));
+export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));
