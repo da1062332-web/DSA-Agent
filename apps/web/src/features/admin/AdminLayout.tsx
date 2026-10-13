@@ -7,6 +7,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 const TABS = [
   { to: '/admin/organisation', label: 'Organisation' },
   { to: '/admin/branches', label: 'Branches' },
+  { to: '/admin/lenders', label: 'Lenders' },
   { to: '/admin/teams', label: 'Teams' },
   { to: '/admin/queues', label: 'Work queues' },
 ];
