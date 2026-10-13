@@ -10,6 +10,10 @@ import {
   UpdateLeadInputSchema,
 } from './types';
 
+export const tags = [
+  { name: 'MOD-LEAD Leads', description: 'Lead intake, assignment, transitions, and conversion (MOD-LEAD).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('CreateLeadInput', CreateLeadInputSchema);
   registry.register('UpdateLeadInput', UpdateLeadInputSchema);
@@ -21,8 +25,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/leads',
+    operationId: 'API-LEAD-001',
     summary: 'Capture a new lead with consent (API-LEAD-001)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       headers: z.object({
         'Idempotency-Key': z.string(),
@@ -60,8 +65,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/leads',
+    operationId: 'API-LEAD-002',
     summary: 'List and filter leads (API-LEAD-002)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       query: z.object({
         limit: z.number().int().min(1).max(200).optional(),
@@ -93,8 +99,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/leads/{id}',
+    operationId: 'API-LEAD-003',
     summary: 'Lead detail (API-LEAD-003)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       params: z.object({ id: z.string() }),
     },
@@ -120,8 +127,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/leads/{id}',
+    operationId: 'API-LEAD-004',
     summary: 'Update lead mutable fields (API-LEAD-004)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({ 'If-Match': z.string() }),
@@ -150,8 +158,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/leads/{id}/transitions',
+    operationId: 'API-LEAD-005',
     summary: 'Lead state transition (API-LEAD-005)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({
@@ -180,8 +189,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/leads/{id}/assignments',
+    operationId: 'API-LEAD-006',
     summary: 'Assign or reassign lead (API-LEAD-006)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({
@@ -210,8 +220,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/leads/{id}/conversion',
+    operationId: 'API-LEAD-007',
     summary: 'Convert lead atomically to customer and application (API-LEAD-007)',
-    tags: ['Leads'],
+    tags: ['MOD-LEAD Leads'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({
