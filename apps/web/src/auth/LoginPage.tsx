@@ -16,13 +16,13 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { readConfig } from '../config';
 import { useAuth } from './AuthProvider';
-import { getSupabase } from './supabase';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session } = useAuth();
+  const { session, setSession } = useAuth();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
   const [identifier, setIdentifier] = useState('');
@@ -47,18 +47,33 @@ export function LoginPage() {
 
     setIsLoading(true);
     try {
-      const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-      if (error) {
-        // Same message for unknown email and wrong password (no account enumeration).
+      const config = readConfig();
+      const apiUrl = config.success ? config.data.VITE_API_BASE_URL : 'http://localhost:3000';
+      const res = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const body = await res.json().catch(() => null);
+
+      if (!res.ok) {
         setErrorMessage(
-          error.status === 400 ? 'Invalid email or password.' : 'Sign-in failed. Please try again.',
+          body?.error?.message ?? (res.status === 401 ? 'Invalid email or password.' : 'Sign-in failed. Please try again.'),
         );
         return;
       }
-      navigate(from, { replace: true });
+
+      if (body?.access_token) {
+        setSession(body);
+        navigate(from, { replace: true });
+        return;
+      }
+
+      setErrorMessage('Sign-in failed. Please try again.');
     } catch {
       setErrorMessage(
-        'Cannot reach the sign-in service. Is the local Supabase stack running (npm run db:start)?',
+        'Cannot reach the sign-in service. Is the API server running (http://localhost:3000)?',
       );
     } finally {
       setIsLoading(false);

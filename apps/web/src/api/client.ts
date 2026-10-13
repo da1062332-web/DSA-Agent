@@ -61,9 +61,24 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
   const config = readConfig();
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
 
-  const { data } = await getSupabase().auth.getSession();
+  let token: string | undefined;
+  try {
+    const raw = localStorage.getItem('dsa_auth_session');
+    if (raw) {
+      const parsed = JSON.parse(raw) as { access_token?: string };
+      token = parsed.access_token;
+    }
+  } catch {}
+
+  if (!token) {
+    try {
+      const { data } = await getSupabase().auth.getSession();
+      token = data.session?.access_token;
+    } catch {}
+  }
+
   const headers = new Headers({ Accept: 'application/json' });
-  if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (req.body !== undefined) headers.set('Content-Type', 'application/json');
   if (req.idempotencyKey) headers.set('Idempotency-Key', req.idempotencyKey);
   if (req.version !== undefined) headers.set('If-Match', `"${req.version}"`);
