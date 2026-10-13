@@ -22,6 +22,7 @@ export class ApiError extends Error {
 export interface ApiRequest {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  headers?: Record<string, string>;
   /** The ETag version the edit is based on; sent as If-Match. */
   version?: number;
   /** Reuse the same key when retrying the same submit. Generated for POSTs when omitted. */
@@ -83,6 +84,11 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
 
   const headers = new Headers({ Accept: 'application/json' });
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (req.headers) {
+    for (const [k, v] of Object.entries(req.headers)) {
+      headers.set(k, v);
+    }
+  }
   if (req.body !== undefined) headers.set('Content-Type', 'application/json');
   if (req.idempotencyKey) headers.set('Idempotency-Key', req.idempotencyKey);
   if (req.version !== undefined) headers.set('If-Match', `"${req.version}"`);
