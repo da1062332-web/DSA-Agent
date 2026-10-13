@@ -22,11 +22,19 @@ import {
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
 
+export const tags = [
+  { name: 'Platform', description: 'Platform identity and branch management' },
+  { name: 'Access Control', description: 'Roles and permission grants' },
+  { name: 'Users', description: 'User management' },
+  { name: 'Configuration', description: 'Tenant configuration' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   // GET /v1/me
   registry.registerPath({
     method: 'get',
     path: '/v1/me',
+    operationId: 'API-ORG-000',
     summary: 'Get current authenticated user identity and permission grants',
     tags: ['Platform'],
     responses: {
@@ -64,6 +72,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/branches',
+    operationId: 'API-ORG-004',
     summary: 'List branches in caller tenant',
     tags: ['Platform'],
     responses: {
@@ -93,6 +102,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/roles',
+    operationId: 'API-ROL-001',
     summary: 'List roles and permissions in caller tenant',
     tags: ['Access Control'],
     responses: {
@@ -113,6 +123,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/permissions',
+    operationId: 'API-ROL-002',
     summary: 'List permission catalog',
     tags: ['Access Control'],
     responses: {
@@ -135,6 +146,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/roles/{id}',
+    operationId: 'API-ROL-003',
     summary: 'Get role details by ID',
     tags: ['Access Control'],
     request: {
@@ -159,6 +171,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/roles',
+    operationId: 'API-ROL-004',
     summary: 'Create custom role',
     tags: ['Access Control'],
     request: {
@@ -189,6 +202,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/roles/{id}',
+    operationId: 'API-ROL-005',
     summary: 'Update role name or permissions',
     tags: ['Access Control'],
     request: {
@@ -222,6 +236,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'delete',
     path: '/v1/roles/{id}',
+    operationId: 'API-ROL-006',
     summary: 'Delete custom role',
     tags: ['Access Control'],
     request: {
@@ -247,6 +262,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/users',
+    operationId: 'API-USR-001',
     summary: 'List users in caller tenant with pagination and search',
     tags: ['Users'],
     request: {
@@ -278,6 +294,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/users/{id}',
+    operationId: 'API-USR-002',
     summary: 'Get details of a specific user',
     tags: ['Users'],
     request: {
@@ -303,6 +320,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/users',
+    operationId: 'API-USR-003',
     summary: 'Create a new staff user',
     tags: ['Users'],
     request: {
@@ -331,6 +349,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/users/{id}',
+    operationId: 'API-USR-004',
     summary: 'Update user profile, status, or branch',
     tags: ['Users'],
     request: {
@@ -361,6 +380,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/users/{id}/roles',
+    operationId: 'API-USR-005',
     summary: 'Assign a role to a user (SOD-05)',
     tags: ['Users'],
     request: {
@@ -397,6 +417,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'delete',
     path: '/v1/users/{id}/roles/{roleId}',
+    operationId: 'API-USR-006',
     summary: 'Remove a role assignment from a user (SOD-05)',
     tags: ['Users'],
     request: {
@@ -419,6 +440,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/users/{id}/roles',
+    operationId: 'API-USR-007',
     summary: 'List role assignments for user',
     tags: ['Access Control'],
     request: {
@@ -445,6 +467,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/users/{id}/permissions',
+    operationId: 'API-USR-008',
     summary: 'Get effective permissions for user',
     tags: ['Access Control'],
     request: {
@@ -469,8 +492,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/branches/{id}',
+    operationId: 'API-ORG-005a',
     summary: 'Get branch details by ID',
-    tags: ['Platform', 'Configuration'],
+    tags: ['Platform'],
     request: {
       params: z.object({ id: z.string() }),
     },
@@ -492,8 +516,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/branches',
+    operationId: 'API-ORG-003',
     summary: 'Create a new branch in tenant',
-    tags: ['Platform', 'Configuration'],
+    tags: ['Platform'],
     request: {
       body: {
         content: {
@@ -522,8 +547,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/branches/{id}',
+    operationId: 'API-ORG-005',
     summary: 'Update branch configuration',
-    tags: ['Platform', 'Configuration'],
+    tags: ['Platform'],
     request: {
       params: z.object({ id: z.string() }),
       body: {
@@ -555,6 +581,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/config',
+    operationId: 'API-CFG-001',
     summary: 'Get tenant and organisation configuration summary',
     tags: ['Configuration'],
     responses: {
@@ -576,6 +603,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/config',
+    operationId: 'API-CFG-002',
     summary: 'Update tenant and organisation configuration',
     tags: ['Configuration'],
     request: {

@@ -12,6 +12,14 @@ tags:
     description: Liveness probe. No sign-in needed.
   - name: MOD-AUTH Authentication
     description: Sign-in, MFA and password reset. Served by Supabase Auth, not by this API.
+  - name: Platform
+    description: Platform identity and branch management
+  - name: Access Control
+    description: Roles and permission grants
+  - name: Users
+    description: User management
+  - name: Configuration
+    description: Tenant configuration
   - name: MOD-LEAD Leads
     description: Lead intake, assignment, transitions, and conversion (MOD-LEAD).
   - name: MOD-CUST Customers
@@ -22,8 +30,14 @@ tags:
     description: Templates, outbox, and delivery status (MOD-MSG).
   - name: MOD-NTF Notifications
     description: Notifications and user preferences (MOD-NTF).
+  - name: MOD-USR Users
+    description: User profile preferences (MOD-USR).
   - name: MOD-TASK Tasks
     description: Task lifecycle, queues, assignment, and SLA tracking (MOD-TASK).
+  - name: MOD-LCS Lender Cases
+    description: Lender cases, submission packaging, and status tracking (MOD-LCS).
+  - name: MOD-SND Sanctions & Disbursement
+    description: Sanction recording, tranches, verification, and exceptions (MOD-SND).
 components:
   securitySchemes:
     bearerAuth:
@@ -1698,6 +1712,7 @@ paths:
                     type: string
   /v1/me:
     get:
+      operationId: API-ORG-000
       summary: Get current authenticated user identity and permission grants
       tags:
         - Platform
@@ -2082,6 +2097,7 @@ paths:
                   - error
   /v1/branches:
     get:
+      operationId: API-ORG-004
       summary: List branches in caller tenant
       tags:
         - Platform
@@ -2122,10 +2138,10 @@ paths:
                 required:
                   - data
     post:
+      operationId: API-ORG-003
       summary: Create a new branch in tenant
       tags:
         - Platform
-        - Configuration
       requestBody:
         content:
           application/json:
@@ -2316,6 +2332,7 @@ paths:
                   - error
   /v1/roles:
     get:
+      operationId: API-ROL-001
       summary: List roles and permissions in caller tenant
       tags:
         - Access Control
@@ -2359,6 +2376,7 @@ paths:
                 required:
                   - data
     post:
+      operationId: API-ROL-004
       summary: Create custom role
       tags:
         - Access Control
@@ -2543,6 +2561,7 @@ paths:
                   - error
   /v1/permissions:
     get:
+      operationId: API-ROL-002
       summary: List permission catalog
       tags:
         - Access Control
@@ -2657,6 +2676,7 @@ paths:
                   - error
   /v1/roles/{id}:
     get:
+      operationId: API-ROL-003
       summary: Get role details by ID
       tags:
         - Access Control
@@ -2825,6 +2845,7 @@ paths:
                 required:
                   - error
     patch:
+      operationId: API-ROL-005
       summary: Update role name or permissions
       tags:
         - Access Control
@@ -3091,6 +3112,7 @@ paths:
                 required:
                   - error
     delete:
+      operationId: API-ROL-006
       summary: Delete custom role
       tags:
         - Access Control
@@ -3284,6 +3306,7 @@ paths:
                   - error
   /v1/users:
     get:
+      operationId: API-USR-001
       summary: List users in caller tenant with pagination and search
       tags:
         - Users
@@ -3485,6 +3508,7 @@ paths:
                 required:
                   - error
     post:
+      operationId: API-USR-003
       summary: Create a new staff user
       tags:
         - Users
@@ -3626,6 +3650,7 @@ paths:
                   - error
   /v1/users/{id}:
     get:
+      operationId: API-USR-002
       summary: Get details of a specific user
       tags:
         - Users
@@ -3739,6 +3764,7 @@ paths:
                 required:
                   - error
     patch:
+      operationId: API-USR-004
       summary: Update user profile, status, or branch
       tags:
         - Users
@@ -3913,6 +3939,7 @@ paths:
                   - error
   /v1/users/{id}/roles:
     post:
+      operationId: API-USR-005
       summary: Assign a role to a user (SOD-05)
       tags:
         - Users
@@ -4046,6 +4073,7 @@ paths:
                 required:
                   - error
     get:
+      operationId: API-USR-007
       summary: List role assignments for user
       tags:
         - Access Control
@@ -4226,6 +4254,7 @@ paths:
                   - error
   /v1/users/{id}/roles/{roleId}:
     delete:
+      operationId: API-USR-006
       summary: Remove a role assignment from a user (SOD-05)
       tags:
         - Users
@@ -4298,6 +4327,7 @@ paths:
                   - error
   /v1/users/{id}/permissions:
     get:
+      operationId: API-USR-008
       summary: Get effective permissions for user
       tags:
         - Access Control
@@ -4466,10 +4496,10 @@ paths:
                   - error
   /v1/branches/{id}:
     get:
+      operationId: API-ORG-005a
       summary: Get branch details by ID
       tags:
         - Platform
-        - Configuration
       parameters:
         - schema:
             type: string
@@ -4597,10 +4627,10 @@ paths:
                 required:
                   - error
     patch:
+      operationId: API-ORG-005
       summary: Update branch configuration
       tags:
         - Platform
-        - Configuration
       parameters:
         - schema:
             type: string
@@ -4877,6 +4907,7 @@ paths:
                   - error
   /v1/config:
     get:
+      operationId: API-CFG-001
       summary: Get tenant and organisation configuration summary
       tags:
         - Configuration
@@ -5111,6 +5142,7 @@ paths:
                 required:
                   - error
     patch:
+      operationId: API-CFG-002
       summary: Update tenant and organisation configuration
       tags:
         - Configuration
@@ -9958,4 +9990,1496 @@ paths:
                 required:
                   - task
                   - followUpTask
+  /v1/applications/{id}/lender-cases:
+    post:
+      operationId: API-LCS-001
+      summary: "API-LCS-001: Create Lender Case"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lenderId:
+                  type: string
+                  minLength: 1
+                productVersionId:
+                  type: string
+                  minLength: 1
+                empanelmentId:
+                  type: string
+                  minLength: 1
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - lenderId
+                - productVersionId
+                - empanelmentId
+      responses:
+        "201":
+          description: Lender case created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  applicationId:
+                    type: string
+                  lenderId:
+                    type: string
+                  productVersionId:
+                    type: string
+                  empanelmentId:
+                    type: string
+                  attemptNo:
+                    type: integer
+                    minimum: 1
+                  status:
+                    type: string
+                    enum: &a45
+                      - DRAFT
+                      - PACKAGE_READY
+                      - SUBMITTED
+                      - UNDER_PROCESSING
+                      - QUERY_RAISED
+                      - QUERY_RESPONDED
+                      - SANCTIONED
+                      - REJECTED
+                      - WITHDRAWN
+                      - SANCTION_EXPIRED
+                      - SANCTION_CANCELLED
+                      - PARTIALLY_DISBURSED
+                      - DISBURSED
+                      - CLOSED
+                  lenderReference:
+                    type:
+                      - string
+                      - "null"
+                  submissionChannel:
+                    type:
+                      - string
+                      - "null"
+                    enum: &a46
+                      - PORTAL
+                      - EMAIL
+                      - API
+                      - PHYSICAL
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  packageId:
+                    type:
+                      - string
+                      - "null"
+                  statusSource:
+                    type:
+                      - string
+                      - "null"
+                    enum: &a47
+                      - MANUAL
+                      - LENDER_API
+                      - LENDER_FILE
+                      - EMAIL_PARSED
+                      - SYSTEM
+                  lastStatusAt:
+                    type:
+                      - string
+                      - "null"
+                  declineReasonCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: &a48
+                      - POLICY
+                      - INCOME
+                      - CREDIT_HISTORY
+                      - DOCUMENTATION
+                      - LOCATION
+                      - CUSTOMER_DECLINED
+                      - OTHER
+                  stalenessFlag:
+                    type: boolean
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - applicationId
+                  - lenderId
+                  - productVersionId
+                  - empanelmentId
+                  - attemptNo
+                  - status
+                  - stalenessFlag
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      operationId: API-LCS-001-LIST
+      summary: List Lender Cases for Application
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: List of lender cases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        applicationId:
+                          type: string
+                        lenderId:
+                          type: string
+                        productVersionId:
+                          type: string
+                        empanelmentId:
+                          type: string
+                        attemptNo:
+                          type: integer
+                          minimum: 1
+                        status:
+                          type: string
+                          enum: *a45
+                        lenderReference:
+                          type:
+                            - string
+                            - "null"
+                        submissionChannel:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a46
+                        submittedAt:
+                          type:
+                            - string
+                            - "null"
+                        packageId:
+                          type:
+                            - string
+                            - "null"
+                        statusSource:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a47
+                        lastStatusAt:
+                          type:
+                            - string
+                            - "null"
+                        declineReasonCode:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a48
+                        stalenessFlag:
+                          type: boolean
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - applicationId
+                        - lenderId
+                        - productVersionId
+                        - empanelmentId
+                        - attemptNo
+                        - status
+                        - stalenessFlag
+                        - tags
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                required:
+                  - data
+  /v1/lender-cases/{id}:
+    get:
+      operationId: API-LCS-002
+      summary: "API-LCS-002: Retrieve Lender Case"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lender case detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  applicationId:
+                    type: string
+                  lenderId:
+                    type: string
+                  productVersionId:
+                    type: string
+                  empanelmentId:
+                    type: string
+                  attemptNo:
+                    type: integer
+                    minimum: 1
+                  status:
+                    type: string
+                    enum: *a45
+                  lenderReference:
+                    type:
+                      - string
+                      - "null"
+                  submissionChannel:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a46
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  packageId:
+                    type:
+                      - string
+                      - "null"
+                  statusSource:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a47
+                  lastStatusAt:
+                    type:
+                      - string
+                      - "null"
+                  declineReasonCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a48
+                  stalenessFlag:
+                    type: boolean
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - applicationId
+                  - lenderId
+                  - productVersionId
+                  - empanelmentId
+                  - attemptNo
+                  - status
+                  - stalenessFlag
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/lender-cases/{id}/package:
+    post:
+      operationId: API-LCS-003
+      summary: "API-LCS-003: Build or Preview Submission Package"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: &a49
+                    - SUBMISSION
+                    - QUERY_RESPONSE
+                  default: SUBMISSION
+                waivers:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+                freeze:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Submission package generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  package:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      lenderCaseId:
+                        type: string
+                      kind:
+                        type: string
+                        enum: *a49
+                      manifest:
+                        type: object
+                        additionalProperties: {}
+                      manifestSha256:
+                        type: string
+                        minLength: 64
+                        maxLength: 64
+                      consentIds:
+                        type: array
+                        items:
+                          type: string
+                        minItems: 1
+                      builtBy:
+                        type: string
+                      builtAt:
+                        type: string
+                      frozenAt:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - id
+                      - tenantId
+                      - lenderCaseId
+                      - kind
+                      - manifest
+                      - manifestSha256
+                      - consentIds
+                      - builtBy
+                      - builtAt
+                  case:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      applicationId:
+                        type: string
+                      lenderId:
+                        type: string
+                      productVersionId:
+                        type: string
+                      empanelmentId:
+                        type: string
+                      attemptNo:
+                        type: integer
+                        minimum: 1
+                      status:
+                        type: string
+                        enum: *a45
+                      lenderReference:
+                        type:
+                          - string
+                          - "null"
+                      submissionChannel:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a46
+                      submittedAt:
+                        type:
+                          - string
+                          - "null"
+                      packageId:
+                        type:
+                          - string
+                          - "null"
+                      statusSource:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a47
+                      lastStatusAt:
+                        type:
+                          - string
+                          - "null"
+                      declineReasonCode:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a48
+                      stalenessFlag:
+                        type: boolean
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: integer
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - applicationId
+                      - lenderId
+                      - productVersionId
+                      - empanelmentId
+                      - attemptNo
+                      - status
+                      - stalenessFlag
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                required:
+                  - package
+                  - case
+  /v1/lender-cases/{id}/submission:
+    post:
+      operationId: API-LCS-004
+      summary: "API-LCS-004: Submit Lender Case"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: Idempotency-Key
+          in: header
+        - schema:
+            type: string
+          required: false
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:
+                  type: string
+                  enum: *a46
+                lenderReference:
+                  type: string
+                  maxLength: 100
+                submittedAt:
+                  type: string
+                  format: date-time
+              required:
+                - channel
+      responses:
+        "200":
+          description: Lender case submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lenderCaseId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - SUBMITTED
+                  packageId:
+                    type: string
+                  manifest:
+                    type: object
+                    additionalProperties: {}
+                  applicationStatus:
+                    type: string
+                  dataSharingRecordId:
+                    type: string
+                required:
+                  - lenderCaseId
+                  - status
+                  - packageId
+                  - manifest
+                  - applicationStatus
+                  - dataSharingRecordId
+  /v1/lender-cases/{id}/status-updates:
+    post:
+      operationId: API-LCS-005
+      summary: "API-LCS-005: Record Status Update"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                toStatus:
+                  type: string
+                  enum: *a45
+                statusSource:
+                  type: string
+                  enum: *a47
+                  default: MANUAL
+                declineReasonCode:
+                  type: string
+                  enum: *a48
+                reasonText:
+                  type: string
+                  maxLength: 1000
+                lenderReference:
+                  type: string
+                  maxLength: 100
+              required:
+                - toStatus
+      responses:
+        "200":
+          description: Status update recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  applicationId:
+                    type: string
+                  lenderId:
+                    type: string
+                  productVersionId:
+                    type: string
+                  empanelmentId:
+                    type: string
+                  attemptNo:
+                    type: integer
+                    minimum: 1
+                  status:
+                    type: string
+                    enum: *a45
+                  lenderReference:
+                    type:
+                      - string
+                      - "null"
+                  submissionChannel:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a46
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  packageId:
+                    type:
+                      - string
+                      - "null"
+                  statusSource:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a47
+                  lastStatusAt:
+                    type:
+                      - string
+                      - "null"
+                  declineReasonCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a48
+                  stalenessFlag:
+                    type: boolean
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - applicationId
+                  - lenderId
+                  - productVersionId
+                  - empanelmentId
+                  - attemptNo
+                  - status
+                  - stalenessFlag
+                  - tags
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/lender-cases/{id}/queries:
+    post:
+      operationId: API-LCS-006
+      summary: "API-LCS-006: Record Lender Query"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  minLength: 3
+                  maxLength: 2000
+                requestedItems:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+                lenderDueDate:
+                  type: string
+                  format: date-time
+              required:
+                - text
+      responses:
+        "201":
+          description: Query recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      lenderCaseId:
+                        type: string
+                      text:
+                        type: string
+                      requestedItems:
+                        type: array
+                        items:
+                          type: string
+                      lenderDueDate:
+                        type:
+                          - string
+                          - "null"
+                      taskId:
+                        type:
+                          - string
+                          - "null"
+                      responseManifestId:
+                        type:
+                          - string
+                          - "null"
+                      respondedAt:
+                        type:
+                          - string
+                          - "null"
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - lenderCaseId
+                      - text
+                      - requestedItems
+                      - createdAt
+                      - createdBy
+                  case:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      applicationId:
+                        type: string
+                      lenderId:
+                        type: string
+                      productVersionId:
+                        type: string
+                      empanelmentId:
+                        type: string
+                      attemptNo:
+                        type: integer
+                        minimum: 1
+                      status:
+                        type: string
+                        enum: *a45
+                      lenderReference:
+                        type:
+                          - string
+                          - "null"
+                      submissionChannel:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a46
+                      submittedAt:
+                        type:
+                          - string
+                          - "null"
+                      packageId:
+                        type:
+                          - string
+                          - "null"
+                      statusSource:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a47
+                      lastStatusAt:
+                        type:
+                          - string
+                          - "null"
+                      declineReasonCode:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a48
+                      stalenessFlag:
+                        type: boolean
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: integer
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - applicationId
+                      - lenderId
+                      - productVersionId
+                      - empanelmentId
+                      - attemptNo
+                      - status
+                      - stalenessFlag
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                required:
+                  - query
+                  - case
+  /v1/lender-queries/{id}/responses:
+    post:
+      operationId: API-LCS-007
+      summary: "API-LCS-007: Record Query Response"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                documentReferences:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - text
+      responses:
+        "200":
+          description: Query response recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      lenderCaseId:
+                        type: string
+                      text:
+                        type: string
+                      requestedItems:
+                        type: array
+                        items:
+                          type: string
+                      lenderDueDate:
+                        type:
+                          - string
+                          - "null"
+                      taskId:
+                        type:
+                          - string
+                          - "null"
+                      responseManifestId:
+                        type:
+                          - string
+                          - "null"
+                      respondedAt:
+                        type:
+                          - string
+                          - "null"
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - lenderCaseId
+                      - text
+                      - requestedItems
+                      - createdAt
+                      - createdBy
+                  case:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      tenantId:
+                        type: string
+                      applicationId:
+                        type: string
+                      lenderId:
+                        type: string
+                      productVersionId:
+                        type: string
+                      empanelmentId:
+                        type: string
+                      attemptNo:
+                        type: integer
+                        minimum: 1
+                      status:
+                        type: string
+                        enum: *a45
+                      lenderReference:
+                        type:
+                          - string
+                          - "null"
+                      submissionChannel:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a46
+                      submittedAt:
+                        type:
+                          - string
+                          - "null"
+                      packageId:
+                        type:
+                          - string
+                          - "null"
+                      statusSource:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a47
+                      lastStatusAt:
+                        type:
+                          - string
+                          - "null"
+                      declineReasonCode:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a48
+                      stalenessFlag:
+                        type: boolean
+                      tags:
+                        type: array
+                        items:
+                          type: string
+                      lockVersion:
+                        type: integer
+                      createdAt:
+                        type: string
+                      createdBy:
+                        type: string
+                      updatedAt:
+                        type: string
+                      updatedBy:
+                        type: string
+                    required:
+                      - id
+                      - tenantId
+                      - applicationId
+                      - lenderId
+                      - productVersionId
+                      - empanelmentId
+                      - attemptNo
+                      - status
+                      - stalenessFlag
+                      - tags
+                      - lockVersion
+                      - createdAt
+                      - createdBy
+                      - updatedAt
+                      - updatedBy
+                required:
+                  - query
+                  - case
+  /v1/lender-cases/{id}/sanctions:
+    post:
+      operationId: API-SND-001
+      summary: "API-SND-001: Record or Revise Sanction"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  exclusiveMinimum: 0
+                tenureMonths:
+                  type: integer
+                  minimum: 1
+                rateValue:
+                  type: number
+                  exclusiveMinimum: 0
+                rateType:
+                  type: string
+                  enum:
+                    - FIXED
+                    - FLOATING
+                benchmarkText:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 200
+                feesText:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 500
+                conditions:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 500
+                  default: []
+                sanctionDate:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                validUntil:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                letterDocumentId:
+                  type:
+                    - string
+                    - "null"
+                source:
+                  type: string
+                  enum:
+                    - MANUAL
+                    - LENDER_API
+                    - EMAIL_PARSED
+                  default: MANUAL
+              required:
+                - amount
+                - tenureMonths
+                - rateValue
+                - rateType
+                - sanctionDate
+                - validUntil
+      responses:
+        "201":
+          description: Sanction recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  version:
+                    type: number
+                  amount:
+                    type: number
+                  status:
+                    type: string
+                required:
+                  - id
+                  - version
+                  - amount
+                  - status
+  /v1/sanctions/{id}/tranches:
+    post:
+      operationId: API-SND-002
+      summary: "API-SND-002: Record Disbursement Tranche"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  exclusiveMinimum: 0
+                currency:
+                  type: string
+                  minLength: 3
+                  maxLength: 3
+                  default: INR
+                disbursedOn:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                utr:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                loanAccountNumber:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                evidenceDocumentId:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - amount
+                - disbursedOn
+      responses:
+        "201":
+          description: Disbursement tranche recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tranche:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      trancheNo:
+                        type: number
+                      amount:
+                        type: number
+                      status:
+                        type: string
+                    required:
+                      - id
+                      - trancheNo
+                      - amount
+                      - status
+                  remainingSanctionAmount:
+                    type: number
+                required:
+                  - tranche
+                  - remainingSanctionAmount
+  /v1/tranches/{id}/verification:
+    post:
+      operationId: API-SND-003
+      summary: "API-SND-003: Verify or Return Tranche (SOD-04)"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - VERIFY
+                    - RETURN
+                comment:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+              required:
+                - decision
+      responses:
+        "200":
+          description: Tranche verified or returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  verifiedBy:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - status
+                  - verifiedBy
+  /v1/tranches/{id}/exception-approval:
+    post:
+      operationId: API-SND-004
+      summary: "API-SND-004: Approve Evidence Exception"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 1000
+              required:
+                - reason
+      responses:
+        "200":
+          description: Evidence exception approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  exceptionApprovalId:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - exceptionApprovalId
+  /v1/sanctions/{id}/cancellation:
+    post:
+      operationId: API-SND-005
+      summary: "API-SND-005: Cancel Sanction"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 1000
+              required:
+                - reason
+      responses:
+        "200":
+          description: Sanction cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  cancelReason:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - status
+                  - cancelReason
+  /v1/tranches/{id}/void:
+    post:
+      operationId: API-SND-006
+      summary: "API-SND-006: Void and Replace Tranche"
+      tags:
+        - MOD-SND Sanctions & Disbursement
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 1000
+                createReplacement:
+                  type: boolean
+                  default: false
+                replacement:
+                  type: object
+                  properties:
+                    amount:
+                      type: number
+                      exclusiveMinimum: 0
+                    currency:
+                      type: string
+                      minLength: 3
+                      maxLength: 3
+                      default: INR
+                    disbursedOn:
+                      type: string
+                      pattern: ^\d{4}-\d{2}-\d{2}$
+                    utr:
+                      type:
+                        - string
+                        - "null"
+                      maxLength: 100
+                    loanAccountNumber:
+                      type:
+                        - string
+                        - "null"
+                      maxLength: 100
+                    evidenceDocumentId:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - amount
+                    - disbursedOn
+              required:
+                - reason
+      responses:
+        "200":
+          description: Tranche voided and optionally replaced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  voidedTranche:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      voidReason:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - id
+                      - status
+                      - voidReason
+                required:
+                  - voidedTranche
 webhooks: {}

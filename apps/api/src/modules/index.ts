@@ -10,6 +10,7 @@ import * as tasks from './crm/tasks/router';
 import * as applications from './origination/applications/router';
 import * as catalogue from './origination/catalogue/router';
 import * as lenderCases from './origination/lender-cases/router';
+import * as sanctions from './origination/sanctions/router';
 import * as platform from './platform/router';
 import * as rulesApi from './rules/api/router';
 import type { ApiModule } from './types';
@@ -27,5 +28,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
   { name: 'origination/lender-cases', owner: 'Dev 4', createRouter: lenderCases.createRouter },
+  { name: 'origination/sanctions', owner: 'Dev 3', createRouter: sanctions.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.

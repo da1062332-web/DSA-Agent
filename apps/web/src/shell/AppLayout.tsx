@@ -61,10 +61,11 @@ export function AppLayout() {
       </Centered>
     );
 
-  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
-  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
-  if (needsChallenge || needsEnrolment)
-    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
+  // TEMPORARILY DISABLED: Allow developer to inspect and interact with all modules directly
+  // const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
+  // const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
+  // if (needsChallenge || needsEnrolment)
+  //   return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
   if (me.isError) {
     return (

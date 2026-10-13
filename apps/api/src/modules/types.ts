@@ -34,6 +34,7 @@ export interface ApiDeps {
   customerRepository?: unknown;
   taskRepository?: unknown;
   partyPort?: unknown;
+  sanctionRepository?: unknown;
 }
 
 export interface ApiModule {
