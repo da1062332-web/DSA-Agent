@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
+import { getStoredAuthToken } from '../../auth/token';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 export interface NotificationCenterProps {
@@ -79,7 +80,7 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       if (!token) {
         setNotifications([]);
         setUnreadCount(0);
@@ -95,9 +96,9 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
         throw new Error(`Failed to load notifications: HTTP ${res.status}`);
       }
 
-      const body = await res.json();
-      setNotifications(body.data || []);
-      setUnreadCount(body.meta?.unreadCount ?? 0);
+      const body = await res.json().catch(() => null);
+      setNotifications(body?.data || []);
+      setUnreadCount(body?.meta?.unreadCount ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error fetching inbox');
     } finally {
@@ -114,7 +115,7 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
     let isSubscribed = true;
 
     const connectSse = async () => {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       if (!token) {
         setStreamStatus('disconnected');
         return;
@@ -204,7 +205,7 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
   const handleMarkAsRead = async (notificationIds: string[]) => {
     if (notificationIds.length === 0) return;
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const res = await fetch(`${apiBaseUrl}/notifications/read`, {
         method: 'POST',
         headers: {

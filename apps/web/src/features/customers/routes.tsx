@@ -1,10 +1,10 @@
-// Feature: customers — owner: Dev 5 — UI-LEAD-001 (Day 4). Replace the elements; keep the paths.
+// Feature: customers — owner: Dev 5 — UI-LEAD-001 (Day 4).
 import type { RouteObject } from 'react-router-dom';
-import { Placeholder } from '../../shell/Placeholder';
+import { CustomerConsents } from './CustomerConsents';
 
 export const routes: RouteObject[] = [
   {
     path: '/customers/:id/consents',
-    element: <Placeholder name="UI-LEAD-001 customer consents" owner="Dev 5" />,
+    element: <CustomerConsents />,
   },
 ];

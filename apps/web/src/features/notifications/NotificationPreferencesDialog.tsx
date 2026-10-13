@@ -22,6 +22,7 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
+import { getStoredAuthToken } from '../../auth/token';
 import {
   NOTIFICATION_CATEGORIES,
   type NotificationCategory,
@@ -70,7 +71,7 @@ export function NotificationPreferencesDialog({
     setError(null);
     setSuccess(false);
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const res = await fetch(`${apiBaseUrl}/me`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -108,7 +109,7 @@ export function NotificationPreferencesDialog({
     setSuccess(false);
 
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const res = await fetch(`${apiBaseUrl}/me`, {
         method: 'PATCH',
         headers: {

@@ -386,7 +386,10 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
         },
       },
       403: { description: 'SOD violation', content: { 'application/json': { schema: ErrorEnvelope } } },
-      404: { description: 'User or role not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: {
+        description: 'User or role not found',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
     },
   });
 

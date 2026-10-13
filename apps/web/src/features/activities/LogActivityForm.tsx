@@ -18,6 +18,7 @@ import {
   Typography,
   Chip,
 } from '@mui/material';
+import { getStoredAuthToken } from '../../auth/token';
 import {
   ACTIVITY_KINDS,
   ACTIVITY_OUTCOME_CODES,
@@ -101,8 +102,7 @@ export function LogActivityForm({
 
     try {
       const idempotencyKey = `idem_act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const token =
-        sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token') || 'test-token';
+      const token = getStoredAuthToken() || 'test-token';
 
       // Format timestamp as UTC ISO 8601
       const occurredDate = new Date(occurredAt);
@@ -130,7 +130,7 @@ export function LogActivityForm({
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
         if (res.status === 403) {

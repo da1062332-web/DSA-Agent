@@ -1,5 +1,6 @@
 // apps/api/src/modules/crm/messaging/messaging-service.ts — owner: Dev 1 / Dev 5
 // CMP-MSG.02.1: Dispatch Service & CMP-MSG.03.1: Delivery Status Handler
+import crypto from 'crypto';
 import {
   AppError,
   type CreateTemplateInput,
@@ -112,6 +113,9 @@ export class MessagingService {
     tenantId: string,
     principalId: string,
     key: string,
+    method = 'POST',
+    path = '/v1/message-templates',
+    body?: unknown,
   ): Promise<{ isReplayed: boolean; responseBody?: unknown; responseStatus?: number }> {
     const memoryKey = `${tenantId}:${principalId}:${key}`;
 
@@ -138,9 +142,17 @@ export class MessagingService {
         throw AppError.of('IDEMPOTENCY_IN_PROGRESS', 'Concurrent request with the same Idempotency-Key is in progress');
       }
 
+      const reqHash = crypto
+        .createHash('sha256')
+        .update(`${method.toUpperCase()} ${path}\n${JSON.stringify(body ?? {})}`)
+        .digest('hex');
+
       await sql`
-        INSERT INTO app.idempotency_key (tenant_id, principal_id, key, status, created_at, expires_at)
-        VALUES (${tenantId}, ${principalId}, ${key}, 'IN_PROGRESS', now(), now() + interval '24 hours')
+        INSERT INTO app.idempotency_key (
+          tenant_id, principal_id, key, method, path, request_hash, status, created_at, expires_at
+        ) VALUES (
+          ${tenantId}, ${principalId}, ${key}, ${method}, ${path}, ${reqHash}, 'IN_PROGRESS', now(), now() + interval '24 hours'
+        )
       `.execute(tx);
 
       return { isReplayed: false };
@@ -216,7 +228,15 @@ export class MessagingService {
     }
 
     const run = async (tx?: Tx) => {
-      const claim = await this.claimIdempotency(tx, tenantId, ctx.principal.id, idempotencyKey);
+      const claim = await this.claimIdempotency(
+        tx,
+        tenantId,
+        ctx.principal.id,
+        idempotencyKey,
+        'POST',
+        '/v1/message-templates',
+        input,
+      );
       if (claim.isReplayed && claim.responseBody) {
         return { template: claim.responseBody as MessageTemplate, isReplayed: true };
       }
@@ -442,7 +462,15 @@ export class MessagingService {
     const adapter = adapterOverride ?? this.getAdapter(input.channel);
 
     const run = async (tx?: Tx) => {
-      const claim = await this.claimIdempotency(tx, tenantId, ctx.principal.id, idempotencyKey);
+      const claim = await this.claimIdempotency(
+        tx,
+        tenantId,
+        ctx.principal.id,
+        idempotencyKey,
+        'POST',
+        '/v1/messages',
+        input,
+      );
       if (claim.isReplayed && claim.responseBody) {
         return { message: claim.responseBody as MessageRecord, isReplayed: true };
       }
