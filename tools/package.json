@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "gen:openapi": "tsx gen-openapi.ts",
-    "verify:migrations": "tsx verify-migrations.ts",
+    "verify:migrations": "tsx --env-file-if-exists=../.env verify-migrations.ts",
     "provision:tenant": "tsx --env-file-if-exists=../.env provision-tenant.ts",
     "test-token": "tsx --env-file-if-exists=../.env test-token.ts",
     "gen:registry-sql": "tsx gen-registry-sql.ts",
@@ -16,7 +16,10 @@
   "dependencies": {
     "@dsa/api": "*",
     "@dsa/contracts": "*",
+    "@dsa/kernel": "*",
+    "@supabase/supabase-js": "^2.117.3",
     "pg": "^8.13.1",
+    "ulid": "^2.4.0",
     "yaml": "^2.6.0"
   },
   "devDependencies": {

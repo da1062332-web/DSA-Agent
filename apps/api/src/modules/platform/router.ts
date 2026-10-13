@@ -31,7 +31,9 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../types';
-
+import { registerOrganisationRoutes } from './organisation';
+import { registerQueueRoutes } from './queues';
+import { registerTeamRoutes } from './teams';
 const nextUlid = monotonicFactory();
 
 function getContext(req: Request): RequestContext {
@@ -1560,6 +1562,10 @@ export function createRouter(deps: ApiDeps): Router {
       next(err);
     }
   });
+
+  registerOrganisationRoutes(router, deps);
+  registerTeamRoutes(router, deps);
+  registerQueueRoutes(router, deps);
 
   return router;
 }

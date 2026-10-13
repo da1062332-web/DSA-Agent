@@ -4,7 +4,31 @@ import { z } from 'zod';
 
 // Prefixes named in the Contracts and Migration Plan pages.
 // TODO(TASK-101, Dev 1): complete this list for every MVP table before Gate 1 (each owner proposes theirs by PR).
-export const ID_PREFIXES = ['ten', 'usr', 'lead', 'app', 'task', 'pkg', 'dr', 'aud', 'evt'] as const;
+// Platform (Dev 1, TASK-103/104): org, br, team, tm, role, ura, wq, wqm.
+// Follow-ups & Comm (MOD-ACT, MOD-MSG, MOD-NTF): act, tmpl, msg, ntf.
+export const ID_PREFIXES = [
+  'ten',
+  'usr',
+  'org',
+  'br',
+  'team',
+  'tm',
+  'role',
+  'ura',
+  'wq',
+  'wqm',
+  'lead',
+  'app',
+  'task',
+  'pkg',
+  'dr',
+  'aud',
+  'evt',
+  'act',
+  'tmpl',
+  'msg',
+  'ntf',
+] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
 const ULID = '[0-9A-HJKMNP-TV-Z]{26}';
