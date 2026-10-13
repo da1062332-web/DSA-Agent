@@ -35,11 +35,14 @@ const app = createApp({
     userDirectory: createUserDirectory(),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
+  supabaseUrl: config.SUPABASE_URL,
+  jwtSecret: config.API_JWT_SECRET,
+  db,
   logger,
   auth: supabaseAuth({
     verifier: createTokenVerifier({
       supabaseUrl: config.SUPABASE_URL,
-      jwtSecret: config.SUPABASE_JWT_SECRET,
+      jwtSecret: config.API_JWT_SECRET ?? config.SUPABASE_JWT_SECRET,
     }),
     resolver: createPrincipalResolver(txRunner),
   }),
