@@ -12,6 +12,7 @@ import * as catalogue from './origination/catalogue/router';
 import * as lenderCases from './origination/lender-cases/router';
 import * as platform from './platform/router';
 import * as rulesApi from './rules/api/router';
+import * as verification from './verification/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
@@ -27,5 +28,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
   { name: 'origination/lender-cases', owner: 'Dev 4', createRouter: lenderCases.createRouter },
+  { name: 'verification', owner: 'Dev 2', createRouter: verification.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.

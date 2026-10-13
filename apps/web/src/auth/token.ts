@@ -1,9 +1,16 @@
 // Utility to retrieve the active JWT access token across storage formats
 export function getStoredAuthToken(): string | undefined {
-  const direct = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
-  if (direct) return direct;
+  if (typeof window === 'undefined') return undefined;
   try {
-    const raw = localStorage.getItem('dsa_auth_session');
+    const sess = typeof window.sessionStorage !== 'undefined' ? window.sessionStorage.getItem('dsa_auth_token') : null;
+    const loc = typeof window.localStorage !== 'undefined' ? window.localStorage.getItem('dsa_auth_token') : null;
+    const direct = sess || loc;
+    if (direct) return direct;
+  } catch {
+    // Storage access restricted or unavailable
+  }
+  try {
+    const raw = typeof window.localStorage !== 'undefined' ? window.localStorage.getItem('dsa_auth_session') : null;
     if (raw) {
       const parsed = JSON.parse(raw) as { access_token?: string };
       if (parsed?.access_token) return parsed.access_token;

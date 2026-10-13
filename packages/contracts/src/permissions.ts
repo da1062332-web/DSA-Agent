@@ -35,6 +35,10 @@ export const PERMISSION_CODES = [
   'config.manage',
   'user.manage',
   'message.send',
+  'verification.read',
+  'verification.create',
+  'verification.update',
+  'verification.complete',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

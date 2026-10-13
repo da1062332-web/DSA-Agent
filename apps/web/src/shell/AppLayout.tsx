@@ -27,6 +27,7 @@ const NAV = [
   { to: '/leads', label: 'Leads' },
   { to: '/tasks', label: 'Tasks' },
   { to: '/applications', label: 'Applications' },
+  { to: '/verifications', label: 'Verifications' },
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
   { to: '/messaging', label: 'Messaging' },
