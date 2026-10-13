@@ -11,6 +11,10 @@ import {
 } from '@dsa/contracts';
 import { z } from 'zod';
 
+export const tags = [
+  { name: 'MOD-NTF Notifications', description: 'Notifications and user preferences (MOD-NTF).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('NotificationRecord', NotificationRecordSchema);
   registry.register('NotificationPreferences', NotificationPreferencesSchema);
@@ -21,8 +25,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/notifications',
+    operationId: 'API-NTF-001',
     summary: 'List user notifications (API-NTF-001)',
-    tags: ['Notifications'],
+    tags: ['MOD-NTF Notifications'],
     security: [{ bearerAuth: [] }],
     request: {
       query: ListNotificationsQuerySchema,
@@ -51,8 +56,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/notifications/read',
+    operationId: 'API-NTF-002',
     summary: 'Mark notifications as read (API-NTF-002)',
-    tags: ['Notifications'],
+    tags: ['MOD-NTF Notifications'],
     security: [{ bearerAuth: [] }],
     request: {
       body: {
@@ -83,8 +89,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/notifications/stream',
+    operationId: 'API-NTF-003',
     summary: 'Server-Sent Events stream for live notifications (API-NTF-003)',
-    tags: ['Notifications'],
+    tags: ['MOD-NTF Notifications'],
     security: [{ bearerAuth: [] }],
     responses: {
       200: {
@@ -100,35 +107,11 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   });
 
   registry.registerPath({
-    method: 'get',
-    path: '/v1/me',
-    summary: 'Get current user profile (API-USR-010)',
-    tags: ['Users'],
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: {
-        description: 'Current user profile with preferences and ETag header',
-        headers: {
-          ETag: {
-            schema: { type: 'string' },
-            description: 'Entity lock_version for concurrency control',
-          },
-        },
-        content: {
-          'application/json': {
-            schema: UserProfileSchema,
-          },
-        },
-      },
-      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
-    },
-  });
-
-  registry.registerPath({
     method: 'patch',
     path: '/v1/me',
+    operationId: 'API-USR-009',
     summary: 'Update user profile notification preferences with concurrency control (API-USR-009)',
-    tags: ['Users'],
+    tags: ['MOD-USR Users'],
     security: [{ bearerAuth: [] }],
     parameters: [
       {

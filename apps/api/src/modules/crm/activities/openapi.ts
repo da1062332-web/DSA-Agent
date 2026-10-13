@@ -10,6 +10,10 @@ import {
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
 
+export const tags = [
+  { name: 'MOD-ACT Activities', description: 'Activity timeline and interaction tracking (MOD-ACT).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('Activity', ActivitySchema);
   registry.register('CreateActivityInput', CreateActivitySchema);
@@ -19,7 +23,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/activities',
+    operationId: 'API-ACT-001',
     summary: 'Record an interaction (API-ACT-001)',
+    tags: ['MOD-ACT Activities'],
     description:
       'Records an interaction (call, meeting, visit, note) against a lead, customer, or loan application.',
     security: [{ bearerAuth: [] }],
@@ -76,7 +82,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/activities/{id}',
+    operationId: 'API-ACT-002',
     summary: 'Update or hide an activity (API-ACT-002)',
+    tags: ['MOD-ACT Activities'],
     description:
       'Edits an activity outcome, duration, note, or soft-hides it with optimistic concurrency protection.',
     security: [{ bearerAuth: [] }],
@@ -139,7 +147,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/activities/{id}',
+    operationId: 'API-ACT-003',
     summary: 'Get an activity by ID',
+    tags: ['MOD-ACT Activities'],
     security: [{ bearerAuth: [] }],
     parameters: [
       {
@@ -169,7 +179,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/activities',
+    operationId: 'API-ACT-004',
     summary: 'List activities',
+    tags: ['MOD-ACT Activities'],
     security: [{ bearerAuth: [] }],
     parameters: [
       {

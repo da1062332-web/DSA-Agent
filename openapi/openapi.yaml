@@ -7,6 +7,29 @@ servers:
   - url: /
 security:
   - bearerAuth: []
+tags:
+  - name: System
+    description: Liveness probe. No sign-in needed.
+  - name: MOD-AUTH Authentication
+    description: Sign-in, MFA and password reset. Served by Supabase Auth, not by this API.
+  - name: MOD-USR Users
+    description: The signed-in user and the user picker list (MOD-USR, PA-01).
+  - name: MOD-TEN Tenant
+    description: The caller's tenant (MOD-TEN, read only in the MVP).
+  - name: MOD-ORG Organisation profile
+    description: Legal entity of the tenant (SUB-ORG.01). config.manage.
+  - name: MOD-ORG Branches
+    description: Branches and their status (SUB-ORG.02).
+  - name: MOD-ORG Teams
+    description: Teams, managers and effective-dated members (SUB-ORG.03).
+  - name: MOD-ORG Work queues
+    description: Intake, unassigned and team queues with round-robin members (SUB-ORG.05).
+  - name: MOD-ACT Activities
+    description: Activity timeline and interaction tracking (MOD-ACT).
+  - name: MOD-MSG Messaging
+    description: Templates, outbox, and delivery status (MOD-MSG).
+  - name: MOD-NTF Notifications
+    description: Notifications and user preferences (MOD-NTF).
 components:
   securitySchemes:
     bearerAuth:
@@ -373,7 +396,7 @@ components:
                 maxLength: 200
             required:
               - name
-          default: &a16 []
+          default: &a19 []
         providerTemplateId:
           type:
             - string
@@ -397,7 +420,7 @@ components:
           type: string
         direction:
           type: string
-          enum: &a19
+          enum: &a22
             - OUTBOUND
             - INBOUND
         channel:
@@ -487,7 +510,7 @@ components:
       properties:
         subjectType:
           type: string
-          enum: &a17
+          enum: &a20
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -522,7 +545,7 @@ components:
               - type: string
               - type: number
               - type: boolean
-          default: &a18 {}
+          default: &a21 {}
         correlationId:
           type: string
       required:
@@ -780,6 +803,9 @@ components:
 paths:
   /health:
     get:
+      tags:
+        - System
+      operationId: SYS-HEALTH
       summary: Liveness probe (the only unauthenticated path)
       security: []
       responses:
@@ -796,21 +822,505 @@ paths:
                       - ok
                 required:
                   - status
-  /v1/me:
-    get:
-      summary: Get current user profile (API-USR-010)
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
+  /token:
+    post:
+      tags: &a12
+        - MOD-AUTH Authentication
+      servers: &a13
+        - url: http://127.0.0.1:54321/auth/v1
+          description: Local Supabase (npm run db:start)
+        - url: https://<your-project-ref>.supabase.co/auth/v1
+          description: Hosted Supabase project (replace <your-project-ref>)
+      operationId: API-AUTH-001
+      summary: Sign in with email and password
+      description: Used by the login page. Returns a session. Pass grant_type=refresh_token to refresh it (API-AUTH-003).
+      security: []
+      parameters:
+        - &a14
+          name: apikey
+          in: header
+          required: true
+          description: Supabase publishable key (VITE_SUPABASE_PUBLISHABLE_KEY). Never the secret key.
+          schema:
+            type: string
+        - name: grant_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - password
+              - refresh_token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                    password:
+                      type: string
+                      minLength: 12
+                  required:
+                    - email
+                    - password
+                  description: grant_type=password
+                - type: object
+                  properties:
+                    refresh_token:
+                      type: string
+                  required:
+                    - refresh_token
+                  description: grant_type=refresh_token
       responses:
         "200":
-          description: Current user profile with preferences and ETag header
-          headers:
-            ETag:
+          description: Session
+          content:
+            application/json:
               schema:
-                type: string
-              description: Entity lock_version for concurrency control
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: "JWT. Send as Authorization: Bearer <token> on /v1 calls."
+                  token_type:
+                    type: string
+                    enum:
+                      - bearer
+                  expires_in:
+                    type: integer
+                    description: Seconds until access_token expires (3600 by default).
+                  expires_at:
+                    type: integer
+                  refresh_token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Auth user id. Equals app_user.idp_subject.
+                      email:
+                        type: string
+                        format: email
+                      app_metadata:
+                        type: object
+                        properties:
+                          tenant_id:
+                            type: string
+                        required:
+                          - tenant_id
+                    required:
+                      - id
+                      - email
+                      - app_metadata
+                required:
+                  - access_token
+                  - token_type
+                  - expires_in
+                  - expires_at
+                  - refresh_token
+                  - user
+        "400":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /logout:
+    post:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-004
+      summary: Sign out
+      description: scope=local signs out this device; others signs out every other device; global signs out everywhere.
+      parameters:
+        - *a14
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum:
+              - local
+              - others
+              - global
+      responses:
+        "204":
+          description: Signed out
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /recover:
+    post:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-007
+      summary: Request a password reset email
+      description: Used by /forgot-password. Always returns 200, so the response never reveals whether the email exists.
+      security: []
+      parameters:
+        - *a14
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        "200":
+          description: Email sent if the account exists
+  /user:
+    put:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-008
+      summary: Set a new password
+      description: Used by /reset-password. Authorise with the access token from the reset link.
+      parameters:
+        - *a14
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  minLength: 12
+              required:
+                - password
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                required:
+                  - id
+                  - email
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /factors:
+    post:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-010
+      summary: Enrol an authenticator app (TOTP)
+      description: Used by /mfa on first setup. Show the QR code, then verify with a code (API-AUTH-002).
+      parameters:
+        - *a14
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                factor_type:
+                  type: string
+                  enum:
+                    - totp
+                friendly_name:
+                  type: string
+                  maxLength: 64
+              required:
+                - factor_type
+      responses:
+        "200":
+          description: Factor created, unverified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  friendly_name:
+                    type:
+                      - string
+                      - "null"
+                  factor_type:
+                    type: string
+                    enum:
+                      - totp
+                  status:
+                    type: string
+                    enum:
+                      - unverified
+                      - verified
+                  totp:
+                    type: object
+                    properties:
+                      qr_code:
+                        type: string
+                        description: SVG QR code to scan with Google or Microsoft Authenticator.
+                      secret:
+                        type: string
+                        description: Manual entry key if the QR code cannot be scanned.
+                      uri:
+                        type: string
+                    required:
+                      - qr_code
+                      - secret
+                      - uri
+                required:
+                  - id
+                  - friendly_name
+                  - factor_type
+                  - status
+                  - totp
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /factors/{factor_id}/challenge:
+    post:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-009a
+      summary: Start an MFA challenge
+      description: First half of step-up (API-AUTH-009) and of sign-in with MFA.
+      parameters:
+        - *a14
+        - name: factor_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Challenge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  expires_at:
+                    type: integer
+                required:
+                  - id
+                  - expires_at
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /factors/{factor_id}/verify:
+    post:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-002
+      summary: Verify a 6-digit authenticator code
+      description: Completes sign-in with MFA, verifies a new authenticator (enrolment), or completes step-up (API-AUTH-009). A successful step-up sets the aal2 session that the API checks for 900 s.
+      parameters:
+        - *a14
+        - name: factor_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                challenge_id:
+                  type: string
+                code:
+                  type: string
+                  pattern: ^\d{6}$
+              required:
+                - challenge_id
+                - code
+      responses:
+        "200":
+          description: Session upgraded to aal2
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: "JWT. Send as Authorization: Bearer <token> on /v1 calls."
+                  token_type:
+                    type: string
+                    enum:
+                      - bearer
+                  expires_in:
+                    type: integer
+                    description: Seconds until access_token expires (3600 by default).
+                  expires_at:
+                    type: integer
+                  refresh_token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Auth user id. Equals app_user.idp_subject.
+                      email:
+                        type: string
+                        format: email
+                      app_metadata:
+                        type: object
+                        properties:
+                          tenant_id:
+                            type: string
+                        required:
+                          - tenant_id
+                    required:
+                      - id
+                      - email
+                      - app_metadata
+                required:
+                  - access_token
+                  - token_type
+                  - expires_in
+                  - expires_at
+                  - refresh_token
+                  - user
+        "400":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /factors/{factor_id}:
+    delete:
+      tags: *a12
+      servers: *a13
+      operationId: API-AUTH-011
+      summary: Remove an authenticator app
+      description: Used by the security page. Needs a session at aal2. Users whose role requires MFA keep at least one.
+      parameters:
+        - *a14
+        - name: factor_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                required:
+                  - id
+        "401":
+          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  error_code:
+                    type: string
+                  msg:
+                    type: string
+  /v1/me:
+    get:
+      tags:
+        - MOD-USR Users
+      operationId: API-USR-010
+      summary: "The signed-in user: profile, grants, MFA state"
+      responses:
+        "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -821,108 +1331,90 @@ paths:
                     pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
                   tenantId:
                     type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   email:
                     type: string
-                    format: email
                   displayName:
                     type: string
-                  userType:
-                    type: string
-                  status:
-                    type: string
-                  availability:
-                    type: string
                   primaryBranchId:
-                    type: string
-                  lockVersion:
-                    type: integer
-                    minimum: 0
-                  notificationPreferences:
-                    type: object
-                    properties:
-                      channels:
-                        type: object
-                        properties:
-                          inApp:
-                            type: boolean
-                            default: true
-                          email:
-                            type: boolean
-                            default: false
-                          sms:
-                            type: boolean
-                            default: false
-                          whatsapp:
-                            type: boolean
-                            default: false
-                        default: *a9
-                      digestFrequency:
-                        type: string
-                        enum: *a10
-                        default: IMMEDIATE
-                      mutedCategories:
-                        type: array
-                        items:
+                    type:
+                      - string
+                      - "null"
+                  queueIds:
+                    type: array
+                    items:
+                      type: string
+                  grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
                           type: string
-                          enum: *a8
-                        default: *a11
+                          enum:
+                            - lead.read
+                            - lead.create
+                            - lead.update
+                            - lead.qualify
+                            - customer.read
+                            - consent.record
+                            - activity.create
+                            - activity.update
+                            - task.read
+                            - task.create
+                            - task.update
+                            - application.read
+                            - application.create
+                            - application.update
+                            - application.cancel
+                            - application.review
+                            - document.review
+                            - lender_case.submit
+                            - lender_case.update_status
+                            - rule.author
+                            - rule.simulate
+                            - rule.approve
+                            - rule.publish
+                            - rule.suspend
+                            - audit.read
+                            - config.manage
+                            - user.manage
+                            - message.send
+                        scope:
+                          type: string
+                          enum:
+                            - OWN
+                            - TEAM
+                            - BRANCH
+                            - TENANT
+                        branchIds:
+                          type: array
+                          items:
+                            type: string
+                      required:
+                        - code
+                        - scope
+                        - branchIds
+                  mfaVerifiedAt:
+                    type:
+                      - string
+                      - "null"
                 required:
                   - id
                   - tenantId
                   - email
                   - displayName
-                  - userType
-                  - status
-                  - availability
                   - primaryBranchId
-                  - lockVersion
-                  - notificationPreferences
+                  - queueIds
+                  - grants
+                  - mfaVerifiedAt
         "401":
-          description: Unauthenticated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: object
-                    properties:
-                      code:
-                        type: string
-                      message:
-                        type: string
-                      httpStatus:
-                        type: integer
-                      correlationId:
-                        type: string
-                      details:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            field:
-                              type: string
-                            issue:
-                              type: string
-                            meta:
-                              type: object
-                              additionalProperties: {}
-                          required:
-                            - issue
-                      retryable:
-                        type: boolean
-                    required:
-                      - code
-                      - message
-                      - httpStatus
-                      - correlationId
-                      - retryable
-                required:
-                  - error
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
+      operationId: API-USR-009
       summary: Update user profile notification preferences with concurrency control (API-USR-009)
       tags:
-        - Users
+        - MOD-USR Users
       security:
         - bearerAuth: []
       parameters:
@@ -1198,6 +1690,8 @@ paths:
                   - error
   /v1/users:
     get:
+      tags:
+        - MOD-USR Users
       operationId: API-USR-LIST
       summary: Users of the tenant (no contact data)
       parameters:
@@ -1283,6 +1777,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/tenant:
     get:
+      tags:
+        - MOD-TEN Tenant
       operationId: API-TEN-SELF
       summary: The caller's tenant
       responses:
@@ -1323,6 +1819,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/organisations:
     get:
+      tags:
+        - MOD-ORG Organisation profile
       operationId: API-ORG-001
       summary: Organisations of the tenant (config.manage)
       responses:
@@ -1344,7 +1842,7 @@ paths:
                           type: string
                         constitution:
                           type: string
-                          enum: &a12
+                          enum: &a15
                             - PROPRIETORSHIP
                             - PARTNERSHIP
                             - LLP
@@ -1387,6 +1885,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/organisations/{id}:
     get:
+      tags:
+        - MOD-ORG Organisation profile
       operationId: API-ORG-001-GET
       summary: One organisation (config.manage)
       responses:
@@ -1403,7 +1903,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a12
+                    enum: *a15
                   status:
                     type: string
                   version:
@@ -1423,6 +1923,8 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
+      tags:
+        - MOD-ORG Organisation profile
       operationId: API-ORG-002
       summary: Update the organisation profile (config.manage)
       parameters:
@@ -1439,7 +1941,7 @@ paths:
                   maxLength: 200
                 constitution:
                   type: string
-                  enum: *a12
+                  enum: *a15
               additionalProperties: false
       responses:
         "200":
@@ -1455,7 +1957,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a12
+                    enum: *a15
                   status:
                     type: string
                   version:
@@ -1482,6 +1984,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/branches:
     post:
+      tags:
+        - MOD-ORG Branches
       operationId: API-ORG-003
       summary: Create a branch (config.manage)
       parameters:
@@ -1559,6 +2063,8 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
+      tags:
+        - MOD-ORG Branches
       operationId: API-ORG-004
       summary: List branches
       parameters:
@@ -1577,7 +2083,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a13
+            enum: &a16
               - ACTIVE
               - INACTIVE
           required: false
@@ -1654,6 +2160,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/branches/{id}:
     get:
+      tags:
+        - MOD-ORG Branches
       operationId: API-ORG-004-GET
       summary: One branch
       responses:
@@ -1700,6 +2208,8 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
+      tags:
+        - MOD-ORG Branches
       operationId: API-ORG-005
       summary: Update a branch (config.manage)
       parameters:
@@ -1774,6 +2284,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/branches/{id}/deactivation:
     post:
+      tags:
+        - MOD-ORG Branches
       operationId: API-ORG-006
       summary: Deactivate a branch and its queues (config.manage)
       parameters:
@@ -1829,6 +2341,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/teams:
     post:
+      tags:
+        - MOD-ORG Teams
       operationId: API-ORG-007
       summary: Create a team (config.manage or user.manage; branch managers within their branch)
       parameters:
@@ -1917,6 +2431,8 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
+      tags:
+        - MOD-ORG Teams
       operationId: API-ORG-007-LIST
       summary: List teams
       parameters:
@@ -1935,7 +2451,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a13
+            enum: *a16
           required: false
           name: status
           in: query
@@ -2009,6 +2525,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/teams/{id}:
     get:
+      tags:
+        - MOD-ORG Teams
       operationId: API-ORG-007-GET
       summary: One team with its current members
       responses:
@@ -2070,6 +2588,8 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
+      tags:
+        - MOD-ORG Teams
       operationId: API-ORG-008
       summary: Update a team (config.manage or user.manage; branch managers within their branch)
       parameters:
@@ -2164,6 +2684,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/teams/{id}/members:
     put:
+      tags:
+        - MOD-ORG Teams
       operationId: API-ORG-009
       summary: Replace the team members (user.manage; branch managers within their branch)
       parameters:
@@ -2248,6 +2770,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/work-queues:
     post:
+      tags:
+        - MOD-ORG Work queues
       operationId: API-ORG-011
       summary: Create a work queue (config.manage)
       parameters:
@@ -2267,7 +2791,7 @@ paths:
                   maxLength: 120
                 kind:
                   type: string
-                  enum: &a14
+                  enum: &a17
                     - INTAKE
                     - UNASSIGNED
                     - TEAM
@@ -2285,7 +2809,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a15
+                    enum: &a18
                       - LEAD
                       - APPLICATION
                       - TASK
@@ -2312,7 +2836,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a14
+                    enum: *a17
                   branchId:
                     type:
                       - string
@@ -2325,7 +2849,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a15
+                      enum: *a18
                   active:
                     type: boolean
                   memberCount:
@@ -2378,6 +2902,8 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
+      tags:
+        - MOD-ORG Work queues
       operationId: API-ORG-012
       summary: List work queues
       parameters:
@@ -2396,7 +2922,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a13
+            enum: *a16
           required: false
           name: status
           in: query
@@ -2427,7 +2953,7 @@ paths:
                           type: string
                         kind:
                           type: string
-                          enum: *a14
+                          enum: *a17
                         branchId:
                           type:
                             - string
@@ -2440,7 +2966,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a15
+                            enum: *a18
                         active:
                           type: boolean
                         memberCount:
@@ -2483,6 +3009,8 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/work-queues/{id}:
     get:
+      tags:
+        - MOD-ORG Work queues
       operationId: API-ORG-012-GET
       summary: One work queue with its members
       responses:
@@ -2501,7 +3029,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a14
+                    enum: *a17
                   branchId:
                     type:
                       - string
@@ -2514,7 +3042,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a15
+                      enum: *a18
                   active:
                     type: boolean
                   memberCount:
@@ -2563,6 +3091,8 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
+      tags:
+        - MOD-ORG Work queues
       operationId: API-ORG-013
       summary: Update a work queue (config.manage)
       parameters:
@@ -2583,7 +3113,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a15
+                    enum: *a18
                   minItems: 1
               additionalProperties: false
       responses:
@@ -2602,7 +3132,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a14
+                    enum: *a17
                   branchId:
                     type:
                       - string
@@ -2615,7 +3145,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a15
+                      enum: *a18
                   active:
                     type: boolean
                   memberCount:
@@ -2671,6 +3201,8 @@ paths:
           description: VALIDATION_ERROR
   /v1/work-queues/{id}/members:
     put:
+      tags:
+        - MOD-ORG Work queues
       operationId: API-ORG-014
       summary: Replace the queue members (user.manage; branch managers within their branch)
       parameters:
@@ -2717,7 +3249,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a14
+                    enum: *a17
                   branchId:
                     type:
                       - string
@@ -2730,7 +3262,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a15
+                      enum: *a18
                   active:
                     type: boolean
                   memberCount:
@@ -2786,7 +3318,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/activities:
     post:
+      operationId: API-ACT-001
       summary: Record an interaction (API-ACT-001)
+      tags:
+        - MOD-ACT Activities
       description: Records an interaction (call, meeting, visit, note) against a lead, customer, or loan application.
       security:
         - bearerAuth: []
@@ -3147,7 +3682,10 @@ paths:
                 required:
                   - error
     get:
+      operationId: API-ACT-004
       summary: List activities
+      tags:
+        - MOD-ACT Activities
       security:
         - bearerAuth: []
       parameters:
@@ -3282,7 +3820,10 @@ paths:
                   - meta
   /v1/activities/{id}:
     patch:
+      operationId: API-ACT-002
       summary: Update or hide an activity (API-ACT-002)
+      tags:
+        - MOD-ACT Activities
       description: Edits an activity outcome, duration, note, or soft-hides it with optimistic concurrency protection.
       security:
         - bearerAuth: []
@@ -3621,7 +4162,10 @@ paths:
                 required:
                   - error
     get:
+      operationId: API-ACT-003
       summary: Get an activity by ID
+      tags:
+        - MOD-ACT Activities
       security:
         - bearerAuth: []
       parameters:
@@ -3758,9 +4302,10 @@ paths:
                   - error
   /v1/message-templates:
     post:
+      operationId: API-MSG-001
       summary: Create message template (API-MSG-001)
       tags:
-        - Messaging
+        - MOD-MSG Messaging
       security:
         - bearerAuth: []
       parameters:
@@ -3813,7 +4358,7 @@ paths:
                         maxLength: 200
                     required:
                       - name
-                  default: *a16
+                  default: *a19
                 providerTemplateId:
                   type:
                     - string
@@ -4151,9 +4696,10 @@ paths:
                 required:
                   - error
     get:
+      operationId: API-MSG-002
       summary: List message templates (API-MSG-002)
       tags:
-        - Messaging
+        - MOD-MSG Messaging
       security:
         - bearerAuth: []
       parameters:
@@ -4372,9 +4918,10 @@ paths:
                   - error
   /v1/messages:
     post:
+      operationId: API-MSG-003
       summary: Send outbound message (API-MSG-003)
       tags:
-        - Messaging
+        - MOD-MSG Messaging
       security:
         - bearerAuth: []
       parameters:
@@ -4392,7 +4939,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a17
+                  enum: *a20
                 subjectId:
                   type: string
                   minLength: 1
@@ -4424,7 +4971,7 @@ paths:
                       - type: string
                       - type: number
                       - type: boolean
-                  default: *a18
+                  default: *a21
                 correlationId:
                   type: string
               required:
@@ -4448,7 +4995,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a19
+                    enum: *a22
                   channel:
                     type: string
                     enum: *a4
@@ -4539,7 +5086,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a19
+                    enum: *a22
                   channel:
                     type: string
                     enum: *a4
@@ -4743,9 +5290,10 @@ paths:
                 required:
                   - error
     get:
+      operationId: API-MSG-004
       summary: List messages for subject (API-MSG-004)
       tags:
-        - Messaging
+        - MOD-MSG Messaging
       security:
         - bearerAuth: []
       parameters:
@@ -4809,7 +5357,7 @@ paths:
                           type: string
                         direction:
                           type: string
-                          enum: *a19
+                          enum: *a22
                         channel:
                           type: string
                           enum: *a4
@@ -4987,9 +5535,10 @@ paths:
                   - error
   /v1/notifications:
     get:
+      operationId: API-NTF-001
       summary: List user notifications (API-NTF-001)
       tags:
-        - Notifications
+        - MOD-NTF Notifications
       security:
         - bearerAuth: []
       parameters:
@@ -5172,9 +5721,10 @@ paths:
                   - error
   /v1/notifications/read:
     post:
+      operationId: API-NTF-002
       summary: Mark notifications as read (API-NTF-002)
       tags:
-        - Notifications
+        - MOD-NTF Notifications
       security:
         - bearerAuth: []
       requestBody:
@@ -5294,9 +5844,10 @@ paths:
                   - error
   /v1/notifications/stream:
     get:
+      operationId: API-NTF-003
       summary: Server-Sent Events stream for live notifications (API-NTF-003)
       tags:
-        - Notifications
+        - MOD-NTF Notifications
       security:
         - bearerAuth: []
       responses:
