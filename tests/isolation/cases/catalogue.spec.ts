@@ -1,5 +1,5 @@
 // TEST-SEC-001 cases for origination/catalogue (owner: Dev 3) — MOD-LND Lenders (Module 14).
-// Tenant B holds every admin permission and still must not see or change tenant A's lenders or empanelments.
+// Tenant B holds every admin permission and still must not see or change tenant A's lenders, empanelments or contacts.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ALL_ADMIN, startIsolationEnv, type IsolationEnv } from '../harness';
@@ -73,5 +73,45 @@ describe('TEST-SEC-001 catalogue (lenders): tenants never cross', () => {
       .set('If-Match', emp.headers.etag)
       .send({ status: 'SUSPENDED' });
     expect(patchFromB.status).toBe(404);
+  });
+
+  it('API-LND-006 API-LND-006-GET: tenant B cannot read or replace tenant A lender contacts', async () => {
+    const a = env.appAs(env.A, ALL_ADMIN);
+    const b = env.appAs(env.B, ALL_ADMIN);
+    const lender = await request(a)
+      .post('/v1/lenders')
+      .set('Idempotency-Key', 'iso-lnd-con-lender')
+      .send({ name: 'Contact Owner Lender', lenderType: 'NBFC' });
+    const id = lender.body.id as string;
+    await request(a)
+      .put(`/v1/lenders/${id}/contacts`)
+      .set('If-Match', lender.headers.etag)
+      .send({ contacts: [{ name: 'A Person', escalationLevel: 1 }] });
+
+    expect((await request(b).get(`/v1/lenders/${id}/contacts`)).status).toBe(404);
+    const replaced = await request(b)
+      .put(`/v1/lenders/${id}/contacts`)
+      .set('If-Match', '"1"')
+      .send({ contacts: [] });
+    expect(replaced.status).toBe(404);
+    const still = await request(a).get(`/v1/lenders/${id}/contacts`);
+    expect(still.body.data.map((c: { name: string }) => c.name)).toEqual(['A Person']);
+  });
+
+  it('API-LND-004-LIST: tenant B cannot list tenant A empanelments', async () => {
+    const a = env.appAs(env.A, ALL_ADMIN);
+    const b = env.appAs(env.B, ALL_ADMIN);
+    const lender = await request(a)
+      .post('/v1/lenders')
+      .set('Idempotency-Key', 'iso-lnd-emp-list-lender')
+      .send({ name: 'Listed A Lender', lenderType: 'NBFC' });
+    await request(a)
+      .post(`/v1/lenders/${lender.body.id}/empanelments`)
+      .set('Idempotency-Key', 'iso-lnd-emp-list-own')
+      .send({ dsaCode: 'LIST-1', validFrom: '2026-01-01', permittedCategories: ['PL'] });
+
+    expect((await request(b).get(`/v1/lenders/${lender.body.id}/empanelments`)).status).toBe(404);
+    const own = await request(a).get(`/v1/lenders/${lender.body.id}/empanelments`);
+    expect(own.body.data).toHaveLength(1);
   });
 });

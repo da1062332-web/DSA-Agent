@@ -28,6 +28,7 @@ export const ID_PREFIXES = [
   'emp',
   'prd',
   'prv',
+  'lct',
   'cust',
   'ccp',
   'cnst',

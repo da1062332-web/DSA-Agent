@@ -26,6 +26,7 @@ export const LenderCreate = z
     name: safeText(120),
     lenderType: LenderType,
     regulatorRef: z.string().trim().min(2).max(40).nullable().optional(),
+    globalLenderRef: z.string().trim().min(2).max(60).nullable().optional(),
   })
   .strict();
 
@@ -34,6 +35,7 @@ export const LenderPatch = z
     name: safeText(120).optional(),
     lenderType: LenderType.optional(),
     regulatorRef: z.string().trim().min(2).max(40).nullable().optional(),
+    globalLenderRef: z.string().trim().min(2).max(60).nullable().optional(),
     status: LenderStatus.optional(),
     statusReason: safeText(200).nullable().optional(),
   })
@@ -49,6 +51,7 @@ export const Lender = z.object({
   name: z.string(),
   lenderType: LenderType,
   regulatorRef: z.string().nullable(),
+  globalLenderRef: z.string().nullable(),
   status: LenderStatus,
   statusReason: z.string().nullable(),
   version: z.number().int(),
@@ -67,6 +70,8 @@ export const EmpanelmentCreate = z
     validFrom: IsoDate,
     validTo: IsoDate.nullable().optional(),
     permittedCategories: z.array(ProductCategory).min(1).max(9),
+    permittedGeos: z.array(z.string().trim().min(2).max(60)).max(200).optional(),
+    agreementDocumentId: z.string().trim().min(2).max(64).nullable().optional(),
   })
   .strict()
   .refine((e) => !e.validTo || e.validTo >= e.validFrom, {
@@ -78,6 +83,8 @@ export const EmpanelmentPatch = z
   .object({
     validTo: IsoDate.nullable().optional(),
     permittedCategories: z.array(ProductCategory).min(1).max(9).optional(),
+    permittedGeos: z.array(z.string().trim().min(2).max(60)).max(200).optional(),
+    agreementDocumentId: z.string().trim().min(2).max(64).nullable().optional(),
     status: EmpanelmentStatus.optional(),
   })
   .strict()
@@ -90,6 +97,8 @@ export const Empanelment = z.object({
   validFrom: z.string(),
   validTo: z.string().nullable(),
   permittedCategories: z.array(ProductCategory),
+  permittedGeos: z.array(z.string()),
+  agreementDocumentId: z.string().nullable(),
   status: EmpanelmentStatus,
   version: z.number().int(),
   createdAt: z.string(),
@@ -104,3 +113,35 @@ export const ListQuery = z.object({
   type: LenderType.optional(),
   q: z.string().trim().max(100).optional(),
 });
+
+// ---- Lender contacts (API-LND-006, SUB-LND.03, ENT-042). Replacing the list keeps history (removed_at). ----
+export const ContactInput = z
+  .object({
+    name: safeText(120),
+    role: z.string().trim().min(2).max(60).nullable().optional(),
+    email: z.string().trim().email().max(120).nullable().optional(),
+    phone: z
+      .string()
+      .trim()
+      .regex(/^\+?[0-9 ]{8,15}$/, 'digits, optional leading +')
+      .nullable()
+      .optional(),
+    channel: z.string().trim().min(2).max(60).nullable().optional(),
+    escalationLevel: z.number().int().min(1).max(3),
+  })
+  .strict();
+
+export const ContactsPut = z.object({ contacts: z.array(ContactInput).max(50) }).strict();
+
+export const LenderContact = z.object({
+  id: IdSchema('lct'),
+  lenderId: z.string(),
+  name: z.string(),
+  role: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  channel: z.string().nullable(),
+  escalationLevel: z.number().int(),
+  since: z.string(),
+});
+export type LenderContact = z.infer<typeof LenderContact>;

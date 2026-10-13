@@ -2,6 +2,8 @@
 import type { RouteObject } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
 import { BranchesPage } from './BranchesPage';
+import { LenderDetailPage } from './LenderDetailPage';
+import { LendersPage } from './LendersPage';
 import { OrganisationPage } from './OrganisationPage';
 import { QueueDetailPage, QueuesPage } from './QueuesPage';
 import { TeamDetailPage, TeamsPage } from './TeamsPage';
@@ -13,6 +15,8 @@ export const routes: RouteObject[] = [
     children: [
       { path: '/admin/organisation', element: <OrganisationPage /> },
       { path: '/admin/branches', element: <BranchesPage /> },
+      { path: '/admin/lenders', element: <LendersPage /> },
+      { path: '/admin/lenders/:id', element: <LenderDetailPage /> },
       { path: '/admin/teams', element: <TeamsPage /> },
       { path: '/admin/teams/:id', element: <TeamDetailPage /> },
       { path: '/admin/queues', element: <QueuesPage /> },

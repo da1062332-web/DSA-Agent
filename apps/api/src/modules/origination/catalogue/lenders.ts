@@ -17,6 +17,7 @@ export const toLender = (r: Row): Lender => ({
   name: String(r.name),
   lenderType: r.lender_type as Lender['lenderType'],
   regulatorRef: (r.regulator_ref as string | null) ?? null,
+  globalLenderRef: (r.global_lender_ref as string | null) ?? null,
   status: r.status as Lender['status'],
   statusReason: (r.status_reason as string | null) ?? null,
   version: Number(r.lock_version),
@@ -32,6 +33,8 @@ export const toEmpanelment = (r: Row): Empanelment => ({
   validFrom: String(r.valid_from),
   validTo: (r.valid_to as string | null) ?? null,
   permittedCategories: r.permitted_categories as Empanelment['permittedCategories'],
+  permittedGeos: (r.permitted_geos as string[] | null) ?? [],
+  agreementDocumentId: (r.agreement_document_id as string | null) ?? null,
   status: r.status as Empanelment['status'],
   version: Number(r.lock_version),
   createdAt: iso(r.created_at),
@@ -102,9 +105,9 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
       withIdempotency(tx, ctx, { key, method: 'POST', path: '/v1/lenders', body: input }, async () => {
         const id = deps.ids.next('lnd');
         const r = await sql<Row>`
-          insert into lender (id, tenant_id, name, lender_type, regulator_ref, created_by, updated_by)
+          insert into lender (id, tenant_id, name, lender_type, regulator_ref, global_lender_ref, created_by, updated_by)
           values (${id}, ${ctx.principal.tenantId}, ${input.name}, ${input.lenderType}, ${input.regulatorRef ?? null},
-                  ${ctx.principal.id}, ${ctx.principal.id})
+                  ${input.globalLenderRef ?? null}, ${ctx.principal.id}, ${ctx.principal.id})
           returning *`.execute(tx);
         const row = r.rows[0]!;
         await deps.audit.record(tx, ctx, {
@@ -132,6 +135,7 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
         name: input.name,
         lender_type: input.lenderType,
         regulator_ref: input.regulatorRef,
+        global_lender_ref: input.globalLenderRef,
         status: input.status,
         status_reason: input.status === 'ACTIVE' ? null : input.statusReason,
       });
@@ -171,10 +175,11 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
           const id = deps.ids.next('emp');
           await sql`
             insert into empanelment (id, tenant_id, organisation_id, lender_id, dsa_code, valid_range, permitted_categories,
-                                     created_by, updated_by)
+                                     permitted_geos, agreement_document_id, created_by, updated_by)
             values (${id}, ${ctx.principal.tenantId}, ${organisationId}, ${lender.id}, ${input.dsaCode},
                     daterange(${input.validFrom}::date, ${input.validTo ?? null}::date, '[]'),
-                    ${input.permittedCategories}::text[], ${ctx.principal.id}, ${ctx.principal.id})`.execute(
+                    ${input.permittedCategories}::text[], ${JSON.stringify(input.permittedGeos ?? [])}::jsonb,
+                    ${input.agreementDocumentId ?? null}, ${ctx.principal.id}, ${ctx.principal.id})`.execute(
             tx,
           );
           const r = await sql<Row>`select * from ${EMPANELMENT_VIEW} where x.id = ${id}`.execute(tx);
@@ -196,6 +201,21 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
       ),
     );
     sendResource(res, result.status, result.body, result.replayed);
+  });
+
+  // Read-only list of a lender's empanelments (any signed-in staff). Not in the spec's endpoint table; added for the
+  // lender screen and documented in the OpenAPI registration.
+  router.get('/lenders/:id/empanelments', async (req, res) => {
+    const ctx = requireCtx(req);
+    const rows = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const lender = await sql<{ id: string }>`select id from lender where id = ${req.params.id}`.execute(tx);
+      if (!lender.rows[0]) throw AppError.of('NOT_FOUND', 'Lender not found.');
+      const r = await sql<Row>`
+        select x.* from ${EMPANELMENT_VIEW} where x.lender_id = ${req.params.id}
+         order by x.dsa_code, x.id`.execute(tx);
+      return r.rows;
+    });
+    res.json({ data: rows.map(toEmpanelment), meta: { nextCursor: null, limit: rows.length } });
   });
 
   router.patch('/empanelments/:id', async (req, res) => {
@@ -225,6 +245,8 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
         permitted_categories: input.permittedCategories
           ? sql`${input.permittedCategories}::text[]`
           : undefined,
+        permitted_geos: input.permittedGeos ? sql`${JSON.stringify(input.permittedGeos)}::jsonb` : undefined,
+        agreement_document_id: input.agreementDocumentId,
         status: input.status,
       });
       await deps.audit.record(tx, ctx, {
