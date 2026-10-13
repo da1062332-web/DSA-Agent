@@ -9,6 +9,10 @@ import {
   UpdateTaskInputSchema,
 } from './types';
 
+export const tags = [
+  { name: 'MOD-TASK Tasks', description: 'Task lifecycle, queues, assignment, and SLA tracking (MOD-TASK).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   const TaskResourceSchema = z.object({
     id: z.string(),
@@ -42,8 +46,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/tasks',
+    operationId: 'API-TASK-001',
     summary: 'API-TASK-001: Create Task',
-    tags: ['Tasks'],
+    tags: ['MOD-TASK Tasks'],
     security: [{ bearerAuth: [] }],
     request: {
       headers: z.object({
@@ -73,8 +78,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/tasks',
+    operationId: 'API-TASK-002',
     summary: 'API-TASK-002: List Tasks',
-    tags: ['Tasks'],
+    tags: ['MOD-TASK Tasks'],
     security: [{ bearerAuth: [] }],
     request: {
       query: TaskListQuerySchema,
@@ -101,8 +107,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/tasks/{id}',
-    summary: 'Get Task Detail',
-    tags: ['Tasks'],
+    operationId: 'API-TASK-005',
+    summary: 'Get Task Detail (API-TASK-005)',
+    tags: ['MOD-TASK Tasks'],
     security: [{ bearerAuth: [] }],
     request: {
       params: z.object({ id: z.string() }),
@@ -123,8 +130,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/tasks/{id}',
+    operationId: 'API-TASK-003',
     summary: 'API-TASK-003: Update Task',
-    tags: ['Tasks'],
+    tags: ['MOD-TASK Tasks'],
     security: [{ bearerAuth: [] }],
     request: {
       params: z.object({ id: z.string() }),
@@ -155,8 +163,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/tasks/{id}/completion',
+    operationId: 'API-TASK-004',
     summary: 'API-TASK-004: Complete Task',
-    tags: ['Tasks'],
+    tags: ['MOD-TASK Tasks'],
     security: [{ bearerAuth: [] }],
     request: {
       params: z.object({ id: z.string() }),
