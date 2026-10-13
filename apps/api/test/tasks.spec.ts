@@ -20,6 +20,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
   const tenantA = 'ten_01JTESTTENANTA0000000000000';
   const tenantB = 'ten_01JTESTTENANTB0000000000000';
   const branchA = 'br_01JTESTBRANCH00000000000001';
+  const branchOther = 'br_01JTESTBRANCH00000000000002';
 
   const principalA = testPrincipal({
     tenantId: tenantA,
@@ -52,6 +53,23 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
     ],
   });
 
+  const otherBranchUser = testPrincipal({
+    tenantId: tenantA,
+    id: 'usr_other_branch_user',
+    primaryBranchId: branchOther,
+    grants: [
+      { code: 'task.read', scope: 'BRANCH', branchIds: [branchOther] },
+      { code: 'task.create', scope: 'BRANCH', branchIds: [branchOther] },
+      { code: 'task.update', scope: 'BRANCH', branchIds: [branchOther] },
+    ],
+  });
+
+  const noPermsUser = testPrincipal({
+    tenantId: tenantA,
+    id: 'usr_no_perms',
+    grants: [],
+  });
+
   beforeEach(() => {
     repository = new InMemoryTaskRepository();
     decisionPort = new FakeDecisionPort();
@@ -59,6 +77,13 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
 
     userDirectoryPort.users.set('usr_active', {
       userId: 'usr_active',
+      status: 'ACTIVE',
+      availability: 'AVAILABLE',
+      primaryBranchId: branchA,
+      branchIds: [branchA],
+    });
+    userDirectoryPort.users.set('usr_agent_02', {
+      userId: 'usr_agent_02',
       status: 'ACTIVE',
       availability: 'AVAILABLE',
       primaryBranchId: branchA,
@@ -77,6 +102,27 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       branchId: branchA,
       active: true,
       recordTypes: ['LEAD', 'TASK'],
+    });
+    userDirectoryPort.queues.set('queue_ops_02', {
+      queueId: 'queue_ops_02',
+      kind: 'VERIFICATION',
+      branchId: branchA,
+      active: true,
+      recordTypes: ['TASK'],
+    });
+    userDirectoryPort.queues.set('queue_inactive', {
+      queueId: 'queue_inactive',
+      kind: 'INTAKE',
+      branchId: branchA,
+      active: false,
+      recordTypes: ['TASK'],
+    });
+    userDirectoryPort.queues.set('queue_no_tasks', {
+      queueId: 'queue_no_tasks',
+      kind: 'INTAKE',
+      branchId: branchA,
+      active: true,
+      recordTypes: ['LEAD'],
     });
   });
 
@@ -127,6 +173,46 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(repository.auditEvents[0]?.action).toBe('task.created');
     });
 
+    it('creates a task with explicit dueAt overriding SLA class calculation', async () => {
+      const app = getApp();
+      const explicitDate = '2026-11-01T15:30:00.000Z';
+      const res = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_explicit_due')
+        .send({
+          ...validTaskPayload,
+          dueAt: explicitDate,
+          slaClass: undefined,
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.dueAt).toBe(explicitDate);
+    });
+
+    it('calculates expected SLA targets across all supported SLA classes', async () => {
+      const app = getApp();
+      const slaClasses = [
+        'CUSTOMER_FOLLOW_UP',
+        'LENDER_QUERY',
+        'DOCUMENT_REVIEW',
+        'INTERNAL_REVIEW',
+      ] as const;
+
+      for (const sla of slaClasses) {
+        const res = await request(app)
+          .post('/v1/tasks')
+          .set('Idempotency-Key', `idem_task_sla_${sla}`)
+          .send({
+            ...validTaskPayload,
+            slaClass: sla,
+          });
+
+        expect(res.status).toBe(201);
+        expect(res.body.slaClass).toBe(sla);
+        expect(new Date(res.body.dueAt).getTime()).toBeGreaterThan(Date.now());
+      }
+    });
+
     it('creates a task assigned to an active queue', async () => {
       const app = getApp();
       const res = await request(app)
@@ -143,7 +229,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(res.body.ownerUserId).toBeNull();
     });
 
-    it('rejects task creation with both ownerUserId and ownerQueueId', async () => {
+    it('rejects task creation with both ownerUserId and ownerQueueId (XOR violation)', async () => {
       const app = getApp();
       const res = await request(app)
         .post('/v1/tasks')
@@ -152,6 +238,21 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
           ...validTaskPayload,
           ownerUserId: 'usr_active',
           ownerQueueId: 'queue_ops_01',
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('rejects task creation with neither ownerUserId nor ownerQueueId', async () => {
+      const app = getApp();
+      const res = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_no_owner')
+        .send({
+          ...validTaskPayload,
+          ownerUserId: undefined,
+          ownerQueueId: undefined,
         });
 
       expect(res.status).toBe(422);
@@ -170,6 +271,69 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
 
       expect(res.status).toBe(422);
       expect(res.body.error.message).toMatch(/not active/);
+    });
+
+    it('rejects task creation when queue is inactive or does not accept tasks', async () => {
+      const app = getApp();
+
+      // 1. Inactive queue
+      const inactRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_inact_q')
+        .send({
+          ...validTaskPayload,
+          ownerUserId: undefined,
+          ownerQueueId: 'queue_inactive',
+        });
+      expect(inactRes.status).toBe(422);
+      expect(inactRes.body.error.message).toMatch(/inactive or does not accept tasks/);
+
+      // 2. Queue that doesn't accept tasks
+      const noTaskRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_notask_q')
+        .send({
+          ...validTaskPayload,
+          ownerUserId: undefined,
+          ownerQueueId: 'queue_no_tasks',
+        });
+      expect(noTaskRes.status).toBe(422);
+      expect(noTaskRes.body.error.message).toMatch(/inactive or does not accept tasks/);
+    });
+
+    it('rejects task creation when user lacks task.create permission', async () => {
+      const app = getApp(noPermsUser);
+      const res = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_no_perm')
+        .send(validTaskPayload);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('rejects task creation with BRANCH scope for a different branch', async () => {
+      const app = getApp(otherBranchUser);
+      const res = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_task_wrong_branch')
+        .send({
+          ...validTaskPayload,
+          branchId: branchA, // User only has access to branchOther
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('rejects task creation without Idempotency-Key header', async () => {
+      const app = getApp();
+      const res = await request(app)
+        .post('/v1/tasks')
+        .send(validTaskPayload);
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('replays identical creation idempotently without duplicate side effects', async () => {
@@ -192,11 +356,49 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
     });
   });
 
-  describe('API-TASK-002: Task Listing & Scope Filtering', () => {
+  describe('API-TASK-002: Task Retrieval & Listing', () => {
+    it('retrieves single task by ID with ETag header', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_get_task_01')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+
+      const getRes = await request(app).get(`/v1/tasks/${taskId}`);
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.id).toBe(taskId);
+      expect(getRes.body.title).toBe(validTaskPayload.title);
+      expect(getRes.headers.etag).toBe(`W/"${taskId}:0"`);
+    });
+
+    it('returns 404 for non-existent task ID', async () => {
+      const app = getApp();
+      const res = await request(app).get('/v1/tasks/task_non_existent_000000001');
+
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('rejects single task retrieval when user lacks task.read permission', async () => {
+      const appA = getApp(principalA);
+      const createRes = await request(appA)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_get_task_noperm')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+
+      const appNoPerms = getApp(noPermsUser);
+      const res = await request(appNoPerms).get(`/v1/tasks/${taskId}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
     it('lists tasks with Mine, Queues and All views using cursor pagination', async () => {
       const app = getApp(branchUser);
 
-      // Create 3 tasks
+      // Create 3 tasks for branchUser
       for (let i = 1; i <= 3; i++) {
         await request(app)
           .post('/v1/tasks')
@@ -227,6 +429,49 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(page2.body.pagination.hasMore).toBe(false);
     });
 
+    it('filters tasks by status, priority, and linked entity', async () => {
+      const app = getApp();
+
+      // Create task with priority HIGH and status OPEN
+      await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_filt_01')
+        .send({
+          ...validTaskPayload,
+          priority: 'HIGH',
+          linkedId: 'lead_special_filter',
+        });
+
+      // Create task with priority LOW
+      await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_filt_02')
+        .send({
+          ...validTaskPayload,
+          priority: 'LOW',
+          linkedId: 'lead_other_filter',
+        });
+
+      // Filter by priority=HIGH with view=ALL
+      const highRes = await request(app).get('/v1/tasks?view=ALL&priority=HIGH');
+      expect(highRes.status).toBe(200);
+      expect(highRes.body.data.some((t: { priority: string }) => t.priority === 'HIGH')).toBe(true);
+
+      // Filter by linkedId with view=ALL
+      const linkedRes = await request(app).get('/v1/tasks?view=ALL&linkedId=lead_special_filter');
+      expect(linkedRes.status).toBe(200);
+      expect(linkedRes.body.data.length).toBe(1);
+      expect(linkedRes.body.data[0].linkedId).toBe('lead_special_filter');
+    });
+
+    it('rejects task listing when user lacks task.read permission', async () => {
+      const app = getApp(noPermsUser);
+      const res = await request(app).get('/v1/tasks');
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
     it('rejects malformed pagination cursor with 422 VALIDATION_ERROR', async () => {
       const app = getApp();
       const res = await request(app).get('/v1/tasks?cursor=BAD_BASE64_CURSOR_!!!');
@@ -237,7 +482,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
   });
 
   describe('API-TASK-003: Task Updates & Optimistic Concurrency', () => {
-    it('updates priority and owner with valid If-Match ETag', async () => {
+    it('updates priority and status with valid If-Match ETag', async () => {
       const app = getApp();
       const createRes = await request(app)
         .post('/v1/tasks')
@@ -261,6 +506,68 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(updateRes.headers.etag).toBe(`W/"${taskId}:1"`);
     });
 
+    it('reassigns task from user to an active queue', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_upd_reassign_q')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      const updateRes = await request(app)
+        .patch(`/v1/tasks/${taskId}`)
+        .set('If-Match', etag)
+        .send({
+          ownerQueueId: 'queue_ops_02',
+        });
+
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.ownerQueueId).toBe('queue_ops_02');
+      expect(updateRes.body.ownerUserId).toBeNull();
+    });
+
+    it('reassigns task from queue to an active user', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_upd_reassign_u')
+        .send({
+          ...validTaskPayload,
+          ownerUserId: undefined,
+          ownerQueueId: 'queue_ops_01',
+        });
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      const updateRes = await request(app)
+        .patch(`/v1/tasks/${taskId}`)
+        .set('If-Match', etag)
+        .send({
+          ownerUserId: 'usr_agent_02',
+        });
+
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.ownerUserId).toBe('usr_agent_02');
+      expect(updateRes.body.ownerQueueId).toBeNull();
+    });
+
+    it('rejects update without If-Match header with 422 VALIDATION_ERROR', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_upd_no_ifmatch')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+
+      const res = await request(app)
+        .patch(`/v1/tasks/${taskId}`)
+        .send({ priority: 'LOW' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
     it('rejects stale updates with 409 VERSION_CONFLICT', async () => {
       const app = getApp();
       const createRes = await request(app)
@@ -276,6 +583,52 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
 
       expect(conflictRes.status).toBe(409);
       expect(conflictRes.body.error.code).toBe('VERSION_CONFLICT');
+    });
+
+    it('rejects update when user lacks task.update permission', async () => {
+      const appA = getApp(principalA);
+      const createRes = await request(appA)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_upd_noperm')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      const appNoPerms = getApp(noPermsUser);
+      const res = await request(appNoPerms)
+        .patch(`/v1/tasks/${taskId}`)
+        .set('If-Match', etag)
+        .send({ priority: 'LOW' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+
+    it('rejects updating an already completed task with 409 INVALID_STATE', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_upd_comp_task')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      // Complete the task
+      const compRes = await request(app)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .set('If-Match', etag)
+        .send({ outcomeCode: 'CONNECTED', completionNote: 'Done' });
+      const compEtag = compRes.headers.etag!;
+
+      // Try updating completed task
+      const res = await request(app)
+        .patch(`/v1/tasks/${taskId}`)
+        .set('If-Match', compEtag)
+        .send({ priority: 'LOW' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('INVALID_STATE');
+      expect(res.body.error.message).toMatch(/Cannot update task in 'COMPLETED' status/);
     });
   });
 
@@ -339,6 +692,82 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(failRes.status).toBe(422);
       expect(failRes.body.error.code).toBe('VALIDATION_ERROR');
       expect(failRes.body.error.message).toMatch(/Outcome code is required/);
+    });
+
+    it('allows completion without outcome code for REVIEW and GENERAL task types', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_comp_review_task')
+        .send({
+          ...validTaskPayload,
+          type: 'REVIEW',
+          title: 'Review loan documents',
+        });
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      const compRes = await request(app)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .set('If-Match', etag)
+        .send({
+          completionNote: 'Document review passed without comments',
+        });
+
+      expect(compRes.status).toBe(200);
+      expect(compRes.body.task.status).toBe('COMPLETED');
+      expect(compRes.body.task.outcomeCode).toBeNull();
+    });
+
+    it('replays already completed task idempotently without re-triggering side effects', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_comp_replay')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+      const etag = createRes.headers.etag!;
+
+      const compRes1 = await request(app)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .set('If-Match', etag)
+        .send({ outcomeCode: 'CONNECTED', completionNote: 'Done' });
+      expect(compRes1.status).toBe(200);
+
+      const compRes2 = await request(app)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .set('If-Match', compRes1.headers.etag!)
+        .send({ outcomeCode: 'CONNECTED', completionNote: 'Done again' });
+
+      expect(compRes2.status).toBe(200);
+      expect(compRes2.headers['idempotent-replayed']).toBe('true');
+    });
+
+    it('rejects completion without If-Match header with 422 VALIDATION_ERROR', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/tasks')
+        .set('Idempotency-Key', 'idem_comp_no_ifmatch')
+        .send(validTaskPayload);
+      const taskId = createRes.body.id;
+
+      const res = await request(app)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .send({ outcomeCode: 'CONNECTED' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 404 when completing non-existent task', async () => {
+      const app = getApp();
+      const res = await request(app)
+        .post('/v1/tasks/task_missing_00000000001/completion')
+        .set('If-Match', 'W/"task_missing_00000000001:0"')
+        .send({ outcomeCode: 'CONNECTED' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe('NOT_FOUND');
     });
   });
 

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () => {
   const connectionString =
     process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:MARVEL7ace%404077090@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -20,7 +20,7 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
 
     const apiDbUrl =
       process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:MARVEL7ace%404077090@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });

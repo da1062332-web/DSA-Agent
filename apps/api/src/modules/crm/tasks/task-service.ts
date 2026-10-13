@@ -169,6 +169,20 @@ export class TaskService {
 
     requirePermission(ctx, 'task.create');
 
+    // Branch scope check: if caller has BRANCH scope only, branchId must be permitted
+    const branchGrants = ctx.principal.grants.filter((g) => g.code === 'task.create' && g.scope === 'BRANCH');
+    const tenantGrants = ctx.principal.grants.filter((g) => g.code === 'task.create' && g.scope === 'TENANT');
+    if (branchGrants.length > 0 && tenantGrants.length === 0) {
+      const allowedBranches = new Set<string>();
+      for (const g of branchGrants) {
+        for (const b of g.branchIds) allowedBranches.add(b);
+      }
+      if (ctx.principal.primaryBranchId) allowedBranches.add(ctx.principal.primaryBranchId);
+      if (!allowedBranches.has(input.branchId)) {
+        throw AppError.of('FORBIDDEN', `Cannot create task in branch '${input.branchId}'.`);
+      }
+    }
+
     // 2. Validate owner/queue eligibility if UserDirectoryPort is configured
     if (input.ownerUserId && this.deps.userDirectoryPort) {
       const user = await this.deps.userDirectoryPort.getUser(tx, input.ownerUserId);

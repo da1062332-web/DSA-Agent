@@ -4,7 +4,7 @@ import pg from 'pg';
 describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () => {
   const connectionString =
     process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:MARVEL7ace%404077090@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_01JOTHERTENANT0000000000000';
@@ -21,7 +21,7 @@ describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () =
     // App client connecting as dsa_api via DATABASE_URL
     const apiDbUrl =
       process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:MARVEL7ace%404077090@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });
