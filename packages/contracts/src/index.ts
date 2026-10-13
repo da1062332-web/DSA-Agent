@@ -20,3 +20,4 @@ export type * from './ports/decision-port';
 export type * from './ports/rules-seeder-port';
 export type * from './ports/task-port';
 export type * from './ports/application-port';
+export type * from './ports/complaint-subject-port';

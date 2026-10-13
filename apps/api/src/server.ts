@@ -13,6 +13,7 @@ import { loadConfig, type ApiConfig } from './config';
 import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { createTxRunner } from './kernel-min/tx-runner';
+import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 
 let config: ApiConfig;
 try {
@@ -33,6 +34,7 @@ const app = createApp({
     audit: createAuditPort(ids),
     ids,
     userDirectory: createUserDirectory(),
+    complaintSubjectPort: createApplicationSubjectPort(),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,

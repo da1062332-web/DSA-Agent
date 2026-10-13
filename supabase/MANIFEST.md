@@ -21,6 +21,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-022 | `20261001000022_origination_lender_case.sql`                    | Dev 4        | TASK-301 part           | lender_case, lender_case_status_history, submission_package                                                                                                            | M-021        |
 | M-023 | `20261001000023_lender_contacts_and_fields.sql` | Dev 3 | MOD-LND (Module 14) | lender.global_lender_ref, empanelment.permitted_geos and agreement_document_id, lender_contact (ENT-042) | M-020 |
 | M-024 | `20261001000024_product_terms_and_links.sql` | Dev 3 | MOD-PRD (Module 15) | loan_product_version.fee_text, geo_rules, document_profile_id, workflow_profile, eligibility_scope | M-020 |
+| M-025 | `20261001000025_complaints.sql` | Dev 3 | MOD-GRV (Module 13) | complaint (ENT-034); permissions complaint.create, complaint.manage and their role grants | M-020, M-001 |
 | M-030 | `20261001000030_tasks.sql`                                      | Dev 6        | TASK-302                | task                                                                                                                                                                   | M-001        |
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
