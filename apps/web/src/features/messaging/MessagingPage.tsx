@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { MessageRecord, MessageTemplate } from '@dsa/contracts';
+import { getStoredAuthToken } from '../../auth/token';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 
@@ -37,13 +38,13 @@ export function MessagingPage({
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const res = await fetch(`${apiBaseUrl}/message-templates`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
-        const body = await res.json();
-        setTemplates(body.data || []);
+        const body = await res.json().catch(() => null);
+        setTemplates(body?.data || []);
       }
     } catch {
       // ignore

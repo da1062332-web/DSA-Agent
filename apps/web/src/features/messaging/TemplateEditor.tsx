@@ -18,6 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { getStoredAuthToken } from '../../auth/token';
 import {
   MESSAGE_CHANNELS,
   TEMPLATE_CATEGORIES,
@@ -81,7 +82,7 @@ export function TemplateEditor({
     setLoading(true);
 
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const idemKey = `idem_tmpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
       const res = await fetch(`${apiBaseUrl}/message-templates`, {
@@ -102,9 +103,9 @@ export function TemplateEditor({
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data.error?.message || 'Failed to create message template');
+        throw new Error(data?.error?.message || `Failed to create message template (HTTP ${res.status})`);
       }
 
       onSuccess(data);

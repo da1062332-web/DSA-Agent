@@ -34,6 +34,7 @@ import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
+
 const nextUlid = monotonicFactory();
 
 function getContext(req: Request): RequestContext {
@@ -428,7 +429,10 @@ export function createRouter(deps: ApiDeps): Router {
             dataRegion: tenantRow.data_region,
             timezone: tenantRow.timezone,
             status: tenantRow.status,
-            createdAt: typeof tenantRow.created_at === 'string' ? tenantRow.created_at : tenantRow.created_at.toISOString(),
+            createdAt:
+              typeof tenantRow.created_at === 'string'
+                ? tenantRow.created_at
+                : tenantRow.created_at.toISOString(),
           },
           organisation: {
             id: orgRow.id,
@@ -566,7 +570,10 @@ export function createRouter(deps: ApiDeps): Router {
             dataRegion: updatedTenant.data_region,
             timezone: updatedTenant.timezone,
             status: updatedTenant.status,
-            createdAt: typeof updatedTenant.created_at === 'string' ? updatedTenant.created_at : updatedTenant.created_at.toISOString(),
+            createdAt:
+              typeof updatedTenant.created_at === 'string'
+                ? updatedTenant.created_at
+                : updatedTenant.created_at.toISOString(),
           },
           organisation: {
             id: updatedOrg.id,
@@ -968,9 +975,14 @@ export function createRouter(deps: ApiDeps): Router {
       requirePermission(ctx, 'user.manage');
 
       const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 200);
-      const cursor = typeof req.query.cursor === 'string' && req.query.cursor.trim() ? req.query.cursor.trim() : undefined;
-      const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
-      const searchFilter = typeof req.query.search === 'string' && req.query.search.trim() ? req.query.search.trim().toLowerCase() : undefined;
+      const cursor =
+        typeof req.query.cursor === 'string' && req.query.cursor.trim() ? req.query.cursor.trim() : undefined;
+      const statusFilter =
+        typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
+      const searchFilter =
+        typeof req.query.search === 'string' && req.query.search.trim()
+          ? req.query.search.trim().toLowerCase()
+          : undefined;
 
       let cursorCreatedAt: Date | null = null;
       let cursorId: string | null = null;
@@ -1114,9 +1126,11 @@ export function createRouter(deps: ApiDeps): Router {
         `.execute(tx);
 
         if (existing.rows.length > 0) {
-          throw AppError.of('VALIDATION_ERROR', 'A user with this email address already exists in this tenant.', [
-            { field: 'email', issue: 'DUPLICATE_EMAIL' },
-          ]);
+          throw AppError.of(
+            'VALIDATION_ERROR',
+            'A user with this email address already exists in this tenant.',
+            [{ field: 'email', issue: 'DUPLICATE_EMAIL' }],
+          );
         }
 
         // Verify primary branch exists in this tenant
@@ -1517,7 +1531,10 @@ export function createRouter(deps: ApiDeps): Router {
           TENANT: 4,
         };
 
-        const grantMap = new Map<string, { scope: 'OWN' | 'TEAM' | 'BRANCH' | 'TENANT'; branchIds: Set<string> }>();
+        const grantMap = new Map<
+          string,
+          { scope: 'OWN' | 'TEAM' | 'BRANCH' | 'TENANT'; branchIds: Set<string> }
+        >();
 
         for (const row of result.rows) {
           const existing = grantMap.get(row.permission_code);
