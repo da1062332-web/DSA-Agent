@@ -1,9 +1,11 @@
-// Module: origination/catalogue — owner: Dev 3 (MOD-09 Lenders and products). Tasks: Developer 3 page.
-// APIs: API-PRD-002 · API-LND-002 (restored).
+// Module: origination/catalogue — owner: Dev 3 (MOD-LND Lenders, MOD-PRD Products). Tasks: Developer 3 page.
+// This slice: Module 14 Lenders (API-LND-001..005). Products (API-PRD-001..005) are added next.
 import { Router } from 'express';
 import type { ApiDeps } from '../../types';
+import { registerLenderRoutes } from './lenders';
 
-export function createRouter(_deps: ApiDeps): Router {
+export function createRouter(deps: ApiDeps): Router {
   const router = Router();
+  registerLenderRoutes(router, deps);
   return router;
 }
