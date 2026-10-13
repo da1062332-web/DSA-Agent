@@ -12,18 +12,6 @@ tags:
     description: Liveness probe. No sign-in needed.
   - name: MOD-AUTH Authentication
     description: Sign-in, MFA and password reset. Served by Supabase Auth, not by this API.
-  - name: MOD-USR Users
-    description: The signed-in user and the user picker list (MOD-USR, PA-01).
-  - name: MOD-TEN Tenant
-    description: The caller's tenant (MOD-TEN, read only in the MVP).
-  - name: MOD-ORG Organisation profile
-    description: Legal entity of the tenant (SUB-ORG.01). config.manage.
-  - name: MOD-ORG Branches
-    description: Branches and their status (SUB-ORG.02).
-  - name: MOD-ORG Teams
-    description: Teams, managers and effective-dated members (SUB-ORG.03).
-  - name: MOD-ORG Work queues
-    description: Intake, unassigned and team queues with round-robin members (SUB-ORG.05).
   - name: MOD-LEAD Leads
     description: Lead intake, assignment, transitions, and conversion (MOD-LEAD).
   - name: MOD-CUST Customers
@@ -124,7 +112,7 @@ components:
           format: email
         productCategory:
           type: string
-          enum: &a21
+          enum: &a27
             - PL
             - BL
             - MSME
@@ -158,7 +146,7 @@ components:
           minLength: 1
         source:
           type: string
-          enum: &a22
+          enum: &a28
             - WALK_IN
             - PHONE
             - WEBSITE
@@ -196,13 +184,13 @@ components:
           type: array
           items:
             type: string
-          default: &a23 []
+          default: &a29 []
         consent:
           type: object
           properties:
             purpose:
               type: string
-              enum: &a24
+              enum: &a30
                 - CONTACT
                 - LOAN_PROCESSING
                 - SHARE_WITH_LENDER
@@ -218,7 +206,7 @@ components:
               pattern: ^[a-zA-Z0-9._-]{2,40}$
             channel:
               type: string
-              enum: &a25
+              enum: &a31
                 - IN_PERSON
                 - PHONE
                 - WEB_FORM
@@ -320,7 +308,7 @@ components:
       properties:
         transitionCode:
           type: string
-          enum: &a26
+          enum: &a32
             - T-LEAD-01
             - T-LEAD-02
             - T-LEAD-04
@@ -334,7 +322,7 @@ components:
           type:
             - string
             - "null"
-          enum: &a27
+          enum: &a33
             - NOT_INTERESTED
             - NOT_ELIGIBLE
             - DUPLICATE
@@ -391,7 +379,7 @@ components:
             - "null"
         reasonCode:
           type: string
-          enum: &a28
+          enum: &a34
             - AUTO_ROUTING
             - ROUTING_FALLBACK
             - MANUAL
@@ -412,7 +400,7 @@ components:
       properties:
         partyType:
           type: string
-          enum: &a29
+          enum: &a35
             - INDIVIDUAL
             - ENTITY
         fullName:
@@ -460,7 +448,7 @@ components:
       properties:
         purpose:
           type: string
-          enum: &a30
+          enum: &a36
             - CONTACT
             - LOAN_PROCESSING
             - SHARE_WITH_LENDER
@@ -473,7 +461,7 @@ components:
           pattern: ^[A-Z0-9._-]{2,40}$
         channel:
           type: string
-          enum: &a31
+          enum: &a37
             - IN_PERSON
             - PHONE
             - WEB_FORM
@@ -792,7 +780,7 @@ components:
                 maxLength: 200
             required:
               - name
-          default: &a32 []
+          default: &a38 []
         providerTemplateId:
           type:
             - string
@@ -816,7 +804,7 @@ components:
           type: string
         direction:
           type: string
-          enum: &a35
+          enum: &a41
             - OUTBOUND
             - INBOUND
         channel:
@@ -906,7 +894,7 @@ components:
       properties:
         subjectType:
           type: string
-          enum: &a33
+          enum: &a39
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -941,7 +929,7 @@ components:
               - type: string
               - type: number
               - type: boolean
-          default: &a34 {}
+          default: &a40 {}
         correlationId:
           type: string
       required:
@@ -1710,107 +1698,110 @@ paths:
                     type: string
   /v1/me:
     get:
+      summary: Get current authenticated user identity and permission grants
       tags:
-        - MOD-USR Users
-      operationId: API-USR-010
-      summary: "The signed-in user: profile, grants, MFA state"
+        - Platform
       responses:
         "200":
-          description: OK
+          description: Current user context
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: string
-                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
-                  tenantId:
-                    type: string
-                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
-                  email:
-                    type: string
-                  displayName:
-                    type: string
-                  primaryBranchId:
-                    type:
-                      - string
-                      - "null"
-                  queueIds:
-                    type: array
-                    items:
-                      type: string
-                  grants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          enum:
-                            - lead.read
-                            - lead.create
-                            - lead.update
-                            - lead.qualify
-                            - lead.assign
-                            - lead.reopen
-                            - customer.read
-                            - customer.create
-                            - customer.update
-                            - customer.reveal_sensitive
-                            - consent.record
-                            - activity.create
-                            - activity.update
-                            - task.read
-                            - task.create
-                            - task.update
-                            - application.read
-                            - application.create
-                            - application.update
-                            - application.cancel
-                            - application.review
-                            - document.review
-                            - lender_case.submit
-                            - lender_case.update_status
-                            - rule.author
-                            - rule.simulate
-                            - rule.approve
-                            - rule.publish
-                            - rule.suspend
-                            - audit.read
-                            - config.manage
-                            - user.manage
-                            - message.send
-                        scope:
-                          type: string
-                          enum:
-                            - OWN
-                            - TEAM
-                            - BRANCH
-                            - TENANT
-                        branchIds:
-                          type: array
-                          items:
-                            type: string
-                      required:
-                        - code
-                        - scope
-                        - branchIds
-                  mfaVerifiedAt:
-                    type:
-                      - string
-                      - "null"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      kind:
+                        type: string
+                        enum:
+                          - USER
+                          - SERVICE
+                      tenantId:
+                        type: string
+                      primaryBranchId:
+                        type:
+                          - string
+                          - "null"
+                      grants:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+                            scope:
+                              type: string
+                              enum:
+                                - OWN
+                                - TEAM
+                                - BRANCH
+                                - TENANT
+                            branchIds:
+                              type: array
+                              items:
+                                type: string
+                          required:
+                            - code
+                            - scope
+                            - branchIds
+                      authTime:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - id
+                      - kind
+                      - tenantId
+                      - primaryBranchId
+                      - grants
+                      - authTime
                 required:
-                  - id
-                  - tenantId
-                  - email
-                  - displayName
-                  - primaryBranchId
-                  - queueIds
-                  - grants
-                  - mfaVerifiedAt
+                  - data
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
     patch:
       operationId: API-USR-009
       summary: Update user profile notification preferences with concurrency control (API-USR-009)
@@ -2089,416 +2080,14 @@ paths:
                       - retryable
                 required:
                   - error
-  /v1/users:
-    get:
-      tags:
-        - MOD-USR Users
-      operationId: API-USR-LIST
-      summary: Users of the tenant (no contact data)
-      parameters:
-        - schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-          required: false
-          name: limit
-          in: query
-        - schema:
-            type: string
-          required: false
-          name: cursor
-          in: query
-        - schema:
-            type: string
-            enum:
-              - INVITED
-              - ACTIVE
-              - SUSPENDED
-              - DEACTIVATED
-          required: false
-          name: status
-          in: query
-        - schema:
-            type: string
-          required: false
-          name: branchId
-          in: query
-        - schema:
-            type: string
-            maxLength: 100
-          required: false
-          name: q
-          in: query
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        displayName:
-                          type: string
-                        primaryBranchId:
-                          type: string
-                        status:
-                          type: string
-                        availability:
-                          type: string
-                      required:
-                        - id
-                        - displayName
-                        - primaryBranchId
-                        - status
-                        - availability
-                  meta:
-                    type: object
-                    properties:
-                      nextCursor:
-                        type:
-                          - string
-                          - "null"
-                      limit:
-                        type: integer
-                    required:
-                      - nextCursor
-                      - limit
-                required:
-                  - data
-                  - meta
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/tenant:
-    get:
-      tags:
-        - MOD-TEN Tenant
-      operationId: API-TEN-SELF
-      summary: The caller's tenant
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
-                  slug:
-                    type: string
-                  legalName:
-                    type: string
-                  tenantType:
-                    type: string
-                  dataRegion:
-                    type: string
-                  timezone:
-                    type: string
-                  status:
-                    type: string
-                  createdAt:
-                    type: string
-                required:
-                  - id
-                  - slug
-                  - legalName
-                  - tenantType
-                  - dataRegion
-                  - timezone
-                  - status
-                  - createdAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/organisations:
-    get:
-      tags:
-        - MOD-ORG Organisation profile
-      operationId: API-ORG-001
-      summary: Organisations of the tenant (config.manage)
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        legalName:
-                          type: string
-                        constitution:
-                          type: string
-                          enum: &a17
-                            - PROPRIETORSHIP
-                            - PARTNERSHIP
-                            - LLP
-                            - PVT_LTD
-                            - PUBLIC_LTD
-                            - TRUST
-                            - OTHER
-                        status:
-                          type: string
-                        version:
-                          type: integer
-                        createdAt:
-                          type: string
-                        updatedAt:
-                          type: string
-                      required:
-                        - id
-                        - legalName
-                        - constitution
-                        - status
-                        - version
-                        - createdAt
-                        - updatedAt
-                  meta:
-                    type: object
-                    properties:
-                      nextCursor:
-                        type:
-                          - string
-                          - "null"
-                      limit:
-                        type: integer
-                    required:
-                      - nextCursor
-                      - limit
-                required:
-                  - data
-                  - meta
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/organisations/{id}:
-    get:
-      tags:
-        - MOD-ORG Organisation profile
-      operationId: API-ORG-001-GET
-      summary: One organisation (config.manage)
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  legalName:
-                    type: string
-                  constitution:
-                    type: string
-                    enum: *a17
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - legalName
-                  - constitution
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-    patch:
-      tags:
-        - MOD-ORG Organisation profile
-      operationId: API-ORG-002
-      summary: Update the organisation profile (config.manage)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                legalName:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                constitution:
-                  type: string
-                  enum: *a17
-              additionalProperties: false
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  legalName:
-                    type: string
-                  constitution:
-                    type: string
-                    enum: *a17
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - legalName
-                  - constitution
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "409":
-          description: VERSION_CONFLICT
-        "422":
-          description: VALIDATION_ERROR
   /v1/branches:
-    post:
-      tags:
-        - MOD-ORG Branches
-      operationId: API-ORG-003
-      summary: Create a branch (config.manage)
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                code:
-                  type: string
-                  pattern: ^[A-Z0-9_-]{2,20}$
-                name:
-                  type: string
-                  minLength: 1
-                  maxLength: 120
-                pincode:
-                  type:
-                    - string
-                    - "null"
-                  pattern: ^[1-9][0-9]{5}$
-                timezone:
-                  type: string
-                  pattern: ^[A-Za-z_]+\/[A-Za-z_]+$
-              required:
-                - code
-                - name
-              additionalProperties: false
-      responses:
-        "201":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  organisationId:
-                    type: string
-                  code:
-                    type: string
-                  name:
-                    type: string
-                  pincode:
-                    type:
-                      - string
-                      - "null"
-                  timezone:
-                    type: string
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - organisationId
-                  - code
-                  - name
-                  - pincode
-                  - timezone
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "422":
-          description: VALIDATION_ERROR
     get:
+      summary: List branches in caller tenant
       tags:
-        - MOD-ORG Branches
-      operationId: API-ORG-004
-      summary: List branches
-      parameters:
-        - schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-          required: false
-          name: limit
-          in: query
-        - schema:
-            type: string
-          required: false
-          name: cursor
-          in: query
-        - schema:
-            type: string
-            enum: &a18
-              - ACTIVE
-              - INACTIVE
-          required: false
-          name: status
-          in: query
-        - schema:
-            type: string
-            maxLength: 100
-          required: false
-          name: q
-          in: query
+        - Platform
       responses:
         "200":
-          description: OK
+          description: List of branches
           content:
             application/json:
               schema:
@@ -2521,15 +2110,7 @@ paths:
                           type:
                             - string
                             - "null"
-                        timezone:
-                          type: string
                         status:
-                          type: string
-                        version:
-                          type: integer
-                        createdAt:
-                          type: string
-                        updatedAt:
                           type: string
                       required:
                         - id
@@ -2537,646 +2118,14 @@ paths:
                         - code
                         - name
                         - pincode
-                        - timezone
                         - status
-                        - version
-                        - createdAt
-                        - updatedAt
-                  meta:
-                    type: object
-                    properties:
-                      nextCursor:
-                        type:
-                          - string
-                          - "null"
-                      limit:
-                        type: integer
-                    required:
-                      - nextCursor
-                      - limit
                 required:
                   - data
-                  - meta
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/branches/{id}:
-    get:
-      tags:
-        - MOD-ORG Branches
-      operationId: API-ORG-004-GET
-      summary: One branch
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  organisationId:
-                    type: string
-                  code:
-                    type: string
-                  name:
-                    type: string
-                  pincode:
-                    type:
-                      - string
-                      - "null"
-                  timezone:
-                    type: string
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - organisationId
-                  - code
-                  - name
-                  - pincode
-                  - timezone
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-    patch:
-      tags:
-        - MOD-ORG Branches
-      operationId: API-ORG-005
-      summary: Update a branch (config.manage)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                  maxLength: 120
-                pincode:
-                  type:
-                    - string
-                    - "null"
-                  pattern: ^[1-9][0-9]{5}$
-                timezone:
-                  type: string
-                  pattern: ^[A-Za-z_]+\/[A-Za-z_]+$
-              additionalProperties: false
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  organisationId:
-                    type: string
-                  code:
-                    type: string
-                  name:
-                    type: string
-                  pincode:
-                    type:
-                      - string
-                      - "null"
-                  timezone:
-                    type: string
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - organisationId
-                  - code
-                  - name
-                  - pincode
-                  - timezone
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "409":
-          description: VERSION_CONFLICT
-        "422":
-          description: VALIDATION_ERROR
-  /v1/branches/{id}/deactivation:
     post:
+      summary: Create a new branch in tenant
       tags:
-        - MOD-ORG Branches
-      operationId: API-ORG-006
-      summary: Deactivate a branch and its queues (config.manage)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  organisationId:
-                    type: string
-                  code:
-                    type: string
-                  name:
-                    type: string
-                  pincode:
-                    type:
-                      - string
-                      - "null"
-                  timezone:
-                    type: string
-                  status:
-                    type: string
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                required:
-                  - id
-                  - organisationId
-                  - code
-                  - name
-                  - pincode
-                  - timezone
-                  - status
-                  - version
-                  - createdAt
-                  - updatedAt
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "409":
-          description: VERSION_CONFLICT
-        "422":
-          description: VALIDATION_ERROR
-  /v1/teams:
-    post:
-      tags:
-        - MOD-ORG Teams
-      operationId: API-ORG-007
-      summary: Create a team (config.manage or user.manage; branch managers within their branch)
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                  maxLength: 120
-                branchId:
-                  type:
-                    - string
-                    - "null"
-                managerUserId:
-                  type:
-                    - string
-                    - "null"
-              required:
-                - name
-              additionalProperties: false
-      responses:
-        "201":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  managerUserId:
-                    type:
-                      - string
-                      - "null"
-                  status:
-                    type: string
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - since
-                required:
-                  - id
-                  - name
-                  - branchId
-                  - managerUserId
-                  - status
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "422":
-          description: VALIDATION_ERROR
-    get:
-      tags:
-        - MOD-ORG Teams
-      operationId: API-ORG-007-LIST
-      summary: List teams
-      parameters:
-        - schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-          required: false
-          name: limit
-          in: query
-        - schema:
-            type: string
-          required: false
-          name: cursor
-          in: query
-        - schema:
-            type: string
-            enum: *a18
-          required: false
-          name: status
-          in: query
-        - schema:
-            type: string
-            maxLength: 100
-          required: false
-          name: q
-          in: query
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        branchId:
-                          type:
-                            - string
-                            - "null"
-                        managerUserId:
-                          type:
-                            - string
-                            - "null"
-                        status:
-                          type: string
-                        memberCount:
-                          type: integer
-                        version:
-                          type: integer
-                        createdAt:
-                          type: string
-                        updatedAt:
-                          type: string
-                      required:
-                        - id
-                        - name
-                        - branchId
-                        - managerUserId
-                        - status
-                        - memberCount
-                        - version
-                        - createdAt
-                        - updatedAt
-                  meta:
-                    type: object
-                    properties:
-                      nextCursor:
-                        type:
-                          - string
-                          - "null"
-                      limit:
-                        type: integer
-                    required:
-                      - nextCursor
-                      - limit
-                required:
-                  - data
-                  - meta
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/teams/{id}:
-    get:
-      tags:
-        - MOD-ORG Teams
-      operationId: API-ORG-007-GET
-      summary: One team with its current members
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  managerUserId:
-                    type:
-                      - string
-                      - "null"
-                  status:
-                    type: string
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - since
-                required:
-                  - id
-                  - name
-                  - branchId
-                  - managerUserId
-                  - status
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-    patch:
-      tags:
-        - MOD-ORG Teams
-      operationId: API-ORG-008
-      summary: Update a team (config.manage or user.manage; branch managers within their branch)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                  maxLength: 120
-                branchId:
-                  type:
-                    - string
-                    - "null"
-                managerUserId:
-                  type:
-                    - string
-                    - "null"
-                status:
-                  type: string
-                  enum:
-                    - ACTIVE
-                    - INACTIVE
-              additionalProperties: false
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  managerUserId:
-                    type:
-                      - string
-                      - "null"
-                  status:
-                    type: string
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - since
-                required:
-                  - id
-                  - name
-                  - branchId
-                  - managerUserId
-                  - status
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "409":
-          description: VERSION_CONFLICT
-        "422":
-          description: VALIDATION_ERROR
-  /v1/teams/{id}/members:
-    put:
-      tags:
-        - MOD-ORG Teams
-      operationId: API-ORG-009
-      summary: Replace the team members (user.manage; branch managers within their branch)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                userIds:
-                  type: array
-                  items:
-                    type: string
-                  maxItems: 200
-              required:
-                - userIds
-              additionalProperties: false
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  name:
-                    type: string
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  managerUserId:
-                    type:
-                      - string
-                      - "null"
-                  status:
-                    type: string
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - since
-                required:
-                  - id
-                  - name
-                  - branchId
-                  - managerUserId
-                  - status
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
-        "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-        "403":
-          description: FORBIDDEN
-        "409":
-          description: VERSION_CONFLICT
-        "422":
-          description: VALIDATION_ERROR
-  /v1/work-queues:
-    post:
-      tags:
-        - MOD-ORG Work queues
-      operationId: API-ORG-011
-      summary: Create a work queue (config.manage)
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - Platform
+        - Configuration
       requestBody:
         content:
           application/json:
@@ -3185,45 +2134,25 @@ paths:
               properties:
                 code:
                   type: string
-                  pattern: ^[A-Z0-9_-]{2,40}$
+                  pattern: ^[A-Z0-9_-]{2,20}$
                 name:
                   type: string
-                  minLength: 1
-                  maxLength: 120
-                kind:
+                  minLength: 2
+                  maxLength: 100
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                timezone:
                   type: string
-                  enum: &a19
-                    - INTAKE
-                    - UNASSIGNED
-                    - TEAM
-                    - FUNCTIONAL
-                    - EXCEPTION
-                branchId:
-                  type:
-                    - string
-                    - "null"
-                teamId:
-                  type:
-                    - string
-                    - "null"
-                recordTypes:
-                  type: array
-                  items:
-                    type: string
-                    enum: &a20
-                      - LEAD
-                      - APPLICATION
-                      - TASK
-                  minItems: 1
+                  default: Asia/Kolkata
               required:
                 - code
                 - name
-                - kind
-                - recordTypes
-              additionalProperties: false
       responses:
         "201":
-          description: OK
+          description: Branch created
           content:
             application/json:
               schema:
@@ -3231,111 +2160,168 @@ paths:
                 properties:
                   id:
                     type: string
+                  organisationId:
+                    type: string
                   code:
                     type: string
                   name:
                     type: string
-                  kind:
-                    type: string
-                    enum: *a19
-                  branchId:
+                  pincode:
                     type:
                       - string
                       - "null"
-                  teamId:
-                    type:
-                      - string
-                      - "null"
-                  recordTypes:
-                    type: array
-                    items:
-                      type: string
-                      enum: *a20
-                  active:
-                    type: boolean
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
+                  timezone:
                     type: string
-                  updatedAt:
+                  status:
                     type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        canPick:
-                          type: boolean
-                        canAssign:
-                          type: boolean
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - canPick
-                        - canAssign
-                        - since
+                    enum: &a21
+                      - ACTIVE
+                      - INACTIVE
+                  lockVersion:
+                    type: integer
                 required:
                   - id
+                  - organisationId
                   - code
                   - name
-                  - kind
-                  - branchId
-                  - teamId
-                  - recordTypes
-                  - active
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
+                  - pincode
+                  - timezone
+                  - status
+                  - lockVersion
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "403":
-          description: FORBIDDEN
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "422":
-          description: VALIDATION_ERROR
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/roles:
     get:
+      summary: List roles and permissions in caller tenant
       tags:
-        - MOD-ORG Work queues
-      operationId: API-ORG-012
-      summary: List work queues
-      parameters:
-        - schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-          required: false
-          name: limit
-          in: query
-        - schema:
-            type: string
-          required: false
-          name: cursor
-          in: query
-        - schema:
-            type: string
-            enum: *a18
-          required: false
-          name: status
-          in: query
-        - schema:
-            type: string
-            maxLength: 100
-          required: false
-          name: q
-          in: query
+        - Access Control
       responses:
         "200":
-          description: OK
+          description: List of roles
           content:
             application/json:
               schema:
@@ -3348,31 +2334,1039 @@ paths:
                       properties:
                         id:
                           type: string
+                        tenantId:
+                          type: string
                         code:
                           type: string
                         name:
                           type: string
-                        kind:
-                          type: string
-                          enum: *a19
-                        branchId:
-                          type:
-                            - string
-                            - "null"
-                        teamId:
-                          type:
-                            - string
-                            - "null"
-                        recordTypes:
+                        isTemplate:
+                          type: boolean
+                        version:
+                          type: integer
+                        permissions:
                           type: array
                           items:
                             type: string
-                            enum: *a20
-                        active:
-                          type: boolean
-                        memberCount:
-                          type: integer
-                        version:
+                      required:
+                        - id
+                        - tenantId
+                        - code
+                        - name
+                        - isTemplate
+                        - version
+                        - permissions
+                required:
+                  - data
+    post:
+      summary: Create custom role
+      tags:
+        - Access Control
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  pattern: ^ROLE-[A-Z-]+$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - code
+                - name
+      responses:
+        "201":
+          description: Created role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  isTemplate:
+                    type: boolean
+                  version:
+                    type: integer
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - id
+                  - tenantId
+                  - code
+                  - name
+                  - isTemplate
+                  - version
+                  - permissions
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/permissions:
+    get:
+      summary: List permission catalog
+      tags:
+        - Access Control
+      responses:
+        "200":
+          description: List of catalog permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        description:
+                          type: string
+                        introducedIn:
+                          type: string
+                      required:
+                        - code
+                        - description
+                        - introducedIn
+                required:
+                  - data
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/roles/{id}:
+    get:
+      summary: Get role details by ID
+      tags:
+        - Access Control
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Role details with permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  isTemplate:
+                    type: boolean
+                  version:
+                    type: integer
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - id
+                  - tenantId
+                  - code
+                  - name
+                  - isTemplate
+                  - version
+                  - permissions
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    patch:
+      summary: Update role name or permissions
+      tags:
+        - Access Control
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  isTemplate:
+                    type: boolean
+                  version:
+                    type: integer
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - id
+                  - tenantId
+                  - code
+                  - name
+                  - isTemplate
+                  - version
+                  - permissions
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    delete:
+      summary: Delete custom role
+      tags:
+        - Access Control
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Role deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users:
+    get:
+      summary: List users in caller tenant with pagination and search
+      tags:
+        - Users
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum:
+              - INVITED
+              - ACTIVE
+              - SUSPENDED
+              - DEACTIVATED
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: search
+          in: query
+      responses:
+        "200":
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        email:
+                          type: string
+                          format: email
+                        mobileE164:
+                          type:
+                            - string
+                            - "null"
+                        displayName:
+                          type: string
+                        userType:
+                          type: string
+                          enum: &a19
+                            - STAFF
+                        status:
+                          type: string
+                          enum: &a17
+                            - INVITED
+                            - ACTIVE
+                            - SUSPENDED
+                            - DEACTIVATED
+                        availability:
+                          type: string
+                          enum: &a18
+                            - AVAILABLE
+                            - BUSY
+                            - OFF_DUTY
+                            - ON_LEAVE
+                        primaryBranchId:
+                          type: string
+                        assignedRoles:
+                          type: array
+                          items:
+                            type: string
+                        lockVersion:
                           type: integer
                         createdAt:
                           type: string
@@ -3380,15 +3374,15 @@ paths:
                           type: string
                       required:
                         - id
-                        - code
-                        - name
-                        - kind
-                        - branchId
-                        - teamId
-                        - recordTypes
-                        - active
-                        - memberCount
-                        - version
+                        - tenantId
+                        - email
+                        - displayName
+                        - userType
+                        - status
+                        - availability
+                        - primaryBranchId
+                        - assignedRoles
+                        - lockVersion
                         - createdAt
                         - updatedAt
                   meta:
@@ -3407,16 +3401,134 @@ paths:
                   - data
                   - meta
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
-  /v1/work-queues/{id}:
-    get:
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    post:
+      summary: Create a new staff user
       tags:
-        - MOD-ORG Work queues
-      operationId: API-ORG-012-GET
-      summary: One work queue with its members
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                mobileE164:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\+[1-9][0-9]{7,14}$
+                primaryBranchId:
+                  type: string
+                  minLength: 1
+                status:
+                  type: string
+                  enum: *a17
+                  default: ACTIVE
+                availability:
+                  type: string
+                  enum: *a18
+                  default: AVAILABLE
+                roleIds:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - email
+                - displayName
+                - primaryBranchId
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created user
           content:
             application/json:
               schema:
@@ -3424,80 +3536,1077 @@ paths:
                 properties:
                   id:
                     type: string
-                  code:
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
                     type: string
-                  name:
+                  email:
                     type: string
-                  kind:
+                    format: email
+                  mobileE164:
+                    type:
+                      - string
+                      - "null"
+                  displayName:
+                    type: string
+                  userType:
                     type: string
                     enum: *a19
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  teamId:
-                    type:
-                      - string
-                      - "null"
-                  recordTypes:
+                  status:
+                    type: string
+                    enum: *a17
+                  availability:
+                    type: string
+                    enum: *a18
+                  primaryBranchId:
+                    type: string
+                  assignedRoles:
                     type: array
                     items:
                       type: string
-                      enum: *a20
-                  active:
-                    type: boolean
-                  memberCount:
-                    type: integer
-                  version:
+                  lockVersion:
                     type: integer
                   createdAt:
                     type: string
                   updatedAt:
                     type: string
-                  members:
+                required:
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - assignedRoles
+                  - lockVersion
+                  - createdAt
+                  - updatedAt
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users/{id}:
+    get:
+      summary: Get details of a specific user
+      tags:
+        - Users
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: User details
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: User lock_version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  mobileE164:
+                    type:
+                      - string
+                      - "null"
+                  displayName:
+                    type: string
+                  userType:
+                    type: string
+                    enum: *a19
+                  status:
+                    type: string
+                    enum: *a17
+                  availability:
+                    type: string
+                    enum: *a18
+                  primaryBranchId:
+                    type: string
+                  assignedRoles:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - assignedRoles
+                  - lockVersion
+                  - createdAt
+                  - updatedAt
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    patch:
+      summary: Update user profile, status, or branch
+      tags:
+        - Users
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                mobileE164:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\+[1-9][0-9]{7,14}$
+                status:
+                  type: string
+                  enum: *a17
+                availability:
+                  type: string
+                  enum: *a18
+                primaryBranchId:
+                  type: string
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  mobileE164:
+                    type:
+                      - string
+                      - "null"
+                  displayName:
+                    type: string
+                  userType:
+                    type: string
+                    enum: *a19
+                  status:
+                    type: string
+                    enum: *a17
+                  availability:
+                    type: string
+                    enum: *a18
+                  primaryBranchId:
+                    type: string
+                  assignedRoles:
+                    type: array
+                    items:
+                      type: string
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - assignedRoles
+                  - lockVersion
+                  - createdAt
+                  - updatedAt
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users/{id}/roles:
+    post:
+      summary: Assign a role to a user (SOD-05)
+      tags:
+        - Users
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleId:
+                  type: string
+                  minLength: 1
+                scopeType:
+                  type: string
+                  enum: &a20
+                    - OWN
+                    - TEAM
+                    - BRANCH
+                    - TENANT
+                  default: TENANT
+                scopeBranchIds:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+              required:
+                - roleId
+      responses:
+        "201":
+          description: Role assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  alreadyAssigned:
+                    type: boolean
+                required:
+                  - id
+                  - alreadyAssigned
+        "403":
+          description: SOD violation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: User or role not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      summary: List role assignments for user
+      tags:
+        - Access Control
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: User role assignments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
                     type: array
                     items:
                       type: object
                       properties:
+                        id:
+                          type: string
                         userId:
                           type: string
-                        displayName:
+                        roleId:
                           type: string
-                        canPick:
-                          type: boolean
-                        canAssign:
-                          type: boolean
-                        since:
+                        roleCode:
+                          type: string
+                        roleName:
+                          type: string
+                        scopeType:
+                          type: string
+                          enum: *a20
+                        scopeBranchIds:
+                          type: array
+                          items:
+                            type: string
+                        createdAt:
                           type: string
                       required:
+                        - id
                         - userId
-                        - displayName
-                        - canPick
-                        - canAssign
-                        - since
+                        - roleId
+                        - roleCode
+                        - roleName
+                        - scopeType
+                        - scopeBranchIds
+                        - createdAt
+                required:
+                  - data
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users/{id}/roles/{roleId}:
+    delete:
+      summary: Remove a role assignment from a user (SOD-05)
+      tags:
+        - Users
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: roleId
+          in: path
+      responses:
+        "200":
+          description: Role removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+        "403":
+          description: SOD violation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users/{id}/permissions:
+    get:
+      summary: Get effective permissions for user
+      tags:
+        - Access Control
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: User effective permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        scope:
+                          type: string
+                          enum: *a20
+                        branchIds:
+                          type: array
+                          items:
+                            type: string
+                      required:
+                        - code
+                        - scope
+                        - branchIds
+                required:
+                  - userId
+                  - grants
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/branches/{id}:
+    get:
+      summary: Get branch details by ID
+      tags:
+        - Platform
+        - Configuration
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Branch details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  organisationId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  pincode:
+                    type:
+                      - string
+                      - "null"
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a21
+                  lockVersion:
+                    type: integer
                 required:
                   - id
+                  - organisationId
                   - code
                   - name
-                  - kind
-                  - branchId
-                  - teamId
-                  - recordTypes
-                  - active
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
+                  - pincode
+                  - timezone
+                  - status
+                  - lockVersion
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Branch not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
     patch:
+      summary: Update branch configuration
       tags:
-        - MOD-ORG Work queues
-      operationId: API-ORG-013
-      summary: Update a work queue (config.manage)
+        - Platform
+        - Configuration
       parameters:
-        - $ref: "#/components/parameters/IfMatch"
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
       requestBody:
         content:
           application/json:
@@ -3506,20 +4615,23 @@ paths:
               properties:
                 name:
                   type: string
-                  minLength: 1
-                  maxLength: 120
-                active:
-                  type: boolean
-                recordTypes:
-                  type: array
-                  items:
-                    type: string
-                    enum: *a20
-                  minItems: 1
-              additionalProperties: false
+                  minLength: 2
+                  maxLength: 100
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                timezone:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - ACTIVE
+                    - INACTIVE
       responses:
         "200":
-          description: OK
+          description: Branch updated
           content:
             application/json:
               schema:
@@ -3527,196 +4639,774 @@ paths:
                 properties:
                   id:
                     type: string
+                  organisationId:
+                    type: string
                   code:
                     type: string
                   name:
                     type: string
-                  kind:
-                    type: string
-                    enum: *a19
-                  branchId:
+                  pincode:
                     type:
                       - string
                       - "null"
-                  teamId:
-                    type:
-                      - string
-                      - "null"
-                  recordTypes:
-                    type: array
-                    items:
-                      type: string
-                      enum: *a20
-                  active:
-                    type: boolean
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
+                  timezone:
                     type: string
-                  updatedAt:
+                  status:
                     type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        canPick:
-                          type: boolean
-                        canAssign:
-                          type: boolean
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - canPick
-                        - canAssign
-                        - since
+                    enum: *a21
+                  lockVersion:
+                    type: integer
                 required:
                   - id
+                  - organisationId
                   - code
                   - name
-                  - kind
-                  - branchId
-                  - teamId
-                  - recordTypes
-                  - active
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
+                  - pincode
+                  - timezone
+                  - status
+                  - lockVersion
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "403":
-          description: FORBIDDEN
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Branch not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "409":
-          description: VERSION_CONFLICT
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "422":
-          description: VALIDATION_ERROR
-  /v1/work-queues/{id}/members:
-    put:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/config:
+    get:
+      summary: Get tenant and organisation configuration summary
       tags:
-        - MOD-ORG Work queues
-      operationId: API-ORG-014
-      summary: Replace the queue members (user.manage; branch managers within their branch)
-      parameters:
-        - $ref: "#/components/parameters/IfMatch"
+        - Configuration
+      responses:
+        "200":
+          description: Tenant configuration summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      slug:
+                        type: string
+                      legalName:
+                        type: string
+                      tenantType:
+                        type: string
+                        enum: &a24
+                          - DSA_ORG
+                          - NBFC_DISTRIBUTION
+                      dataRegion:
+                        type: string
+                      timezone:
+                        type: string
+                      status:
+                        type: string
+                        enum: &a25
+                          - ACTIVE
+                          - SUSPENDED
+                          - OFFBOARDING
+                      createdAt:
+                        type: string
+                    required:
+                      - id
+                      - slug
+                      - legalName
+                      - tenantType
+                      - dataRegion
+                      - timezone
+                      - status
+                      - createdAt
+                  organisation:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      legalName:
+                        type: string
+                      constitution:
+                        type: string
+                        enum: &a22
+                          - PROPRIETORSHIP
+                          - PARTNERSHIP
+                          - LLP
+                          - PVT_LTD
+                          - PUBLIC_LTD
+                          - TRUST
+                          - OTHER
+                      status:
+                        type: string
+                        enum: &a26
+                          - ACTIVE
+                          - INACTIVE
+                      lockVersion:
+                        type: integer
+                    required:
+                      - id
+                      - legalName
+                      - constitution
+                      - status
+                      - lockVersion
+                  operationalSettings:
+                    type: object
+                    properties:
+                      defaultSlaMinutes:
+                        type: integer
+                        minimum: 1
+                        maximum: 1440
+                        default: 15
+                      leadRoutingMode:
+                        type: string
+                        enum: &a23
+                          - ROUND_ROBIN
+                          - MANUAL
+                        default: ROUND_ROBIN
+                      businessHoursStart:
+                        type: string
+                        pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                        default: 09:30
+                      businessHoursEnd:
+                        type: string
+                        pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                        default: 18:30
+                      dataRetentionDays:
+                        type: integer
+                        minimum: 30
+                        maximum: 3650
+                        default: 365
+                required:
+                  - tenant
+                  - organisation
+                  - operationalSettings
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    patch:
+      summary: Update tenant and organisation configuration
+      tags:
+        - Configuration
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                members:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      userId:
-                        type: string
-                      canPick:
-                        type: boolean
-                      canAssign:
-                        type: boolean
-                    required:
-                      - userId
-                      - canPick
-                      - canAssign
-                    additionalProperties: false
-                  maxItems: 200
-              required:
-                - members
-              additionalProperties: false
+                organisationName:
+                  type: string
+                  minLength: 2
+                  maxLength: 150
+                constitution:
+                  type: string
+                  enum: *a22
+                timezone:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                operationalSettings:
+                  type: object
+                  properties:
+                    defaultSlaMinutes:
+                      type: integer
+                      minimum: 1
+                      maximum: 1440
+                    leadRoutingMode:
+                      type: string
+                      enum: *a23
+                    businessHoursStart:
+                      type: string
+                      pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                    businessHoursEnd:
+                      type: string
+                      pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                    dataRetentionDays:
+                      type: integer
+                      minimum: 30
+                      maximum: 3650
       responses:
         "200":
-          description: OK
+          description: Tenant configuration updated
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: string
-                  code:
-                    type: string
-                  name:
-                    type: string
-                  kind:
-                    type: string
-                    enum: *a19
-                  branchId:
-                    type:
-                      - string
-                      - "null"
-                  teamId:
-                    type:
-                      - string
-                      - "null"
-                  recordTypes:
-                    type: array
-                    items:
-                      type: string
-                      enum: *a20
-                  active:
-                    type: boolean
-                  memberCount:
-                    type: integer
-                  version:
-                    type: integer
-                  createdAt:
-                    type: string
-                  updatedAt:
-                    type: string
-                  members:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        userId:
-                          type: string
-                        displayName:
-                          type: string
-                        canPick:
-                          type: boolean
-                        canAssign:
-                          type: boolean
-                        since:
-                          type: string
-                      required:
-                        - userId
-                        - displayName
-                        - canPick
-                        - canAssign
-                        - since
+                  tenant:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      slug:
+                        type: string
+                      legalName:
+                        type: string
+                      tenantType:
+                        type: string
+                        enum: *a24
+                      dataRegion:
+                        type: string
+                      timezone:
+                        type: string
+                      status:
+                        type: string
+                        enum: *a25
+                      createdAt:
+                        type: string
+                    required:
+                      - id
+                      - slug
+                      - legalName
+                      - tenantType
+                      - dataRegion
+                      - timezone
+                      - status
+                      - createdAt
+                  organisation:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      legalName:
+                        type: string
+                      constitution:
+                        type: string
+                        enum: *a22
+                      status:
+                        type: string
+                        enum: *a26
+                      lockVersion:
+                        type: integer
+                    required:
+                      - id
+                      - legalName
+                      - constitution
+                      - status
+                      - lockVersion
+                  operationalSettings:
+                    type: object
+                    properties:
+                      defaultSlaMinutes:
+                        type: integer
+                        minimum: 1
+                        maximum: 1440
+                        default: 15
+                      leadRoutingMode:
+                        type: string
+                        enum: *a23
+                        default: ROUND_ROBIN
+                      businessHoursStart:
+                        type: string
+                        pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                        default: 09:30
+                      businessHoursEnd:
+                        type: string
+                        pattern: ^([01]\d|2[0-3]):[0-5]\d$
+                        default: 18:30
+                      dataRetentionDays:
+                        type: integer
+                        minimum: 30
+                        maximum: 3650
+                        default: 365
                 required:
-                  - id
-                  - code
-                  - name
-                  - kind
-                  - branchId
-                  - teamId
-                  - recordTypes
-                  - active
-                  - memberCount
-                  - version
-                  - createdAt
-                  - updatedAt
-                  - members
+                  - tenant
+                  - organisation
+                  - operationalSettings
         "401":
-          description: UNAUTHENTICATED or TOKEN_EXPIRED
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "403":
-          description: FORBIDDEN
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "409":
-          description: VERSION_CONFLICT
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
         "422":
-          description: VALIDATION_ERROR
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /v1/leads:
     post:
       operationId: API-LEAD-001
@@ -3751,7 +5441,7 @@ paths:
                   format: email
                 productCategory:
                   type: string
-                  enum: *a21
+                  enum: *a27
                 indicativeAmount:
                   type:
                     - object
@@ -3776,7 +5466,7 @@ paths:
                   minLength: 1
                 source:
                   type: string
-                  enum: *a22
+                  enum: *a28
                 subSource:
                   type:
                     - string
@@ -3804,13 +5494,13 @@ paths:
                   type: array
                   items:
                     type: string
-                  default: *a23
+                  default: *a29
                 consent:
                   type: object
                   properties:
                     purpose:
                       type: string
-                      enum: *a24
+                      enum: *a30
                       default: CONTACT
                     purposeTarget:
                       type:
@@ -3821,7 +5511,7 @@ paths:
                       pattern: ^[a-zA-Z0-9._-]{2,40}$
                     channel:
                       type: string
-                      enum: *a25
+                      enum: *a31
                     evidenceRef:
                       type:
                         - string
@@ -4106,7 +5796,7 @@ paths:
               properties:
                 transitionCode:
                   type: string
-                  enum: *a26
+                  enum: *a32
                 reasonCode:
                   type:
                     - string
@@ -4115,7 +5805,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a27
+                  enum: *a33
                 nextFollowUpAt:
                   type:
                     - string
@@ -4203,7 +5893,7 @@ paths:
                     - "null"
                 reasonCode:
                   type: string
-                  enum: *a28
+                  enum: *a34
                   default: MANUAL
                 transferOpenTasks:
                   type: boolean
@@ -4296,7 +5986,7 @@ paths:
               properties:
                 partyType:
                   type: string
-                  enum: *a29
+                  enum: *a35
                 fullName:
                   type: string
                   minLength: 2
@@ -4669,7 +6359,7 @@ paths:
               properties:
                 purpose:
                   type: string
-                  enum: *a30
+                  enum: *a36
                 purposeTarget:
                   type: string
                 noticeVersion:
@@ -4677,7 +6367,7 @@ paths:
                   pattern: ^[A-Z0-9._-]{2,40}$
                 channel:
                   type: string
-                  enum: *a31
+                  enum: *a37
                 evidenceRef:
                   type: string
                   maxLength: 255
@@ -5813,7 +7503,7 @@ paths:
                         maxLength: 200
                     required:
                       - name
-                  default: *a32
+                  default: *a38
                 providerTemplateId:
                   type:
                     - string
@@ -6394,7 +8084,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a33
+                  enum: *a39
                 subjectId:
                   type: string
                   minLength: 1
@@ -6426,7 +8116,7 @@ paths:
                       - type: string
                       - type: number
                       - type: boolean
-                  default: *a34
+                  default: *a40
                 correlationId:
                   type: string
               required:
@@ -6450,7 +8140,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a35
+                    enum: *a41
                   channel:
                     type: string
                     enum: *a6
@@ -6541,7 +8231,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a35
+                    enum: *a41
                   channel:
                     type: string
                     enum: *a6
@@ -6812,7 +8502,7 @@ paths:
                           type: string
                         direction:
                           type: string
-                          enum: *a35
+                          enum: *a41
                         channel:
                           type: string
                           enum: *a6
@@ -7377,7 +9067,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a38
+                  enum: &a44
                     - FOLLOW_UP
                     - CALL
                     - MEETING
@@ -7397,7 +9087,7 @@ paths:
                   minLength: 1
                 linkedType:
                   type: string
-                  enum: &a37
+                  enum: &a43
                     - LEAD
                     - LOAN_APPLICATION
                     - LENDER_CASE
@@ -7409,7 +9099,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: &a36
+                  enum: &a42
                     - HIGH
                     - MEDIUM
                     - LOW
@@ -7572,13 +9262,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a36
+            enum: *a42
           required: false
           name: priority
           in: query
         - schema:
             type: string
-            enum: *a37
+            enum: *a43
           required: false
           name: linkedType
           in: query
@@ -7883,7 +9573,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a36
+                  enum: *a42
                 dueAt:
                   type: string
                   format: date-time
@@ -8045,7 +9735,7 @@ paths:
                       type: boolean
                     followUpType:
                       type: string
-                      enum: *a38
+                      enum: *a44
                       default: FOLLOW_UP
                     followUpDueAt:
                       type: string
