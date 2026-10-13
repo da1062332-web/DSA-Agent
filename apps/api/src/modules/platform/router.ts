@@ -104,25 +104,6 @@ function formatUserRow(row: RawUserRow) {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
-  // GET /v1/me — Returns current principal details and permissions
-  router.get('/me', (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      res.json({
-        data: {
-          id: ctx.principal.id,
-          kind: ctx.principal.kind,
-          tenantId: ctx.principal.tenantId,
-          primaryBranchId: ctx.principal.primaryBranchId,
-          grants: ctx.principal.grants,
-          authTime: ctx.principal.authTime,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  });
-
   // GET /v1/branches — List branches in caller's tenant
   router.get('/branches', async (req: Request, res: Response, next: NextFunction) => {
     try {

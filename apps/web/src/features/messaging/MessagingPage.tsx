@@ -51,9 +51,31 @@ export function MessagingPage({
     }
   }, [apiBaseUrl]);
 
+  const fetchMessages = useCallback(async () => {
+    try {
+      const token = getStoredAuthToken();
+      const res = await fetch(`${apiBaseUrl}/messages`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => null);
+        setMessages(body?.data || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [apiBaseUrl]);
+
   useEffect(() => {
     fetchTemplates();
-  }, [fetchTemplates]);
+    fetchMessages();
+  }, [fetchTemplates, fetchMessages]);
+
+  useEffect(() => {
+    if (tabIndex === 2) {
+      fetchMessages();
+    }
+  }, [tabIndex, fetchMessages]);
 
   const handleTemplateCreated = (tmpl: MessageTemplate) => {
     setTemplates((prev) => [tmpl, ...prev]);
