@@ -1,3 +1,5 @@
+// Sign-in screen (owner: Dev 1, UI-PLT-001). Email + password through Supabase Auth; supabase-js stores and
+// refreshes the session. The API never sees the password. TOTP challenge (/mfa) is a separate screen.
 import React, { useState } from 'react';
 import {
   Alert,
@@ -8,41 +10,34 @@ import {
   CircularProgress,
   IconButton,
   InputAdornment,
+  Link,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { readConfig } from '../config';
+import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthProvider';
+import { getSupabase } from './supabase';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const config = readConfig();
-  const apiBaseUrl = config.success ? config.data.VITE_API_BASE_URL : 'http://localhost:3000';
+  const location = useLocation();
+  const { session } = useAuth();
+  const from = (location.state as { from?: string } | null)?.from ?? '/';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Ensure clean state on login screen so login page always displays first
-  React.useEffect(() => {
-    sessionStorage.removeItem('dsa_auth_user');
-    sessionStorage.removeItem('dsa_auth_token');
-    localStorage.removeItem('dsa_auth_user');
-    localStorage.removeItem('dsa_auth_token');
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setSuccessMessage(null);
 
-    const trimmedId = identifier.trim();
-    if (!trimmedId) {
-      setErrorMessage('Please enter your User ID or Email address.');
+    const email = identifier.trim();
+    if (!email) {
+      setErrorMessage('Please enter your email address.');
       return;
     }
     if (!password) {
@@ -51,46 +46,26 @@ export function LoginPage() {
     }
 
     setIsLoading(true);
-
     try {
-      const response = await fetch(`${apiBaseUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedId, password }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const msg = data?.error?.message || 'Invalid email or password. Please try again.';
-        setErrorMessage(msg);
+      const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+      if (error) {
+        // Same message for unknown email and wrong password (no account enumeration).
+        setErrorMessage(
+          error.status === 400 ? 'Invalid email or password.' : 'Sign-in failed. Please try again.',
+        );
         return;
       }
-
-      if (!data?.user || !data?.token) {
-        setErrorMessage('Authentication response was invalid.');
-        return;
-      }
-
-      // Persist authenticated database user session
-      sessionStorage.setItem('dsa_auth_user', JSON.stringify(data.user));
-      sessionStorage.setItem('dsa_auth_token', data.token);
-      localStorage.setItem('dsa_auth_user', JSON.stringify(data.user));
-      localStorage.setItem('dsa_auth_token', data.token);
-
-      setSuccessMessage(`Welcome back, ${data.user.displayName || data.user.email}! Redirecting...`);
-
-      setTimeout(() => {
-        navigate('/', { replace: true });
-      }, 500);
+      navigate(from, { replace: true });
     } catch {
       setErrorMessage(
-        `Cannot connect to API server at ${apiBaseUrl}. Please ensure the backend server is running (npm run dev).`,
+        'Cannot reach the sign-in service. Is the local Supabase stack running (npm run db:start)?',
       );
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (session) return <Navigate to={from} replace />;
 
   return (
     <Box
@@ -134,7 +109,7 @@ export function LoginPage() {
               Sign In
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Enter any credentials to sign in dynamically
+              Use your work email and password
             </Typography>
           </Box>
 
@@ -145,25 +120,21 @@ export function LoginPage() {
             </Alert>
           )}
 
-          {successMessage && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {successMessage}
-            </Alert>
-          )}
-
           {/* Login Form */}
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <Stack spacing={2.5}>
               <TextField
-                label="User ID or Email"
-                type="text"
+                label="Email"
+                type="email"
                 fullWidth
                 required
                 autoFocus
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 disabled={isLoading}
-                placeholder="Enter any email or user ID"
+                placeholder="you@example.com"
+                autoComplete="username"
+                inputProps={{ 'data-testid': 'auth.email' }}
                 variant="outlined"
               />
 
@@ -176,6 +147,8 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
                 placeholder="Enter password"
+                autoComplete="current-password"
+                inputProps={{ 'data-testid': 'auth.password' }}
                 variant="outlined"
                 InputProps={{
                   endAdornment: (
@@ -195,6 +168,7 @@ export function LoginPage() {
 
               <Button
                 type="submit"
+                data-testid="auth.submit"
                 fullWidth
                 variant="contained"
                 size="large"
@@ -216,6 +190,11 @@ export function LoginPage() {
                   'Sign In'
                 )}
               </Button>
+              <Box sx={{ textAlign: 'center' }}>
+                <Link component={RouterLink} to="/forgot-password" data-testid="auth.forgot">
+                  Forgot password?
+                </Link>
+              </Box>
             </Stack>
           </Box>
         </CardContent>

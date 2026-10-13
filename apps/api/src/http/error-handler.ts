@@ -1,7 +1,7 @@
 // Error envelope (Contracts §6). Messages never contain S2/S3 values and never reveal out-of-scope records.
-// TODO(TASK-101, Dev 1): map PostgreSQL errors — 23505 → the constraint's 409 code (else INVALID_STATE),
-// 23514 → VALIDATION_ERROR, 42501 from append-only triggers → INVALID_STATE, exclusion on rule_set_version →
-// EFFECTIVE_OVERLAP.
+// PostgreSQL errors (TASK-101): 23505 → INVALID_STATE (constraint name only, never the row), 23514/23503/22xxx →
+// VALIDATION_ERROR, 42501 from append-only triggers → INVALID_STATE, exclusion on rule_set_version →
+// EFFECTIVE_OVERLAP, other exclusions (overlapping memberships) → INVALID_STATE.
 import { AppError, type ErrorEnvelope } from '@dsa/contracts';
 import type { ErrorRequestHandler } from 'express';
 import type { Logger } from 'pino';
@@ -23,7 +23,32 @@ export function toAppError(err: unknown): AppError {
     );
   }
   if (isBodyParserError(err)) return AppError.of('MALFORMED_REQUEST', 'Malformed request body.');
-  return AppError.of('INTERNAL_ERROR', 'An unexpected error occurred.');
+  return fromPostgres(err) ?? AppError.of('INTERNAL_ERROR', 'An unexpected error occurred.');
+}
+
+function fromPostgres(err: unknown): AppError | null {
+  if (typeof err !== 'object' || err === null) return null;
+  const { code, constraint, table } = err as { code?: unknown; constraint?: unknown; table?: unknown };
+  if (typeof code !== 'string' || !/^[0-9A-Z]{5}$/.test(code)) return null;
+  const meta = typeof constraint === 'string' ? { constraint } : undefined;
+  switch (true) {
+    case code === '23505':
+      return AppError.of('INVALID_STATE', 'A record with the same unique value already exists.', [
+        { issue: 'UNIQUE_VIOLATION', meta },
+      ]);
+    case code === '23P01':
+      return table === 'rule_set_version'
+        ? AppError.of('EFFECTIVE_OVERLAP', 'The effective period overlaps an existing version.')
+        : AppError.of('INVALID_STATE', 'An overlapping record already exists.', [{ issue: 'OVERLAP', meta }]);
+    case code === '23514' || code === '23503' || code === '23502' || code.startsWith('22'):
+      return AppError.of('VALIDATION_ERROR', 'The request breaks a data rule.', [
+        { issue: 'CONSTRAINT', meta },
+      ]);
+    case code === '42501':
+      return AppError.of('INVALID_STATE', 'This record cannot be changed.');
+    default:
+      return null;
+  }
 }
 
 export function errorHandler(logger?: Logger): ErrorRequestHandler {

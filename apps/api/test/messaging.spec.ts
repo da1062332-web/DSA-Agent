@@ -7,7 +7,7 @@ import { ConfiguredTestAdapter } from '../src/modules/crm/messaging/channel-adap
 import { MessagingService } from '../src/modules/crm/messaging/messaging-service';
 import { createPublicMessagingRouter, createRouter } from '../src/modules/crm/messaging/router';
 import { SendEligibilityGuard } from '../src/modules/crm/messaging/send-guard';
-import { fakeAuth, testPrincipal } from './support/fake-auth';
+import { fakeAuth, testPrincipal, createTestDeps } from './support/fake-auth';
 
 describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
   const tenantA = 'ten_01JTESTTENANT00000000000000';
@@ -38,9 +38,9 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
     const app = express();
     app.use(express.json());
     // Canonical unauthenticated public webhooks (API-MSG-005)
-    app.use('/public/v1', createPublicMessagingRouter({ txRunner: dummyTxRunner }, service));
+    app.use('/public/v1', createPublicMessagingRouter(createTestDeps({ txRunner: dummyTxRunner }), service));
     app.use(fakeAuth(principal));
-    const router = createRouter({ txRunner: dummyTxRunner }, service);
+    const router = createRouter(createTestDeps({ txRunner: dummyTxRunner }), service);
     app.use('/v1', router);
     app.use(errorHandler());
     return app;
@@ -284,7 +284,7 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
         };
         next();
       });
-      app.use('/v1', createRouter({ txRunner: dummyTxRunner }, quietMessagingService));
+      app.use('/v1', createRouter(createTestDeps({ txRunner: dummyTxRunner }), quietMessagingService));
       app.use(errorHandler());
 
       const res = await request(app)
@@ -339,7 +339,7 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
         };
         next();
       });
-      appBusinessHoursNY.use('/v1', createRouter({ txRunner: dummyTxRunner }, nyMessagingService));
+      appBusinessHoursNY.use('/v1', createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService));
       appBusinessHoursNY.use(errorHandler());
 
       const resAllow = await request(appBusinessHoursNY)
@@ -372,7 +372,7 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
         };
         next();
       });
-      appQuietHoursNY.use('/v1', createRouter({ txRunner: dummyTxRunner }, nyMessagingService));
+      appQuietHoursNY.use('/v1', createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService));
       appQuietHoursNY.use(errorHandler());
 
       const resBlock = await request(appQuietHoursNY)

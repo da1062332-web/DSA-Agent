@@ -27,7 +27,8 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
-    "db:verify": "npm run verify:migrations -w @dsa/tools"
+    "db:verify": "npm run verify:migrations -w @dsa/tools",
+    "test:isolation": "vitest run --config tests/isolation/vitest.config.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.0",

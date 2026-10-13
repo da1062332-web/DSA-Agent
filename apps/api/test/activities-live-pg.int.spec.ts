@@ -8,7 +8,7 @@ import path from 'node:path';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import { createApp } from '../src/app';
-import { fakeAuth, testPrincipal } from './support/fake-auth';
+import { fakeAuth, testPrincipal, createTestDeps } from './support/fake-auth';
 import type { Database, RequestContext } from '@dsa/contracts';
 
 // Load .env from root if not already loaded
@@ -328,10 +328,9 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     });
 
     const app = createApp({
-      deps: { txRunner },
+      deps: createTestDeps({ txRunner }),
       corsAllowedOrigins: [],
       auth: fakeAuth(principal),
-      db,
     });
 
     const res = await request(app)
@@ -407,10 +406,9 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     });
 
     const app = createApp({
-      deps: { txRunner },
+      deps: createTestDeps({ txRunner }),
       corsAllowedOrigins: [],
       auth: fakeAuth(principal),
-      db,
     });
 
     // 1. Create activity via HTTP

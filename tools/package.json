@@ -16,7 +16,10 @@
   "dependencies": {
     "@dsa/api": "*",
     "@dsa/contracts": "*",
+    "@dsa/kernel": "*",
+    "@supabase/supabase-js": "^2.117.3",
     "pg": "^8.13.1",
+    "ulid": "^2.4.0",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
