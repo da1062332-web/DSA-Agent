@@ -19,12 +19,15 @@ export interface ApiDeps {
   txRunner: TxRunner;
   authz?: Authz;
   auditPort?: AuditPort;
+  audit?: AuditPort;
   outboxPort?: OutboxPort;
   idGenerator?: IdGenerator;
+  ids?: IdGenerator;
   decisionPort?: DecisionPort;
   applicationPort?: ApplicationPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
+  userDirectory?: UserDirectoryPort;
   consentPort?: ConsentPort;
   clock?: Clock;
   leadRepository?: unknown;

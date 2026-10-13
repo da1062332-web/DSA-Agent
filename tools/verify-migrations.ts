@@ -25,6 +25,9 @@ try {
     if (section.id === 'd') {
       await client.query('BEGIN');
       try {
+        // Supabase Postgres 17 does not make `postgres` a superuser, so it needs membership to SET ROLE.
+        // The grant is inside this transaction and is rolled back with it.
+        await client.query('GRANT dsa_app TO CURRENT_USER');
         await client.query('SET LOCAL ROLE dsa_app');
         await client.query('SET LOCAL search_path = app, extensions');
         rows = (await client.query(section.sql)).rows.filter((r) => Number(r.visible_without_tenant) !== 0);
