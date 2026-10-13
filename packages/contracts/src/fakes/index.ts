@@ -5,8 +5,7 @@ export * from './fake-party';
 export * from './fake-data-sharing';
 export * from './fake-user-directory';
 
-// TODO(Gate 1) — delivered by the port owners:
-//   fake-decision.ts       FakeDecisionPort      (Dev 2)
-//   fake-rules-seeder.ts   no-op RulesSeederPort (Dev 2)
-//   fake-task.ts           FakeTaskPort          (Dev 6)
-//   fake-application.ts    FakeApplicationPort   (Dev 3)
+export * from './fake-decision';
+export * from './fake-application';
+export * from './fake-task';
+

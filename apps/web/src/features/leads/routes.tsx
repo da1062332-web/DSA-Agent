@@ -1,9 +1,10 @@
-// Feature: leads — owner: Dev 5 — UI-LEAD-001 (Day 4). Replace the elements; keep the paths.
 import type { RouteObject } from 'react-router-dom';
-import { Placeholder } from '../../shell/Placeholder';
+import { LeadList } from './LeadList';
+import { LeadCreate } from './LeadCreate';
+import { LeadDetail } from './LeadDetail';
 
 export const routes: RouteObject[] = [
-  { path: '/leads', element: <Placeholder name="UI-LEAD-001 lead list" owner="Dev 5" /> },
-  { path: '/leads/new', element: <Placeholder name="UI-LEAD-001 create lead" owner="Dev 5" /> },
-  { path: '/leads/:id', element: <Placeholder name="UI-LEAD-001 lead detail" owner="Dev 5" /> },
+  { path: '/leads', element: <LeadList /> },
+  { path: '/leads/new', element: <LeadCreate /> },
+  { path: '/leads/:id', element: <LeadDetail /> },
 ];

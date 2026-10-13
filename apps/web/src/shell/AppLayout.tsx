@@ -30,6 +30,9 @@ const NAV = [
   { to: '/rules', label: 'Rules' },
   { to: '/decisions', label: 'Decisions' },
   { to: '/messaging', label: 'Messaging' },
+  { to: '/users', label: 'Users' },
+  { to: '/roles', label: 'Access Control' },
+  { to: '/config', label: 'Configuration' },
 ];
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
