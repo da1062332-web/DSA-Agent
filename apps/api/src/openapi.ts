@@ -15,6 +15,7 @@ import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as platform from './modules/platform/openapi';
 import { authTags, registerAuthOpenApi } from './openapi-auth';
 import * as rulesApi from './modules/rules/api/openapi';
+import * as verification from './modules/verification/openapi';
 
 // Each module exports `tags` (optional) for its Swagger groups; Swagger shows them in this order.
 const MODULES: {
@@ -34,6 +35,7 @@ const MODULES: {
   catalogue,
   applications,
   lenderCases,
+  verification,
 ];
 
 /**
