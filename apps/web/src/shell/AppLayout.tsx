@@ -90,7 +90,8 @@ export function AppLayout() {
   return (
     <StepUpProvider>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <AppBar position="static" elevation={0}>
+        {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
+        <AppBar position="sticky" elevation={0} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }}>
           <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
             <Typography
               variant="h6"
@@ -150,7 +151,16 @@ export function AppLayout() {
             sx={{
               width: 260,
               flexShrink: 0,
-              '& .MuiDrawer-paper': { width: 260, boxSizing: 'border-box', top: { md: 64 } },
+              // On desktop the sidebar sits below the 64px header, so it must be 64px shorter than the window,
+              // or its last items hang off the bottom of the screen and cannot be scrolled into view.
+              '& .MuiDrawer-paper': {
+                width: 260,
+                boxSizing: 'border-box',
+                top: { md: 64 },
+                height: { md: 'calc(100% - 64px)' },
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+              },
             }}
           >
             <SidebarContent isAdmin={isAdmin} onNavigate={() => setDrawerOpen(false)} />
