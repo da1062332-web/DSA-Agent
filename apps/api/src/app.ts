@@ -84,6 +84,15 @@ export function createApp(opts: CreateAppOptions): Express {
   app.use('/public/v1', publicV1);
 
   const v1 = express.Router();
+  // Authenticated responses are per user and must never come from a cache. ETags are record versions ("0" for many
+  // records and users), so a browser revalidating with If-None-Match would get 304 and show the previous user's data.
+  // If-Match (optimistic concurrency) is unaffected.
+  v1.use((req, res, next) => {
+    delete req.headers['if-none-match'];
+    res.set('Cache-Control', 'no-store');
+    res.vary('Authorization');
+    next();
+  });
   v1.use(opts.auth ?? authPlaceholder);
   v1.use(rateLimit());
   v1.use(express.json({ limit: '1mb' }));

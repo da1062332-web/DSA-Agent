@@ -85,6 +85,9 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
       method: req.method,
       headers,
       body: req.body === undefined ? undefined : JSON.stringify(req.body),
+      // Never answer from the browser's HTTP cache: responses are per user, and a revalidated cached copy could be
+      // the previous user's.
+      cache: 'no-store',
     });
   } catch {
     throw new ApiError('DEPENDENCY_UNAVAILABLE', 0, 'Cannot reach the API. Is it running (npm run dev)?');
