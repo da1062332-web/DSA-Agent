@@ -18,11 +18,11 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {config.success ? (
-        <AuthProvider>
-          <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
             <RouterProvider router={router} />
-          </QueryClientProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </QueryClientProvider>
       ) : (
         <ConfigError variables={config.error.issues.map((i) => i.path.join('.'))} />
       )}
