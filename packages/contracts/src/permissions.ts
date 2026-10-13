@@ -35,6 +35,8 @@ export const PERMISSION_CODES = [
   'config.manage',
   'user.manage',
   'message.send',
+  'complaint.create',
+  'complaint.manage',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

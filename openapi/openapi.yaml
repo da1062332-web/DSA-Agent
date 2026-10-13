@@ -1257,6 +1257,8 @@ paths:
                             - config.manage
                             - user.manage
                             - message.send
+                            - complaint.create
+                            - complaint.manage
                         scope:
                           type: string
                           enum:
@@ -7704,9 +7706,601 @@ paths:
                 required:
                   - task
                   - followUpTask
+  /v1/complaints:
+    post:
+      tags: &a39
+        - MOD-GRV Grievances
+      operationId: API-GRV-001
+      summary: Record a complaint against a lead or application and issue an acknowledgement reference (complaint.create)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                complainantType:
+                  type: string
+                  enum: &a36
+                    - LEAD
+                    - APPLICATION
+                complainantId:
+                  type: string
+                  minLength: 3
+                  maxLength: 64
+                channel:
+                  type: string
+                  enum: &a37
+                    - PHONE
+                    - EMAIL
+                    - BRANCH
+                    - WEB
+                    - LENDER
+                    - OTHER
+                category:
+                  type: string
+                  enum: &a38
+                    - SERVICE
+                    - PROCESS
+                    - CHARGES
+                    - COLLECTION
+                    - DATA_PRIVACY
+                    - OTHER
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+                dueAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+              required:
+                - complainantType
+                - complainantId
+                - channel
+                - category
+                - description
+              additionalProperties: false
+      responses:
+        "201":
+          description: Recorded; ackRef is the reference to quote to the customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  complainantType:
+                    type: string
+                    enum: *a36
+                  complainantId:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a37
+                  category:
+                    type: string
+                    enum: *a38
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum: &a40
+                      - OPEN
+                      - IN_PROGRESS
+                      - RESOLVED
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  dueAt:
+                    type:
+                      - string
+                      - "null"
+                  ackRef:
+                    type: string
+                  lenderReferral:
+                    type: object
+                    additionalProperties: {}
+                  resolution:
+                    type:
+                      - string
+                      - "null"
+                  resolvedAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - complainantType
+                  - complainantId
+                  - channel
+                  - category
+                  - description
+                  - status
+                  - ownerUserId
+                  - dueAt
+                  - ackRef
+                  - lenderReferral
+                  - resolution
+                  - resolvedAt
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (complainant not in this tenant)
+        "422":
+          description: VALIDATION_ERROR (for example, SUBJECT_UNSUPPORTED for a lead complaint)
+    get:
+      tags: *a39
+      operationId: API-GRV-002
+      summary: Complaint queue, filtered by status, category or owner (complaint.manage)
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a40
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a38
+          required: false
+          name: category
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: ownerUserId
+          in: query
+      responses:
+        "200":
+          description: Page of complaints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        complainantType:
+                          type: string
+                          enum: *a36
+                        complainantId:
+                          type: string
+                        channel:
+                          type: string
+                          enum: *a37
+                        category:
+                          type: string
+                          enum: *a38
+                        description:
+                          type: string
+                        status:
+                          type: string
+                          enum: *a40
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        dueAt:
+                          type:
+                            - string
+                            - "null"
+                        ackRef:
+                          type: string
+                        lenderReferral:
+                          type: object
+                          additionalProperties: {}
+                        resolution:
+                          type:
+                            - string
+                            - "null"
+                        resolvedAt:
+                          type:
+                            - string
+                            - "null"
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - complainantType
+                        - complainantId
+                        - channel
+                        - category
+                        - description
+                        - status
+                        - ownerUserId
+                        - dueAt
+                        - ackRef
+                        - lenderReferral
+                        - resolution
+                        - resolvedAt
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "403":
+          description: FORBIDDEN
+  /v1/complaints/{id}:
+    get:
+      tags: *a39
+      operationId: API-GRV-002-GET
+      summary: One complaint (complaint.manage)
+      responses:
+        "200":
+          description: Complaint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  complainantType:
+                    type: string
+                    enum: *a36
+                  complainantId:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a37
+                  category:
+                    type: string
+                    enum: *a38
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a40
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  dueAt:
+                    type:
+                      - string
+                      - "null"
+                  ackRef:
+                    type: string
+                  lenderReferral:
+                    type: object
+                    additionalProperties: {}
+                  resolution:
+                    type:
+                      - string
+                      - "null"
+                  resolvedAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - complainantType
+                  - complainantId
+                  - channel
+                  - category
+                  - description
+                  - status
+                  - ownerUserId
+                  - dueAt
+                  - ackRef
+                  - lenderReferral
+                  - resolution
+                  - resolvedAt
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+    patch:
+      tags: *a39
+      operationId: API-GRV-003
+      summary: Assign an owner, change category or due date, refer to a lender, or start work (complaint.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 3
+                  maxLength: 64
+                category:
+                  type: string
+                  enum: *a38
+                dueAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                status:
+                  type: string
+                  enum:
+                    - IN_PROGRESS
+                lenderReferral:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    lenderId:
+                      type: string
+                      minLength: 3
+                      maxLength: 64
+                    reference:
+                      type: string
+                      minLength: 2
+                      maxLength: 100
+                  required:
+                    - lenderId
+                    - reference
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  complainantType:
+                    type: string
+                    enum: *a36
+                  complainantId:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a37
+                  category:
+                    type: string
+                    enum: *a38
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a40
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  dueAt:
+                    type:
+                      - string
+                      - "null"
+                  ackRef:
+                    type: string
+                  lenderReferral:
+                    type: object
+                    additionalProperties: {}
+                  resolution:
+                    type:
+                      - string
+                      - "null"
+                  resolvedAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - complainantType
+                  - complainantId
+                  - channel
+                  - category
+                  - description
+                  - status
+                  - ownerUserId
+                  - dueAt
+                  - ackRef
+                  - lenderReferral
+                  - resolution
+                  - resolvedAt
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT, INVALID_STATE (resolved) or INVALID_TRANSITION
+        "422":
+          description: VALIDATION_ERROR
+  /v1/complaints/{id}/resolution:
+    post:
+      tags: *a39
+      operationId: API-GRV-004
+      summary: Resolve a complaint with a written resolution, or reopen a resolved one (complaint.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum:
+                        - RESOLVE
+                    resolution:
+                      type: string
+                      minLength: 10
+                      maxLength: 2000
+                  required:
+                    - action
+                    - resolution
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum:
+                        - REOPEN
+                    reason:
+                      type: string
+                      minLength: 5
+                      maxLength: 500
+                  required:
+                    - action
+                    - reason
+                  additionalProperties: false
+      responses:
+        "200":
+          description: Resolved or reopened
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  complainantType:
+                    type: string
+                    enum: *a36
+                  complainantId:
+                    type: string
+                  channel:
+                    type: string
+                    enum: *a37
+                  category:
+                    type: string
+                    enum: *a38
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a40
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  dueAt:
+                    type:
+                      - string
+                      - "null"
+                  ackRef:
+                    type: string
+                  lenderReferral:
+                    type: object
+                    additionalProperties: {}
+                  resolution:
+                    type:
+                      - string
+                      - "null"
+                  resolvedAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - complainantType
+                  - complainantId
+                  - channel
+                  - category
+                  - description
+                  - status
+                  - ownerUserId
+                  - dueAt
+                  - ackRef
+                  - lenderReferral
+                  - resolution
+                  - resolvedAt
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT or INVALID_TRANSITION
+        "422":
+          description: VALIDATION_ERROR
   /v1/lenders:
     post:
-      tags: &a37
+      tags: &a42
         - MOD-LND Lenders
       operationId: API-LND-001
       summary: Create a lender (config.manage)
@@ -7725,7 +8319,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: &a36
+                  enum: &a41
                     - BANK
                     - NBFC
                     - HFC
@@ -7762,7 +8356,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a36
+                    enum: *a41
                   regulatorRef:
                     type:
                       - string
@@ -7773,7 +8367,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a38
+                    enum: &a43
                       - ACTIVE
                       - PAUSED
                       - TERMINATED
@@ -7805,7 +8399,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-002
       summary: List lenders (any signed-in staff)
       parameters:
@@ -7824,13 +8418,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a38
+            enum: *a43
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a36
+            enum: *a41
           required: false
           name: type
           in: query
@@ -7860,7 +8454,7 @@ paths:
                           type: string
                         lenderType:
                           type: string
-                          enum: *a36
+                          enum: *a41
                         regulatorRef:
                           type:
                             - string
@@ -7871,7 +8465,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a38
+                          enum: *a43
                         statusReason:
                           type:
                             - string
@@ -7912,7 +8506,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/lenders/{id}:
     get:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-002-GET
       summary: One lender (any signed-in staff)
       responses:
@@ -7930,7 +8524,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a36
+                    enum: *a41
                   regulatorRef:
                     type:
                       - string
@@ -7941,7 +8535,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a38
+                    enum: *a43
                   statusReason:
                     type:
                       - string
@@ -7966,7 +8560,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-003
       summary: Update a lender, including PAUSED or TERMINATED status with a reason (config.manage)
       parameters:
@@ -7984,7 +8578,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: *a36
+                  enum: *a41
                 regulatorRef:
                   type:
                     - string
@@ -7999,7 +8593,7 @@ paths:
                   maxLength: 60
                 status:
                   type: string
-                  enum: *a38
+                  enum: *a43
                 statusReason:
                   type:
                     - string
@@ -8022,7 +8616,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a36
+                    enum: *a41
                   regulatorRef:
                     type:
                       - string
@@ -8033,7 +8627,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a38
+                    enum: *a43
                   statusReason:
                     type:
                       - string
@@ -8063,7 +8657,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/empanelments:
     post:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-004
       summary: Add an empanelment (DSA code, validity, permitted product categories) (config.manage)
       parameters:
@@ -8090,7 +8684,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a39
+                    enum: &a44
                       - PL
                       - BL
                       - MSME
@@ -8145,7 +8739,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a39
+                      enum: *a44
                   permittedGeos:
                     type: array
                     items:
@@ -8156,7 +8750,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a40
+                    enum: &a45
                       - ACTIVE
                       - SUSPENDED
                       - EXPIRED
@@ -8186,7 +8780,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-004-LIST
       summary: Empanelments of a lender (any signed-in staff). Read-only; for the lender screen.
       responses:
@@ -8219,7 +8813,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a39
+                            enum: *a44
                         permittedGeos:
                           type: array
                           items:
@@ -8230,7 +8824,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a40
+                          enum: *a45
                         version:
                           type: integer
                         createdAt:
@@ -8269,7 +8863,7 @@ paths:
           description: NOT_FOUND
   /v1/empanelments/{id}:
     patch:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-005
       summary: "Update an empanelment: end date, categories, status (config.manage)"
       parameters:
@@ -8290,7 +8884,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a39
+                    enum: *a44
                   minItems: 1
                   maxItems: 9
                 permittedGeos:
@@ -8308,7 +8902,7 @@ paths:
                   maxLength: 64
                 status:
                   type: string
-                  enum: *a40
+                  enum: *a45
                 reason:
                   type:
                     - string
@@ -8341,7 +8935,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a39
+                      enum: *a44
                   permittedGeos:
                     type: array
                     items:
@@ -8352,7 +8946,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a40
+                    enum: *a45
                   version:
                     type: integer
                   createdAt:
@@ -8380,7 +8974,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts:
     get:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-006-GET
       summary: Current contacts of a lender (any signed-in staff)
       responses:
@@ -8451,7 +9045,7 @@ paths:
         "404":
           description: NOT_FOUND
     put:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-006
       summary: Replace the contact list; previous contacts are kept as history (config.manage)
       parameters:
@@ -8580,7 +9174,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts/{contactId}:
     delete:
-      tags: *a37
+      tags: *a42
       operationId: API-LND-006-DEL
       summary: Remove one contact; the row is kept as history (config.manage; If-Match on the lender version)
       parameters:
@@ -8608,7 +9202,7 @@ paths:
           description: VERSION_CONFLICT
   /v1/products:
     post:
-      tags: &a42
+      tags: &a47
         - MOD-PRD Products
       operationId: API-PRD-001
       summary: Create a product under an existing lender (config.manage)
@@ -8630,12 +9224,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a39
+                  enum: *a44
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: &a41
+                    enum: &a46
                       - INDIVIDUAL
                       - SALARIED
                       - SELF_EMPLOYED
@@ -8680,12 +9274,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a39
+                    enum: *a44
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a41
+                      enum: *a46
                   secured:
                     type: boolean
                   ownerUserId:
@@ -8698,7 +9292,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a43
+                    enum: &a48
                       - ACTIVE
                       - INACTIVE
                   version:
@@ -8731,7 +9325,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-002
       summary: List products (any signed-in staff)
       parameters:
@@ -8755,13 +9349,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a43
+            enum: *a48
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a39
+            enum: *a44
           required: false
           name: category
           in: query
@@ -8793,12 +9387,12 @@ paths:
                           type: string
                         category:
                           type: string
-                          enum: *a39
+                          enum: *a44
                         applicantTypes:
                           type: array
                           items:
                             type: string
-                            enum: *a41
+                            enum: *a46
                         secured:
                           type: boolean
                         ownerUserId:
@@ -8811,7 +9405,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a43
+                          enum: *a48
                         version:
                           type: integer
                         createdAt:
@@ -8850,7 +9444,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/products/{id}:
     get:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-002-GET
       summary: One product (any signed-in staff)
       responses:
@@ -8870,12 +9464,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a39
+                    enum: *a44
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a41
+                      enum: *a46
                   secured:
                     type: boolean
                   ownerUserId:
@@ -8888,7 +9482,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a43
+                    enum: *a48
                   version:
                     type: integer
                   createdAt:
@@ -8911,7 +9505,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-006
       summary: "Edit basic product details: name, category, applicant types, secured, owner, next review (config.manage). Versions are not changed."
       parameters:
@@ -8929,12 +9523,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a39
+                  enum: *a44
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: *a41
+                    enum: *a46
                   minItems: 1
                   maxItems: 7
                 secured:
@@ -8966,12 +9560,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a39
+                    enum: *a44
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a41
+                      enum: *a46
                   secured:
                     type: boolean
                   ownerUserId:
@@ -8984,7 +9578,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a43
+                    enum: *a48
                   version:
                     type: integer
                   createdAt:
@@ -9014,7 +9608,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/status:
     post:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-005
       summary: Activate or deactivate a product; deactivation needs a reason (config.manage)
       parameters:
@@ -9028,7 +9622,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a43
+                  enum: *a48
                 reason:
                   type:
                     - string
@@ -9055,12 +9649,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a39
+                    enum: *a44
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a41
+                      enum: *a46
                   secured:
                     type: boolean
                   ownerUserId:
@@ -9073,7 +9667,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a43
+                    enum: *a48
                   version:
                     type: integer
                   createdAt:
@@ -9103,7 +9697,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/versions:
     post:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-003
       summary: Add a new terms version; earlier versions it replaces are retired (config.manage)
       parameters:
@@ -9244,7 +9838,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: &a44
+                    enum: &a49
                       - ACTIVE
                       - RETIRED
                   isCurrent:
@@ -9279,7 +9873,7 @@ paths:
         "422":
           description: VALIDATION_ERROR (for example, effective date not after the latest version)
     get:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-003-LIST
       summary: All versions of a product, newest first (any signed-in staff)
       responses:
@@ -9349,7 +9943,7 @@ paths:
                           additionalProperties: {}
                         status:
                           type: string
-                          enum: *a44
+                          enum: *a49
                         isCurrent:
                           type: boolean
                         createdAt:
@@ -9392,7 +9986,7 @@ paths:
           description: NOT_FOUND
   /v1/product-versions/{id}:
     get:
-      tags: *a42
+      tags: *a47
       operationId: API-PRD-004
       summary: One version, with isCurrent (any signed-in staff)
       responses:
@@ -9457,7 +10051,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: *a44
+                    enum: *a49
                   isCurrent:
                     type: boolean
                   createdAt:

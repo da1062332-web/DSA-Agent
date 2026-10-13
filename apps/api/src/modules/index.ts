@@ -3,6 +3,7 @@
 import * as compliance from './compliance/router';
 import * as activities from './crm/activities/router';
 import * as customers from './crm/customers/router';
+import * as grievances from './crm/grievances/router';
 import * as leads from './crm/leads/router';
 import * as messaging from './crm/messaging/router';
 import * as notifications from './crm/notifications/router';
@@ -23,6 +24,7 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'crm/notifications', owner: 'Dev 1', createRouter: notifications.createRouter },
   { name: 'compliance', owner: 'Dev 5', createRouter: compliance.createRouter },
   { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
+  { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
   { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },

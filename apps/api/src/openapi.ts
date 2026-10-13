@@ -5,6 +5,7 @@ import { z } from 'zod';
 import * as compliance from './modules/compliance/openapi';
 import * as activities from './modules/crm/activities/openapi';
 import * as customers from './modules/crm/customers/openapi';
+import * as grievances from './modules/crm/grievances/openapi';
 import * as leads from './modules/crm/leads/openapi';
 import * as messaging from './modules/crm/messaging/openapi';
 import * as notifications from './modules/crm/notifications/openapi';
@@ -24,6 +25,7 @@ const MODULES = [
   notifications,
   compliance,
   tasks,
+  grievances,
   rulesApi,
   catalogue,
   applications,

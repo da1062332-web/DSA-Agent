@@ -47,7 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Activity', task: 'MOD-ACT' },
       { label: 'Messaging', to: '/messaging' },
       { label: 'Notifications', to: '/notifications' },
-      { label: 'Grievances', task: 'TASK-427' },
+      { label: 'Grievances', to: '/complaints' },
     ],
   },
   {
