@@ -5,6 +5,7 @@ import type { AuthenticatorAssuranceLevels, Session } from '@supabase/supabase-j
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSupabase } from './supabase';
+import { isUserSwitch, shouldClearCache } from './cache-rule';
 import { setAuthToken } from './token';
 
 export interface Aal {
@@ -28,7 +29,7 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const lastUserId = useRef<string | undefined>(undefined);
+  const lastUserId = useRef<string | null | undefined>(undefined);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [aal, setAal] = useState<Aal | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
@@ -59,10 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // their effects run before any parent effect, so they would read the previous user's token.
     const applySession = (next: Session | null) => {
       const previousUser = lastUserId.current;
-      lastUserId.current = next?.user.id;
+      const nextUser = next?.user.id ?? null;
+      lastUserId.current = nextUser;
       setAuthToken(next?.access_token);
-      // A different user (or sign-out) must not see cached data from the previous session.
-      if (previousUser !== undefined && previousUser !== next?.user.id) queryClient.clear();
+      // A different user (or sign-out, or sign-in after sign-out) must not see cached data from the previous session.
+      if (shouldClearCache(previousUser, nextUser)) queryClient.clear();
+      if (isUserSwitch(previousUser, nextUser)) {
+        window.location.reload();
+        return;
+      }
       setSession(next);
     };
     void supabase.auth.getSession().then(({ data }) => applySession(data.session));
@@ -78,16 +84,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else setAal(undefined);
   }, [session, refreshAal]);
 
-  const signOut = useCallback(async (scope: 'local' | 'others' | 'global' = 'local') => {
-    await getSupabase().auth.signOut({ scope });
-    if (scope !== 'others') setRecovering(false);
-  }, []);
+  const signOut = useCallback(
+    async (scope: 'local' | 'others' | 'global' = 'local') => {
+      await getSupabase().auth.signOut({ scope });
+      if (scope === 'others') return;
+      setRecovering(false);
+      // Start the next session from a clean page. Some screens keep their own copy of the previous user's data
+      // outside the query cache, and only a full load is sure to drop all of it.
+      setAuthToken(undefined);
+      queryClient.clear();
+      window.location.replace('/login');
+    },
+    [queryClient],
+  );
 
   return (
     <AuthContext.Provider value={{ session, aal, recovering, refreshAal, signOut }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+/** The auth state, or null when rendered outside the provider (for example a screen rendered alone in a unit test). */
+export function useOptionalAuth(): AuthState | null {
+  return useContext(AuthContext);
 }
 
 export function useAuth(): AuthState {
