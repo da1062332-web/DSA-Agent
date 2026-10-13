@@ -28,33 +28,6 @@ import {
 } from './schemas';
 
 type Method = 'get' | 'post' | 'patch' | 'put';
-
-/** Swagger groups, one per module area (DSA Notion: MOD-USR, MOD-TEN, MOD-ORG). Order = order in Swagger UI. */
-export const tags = [
-  { name: 'MOD-USR Users', description: 'The signed-in user and the user picker list (MOD-USR, PA-01).' },
-  { name: 'MOD-TEN Tenant', description: "The caller's tenant (MOD-TEN, read only in the MVP)." },
-  {
-    name: 'MOD-ORG Organisation profile',
-    description: 'Legal entity of the tenant (SUB-ORG.01). config.manage.',
-  },
-  { name: 'MOD-ORG Branches', description: 'Branches and their status (SUB-ORG.02).' },
-  { name: 'MOD-ORG Teams', description: 'Teams, managers and effective-dated members (SUB-ORG.03).' },
-  {
-    name: 'MOD-ORG Work queues',
-    description: 'Intake, unassigned and team queues with round-robin members (SUB-ORG.05).',
-  },
-];
-
-/** Each path belongs to exactly one tag, so a path never shows up under two modules. */
-export function tagFor(path: string): string {
-  if (path === '/v1/me' || path === '/v1/users') return 'MOD-USR Users';
-  if (path === '/v1/tenant') return 'MOD-TEN Tenant';
-  if (path.startsWith('/v1/organisations')) return 'MOD-ORG Organisation profile';
-  if (path.startsWith('/v1/branches')) return 'MOD-ORG Branches';
-  if (path.startsWith('/v1/teams')) return 'MOD-ORG Teams';
-  if (path.startsWith('/v1/work-queues')) return 'MOD-ORG Work queues';
-  throw new Error(`no Swagger tag for ${path}`);
-}
 interface Op {
   method: Method;
   path: string;
@@ -255,7 +228,6 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     registry.registerPath({
       method: op.method,
       path: op.path,
-      tags: [tagFor(op.path)],
       operationId: op.id,
       summary: op.summary,
       ...(headers.length ? { parameters: headers } : {}),

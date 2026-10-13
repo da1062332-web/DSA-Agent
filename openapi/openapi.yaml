@@ -7,23 +7,6 @@ servers:
   - url: /
 security:
   - bearerAuth: []
-tags:
-  - name: System
-    description: Liveness probe. No sign-in needed.
-  - name: MOD-AUTH Authentication
-    description: Sign-in, MFA and password reset. Served by Supabase Auth, not by this API.
-  - name: MOD-USR Users
-    description: The signed-in user and the user picker list (MOD-USR, PA-01).
-  - name: MOD-TEN Tenant
-    description: The caller's tenant (MOD-TEN, read only in the MVP).
-  - name: MOD-ORG Organisation profile
-    description: Legal entity of the tenant (SUB-ORG.01). config.manage.
-  - name: MOD-ORG Branches
-    description: Branches and their status (SUB-ORG.02).
-  - name: MOD-ORG Teams
-    description: Teams, managers and effective-dated members (SUB-ORG.03).
-  - name: MOD-ORG Work queues
-    description: Intake, unassigned and team queues with round-robin members (SUB-ORG.05).
 components:
   securitySchemes:
     bearerAuth:
@@ -124,9 +107,6 @@ components:
 paths:
   /health:
     get:
-      tags:
-        - System
-      operationId: SYS-HEALTH
       summary: Liveness probe (the only unauthenticated path)
       security: []
       responses:
@@ -143,500 +123,8 @@ paths:
                       - ok
                 required:
                   - status
-  /token:
-    post:
-      tags: &a1
-        - MOD-AUTH Authentication
-      servers: &a2
-        - url: http://127.0.0.1:54321/auth/v1
-          description: Local Supabase (npm run db:start)
-        - url: https://<your-project-ref>.supabase.co/auth/v1
-          description: Hosted Supabase project (replace <your-project-ref>)
-      operationId: API-AUTH-001
-      summary: Sign in with email and password
-      description: Used by the login page. Returns a session. Pass grant_type=refresh_token to refresh it (API-AUTH-003).
-      security: []
-      parameters:
-        - &a3
-          name: apikey
-          in: header
-          required: true
-          description: Supabase publishable key (VITE_SUPABASE_PUBLISHABLE_KEY). Never the secret key.
-          schema:
-            type: string
-        - name: grant_type
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - password
-              - refresh_token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              anyOf:
-                - type: object
-                  properties:
-                    email:
-                      type: string
-                      format: email
-                    password:
-                      type: string
-                      minLength: 12
-                  required:
-                    - email
-                    - password
-                  description: grant_type=password
-                - type: object
-                  properties:
-                    refresh_token:
-                      type: string
-                  required:
-                    - refresh_token
-                  description: grant_type=refresh_token
-      responses:
-        "200":
-          description: Session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                    description: "JWT. Send as Authorization: Bearer <token> on /v1 calls."
-                  token_type:
-                    type: string
-                    enum:
-                      - bearer
-                  expires_in:
-                    type: integer
-                    description: Seconds until access_token expires (3600 by default).
-                  expires_at:
-                    type: integer
-                  refresh_token:
-                    type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: Auth user id. Equals app_user.idp_subject.
-                      email:
-                        type: string
-                        format: email
-                      app_metadata:
-                        type: object
-                        properties:
-                          tenant_id:
-                            type: string
-                        required:
-                          - tenant_id
-                    required:
-                      - id
-                      - email
-                      - app_metadata
-                required:
-                  - access_token
-                  - token_type
-                  - expires_in
-                  - expires_at
-                  - refresh_token
-                  - user
-        "400":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /logout:
-    post:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-004
-      summary: Sign out
-      description: scope=local signs out this device; others signs out every other device; global signs out everywhere.
-      parameters:
-        - *a3
-        - name: scope
-          in: query
-          schema:
-            type: string
-            enum:
-              - local
-              - others
-              - global
-      responses:
-        "204":
-          description: Signed out
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /recover:
-    post:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-007
-      summary: Request a password reset email
-      description: Used by /forgot-password. Always returns 200, so the response never reveals whether the email exists.
-      security: []
-      parameters:
-        - *a3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-              required:
-                - email
-      responses:
-        "200":
-          description: Email sent if the account exists
-  /user:
-    put:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-008
-      summary: Set a new password
-      description: Used by /reset-password. Authorise with the access token from the reset link.
-      parameters:
-        - *a3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password:
-                  type: string
-                  minLength: 12
-              required:
-                - password
-      responses:
-        "200":
-          description: Password changed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  email:
-                    type: string
-                required:
-                  - id
-                  - email
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /factors:
-    post:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-010
-      summary: Enrol an authenticator app (TOTP)
-      description: Used by /mfa on first setup. Show the QR code, then verify with a code (API-AUTH-002).
-      parameters:
-        - *a3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                factor_type:
-                  type: string
-                  enum:
-                    - totp
-                friendly_name:
-                  type: string
-                  maxLength: 64
-              required:
-                - factor_type
-      responses:
-        "200":
-          description: Factor created, unverified
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  friendly_name:
-                    type:
-                      - string
-                      - "null"
-                  factor_type:
-                    type: string
-                    enum:
-                      - totp
-                  status:
-                    type: string
-                    enum:
-                      - unverified
-                      - verified
-                  totp:
-                    type: object
-                    properties:
-                      qr_code:
-                        type: string
-                        description: SVG QR code to scan with Google or Microsoft Authenticator.
-                      secret:
-                        type: string
-                        description: Manual entry key if the QR code cannot be scanned.
-                      uri:
-                        type: string
-                    required:
-                      - qr_code
-                      - secret
-                      - uri
-                required:
-                  - id
-                  - friendly_name
-                  - factor_type
-                  - status
-                  - totp
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /factors/{factor_id}/challenge:
-    post:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-009a
-      summary: Start an MFA challenge
-      description: First half of step-up (API-AUTH-009) and of sign-in with MFA.
-      parameters:
-        - *a3
-        - name: factor_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Challenge
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  expires_at:
-                    type: integer
-                required:
-                  - id
-                  - expires_at
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /factors/{factor_id}/verify:
-    post:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-002
-      summary: Verify a 6-digit authenticator code
-      description: Completes sign-in with MFA, verifies a new authenticator (enrolment), or completes step-up (API-AUTH-009). A successful step-up sets the aal2 session that the API checks for 900 s.
-      parameters:
-        - *a3
-        - name: factor_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                challenge_id:
-                  type: string
-                code:
-                  type: string
-                  pattern: ^\d{6}$
-              required:
-                - challenge_id
-                - code
-      responses:
-        "200":
-          description: Session upgraded to aal2
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                    description: "JWT. Send as Authorization: Bearer <token> on /v1 calls."
-                  token_type:
-                    type: string
-                    enum:
-                      - bearer
-                  expires_in:
-                    type: integer
-                    description: Seconds until access_token expires (3600 by default).
-                  expires_at:
-                    type: integer
-                  refresh_token:
-                    type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: Auth user id. Equals app_user.idp_subject.
-                      email:
-                        type: string
-                        format: email
-                      app_metadata:
-                        type: object
-                        properties:
-                          tenant_id:
-                            type: string
-                        required:
-                          - tenant_id
-                    required:
-                      - id
-                      - email
-                      - app_metadata
-                required:
-                  - access_token
-                  - token_type
-                  - expires_in
-                  - expires_at
-                  - refresh_token
-                  - user
-        "400":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
-  /factors/{factor_id}:
-    delete:
-      tags: *a1
-      servers: *a2
-      operationId: API-AUTH-011
-      summary: Remove an authenticator app
-      description: Used by the security page. Needs a session at aal2. Users whose role requires MFA keep at least one.
-      parameters:
-        - *a3
-        - name: factor_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Removed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                required:
-                  - id
-        "401":
-          description: Rejected by Supabase (see error_code, e.g. invalid_credentials)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: integer
-                  error_code:
-                    type: string
-                  msg:
-                    type: string
   /v1/me:
     get:
-      tags:
-        - MOD-USR Users
       operationId: API-USR-010
       summary: "The signed-in user: profile, grants, MFA state"
       responses:
@@ -731,8 +219,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/users:
     get:
-      tags:
-        - MOD-USR Users
       operationId: API-USR-LIST
       summary: Users of the tenant (no contact data)
       parameters:
@@ -818,8 +304,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/tenant:
     get:
-      tags:
-        - MOD-TEN Tenant
       operationId: API-TEN-SELF
       summary: The caller's tenant
       responses:
@@ -860,8 +344,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/organisations:
     get:
-      tags:
-        - MOD-ORG Organisation profile
       operationId: API-ORG-001
       summary: Organisations of the tenant (config.manage)
       responses:
@@ -883,7 +365,7 @@ paths:
                           type: string
                         constitution:
                           type: string
-                          enum: &a4
+                          enum: &a1
                             - PROPRIETORSHIP
                             - PARTNERSHIP
                             - LLP
@@ -926,8 +408,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/organisations/{id}:
     get:
-      tags:
-        - MOD-ORG Organisation profile
       operationId: API-ORG-001-GET
       summary: One organisation (config.manage)
       responses:
@@ -944,7 +424,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a4
+                    enum: *a1
                   status:
                     type: string
                   version:
@@ -964,8 +444,6 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
-      tags:
-        - MOD-ORG Organisation profile
       operationId: API-ORG-002
       summary: Update the organisation profile (config.manage)
       parameters:
@@ -982,7 +460,7 @@ paths:
                   maxLength: 200
                 constitution:
                   type: string
-                  enum: *a4
+                  enum: *a1
               additionalProperties: false
       responses:
         "200":
@@ -998,7 +476,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a4
+                    enum: *a1
                   status:
                     type: string
                   version:
@@ -1025,8 +503,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/branches:
     post:
-      tags:
-        - MOD-ORG Branches
       operationId: API-ORG-003
       summary: Create a branch (config.manage)
       parameters:
@@ -1104,8 +580,6 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags:
-        - MOD-ORG Branches
       operationId: API-ORG-004
       summary: List branches
       parameters:
@@ -1124,7 +598,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a5
+            enum: &a2
               - ACTIVE
               - INACTIVE
           required: false
@@ -1201,8 +675,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/branches/{id}:
     get:
-      tags:
-        - MOD-ORG Branches
       operationId: API-ORG-004-GET
       summary: One branch
       responses:
@@ -1249,8 +721,6 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
-      tags:
-        - MOD-ORG Branches
       operationId: API-ORG-005
       summary: Update a branch (config.manage)
       parameters:
@@ -1325,8 +795,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/branches/{id}/deactivation:
     post:
-      tags:
-        - MOD-ORG Branches
       operationId: API-ORG-006
       summary: Deactivate a branch and its queues (config.manage)
       parameters:
@@ -1382,8 +850,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/teams:
     post:
-      tags:
-        - MOD-ORG Teams
       operationId: API-ORG-007
       summary: Create a team (config.manage or user.manage; branch managers within their branch)
       parameters:
@@ -1472,8 +938,6 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags:
-        - MOD-ORG Teams
       operationId: API-ORG-007-LIST
       summary: List teams
       parameters:
@@ -1492,7 +956,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a5
+            enum: *a2
           required: false
           name: status
           in: query
@@ -1566,8 +1030,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/teams/{id}:
     get:
-      tags:
-        - MOD-ORG Teams
       operationId: API-ORG-007-GET
       summary: One team with its current members
       responses:
@@ -1629,8 +1091,6 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
-      tags:
-        - MOD-ORG Teams
       operationId: API-ORG-008
       summary: Update a team (config.manage or user.manage; branch managers within their branch)
       parameters:
@@ -1725,8 +1185,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/teams/{id}/members:
     put:
-      tags:
-        - MOD-ORG Teams
       operationId: API-ORG-009
       summary: Replace the team members (user.manage; branch managers within their branch)
       parameters:
@@ -1811,8 +1269,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/work-queues:
     post:
-      tags:
-        - MOD-ORG Work queues
       operationId: API-ORG-011
       summary: Create a work queue (config.manage)
       parameters:
@@ -1832,7 +1288,7 @@ paths:
                   maxLength: 120
                 kind:
                   type: string
-                  enum: &a6
+                  enum: &a3
                     - INTAKE
                     - UNASSIGNED
                     - TEAM
@@ -1850,7 +1306,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a7
+                    enum: &a4
                       - LEAD
                       - APPLICATION
                       - TASK
@@ -1877,7 +1333,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a6
+                    enum: *a3
                   branchId:
                     type:
                       - string
@@ -1890,7 +1346,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a7
+                      enum: *a4
                   active:
                     type: boolean
                   memberCount:
@@ -1943,8 +1399,6 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags:
-        - MOD-ORG Work queues
       operationId: API-ORG-012
       summary: List work queues
       parameters:
@@ -1963,7 +1417,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a5
+            enum: *a2
           required: false
           name: status
           in: query
@@ -1994,7 +1448,7 @@ paths:
                           type: string
                         kind:
                           type: string
-                          enum: *a6
+                          enum: *a3
                         branchId:
                           type:
                             - string
@@ -2007,7 +1461,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a7
+                            enum: *a4
                         active:
                           type: boolean
                         memberCount:
@@ -2050,8 +1504,6 @@ paths:
           description: UNAUTHENTICATED or TOKEN_EXPIRED
   /v1/work-queues/{id}:
     get:
-      tags:
-        - MOD-ORG Work queues
       operationId: API-ORG-012-GET
       summary: One work queue with its members
       responses:
@@ -2070,7 +1522,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a6
+                    enum: *a3
                   branchId:
                     type:
                       - string
@@ -2083,7 +1535,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a7
+                      enum: *a4
                   active:
                     type: boolean
                   memberCount:
@@ -2132,8 +1584,6 @@ paths:
         "401":
           description: UNAUTHENTICATED or TOKEN_EXPIRED
     patch:
-      tags:
-        - MOD-ORG Work queues
       operationId: API-ORG-013
       summary: Update a work queue (config.manage)
       parameters:
@@ -2154,7 +1604,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a7
+                    enum: *a4
                   minItems: 1
               additionalProperties: false
       responses:
@@ -2173,7 +1623,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a6
+                    enum: *a3
                   branchId:
                     type:
                       - string
@@ -2186,7 +1636,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a7
+                      enum: *a4
                   active:
                     type: boolean
                   memberCount:
@@ -2242,8 +1692,6 @@ paths:
           description: VALIDATION_ERROR
   /v1/work-queues/{id}/members:
     put:
-      tags:
-        - MOD-ORG Work queues
       operationId: API-ORG-014
       summary: Replace the queue members (user.manage; branch managers within their branch)
       parameters:
@@ -2290,7 +1738,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a6
+                    enum: *a3
                   branchId:
                     type:
                       - string
@@ -2303,7 +1751,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a7
+                      enum: *a4
                   active:
                     type: boolean
                   memberCount:

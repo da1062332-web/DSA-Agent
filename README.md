@@ -29,27 +29,6 @@ npm run dev             # API http://localhost:3000 (GET /health) · web http://
 
 Every `/v1` request returns 401 until TASK-102 adds Supabase JWT verification. Every screen shows a placeholder naming its owner until the UI tasks land.
 
-## Environments
-
-There are three environments. Each developer runs their own local stack, the team shares one hosted development project, and tests never touch either of them.
-
-| Environment         | Used for                                     | Database                                     | Supabase Auth                      | Where the values come from          |
-| ------------------- | -------------------------------------------- | -------------------------------------------- | ---------------------------------- | ----------------------------------- |
-| **Local** (default) | Everyday development                         | Local Supabase, port 54322                   | http://127.0.0.1:54321             | `npm run db:status`                 |
-| **Shared dev**      | Integration testing by the team              | Hosted `dsa_api` role (Supavisor, port 6543) | https://<project-ref>.supabase.co  | Team password manager. Never in Git |
-| **Test**            | `npm run test:int`, `npm run test:isolation` | Throwaway Postgres 16 container per run      | Test-only HS256 secret, no network | Created by the test code            |
-
-Rules that keep the environments apart:
-
-- Only two files hold configuration: `.env` (API and tools, copied from `.env.example`) and `apps/web/.env` (browser, copied from `apps/web/.env.example`). Both are git-ignored.
-- `DATABASE_URL` and `SUPABASE_URL` must both be local or both be hosted. The API refuses to start otherwise.
-- A hosted API never has `SUPABASE_JWT_SECRET`. Hosted tokens are checked through the project's JWKS.
-- The browser only ever gets the publishable key. The web app refuses `sb_secret_…` and any `service_role` key.
-- The service-role key is used only by `npm run provision:tenant`, and that command runs only against the local stack.
-- Swagger's "Try it out" for the auth operations calls the Supabase URL from this environment's `SUPABASE_URL`.
-
-Migrations live in `supabase/migrations` and are committed. Local: `npm run db:reset`. Shared dev: `npx supabase link --project-ref <ref>` then `npx supabase db push`. Hosted Auth settings (site URL, redirect URLs, email provider, 12-character passwords, TOTP) are set in the hosted dashboard. `supabase/config.toml` only configures the local stack.
-
 ## Checks (the same ones CI runs)
 
 ```bash
