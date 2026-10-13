@@ -1,9 +1,10 @@
-// Feature: applications — owner: Dev 3 — UI-APP-001 (Day 3). Replace the elements; keep the paths.
-// The lender-case panel on /applications/:id is Dev 4's, mounted through a documented extension point.
+// Feature: applications — owner: Dev 3 — UI-APP-001 (Module 16). Paths are unchanged from the placeholder.
+// The lender-case panel on /applications/:id is Dev 4's, mounted through the extension slot in ApplicationDetailPage.
 import type { RouteObject } from 'react-router-dom';
-import { Placeholder } from '../../shell/Placeholder';
+import { ApplicationDetailPage } from './ApplicationDetailPage';
+import { ApplicationsPage } from './ApplicationsPage';
 
 export const routes: RouteObject[] = [
-  { path: '/applications', element: <Placeholder name="UI-APP-001 applications" owner="Dev 3" /> },
-  { path: '/applications/:id', element: <Placeholder name="UI-APP-001 application detail" owner="Dev 3" /> },
+  { path: '/applications', element: <ApplicationsPage /> },
+  { path: '/applications/:id', element: <ApplicationDetailPage /> },
 ];
