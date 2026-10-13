@@ -199,17 +199,23 @@ export class SqlCustomerRepository implements CustomerRepository {
   }
 
   async findCustomerById(tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<CustomerRow>`
       SELECT * FROM customer
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} id = ${id}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
     `.execute(tx);
     return result.rows[0] ?? null;
   }
 
   async findCustomerByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<CustomerRow>`
       SELECT * FROM customer
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} id = ${id}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
       FOR UPDATE
     `.execute(tx);
     return result.rows[0] ?? null;
@@ -297,10 +303,13 @@ export class SqlCustomerRepository implements CustomerRepository {
     tenantId: string,
     customerId: string,
   ): Promise<{ mobile?: string | null; email?: string | null }> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<CustomerContactPointRow>`
       SELECT * FROM customer_contact_point
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``}
-        customer_id = ${customerId}
+      WHERE tenant_id = ${tenantId}
+        AND customer_id = ${customerId}
         AND is_primary = true
     `.execute(tx);
 
@@ -331,9 +340,12 @@ export class SqlCustomerRepository implements CustomerRepository {
   }
 
   async findConsentById(tx: Tx, tenantId: string, id: string): Promise<ConsentRecordRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<ConsentRecordRow>`
       SELECT * FROM consent_record
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} id = ${id}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
     `.execute(tx);
     return result.rows[0] ?? null;
   }
@@ -346,10 +358,13 @@ export class SqlCustomerRepository implements CustomerRepository {
     purpose: ConsentPurpose,
     purposeTarget?: string | null,
   ): Promise<ConsentRecordRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<ConsentRecordRow>`
       SELECT * FROM consent_record
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``}
-        subject_type = ${subjectType}
+      WHERE tenant_id = ${tenantId}
+        AND subject_type = ${subjectType}
         AND subject_id = ${subjectId}
         AND purpose = ${purpose}
         AND status = 'ACTIVE'
@@ -366,11 +381,14 @@ export class SqlCustomerRepository implements CustomerRepository {
     purpose: ConsentPurpose,
     purposeTarget?: string | null,
   ): Promise<ConsentRecordRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<ConsentRecordRow>`
       SELECT c.* FROM consent_record c
       JOIN lead l ON l.id = c.subject_id AND l.tenant_id = c.tenant_id
-      WHERE ${tenantId ? sql`c.tenant_id = ${tenantId} AND` : sql``}
-        c.subject_type = 'LEAD'
+      WHERE c.tenant_id = ${tenantId}
+        AND c.subject_type = 'LEAD'
         AND l.customer_id = ${customerId}
         AND c.purpose = ${purpose}
         AND c.status = 'ACTIVE'
@@ -386,10 +404,13 @@ export class SqlCustomerRepository implements CustomerRepository {
     subjectType: 'CUSTOMER' | 'LEAD',
     subjectId: string,
   ): Promise<ConsentRecordRow[]> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<ConsentRecordRow>`
       SELECT * FROM consent_record
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``}
-        subject_type = ${subjectType}
+      WHERE tenant_id = ${tenantId}
+        AND subject_type = ${subjectType}
         AND subject_id = ${subjectId}
       ORDER BY created_at DESC, id DESC
     `.execute(tx);
@@ -404,6 +425,9 @@ export class SqlCustomerRepository implements CustomerRepository {
     withdrawnBy: string,
     reason?: string | null,
   ): Promise<ConsentRecordRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is missing or invalid');
+    }
     const result = await sql<ConsentRecordRow>`
       UPDATE consent_record
       SET
@@ -411,8 +435,8 @@ export class SqlCustomerRepository implements CustomerRepository {
         withdrawn_at = ${withdrawnAt},
         withdrawn_by = ${withdrawnBy},
         withdrawal_reason = ${reason ?? null}
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``}
-        id = ${id}
+      WHERE tenant_id = ${tenantId}
+        AND id = ${id}
         AND status = 'ACTIVE'
       RETURNING *
     `.execute(tx);
@@ -521,13 +545,10 @@ export class InMemoryCustomerRepository implements CustomerRepository {
   }
 
   async findCustomerById(_tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null> {
-    if (tenantId) {
-      return this.customers.get(`${tenantId}:${id}`) ?? null;
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
     }
-    for (const c of this.customers.values()) {
-      if (c.id === id) return c;
-    }
-    return null;
+    return this.customers.get(`${tenantId}:${id}`) ?? null;
   }
 
   async findCustomerByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null> {
@@ -617,11 +638,14 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     tenantId: string,
     customerId: string,
   ): Promise<{ mobile?: string | null; email?: string | null }> {
+    if (!tenantId || tenantId.trim() === '') {
+      return { mobile: null, email: null };
+    }
     let mobile: string | null = null;
     let email: string | null = null;
 
     for (const cp of this.contactPoints.values()) {
-      if ((!tenantId || cp.tenant_id === tenantId) && cp.customer_id === customerId && cp.is_primary) {
+      if (cp.tenant_id === tenantId && cp.customer_id === customerId && cp.is_primary) {
         if (cp.kind === 'MOBILE') mobile = cp.value;
         if (cp.kind === 'EMAIL') email = cp.value;
       }
@@ -634,13 +658,10 @@ export class InMemoryCustomerRepository implements CustomerRepository {
   }
 
   async findConsentById(_tx: Tx, tenantId: string, id: string): Promise<ConsentRecordRow | null> {
-    if (tenantId) {
-      return this.consentRecords.get(`${tenantId}:${id}`) ?? null;
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
     }
-    for (const cr of this.consentRecords.values()) {
-      if (cr.id === id) return cr;
-    }
-    return null;
+    return this.consentRecords.get(`${tenantId}:${id}`) ?? null;
   }
 
   async findActiveConsent(
@@ -651,9 +672,12 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     purpose: ConsentPurpose,
     purposeTarget?: string | null,
   ): Promise<ConsentRecordRow | null> {
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
+    }
     for (const cr of this.consentRecords.values()) {
       if (
-        (!tenantId || cr.tenant_id === tenantId) &&
+        cr.tenant_id === tenantId &&
         cr.subject_type === subjectType &&
         cr.subject_id === subjectId &&
         cr.purpose === purpose &&
@@ -674,10 +698,12 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     purpose: ConsentPurpose,
     purposeTarget?: string | null,
   ): Promise<ConsentRecordRow | null> {
-    // Look for lead consent where consent matches customerId
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
+    }
     for (const cr of this.consentRecords.values()) {
       if (
-        (!tenantId || cr.tenant_id === tenantId) &&
+        cr.tenant_id === tenantId &&
         cr.subject_type === 'LEAD' &&
         cr.purpose === purpose &&
         cr.status === 'ACTIVE'
@@ -696,10 +722,13 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     subjectType: 'CUSTOMER' | 'LEAD',
     subjectId: string,
   ): Promise<ConsentRecordRow[]> {
+    if (!tenantId || tenantId.trim() === '') {
+      return [];
+    }
     return Array.from(this.consentRecords.values())
       .filter(
         (c) =>
-          (!tenantId || c.tenant_id === tenantId) &&
+          c.tenant_id === tenantId &&
           c.subject_type === subjectType &&
           c.subject_id === subjectId,
       )
@@ -714,19 +743,11 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     withdrawnBy: string,
     reason?: string | null,
   ): Promise<ConsentRecordRow | null> {
-    const key = tenantId ? `${tenantId}:${id}` : null;
-    let existing: ConsentRecordRow | undefined;
-    if (key) {
-      existing = this.consentRecords.get(key);
-    } else {
-      for (const cr of this.consentRecords.values()) {
-        if (cr.id === id) {
-          existing = cr;
-          break;
-        }
-      }
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
     }
-
+    const key = `${tenantId}:${id}`;
+    const existing = this.consentRecords.get(key);
     if (!existing || existing.status !== 'ACTIVE') {
       return null;
     }
@@ -738,7 +759,7 @@ export class InMemoryCustomerRepository implements CustomerRepository {
       withdrawn_by: withdrawnBy,
       withdrawal_reason: reason ?? null,
     };
-    this.consentRecords.set(`${existing.tenant_id}:${existing.id}`, updated);
+    this.consentRecords.set(key, updated);
     return updated;
   }
 

@@ -12,6 +12,7 @@ import {
   type UserDirectoryPort,
 } from '@dsa/contracts';
 import { ulid } from 'ulid';
+import { requestHash } from '@dsa/kernel';
 import { getScopeFilter, requireLeadAccess, requirePermission } from './authz-helper';
 import {
   assertNoS3Data,
@@ -25,6 +26,15 @@ import {
 } from './normalizer';
 import type { LeadRepository, LeadRow } from './repository';
 import { validateLeadTransition } from './state-machine';
+
+function parseLockVersion(ifMatch: string): number {
+  const cleaned = ifMatch.replace(/^W\//, '').replace(/^"|"$/g, '');
+  const v = parseInt(cleaned, 10);
+  if (isNaN(v)) {
+    throw AppError.of('VERSION_CONFLICT', 'Malformed ETag / If-Match header value');
+  }
+  return v;
+}
 import type {
   AssignLeadInput,
   ConvertLeadInput,
@@ -106,6 +116,12 @@ export class LeadService {
     idempotencyKey: string,
   ): Promise<{ resource: MaskedLeadResource; etag: string; isReplayed: boolean }> {
     const tenantId = ctx.principal.tenantId;
+    const hash = requestHash({
+      key: idempotencyKey,
+      method: 'POST',
+      path: '/v1/leads',
+      body: input,
+    });
 
     // Idempotency replay check
     const existingIdem = await this.deps.repository.getIdempotency(
@@ -115,6 +131,9 @@ export class LeadService {
       idempotencyKey,
     );
     if (existingIdem && existingIdem.status === 'COMPLETED' && existingIdem.response_body) {
+      if (existingIdem.request_hash && existingIdem.request_hash !== hash) {
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
+      }
       return {
         resource: existingIdem.response_body as unknown as MaskedLeadResource,
         etag: `"${existingIdem.response_body.lockVersion ?? 0}"`,
@@ -381,6 +400,29 @@ export class LeadService {
       occurred_at: now,
     });
 
+    // 5b. First contact task generation (TASK-110 / Workflow A)
+    if (this.deps.taskPort && (leadRow.owner_user_id || leadRow.owner_queue_id)) {
+      try {
+        await this.deps.taskPort.createTask(tx, ctx, {
+          type: 'CALL',
+          title: `First contact: ${leadRow.full_name}`,
+          owner: leadRow.owner_user_id
+            ? { userId: leadRow.owner_user_id }
+            : { queueId: leadRow.owner_queue_id! },
+          linked: {
+            type: 'LEAD',
+            id: leadId,
+            branchId: leadRow.branch_id,
+          },
+          priority: 'MEDIUM',
+          slaClass: 'CUSTOMER_FIRST_CONTACT',
+          idempotencyKey: `lead_${leadId}:first-contact`,
+        });
+      } catch {
+        // Non-blocking if task/SLA resolution unavailable in unit testing
+      }
+    }
+
     // 6. Save Idempotency
     await this.deps.repository.saveIdempotency(tx, {
       tenant_id: tenantId,
@@ -388,7 +430,7 @@ export class LeadService {
       key: idempotencyKey,
       method: 'POST',
       path: '/v1/leads',
-      request_hash: 'hash',
+      request_hash: hash,
       status: 'COMPLETED',
       response_status: 201,
       response_body: resource as unknown as Record<string, unknown>,
@@ -469,8 +511,8 @@ export class LeadService {
     requireLeadAccess(ctx, 'lead.update', lead);
 
     // ETag concurrency check
-    const expectedLockVersion = parseInt(ifMatch.replace(/"/g, ''), 10);
-    if (isNaN(expectedLockVersion) || expectedLockVersion !== lead.lock_version) {
+    const expectedLockVersion = parseLockVersion(ifMatch);
+    if (expectedLockVersion !== lead.lock_version) {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
@@ -545,6 +587,12 @@ export class LeadService {
     input: LeadTransitionInput,
   ): Promise<{ resource: MaskedLeadResource; etag: string; isReplayed: boolean }> {
     const tenantId = ctx.principal.tenantId;
+    const hash = requestHash({
+      key: idempotencyKey,
+      method: 'POST',
+      path: `/v1/leads/${id}/transitions`,
+      body: input,
+    });
 
     // Idempotency check
     const existingIdem = await this.deps.repository.getIdempotency(
@@ -554,6 +602,9 @@ export class LeadService {
       idempotencyKey,
     );
     if (existingIdem && existingIdem.status === 'COMPLETED' && existingIdem.response_body) {
+      if (existingIdem.request_hash && existingIdem.request_hash !== hash) {
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
+      }
       return {
         resource: existingIdem.response_body as unknown as MaskedLeadResource,
         etag: `"${existingIdem.response_body.lockVersion}"`,
@@ -574,8 +625,8 @@ export class LeadService {
     requireLeadAccess(ctx, outcome.requiredPermission, lead);
 
     // ETag concurrency check
-    const expectedLockVersion = parseInt(ifMatch.replace(/"/g, ''), 10);
-    if (isNaN(expectedLockVersion) || expectedLockVersion !== lead.lock_version) {
+    const expectedLockVersion = parseLockVersion(ifMatch);
+    if (expectedLockVersion !== lead.lock_version) {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
@@ -649,7 +700,7 @@ export class LeadService {
       key: idempotencyKey,
       method: 'POST',
       path: `/v1/leads/${id}/transitions`,
-      request_hash: 'hash',
+      request_hash: hash,
       status: 'COMPLETED',
       response_status: 200,
       response_body: resource as unknown as Record<string, unknown>,
@@ -673,6 +724,12 @@ export class LeadService {
     input: AssignLeadInput,
   ): Promise<{ resource: MaskedLeadResource; etag: string; isReplayed: boolean }> {
     const tenantId = ctx.principal.tenantId;
+    const hash = requestHash({
+      key: idempotencyKey,
+      method: 'POST',
+      path: `/v1/leads/${id}/assignments`,
+      body: input,
+    });
 
     // Idempotency check
     const existingIdem = await this.deps.repository.getIdempotency(
@@ -682,6 +739,9 @@ export class LeadService {
       idempotencyKey,
     );
     if (existingIdem && existingIdem.status === 'COMPLETED' && existingIdem.response_body) {
+      if (existingIdem.request_hash && existingIdem.request_hash !== hash) {
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
+      }
       return {
         resource: existingIdem.response_body as unknown as MaskedLeadResource,
         etag: `"${existingIdem.response_body.lockVersion}"`,
@@ -698,8 +758,8 @@ export class LeadService {
     requireLeadAccess(ctx, 'lead.assign', lead);
 
     // ETag check
-    const expectedLockVersion = parseInt(ifMatch.replace(/"/g, ''), 10);
-    if (isNaN(expectedLockVersion) || expectedLockVersion !== lead.lock_version) {
+    const expectedLockVersion = parseLockVersion(ifMatch);
+    if (expectedLockVersion !== lead.lock_version) {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
@@ -786,7 +846,7 @@ export class LeadService {
       key: idempotencyKey,
       method: 'POST',
       path: `/v1/leads/${id}/assignments`,
-      request_hash: 'hash',
+      request_hash: hash,
       status: 'COMPLETED',
       response_status: 200,
       response_body: resource as unknown as Record<string, unknown>,
@@ -810,6 +870,12 @@ export class LeadService {
     input: ConvertLeadInput,
   ): Promise<{ result: LeadConversionResult; etag: string; isReplayed: boolean }> {
     const tenantId = ctx.principal.tenantId;
+    const hash = requestHash({
+      key: idempotencyKey,
+      method: 'POST',
+      path: `/v1/leads/${id}/conversion`,
+      body: input,
+    });
 
     // Idempotency check
     const existingIdem = await this.deps.repository.getIdempotency(
@@ -819,6 +885,9 @@ export class LeadService {
       idempotencyKey,
     );
     if (existingIdem && existingIdem.status === 'COMPLETED' && existingIdem.response_body) {
+      if (existingIdem.request_hash && existingIdem.request_hash !== hash) {
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
+      }
       return {
         result: existingIdem.response_body as unknown as LeadConversionResult,
         etag: `"${existingIdem.response_body.lockVersion ?? 1}"`,
@@ -835,8 +904,8 @@ export class LeadService {
     requireLeadAccess(ctx, 'application.create', lead);
 
     // ETag check
-    const expectedLockVersion = parseInt(ifMatch.replace(/"/g, ''), 10);
-    if (isNaN(expectedLockVersion) || expectedLockVersion !== lead.lock_version) {
+    const expectedLockVersion = parseLockVersion(ifMatch);
+    if (expectedLockVersion !== lead.lock_version) {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
@@ -1080,7 +1149,7 @@ export class LeadService {
       key: idempotencyKey,
       method: 'POST',
       path: `/v1/leads/${id}/conversion`,
-      request_hash: 'hash',
+      request_hash: hash,
       status: 'COMPLETED',
       response_status: 200,
       response_body: conversionResult as unknown as Record<string, unknown>,

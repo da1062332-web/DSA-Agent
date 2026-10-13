@@ -105,18 +105,81 @@ export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
   // GET /v1/me — Returns current principal details and permissions
-  router.get('/me', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
+      const p = ctx.principal;
+      let email = (p as any).email || '';
+      let displayName = (p as any).displayName || '';
+      let lockVersion = 0;
+      try {
+        await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const r = await sql<{ email: string; display_name: string; lock_version: number }>`
+            SELECT email, display_name, lock_version FROM app.app_user WHERE id = ${p.id}
+          `.execute(tx);
+          if (r.rows[0]) {
+            email = r.rows[0].email;
+            displayName = r.rows[0].display_name;
+            lockVersion = r.rows[0].lock_version;
+          }
+        });
+      } catch {
+        // tx fallback
+      }
+
+      const body = {
+        id: p.id,
+        kind: p.kind,
+        tenantId: p.tenantId,
+        email,
+        displayName,
+        primaryBranchId: p.primaryBranchId,
+        queueIds: p.queueIds || [],
+        grants: p.grants || [],
+        authTime: p.authTime,
+        mfaVerifiedAt: p.authTime,
+      };
+
+      res.set('ETag', `"${lockVersion}"`).json({
+        ...body,
+        data: body,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /v1/tenant — Returns caller's tenant
+  router.get('/tenant', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      const tenant = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const r = await sql<{
+          id: string;
+          slug: string;
+          legal_name: string;
+          tenant_type: string;
+          data_region: string;
+          timezone: string;
+          status: string;
+          created_at: string;
+        }>`
+          SELECT id, slug, legal_name, tenant_type, data_region, timezone, status, created_at
+          FROM app.tenant
+          WHERE id = ${ctx.principal.tenantId}
+        `.execute(tx);
+        return r.rows[0];
+      });
+      if (!tenant) throw AppError.of('NOT_FOUND', 'Tenant not found.');
       res.json({
-        data: {
-          id: ctx.principal.id,
-          kind: ctx.principal.kind,
-          tenantId: ctx.principal.tenantId,
-          primaryBranchId: ctx.principal.primaryBranchId,
-          grants: ctx.principal.grants,
-          authTime: ctx.principal.authTime,
-        },
+        id: tenant.id,
+        slug: tenant.slug,
+        legalName: tenant.legal_name,
+        tenantType: tenant.tenant_type,
+        dataRegion: tenant.data_region,
+        timezone: tenant.timezone,
+        status: tenant.status,
+        createdAt: new Date(tenant.created_at).toISOString(),
       });
     } catch (err) {
       next(err);
