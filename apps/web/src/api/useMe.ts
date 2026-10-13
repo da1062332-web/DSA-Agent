@@ -36,12 +36,13 @@ export function useMe() {
   });
 }
 
-export function useTenant() {
+/** Tenant facts. Pass enabled=false until the MFA gate has passed: the API refuses every call but /v1/me at aal1. */
+export function useTenant(enabled = true) {
   const { session } = useAuth();
   return useQuery({
     queryKey: ['tenant', session?.user.id],
     queryFn: () => apiFetch<Tenant>('/v1/tenant'),
-    enabled: !!session,
+    enabled: !!session && enabled,
     staleTime: 300_000,
   });
 }
