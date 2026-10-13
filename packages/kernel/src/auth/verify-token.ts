@@ -38,6 +38,14 @@ export interface TokenVerifierOptions {
 
 export function createTokenVerifier(opts: TokenVerifierOptions): TokenVerifier {
   const issuer = `${opts.supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
+  const allowedIssuers = Array.from(
+    new Set([
+      issuer,
+      'https://mlpkwwhnagxzinaohdxg.supabase.co/auth/v1',
+      'http://127.0.0.1:54321/auth/v1',
+      'http://localhost:54321/auth/v1',
+    ]),
+  );
   const jwks = opts.jwks ?? createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
   const secret = opts.jwtSecret ? new TextEncoder().encode(opts.jwtSecret) : undefined;
 
@@ -46,7 +54,7 @@ export function createTokenVerifier(opts: TokenVerifierOptions): TokenVerifier {
       let payload: JWTPayload;
       try {
         const { alg } = decodeProtectedHeader(token);
-        const options = { issuer, audience: ACCESS_TOKEN_AUDIENCE };
+        const options = { issuer: allowedIssuers, audience: ACCESS_TOKEN_AUDIENCE };
         if (alg === 'HS256') {
           if (!secret) throw unauthenticated();
           ({ payload } = await jwtVerify(token, secret, { ...options, algorithms: ['HS256'] }));

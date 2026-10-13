@@ -1,4 +1,5 @@
 import { readConfig } from '../../config';
+import { getStoredAuthToken } from '../../auth/token';
 import type { Branch, CreateUserInput, Role, UpdateUserInput, UserSummary } from './types';
 
 function getApiBaseUrl(): string {
@@ -7,10 +8,7 @@ function getApiBaseUrl(): string {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token =
-    sessionStorage.getItem('dsa_auth_token') ||
-    localStorage.getItem('dsa_auth_token') ||
-    '';
+  const token = getStoredAuthToken() || '';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
