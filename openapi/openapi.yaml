@@ -7737,6 +7737,12 @@ paths:
                     - "null"
                   minLength: 2
                   maxLength: 40
+                globalLenderRef:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 60
               required:
                 - name
                 - lenderType
@@ -7761,6 +7767,10 @@ paths:
                     type:
                       - string
                       - "null"
+                  globalLenderRef:
+                    type:
+                      - string
+                      - "null"
                   status:
                     type: string
                     enum: &a38
@@ -7782,6 +7792,7 @@ paths:
                   - name
                   - lenderType
                   - regulatorRef
+                  - globalLenderRef
                   - status
                   - statusReason
                   - version
@@ -7854,6 +7865,10 @@ paths:
                           type:
                             - string
                             - "null"
+                        globalLenderRef:
+                          type:
+                            - string
+                            - "null"
                         status:
                           type: string
                           enum: *a38
@@ -7872,6 +7887,7 @@ paths:
                         - name
                         - lenderType
                         - regulatorRef
+                        - globalLenderRef
                         - status
                         - statusReason
                         - version
@@ -7919,6 +7935,10 @@ paths:
                     type:
                       - string
                       - "null"
+                  globalLenderRef:
+                    type:
+                      - string
+                      - "null"
                   status:
                     type: string
                     enum: *a38
@@ -7937,6 +7957,7 @@ paths:
                   - name
                   - lenderType
                   - regulatorRef
+                  - globalLenderRef
                   - status
                   - statusReason
                   - version
@@ -7970,6 +7991,12 @@ paths:
                     - "null"
                   minLength: 2
                   maxLength: 40
+                globalLenderRef:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 60
                 status:
                   type: string
                   enum: *a38
@@ -8000,6 +8027,10 @@ paths:
                     type:
                       - string
                       - "null"
+                  globalLenderRef:
+                    type:
+                      - string
+                      - "null"
                   status:
                     type: string
                     enum: *a38
@@ -8018,6 +8049,7 @@ paths:
                   - name
                   - lenderType
                   - regulatorRef
+                  - globalLenderRef
                   - status
                   - statusReason
                   - version
@@ -8070,6 +8102,19 @@ paths:
                       - OTHER
                   minItems: 1
                   maxItems: 9
+                permittedGeos:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 2
+                    maxLength: 60
+                  maxItems: 200
+                agreementDocumentId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 64
               required:
                 - dsaCode
                 - validFrom
@@ -8101,6 +8146,14 @@ paths:
                     items:
                       type: string
                       enum: *a39
+                  permittedGeos:
+                    type: array
+                    items:
+                      type: string
+                  agreementDocumentId:
+                    type:
+                      - string
+                      - "null"
                   status:
                     type: string
                     enum: &a40
@@ -8120,6 +8173,8 @@ paths:
                   - validFrom
                   - validTo
                   - permittedCategories
+                  - permittedGeos
+                  - agreementDocumentId
                   - status
                   - version
                   - createdAt
@@ -8130,6 +8185,88 @@ paths:
           description: INVALID_STATE (duplicate DSA code for this lender)
         "422":
           description: VALIDATION_ERROR
+    get:
+      tags: *a37
+      operationId: API-LND-004-LIST
+      summary: Empanelments of a lender (any signed-in staff). Read-only; for the lender screen.
+      responses:
+        "200":
+          description: Empanelments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                        dsaCode:
+                          type: string
+                        validFrom:
+                          type: string
+                        validTo:
+                          type:
+                            - string
+                            - "null"
+                        permittedCategories:
+                          type: array
+                          items:
+                            type: string
+                            enum: *a39
+                        permittedGeos:
+                          type: array
+                          items:
+                            type: string
+                        agreementDocumentId:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a40
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - dsaCode
+                        - validFrom
+                        - validTo
+                        - permittedCategories
+                        - permittedGeos
+                        - agreementDocumentId
+                        - status
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "404":
+          description: NOT_FOUND
   /v1/empanelments/{id}:
     patch:
       tags: *a37
@@ -8156,6 +8293,19 @@ paths:
                     enum: *a39
                   minItems: 1
                   maxItems: 9
+                permittedGeos:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 2
+                    maxLength: 60
+                  maxItems: 200
+                agreementDocumentId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 64
                 status:
                   type: string
                   enum: *a40
@@ -8186,6 +8336,14 @@ paths:
                     items:
                       type: string
                       enum: *a39
+                  permittedGeos:
+                    type: array
+                    items:
+                      type: string
+                  agreementDocumentId:
+                    type:
+                      - string
+                      - "null"
                   status:
                     type: string
                     enum: *a40
@@ -8202,10 +8360,212 @@ paths:
                   - validFrom
                   - validTo
                   - permittedCategories
+                  - permittedGeos
+                  - agreementDocumentId
                   - status
                   - version
                   - createdAt
                   - updatedAt
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/lenders/{id}/contacts:
+    get:
+      tags: *a37
+      operationId: API-LND-006-GET
+      summary: Current contacts of a lender (any signed-in staff)
+      responses:
+        "200":
+          description: Current contacts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lct_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                        name:
+                          type: string
+                        role:
+                          type:
+                            - string
+                            - "null"
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        phone:
+                          type:
+                            - string
+                            - "null"
+                        channel:
+                          type:
+                            - string
+                            - "null"
+                        escalationLevel:
+                          type: integer
+                        since:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - name
+                        - role
+                        - email
+                        - phone
+                        - channel
+                        - escalationLevel
+                        - since
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "404":
+          description: NOT_FOUND
+    put:
+      tags: *a37
+      operationId: API-LND-006
+      summary: Replace the contact list; previous contacts are kept as history (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contacts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 2
+                        maxLength: 120
+                      role:
+                        type:
+                          - string
+                          - "null"
+                        minLength: 2
+                        maxLength: 60
+                      email:
+                        type:
+                          - string
+                          - "null"
+                        maxLength: 120
+                        format: email
+                      phone:
+                        type:
+                          - string
+                          - "null"
+                        pattern: ^\+?[0-9 ]{8,15}$
+                      channel:
+                        type:
+                          - string
+                          - "null"
+                        minLength: 2
+                        maxLength: 60
+                      escalationLevel:
+                        type: integer
+                        minimum: 1
+                        maximum: 3
+                    required:
+                      - name
+                      - escalationLevel
+                    additionalProperties: false
+                  maxItems: 50
+              required:
+                - contacts
+              additionalProperties: false
+      responses:
+        "200":
+          description: New contact list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lct_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                        name:
+                          type: string
+                        role:
+                          type:
+                            - string
+                            - "null"
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        phone:
+                          type:
+                            - string
+                            - "null"
+                        channel:
+                          type:
+                            - string
+                            - "null"
+                        escalationLevel:
+                          type: integer
+                        since:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - name
+                        - role
+                        - email
+                        - phone
+                        - channel
+                        - escalationLevel
+                        - since
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
         "403":
           description: FORBIDDEN
         "409":
