@@ -10,6 +10,8 @@ export * from './kernel';
 export * from './activity';
 export * from './messaging';
 export * from './notification';
+export * from './users';
+export * from './config';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';

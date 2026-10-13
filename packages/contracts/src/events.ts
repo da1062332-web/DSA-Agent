@@ -10,6 +10,8 @@ export const DOMAIN_EVENT_TYPES = [
   'lead.converted',
   'consent.granted',
   'consent.withdrawn',
+  'customer.created',
+  'customer.updated',
   'task.created',
   'task.completed',
   'application.created',
