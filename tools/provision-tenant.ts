@@ -49,8 +49,21 @@ async function createAuthUsers(
   created: string[],
 ): Promise<Map<string, ProvisionedUser>> {
   const users = new Map<string, ProvisionedUser>();
+  // Accounts that already exist in Auth are left unchanged (they keep their current tenant). Emails are unique
+  // across the whole project, so creating them again would fail.
+  const existing = new Set<string>();
+  for (let page = 1; ; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw new Error(`list auth users: ${error.message}`);
+    for (const x of data.users) if (x.email) existing.add(x.email.toLowerCase());
+    if (data.users.length < 200) break;
+  }
   for (const u of USERS) {
     const email = emailFor(tenant, u.handle);
+    if (existing.has(email)) {
+      console.log(`skip ${email}: already exists in Auth, left unchanged`);
+      continue;
+    }
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
@@ -72,11 +85,8 @@ async function insertTenant(
   users: Map<string, ProvisionedUser>,
 ): Promise<void> {
   const q = (text: string, values: unknown[]) => db.query(text, values);
-  const user = (handle: string) => {
-    const u = users.get(handle);
-    if (!u) throw new Error(`seed references unknown user ${handle}`);
-    return u.userId;
-  };
+  // Users left out of this run (already in Auth) are skipped wherever the seed refers to them.
+  const userOrNull = (handle: string): string | null => users.get(handle)?.userId ?? null;
 
   await q('BEGIN', []);
   try {
@@ -112,7 +122,8 @@ async function insertTenant(
     };
 
     for (const u of USERS) {
-      const p = users.get(u.handle)!;
+      const p = users.get(u.handle);
+      if (!p) continue;
       await q(
         `insert into app_user (id, tenant_id, idp_subject, email, display_name, primary_branch_id, created_by, updated_by)
          values ($1, $2, $3, $4, $5, $6, $7, $7)`,
@@ -124,12 +135,13 @@ async function insertTenant(
     await q(
       `insert into team (id, tenant_id, name, branch_id, manager_user_id, created_by, updated_by)
        values ($1, $2, $3, $4, $5, $6, $6)`,
-      [teamId, tenantId, TEAM.name, branch(TEAM.branch), user(TEAM.manager), ACTOR],
+      [teamId, tenantId, TEAM.name, branch(TEAM.branch), userOrNull(TEAM.manager), ACTOR],
     );
     for (const m of TEAM.members) {
+      if (!users.has(m)) continue;
       await q(
         `insert into team_membership (id, tenant_id, team_id, user_id, created_by) values ($1, $2, $3, $4, $5)`,
-        [id('tm'), tenantId, teamId, user(m), ACTOR],
+        [id('tm'), tenantId, teamId, userOrNull(m), ACTOR],
       );
     }
 
@@ -154,6 +166,7 @@ async function insertTenant(
     }
 
     for (const u of USERS) {
+      if (!users.has(u.handle)) continue;
       for (const r of u.roles) {
         // created_by is the SYSTEM actor, never the user (SOD-05 CHECK).
         await q(
@@ -162,7 +175,7 @@ async function insertTenant(
           [
             id('ura'),
             tenantId,
-            user(u.handle),
+            userOrNull(u.handle),
             roleIds.get(r.code),
             r.scope,
             (r.branches ?? []).map(branch),
@@ -190,10 +203,11 @@ async function insertTenant(
         ],
       );
       for (const m of QUEUE_MEMBERS[queue.code] ?? []) {
+        if (!users.has(m.handle)) continue;
         await q(
           `insert into work_queue_member (id, tenant_id, queue_id, user_id, can_assign, created_by)
            values ($1, $2, $3, $4, $5, $6)`,
-          [id('wqm'), tenantId, queueId, user(m.handle), m.assign ?? false, ACTOR],
+          [id('wqm'), tenantId, queueId, userOrNull(m.handle), m.assign ?? false, ACTOR],
         );
       }
     }
@@ -220,14 +234,26 @@ async function provision(admin: SupabaseClient, db: pg.Client, tenant: TenantSee
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { tenant: { type: 'string' } } });
+  const { values } = parseArgs({
+    options: { tenant: { type: 'string' }, target: { type: 'string', default: 'local' } },
+  });
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, DEMO_USER_PASSWORD } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !DATABASE_URL) {
     throw new Error('set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and DATABASE_URL in .env');
   }
-  // Demo tenants are synthetic; they belong on the local stack only. Staging provisioning is REL-001.
-  if (!LOCAL_HOSTS.has(new URL(SUPABASE_URL).hostname)) {
-    throw new Error('demo provisioning runs only against the local Supabase stack');
+  // Demo tenants are synthetic. The default target is the local stack. A hosted project needs --target hosted AND
+  // ALLOW_HOSTED_DEMO_SEED=yes, and an explicit DEMO_USER_PASSWORD, so a shared database is never written by accident.
+  const hosted = values.target === 'hosted';
+  if (values.target !== 'local' && !hosted) throw new Error('--target must be local or hosted');
+  const isLocal = LOCAL_HOSTS.has(new URL(SUPABASE_URL).hostname);
+  if (!hosted && !isLocal)
+    throw new Error('demo provisioning runs only against the local Supabase stack (use --target hosted)');
+  if (hosted) {
+    if (isLocal) throw new Error('--target hosted needs a hosted SUPABASE_URL');
+    if (process.env.ALLOW_HOSTED_DEMO_SEED !== 'yes')
+      throw new Error('set ALLOW_HOSTED_DEMO_SEED=yes to write to the hosted project');
+    if (!DEMO_USER_PASSWORD || DEMO_USER_PASSWORD.length < 12)
+      throw new Error('set DEMO_USER_PASSWORD (12+ characters) for hosted');
   }
   const targets = values.tenant ? TENANTS.filter((t) => t.slug === values.tenant) : TENANTS;
   if (targets.length === 0)
