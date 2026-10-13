@@ -17,6 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { getStoredAuthToken } from '../../auth/token';
 import {
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -75,7 +76,7 @@ export function MessageComposer({
     setSendResult(null);
 
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const idemKey = `idem_send_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
       const res = await fetch(`${apiBaseUrl}/messages`, {
@@ -98,16 +99,16 @@ export function MessageComposer({
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const issue = data.error?.details?.[0]?.issue;
+        const issue = data?.error?.details?.[0]?.issue;
         setSendResult({
           success: false,
           error: {
-            code: data.error?.code || 'ERROR',
-            message: data.error?.message || 'Failed to dispatch message',
+            code: data?.error?.code || 'ERROR',
+            message: data?.error?.message || `Failed to dispatch message (HTTP ${res.status})`,
             issue,
-            details: data.error?.details,
+            details: data?.error?.details,
           },
         });
       } else {
