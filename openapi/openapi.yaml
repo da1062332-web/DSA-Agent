@@ -7704,4 +7704,512 @@ paths:
                 required:
                   - task
                   - followUpTask
+  /v1/lenders:
+    post:
+      tags: &a37
+        - MOD-LND Lenders
+      operationId: API-LND-001
+      summary: Create a lender (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                lenderType:
+                  type: string
+                  enum: &a36
+                    - BANK
+                    - NBFC
+                    - HFC
+                    - SFB
+                    - OTHER
+                regulatorRef:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 40
+              required:
+                - name
+                - lenderType
+              additionalProperties: false
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a36
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: &a38
+                      - ACTIVE
+                      - PAUSED
+                      - TERMINATED
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED
+        "403":
+          description: FORBIDDEN
+        "422":
+          description: VALIDATION_ERROR
+    get:
+      tags: *a37
+      operationId: API-LND-002
+      summary: List lenders (any signed-in staff)
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a38
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a36
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: Page of lenders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        name:
+                          type: string
+                        lenderType:
+                          type: string
+                          enum: *a36
+                        regulatorRef:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a38
+                        statusReason:
+                          type:
+                            - string
+                            - "null"
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - lenderType
+                        - regulatorRef
+                        - status
+                        - statusReason
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED
+  /v1/lenders/{id}:
+    get:
+      tags: *a37
+      operationId: API-LND-002-GET
+      summary: One lender (any signed-in staff)
+      responses:
+        "200":
+          description: Lender
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a36
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a38
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - version
+                  - createdAt
+                  - updatedAt
+        "404":
+          description: NOT_FOUND
+    patch:
+      tags: *a37
+      operationId: API-LND-003
+      summary: Update a lender, including PAUSED or TERMINATED status with a reason (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                lenderType:
+                  type: string
+                  enum: *a36
+                regulatorRef:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 40
+                status:
+                  type: string
+                  enum: *a38
+                statusReason:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 200
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a36
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a38
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/lenders/{id}/empanelments:
+    post:
+      tags: *a37
+      operationId: API-LND-004
+      summary: Add an empanelment (DSA code, validity, permitted product categories) (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dsaCode:
+                  type: string
+                  pattern: ^[A-Z0-9_-]{3,30}$
+                validFrom:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                validTo:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                permittedCategories:
+                  type: array
+                  items:
+                    type: string
+                    enum: &a39
+                      - PL
+                      - BL
+                      - MSME
+                      - LAP
+                      - HL
+                      - VL
+                      - GL
+                      - EL
+                      - OTHER
+                  minItems: 1
+                  maxItems: 9
+              required:
+                - dsaCode
+                - validFrom
+                - permittedCategories
+              additionalProperties: false
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  dsaCode:
+                    type: string
+                  validFrom:
+                    type: string
+                  validTo:
+                    type:
+                      - string
+                      - "null"
+                  permittedCategories:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a39
+                  status:
+                    type: string
+                    enum: &a40
+                      - ACTIVE
+                      - SUSPENDED
+                      - EXPIRED
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - dsaCode
+                  - validFrom
+                  - validTo
+                  - permittedCategories
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: INVALID_STATE (duplicate DSA code for this lender)
+        "422":
+          description: VALIDATION_ERROR
+  /v1/empanelments/{id}:
+    patch:
+      tags: *a37
+      operationId: API-LND-005
+      summary: "Update an empanelment: end date, categories, status (config.manage)"
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                validTo:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                permittedCategories:
+                  type: array
+                  items:
+                    type: string
+                    enum: *a39
+                  minItems: 1
+                  maxItems: 9
+                status:
+                  type: string
+                  enum: *a40
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  dsaCode:
+                    type: string
+                  validFrom:
+                    type: string
+                  validTo:
+                    type:
+                      - string
+                      - "null"
+                  permittedCategories:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a39
+                  status:
+                    type: string
+                    enum: *a40
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - dsaCode
+                  - validFrom
+                  - validTo
+                  - permittedCategories
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
 webhooks: {}
