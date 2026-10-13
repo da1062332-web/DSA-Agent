@@ -25,8 +25,12 @@ export function saveStoredSession(session: Session | null): void {
   try {
     if (session) {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      if (session.access_token) {
+        localStorage.setItem('dsa_auth_token', session.access_token);
+      }
     } else {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem('dsa_auth_token');
     }
   } catch {
     // Ignore storage write errors

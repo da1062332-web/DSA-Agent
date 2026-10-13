@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
+import { getStoredAuthToken } from '../../auth/token';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 const CATEGORY_COLORS: Record<NotificationCategory, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
@@ -40,7 +41,7 @@ export function NotificationsPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string 
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const statusQuery = filterTab === 'UNREAD' ? '&status=UNREAD' : '';
       const res = await fetch(`${apiBaseUrl}/notifications?limit=50${statusQuery}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -50,9 +51,9 @@ export function NotificationsPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string 
         throw new Error(`Failed to load notifications: HTTP ${res.status}`);
       }
 
-      const body = await res.json();
-      setNotifications(body.data || []);
-      setUnreadCount(body.meta?.unreadCount ?? 0);
+      const body = await res.json().catch(() => null);
+      setNotifications(body?.data || []);
+      setUnreadCount(body?.meta?.unreadCount ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error fetching inbox');
     } finally {
@@ -67,7 +68,7 @@ export function NotificationsPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string 
   const handleMarkAsRead = async (ids: string[]) => {
     if (ids.length === 0) return;
     try {
-      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const token = getStoredAuthToken();
       const res = await fetch(`${apiBaseUrl}/notifications/read`, {
         method: 'POST',
         headers: {
