@@ -6,6 +6,8 @@ import * as compliance from './modules/compliance/openapi';
 import * as activities from './modules/crm/activities/openapi';
 import * as customers from './modules/crm/customers/openapi';
 import * as leads from './modules/crm/leads/openapi';
+import * as messaging from './modules/crm/messaging/openapi';
+import * as notifications from './modules/crm/notifications/openapi';
 import * as tasks from './modules/crm/tasks/openapi';
 import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
@@ -18,6 +20,8 @@ const MODULES = [
   leads,
   customers,
   activities,
+  messaging,
+  notifications,
   compliance,
   tasks,
   rulesApi,

@@ -4,6 +4,7 @@
 import type { AuthenticatorAssuranceLevels, Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getSupabase } from './supabase';
+import { setAuthToken } from './token';
 
 export interface Aal {
   current: AuthenticatorAssuranceLevels | null;
@@ -35,6 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },
     );
   }, []);
+
+  // Keep the token used by non-query features in step with the Supabase session.
+  useEffect(() => {
+    setAuthToken(session?.access_token);
+  }, [session]);
 
   useEffect(() => {
     const supabase = getSupabase();

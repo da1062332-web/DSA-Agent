@@ -4,7 +4,6 @@ import { useMe } from '../api/useMe';
 
 export function HomePage() {
   const me = useMe();
-
   const cards = [
     {
       title: 'Leads & CRM',
@@ -29,6 +28,30 @@ export function HomePage() {
       desc: 'Simulate and manage business eligibility rules.',
       to: '/rules',
       badge: 'BRE Engine',
+    },
+    {
+      title: 'Omnichannel Messaging',
+      desc: 'Templates, dispatch, send-eligibility guard, and delivery tracking.',
+      to: '/messaging',
+      badge: 'Messaging',
+    },
+    {
+      title: 'User Management',
+      desc: 'Manage staff accounts, branch assignments, and roles.',
+      to: '/users',
+      badge: 'Users',
+    },
+    {
+      title: 'Access Control',
+      desc: 'Configure tenant roles, permission policies, and RBAC matrix.',
+      to: '/roles',
+      badge: 'Access Control',
+    },
+    {
+      title: 'Tenant Configuration',
+      desc: 'Manage organization details, operational SLAs, and branch network.',
+      to: '/config',
+      badge: 'Configuration',
     },
   ];
 
