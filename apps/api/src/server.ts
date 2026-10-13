@@ -1,7 +1,16 @@
 // Process entry point (owner: Dev 1).
+import {
+  createAuditPort,
+  createAuthz,
+  createIdGenerator,
+  createPrincipalResolver,
+  createTokenVerifier,
+  createUserDirectory,
+} from '@dsa/kernel';
 import { pino } from 'pino';
 import { createApp } from './app';
 import { loadConfig, type ApiConfig } from './config';
+import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { createTxRunner } from './kernel-min/tx-runner';
 
@@ -15,10 +24,28 @@ try {
 
 const logger = pino({ level: config.LOG_LEVEL });
 const db = createDb(config.DATABASE_URL);
+const txRunner = createTxRunner(db);
+const ids = createIdGenerator();
 const app = createApp({
-  deps: { txRunner: createTxRunner(db) },
+  deps: {
+    txRunner,
+    authz: createAuthz(),
+    audit: createAuditPort(ids),
+    ids,
+    userDirectory: createUserDirectory(),
+  },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
+  supabaseUrl: config.SUPABASE_URL,
+  jwtSecret: config.API_JWT_SECRET,
+  db,
   logger,
+  auth: supabaseAuth({
+    verifier: createTokenVerifier({
+      supabaseUrl: config.SUPABASE_URL,
+      jwtSecret: config.API_JWT_SECRET ?? config.SUPABASE_JWT_SECRET,
+    }),
+    resolver: createPrincipalResolver(txRunner),
+  }),
 });
 
 const server = app.listen(config.PORT, () => {

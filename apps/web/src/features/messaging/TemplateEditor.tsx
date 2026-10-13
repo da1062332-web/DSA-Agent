@@ -1,0 +1,260 @@
+// apps/web/src/features/messaging/TemplateEditor.tsx — CMP-MSG.01.1
+import React, { useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  MESSAGE_CHANNELS,
+  TEMPLATE_CATEGORIES,
+  type MessageChannel,
+  type TemplateCategory,
+  type MessageTemplate,
+  type TemplateVariableDeclaration,
+} from '@dsa/contracts';
+
+export interface TemplateEditorProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: (template: MessageTemplate) => void;
+  apiBaseUrl?: string;
+}
+
+export function TemplateEditor({
+  open,
+  onClose,
+  onSuccess,
+  apiBaseUrl = '/v1',
+}: TemplateEditorProps) {
+  const [code, setCode] = useState('');
+  const [channel, setChannel] = useState<MessageChannel>('EMAIL');
+  const [category, setCategory] = useState<TemplateCategory>('TRANSACTIONAL');
+  const [language, setLanguage] = useState('en');
+  const [body, setBody] = useState('Hello {{applicantName}}, your loan application status is {{status}}.');
+  const [variables, setVariables] = useState<TemplateVariableDeclaration[]>([
+    { name: 'applicantName', required: true, description: 'Applicant full name' },
+    { name: 'status', required: true, description: 'Application state' },
+  ]);
+  const [newVarName, setNewVarName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAddVariable = () => {
+    const trimmed = newVarName.trim();
+    if (trimmed && !variables.some((v) => v.name === trimmed)) {
+      setVariables([...variables, { name: trimmed, required: true }]);
+      setNewVarName('');
+    }
+  };
+
+  const handleRemoveVariable = (name: string) => {
+    setVariables(variables.filter((v) => v.name !== name));
+  };
+
+  // Preview synthetic rendering
+  const renderPreview = () => {
+    let preview = body;
+    for (const v of variables) {
+      const syntheticVal = `[${v.name.toUpperCase()}]`;
+      preview = preview.replaceAll(`{{${v.name}}}`, syntheticVal);
+    }
+    return preview;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const token = sessionStorage.getItem('dsa_auth_token') || localStorage.getItem('dsa_auth_token');
+      const idemKey = `idem_tmpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+      const res = await fetch(`${apiBaseUrl}/message-templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idemKey,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          code: code.trim(),
+          channel,
+          category,
+          language: language.trim() || 'en',
+          body: body.trim(),
+          variables,
+          status: 'APPROVED',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Failed to create message template');
+      }
+
+      onSuccess(data);
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error creating template');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <form onSubmit={handleSubmit}>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Create Message Template (CMP-MSG.01.1)
+        </DialogTitle>
+        <DialogContent dividers>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Template Code"
+                placeholder="e.g. loan_status_notice"
+                fullWidth
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                helperText="Lowercase alphanumeric with ., _, or -"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Channel</InputLabel>
+                <Select
+                  value={channel}
+                  label="Channel"
+                  onChange={(e) => setChannel(e.target.value as MessageChannel)}
+                >
+                  {MESSAGE_CHANNELS.map((ch) => (
+                    <MenuItem key={ch} value={ch}>
+                      {ch}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={category}
+                  label="Category"
+                  onChange={(e) => setCategory(e.target.value as TemplateCategory)}
+                >
+                  {TEMPLATE_CATEGORIES.map((cat) => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Language"
+                value={language}
+                fullWidth
+                onChange={(e) => setLanguage(e.target.value)}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Template Body"
+                multiline
+                rows={4}
+                fullWidth
+                required
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                helperText="Declare placeholders using {{variableName}}"
+              />
+            </Grid>
+
+            {/* Variable manager */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Declared Variables:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+                {variables.map((v) => (
+                  <Chip
+                    key={v.name}
+                    label={`{{${v.name}}}`}
+                    color="primary"
+                    variant="outlined"
+                    onDelete={() => handleRemoveVariable(v.name)}
+                  />
+                ))}
+                {variables.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No variables declared.
+                  </Typography>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  size="small"
+                  placeholder="New variable (e.g. loanAmount)"
+                  value={newVarName}
+                  onChange={(e) => setNewVarName(e.target.value)}
+                />
+                <Button variant="outlined" size="small" onClick={handleAddVariable}>
+                  Add Variable
+                </Button>
+              </Box>
+            </Grid>
+
+            {/* Live Synthetic Preview */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Live Message Preview:
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 1.5 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                  {renderPreview()}
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? 'Creating...' : 'Save & Approve Template'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}

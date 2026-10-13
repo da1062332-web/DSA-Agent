@@ -14,6 +14,7 @@ export const PERMISSION_CODES = [
   'customer.reveal_sensitive',
   'consent.record',
   'activity.create',
+  'activity.update',
   'task.read',
   'task.create',
   'task.update',
@@ -33,6 +34,7 @@ export const PERMISSION_CODES = [
   'audit.read',
   'config.manage',
   'user.manage',
+  'message.send',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

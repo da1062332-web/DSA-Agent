@@ -5,14 +5,18 @@
   "description": "Kernel runtime: http, context, auth, authz, db, idempotency, audit, outbox, logging, rate limit. Owner: Dev 1.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@dsa/contracts": "*"
+    "@dsa/contracts": "*",
+    "jose": "^5.10.0",
+    "kysely": "^0.27.6",
+    "ulid": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -1,6 +1,8 @@
 // Test helpers so every lane can write route tests from Day 1.
 // TASK-102 moves fakeAuth to @dsa/kernel/testing with the same signature.
 import type { Principal, TxRunner } from '@dsa/contracts';
+import { FakeUserDirectoryPort } from '@dsa/contracts/fakes';
+import { createAuditPort, createAuthz, createIdGenerator } from '@dsa/kernel';
 import type { Express, RequestHandler } from 'express';
 import { createApp } from '../../src/app';
 import type { ApiDeps } from '../../src/modules/types';
@@ -36,9 +38,25 @@ const unusedTxRunner: TxRunner = {
   withTenantTx: () => Promise.reject(new Error('No TxRunner configured for this test')),
 };
 
+const ids = createIdGenerator();
+
+/** Module dependencies for route tests. Unit tests never reach the database through these. */
+export function testDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
+  return {
+    txRunner: unusedTxRunner,
+    authz: createAuthz(),
+    audit: createAuditPort(ids),
+    ids,
+    userDirectory: new FakeUserDirectoryPort(),
+    ...overrides,
+  };
+}
+
+export const createTestDeps = testDeps;
+
 export function createTestApp(opts: { auth?: RequestHandler; deps?: Partial<ApiDeps> } = {}): Express {
   return createApp({
-    deps: { txRunner: unusedTxRunner, ...opts.deps },
+    deps: testDeps(opts.deps),
     corsAllowedOrigins: [],
     auth: opts.auth,
   });
