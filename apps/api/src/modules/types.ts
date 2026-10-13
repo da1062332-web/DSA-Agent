@@ -17,17 +17,17 @@ import type { Router } from 'express';
  *  Ports and services are optional and resolve to real/fallback when not passed. */
 export interface ApiDeps {
   txRunner: TxRunner;
-  authz?: Authz;
+  authz: Authz;
   auditPort?: AuditPort;
-  audit?: AuditPort;
+  audit: AuditPort;
   outboxPort?: OutboxPort;
   idGenerator?: IdGenerator;
-  ids?: IdGenerator;
+  ids: IdGenerator;
   decisionPort?: DecisionPort;
   applicationPort?: ApplicationPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
-  userDirectory?: UserDirectoryPort;
+  userDirectory: UserDirectoryPort;
   consentPort?: ConsentPort;
   clock?: Clock;
   leadRepository?: unknown;

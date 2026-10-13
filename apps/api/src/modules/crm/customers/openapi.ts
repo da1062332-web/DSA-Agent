@@ -9,6 +9,10 @@ import {
   WithdrawConsentSchema,
 } from './types';
 
+export const tags = [
+  { name: 'MOD-CUST Customers', description: 'Customer profiles, consent tracking, and party deduplication (MOD-CUST).' },
+];
+
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('CreateCustomerInput', CreateCustomerSchema);
   registry.register('UpdateCustomerInput', UpdateCustomerSchema);
@@ -19,8 +23,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/customers',
+    operationId: 'API-CUST-001',
     summary: 'Create a new customer party profile (API-CUST-001)',
-    tags: ['Customers'],
+    tags: ['MOD-CUST Customers'],
     request: {
       headers: z.object({
         'Idempotency-Key': z.string(),
@@ -62,8 +67,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/customers',
+    operationId: 'API-CUST-010',
     summary: 'List customers in scope (API-CUST-010)',
-    tags: ['Customers'],
+    tags: ['MOD-CUST Customers'],
     request: {
       query: z.object({
         cursor: z.string().optional(),
@@ -102,8 +108,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/customers/{id}',
-    summary: 'Get customer details by ID',
-    tags: ['Customers'],
+    operationId: 'API-CUST-002',
+    summary: 'Get customer details by ID (API-CUST-002)',
+    tags: ['MOD-CUST Customers'],
     request: {
       params: z.object({ id: z.string() }),
     },
@@ -139,8 +146,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'patch',
     path: '/v1/customers/{id}',
+    operationId: 'API-CUST-003',
     summary: 'Update customer profile (API-CUST-003)',
-    tags: ['Customers'],
+    tags: ['MOD-CUST Customers'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({
@@ -178,8 +186,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'get',
     path: '/v1/customers/{id}/consents',
-    summary: 'List customer consents',
-    tags: ['Customers', 'Consent'],
+    operationId: 'API-CUST-006',
+    summary: 'List customer consents (API-CUST-006)',
+    tags: ['MOD-CUST Customers'],
     request: {
       params: z.object({ id: z.string() }),
     },
@@ -211,8 +220,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/customers/{id}/consents',
+    operationId: 'API-CUST-004',
     summary: 'Record customer consent (API-CUST-004)',
-    tags: ['Customers', 'Consent'],
+    tags: ['MOD-CUST Customers'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({
@@ -247,8 +257,9 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/consents/{id}/withdrawal',
+    operationId: 'API-CUST-005',
     summary: 'Withdraw an active consent (API-CUST-005)',
-    tags: ['Consent'],
+    tags: ['MOD-CUST Customers'],
     request: {
       params: z.object({ id: z.string() }),
       headers: z.object({

@@ -24,12 +24,18 @@ tags:
     description: Teams, managers and effective-dated members (SUB-ORG.03).
   - name: MOD-ORG Work queues
     description: Intake, unassigned and team queues with round-robin members (SUB-ORG.05).
+  - name: MOD-LEAD Leads
+    description: Lead intake, assignment, transitions, and conversion (MOD-LEAD).
+  - name: MOD-CUST Customers
+    description: Customer profiles, consent tracking, and party deduplication (MOD-CUST).
   - name: MOD-ACT Activities
     description: Activity timeline and interaction tracking (MOD-ACT).
   - name: MOD-MSG Messaging
     description: Templates, outbox, and delivery status (MOD-MSG).
   - name: MOD-NTF Notifications
     description: Notifications and user preferences (MOD-NTF).
+  - name: MOD-TASK Tasks
+    description: Task lifecycle, queues, assignment, and SLA tracking (MOD-TASK).
 components:
   securitySchemes:
     bearerAuth:
@@ -3713,9 +3719,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/leads:
     post:
+      operationId: API-LEAD-001
       summary: Capture a new lead with consent (API-LEAD-001)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -3861,9 +3868,10 @@ paths:
                   - duplicateFlag
                   - lockVersion
     get:
+      operationId: API-LEAD-002
       summary: List and filter leads (API-LEAD-002)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: integer
@@ -3937,9 +3945,10 @@ paths:
                   - meta
   /v1/leads/{id}:
     get:
+      operationId: API-LEAD-003
       summary: Lead detail (API-LEAD-003)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -3961,9 +3970,10 @@ paths:
         "404":
           description: Lead not found or outside authorized scope
     patch:
+      operationId: API-LEAD-004
       summary: Update lead mutable fields (API-LEAD-004)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -4067,9 +4077,10 @@ paths:
           description: VERSION_CONFLICT
   /v1/leads/{id}/transitions:
     post:
+      operationId: API-LEAD-005
       summary: Lead state transition (API-LEAD-005)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -4155,9 +4166,10 @@ paths:
           description: INVALID_TRANSITION or VERSION_CONFLICT
   /v1/leads/{id}/assignments:
     post:
+      operationId: API-LEAD-006
       summary: Assign or reassign lead (API-LEAD-006)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -4207,9 +4219,10 @@ paths:
           description: INVALID_ASSIGNEE
   /v1/leads/{id}/conversion:
     post:
+      operationId: API-LEAD-007
       summary: Convert lead atomically to customer and application (API-LEAD-007)
       tags:
-        - Leads
+        - MOD-LEAD Leads
       parameters:
         - schema:
             type: string
@@ -4264,9 +4277,10 @@ paths:
           description: INVALID_STATE or VERSION_CONFLICT
   /v1/customers:
     post:
+      operationId: API-CUST-001
       summary: Create a new customer party profile (API-CUST-001)
       tags:
-        - Customers
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4356,9 +4370,10 @@ paths:
                   - status
                   - lockVersion
     get:
+      operationId: API-CUST-010
       summary: List customers in scope (API-CUST-010)
       tags:
-        - Customers
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4451,9 +4466,10 @@ paths:
                   - meta
   /v1/customers/{id}:
     get:
-      summary: Get customer details by ID
+      operationId: API-CUST-002
+      summary: Get customer details by ID (API-CUST-002)
       tags:
-        - Customers
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4510,9 +4526,10 @@ paths:
                   - status
                   - lockVersion
     patch:
+      operationId: API-CUST-003
       summary: Update customer profile (API-CUST-003)
       tags:
-        - Customers
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4573,10 +4590,10 @@ paths:
                   - homeBranchId
   /v1/customers/{id}/consents:
     get:
-      summary: List customer consents
+      operationId: API-CUST-006
+      summary: List customer consents (API-CUST-006)
       tags:
-        - Customers
-        - Consent
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4628,10 +4645,10 @@ paths:
                 required:
                   - data
     post:
+      operationId: API-CUST-004
       summary: Record customer consent (API-CUST-004)
       tags:
-        - Customers
-        - Consent
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -4707,9 +4724,10 @@ paths:
                   - status
   /v1/consents/{id}/withdrawal:
     post:
+      operationId: API-CUST-005
       summary: Withdraw an active consent (API-CUST-005)
       tags:
-        - Consent
+        - MOD-CUST Customers
       parameters:
         - schema:
             type: string
@@ -7339,9 +7357,10 @@ paths:
                   - error
   /v1/tasks:
     post:
+      operationId: API-TASK-001
       summary: "API-TASK-001: Create Task"
       tags:
-        - Tasks
+        - MOD-TASK Tasks
       security:
         - bearerAuth: []
       parameters:
@@ -7523,9 +7542,10 @@ paths:
                   - updatedAt
                   - updatedBy
     get:
+      operationId: API-TASK-002
       summary: "API-TASK-002: List Tasks"
       tags:
-        - Tasks
+        - MOD-TASK Tasks
       security:
         - bearerAuth: []
       parameters:
@@ -7711,9 +7731,10 @@ paths:
                   - pagination
   /v1/tasks/{id}:
     get:
-      summary: Get Task Detail
+      operationId: API-TASK-005
+      summary: Get Task Detail (API-TASK-005)
       tags:
-        - Tasks
+        - MOD-TASK Tasks
       security:
         - bearerAuth: []
       parameters:
@@ -7827,9 +7848,10 @@ paths:
                   - updatedAt
                   - updatedBy
     patch:
+      operationId: API-TASK-003
       summary: "API-TASK-003: Update Task"
       tags:
-        - Tasks
+        - MOD-TASK Tasks
       security:
         - bearerAuth: []
       parameters:
@@ -7977,9 +7999,10 @@ paths:
                   - updatedBy
   /v1/tasks/{id}/completion:
     post:
+      operationId: API-TASK-004
       summary: "API-TASK-004: Complete Task"
       tags:
-        - Tasks
+        - MOD-TASK Tasks
       security:
         - bearerAuth: []
       parameters:
