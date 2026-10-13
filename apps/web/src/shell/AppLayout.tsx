@@ -61,11 +61,6 @@ export function AppLayout() {
       </Centered>
     );
 
-  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
-  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
-  if (needsChallenge || needsEnrolment)
-    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
-
   if (me.isError) {
     return (
       <Centered>
@@ -82,6 +77,11 @@ export function AppLayout() {
       </Centered>
     );
   }
+
+  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
+  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
+  if (needsChallenge || needsEnrolment)
+    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
 
