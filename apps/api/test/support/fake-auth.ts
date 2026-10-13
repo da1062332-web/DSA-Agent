@@ -40,21 +40,16 @@ const unusedTxRunner: TxRunner = {
 
 const ids = createIdGenerator();
 
-/** Module dependencies for route tests. Unit tests never reach the database through these. */
-export function testDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
-  return {
-    txRunner: unusedTxRunner,
-    authz: createAuthz(),
-    audit: createAuditPort(ids),
-    ids,
-    userDirectory: new FakeUserDirectoryPort(),
-    ...overrides,
-  };
-}
-
 export function createTestApp(opts: { auth?: RequestHandler; deps?: Partial<ApiDeps> } = {}): Express {
   return createApp({
-    deps: testDeps(opts.deps),
+    deps: {
+      txRunner: unusedTxRunner,
+      authz: createAuthz(),
+      audit: createAuditPort(ids),
+      ids,
+      userDirectory: new FakeUserDirectoryPort(),
+      ...opts.deps,
+    },
     corsAllowedOrigins: [],
     auth: opts.auth,
   });
