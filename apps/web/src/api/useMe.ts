@@ -1,6 +1,6 @@
 // GET /v1/me (API-USR-010) and GET /v1/tenant — owner: Dev 1.
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../auth/AuthProvider';
+import { useOptionalAuth } from '../auth/AuthProvider';
 import { apiFetch } from './client';
 
 export interface Me {
@@ -26,7 +26,7 @@ export interface Tenant {
 }
 
 export function useMe() {
-  const { session } = useAuth();
+  const session = useOptionalAuth()?.session;
   return useQuery({
     queryKey: ['me', session?.user.id],
     queryFn: async () => {
@@ -45,7 +45,7 @@ export function useMe() {
 
 /** Tenant facts. Pass enabled=false until the MFA gate has passed: the API refuses every call but /v1/me at aal1. */
 export function useTenant(enabled = true) {
-  const { session } = useAuth();
+  const session = useOptionalAuth()?.session;
   return useQuery({
     queryKey: ['tenant', session?.user.id],
     queryFn: async () => {
