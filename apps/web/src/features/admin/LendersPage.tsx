@@ -1,4 +1,4 @@
-// /admin/lenders (owner: Dev 3; DSA Notion MODULE 14, SUB-LND.01 and .05). List and create lenders. Writes need
+// /lenders (owner: Dev 3; DSA Notion MODULE 14, SUB-LND.01 and .05). List and create lenders. Writes need
 // config.manage; the list is visible to any signed-in staff, as the API allows.
 import {
   Button,
@@ -109,11 +109,7 @@ export function LendersPage() {
                 {rows.map((l) => (
                   <TableRow key={l.id} hover>
                     <TableCell>
-                      <Link
-                        component={RouterLink}
-                        to={`/admin/lenders/${l.id}`}
-                        data-testid="admin.lender.open"
-                      >
+                      <Link component={RouterLink} to={`/lenders/${l.id}`} data-testid="admin.lender.open">
                         {l.name}
                       </Link>
                     </TableCell>

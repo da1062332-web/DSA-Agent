@@ -8309,6 +8309,12 @@ paths:
                 status:
                   type: string
                   enum: *a40
+                reason:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 200
               additionalProperties: false
       responses:
         "200":
@@ -8572,4 +8578,909 @@ paths:
           description: VERSION_CONFLICT
         "422":
           description: VALIDATION_ERROR
+  /v1/lenders/{id}/contacts/{contactId}:
+    delete:
+      tags: *a37
+      operationId: API-LND-006-DEL
+      summary: Remove one contact; the row is kept as history (config.manage; If-Match on the lender version)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  removedId:
+                    type: string
+                  lenderVersion:
+                    type: integer
+                required:
+                  - removedId
+                  - lenderVersion
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT
+  /v1/products:
+    post:
+      tags: &a42
+        - MOD-PRD Products
+      operationId: API-PRD-001
+      summary: Create a product under an existing lender (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lenderId:
+                  type: string
+                  pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                category:
+                  type: string
+                  enum: *a39
+                applicantTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: &a41
+                      - INDIVIDUAL
+                      - SALARIED
+                      - SELF_EMPLOYED
+                      - PROPRIETORSHIP
+                      - PARTNERSHIP
+                      - PRIVATE_LIMITED
+                      - OTHER
+                  minItems: 1
+                  maxItems: 7
+                secured:
+                  type: boolean
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                nextReviewAt:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+              required:
+                - lenderId
+                - name
+                - category
+                - applicantTypes
+                - secured
+              additionalProperties: false
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a39
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a41
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: &a43
+                      - ACTIVE
+                      - INACTIVE
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (lender)
+        "409":
+          description: INVALID_STATE (lender terminated)
+        "422":
+          description: VALIDATION_ERROR
+    get:
+      tags: *a42
+      operationId: API-PRD-002
+      summary: List products (any signed-in staff)
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: lenderId
+          in: query
+        - schema:
+            type: string
+            enum: *a43
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a39
+          required: false
+          name: category
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: Page of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                        name:
+                          type: string
+                        category:
+                          type: string
+                          enum: *a39
+                        applicantTypes:
+                          type: array
+                          items:
+                            type: string
+                            enum: *a41
+                        secured:
+                          type: boolean
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        nextReviewAt:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a43
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - name
+                        - category
+                        - applicantTypes
+                        - secured
+                        - ownerUserId
+                        - nextReviewAt
+                        - status
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED
+  /v1/products/{id}:
+    get:
+      tags: *a42
+      operationId: API-PRD-002-GET
+      summary: One product (any signed-in staff)
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a39
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a41
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a43
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "404":
+          description: NOT_FOUND
+    patch:
+      tags: *a42
+      operationId: API-PRD-006
+      summary: "Edit basic product details: name, category, applicant types, secured, owner, next review (config.manage). Versions are not changed."
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                category:
+                  type: string
+                  enum: *a39
+                applicantTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: *a41
+                  minItems: 1
+                  maxItems: 7
+                secured:
+                  type: boolean
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                nextReviewAt:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a39
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a41
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a43
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT or INVALID_STATE (duplicate name under the lender)
+        "422":
+          description: VALIDATION_ERROR
+  /v1/products/{id}/status:
+    post:
+      tags: *a42
+      operationId: API-PRD-005
+      summary: Activate or deactivate a product; deactivation needs a reason (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: *a43
+                reason:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 200
+              required:
+                - status
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a39
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a41
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a43
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT or INVALID_TRANSITION
+        "422":
+          description: VALIDATION_ERROR
+  /v1/products/{id}/versions:
+    post:
+      tags: *a42
+      operationId: API-PRD-003
+      summary: Add a new terms version; earlier versions it replaces are retired (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amountMin:
+                  type: string
+                  pattern: ^\d{1,16}(\.\d{1,2})?$
+                amountMax:
+                  type: string
+                  pattern: ^\d{1,16}(\.\d{1,2})?$
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+                  default: INR
+                tenureMinMonths:
+                  type: integer
+                  minimum: 1
+                  maximum: 600
+                tenureMaxMonths:
+                  type: integer
+                  minimum: 1
+                  maximum: 600
+                illustrativeRateText:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 200
+                feeText:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 500
+                geoRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      state:
+                        type: string
+                        minLength: 2
+                        maxLength: 60
+                      allowed:
+                        type: boolean
+                    required:
+                      - state
+                      - allowed
+                    additionalProperties: false
+                  maxItems: 100
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                documentProfileId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 2
+                  maxLength: 64
+                workflowProfile:
+                  type: object
+                  additionalProperties: {}
+                eligibilityScope:
+                  type: object
+                  additionalProperties: {}
+              required:
+                - amountMin
+                - amountMax
+                - tenureMinMonths
+                - tenureMaxMonths
+              additionalProperties: false
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  productId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  effectiveFrom:
+                    type: string
+                  amountMin:
+                    type: string
+                  amountMax:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMinMonths:
+                    type: integer
+                  tenureMaxMonths:
+                    type: integer
+                  illustrativeRateText:
+                    type:
+                      - string
+                      - "null"
+                  feeText:
+                    type:
+                      - string
+                      - "null"
+                  geoRules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        state:
+                          type: string
+                          minLength: 2
+                          maxLength: 60
+                        allowed:
+                          type: boolean
+                      required:
+                        - state
+                        - allowed
+                      additionalProperties: false
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                  workflowProfile:
+                    type: object
+                    additionalProperties: {}
+                  eligibilityScope:
+                    type: object
+                    additionalProperties: {}
+                  status:
+                    type: string
+                    enum: &a44
+                      - ACTIVE
+                      - RETIRED
+                  isCurrent:
+                    type: boolean
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - productId
+                  - versionNo
+                  - effectiveFrom
+                  - amountMin
+                  - amountMax
+                  - currency
+                  - tenureMinMonths
+                  - tenureMaxMonths
+                  - illustrativeRateText
+                  - feeText
+                  - geoRules
+                  - documentProfileId
+                  - workflowProfile
+                  - eligibilityScope
+                  - status
+                  - isCurrent
+                  - createdAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: INVALID_STATE (product inactive)
+        "422":
+          description: VALIDATION_ERROR (for example, effective date not after the latest version)
+    get:
+      tags: *a42
+      operationId: API-PRD-003-LIST
+      summary: All versions of a product, newest first (any signed-in staff)
+      responses:
+        "200":
+          description: Versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                        productId:
+                          type: string
+                        versionNo:
+                          type: integer
+                        effectiveFrom:
+                          type: string
+                        amountMin:
+                          type: string
+                        amountMax:
+                          type: string
+                        currency:
+                          type: string
+                        tenureMinMonths:
+                          type: integer
+                        tenureMaxMonths:
+                          type: integer
+                        illustrativeRateText:
+                          type:
+                            - string
+                            - "null"
+                        feeText:
+                          type:
+                            - string
+                            - "null"
+                        geoRules:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              state:
+                                type: string
+                                minLength: 2
+                                maxLength: 60
+                              allowed:
+                                type: boolean
+                            required:
+                              - state
+                              - allowed
+                            additionalProperties: false
+                        documentProfileId:
+                          type:
+                            - string
+                            - "null"
+                        workflowProfile:
+                          type: object
+                          additionalProperties: {}
+                        eligibilityScope:
+                          type: object
+                          additionalProperties: {}
+                        status:
+                          type: string
+                          enum: *a44
+                        isCurrent:
+                          type: boolean
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - productId
+                        - versionNo
+                        - effectiveFrom
+                        - amountMin
+                        - amountMax
+                        - currency
+                        - tenureMinMonths
+                        - tenureMaxMonths
+                        - illustrativeRateText
+                        - feeText
+                        - geoRules
+                        - documentProfileId
+                        - workflowProfile
+                        - eligibilityScope
+                        - status
+                        - isCurrent
+                        - createdAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "404":
+          description: NOT_FOUND
+  /v1/product-versions/{id}:
+    get:
+      tags: *a42
+      operationId: API-PRD-004
+      summary: One version, with isCurrent (any signed-in staff)
+      responses:
+        "200":
+          description: Version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  productId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  effectiveFrom:
+                    type: string
+                  amountMin:
+                    type: string
+                  amountMax:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMinMonths:
+                    type: integer
+                  tenureMaxMonths:
+                    type: integer
+                  illustrativeRateText:
+                    type:
+                      - string
+                      - "null"
+                  feeText:
+                    type:
+                      - string
+                      - "null"
+                  geoRules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        state:
+                          type: string
+                          minLength: 2
+                          maxLength: 60
+                        allowed:
+                          type: boolean
+                      required:
+                        - state
+                        - allowed
+                      additionalProperties: false
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                  workflowProfile:
+                    type: object
+                    additionalProperties: {}
+                  eligibilityScope:
+                    type: object
+                    additionalProperties: {}
+                  status:
+                    type: string
+                    enum: *a44
+                  isCurrent:
+                    type: boolean
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - productId
+                  - versionNo
+                  - effectiveFrom
+                  - amountMin
+                  - amountMax
+                  - currency
+                  - tenureMinMonths
+                  - tenureMaxMonths
+                  - illustrativeRateText
+                  - feeText
+                  - geoRules
+                  - documentProfileId
+                  - workflowProfile
+                  - eligibilityScope
+                  - status
+                  - isCurrent
+                  - createdAt
+        "404":
+          description: NOT_FOUND
 webhooks: {}
