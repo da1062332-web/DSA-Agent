@@ -9,7 +9,7 @@ import { NotificationService } from '../src/modules/crm/notifications/notificati
 import { PreferenceResolver } from '../src/modules/crm/notifications/preference-resolver';
 import { createRouter } from '../src/modules/crm/notifications/router';
 import { NotificationStreamHub } from '../src/modules/crm/notifications/stream-hub';
-import { fakeAuth, testPrincipal } from './support/fake-auth';
+import { fakeAuth, testPrincipal, createTestDeps } from './support/fake-auth';
 
 describe('Module 12: Notifications (MOD-NTF) Unit & Route Tests', () => {
   const tenantA = 'ten_01JTESTTENANT00000000000000';
@@ -37,7 +37,7 @@ describe('Module 12: Notifications (MOD-NTF) Unit & Route Tests', () => {
     const app = express();
     app.use(express.json());
     app.use(fakeAuth(principal));
-    const router = createRouter({ txRunner: dummyTxRunner }, service, streamHub);
+    const router = createRouter(createTestDeps({ txRunner: dummyTxRunner }), service, streamHub);
     app.use('/v1', router);
     app.use(errorHandler());
     return app;

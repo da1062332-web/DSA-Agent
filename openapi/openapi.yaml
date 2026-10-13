@@ -373,7 +373,7 @@ components:
                 maxLength: 200
             required:
               - name
-          default: &a12 []
+          default: &a16 []
         providerTemplateId:
           type:
             - string
@@ -397,7 +397,7 @@ components:
           type: string
         direction:
           type: string
-          enum: &a15
+          enum: &a19
             - OUTBOUND
             - INBOUND
         channel:
@@ -487,7 +487,7 @@ components:
       properties:
         subjectType:
           type: string
-          enum: &a13
+          enum: &a17
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -522,7 +522,7 @@ components:
               - type: string
               - type: number
               - type: boolean
-          default: &a14 {}
+          default: &a18 {}
         correlationId:
           type: string
       required:
@@ -796,59 +796,1994 @@ paths:
                       - ok
                 required:
                   - status
-  /auth/login:
-    post:
-      summary: Database-backed user authentication
-      security: []
+  /v1/me:
+    get:
+      summary: Get current user profile (API-USR-010)
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user profile with preferences and ETag header
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Entity lock_version for concurrency control
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  displayName:
+                    type: string
+                  userType:
+                    type: string
+                  status:
+                    type: string
+                  availability:
+                    type: string
+                  primaryBranchId:
+                    type: string
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  notificationPreferences:
+                    type: object
+                    properties:
+                      channels:
+                        type: object
+                        properties:
+                          inApp:
+                            type: boolean
+                            default: true
+                          email:
+                            type: boolean
+                            default: false
+                          sms:
+                            type: boolean
+                            default: false
+                          whatsapp:
+                            type: boolean
+                            default: false
+                        default: *a9
+                      digestFrequency:
+                        type: string
+                        enum: *a10
+                        default: IMMEDIATE
+                      mutedCategories:
+                        type: array
+                        items:
+                          type: string
+                          enum: *a8
+                        default: *a11
+                required:
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - lockVersion
+                  - notificationPreferences
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    patch:
+      summary: Update user profile notification preferences with concurrency control (API-USR-009)
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Expected lock_version for optimistic concurrency control
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                email:
-                  type: string
-                  description: User email (e.g. admin@dsa.com)
-                password:
-                  type: string
-                  description: Password (e.g. admin@123)
-              required:
-                - email
-                - password
+                notificationPreferences:
+                  type: object
+                  properties:
+                    channels:
+                      type: object
+                      properties:
+                        inApp:
+                          type: boolean
+                          default: true
+                        email:
+                          type: boolean
+                          default: false
+                        sms:
+                          type: boolean
+                          default: false
+                        whatsapp:
+                          type: boolean
+                          default: false
+                      default: *a9
+                    digestFrequency:
+                      type: string
+                      enum: *a10
+                      default: IMMEDIATE
+                    mutedCategories:
+                      type: array
+                      items:
+                        type: string
+                        enum: *a8
+                      default: *a11
+                preferences:
+                  type: object
+                  properties:
+                    channels:
+                      type: object
+                      properties:
+                        inApp:
+                          type: boolean
+                          default: true
+                        email:
+                          type: boolean
+                          default: false
+                        sms:
+                          type: boolean
+                          default: false
+                        whatsapp:
+                          type: boolean
+                          default: false
+                      default: *a9
+                    digestFrequency:
+                      type: string
+                      enum: *a10
+                      default: IMMEDIATE
+                    mutedCategories:
+                      type: array
+                      items:
+                        type: string
+                        enum: *a8
+                      default: *a11
       responses:
         "200":
-          description: Successful authentication
+          description: Updated user profile
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Updated lock_version
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  token:
+                  id:
                     type: string
-                  user:
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  displayName:
+                    type: string
+                  userType:
+                    type: string
+                  status:
+                    type: string
+                  availability:
+                    type: string
+                  primaryBranchId:
+                    type: string
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  notificationPreferences:
                     type: object
                     properties:
-                      id:
+                      channels:
+                        type: object
+                        properties:
+                          inApp:
+                            type: boolean
+                            default: true
+                          email:
+                            type: boolean
+                            default: false
+                          sms:
+                            type: boolean
+                            default: false
+                          whatsapp:
+                            type: boolean
+                            default: false
+                        default: *a9
+                      digestFrequency:
                         type: string
-                      email:
-                        type: string
-                      displayName:
-                        type: string
-                      tenantId:
-                        type: string
-                      authenticatedAt:
-                        type: string
-                    required:
-                      - id
-                      - email
-                      - displayName
-                      - tenantId
-                      - authenticatedAt
+                        enum: *a10
+                        default: IMMEDIATE
+                      mutedCategories:
+                        type: array
+                        items:
+                          type: string
+                          enum: *a8
+                        default: *a11
                 required:
-                  - token
-                  - user
+                  - id
+                  - tenantId
+                  - email
+                  - displayName
+                  - userType
+                  - status
+                  - availability
+                  - primaryBranchId
+                  - lockVersion
+                  - notificationPreferences
         "401":
-          description: Invalid email or password
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "412":
+          description: Precondition Failed (concurrent update detected)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "428":
+          description: Precondition Required (missing If-Match header)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/users:
+    get:
+      operationId: API-USR-LIST
+      summary: Users of the tenant (no contact data)
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum:
+              - INVITED
+              - ACTIVE
+              - SUSPENDED
+              - DEACTIVATED
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: branchId
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        displayName:
+                          type: string
+                        primaryBranchId:
+                          type: string
+                        status:
+                          type: string
+                        availability:
+                          type: string
+                      required:
+                        - id
+                        - displayName
+                        - primaryBranchId
+                        - status
+                        - availability
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/tenant:
+    get:
+      operationId: API-TEN-SELF
+      summary: The caller's tenant
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  slug:
+                    type: string
+                  legalName:
+                    type: string
+                  tenantType:
+                    type: string
+                  dataRegion:
+                    type: string
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - slug
+                  - legalName
+                  - tenantType
+                  - dataRegion
+                  - timezone
+                  - status
+                  - createdAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/organisations:
+    get:
+      operationId: API-ORG-001
+      summary: Organisations of the tenant (config.manage)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        legalName:
+                          type: string
+                        constitution:
+                          type: string
+                          enum: &a12
+                            - PROPRIETORSHIP
+                            - PARTNERSHIP
+                            - LLP
+                            - PVT_LTD
+                            - PUBLIC_LTD
+                            - TRUST
+                            - OTHER
+                        status:
+                          type: string
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - legalName
+                        - constitution
+                        - status
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/organisations/{id}:
+    get:
+      operationId: API-ORG-001-GET
+      summary: One organisation (config.manage)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  legalName:
+                    type: string
+                  constitution:
+                    type: string
+                    enum: *a12
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - legalName
+                  - constitution
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+    patch:
+      operationId: API-ORG-002
+      summary: Update the organisation profile (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                legalName:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                constitution:
+                  type: string
+                  enum: *a12
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  legalName:
+                    type: string
+                  constitution:
+                    type: string
+                    enum: *a12
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - legalName
+                  - constitution
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/branches:
+    post:
+      operationId: API-ORG-003
+      summary: Create a branch (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  pattern: ^[A-Z0-9_-]{2,20}$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                timezone:
+                  type: string
+                  pattern: ^[A-Za-z_]+\/[A-Za-z_]+$
+              required:
+                - code
+                - name
+              additionalProperties: false
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  organisationId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  pincode:
+                    type:
+                      - string
+                      - "null"
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - code
+                  - name
+                  - pincode
+                  - timezone
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "422":
+          description: VALIDATION_ERROR
+    get:
+      operationId: API-ORG-004
+      summary: List branches
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: &a13
+              - ACTIVE
+              - INACTIVE
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        organisationId:
+                          type: string
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        pincode:
+                          type:
+                            - string
+                            - "null"
+                        timezone:
+                          type: string
+                        status:
+                          type: string
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - organisationId
+                        - code
+                        - name
+                        - pincode
+                        - timezone
+                        - status
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/branches/{id}:
+    get:
+      operationId: API-ORG-004-GET
+      summary: One branch
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  organisationId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  pincode:
+                    type:
+                      - string
+                      - "null"
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - code
+                  - name
+                  - pincode
+                  - timezone
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+    patch:
+      operationId: API-ORG-005
+      summary: Update a branch (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                pincode:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^[1-9][0-9]{5}$
+                timezone:
+                  type: string
+                  pattern: ^[A-Za-z_]+\/[A-Za-z_]+$
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  organisationId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  pincode:
+                    type:
+                      - string
+                      - "null"
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - code
+                  - name
+                  - pincode
+                  - timezone
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/branches/{id}/deactivation:
+    post:
+      operationId: API-ORG-006
+      summary: Deactivate a branch and its queues (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  organisationId:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  pincode:
+                    type:
+                      - string
+                      - "null"
+                  timezone:
+                    type: string
+                  status:
+                    type: string
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - code
+                  - name
+                  - pincode
+                  - timezone
+                  - status
+                  - version
+                  - createdAt
+                  - updatedAt
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/teams:
+    post:
+      operationId: API-ORG-007
+      summary: Create a team (config.manage or user.manage; branch managers within their branch)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                branchId:
+                  type:
+                    - string
+                    - "null"
+                managerUserId:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - name
+              additionalProperties: false
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  managerUserId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - since
+                required:
+                  - id
+                  - name
+                  - branchId
+                  - managerUserId
+                  - status
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "422":
+          description: VALIDATION_ERROR
+    get:
+      operationId: API-ORG-007-LIST
+      summary: List teams
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a13
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        branchId:
+                          type:
+                            - string
+                            - "null"
+                        managerUserId:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                        memberCount:
+                          type: integer
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - branchId
+                        - managerUserId
+                        - status
+                        - memberCount
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/teams/{id}:
+    get:
+      operationId: API-ORG-007-GET
+      summary: One team with its current members
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  managerUserId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - since
+                required:
+                  - id
+                  - name
+                  - branchId
+                  - managerUserId
+                  - status
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+    patch:
+      operationId: API-ORG-008
+      summary: Update a team (config.manage or user.manage; branch managers within their branch)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                branchId:
+                  type:
+                    - string
+                    - "null"
+                managerUserId:
+                  type:
+                    - string
+                    - "null"
+                status:
+                  type: string
+                  enum:
+                    - ACTIVE
+                    - INACTIVE
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  managerUserId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - since
+                required:
+                  - id
+                  - name
+                  - branchId
+                  - managerUserId
+                  - status
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/teams/{id}/members:
+    put:
+      operationId: API-ORG-009
+      summary: Replace the team members (user.manage; branch managers within their branch)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 200
+              required:
+                - userIds
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  managerUserId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - since
+                required:
+                  - id
+                  - name
+                  - branchId
+                  - managerUserId
+                  - status
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/work-queues:
+    post:
+      operationId: API-ORG-011
+      summary: Create a work queue (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  pattern: ^[A-Z0-9_-]{2,40}$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                kind:
+                  type: string
+                  enum: &a14
+                    - INTAKE
+                    - UNASSIGNED
+                    - TEAM
+                    - FUNCTIONAL
+                    - EXCEPTION
+                branchId:
+                  type:
+                    - string
+                    - "null"
+                teamId:
+                  type:
+                    - string
+                    - "null"
+                recordTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: &a15
+                      - LEAD
+                      - APPLICATION
+                      - TASK
+                  minItems: 1
+              required:
+                - code
+                - name
+                - kind
+                - recordTypes
+              additionalProperties: false
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a14
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  teamId:
+                    type:
+                      - string
+                      - "null"
+                  recordTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a15
+                  active:
+                    type: boolean
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        canPick:
+                          type: boolean
+                        canAssign:
+                          type: boolean
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - canPick
+                        - canAssign
+                        - since
+                required:
+                  - id
+                  - code
+                  - name
+                  - kind
+                  - branchId
+                  - teamId
+                  - recordTypes
+                  - active
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "422":
+          description: VALIDATION_ERROR
+    get:
+      operationId: API-ORG-012
+      summary: List work queues
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a13
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            maxLength: 100
+          required: false
+          name: q
+          in: query
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        kind:
+                          type: string
+                          enum: *a14
+                        branchId:
+                          type:
+                            - string
+                            - "null"
+                        teamId:
+                          type:
+                            - string
+                            - "null"
+                        recordTypes:
+                          type: array
+                          items:
+                            type: string
+                            enum: *a15
+                        active:
+                          type: boolean
+                        memberCount:
+                          type: integer
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - code
+                        - name
+                        - kind
+                        - branchId
+                        - teamId
+                        - recordTypes
+                        - active
+                        - memberCount
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+  /v1/work-queues/{id}:
+    get:
+      operationId: API-ORG-012-GET
+      summary: One work queue with its members
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a14
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  teamId:
+                    type:
+                      - string
+                      - "null"
+                  recordTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a15
+                  active:
+                    type: boolean
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        canPick:
+                          type: boolean
+                        canAssign:
+                          type: boolean
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - canPick
+                        - canAssign
+                        - since
+                required:
+                  - id
+                  - code
+                  - name
+                  - kind
+                  - branchId
+                  - teamId
+                  - recordTypes
+                  - active
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+    patch:
+      operationId: API-ORG-013
+      summary: Update a work queue (config.manage)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                active:
+                  type: boolean
+                recordTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: *a15
+                  minItems: 1
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a14
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  teamId:
+                    type:
+                      - string
+                      - "null"
+                  recordTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a15
+                  active:
+                    type: boolean
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        canPick:
+                          type: boolean
+                        canAssign:
+                          type: boolean
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - canPick
+                        - canAssign
+                        - since
+                required:
+                  - id
+                  - code
+                  - name
+                  - kind
+                  - branchId
+                  - teamId
+                  - recordTypes
+                  - active
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
+  /v1/work-queues/{id}/members:
+    put:
+      operationId: API-ORG-014
+      summary: Replace the queue members (user.manage; branch managers within their branch)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                members:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                      canPick:
+                        type: boolean
+                      canAssign:
+                        type: boolean
+                    required:
+                      - userId
+                      - canPick
+                      - canAssign
+                    additionalProperties: false
+                  maxItems: 200
+              required:
+                - members
+              additionalProperties: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a14
+                  branchId:
+                    type:
+                      - string
+                      - "null"
+                  teamId:
+                    type:
+                      - string
+                      - "null"
+                  recordTypes:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a15
+                  active:
+                    type: boolean
+                  memberCount:
+                    type: integer
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                        displayName:
+                          type: string
+                        canPick:
+                          type: boolean
+                        canAssign:
+                          type: boolean
+                        since:
+                          type: string
+                      required:
+                        - userId
+                        - displayName
+                        - canPick
+                        - canAssign
+                        - since
+                required:
+                  - id
+                  - code
+                  - name
+                  - kind
+                  - branchId
+                  - teamId
+                  - recordTypes
+                  - active
+                  - memberCount
+                  - version
+                  - createdAt
+                  - updatedAt
+                  - members
+        "401":
+          description: UNAUTHENTICATED or TOKEN_EXPIRED
+        "403":
+          description: FORBIDDEN
+        "409":
+          description: VERSION_CONFLICT
+        "422":
+          description: VALIDATION_ERROR
   /v1/activities:
     post:
       summary: Record an interaction (API-ACT-001)
@@ -1878,7 +3813,7 @@ paths:
                         maxLength: 200
                     required:
                       - name
-                  default: *a12
+                  default: *a16
                 providerTemplateId:
                   type:
                     - string
@@ -2457,7 +4392,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a13
+                  enum: *a17
                 subjectId:
                   type: string
                   minLength: 1
@@ -2489,7 +4424,7 @@ paths:
                       - type: string
                       - type: number
                       - type: boolean
-                  default: *a14
+                  default: *a18
                 correlationId:
                   type: string
               required:
@@ -2513,7 +4448,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a15
+                    enum: *a19
                   channel:
                     type: string
                     enum: *a4
@@ -2604,7 +4539,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a15
+                    enum: *a19
                   channel:
                     type: string
                     enum: *a4
@@ -2874,7 +4809,7 @@ paths:
                           type: string
                         direction:
                           type: string
-                          enum: *a15
+                          enum: *a19
                         channel:
                           type: string
                           enum: *a4
@@ -3374,406 +5309,6 @@ paths:
                 description: Stream of SSE events
         "401":
           description: Unauthenticated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: object
-                    properties:
-                      code:
-                        type: string
-                      message:
-                        type: string
-                      httpStatus:
-                        type: integer
-                      correlationId:
-                        type: string
-                      details:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            field:
-                              type: string
-                            issue:
-                              type: string
-                            meta:
-                              type: object
-                              additionalProperties: {}
-                          required:
-                            - issue
-                      retryable:
-                        type: boolean
-                    required:
-                      - code
-                      - message
-                      - httpStatus
-                      - correlationId
-                      - retryable
-                required:
-                  - error
-  /v1/me:
-    get:
-      summary: Get current user profile (API-USR-010)
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Current user profile with preferences and ETag header
-          headers:
-            ETag:
-              schema:
-                type: string
-              description: Entity lock_version for concurrency control
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
-                  tenantId:
-                    type: string
-                  email:
-                    type: string
-                    format: email
-                  displayName:
-                    type: string
-                  userType:
-                    type: string
-                  status:
-                    type: string
-                  availability:
-                    type: string
-                  primaryBranchId:
-                    type: string
-                  lockVersion:
-                    type: integer
-                    minimum: 0
-                  notificationPreferences:
-                    type: object
-                    properties:
-                      channels:
-                        type: object
-                        properties:
-                          inApp:
-                            type: boolean
-                            default: true
-                          email:
-                            type: boolean
-                            default: false
-                          sms:
-                            type: boolean
-                            default: false
-                          whatsapp:
-                            type: boolean
-                            default: false
-                        default: *a9
-                      digestFrequency:
-                        type: string
-                        enum: *a10
-                        default: IMMEDIATE
-                      mutedCategories:
-                        type: array
-                        items:
-                          type: string
-                          enum: *a8
-                        default: *a11
-                required:
-                  - id
-                  - tenantId
-                  - email
-                  - displayName
-                  - userType
-                  - status
-                  - availability
-                  - primaryBranchId
-                  - lockVersion
-                  - notificationPreferences
-        "401":
-          description: Unauthenticated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: object
-                    properties:
-                      code:
-                        type: string
-                      message:
-                        type: string
-                      httpStatus:
-                        type: integer
-                      correlationId:
-                        type: string
-                      details:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            field:
-                              type: string
-                            issue:
-                              type: string
-                            meta:
-                              type: object
-                              additionalProperties: {}
-                          required:
-                            - issue
-                      retryable:
-                        type: boolean
-                    required:
-                      - code
-                      - message
-                      - httpStatus
-                      - correlationId
-                      - retryable
-                required:
-                  - error
-    patch:
-      summary: Update user profile notification preferences with concurrency control (API-USR-009)
-      tags:
-        - Users
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: If-Match
-          in: header
-          required: true
-          schema:
-            type: string
-          description: Expected lock_version for optimistic concurrency control
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                notificationPreferences:
-                  type: object
-                  properties:
-                    channels:
-                      type: object
-                      properties:
-                        inApp:
-                          type: boolean
-                          default: true
-                        email:
-                          type: boolean
-                          default: false
-                        sms:
-                          type: boolean
-                          default: false
-                        whatsapp:
-                          type: boolean
-                          default: false
-                      default: *a9
-                    digestFrequency:
-                      type: string
-                      enum: *a10
-                      default: IMMEDIATE
-                    mutedCategories:
-                      type: array
-                      items:
-                        type: string
-                        enum: *a8
-                      default: *a11
-                preferences:
-                  type: object
-                  properties:
-                    channels:
-                      type: object
-                      properties:
-                        inApp:
-                          type: boolean
-                          default: true
-                        email:
-                          type: boolean
-                          default: false
-                        sms:
-                          type: boolean
-                          default: false
-                        whatsapp:
-                          type: boolean
-                          default: false
-                      default: *a9
-                    digestFrequency:
-                      type: string
-                      enum: *a10
-                      default: IMMEDIATE
-                    mutedCategories:
-                      type: array
-                      items:
-                        type: string
-                        enum: *a8
-                      default: *a11
-      responses:
-        "200":
-          description: Updated user profile
-          headers:
-            ETag:
-              schema:
-                type: string
-              description: Updated lock_version
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
-                  tenantId:
-                    type: string
-                  email:
-                    type: string
-                    format: email
-                  displayName:
-                    type: string
-                  userType:
-                    type: string
-                  status:
-                    type: string
-                  availability:
-                    type: string
-                  primaryBranchId:
-                    type: string
-                  lockVersion:
-                    type: integer
-                    minimum: 0
-                  notificationPreferences:
-                    type: object
-                    properties:
-                      channels:
-                        type: object
-                        properties:
-                          inApp:
-                            type: boolean
-                            default: true
-                          email:
-                            type: boolean
-                            default: false
-                          sms:
-                            type: boolean
-                            default: false
-                          whatsapp:
-                            type: boolean
-                            default: false
-                        default: *a9
-                      digestFrequency:
-                        type: string
-                        enum: *a10
-                        default: IMMEDIATE
-                      mutedCategories:
-                        type: array
-                        items:
-                          type: string
-                          enum: *a8
-                        default: *a11
-                required:
-                  - id
-                  - tenantId
-                  - email
-                  - displayName
-                  - userType
-                  - status
-                  - availability
-                  - primaryBranchId
-                  - lockVersion
-                  - notificationPreferences
-        "401":
-          description: Unauthenticated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: object
-                    properties:
-                      code:
-                        type: string
-                      message:
-                        type: string
-                      httpStatus:
-                        type: integer
-                      correlationId:
-                        type: string
-                      details:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            field:
-                              type: string
-                            issue:
-                              type: string
-                            meta:
-                              type: object
-                              additionalProperties: {}
-                          required:
-                            - issue
-                      retryable:
-                        type: boolean
-                    required:
-                      - code
-                      - message
-                      - httpStatus
-                      - correlationId
-                      - retryable
-                required:
-                  - error
-        "412":
-          description: Precondition Failed (concurrent update detected)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: object
-                    properties:
-                      code:
-                        type: string
-                      message:
-                        type: string
-                      httpStatus:
-                        type: integer
-                      correlationId:
-                        type: string
-                      details:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            field:
-                              type: string
-                            issue:
-                              type: string
-                            meta:
-                              type: object
-                              additionalProperties: {}
-                          required:
-                            - issue
-                      retryable:
-                        type: boolean
-                    required:
-                      - code
-                      - message
-                      - httpStatus
-                      - correlationId
-                      - retryable
-                required:
-                  - error
-        "428":
-          description: Precondition Required (missing If-Match header)
           content:
             application/json:
               schema:

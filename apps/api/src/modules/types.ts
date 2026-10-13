@@ -1,11 +1,14 @@
-import type { TxRunner } from '@dsa/contracts';
+import type { AuditPort, Authz, IdGenerator, TxRunner, UserDirectoryPort } from '@dsa/contracts';
 import type { Router } from 'express';
 
 /** Dependencies handed to every module router.
- *  TODO(TASK-101/TASK-104, Dev 1): add the kernel services (Authz, AuditPort, OutboxPort, IdGenerator) and the
- *  port registry, where each port is chosen per PORT_<NAME>=fake|real|noop. */
+ *  TODO(TASK-105, Dev 1): add OutboxPort and the port registry (PORT_<NAME>=fake|real|noop). */
 export interface ApiDeps {
   txRunner: TxRunner;
+  authz: Authz;
+  audit: AuditPort;
+  ids: IdGenerator;
+  userDirectory: UserDirectoryPort;
 }
 
 export interface ApiModule {
