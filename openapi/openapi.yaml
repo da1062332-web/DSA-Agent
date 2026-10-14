@@ -10090,6 +10090,693 @@ paths:
                   - createdAt
         "404":
           description: NOT_FOUND
+  /v1/applications:
+    get:
+      tags: &a51
+        - MOD-APP Loan Applications
+      operationId: API-APP-002
+      summary: List applications in the caller scope (application.read)
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: &a50
+              - DRAFT
+              - DOCUMENTS_PENDING
+              - UNDER_REVIEW
+              - READY_FOR_SUBMISSION
+              - SUBMITTED
+              - SANCTIONED
+              - PARTIALLY_DISBURSED
+              - DISBURSED
+              - CLOSED
+              - REJECTED
+              - WITHDRAWN
+              - CANCELLED
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: onHold
+          in: query
+      responses:
+        "200":
+          description: Page of applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                        customerId:
+                          type: string
+                        leadId:
+                          type:
+                            - string
+                            - "null"
+                        branchId:
+                          type: string
+                        productCategory:
+                          type: string
+                        productVersionId:
+                          type:
+                            - string
+                            - "null"
+                        requestedAmount:
+                          type: string
+                        currency:
+                          type: string
+                        tenureMonths:
+                          type:
+                            - integer
+                            - "null"
+                        purposeCode:
+                          type:
+                            - string
+                            - "null"
+                          enum: &a52
+                            - PERSONAL_NEEDS
+                            - MEDICAL
+                            - EDUCATION
+                            - HOME_PURCHASE
+                            - HOME_IMPROVEMENT
+                            - VEHICLE
+                            - WORKING_CAPITAL
+                            - BUSINESS_EXPANSION
+                            - DEBT_CONSOLIDATION
+                            - OTHER
+                        applicantType:
+                          type: string
+                          enum: &a53
+                            - SALARIED
+                            - SELF_EMPLOYED_PROFESSIONAL
+                            - SELF_EMPLOYED_BUSINESS
+                            - NON_INDIVIDUAL
+                        status:
+                          type: string
+                          enum: *a50
+                        onHold:
+                          type: boolean
+                        holdReason:
+                          type:
+                            - string
+                            - "null"
+                        holdUntil:
+                          type:
+                            - string
+                            - "null"
+                        salesOwnerId:
+                          type: string
+                        opsOwnerId:
+                          type:
+                            - string
+                            - "null"
+                        opsQueueId:
+                          type:
+                            - string
+                            - "null"
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - customerId
+                        - leadId
+                        - branchId
+                        - productCategory
+                        - productVersionId
+                        - requestedAmount
+                        - currency
+                        - tenureMonths
+                        - purposeCode
+                        - applicantType
+                        - status
+                        - onHold
+                        - holdReason
+                        - holdUntil
+                        - salesOwnerId
+                        - opsOwnerId
+                        - opsQueueId
+                        - version
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: UNAUTHENTICATED
+        "403":
+          description: FORBIDDEN
+  /v1/applications/{id}:
+    get:
+      tags: *a51
+      operationId: API-APP-003
+      summary: One application in the caller scope (application.read)
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  customerId:
+                    type: string
+                  leadId:
+                    type:
+                      - string
+                      - "null"
+                  branchId:
+                    type: string
+                  productCategory:
+                    type: string
+                  productVersionId:
+                    type:
+                      - string
+                      - "null"
+                  requestedAmount:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMonths:
+                    type:
+                      - integer
+                      - "null"
+                  purposeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a52
+                  applicantType:
+                    type: string
+                    enum: *a53
+                  status:
+                    type: string
+                    enum: *a50
+                  onHold:
+                    type: boolean
+                  holdReason:
+                    type:
+                      - string
+                      - "null"
+                  holdUntil:
+                    type:
+                      - string
+                      - "null"
+                  salesOwnerId:
+                    type: string
+                  opsOwnerId:
+                    type:
+                      - string
+                      - "null"
+                  opsQueueId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - customerId
+                  - leadId
+                  - branchId
+                  - productCategory
+                  - productVersionId
+                  - requestedAmount
+                  - currency
+                  - tenureMonths
+                  - purposeCode
+                  - applicantType
+                  - status
+                  - onHold
+                  - holdReason
+                  - holdUntil
+                  - salesOwnerId
+                  - opsOwnerId
+                  - opsQueueId
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (also when outside the caller scope)
+    patch:
+      tags: *a51
+      operationId: API-APP-004
+      summary: Edit the applicant request while the application is DRAFT or DOCUMENTS_PENDING (application.update)
+      parameters: &a54
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestedAmount:
+                  type: string
+                  pattern: ^\d{1,16}(\.\d{1,2})?$
+                tenureMonths:
+                  type: integer
+                  minimum: 1
+                  maximum: 480
+                purposeCode:
+                  type:
+                    - string
+                    - "null"
+                  enum: *a52
+                applicantType:
+                  type: string
+                  enum: *a53
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  customerId:
+                    type: string
+                  leadId:
+                    type:
+                      - string
+                      - "null"
+                  branchId:
+                    type: string
+                  productCategory:
+                    type: string
+                  productVersionId:
+                    type:
+                      - string
+                      - "null"
+                  requestedAmount:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMonths:
+                    type:
+                      - integer
+                      - "null"
+                  purposeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a52
+                  applicantType:
+                    type: string
+                    enum: *a53
+                  status:
+                    type: string
+                    enum: *a50
+                  onHold:
+                    type: boolean
+                  holdReason:
+                    type:
+                      - string
+                      - "null"
+                  holdUntil:
+                    type:
+                      - string
+                      - "null"
+                  salesOwnerId:
+                    type: string
+                  opsOwnerId:
+                    type:
+                      - string
+                      - "null"
+                  opsQueueId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - customerId
+                  - leadId
+                  - branchId
+                  - productCategory
+                  - productVersionId
+                  - requestedAmount
+                  - currency
+                  - tenureMonths
+                  - purposeCode
+                  - applicantType
+                  - status
+                  - onHold
+                  - holdReason
+                  - holdUntil
+                  - salesOwnerId
+                  - opsOwnerId
+                  - opsQueueId
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT or INVALID_STATE (application no longer editable)
+        "422":
+          description: VALIDATION_ERROR
+  /v1/applications/{id}/hold:
+    put:
+      tags: *a51
+      operationId: API-APP-010
+      summary: Put an application on hold with a reason, or clear the hold (application.update)
+      parameters: *a54
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                onHold:
+                  type: boolean
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 200
+                until:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+              required:
+                - onHold
+              additionalProperties: false
+      responses:
+        "200":
+          description: Hold set or cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  customerId:
+                    type: string
+                  leadId:
+                    type:
+                      - string
+                      - "null"
+                  branchId:
+                    type: string
+                  productCategory:
+                    type: string
+                  productVersionId:
+                    type:
+                      - string
+                      - "null"
+                  requestedAmount:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMonths:
+                    type:
+                      - integer
+                      - "null"
+                  purposeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a52
+                  applicantType:
+                    type: string
+                    enum: *a53
+                  status:
+                    type: string
+                    enum: *a50
+                  onHold:
+                    type: boolean
+                  holdReason:
+                    type:
+                      - string
+                      - "null"
+                  holdUntil:
+                    type:
+                      - string
+                      - "null"
+                  salesOwnerId:
+                    type: string
+                  opsOwnerId:
+                    type:
+                      - string
+                      - "null"
+                  opsQueueId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - customerId
+                  - leadId
+                  - branchId
+                  - productCategory
+                  - productVersionId
+                  - requestedAmount
+                  - currency
+                  - tenureMonths
+                  - purposeCode
+                  - applicantType
+                  - status
+                  - onHold
+                  - holdReason
+                  - holdUntil
+                  - salesOwnerId
+                  - opsOwnerId
+                  - opsQueueId
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND
+        "409":
+          description: VERSION_CONFLICT or INVALID_STATE (terminal application, or no hold to clear)
+        "422":
+          description: VALIDATION_ERROR (a reason is required to hold)
+  /v1/applications/{id}/transitions:
+    post:
+      tags: *a51
+      operationId: API-APP-005
+      summary: "Move an application: T-APP-01 select product and start documents, T-APP-02 send to review, T-APP-10 cancel with a reason"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    transitionCode:
+                      type: string
+                      enum:
+                        - T-APP-01
+                    productVersionId:
+                      type: string
+                      minLength: 3
+                      maxLength: 64
+                  required:
+                    - transitionCode
+                    - productVersionId
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    transitionCode:
+                      type: string
+                      enum:
+                        - T-APP-02
+                  required:
+                    - transitionCode
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    transitionCode:
+                      type: string
+                      enum:
+                        - T-APP-10
+                    cancelReason:
+                      type: string
+                      enum:
+                        - DUPLICATE
+                        - CREATED_IN_ERROR
+                        - INELIGIBLE
+                        - OTHER
+                  required:
+                    - transitionCode
+                    - cancelReason
+                  additionalProperties: false
+      responses:
+        "200":
+          description: Transitioned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  customerId:
+                    type: string
+                  leadId:
+                    type:
+                      - string
+                      - "null"
+                  branchId:
+                    type: string
+                  productCategory:
+                    type: string
+                  productVersionId:
+                    type:
+                      - string
+                      - "null"
+                  requestedAmount:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMonths:
+                    type:
+                      - integer
+                      - "null"
+                  purposeCode:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a52
+                  applicantType:
+                    type: string
+                    enum: *a53
+                  status:
+                    type: string
+                    enum: *a50
+                  onHold:
+                    type: boolean
+                  holdReason:
+                    type:
+                      - string
+                      - "null"
+                  holdUntil:
+                    type:
+                      - string
+                      - "null"
+                  salesOwnerId:
+                    type: string
+                  opsOwnerId:
+                    type:
+                      - string
+                      - "null"
+                  opsQueueId:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - customerId
+                  - leadId
+                  - branchId
+                  - productCategory
+                  - productVersionId
+                  - requestedAmount
+                  - currency
+                  - tenureMonths
+                  - purposeCode
+                  - applicantType
+                  - status
+                  - onHold
+                  - holdReason
+                  - holdUntil
+                  - salesOwnerId
+                  - opsOwnerId
+                  - opsQueueId
+                  - version
+                  - createdAt
+                  - updatedAt
+        "403":
+          description: FORBIDDEN (the permission for this transition is missing)
+        "404":
+          description: NOT_FOUND (also when outside the caller scope)
+        "409":
+          description: VERSION_CONFLICT or INVALID_TRANSITION or INVALID_STATE (product version not in force)
+        "422":
+          description: VALIDATION_ERROR (unknown product version, wrong category, or missing cancel reason)
   /v1/applications/{id}/lender-cases:
     post:
       operationId: API-LCS-001
@@ -10158,7 +10845,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: &a50
+                    enum: &a55
                       - DRAFT
                       - PACKAGE_READY
                       - SUBMITTED
@@ -10181,7 +10868,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a51
+                    enum: &a56
                       - PORTAL
                       - EMAIL
                       - API
@@ -10198,7 +10885,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a52
+                    enum: &a57
                       - MANUAL
                       - LENDER_API
                       - LENDER_FILE
@@ -10212,7 +10899,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a53
+                    enum: &a58
                       - POLICY
                       - INCOME
                       - CREDIT_HISTORY
@@ -10295,7 +10982,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a50
+                          enum: *a55
                         lenderReference:
                           type:
                             - string
@@ -10304,7 +10991,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a51
+                          enum: *a56
                         submittedAt:
                           type:
                             - string
@@ -10317,7 +11004,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a52
+                          enum: *a57
                         lastStatusAt:
                           type:
                             - string
@@ -10326,7 +11013,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a53
+                          enum: *a58
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -10400,7 +11087,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a50
+                    enum: *a55
                   lenderReference:
                     type:
                       - string
@@ -10409,7 +11096,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a51
+                    enum: *a56
                   submittedAt:
                     type:
                       - string
@@ -10422,7 +11109,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a52
+                    enum: *a57
                   lastStatusAt:
                     type:
                       - string
@@ -10431,7 +11118,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a53
+                    enum: *a58
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -10491,7 +11178,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: &a54
+                  enum: &a59
                     - SUBMISSION
                     - QUERY_RESPONSE
                   default: SUBMISSION
@@ -10522,7 +11209,7 @@ paths:
                         type: string
                       kind:
                         type: string
-                        enum: *a54
+                        enum: *a59
                       manifest:
                         type: object
                         additionalProperties: {}
@@ -10573,7 +11260,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a50
+                        enum: *a55
                       lenderReference:
                         type:
                           - string
@@ -10582,7 +11269,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a51
+                        enum: *a56
                       submittedAt:
                         type:
                           - string
@@ -10595,7 +11282,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a52
+                        enum: *a57
                       lastStatusAt:
                         type:
                           - string
@@ -10604,7 +11291,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a53
+                        enum: *a58
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -10672,7 +11359,7 @@ paths:
               properties:
                 channel:
                   type: string
-                  enum: *a51
+                  enum: *a56
                 lenderReference:
                   type: string
                   maxLength: 100
@@ -10738,14 +11425,14 @@ paths:
               properties:
                 toStatus:
                   type: string
-                  enum: *a50
+                  enum: *a55
                 statusSource:
                   type: string
-                  enum: *a52
+                  enum: *a57
                   default: MANUAL
                 declineReasonCode:
                   type: string
-                  enum: *a53
+                  enum: *a58
                 reasonText:
                   type: string
                   maxLength: 1000
@@ -10779,7 +11466,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a50
+                    enum: *a55
                   lenderReference:
                     type:
                       - string
@@ -10788,7 +11475,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a51
+                    enum: *a56
                   submittedAt:
                     type:
                       - string
@@ -10801,7 +11488,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a52
+                    enum: *a57
                   lastStatusAt:
                     type:
                       - string
@@ -10810,7 +11497,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a53
+                    enum: *a58
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -10948,7 +11635,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a50
+                        enum: *a55
                       lenderReference:
                         type:
                           - string
@@ -10957,7 +11644,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a51
+                        enum: *a56
                       submittedAt:
                         type:
                           - string
@@ -10970,7 +11657,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a52
+                        enum: *a57
                       lastStatusAt:
                         type:
                           - string
@@ -10979,7 +11666,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a53
+                        enum: *a58
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -11117,7 +11804,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a50
+                        enum: *a55
                       lenderReference:
                         type:
                           - string
@@ -11126,7 +11813,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a51
+                        enum: *a56
                       submittedAt:
                         type:
                           - string
@@ -11139,7 +11826,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a52
+                        enum: *a57
                       lastStatusAt:
                         type:
                           - string
@@ -11148,7 +11835,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a53
+                        enum: *a58
                       stalenessFlag:
                         type: boolean
                       tags:
