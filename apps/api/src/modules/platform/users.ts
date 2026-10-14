@@ -1,6 +1,5 @@
 // User read model (owner: Dev 1) — API-USR-010 GET /v1/me (PA-01) and GET /v1/users for pickers
 // (team members, queue members, team manager). Lists never include email or mobile (Contracts §12).
-import { AppError } from '@dsa/contracts';
 import type { Router } from 'express';
 import { sql } from 'kysely';
 import { requireCtx } from '../../http/request';
@@ -27,8 +26,8 @@ export function registerUserRoutes(router: Router, deps: ApiDeps): void {
       return r.rows[0];
     }).catch(() => null);
 
-    const email = user?.email ?? (p as any).email ?? 'admin@dsa.com';
-    const displayName = user?.display_name ?? (p as any).displayName ?? 'Akash Admin';
+    const email = user?.email ?? (p as { email?: string }).email ?? 'admin@dsa.com';
+    const displayName = user?.display_name ?? (p as { displayName?: string }).displayName ?? 'Akash Admin';
     const lockVersion = user?.lock_version ?? 0;
 
     const body: MeResponse = {

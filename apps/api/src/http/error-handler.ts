@@ -14,10 +14,10 @@ function isBodyParserError(err: unknown): boolean {
 }
 
 export function toAppError(err: unknown): AppError {
-  if (err instanceof AppError || (typeof err === 'object' && err !== null && (err as any).name === 'AppError')) {
+  if (err instanceof AppError || (typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AppError')) {
     return err as AppError;
   }
-  if (err instanceof ZodError || (typeof err === 'object' && err !== null && (err as any).name === 'ZodError')) {
+  if (err instanceof ZodError || (typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'ZodError')) {
     const issues = (err as ZodError).issues || [];
     return AppError.of(
       'VALIDATION_ERROR',
