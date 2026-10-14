@@ -71,6 +71,9 @@ export const ID_PREFIXES = [
   'wfse',
   'wft',
   'wfdl',
+  'apk',
+  'whs',
+  'whd',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

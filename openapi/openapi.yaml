@@ -1280,6 +1280,11 @@ paths:
                             - automation.approve
                             - automation.execute
                             - automation.operator
+                            - api.read
+                            - api.manage
+                            - partner.lead_ingest
+                            - partner.application_read
+                            - webhook.manage
                         scope:
                           type: string
                           enum:
@@ -16011,6 +16016,9 @@ paths:
                   items:
                     type: string
                   default: []
+                findingsSummary:
+                  type: string
+                  maxLength: 2000
               required:
                 - applicationId
                 - verificationType
@@ -16606,4 +16614,1188 @@ paths:
           description: "Forbidden: requires document.review"
         "404":
           description: Verification request or checklist item not found
+  /v1/partner/api-keys:
+    post:
+      summary: Create and issue a new Partner API Key
+      tags:
+        - Partner API - Governance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                partnerId:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 120
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 2
+                    maxLength: 60
+                  minItems: 1
+                  default:
+                    - partner.lead_ingest
+                allowedIps:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 7
+                    maxLength: 45
+                rateLimitRpm:
+                  type: integer
+                  minimum: 10
+                  maximum: 3000
+                  default: 120
+                expiresAt:
+                  type: string
+                  format: date-time
+              required:
+                - partnerId
+                - name
+      responses:
+        "201":
+          description: API Key issued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^apk_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  partnerId:
+                    type: string
+                  name:
+                    type: string
+                  keyPrefix:
+                    type: string
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                  allowedIps:
+                    type:
+                      - array
+                      - "null"
+                    items:
+                      type: string
+                  rateLimitRpm:
+                    type: integer
+                  status:
+                    type: string
+                    enum:
+                      - ACTIVE
+                      - REVOKED
+                      - EXPIRED
+                  expiresAt:
+                    type:
+                      - string
+                      - "null"
+                  lastUsedAt:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  secretKey:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - partnerId
+                  - name
+                  - keyPrefix
+                  - scopes
+                  - allowedIps
+                  - rateLimitRpm
+                  - status
+                  - expiresAt
+                  - lastUsedAt
+                  - lockVersion
+                  - createdAt
+  /v1/partner/leads:
+    post:
+      summary: Ingest lead programmatically with consent verification
+      tags:
+        - Partner API - Leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                externalReferenceId:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                loanProductCode:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                requestedAmount:
+                  type: object
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                applicant:
+                  type: object
+                  properties:
+                    firstName:
+                      type: string
+                      minLength: 1
+                      maxLength: 100
+                    lastName:
+                      type: string
+                      minLength: 1
+                      maxLength: 100
+                    mobile:
+                      type: string
+                      pattern: ^\+?[1-9]\d{7,14}$
+                    email:
+                      type: string
+                      format: email
+                    dateOfBirth:
+                      type: string
+                      pattern: ^\d{4}-\d{2}-\d{2}$
+                    city:
+                      type: string
+                      minLength: 2
+                      maxLength: 100
+                    state:
+                      type: string
+                      minLength: 2
+                      maxLength: 100
+                    pincode:
+                      type: string
+                      pattern: ^\d{6}$
+                    employmentType:
+                      type: string
+                      enum:
+                        - SALARIED
+                        - SELF_EMPLOYED_PROFESSIONAL
+                        - SELF_EMPLOYED_BUSINESS
+                        - OTHER
+                      default: SALARIED
+                    monthlyIncome:
+                      type: object
+                      properties:
+                        amount:
+                          type: string
+                          pattern: ^\d{1,16}\.\d{2}$
+                        currency:
+                          type: string
+                          pattern: ^[A-Z]{3}$
+                      required:
+                        - amount
+                        - currency
+                  required:
+                    - firstName
+                    - lastName
+                    - mobile
+                    - email
+                    - city
+                    - state
+                    - pincode
+                consent:
+                  type: object
+                  properties:
+                    consentArtifactRef:
+                      type: string
+                      minLength: 3
+                      maxLength: 200
+                    consentPurpose:
+                      type: string
+                      enum:
+                        - LOAN_APPLICATION
+                        - CREDIT_CHECK
+                        - MARKETING
+                        - GENERAL_ASSISTANCE
+                      default: LOAN_APPLICATION
+                    optInTimestamp:
+                      type: string
+                      format: date-time
+                    ipAddress:
+                      type: string
+                    userAgent:
+                      type: string
+                  required:
+                    - consentArtifactRef
+                    - optInTimestamp
+                connectorId:
+                  type: string
+                  pattern: ^con_[0-9A-HJKMNP-TV-Z]{26}$
+                metadata:
+                  type: object
+                  additionalProperties: {}
+              required:
+                - externalReferenceId
+                - loanProductCode
+                - requestedAmount
+                - applicant
+                - consent
+      responses:
+        "200":
+          description: Idempotent replay of previously ingested lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                  externalReferenceId:
+                    type: string
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: &a79
+                      - RECEIVED
+                      - DUPLICATE_SUSPECTED
+                      - QUALIFIED
+                      - CONVERTED
+                      - CONTACTED
+                      - DROPPED
+                      - REJECTED
+                  requestedAmount:
+                    type: object
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  loanProductCode:
+                    type: string
+                  applicantName:
+                    type: string
+                  maskedMobile:
+                    type: string
+                  maskedEmail:
+                    type: string
+                  city:
+                    type: string
+                  duplicateFlag:
+                    type: boolean
+                  conversionApplicationId:
+                    type:
+                      - string
+                      - "null"
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - externalReferenceId
+                  - tenantId
+                  - status
+                  - requestedAmount
+                  - loanProductCode
+                  - applicantName
+                  - maskedMobile
+                  - maskedEmail
+                  - city
+                  - duplicateFlag
+                  - conversionApplicationId
+                  - createdAt
+                  - updatedAt
+        "201":
+          description: Lead received and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                  externalReferenceId:
+                    type: string
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a79
+                  requestedAmount:
+                    type: object
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  loanProductCode:
+                    type: string
+                  applicantName:
+                    type: string
+                  maskedMobile:
+                    type: string
+                  maskedEmail:
+                    type: string
+                  city:
+                    type: string
+                  duplicateFlag:
+                    type: boolean
+                  conversionApplicationId:
+                    type:
+                      - string
+                      - "null"
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - externalReferenceId
+                  - tenantId
+                  - status
+                  - requestedAmount
+                  - loanProductCode
+                  - applicantName
+                  - maskedMobile
+                  - maskedEmail
+                  - city
+                  - duplicateFlag
+                  - conversionApplicationId
+                  - createdAt
+                  - updatedAt
+    get:
+      summary: List leads ingested by this partner (cursor-paginated)
+      tags:
+        - Partner API - Leads
+      parameters:
+        - schema:
+            type: string
+            enum: *a79
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: externalReferenceId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Paginated lead listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                        externalReferenceId:
+                          type: string
+                        tenantId:
+                          type: string
+                          pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                        status:
+                          type: string
+                          enum: *a79
+                        requestedAmount:
+                          type: object
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        loanProductCode:
+                          type: string
+                        applicantName:
+                          type: string
+                        maskedMobile:
+                          type: string
+                        maskedEmail:
+                          type: string
+                        city:
+                          type: string
+                        duplicateFlag:
+                          type: boolean
+                        conversionApplicationId:
+                          type:
+                            - string
+                            - "null"
+                          pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - externalReferenceId
+                        - tenantId
+                        - status
+                        - requestedAmount
+                        - loanProductCode
+                        - applicantName
+                        - maskedMobile
+                        - maskedEmail
+                        - city
+                        - duplicateFlag
+                        - conversionApplicationId
+                        - createdAt
+                        - updatedAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/partner/leads/{id}:
+    get:
+      summary: Query lead lifecycle status (masked PII)
+      tags:
+        - Partner API - Leads
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lead status details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                  externalReferenceId:
+                    type: string
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a79
+                  requestedAmount:
+                    type: object
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  loanProductCode:
+                    type: string
+                  applicantName:
+                    type: string
+                  maskedMobile:
+                    type: string
+                  maskedEmail:
+                    type: string
+                  city:
+                    type: string
+                  duplicateFlag:
+                    type: boolean
+                  conversionApplicationId:
+                    type:
+                      - string
+                      - "null"
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - externalReferenceId
+                  - tenantId
+                  - status
+                  - requestedAmount
+                  - loanProductCode
+                  - applicantName
+                  - maskedMobile
+                  - maskedEmail
+                  - city
+                  - duplicateFlag
+                  - conversionApplicationId
+                  - createdAt
+                  - updatedAt
+  /v1/partner/applications:
+    post:
+      summary: Programmatically convert lead or submit loan application
+      tags:
+        - Partner API - Origination
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                leadId:
+                  type: string
+                  pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                productId:
+                  type: string
+                  pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                appliedAmount:
+                  type: object
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                tenureMonths:
+                  type: integer
+                  minimum: 3
+                  maximum: 360
+                branchId:
+                  type: string
+                  pattern: ^br_[0-9A-HJKMNP-TV-Z]{26}$
+              required:
+                - leadId
+                - productId
+                - appliedAmount
+                - tenureMonths
+      responses:
+        "201":
+          description: Application created and submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  leadId:
+                    type: string
+                    pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: &a80
+                      - DRAFT
+                      - SUBMITTED
+                      - UNDERWRITING
+                      - LENDER_PROCESSING
+                      - APPROVED
+                      - SANCTIONED
+                      - DISBURSED
+                      - REJECTED
+                      - CANCELLED
+                  appliedAmount:
+                    type: object
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  currentStage:
+                    type: string
+                  checklistCompleted:
+                    type: boolean
+                  sanctionCount:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - leadId
+                  - tenantId
+                  - status
+                  - appliedAmount
+                  - currentStage
+                  - checklistCompleted
+                  - sanctionCount
+                  - createdAt
+                  - updatedAt
+  /v1/partner/applications/{id}:
+    get:
+      summary: Retrieve loan application processing stage and status
+      tags:
+        - Partner API - Origination
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Application details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  leadId:
+                    type: string
+                    pattern: ^lead_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a80
+                  appliedAmount:
+                    type: object
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  currentStage:
+                    type: string
+                  checklistCompleted:
+                    type: boolean
+                  sanctionCount:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - leadId
+                  - tenantId
+                  - status
+                  - appliedAmount
+                  - currentStage
+                  - checklistCompleted
+                  - sanctionCount
+                  - createdAt
+                  - updatedAt
+  /v1/partner/applications/{id}/offers:
+    get:
+      summary: Retrieve approved lender sanction offers for an application
+      tags:
+        - Partner API - Origination
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lender sanction offers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationId:
+                    type: string
+                    pattern: ^app_[0-9A-HJKMNP-TV-Z]{26}$
+                  offers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^snc_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderName:
+                          type: string
+                        sanctionedAmount:
+                          type: object
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        interestRateAnnual:
+                          type: string
+                        tenureMonths:
+                          type: integer
+                        processingFee:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        sanctionLetterDocumentId:
+                          type:
+                            - string
+                            - "null"
+                        validUntil:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum:
+                            - ACTIVE
+                            - ACCEPTED
+                            - EXPIRED
+                            - CANCELLED
+                      required:
+                        - id
+                        - lenderId
+                        - lenderName
+                        - sanctionedAmount
+                        - interestRateAnnual
+                        - tenureMonths
+                        - processingFee
+                        - sanctionLetterDocumentId
+                        - validUntil
+                        - status
+                required:
+                  - applicationId
+                  - offers
+  /v1/partner/applications/{id}/documents/upload-session:
+    post:
+      summary: Generate customer document upload session token
+      tags:
+        - Partner API - Documents
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentChecklistCodes:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 2
+                    maxLength: 50
+                  minItems: 1
+                expiresInMinutes:
+                  type: integer
+                  minimum: 15
+                  maximum: 4320
+                  default: 1440
+                recipientMobile:
+                  type: string
+              required:
+                - documentChecklistCodes
+      responses:
+        "201":
+          description: Upload session initialized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    pattern: ^upl_[0-9A-HJKMNP-TV-Z]{26}$
+                  uploadUrl:
+                    type: string
+                    format: uri
+                  token:
+                    type: string
+                  expiresAt:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - sessionId
+                  - uploadUrl
+                  - token
+                  - expiresAt
+                  - items
+  /v1/partner/webhooks/subscriptions:
+    post:
+      summary: Register partner webhook subscription with HMAC signing
+      tags:
+        - Partner API - Webhooks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 100
+                targetUrl:
+                  type: string
+                  format: uri
+                subscribedEvents:
+                  type: array
+                  items:
+                    type: string
+                    enum: &a82
+                      - lead.created
+                      - lead.duplicate_flagged
+                      - lead.qualified
+                      - lead.state_changed
+                      - lead.converted
+                      - application.created
+                      - application.state_changed
+                      - lender_case.submitted
+                      - sanction.approved
+                      - disbursement.completed
+                      - verification.completed
+                  minItems: 1
+                secret:
+                  type: string
+                  minLength: 16
+                  maxLength: 128
+              required:
+                - name
+                - targetUrl
+                - subscribedEvents
+      responses:
+        "201":
+          description: Webhook subscription created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  partnerId:
+                    type: string
+                  name:
+                    type: string
+                  targetUrl:
+                    type: string
+                    format: uri
+                  subscribedEvents:
+                    type: array
+                    items:
+                      type: string
+                  status:
+                    type: string
+                    enum: &a81
+                      - ACTIVE
+                      - PAUSED
+                      - REVOKED
+                  failureCount:
+                    type: integer
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  signingSecret:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - partnerId
+                  - name
+                  - targetUrl
+                  - subscribedEvents
+                  - status
+                  - failureCount
+                  - lockVersion
+                  - createdAt
+                  - updatedAt
+    get:
+      summary: List active partner webhook subscriptions
+      tags:
+        - Partner API - Webhooks
+      responses:
+        "200":
+          description: List of webhook subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                          pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                        partnerId:
+                          type: string
+                        name:
+                          type: string
+                        targetUrl:
+                          type: string
+                          format: uri
+                        subscribedEvents:
+                          type: array
+                          items:
+                            type: string
+                        status:
+                          type: string
+                          enum: *a81
+                        failureCount:
+                          type: integer
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                        signingSecret:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - partnerId
+                        - name
+                        - targetUrl
+                        - subscribedEvents
+                        - status
+                        - failureCount
+                        - lockVersion
+                        - createdAt
+                        - updatedAt
+                required:
+                  - data
+  /v1/partner/webhooks/subscriptions/{id}:
+    delete:
+      summary: Revoke webhook subscription
+      tags:
+        - Partner API - Webhooks
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Subscription revoked
+  /v1/partner/sandbox/echo:
+    post:
+      summary: Partner diagnostic echo and signature verification probe
+      tags:
+        - Partner API - Sandbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  maxLength: 1000
+                  default: ping
+                payload:
+                  type: object
+                  additionalProperties: {}
+      responses:
+        "200":
+          description: Echo response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                  timestamp:
+                    type: string
+                  partnerId:
+                    type: string
+                  tenantId:
+                    type: string
+                  receivedHeaders:
+                    type: object
+                    additionalProperties:
+                      anyOf:
+                        - type: string
+                        - type: array
+                          items:
+                            type: string
+                  echo:
+                    type: object
+                    additionalProperties: {}
+                required:
+                  - status
+                  - timestamp
+                  - partnerId
+                  - tenantId
+                  - receivedHeaders
+                  - echo
+  /v1/partner/sandbox/simulate-event:
+    post:
+      summary: Simulate synthetic event delivery for partner receiver test
+      tags:
+        - Partner API - Sandbox
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subscriptionId:
+                  type: string
+                  pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
+                eventType:
+                  type: string
+                  enum: *a82
+                customData:
+                  type: object
+                  additionalProperties: {}
+              required:
+                - subscriptionId
+                - eventType
+      responses:
+        "200":
+          description: Simulation outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  simulationId:
+                    type: string
+                  subscriptionId:
+                    type: string
+                    pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
+                  targetUrl:
+                    type: string
+                  eventType:
+                    type: string
+                  signatureHeader:
+                    type: string
+                  deliveryStatus:
+                    type: string
+                    enum:
+                      - DELIVERED
+                      - FAILED
+                      - PENDING_RETRY
+                  httpStatus:
+                    type:
+                      - integer
+                      - "null"
+                  durationMs:
+                    type:
+                      - integer
+                      - "null"
+                required:
+                  - simulationId
+                  - subscriptionId
+                  - targetUrl
+                  - eventType
+                  - signatureHeader
+                  - deliveryStatus
+                  - httpStatus
+                  - durationMs
 webhooks: {}

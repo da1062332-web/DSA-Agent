@@ -19,6 +19,7 @@ export * from './lender-case';
 export * from './sanction';
 export * from './rules';
 export * from './automation';
+export * from './partner-api';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
