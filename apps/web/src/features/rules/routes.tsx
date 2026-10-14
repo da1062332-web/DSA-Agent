@@ -1,14 +1,15 @@
-// Feature: rules and decisions — owner: Dev 6 — UI-BRE-001 (Day 3). Replace the elements; keep the paths.
+// apps/web/src/features/rules/routes.tsx — owner: Dev 6 — UI-BRE-001 (Day 3)
 import type { RouteObject } from 'react-router-dom';
-import { Placeholder } from '../../shell/Placeholder';
+import { DecisionRecordDetailPage } from './DecisionRecordDetailPage';
+import { DecisionRecordsListPage } from './DecisionRecordsListPage';
+import { RuleSetDetailPage } from './RuleSetDetailPage';
+import { RulesListPage } from './RulesListPage';
+import { RuleVersionDetailPage } from './RuleVersionDetailPage';
 
 export const routes: RouteObject[] = [
-  { path: '/rules', element: <Placeholder name="UI-BRE-001 rule sets" owner="Dev 6" /> },
-  { path: '/rules/:ruleSetId', element: <Placeholder name="UI-BRE-001 rule set" owner="Dev 6" /> },
-  {
-    path: '/rules/versions/:versionId',
-    element: <Placeholder name="UI-BRE-001 rule version" owner="Dev 6" />,
-  },
-  { path: '/decisions', element: <Placeholder name="UI-BRE-001 decision records" owner="Dev 6" /> },
-  { path: '/decisions/:id', element: <Placeholder name="UI-BRE-001 decision record" owner="Dev 6" /> },
+  { path: '/rules', element: <RulesListPage /> },
+  { path: '/rules/:ruleSetId', element: <RuleSetDetailPage /> },
+  { path: '/rules/versions/:versionId', element: <RuleVersionDetailPage /> },
+  { path: '/decisions', element: <DecisionRecordsListPage /> },
+  { path: '/decisions/:id', element: <DecisionRecordDetailPage /> },
 ];
