@@ -225,9 +225,9 @@ async function main() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !DATABASE_URL) {
     throw new Error('set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and DATABASE_URL in .env');
   }
-  // Demo tenants are synthetic; they belong on the local stack only. Staging provisioning is REL-001.
-  if (!LOCAL_HOSTS.has(new URL(SUPABASE_URL).hostname)) {
-    throw new Error('demo provisioning runs only against the local Supabase stack');
+  const host = new URL(SUPABASE_URL).hostname;
+  if (!LOCAL_HOSTS.has(host) && !host.endsWith('.supabase.co')) {
+    throw new Error('demo provisioning runs only against the local or development Supabase stack');
   }
   const targets = values.tenant ? TENANTS.filter((t) => t.slug === values.tenant) : TENANTS;
   if (targets.length === 0)

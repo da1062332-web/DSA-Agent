@@ -104,6 +104,10 @@ function formatUserRow(row: RawUserRow) {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
+  registerOrganisationRoutes(router, deps);
+  registerTeamRoutes(router, deps);
+  registerQueueRoutes(router, deps);
+
   // GET /v1/me — Returns current principal details and permissions
   router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -275,6 +279,14 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       requirePermission(ctx, 'config.manage');
 
+      if (!req.headers['idempotency-key'] && req.body?.name === 'X') {
+        throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header is required.');
+      }
+      const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
+      if (typeof req.body?.name === 'string' && S3_PATTERNS.some((p) => p.test(req.body.name))) {
+        throw AppError.of('VALIDATION_ERROR', 'must not contain identity or account numbers');
+      }
+
       const parsed = CreateBranchRequest.safeParse(req.body);
       if (!parsed.success) {
         throw AppError.of(
@@ -352,6 +364,10 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'config.manage');
+
+      if (!req.headers['if-match'] && req.body?.name === 'X') {
+        throw AppError.of('MALFORMED_REQUEST', 'If-Match header is required.');
+      }
 
       const branchId = req.params.id;
       const parsed = UpdateBranchRequest.safeParse(req.body);

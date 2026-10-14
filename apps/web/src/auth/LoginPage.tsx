@@ -65,6 +65,7 @@ export function LoginPage() {
       }
 
       if (body?.access_token) {
+        localStorage.setItem('dsa_token', body.access_token);
         setSession(body);
         navigate(from, { replace: true });
         return;

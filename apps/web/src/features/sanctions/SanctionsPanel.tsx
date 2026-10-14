@@ -60,16 +60,16 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
     rateType: 'FLOATING' as RateType,
     sanctionDate: new Date().toISOString().slice(0, 10),
     validUntil: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-    letterDocumentId: '',
+    letterDocumentId: 'doc_sanction_letter_01',
   });
 
   // Tranche form
   const [trancheForm, setTrancheForm] = useState<RecordTrancheInput>({
     amount: 500000,
     disbursedOn: new Date().toISOString().slice(0, 10),
-    utr: '',
-    loanAccountNumber: '',
-    evidenceDocumentId: '',
+    utr: 'UTR202610130001',
+    loanAccountNumber: 'LA9876543210',
+    evidenceDocumentId: 'doc_disbursal_receipt_01',
   });
 
   // Verify form
@@ -348,6 +348,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
       <Dialog open={sanctionDialogOpen} onClose={() => setSanctionDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{activeSanction ? 'Revise Sanction Terms' : 'Record Lender Sanction'}</DialogTitle>
         <DialogContent dividers>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -420,6 +425,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
       <Dialog open={trancheDialogOpen} onClose={() => setTrancheDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Record Disbursement Tranche</DialogTitle>
         <DialogContent dividers>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
               <Alert severity="info">

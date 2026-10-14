@@ -39,7 +39,18 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = localStorage.getItem('dsa_token');
+  let token = localStorage.getItem('dsa_token');
+  if (!token) {
+    try {
+      const raw = localStorage.getItem('dsa_auth_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        token = parsed.access_token || parsed.token || null;
+      }
+    } catch {
+      // ignore
+    }
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

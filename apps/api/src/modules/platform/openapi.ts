@@ -18,9 +18,26 @@ import {
   UserEffectiveGrants,
   UserRoleAssignmentSummary,
   UserSummary,
+  listResponse,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
+import {
+  ListQuery,
+  Organisation,
+  OrganisationPatch,
+  TeamCreate,
+  TeamDetail,
+  TeamList,
+  TeamMembersPut,
+  TeamPatch,
+  Tenant,
+  WorkQueueCreate,
+  WorkQueueDetail,
+  WorkQueueList,
+  WorkQueueMembersPut,
+  WorkQueuePatch,
+} from './schemas';
 
 export const tags = [
   { name: 'Platform', description: 'Platform identity and branch management' },
@@ -30,6 +47,32 @@ export const tags = [
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {
+  // GET /v1/tenant
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/tenant',
+    operationId: 'API-TEN-001',
+    summary: 'Get current tenant details',
+    tags: ['Platform'],
+    responses: {
+      200: {
+        description: 'Current tenant details',
+        content: {
+          'application/json': {
+            schema: Tenant,
+          },
+        },
+      },
+      401: {
+        description: 'Unauthenticated',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
+      404: {
+        description: 'Tenant not found',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
+    },
+  });
   // GET /v1/me
   registry.registerPath({
     method: 'get',
@@ -626,6 +669,274 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       },
       401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
       403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/organisations
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/organisations',
+    operationId: 'API-ORG-001',
+    summary: 'List organisations of the tenant',
+    tags: ['Platform'],
+    responses: {
+      200: {
+        description: 'Organisation list',
+        content: { 'application/json': { schema: listResponse(Organisation) } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/organisations/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/organisations/{id}',
+    operationId: 'API-ORG-001-GET',
+    summary: 'Get organisation details by ID',
+    tags: ['Platform'],
+    request: { params: z.object({ id: z.string() }) },
+    responses: {
+      200: {
+        description: 'Organisation details',
+        content: { 'application/json': { schema: Organisation } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Organisation not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/organisations/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/organisations/{id}',
+    operationId: 'API-ORG-002',
+    summary: 'Update organisation profile',
+    tags: ['Platform'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: OrganisationPatch } } },
+    },
+    responses: {
+      200: {
+        description: 'Organisation updated',
+        content: { 'application/json': { schema: Organisation } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Organisation not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/teams
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/teams',
+    operationId: 'API-ORG-007-LIST',
+    summary: 'List teams',
+    tags: ['Platform'],
+    request: { query: ListQuery },
+    responses: {
+      200: {
+        description: 'Team list',
+        content: { 'application/json': { schema: TeamList } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/teams/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/teams/{id}',
+    operationId: 'API-ORG-007-GET',
+    summary: 'Get team details by ID',
+    tags: ['Platform'],
+    request: { params: z.object({ id: z.string() }) },
+    responses: {
+      200: {
+        description: 'Team details with members',
+        content: { 'application/json': { schema: TeamDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Team not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/teams
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/teams',
+    operationId: 'API-ORG-007',
+    summary: 'Create a team',
+    tags: ['Platform'],
+    request: {
+      body: { content: { 'application/json': { schema: TeamCreate } } },
+    },
+    responses: {
+      201: {
+        description: 'Team created',
+        content: { 'application/json': { schema: TeamDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/teams/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/teams/{id}',
+    operationId: 'API-ORG-008',
+    summary: 'Update team details',
+    tags: ['Platform'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: TeamPatch } } },
+    },
+    responses: {
+      200: {
+        description: 'Team updated',
+        content: { 'application/json': { schema: TeamDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Team not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PUT /v1/teams/{id}/members
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/teams/{id}/members',
+    operationId: 'API-ORG-009',
+    summary: 'Replace team members',
+    tags: ['Platform'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: TeamMembersPut } } },
+    },
+    responses: {
+      200: {
+        description: 'Team members replaced',
+        content: { 'application/json': { schema: TeamDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Team not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/work-queues
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/work-queues',
+    operationId: 'API-ORG-012',
+    summary: 'List work queues',
+    tags: ['Platform'],
+    request: { query: ListQuery },
+    responses: {
+      200: {
+        description: 'Work queue list',
+        content: { 'application/json': { schema: WorkQueueList } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // GET /v1/work-queues/{id}
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/work-queues/{id}',
+    operationId: 'API-ORG-012-GET',
+    summary: 'Get work queue details by ID',
+    tags: ['Platform'],
+    request: { params: z.object({ id: z.string() }) },
+    responses: {
+      200: {
+        description: 'Work queue details with members',
+        content: { 'application/json': { schema: WorkQueueDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Work queue not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // POST /v1/work-queues
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/work-queues',
+    operationId: 'API-ORG-011',
+    summary: 'Create a work queue',
+    tags: ['Platform'],
+    request: {
+      body: { content: { 'application/json': { schema: WorkQueueCreate } } },
+    },
+    responses: {
+      201: {
+        description: 'Work queue created',
+        content: { 'application/json': { schema: WorkQueueDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PATCH /v1/work-queues/{id}
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/work-queues/{id}',
+    operationId: 'API-ORG-013',
+    summary: 'Update work queue details',
+    tags: ['Platform'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: WorkQueuePatch } } },
+    },
+    responses: {
+      200: {
+        description: 'Work queue updated',
+        content: { 'application/json': { schema: WorkQueueDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Work queue not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+      409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
+      422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  // PUT /v1/work-queues/{id}/members
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/work-queues/{id}/members',
+    operationId: 'API-ORG-014',
+    summary: 'Replace work queue members',
+    tags: ['Platform'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: WorkQueueMembersPut } } },
+    },
+    responses: {
+      200: {
+        description: 'Work queue members replaced',
+        content: { 'application/json': { schema: WorkQueueDetail } },
+      },
+      401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Work queue not found', content: { 'application/json': { schema: ErrorEnvelope } } },
       409: { description: 'Version conflict', content: { 'application/json': { schema: ErrorEnvelope } } },
       422: { description: 'Validation error', content: { 'application/json': { schema: ErrorEnvelope } } },
     },

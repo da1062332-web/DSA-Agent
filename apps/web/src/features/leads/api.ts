@@ -38,8 +38,19 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  // Token from localStorage if present
-  const token = localStorage.getItem('dsa_token');
+  // Token from localStorage if present (dsa_token or dsa_auth_session)
+  let token = localStorage.getItem('dsa_token');
+  if (!token) {
+    try {
+      const raw = localStorage.getItem('dsa_auth_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        token = parsed.access_token || parsed.token || null;
+      }
+    } catch {
+      // ignore
+    }
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -118,13 +129,44 @@ export async function transitionLead(
     qualMonthlyIncome?: string;
     qualRequestedAmount?: { amount: string; currency: string };
     disqualificationReason?: string;
+    qualification?: {
+      applicantType: string;
+      requestedAmount: { amount: string; currency: string };
+      tenureMonths?: number | null;
+      purposeCode?: string | null;
+    };
   },
   ifMatch: string,
   idempotencyKey = `trans_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 ): Promise<{ lead: LeadResource; etag: string }> {
+  const bodyPayload: Record<string, unknown> = {
+    transitionCode: transition.transitionCode,
+    reasonCode: transition.reasonCode || undefined,
+    disqualificationReason: transition.disqualificationReason || undefined,
+  };
+
+  if (transition.transitionCode === 'T-LEAD-04') {
+    const applicantType =
+      transition.qualification?.applicantType || transition.qualApplicantType || 'SALARIED';
+    let reqAmount = transition.qualification?.requestedAmount || transition.qualRequestedAmount;
+    if (reqAmount && typeof reqAmount.amount === 'string') {
+      const amt = reqAmount.amount.trim();
+      reqAmount = {
+        amount: /^\d+$/.test(amt) ? `${amt}.00` : /^\d+\.\d$/.test(amt) ? `${amt}0` : amt,
+        currency: reqAmount.currency || 'INR',
+      };
+    } else {
+      reqAmount = { amount: '500000.00', currency: 'INR' };
+    }
+    bodyPayload.qualification = {
+      applicantType,
+      requestedAmount: reqAmount,
+    };
+  }
+
   const res = await request<LeadResource>(`/v1/leads/${id}/transitions`, {
     method: 'POST',
-    body: JSON.stringify(transition),
+    body: JSON.stringify(bodyPayload),
     ifMatch,
     idempotencyKey,
   });

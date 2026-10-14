@@ -72,9 +72,9 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newLenderId, setNewLenderId] = useState('');
-  const [newProductVersionId, setNewProductVersionId] = useState('');
-  const [newEmpanelmentId, setNewEmpanelmentId] = useState('');
+  const [newLenderId, setNewLenderId] = useState('lnd_hdfc_01');
+  const [newProductVersionId, setNewProductVersionId] = useState('lpv_hl_01');
+  const [newEmpanelmentId, setNewEmpanelmentId] = useState('emp_blr_01');
 
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [activeCase, setActiveCase] = useState<LenderCaseResource | null>(null);
@@ -391,7 +391,12 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
         {/* Create Lender Attempt Dialog */}
         <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>New Lender Attempt</DialogTitle>
-          <DialogContent>
+          <DialogContent dividers>
+            {errorMessage && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage(null)}>
+                {errorMessage}
+              </Alert>
+            )}
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
                 label="Lender ID"

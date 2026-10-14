@@ -1075,7 +1075,7 @@ export class LeadService {
       lead_id: id,
       from_state: 'QUALIFIED',
       to_state: 'CONVERTED',
-      transition_code: 'CONVERT',
+      transition_code: 'T-LEAD-07',
       reason_code: 'CONVERTED_TO_APPLICATION',
       actor: ctx.principal.id,
       occurred_at: now,
