@@ -1,8 +1,10 @@
-// apps/web/src/features/lender-cases/routes.tsx — owner: Dev 4 — UI-LCS-001 (Day 3)
 import React from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { LenderCaseDetailPage } from './LenderCaseDetailPage';
+import { LenderCasePanel } from './LenderCasePanel';
 
 export const routes: RouteObject[] = [
+  { path: '/lender-cases', element: <LenderCasePanel applicationId="app_demo_001" /> },
   { path: '/lender-cases/:id', element: <LenderCaseDetailPage /> },
 ];
+
