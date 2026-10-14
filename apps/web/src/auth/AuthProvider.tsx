@@ -13,7 +13,6 @@ export interface Aal {
   next: AuthenticatorAssuranceLevels | null;
 }
 
-
 interface AuthState {
   /** undefined while the stored session is being read. */
   session: Session | null | undefined;
@@ -105,13 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** The auth state, or null when rendered outside the provider (for example a screen rendered alone in a unit test). */
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}
+
 export function useOptionalAuth(): AuthState | null {
   return useContext(AuthContext);
 }
 
-export function useAuth(): AuthState {
-  const state = useContext(AuthContext);
-  if (!state) throw new Error('useAuth must be used inside <AuthProvider>');
-  return state;
-}
