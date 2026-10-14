@@ -23,7 +23,13 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-023b | `20261001000023_origination_sanction_disbursement.sql` | Dev 3 | MOD-SND / TASK-402 | sanction (ENT-055), disbursement_tranche (ENT-056) | M-022 |
 | M-024 | `20261001000024_product_terms_and_links.sql` | Dev 3 | MOD-PRD (Module 15) | loan_product_version.fee_text, geo_rules, document_profile_id, workflow_profile, eligibility_scope | M-020 |
 | M-025 | `20261001000025_complaints.sql` | Dev 3 | MOD-GRV (Module 13) | complaint (ENT-034); permissions complaint.create, complaint.manage and their role grants | M-020, M-001 |
+| M-028 | `20261001000028_targets.sql` | Dev 5 | TASK-428 / MOD-PERF SUB-PERF.01 | target (ENT-037), target.manage and report.read permissions | M-001 |
+| M-029 | `20261001000029_reporting.sql` | Dev 5 | TASK-414 / MOD-RPT | metric_definition (ENT-094), rpt_daily_operational_summary | M-001, M-003, M-021, M-023b, M-028 |
 | M-030 | `20261001000030_tasks.sql`                                      | Dev 6        | TASK-302                | task                                                                                                                                                                   | M-001        |
+| M-031 | `20261001000031_report_manage_permission.sql`                   | Dev 5        | TASK-414 / MOD-RPT      | report.manage permission and role grants                                                                                                                              | M-001, M-029 |
+| M-032 | `20261001000032_reporting_enterprise_suite.sql`                  | Dev 5        | TASK-414 / MOD-RPT      | metric_definition enhancement (ENT-094), report_run, export_job (ENT-111), report_schedule, export.run and report.schedule permissions                               | M-001, M-029, M-031 |
+| M-033 | `20261001000033_import_export_framework.sql`                     | Dev 1        | TASK-413 / MOD-IMP      | ENT-110 import_batch, app.job_queue, lead/customer import_batch_id, import.run permission and role grants                                                              | M-001, M-003, M-032 |
+
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 

@@ -50,6 +50,13 @@ export const PERMISSION_CODES = [
   'connector.bank_change_approve',
   'connector.attribution_change',
   'connector.dispute_resolve',
+  'target.manage',
+  'report.read',
+  'report.manage',
+  'report.schedule',
+  'import.run',
+  'export.run',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
+
