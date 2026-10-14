@@ -73,14 +73,7 @@ export function LeadDetail() {
 
   // Mutations
   const transitionMutation = useMutation({
-    mutationFn: (variables: {
-      transitionCode: string;
-      reasonCode?: string;
-      qualApplicantType?: string;
-      qualMonthlyIncome?: string;
-      qualRequestedAmount?: { amount: string; currency: string };
-      disqualificationReason?: string;
-    }) => {
+    mutationFn: (variables: Parameters<typeof transitionLead>[1]) => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return transitionLead(id, variables, etag);
     },
@@ -548,6 +541,11 @@ export function LeadDetail() {
                     amount: formattedAmt,
                     currency: 'INR',
                   },
+                },
+                qualApplicantType: qualApplicantType || 'SALARIED',
+                qualRequestedAmount: {
+                  amount: formattedAmt,
+                  currency: 'INR',
                 },
               });
             }}
