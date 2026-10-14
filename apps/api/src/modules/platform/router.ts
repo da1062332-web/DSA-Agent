@@ -103,6 +103,7 @@ function formatUserRow(row: RawUserRow) {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
+
   // GET /v1/me — Returns current principal details and permissions
   router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -1806,6 +1807,7 @@ export function createRouter(deps: ApiDeps): Router {
   registerOrganisationRoutes(router, deps);
   registerTeamRoutes(router, deps);
   registerQueueRoutes(router, deps);
+
 
   return router;
 }

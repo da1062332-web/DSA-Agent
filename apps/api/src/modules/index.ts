@@ -10,6 +10,7 @@ import * as notifications from './crm/notifications/router';
 import * as tasks from './crm/tasks/router';
 import * as applications from './origination/applications/router';
 import * as catalogue from './origination/catalogue/router';
+import * as finance from './finance/router';
 import * as documentSharing from './origination/document-sharing/router';
 import * as verifications from './origination/verifications/router';
 import * as connectors from './origination/connectors/router';
@@ -27,6 +28,7 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'crm/messaging', owner: 'Dev 1', createRouter: messaging.createRouter },
   { name: 'crm/notifications', owner: 'Dev 1', createRouter: notifications.createRouter },
   { name: 'compliance', owner: 'Dev 5', createRouter: compliance.createRouter },
+  { name: 'finance', owner: 'Dev 5', createRouter: finance.createRouter },
   { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
   { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },

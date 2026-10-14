@@ -3,20 +3,13 @@
 import type { RouteObject } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
 import { BranchesPage } from './BranchesPage';
-import { LenderDetailPage } from './LenderDetailPage';
-import { LendersPage } from './LendersPage';
 import { OrganisationPage } from './OrganisationPage';
-import { ProductDetailPage } from './ProductDetailPage';
-import { ProductsPage } from './ProductsPage';
 import { QueueDetailPage, QueuesPage } from './QueuesPage';
 import { TeamDetailPage, TeamsPage } from './TeamsPage';
 
 export const routes: RouteObject[] = [
-  { path: '/lenders', element: <LendersPage /> },
-  { path: '/lenders/:id', element: <LenderDetailPage /> },
-  { path: '/products', element: <ProductsPage /> },
-  { path: '/products/:id', element: <ProductDetailPage /> },
   {
+
     path: '/admin',
     element: <AdminLayout />,
     children: [

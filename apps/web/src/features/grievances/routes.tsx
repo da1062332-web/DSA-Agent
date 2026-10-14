@@ -2,8 +2,10 @@
 import type { RouteObject } from 'react-router-dom';
 import { ComplaintDetailPage } from './ComplaintDetailPage';
 import { ComplaintsPage } from './ComplaintsPage';
+import { GrievancesPage } from './GrievancesPage';
 
 export const routes: RouteObject[] = [
   { path: '/complaints', element: <ComplaintsPage /> },
   { path: '/complaints/:id', element: <ComplaintDetailPage /> },
+  { path: '/grievances', element: <GrievancesPage /> },
 ];

@@ -17,6 +17,10 @@ export * from './connector';
 export * from './config';
 export * from './lender-case';
 export * from './sanction';
+export * from './lenders';
+export * from './products';
+export * from './commission';
+export * from './payouts';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
