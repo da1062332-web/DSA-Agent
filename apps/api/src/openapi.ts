@@ -17,6 +17,7 @@ import * as sanctions from './modules/origination/sanctions/openapi';
 import * as platform from './modules/platform/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
 import * as verification from './modules/verification/openapi';
+import * as partnerApi from './modules/partner-api/openapi';
 
 const MODULES = [
   platform,
@@ -34,6 +35,7 @@ const MODULES = [
   lenderCases,
   sanctions,
   verification,
+  partnerApi,
 ];
 
 export function buildOpenApiDocument() {

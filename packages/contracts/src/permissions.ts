@@ -58,6 +58,11 @@ export const PERMISSION_CODES = [
   'automation.approve',
   'automation.execute',
   'automation.operator',
+  'api.read',
+  'api.manage',
+  'partner.lead_ingest',
+  'partner.application_read',
+  'webhook.manage',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
