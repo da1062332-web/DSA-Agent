@@ -1,4 +1,4 @@
--- 0025_complaints.sql  (owner: Dev 3, MOD-GRV Grievances, DSA Notion MODULE 13, ENT-034)
+-- 0028_complaints.sql  (owner: Dev 3, MOD-GRV Grievances, DSA Notion MODULE 13, ENT-034)
 -- Additive. Records customer complaints against a lead or an application, acknowledges them and drives resolution.
 -- Customer linking waits for MOD-CUST (Dev 5); until then the complainant is a lead or an application of the tenant.
 -- Complaints are never deleted. A resolved complaint that is reopened keeps its history in the audit trail.
