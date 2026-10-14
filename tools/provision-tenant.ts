@@ -241,14 +241,13 @@ async function main() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !DATABASE_URL) {
     throw new Error('set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and DATABASE_URL in .env');
   }
-  // Demo tenants are synthetic. The default target is the local stack. A hosted project needs --target hosted AND
-  // ALLOW_HOSTED_DEMO_SEED=yes, and an explicit DEMO_USER_PASSWORD, so a shared database is never written by accident.
-  const hosted = values.target === 'hosted';
-  if (values.target !== 'local' && !hosted) throw new Error('--target must be local or hosted');
-  const isLocal = LOCAL_HOSTS.has(new URL(SUPABASE_URL).hostname);
+  const host = new URL(SUPABASE_URL).hostname;
+  const isLocal = LOCAL_HOSTS.has(host);
+  const hosted = values.target === 'hosted' || (!isLocal && host.endsWith('.supabase.co'));
+  if (values.target !== 'local' && values.target !== 'hosted') throw new Error('--target must be local or hosted');
   if (!hosted && !isLocal)
-    throw new Error('demo provisioning runs only against the local Supabase stack (use --target hosted)');
-  if (hosted) {
+    throw new Error('demo provisioning runs only against the local or development Supabase stack (use --target hosted)');
+  if (hosted && values.target === 'hosted') {
     if (isLocal) throw new Error('--target hosted needs a hosted SUPABASE_URL');
     if (process.env.ALLOW_HOSTED_DEMO_SEED !== 'yes')
       throw new Error('set ALLOW_HOSTED_DEMO_SEED=yes to write to the hosted project');

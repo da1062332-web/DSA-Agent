@@ -12,6 +12,7 @@ export interface Aal {
   next: AuthenticatorAssuranceLevels | null;
 }
 
+
 interface AuthState {
   /** undefined while the stored session is being read. */
   session: Session | null | undefined;
