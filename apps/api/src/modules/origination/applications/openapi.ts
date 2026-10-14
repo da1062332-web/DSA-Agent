@@ -2,7 +2,13 @@
 import { listResponse } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { type ZodTypeAny } from 'zod';
-import { Application, ApplicationHold, ApplicationListQuery, ApplicationPatch } from './schemas';
+import {
+  Application,
+  ApplicationHold,
+  ApplicationListQuery,
+  ApplicationPatch,
+  ApplicationTransition,
+} from './schemas';
 
 export const tags = [
   {
@@ -77,6 +83,31 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       404: { description: 'NOT_FOUND' },
       409: { description: 'VERSION_CONFLICT or INVALID_STATE (terminal application, or no hold to clear)' },
       422: { description: 'VALIDATION_ERROR (a reason is required to hold)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/transitions',
+    tags: tag,
+    operationId: 'API-APP-005',
+    summary:
+      'Move an application: T-APP-01 select product and start documents, T-APP-02 send to review, T-APP-10 cancel with a reason',
+    parameters: [
+      { $ref: '#/components/parameters/IdempotencyKey' },
+      { $ref: '#/components/parameters/IfMatch' },
+    ],
+    request: { body: { required: true, content: json(ApplicationTransition) } },
+    responses: {
+      200: { description: 'Transitioned', content: json(Application) },
+      403: { description: 'FORBIDDEN (the permission for this transition is missing)' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+      409: {
+        description: 'VERSION_CONFLICT or INVALID_TRANSITION or INVALID_STATE (product version not in force)',
+      },
+      422: {
+        description: 'VALIDATION_ERROR (unknown product version, wrong category, or missing cancel reason)',
+      },
     },
   });
 }

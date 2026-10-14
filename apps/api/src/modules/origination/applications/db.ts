@@ -17,6 +17,15 @@ export async function loadForUpdate(tx: Tx, table: string, id: string, entity: s
   return row;
 }
 
+/** Checks If-Match before any state rule, so a stale screen gets VERSION_CONFLICT rather than a state error. */
+export function assertVersion(current: Row, version: number): void {
+  if (current.lock_version !== version) {
+    throw AppError.of('VERSION_CONFLICT', 'The record was changed by someone else. Reload and try again.', [
+      { field: 'If-Match', issue: 'STALE', meta: { currentVersion: current.lock_version } },
+    ]);
+  }
+}
+
 /** Optimistic update: If-Match must equal lock_version (the touch trigger bumps it). Concurrent writers get 409. */
 export async function updateVersioned(
   tx: Tx,

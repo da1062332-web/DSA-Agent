@@ -63,4 +63,19 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
     const after = await request(a).get(`/v1/applications/${id}`);
     expect(after.body.onHold).toBe(false);
   });
+
+  it('API-APP-005: tenant B with every permission cannot move a tenant A application (404), and it stays put', async () => {
+    const a = env.appAs(env.A, [...APP_CODES, 'application.review', 'application.cancel']);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES, 'application.review', 'application.cancel']);
+    const current = await request(a).get(`/v1/applications/${appId}`);
+    const etag = current.headers.etag as string;
+    const res = await request(b)
+      .post(`/v1/applications/${appId}/transitions`)
+      .set('If-Match', etag)
+      .set('Idempotency-Key', 'iso-app-trn-hostile-1')
+      .send({ transitionCode: 'T-APP-10', cancelReason: 'OTHER' });
+    expect(res.status).toBe(404);
+    const after = await request(a).get(`/v1/applications/${appId}`);
+    expect(after.body.status).toBe('DRAFT');
+  });
 });
