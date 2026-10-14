@@ -364,8 +364,8 @@ export class SendEligibilityGuard {
     // 7. Subject existence and consent check (via database if tx is active)
     if (tx) {
       if (input.subjectType === 'LEAD') {
-        const leadRes = await sql<{ id: string; status: string }>`
-          SELECT id, status FROM app.lead WHERE tenant_id = ${tenantId} AND id = ${input.subjectId} LIMIT 1
+        const leadRes = await sql<{ id: string; state: string }>`
+          SELECT id, state FROM app.lead WHERE tenant_id = ${tenantId} AND id = ${input.subjectId} LIMIT 1
         `.execute(tx);
         if (leadRes.rows.length === 0) {
           return {
