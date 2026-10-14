@@ -18,6 +18,7 @@ import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import {
   type ChannelAdapter,
+  ConfiguredTestAdapter,
   UnconfiguredAdapter,
 } from './channel-adapter';
 import { SendEligibilityGuard } from './send-guard';
@@ -59,10 +60,19 @@ export class MessagingService {
     sendGuard?: SendEligibilityGuard,
   ) {
     this.sendGuard = sendGuard ?? new SendEligibilityGuard();
-    // Default to unconfigured adapters (fails closed, no fake success)
-    this.adapters.set('EMAIL', new UnconfiguredAdapter('EMAIL'));
-    this.adapters.set('SMS', new UnconfiguredAdapter('SMS'));
-    this.adapters.set('WHATSAPP', new UnconfiguredAdapter('WHATSAPP'));
+    const useMock =
+      process.env.ENABLE_MOCK_PROVIDERS === 'true' ||
+      (process.env.NODE_ENV === 'development' && process.env.DISABLE_MOCK_PROVIDERS !== 'true');
+    if (useMock) {
+      this.adapters.set('EMAIL', new ConfiguredTestAdapter('EMAIL', 'DEV_SIMULATED_SES', true));
+      this.adapters.set('SMS', new ConfiguredTestAdapter('SMS', 'DEV_SIMULATED_TWILIO', true));
+      this.adapters.set('WHATSAPP', new ConfiguredTestAdapter('WHATSAPP', 'DEV_SIMULATED_META', true));
+    } else {
+      // Default to unconfigured adapters (fails closed, no fake success)
+      this.adapters.set('EMAIL', new UnconfiguredAdapter('EMAIL'));
+      this.adapters.set('SMS', new UnconfiguredAdapter('SMS'));
+      this.adapters.set('WHATSAPP', new UnconfiguredAdapter('WHATSAPP'));
+    }
   }
 
   /**
@@ -689,9 +699,11 @@ export class MessagingService {
     const tenantId = ctx.principal.tenantId;
     const limit = query.limit ?? 50;
 
-    const hasPermission = ctx.principal.grants.some((g) => g.code === 'message.send');
+    const hasPermission =
+      ctx.principal.grants.some((g) => g.code === 'message.send') ||
+      ctx.principal.grants.some((g) => g.code === 'config.manage');
     if (!hasPermission) {
-      throw AppError.of('FORBIDDEN', 'Principal requires message.send to list message history');
+      throw AppError.of('FORBIDDEN', 'Principal requires message.send or config.manage to list message history');
     }
 
     if (this.txRunner) {
@@ -721,8 +733,8 @@ export class MessagingService {
           }>`
             SELECT * FROM app.message
             WHERE tenant_id = ${tenantId}
-              AND subject_type = ${query.subjectType}
-              AND subject_id = ${query.subjectId}
+              ${query.subjectType ? sql`AND subject_type = ${query.subjectType}` : sql``}
+              ${query.subjectId ? sql`AND subject_id = ${query.subjectId}` : sql``}
               ${query.channel ? sql`AND channel = ${query.channel}` : sql``}
               ${query.status ? sql`AND status = ${query.status}` : sql``}
               ${query.cursor ? sql`AND id < ${query.cursor}` : sql``}
@@ -779,7 +791,8 @@ export class MessagingService {
     // In-memory fallback
     const all = Array.from(MessagingService.memoryMessages.values()).filter((m) => {
       if (m.tenantId !== tenantId) return false;
-      if (m.subjectType !== query.subjectType || m.subjectId !== query.subjectId) return false;
+      if (query.subjectType && m.subjectType !== query.subjectType) return false;
+      if (query.subjectId && m.subjectId !== query.subjectId) return false;
       if (query.channel && m.channel !== query.channel) return false;
       if (query.status && m.status !== query.status) return false;
       if (query.cursor && m.id >= query.cursor) return false;

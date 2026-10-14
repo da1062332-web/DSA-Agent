@@ -11,6 +11,9 @@ export * from './activity';
 export * from './messaging';
 export * from './notification';
 export * from './users';
+export * from './document-sharing';
+export * from './verification';
+export * from './connector';
 export * from './config';
 export type { Database } from './db';
 
