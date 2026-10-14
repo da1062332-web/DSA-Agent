@@ -61,7 +61,7 @@ export const ROLES: RoleSeed[] = [
   {
     code: 'ROLE-TENANT-ADMIN',
     name: 'Tenant administrator',
-    permissions: ['config.manage', 'user.manage', 'audit.read'],
+    permissions: ['config.manage', 'user.manage', 'audit.read', 'verification.read', 'verification.perform'],
   },
   {
     code: 'ROLE-ORG-OWNER',
@@ -73,6 +73,8 @@ export const ROLES: RoleSeed[] = [
       'task.read',
       'application.read',
       'audit.read',
+      'verification.read',
+      'verification.perform',
     ],
   },
   {
@@ -85,6 +87,8 @@ export const ROLES: RoleSeed[] = [
       'application.read',
       'application.review',
       'user.manage',
+      'verification.read',
+      'verification.perform',
     ],
   },
   {
@@ -121,12 +125,24 @@ export const ROLES: RoleSeed[] = [
       'lender_case.update_status',
       'task.read',
       'task.update',
+      'verification.perform',
+      'verification.read',
+    ],
+  },
+  {
+    code: 'ROLE-DOC-VERIFIER',
+    name: 'Document verifier',
+    permissions: [
+      'application.read',
+      'document.review',
+      'verification.perform',
+      'verification.read',
     ],
   },
   {
     code: 'ROLE-COMPLIANCE',
     name: 'Compliance',
-    permissions: ['lead.read', 'customer.read', 'application.read', 'audit.read'],
+    permissions: ['lead.read', 'customer.read', 'application.read', 'audit.read', 'verification.read'],
   },
   { code: 'ROLE-RULE-AUTHOR', name: 'Rule author', permissions: ['rule.author', 'rule.simulate'] },
   {

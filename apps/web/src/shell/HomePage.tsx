@@ -48,6 +48,24 @@ export function HomePage() {
       badge: 'Access Control',
     },
     {
+      title: 'Document Sharing',
+      desc: 'Customer upload links, OTP verification portal, and lender share packages.',
+      to: '/document-sharing',
+      badge: 'Sharing',
+    },
+    {
+      title: 'Verification Workbench',
+      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification (MOD-VER).',
+      to: '/verifications',
+      badge: 'Verification',
+    },
+    {
+      title: 'Connector Management',
+      desc: 'Onboarding, bank dual-control SOD, agreements, reattribution, and disputes (MOD-CON).',
+      to: '/connectors',
+      badge: 'Connectors',
+    },
+    {
       title: 'Tenant Configuration',
       desc: 'Manage organization details, operational SLAs, and branch network.',
       to: '/config',
