@@ -11,6 +11,7 @@ import * as notifications from './modules/crm/notifications/openapi';
 import * as tasks from './modules/crm/tasks/openapi';
 import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
+import * as finance from './modules/finance/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as platform from './modules/platform/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
@@ -23,6 +24,7 @@ const MODULES = [
   messaging,
   notifications,
   compliance,
+  finance,
   tasks,
   rulesApi,
   catalogue,

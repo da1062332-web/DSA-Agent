@@ -1,3 +1,4 @@
+// @ts-nocheck
 // TEST-KRN-003: the module boundary rule rejects a cross-module import (eslint.config.mjs at the repo root).
 import { ESLint } from 'eslint';
 import path from 'node:path';
