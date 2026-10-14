@@ -35,6 +35,19 @@ export const PERMISSION_CODES = [
   'config.manage',
   'user.manage',
   'message.send',
+  'lender.read',
+  'lender.manage',
+  'product.read',
+  'product.manage',
+  'commission.plan.edit',
+  'commission.plan.approve',
+  'commission.calculate',
+  'finance.view',
+  'adjustment.create',
+  'adjustment.approve',
+  'payout.request',
+  'payout.approve',
+  'payout.record_payment',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

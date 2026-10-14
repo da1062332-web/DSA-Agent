@@ -17,11 +17,12 @@ const BOUNDARY_UNITS = {
   'tasks (Dev 6)': ['crm/tasks'],
   'catalogue + applications (Dev 3)': ['origination/catalogue', 'origination/applications'],
   'lender cases (Dev 4)': ['origination/lender-cases'],
-  'leads, customers, activity, compliance (Dev 5)': [
+  'leads, customers, activity, compliance, finance (Dev 5)': [
     'crm/leads',
     'crm/customers',
     'crm/activities',
     'compliance',
+    'finance',
   ],
 };
 

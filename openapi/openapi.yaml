@@ -95,7 +95,7 @@ components:
           format: email
         productCategory:
           type: string
-          enum: &a18
+          enum: &a27
             - PL
             - BL
             - MSME
@@ -129,7 +129,7 @@ components:
           minLength: 1
         source:
           type: string
-          enum: &a19
+          enum: &a28
             - WALK_IN
             - PHONE
             - WEBSITE
@@ -167,13 +167,13 @@ components:
           type: array
           items:
             type: string
-          default: &a20 []
+          default: &a29 []
         consent:
           type: object
           properties:
             purpose:
               type: string
-              enum: &a21
+              enum: &a30
                 - CONTACT
                 - LOAN_PROCESSING
                 - SHARE_WITH_LENDER
@@ -189,7 +189,7 @@ components:
               pattern: ^[a-zA-Z0-9._-]{2,40}$
             channel:
               type: string
-              enum: &a22
+              enum: &a31
                 - IN_PERSON
                 - PHONE
                 - WEB_FORM
@@ -291,7 +291,7 @@ components:
       properties:
         transitionCode:
           type: string
-          enum: &a23
+          enum: &a32
             - T-LEAD-01
             - T-LEAD-02
             - T-LEAD-04
@@ -305,7 +305,7 @@ components:
           type:
             - string
             - "null"
-          enum: &a24
+          enum: &a33
             - NOT_INTERESTED
             - NOT_ELIGIBLE
             - DUPLICATE
@@ -362,7 +362,7 @@ components:
             - "null"
         reasonCode:
           type: string
-          enum: &a25
+          enum: &a34
             - AUTO_ROUTING
             - ROUTING_FALLBACK
             - MANUAL
@@ -383,7 +383,7 @@ components:
       properties:
         partyType:
           type: string
-          enum: &a26
+          enum: &a35
             - INDIVIDUAL
             - ENTITY
         fullName:
@@ -431,7 +431,7 @@ components:
       properties:
         purpose:
           type: string
-          enum: &a27
+          enum: &a36
             - CONTACT
             - LOAN_PROCESSING
             - SHARE_WITH_LENDER
@@ -444,7 +444,7 @@ components:
           pattern: ^[A-Z0-9._-]{2,40}$
         channel:
           type: string
-          enum: &a28
+          enum: &a37
             - IN_PERSON
             - PHONE
             - WEB_FORM
@@ -763,7 +763,7 @@ components:
                 maxLength: 200
             required:
               - name
-          default: &a29 []
+          default: &a38 []
         providerTemplateId:
           type:
             - string
@@ -787,7 +787,7 @@ components:
           type: string
         direction:
           type: string
-          enum: &a32
+          enum: &a41
             - OUTBOUND
             - INBOUND
         channel:
@@ -877,7 +877,7 @@ components:
       properties:
         subjectType:
           type: string
-          enum: &a30
+          enum: &a39
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -912,7 +912,7 @@ components:
               - type: string
               - type: number
               - type: boolean
-          default: &a31 {}
+          default: &a40 {}
         correlationId:
           type: string
       required:
@@ -1140,6 +1140,1001 @@ components:
           maxItems: 100
       required:
         - notificationIds
+    CreateCommissionPlanInput:
+      type: object
+      properties:
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        qualifyingEvent:
+          type: string
+          enum: &a14
+            - DISBURSEMENT
+            - SANCTION
+            - FIRST_EMI
+          default: DISBURSEMENT
+        basis:
+          type: string
+          enum: &a15
+            - DISBURSED_AMOUNT
+            - SANCTION_AMOUNT
+            - NET_LOAN
+          default: DISBURSED_AMOUNT
+        roundingMode:
+          type: string
+          default: ROUND_HALF_UP
+        clawbackWindowDays:
+          type: integer
+          minimum: 0
+          default: 90
+        defaultRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.015
+        ruleSetId:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: &a16
+            - DRAFT
+            - PENDING_APPROVAL
+            - ACTIVE
+            - RETIRED
+          default: DRAFT
+      required:
+        - lenderId
+    CommissionPlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^cpl_[0-9A-HJKMNP-TV-Z]{26}$
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        qualifyingEvent:
+          type: string
+          enum: *a14
+        basis:
+          type: string
+          enum: *a15
+        roundingMode:
+          type: string
+        clawbackWindowDays:
+          type: integer
+        ruleSetId:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: *a16
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - lenderId
+        - qualifyingEvent
+        - basis
+        - roundingMode
+        - clawbackWindowDays
+        - ruleSetId
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    CalculateCommissionInput:
+      type: object
+      properties:
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        trancheId:
+          type: string
+        applicationId:
+          type:
+            - string
+            - "null"
+        lenderCaseId:
+          type:
+            - string
+            - "null"
+        connectorId:
+          type:
+            - string
+            - "null"
+        eventDate:
+          type: string
+          default: 2026-10-14
+        basisAmount:
+          type: string
+          pattern: ^\d+(\.\d{1,2})?$
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: INR
+        customRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        connectorShareRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.7
+      required:
+        - lenderId
+        - trancheId
+        - basisAmount
+    CommissionCalculationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        trancheId:
+          type: string
+        applicationId:
+          type:
+            - string
+            - "null"
+        lenderCaseId:
+          type:
+            - string
+            - "null"
+        eventDate:
+          type: string
+        basisAmount:
+          type: string
+        rate:
+          type: string
+        rateType:
+          type: string
+        grossAmount:
+          type: string
+        currency:
+          type: string
+        calcKind:
+          type: string
+          enum: &a42
+            - PROJECTED
+            - EARNED
+        status:
+          type: string
+          enum: &a43
+            - PROJECTED
+            - EARNED
+            - ACCRUED
+            - PARTIALLY_RECEIVED
+            - RECEIVED
+            - CLOSED
+            - DISPUTED
+            - REVERSED
+            - SUPERSEDED
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+      required:
+        - id
+        - lenderId
+        - trancheId
+        - applicationId
+        - lenderCaseId
+        - eventDate
+        - basisAmount
+        - rate
+        - rateType
+        - grossAmount
+        - currency
+        - calcKind
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+    CommissionPayableResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+        calculationId:
+          type: string
+          pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+        connectorId:
+          type: string
+        shareRate:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        state:
+          type: string
+          enum:
+            - ACCRUED
+            - ON_HOLD
+            - ELIGIBLE
+            - IN_PAYOUT
+            - APPROVED
+            - PAID
+            - REVERSED
+        holdReasons: {}
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - calculationId
+        - connectorId
+        - shareRate
+        - amount
+        - currency
+        - state
+        - lockVersion
+        - createdAt
+        - updatedAt
+    CreateRecalculationProposalInput:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 255
+        affectedCalculationIds:
+          type: array
+          items:
+            type: string
+            pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+          minItems: 1
+        preview:
+          type: object
+          additionalProperties: {}
+          default: &a44 {}
+      required:
+        - reason
+        - affectedCalculationIds
+    RecalculationProposalResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^recp_[0-9A-HJKMNP-TV-Z]{26}$
+        reason:
+          type: string
+        affectedCalculationIds:
+          type: array
+          items:
+            type: string
+        preview:
+          type: object
+          additionalProperties: {}
+        status:
+          type: string
+          enum: &a45
+            - PENDING
+            - APPROVED
+            - REJECTED
+        approvedBy:
+          type:
+            - string
+            - "null"
+        approvedAt:
+          type:
+            - string
+            - "null"
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+      required:
+        - id
+        - reason
+        - affectedCalculationIds
+        - preview
+        - status
+        - approvedBy
+        - approvedAt
+        - lockVersion
+        - createdAt
+        - createdBy
+    CreatePayoutRequestInput:
+      type: object
+      properties:
+        connectorId:
+          type: string
+          minLength: 1
+        origin:
+          type: string
+          enum: &a17
+            - CONNECTOR
+            - FINANCE
+          default: FINANCE
+        payableIds:
+          type: array
+          items:
+            type: string
+            pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+          minItems: 1
+      required:
+        - connectorId
+        - payableIds
+    PayoutRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+        connectorId:
+          type: string
+        origin:
+          type: string
+          enum: *a17
+        status:
+          type: string
+          enum: &a46
+            - DRAFT
+            - SUBMITTED
+            - APPROVED
+            - REJECTED
+            - CANCELLED
+            - PAYMENT_RECORDED
+            - PAYMENT_FAILED
+            - RECONCILED
+        total:
+          type: string
+        currency:
+          type: string
+        paymentRefMasked:
+          type:
+            - string
+            - "null"
+        paidOn:
+          type:
+            - string
+            - "null"
+        failureReason:
+          type:
+            - string
+            - "null"
+        submittedBy:
+          type:
+            - string
+            - "null"
+        submittedAt:
+          type:
+            - string
+            - "null"
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+              payoutId:
+                type: string
+                pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+              payableId:
+                type: string
+                pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+              amount:
+                type: string
+              currency:
+                type: string
+              status:
+                type: string
+              createdAt:
+                type: string
+            required:
+              - id
+              - payoutId
+              - payableId
+              - amount
+              - currency
+              - status
+              - createdAt
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - connectorId
+        - origin
+        - status
+        - total
+        - currency
+        - paymentRefMasked
+        - paidOn
+        - failureReason
+        - submittedBy
+        - submittedAt
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    PayoutBatchResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^pbt_[0-9A-HJKMNP-TV-Z]{26}$
+        payoutIds:
+          type: array
+          items:
+            type: string
+        fileObjectKey:
+          type:
+            - string
+            - "null"
+        fileSha256:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: &a47
+            - GENERATED
+            - DOWNLOADED
+            - PROCESSED
+        generatedBy:
+          type: string
+        generatedAt:
+          type: string
+      required:
+        - id
+        - payoutIds
+        - fileObjectKey
+        - fileSha256
+        - status
+        - generatedBy
+        - generatedAt
+    CreateLenderInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        lenderType:
+          type: string
+          enum: &a18
+            - BANK
+            - NBFC
+            - HFC
+            - SFB
+            - OTHER
+        regulatorRef:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        status:
+          type: string
+          enum: &a19
+            - ACTIVE
+            - PAUSED
+            - TERMINATED
+          default: ACTIVE
+        statusReason:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+      required:
+        - name
+        - lenderType
+    UpdateLenderInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        lenderType:
+          type: string
+          enum: *a18
+        regulatorRef:
+          type:
+            - string
+            - "null"
+          maxLength: 100
+        status:
+          type: string
+          enum: *a19
+        statusReason:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+    LenderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        name:
+          type: string
+        lenderType:
+          type: string
+          enum: *a18
+        regulatorRef:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: *a19
+        statusReason:
+          type:
+            - string
+            - "null"
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - name
+        - lenderType
+        - regulatorRef
+        - status
+        - statusReason
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    CreateEmpanelmentInput:
+      type: object
+      properties:
+        organisationId:
+          type: string
+        dsaCode:
+          type: string
+          minLength: 2
+          maxLength: 64
+        validFrom:
+          type: string
+        validTo:
+          type: string
+        permittedCategories:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        permittedGeos:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        agreementDocumentId:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: &a20
+            - ACTIVE
+            - SUSPENDED
+            - EXPIRED
+          default: ACTIVE
+      required:
+        - organisationId
+        - dsaCode
+        - validFrom
+        - validTo
+        - permittedCategories
+    EmpanelmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+        organisationId:
+          type: string
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        dsaCode:
+          type: string
+        validRange:
+          type: string
+        permittedCategories:
+          type: array
+          items:
+            type: string
+        permittedGeos:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        agreementDocumentId:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: *a20
+        lockVersion:
+          type: integer
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - organisationId
+        - lenderId
+        - dsaCode
+        - validRange
+        - permittedCategories
+        - agreementDocumentId
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    CreateProductInput:
+      type: object
+      properties:
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        category:
+          type: string
+          enum: &a21
+            - PL
+            - BL
+            - MSME
+            - LAP
+            - HL
+            - VL
+            - GL
+            - EL
+            - OTHER
+        applicantTypes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        secured:
+          type: boolean
+        ownerUserId:
+          type:
+            - string
+            - "null"
+        nextReviewAt:
+          type:
+            - string
+            - "null"
+        initialVersion:
+          type: object
+          properties:
+            effectiveFrom:
+              type: string
+            amountMin:
+              type: string
+              pattern: ^\d+(\.\d{1,2})?$
+            amountMax:
+              type: string
+              pattern: ^\d+(\.\d{1,2})?$
+            currency:
+              type: string
+              minLength: 3
+              maxLength: 3
+              default: INR
+            tenureMinMonths:
+              type: integer
+              minimum: 1
+            tenureMaxMonths:
+              type: integer
+              minimum: 1
+            illustrativeRateText:
+              type:
+                - string
+                - "null"
+              maxLength: 255
+          required:
+            - amountMin
+            - amountMax
+            - tenureMinMonths
+            - tenureMaxMonths
+      required:
+        - lenderId
+        - name
+        - category
+        - applicantTypes
+        - secured
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+        lenderId:
+          type: string
+          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+        lenderName:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: *a21
+        applicantTypes:
+          type: array
+          items:
+            type: string
+        secured:
+          type: boolean
+        ownerUserId:
+          type:
+            - string
+            - "null"
+        nextReviewAt:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum: &a52
+            - ACTIVE
+            - INACTIVE
+        lockVersion:
+          type: integer
+        activeVersion:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+              pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+            productId:
+              type: string
+              pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+            versionNo:
+              type: integer
+            effectiveFrom:
+              type: string
+            amountMin:
+              type: string
+            amountMax:
+              type: string
+            currency:
+              type: string
+            tenureMinMonths:
+              type: integer
+            tenureMaxMonths:
+              type: integer
+            illustrativeRateText:
+              type:
+                - string
+                - "null"
+            feeText:
+              type:
+                - string
+                - "null"
+            geoRules:
+              type:
+                - object
+                - "null"
+              additionalProperties: {}
+            documentProfileId:
+              type:
+                - string
+                - "null"
+            workflowProfile:
+              type:
+                - object
+                - "null"
+              additionalProperties: {}
+            status:
+              type: string
+              enum: &a22
+                - ACTIVE
+                - RETIRED
+            createdAt:
+              type: string
+          required:
+            - id
+            - productId
+            - versionNo
+            - effectiveFrom
+            - amountMin
+            - amountMax
+            - currency
+            - tenureMinMonths
+            - tenureMaxMonths
+            - illustrativeRateText
+            - status
+            - createdAt
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - id
+        - lenderId
+        - name
+        - category
+        - applicantTypes
+        - secured
+        - ownerUserId
+        - nextReviewAt
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    CreateProductVersionInput:
+      type: object
+      properties:
+        effectiveFrom:
+          type: string
+        amountMin:
+          type: string
+          pattern: ^\d+(\.\d{1,2})?$
+        amountMax:
+          type: string
+          pattern: ^\d+(\.\d{1,2})?$
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: INR
+        tenureMinMonths:
+          type: integer
+          minimum: 1
+        tenureMaxMonths:
+          type: integer
+          minimum: 1
+        illustrativeRateText:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        feeText:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+        geoRules:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        documentProfileId:
+          type:
+            - string
+            - "null"
+        workflowProfile:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+      required:
+        - amountMin
+        - amountMax
+        - tenureMinMonths
+        - tenureMaxMonths
+    ProductVersionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+        productId:
+          type: string
+          pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+        versionNo:
+          type: integer
+        effectiveFrom:
+          type: string
+        amountMin:
+          type: string
+        amountMax:
+          type: string
+        currency:
+          type: string
+        tenureMinMonths:
+          type: integer
+        tenureMaxMonths:
+          type: integer
+        illustrativeRateText:
+          type:
+            - string
+            - "null"
+        feeText:
+          type:
+            - string
+            - "null"
+        geoRules:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        documentProfileId:
+          type:
+            - string
+            - "null"
+        workflowProfile:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+        status:
+          type: string
+          enum: *a22
+        createdAt:
+          type: string
+      required:
+        - id
+        - productId
+        - versionNo
+        - effectiveFrom
+        - amountMin
+        - amountMax
+        - currency
+        - tenureMinMonths
+        - tenureMaxMonths
+        - illustrativeRateText
+        - status
+        - createdAt
     IdempotencyKey:
       type: string
       pattern: ^[A-Za-z0-9_-]{8,128}$
@@ -1257,6 +2252,19 @@ paths:
                             - config.manage
                             - user.manage
                             - message.send
+                            - lender.read
+                            - lender.manage
+                            - product.read
+                            - product.manage
+                            - commission.plan.edit
+                            - commission.plan.approve
+                            - commission.calculate
+                            - finance.view
+                            - adjustment.create
+                            - adjustment.approve
+                            - payout.request
+                            - payout.approve
+                            - payout.record_payment
                         scope:
                           type: string
                           enum:
@@ -1713,7 +2721,7 @@ paths:
                           type: string
                         constitution:
                           type: string
-                          enum: &a14
+                          enum: &a23
                             - PROPRIETORSHIP
                             - PARTNERSHIP
                             - LLP
@@ -1772,7 +2780,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a14
+                    enum: *a23
                   status:
                     type: string
                   version:
@@ -1808,7 +2816,7 @@ paths:
                   maxLength: 200
                 constitution:
                   type: string
-                  enum: *a14
+                  enum: *a23
               additionalProperties: false
       responses:
         "200":
@@ -1824,7 +2832,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a14
+                    enum: *a23
                   status:
                     type: string
                   version:
@@ -1946,7 +2954,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a15
+            enum: &a24
               - ACTIVE
               - INACTIVE
           required: false
@@ -2304,7 +3312,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a15
+            enum: *a24
           required: false
           name: status
           in: query
@@ -2636,7 +3644,7 @@ paths:
                   maxLength: 120
                 kind:
                   type: string
-                  enum: &a16
+                  enum: &a25
                     - INTAKE
                     - UNASSIGNED
                     - TEAM
@@ -2654,7 +3662,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a17
+                    enum: &a26
                       - LEAD
                       - APPLICATION
                       - TASK
@@ -2681,7 +3689,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a16
+                    enum: *a25
                   branchId:
                     type:
                       - string
@@ -2694,7 +3702,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a17
+                      enum: *a26
                   active:
                     type: boolean
                   memberCount:
@@ -2765,7 +3773,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a15
+            enum: *a24
           required: false
           name: status
           in: query
@@ -2796,7 +3804,7 @@ paths:
                           type: string
                         kind:
                           type: string
-                          enum: *a16
+                          enum: *a25
                         branchId:
                           type:
                             - string
@@ -2809,7 +3817,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a17
+                            enum: *a26
                         active:
                           type: boolean
                         memberCount:
@@ -2870,7 +3878,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a16
+                    enum: *a25
                   branchId:
                     type:
                       - string
@@ -2883,7 +3891,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a17
+                      enum: *a26
                   active:
                     type: boolean
                   memberCount:
@@ -2952,7 +3960,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a17
+                    enum: *a26
                   minItems: 1
               additionalProperties: false
       responses:
@@ -2971,7 +3979,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a16
+                    enum: *a25
                   branchId:
                     type:
                       - string
@@ -2984,7 +3992,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a17
+                      enum: *a26
                   active:
                     type: boolean
                   memberCount:
@@ -3086,7 +4094,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a16
+                    enum: *a25
                   branchId:
                     type:
                       - string
@@ -3099,7 +4107,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a17
+                      enum: *a26
                   active:
                     type: boolean
                   memberCount:
@@ -3187,7 +4195,7 @@ paths:
                   format: email
                 productCategory:
                   type: string
-                  enum: *a18
+                  enum: *a27
                 indicativeAmount:
                   type:
                     - object
@@ -3212,7 +4220,7 @@ paths:
                   minLength: 1
                 source:
                   type: string
-                  enum: *a19
+                  enum: *a28
                 subSource:
                   type:
                     - string
@@ -3240,13 +4248,13 @@ paths:
                   type: array
                   items:
                     type: string
-                  default: *a20
+                  default: *a29
                 consent:
                   type: object
                   properties:
                     purpose:
                       type: string
-                      enum: *a21
+                      enum: *a30
                       default: CONTACT
                     purposeTarget:
                       type:
@@ -3257,7 +4265,7 @@ paths:
                       pattern: ^[a-zA-Z0-9._-]{2,40}$
                     channel:
                       type: string
-                      enum: *a22
+                      enum: *a31
                     evidenceRef:
                       type:
                         - string
@@ -3542,7 +4550,7 @@ paths:
               properties:
                 transitionCode:
                   type: string
-                  enum: *a23
+                  enum: *a32
                 reasonCode:
                   type:
                     - string
@@ -3551,7 +4559,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a24
+                  enum: *a33
                 nextFollowUpAt:
                   type:
                     - string
@@ -3639,7 +4647,7 @@ paths:
                     - "null"
                 reasonCode:
                   type: string
-                  enum: *a25
+                  enum: *a34
                   default: MANUAL
                 transferOpenTasks:
                   type: boolean
@@ -3732,7 +4740,7 @@ paths:
               properties:
                 partyType:
                   type: string
-                  enum: *a26
+                  enum: *a35
                 fullName:
                   type: string
                   minLength: 2
@@ -4105,7 +5113,7 @@ paths:
               properties:
                 purpose:
                   type: string
-                  enum: *a27
+                  enum: *a36
                 purposeTarget:
                   type: string
                 noticeVersion:
@@ -4113,7 +5121,7 @@ paths:
                   pattern: ^[A-Z0-9._-]{2,40}$
                 channel:
                   type: string
-                  enum: *a28
+                  enum: *a37
                 evidenceRef:
                   type: string
                   maxLength: 255
@@ -5249,7 +6257,7 @@ paths:
                         maxLength: 200
                     required:
                       - name
-                  default: *a29
+                  default: *a38
                 providerTemplateId:
                   type:
                     - string
@@ -5830,7 +6838,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a30
+                  enum: *a39
                 subjectId:
                   type: string
                   minLength: 1
@@ -5862,7 +6870,7 @@ paths:
                       - type: string
                       - type: number
                       - type: boolean
-                  default: *a31
+                  default: *a40
                 correlationId:
                   type: string
               required:
@@ -5886,7 +6894,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a32
+                    enum: *a41
                   channel:
                     type: string
                     enum: *a6
@@ -5977,7 +6985,7 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a32
+                    enum: *a41
                   channel:
                     type: string
                     enum: *a6
@@ -6248,7 +7256,7 @@ paths:
                           type: string
                         direction:
                           type: string
-                          enum: *a32
+                          enum: *a41
                         channel:
                           type: string
                           enum: *a6
@@ -6791,6 +7799,1166 @@ paths:
                       - retryable
                 required:
                   - error
+  /v1/commission-plans:
+    post:
+      operationId: API-COM-003
+      summary: Create commission plan (API-COM-003)
+      tags:
+        - MOD-COM Commission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lenderId:
+                  type: string
+                  pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                qualifyingEvent:
+                  type: string
+                  enum: *a14
+                  default: DISBURSEMENT
+                basis:
+                  type: string
+                  enum: *a15
+                  default: DISBURSED_AMOUNT
+                roundingMode:
+                  type: string
+                  default: ROUND_HALF_UP
+                clawbackWindowDays:
+                  type: integer
+                  minimum: 0
+                  default: 90
+                defaultRate:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.015
+                ruleSetId:
+                  type:
+                    - string
+                    - "null"
+                status:
+                  type: string
+                  enum: *a16
+                  default: DRAFT
+              required:
+                - lenderId
+      responses:
+        "201":
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^cpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  qualifyingEvent:
+                    type: string
+                    enum: *a14
+                  basis:
+                    type: string
+                    enum: *a15
+                  roundingMode:
+                    type: string
+                  clawbackWindowDays:
+                    type: integer
+                  ruleSetId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a16
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - qualifyingEvent
+                  - basis
+                  - roundingMode
+                  - clawbackWindowDays
+                  - ruleSetId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/commission-plans/{id}:
+    patch:
+      operationId: API-COM-004
+      summary: Update commission plan (API-COM-004)
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qualifyingEvent:
+                  type: string
+                  enum: *a14
+                basis:
+                  type: string
+                  enum: *a15
+                roundingMode:
+                  type: string
+                clawbackWindowDays:
+                  type: integer
+                  minimum: 0
+                status:
+                  type: string
+                  enum: *a16
+      responses:
+        "200":
+          description: Plan updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^cpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  qualifyingEvent:
+                    type: string
+                    enum: *a14
+                  basis:
+                    type: string
+                    enum: *a15
+                  roundingMode:
+                    type: string
+                  clawbackWindowDays:
+                    type: integer
+                  ruleSetId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a16
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - qualifyingEvent
+                  - basis
+                  - roundingMode
+                  - clawbackWindowDays
+                  - ruleSetId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/commission-plans/{id}/approval:
+    post:
+      operationId: API-COM-008
+      summary: Approve commission plan (API-COM-008, SOD-02)
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Plan approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^cpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  qualifyingEvent:
+                    type: string
+                    enum: *a14
+                  basis:
+                    type: string
+                    enum: *a15
+                  roundingMode:
+                    type: string
+                  clawbackWindowDays:
+                    type: integer
+                  ruleSetId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a16
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - qualifyingEvent
+                  - basis
+                  - roundingMode
+                  - clawbackWindowDays
+                  - ruleSetId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/commission-calculations/{id}:
+    get:
+      operationId: API-COM-001
+      summary: Get calculation snapshot (API-COM-001)
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Calculation snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  trancheId:
+                    type: string
+                  applicationId:
+                    type:
+                      - string
+                      - "null"
+                  lenderCaseId:
+                    type:
+                      - string
+                      - "null"
+                  eventDate:
+                    type: string
+                  basisAmount:
+                    type: string
+                  rate:
+                    type: string
+                  rateType:
+                    type: string
+                  grossAmount:
+                    type: string
+                  currency:
+                    type: string
+                  calcKind:
+                    type: string
+                    enum: *a42
+                  status:
+                    type: string
+                    enum: *a43
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - trancheId
+                  - applicationId
+                  - lenderCaseId
+                  - eventDate
+                  - basisAmount
+                  - rate
+                  - rateType
+                  - grossAmount
+                  - currency
+                  - calcKind
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+  /v1/clawbacks:
+    post:
+      operationId: API-COM-009
+      summary: Record clawback with evidence (API-COM-009)
+      tags:
+        - MOD-COM Commission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                calculationId:
+                  type: string
+                  pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+                payableId:
+                  type: string
+                  pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+                amount:
+                  type: string
+                  pattern: ^\d+(\.\d{1,2})?$
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 255
+                evidenceRef:
+                  type: string
+                  maxLength: 255
+              required:
+                - amount
+                - reason
+      responses:
+        "201":
+          description: Clawback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^adj_[0-9A-HJKMNP-TV-Z]{26}$
+                  adjustmentType:
+                    type: string
+                    enum:
+                      - CLAWBACK
+                      - CORRECTION
+                      - MANUAL
+                  calculationId:
+                    type:
+                      - string
+                      - "null"
+                  payableId:
+                    type:
+                      - string
+                      - "null"
+                  amount:
+                    type: string
+                  reason:
+                    type: string
+                  evidenceRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum:
+                      - PENDING
+                      - APPROVED
+                      - REJECTED
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - adjustmentType
+                  - calculationId
+                  - payableId
+                  - amount
+                  - reason
+                  - evidenceRef
+                  - status
+                  - createdAt
+                  - createdBy
+                  - approvedAt
+                  - approvedBy
+  /v1/clawbacks/{id}/rejection:
+    post:
+      operationId: API-COM-010
+      summary: Reject clawback proposal
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+              required:
+                - reason
+      responses:
+        "200":
+          description: Clawback rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                required:
+                  - id
+                  - status
+  /v1/recalculation-proposals:
+    post:
+      operationId: API-COM-005
+      summary: Propose commission recalculation (API-COM-005)
+      tags:
+        - MOD-COM Commission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 255
+                affectedCalculationIds:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^ccal_[0-9A-HJKMNP-TV-Z]{26}$
+                  minItems: 1
+                preview:
+                  type: object
+                  additionalProperties: {}
+                  default: *a44
+              required:
+                - reason
+                - affectedCalculationIds
+      responses:
+        "201":
+          description: Recalculation proposal created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^recp_[0-9A-HJKMNP-TV-Z]{26}$
+                  reason:
+                    type: string
+                  affectedCalculationIds:
+                    type: array
+                    items:
+                      type: string
+                  preview:
+                    type: object
+                    additionalProperties: {}
+                  status:
+                    type: string
+                    enum: *a45
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                required:
+                  - id
+                  - reason
+                  - affectedCalculationIds
+                  - preview
+                  - status
+                  - approvedBy
+                  - approvedAt
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+  /v1/recalculation-proposals/{id}/approval:
+    post:
+      operationId: API-COM-006
+      summary: Approve recalculation proposal (API-COM-006, SOD-07)
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Recalculation approved and new calculation generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  newCalculationId:
+                    type: string
+                required:
+                  - id
+                  - status
+                  - newCalculationId
+  /v1/payout-requests:
+    post:
+      operationId: API-PAY-001
+      summary: Create payout request (API-PAY-001)
+      tags:
+        - MOD-PAY Payouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                connectorId:
+                  type: string
+                  minLength: 1
+                origin:
+                  type: string
+                  enum: *a17
+                  default: FINANCE
+                payableIds:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+                  minItems: 1
+              required:
+                - connectorId
+                - payableIds
+      responses:
+        "201":
+          description: Payout request created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                  connectorId:
+                    type: string
+                  origin:
+                    type: string
+                    enum: *a17
+                  status:
+                    type: string
+                    enum: *a46
+                  total:
+                    type: string
+                  currency:
+                    type: string
+                  paymentRefMasked:
+                    type:
+                      - string
+                      - "null"
+                  paidOn:
+                    type:
+                      - string
+                      - "null"
+                  failureReason:
+                    type:
+                      - string
+                      - "null"
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+                        payoutId:
+                          type: string
+                          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                        payableId:
+                          type: string
+                          pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+                        amount:
+                          type: string
+                        currency:
+                          type: string
+                        status:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - payoutId
+                        - payableId
+                        - amount
+                        - currency
+                        - status
+                        - createdAt
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - connectorId
+                  - origin
+                  - status
+                  - total
+                  - currency
+                  - paymentRefMasked
+                  - paidOn
+                  - failureReason
+                  - submittedBy
+                  - submittedAt
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/payout-requests/{id}/cancel:
+    post:
+      operationId: API-PAY-008
+      summary: Cancel payout request
+      tags:
+        - MOD-PAY Payouts
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Payout request cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                required:
+                  - id
+                  - status
+  /v1/payout-requests/{id}/approval:
+    post:
+      operationId: API-PAY-003
+      summary: Approve or reject payout request (API-PAY-003, SOD-03)
+      tags:
+        - MOD-PAY Payouts
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - APPROVED
+                    - REJECTED
+                comment:
+                  type: string
+                  maxLength: 255
+              required:
+                - decision
+      responses:
+        "200":
+          description: Payout request approval response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  payoutId:
+                    type: string
+                    pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                  approverId:
+                    type: string
+                  seat:
+                    type: string
+                  decision:
+                    type: string
+                    enum:
+                      - APPROVED
+                      - REJECTED
+                  comment:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a46
+                  total:
+                    type: string
+                  lineCount:
+                    type: integer
+                  approvedAt:
+                    type: string
+                required:
+                  - id
+                  - payoutId
+                  - approverId
+                  - seat
+                  - decision
+                  - comment
+                  - status
+                  - total
+                  - lineCount
+                  - approvedAt
+  /v1/payout-requests/{id}/payment:
+    post:
+      operationId: API-PAY-004
+      summary: Record payment reference / UTR (API-PAY-004)
+      tags:
+        - MOD-PAY Payouts
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentRef:
+                  type: string
+                  minLength: 4
+                  maxLength: 64
+                paidOn:
+                  type: string
+                  default: 2026-10-14T10:32:26.091Z
+              required:
+                - paymentRef
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                  connectorId:
+                    type: string
+                  origin:
+                    type: string
+                    enum: *a17
+                  status:
+                    type: string
+                    enum: *a46
+                  total:
+                    type: string
+                  currency:
+                    type: string
+                  paymentRefMasked:
+                    type:
+                      - string
+                      - "null"
+                  paidOn:
+                    type:
+                      - string
+                      - "null"
+                  failureReason:
+                    type:
+                      - string
+                      - "null"
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+                        payoutId:
+                          type: string
+                          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                        payableId:
+                          type: string
+                          pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+                        amount:
+                          type: string
+                        currency:
+                          type: string
+                        status:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - payoutId
+                        - payableId
+                        - amount
+                        - currency
+                        - status
+                        - createdAt
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - connectorId
+                  - origin
+                  - status
+                  - total
+                  - currency
+                  - paymentRefMasked
+                  - paidOn
+                  - failureReason
+                  - submittedBy
+                  - submittedAt
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/payout-requests/{id}/payment-failure:
+    post:
+      operationId: API-PAY-005
+      summary: Record payment failure (API-PAY-005)
+      tags:
+        - MOD-PAY Payouts
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                failureReason:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+              required:
+                - failureReason
+      responses:
+        "200":
+          description: Payment failure recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                  connectorId:
+                    type: string
+                  origin:
+                    type: string
+                    enum: *a17
+                  status:
+                    type: string
+                    enum: *a46
+                  total:
+                    type: string
+                  currency:
+                    type: string
+                  paymentRefMasked:
+                    type:
+                      - string
+                      - "null"
+                  paidOn:
+                    type:
+                      - string
+                      - "null"
+                  failureReason:
+                    type:
+                      - string
+                      - "null"
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+                        payoutId:
+                          type: string
+                          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                        payableId:
+                          type: string
+                          pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
+                        amount:
+                          type: string
+                        currency:
+                          type: string
+                        status:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - payoutId
+                        - payableId
+                        - amount
+                        - currency
+                        - status
+                        - createdAt
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - connectorId
+                  - origin
+                  - status
+                  - total
+                  - currency
+                  - paymentRefMasked
+                  - paidOn
+                  - failureReason
+                  - submittedBy
+                  - submittedAt
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/payout-batches:
+    post:
+      operationId: API-PAY-006
+      summary: Create payout batch (API-PAY-006)
+      tags:
+        - MOD-PAY Payouts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payoutIds:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
+                  minItems: 1
+              required:
+                - payoutIds
+      responses:
+        "201":
+          description: Payout batch created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^pbt_[0-9A-HJKMNP-TV-Z]{26}$
+                  payoutIds:
+                    type: array
+                    items:
+                      type: string
+                  fileObjectKey:
+                    type:
+                      - string
+                      - "null"
+                  fileSha256:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a47
+                  generatedBy:
+                    type: string
+                  generatedAt:
+                    type: string
+                required:
+                  - id
+                  - payoutIds
+                  - fileObjectKey
+                  - fileSha256
+                  - status
+                  - generatedBy
+                  - generatedAt
   /v1/tasks:
     post:
       operationId: API-TASK-001
@@ -6813,7 +8981,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a35
+                  enum: &a50
                     - FOLLOW_UP
                     - CALL
                     - MEETING
@@ -6833,7 +9001,7 @@ paths:
                   minLength: 1
                 linkedType:
                   type: string
-                  enum: &a34
+                  enum: &a49
                     - LEAD
                     - LOAN_APPLICATION
                     - LENDER_CASE
@@ -6845,7 +9013,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: &a33
+                  enum: &a48
                     - HIGH
                     - MEDIUM
                     - LOW
@@ -7008,13 +9176,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a33
+            enum: *a48
           required: false
           name: priority
           in: query
         - schema:
             type: string
-            enum: *a34
+            enum: *a49
           required: false
           name: linkedType
           in: query
@@ -7319,7 +9487,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a33
+                  enum: *a48
                 dueAt:
                   type: string
                   format: date-time
@@ -7481,7 +9649,7 @@ paths:
                       type: boolean
                     followUpType:
                       type: string
-                      enum: *a35
+                      enum: *a50
                       default: FOLLOW_UP
                     followUpDueAt:
                       type: string
@@ -7704,4 +9872,1451 @@ paths:
                 required:
                   - task
                   - followUpTask
+  /v1/lenders:
+    post:
+      operationId: API-LND-001
+      summary: Create lender (API-LND-001)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                lenderType:
+                  type: string
+                  enum: *a18
+                regulatorRef:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                status:
+                  type: string
+                  enum: *a19
+                  default: ACTIVE
+                statusReason:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 255
+              required:
+                - name
+                - lenderType
+      responses:
+        "201":
+          description: Lender created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a18
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a19
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      operationId: API-LND-002
+      summary: List lenders (API-LND-002)
+      tags:
+        - MOD-LND Lenders
+      responses:
+        "200":
+          description: List of lenders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        name:
+                          type: string
+                        lenderType:
+                          type: string
+                          enum: *a18
+                        regulatorRef:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a19
+                        statusReason:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - lenderType
+                        - regulatorRef
+                        - status
+                        - statusReason
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: number
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/lenders/{id}:
+    patch:
+      operationId: API-LND-003
+      summary: Update lender (API-LND-003)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                lenderType:
+                  type: string
+                  enum: *a18
+                regulatorRef:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                status:
+                  type: string
+                  enum: *a19
+                statusReason:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 255
+      responses:
+        "200":
+          description: Lender updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a18
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a19
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      operationId: API-LND-007
+      summary: Get lender by ID
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Lender details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  name:
+                    type: string
+                  lenderType:
+                    type: string
+                    enum: *a18
+                  regulatorRef:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a19
+                  statusReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - lenderType
+                  - regulatorRef
+                  - status
+                  - statusReason
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/lenders/{id}/empanelments:
+    post:
+      operationId: API-LND-004
+      summary: Add empanelment (API-LND-004)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                organisationId:
+                  type: string
+                dsaCode:
+                  type: string
+                  minLength: 2
+                  maxLength: 64
+                validFrom:
+                  type: string
+                validTo:
+                  type: string
+                permittedCategories:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                permittedGeos:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                agreementDocumentId:
+                  type:
+                    - string
+                    - "null"
+                status:
+                  type: string
+                  enum: *a20
+                  default: ACTIVE
+              required:
+                - organisationId
+                - dsaCode
+                - validFrom
+                - validTo
+                - permittedCategories
+      responses:
+        "201":
+          description: Empanelment added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                  organisationId:
+                    type: string
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  dsaCode:
+                    type: string
+                  validRange:
+                    type: string
+                  permittedCategories:
+                    type: array
+                    items:
+                      type: string
+                  permittedGeos:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  agreementDocumentId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a20
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - lenderId
+                  - dsaCode
+                  - validRange
+                  - permittedCategories
+                  - agreementDocumentId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/empanelments/{id}:
+    get:
+      operationId: API-LND-008
+      summary: Get empanelment by ID
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Empanelment details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                  organisationId:
+                    type: string
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  dsaCode:
+                    type: string
+                  validRange:
+                    type: string
+                  permittedCategories:
+                    type: array
+                    items:
+                      type: string
+                  permittedGeos:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  agreementDocumentId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a20
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - lenderId
+                  - dsaCode
+                  - validRange
+                  - permittedCategories
+                  - agreementDocumentId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    patch:
+      operationId: API-LND-005
+      summary: Update empanelment (API-LND-005)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                validFrom:
+                  type: string
+                validTo:
+                  type: string
+                permittedCategories:
+                  type: array
+                  items:
+                    type: string
+                permittedGeos:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                agreementDocumentId:
+                  type:
+                    - string
+                    - "null"
+                status:
+                  type: string
+                  enum: *a20
+      responses:
+        "200":
+          description: Empanelment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^emp_[0-9A-HJKMNP-TV-Z]{26}$
+                  organisationId:
+                    type: string
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  dsaCode:
+                    type: string
+                  validRange:
+                    type: string
+                  permittedCategories:
+                    type: array
+                    items:
+                      type: string
+                  permittedGeos:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  agreementDocumentId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a20
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - organisationId
+                  - lenderId
+                  - dsaCode
+                  - validRange
+                  - permittedCategories
+                  - agreementDocumentId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+  /v1/lenders/{id}/contacts:
+    put:
+      operationId: API-LND-006
+      summary: Set lender contacts (API-LND-006)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contacts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 2
+                        maxLength: 100
+                      role:
+                        type: string
+                        minLength: 2
+                        maxLength: 50
+                      email:
+                        type:
+                          - string
+                          - "null"
+                        format: email
+                      phone:
+                        type:
+                          - string
+                          - "null"
+                        pattern: ^\+?[1-9]\d{7,14}$
+                      channel:
+                        type: string
+                        enum: &a51
+                          - EMAIL
+                          - PORTAL
+                          - API
+                          - PHONE
+                        default: EMAIL
+                      escalationLevel:
+                        type: integer
+                        minimum: 1
+                        maximum: 5
+                        default: 1
+                    required:
+                      - name
+                      - role
+              required:
+                - contacts
+      responses:
+        "200":
+          description: Contacts set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lcon_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        name:
+                          type: string
+                        role:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        phone:
+                          type:
+                            - string
+                            - "null"
+                        channel:
+                          type: string
+                          enum: *a51
+                        escalationLevel:
+                          type: integer
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - name
+                        - role
+                        - email
+                        - phone
+                        - channel
+                        - escalationLevel
+                        - lockVersion
+                        - createdAt
+                        - updatedAt
+                required:
+                  - data
+  /v1/products:
+    post:
+      operationId: API-PRD-001
+      summary: Create loan product (API-PRD-001)
+      tags:
+        - MOD-PRD Products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lenderId:
+                  type: string
+                  pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 120
+                category:
+                  type: string
+                  enum: *a21
+                applicantTypes:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                secured:
+                  type: boolean
+                ownerUserId:
+                  type:
+                    - string
+                    - "null"
+                nextReviewAt:
+                  type:
+                    - string
+                    - "null"
+                initialVersion:
+                  type: object
+                  properties:
+                    effectiveFrom:
+                      type: string
+                    amountMin:
+                      type: string
+                      pattern: ^\d+(\.\d{1,2})?$
+                    amountMax:
+                      type: string
+                      pattern: ^\d+(\.\d{1,2})?$
+                    currency:
+                      type: string
+                      minLength: 3
+                      maxLength: 3
+                      default: INR
+                    tenureMinMonths:
+                      type: integer
+                      minimum: 1
+                    tenureMaxMonths:
+                      type: integer
+                      minimum: 1
+                    illustrativeRateText:
+                      type:
+                        - string
+                        - "null"
+                      maxLength: 255
+                  required:
+                    - amountMin
+                    - amountMax
+                    - tenureMinMonths
+                    - tenureMaxMonths
+              required:
+                - lenderId
+                - name
+                - category
+                - applicantTypes
+                - secured
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderName:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a21
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a52
+                  lockVersion:
+                    type: integer
+                  activeVersion:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                        pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+                      productId:
+                        type: string
+                        pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                      versionNo:
+                        type: integer
+                      effectiveFrom:
+                        type: string
+                      amountMin:
+                        type: string
+                      amountMax:
+                        type: string
+                      currency:
+                        type: string
+                      tenureMinMonths:
+                        type: integer
+                      tenureMaxMonths:
+                        type: integer
+                      illustrativeRateText:
+                        type:
+                          - string
+                          - "null"
+                      feeText:
+                        type:
+                          - string
+                          - "null"
+                      geoRules:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      documentProfileId:
+                        type:
+                          - string
+                          - "null"
+                      workflowProfile:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      status:
+                        type: string
+                        enum: *a22
+                      createdAt:
+                        type: string
+                    required:
+                      - id
+                      - productId
+                      - versionNo
+                      - effectiveFrom
+                      - amountMin
+                      - amountMax
+                      - currency
+                      - tenureMinMonths
+                      - tenureMaxMonths
+                      - illustrativeRateText
+                      - status
+                      - createdAt
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+    get:
+      operationId: API-PRD-002
+      summary: List products catalogue (API-PRD-002)
+      tags:
+        - MOD-PRD Products
+      responses:
+        "200":
+          description: Product catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderName:
+                          type: string
+                        name:
+                          type: string
+                        category:
+                          type: string
+                          enum: *a21
+                        applicantTypes:
+                          type: array
+                          items:
+                            type: string
+                        secured:
+                          type: boolean
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        nextReviewAt:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a52
+                        lockVersion:
+                          type: integer
+                        activeVersion:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            id:
+                              type: string
+                              pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+                            productId:
+                              type: string
+                              pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                            versionNo:
+                              type: integer
+                            effectiveFrom:
+                              type: string
+                            amountMin:
+                              type: string
+                            amountMax:
+                              type: string
+                            currency:
+                              type: string
+                            tenureMinMonths:
+                              type: integer
+                            tenureMaxMonths:
+                              type: integer
+                            illustrativeRateText:
+                              type:
+                                - string
+                                - "null"
+                            feeText:
+                              type:
+                                - string
+                                - "null"
+                            geoRules:
+                              type:
+                                - object
+                                - "null"
+                              additionalProperties: {}
+                            documentProfileId:
+                              type:
+                                - string
+                                - "null"
+                            workflowProfile:
+                              type:
+                                - object
+                                - "null"
+                              additionalProperties: {}
+                            status:
+                              type: string
+                              enum: *a22
+                            createdAt:
+                              type: string
+                          required:
+                            - id
+                            - productId
+                            - versionNo
+                            - effectiveFrom
+                            - amountMin
+                            - amountMax
+                            - currency
+                            - tenureMinMonths
+                            - tenureMaxMonths
+                            - illustrativeRateText
+                            - status
+                            - createdAt
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - name
+                        - category
+                        - applicantTypes
+                        - secured
+                        - ownerUserId
+                        - nextReviewAt
+                        - status
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: number
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+  /v1/products/{id}/versions:
+    post:
+      operationId: API-PRD-003
+      summary: Create new immutable product version (API-PRD-003)
+      tags:
+        - MOD-PRD Products
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                effectiveFrom:
+                  type: string
+                amountMin:
+                  type: string
+                  pattern: ^\d+(\.\d{1,2})?$
+                amountMax:
+                  type: string
+                  pattern: ^\d+(\.\d{1,2})?$
+                currency:
+                  type: string
+                  minLength: 3
+                  maxLength: 3
+                  default: INR
+                tenureMinMonths:
+                  type: integer
+                  minimum: 1
+                tenureMaxMonths:
+                  type: integer
+                  minimum: 1
+                illustrativeRateText:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 255
+                feeText:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 255
+                geoRules:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                documentProfileId:
+                  type:
+                    - string
+                    - "null"
+                workflowProfile:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+              required:
+                - amountMin
+                - amountMax
+                - tenureMinMonths
+                - tenureMaxMonths
+      responses:
+        "201":
+          description: Product version created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+                  productId:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  versionNo:
+                    type: integer
+                  effectiveFrom:
+                    type: string
+                  amountMin:
+                    type: string
+                  amountMax:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMinMonths:
+                    type: integer
+                  tenureMaxMonths:
+                    type: integer
+                  illustrativeRateText:
+                    type:
+                      - string
+                      - "null"
+                  feeText:
+                    type:
+                      - string
+                      - "null"
+                  geoRules:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                  workflowProfile:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  status:
+                    type: string
+                    enum: *a22
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - productId
+                  - versionNo
+                  - effectiveFrom
+                  - amountMin
+                  - amountMax
+                  - currency
+                  - tenureMinMonths
+                  - tenureMaxMonths
+                  - illustrativeRateText
+                  - status
+                  - createdAt
+  /v1/product-versions/{id}:
+    get:
+      operationId: API-PRD-004
+      summary: Get product version detail (API-PRD-004)
+      tags:
+        - MOD-PRD Products
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Product version detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+                  productId:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  versionNo:
+                    type: integer
+                  effectiveFrom:
+                    type: string
+                  amountMin:
+                    type: string
+                  amountMax:
+                    type: string
+                  currency:
+                    type: string
+                  tenureMinMonths:
+                    type: integer
+                  tenureMaxMonths:
+                    type: integer
+                  illustrativeRateText:
+                    type:
+                      - string
+                      - "null"
+                  feeText:
+                    type:
+                      - string
+                      - "null"
+                  geoRules:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                  workflowProfile:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  status:
+                    type: string
+                    enum: *a22
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - productId
+                  - versionNo
+                  - effectiveFrom
+                  - amountMin
+                  - amountMax
+                  - currency
+                  - tenureMinMonths
+                  - tenureMaxMonths
+                  - illustrativeRateText
+                  - status
+                  - createdAt
+  /v1/products/{id}/status:
+    post:
+      operationId: API-PRD-005
+      summary: Update product status (API-PRD-005)
+      tags:
+        - MOD-PRD Products
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: *a52
+              required:
+                - status
+      responses:
+        "200":
+          description: Product status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderName:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                    enum: *a21
+                  applicantTypes:
+                    type: array
+                    items:
+                      type: string
+                  secured:
+                    type: boolean
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  nextReviewAt:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a52
+                  lockVersion:
+                    type: integer
+                  activeVersion:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                        pattern: ^lpv_[0-9A-HJKMNP-TV-Z]{26}$
+                      productId:
+                        type: string
+                        pattern: ^prd_[0-9A-HJKMNP-TV-Z]{26}$
+                      versionNo:
+                        type: integer
+                      effectiveFrom:
+                        type: string
+                      amountMin:
+                        type: string
+                      amountMax:
+                        type: string
+                      currency:
+                        type: string
+                      tenureMinMonths:
+                        type: integer
+                      tenureMaxMonths:
+                        type: integer
+                      illustrativeRateText:
+                        type:
+                          - string
+                          - "null"
+                      feeText:
+                        type:
+                          - string
+                          - "null"
+                      geoRules:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      documentProfileId:
+                        type:
+                          - string
+                          - "null"
+                      workflowProfile:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      status:
+                        type: string
+                        enum: *a22
+                      createdAt:
+                        type: string
+                    required:
+                      - id
+                      - productId
+                      - versionNo
+                      - effectiveFrom
+                      - amountMin
+                      - amountMax
+                      - currency
+                      - tenureMinMonths
+                      - tenureMaxMonths
+                      - illustrativeRateText
+                      - status
+                      - createdAt
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - name
+                  - category
+                  - applicantTypes
+                  - secured
+                  - ownerUserId
+                  - nextReviewAt
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
 webhooks: {}
