@@ -565,10 +565,10 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       expect(party?.role).toBe('PRIMARY');
       expect(party?.customer_id).toBe(res.body.customerId);
 
-      // 5. Verify status history (CONVERT)
+      // 5. Verify status history (T-LEAD-07)
       expect(
         repository.statusHistories.some(
-          (h) => h.lead_id === leadId && h.transition_code === 'CONVERT',
+          (h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-07',
         ),
       ).toBe(true);
 

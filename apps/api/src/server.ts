@@ -13,6 +13,7 @@ import { loadConfig, type ApiConfig } from './config';
 import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { createTxRunner } from './kernel-min/tx-runner';
+import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 
 let config: ApiConfig;
 try {
@@ -33,16 +34,14 @@ const app = createApp({
     audit: createAuditPort(ids),
     ids,
     userDirectory: createUserDirectory(),
+    complaintSubjectPort: createApplicationSubjectPort(),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
-  supabaseUrl: config.SUPABASE_URL,
-  jwtSecret: config.API_JWT_SECRET,
-  db,
   logger,
   auth: supabaseAuth({
     verifier: createTokenVerifier({
       supabaseUrl: config.SUPABASE_URL,
-      jwtSecret: config.API_JWT_SECRET ?? config.SUPABASE_JWT_SECRET,
+      jwtSecret: config.SUPABASE_JWT_SECRET,
     }),
     resolver: createPrincipalResolver(txRunner),
   }),

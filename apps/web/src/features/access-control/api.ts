@@ -15,7 +15,7 @@ function getApiBaseUrl(): string {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token = getStoredAuthToken() || '';
+  const token = getStoredAuthToken() ?? '';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

@@ -700,7 +700,11 @@ export class CustomerService implements PartyPort, ConsentPort {
 
   // --- Implement PartyPort ---
   async getParty(tx: Tx, customerId: string): Promise<Party | null> {
-    const row = await this.deps.repository.findCustomerById(tx, '', customerId);
+    const tenantId = (tx as any)?.tenantId;
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
+    }
+    const row = await this.deps.repository.findCustomerById(tx, tenantId, customerId);
     if (!row) return null;
     return {
       customerId: row.id,
@@ -715,9 +719,13 @@ export class CustomerService implements PartyPort, ConsentPort {
     tx: Tx,
     q: { customerId: string; purpose: ConsentPurpose; purposeTarget?: string },
   ): Promise<{ consentId: string } | null> {
+    const tenantId = (tx as any)?.tenantId;
+    if (!tenantId || tenantId.trim() === '') {
+      return null;
+    }
     const direct = await this.deps.repository.findActiveConsent(
       tx,
-      '',
+      tenantId,
       'CUSTOMER',
       q.customerId,
       q.purpose,
@@ -729,7 +737,7 @@ export class CustomerService implements PartyPort, ConsentPort {
 
     const leadConsent = await this.deps.repository.findActiveLeadConsentByCustomerId(
       tx,
-      '',
+      tenantId,
       q.customerId,
       q.purpose,
       q.purposeTarget,

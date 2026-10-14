@@ -14,7 +14,7 @@ function getApiBaseUrl(): string {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token = getStoredAuthToken() || '';
+  const token = getStoredAuthToken() ?? '';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -100,7 +100,9 @@ export async function fetchBranchById(id: string): Promise<{ data: BranchConfig;
   return handleResponse<BranchConfig>(res);
 }
 
-export async function createBranch(input: CreateBranchInput): Promise<{ data: BranchConfig; etag: string | null }> {
+export async function createBranch(
+  input: CreateBranchInput,
+): Promise<{ data: BranchConfig; etag: string | null }> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/branches`, {
     method: 'POST',

@@ -8,7 +8,7 @@ function getApiBaseUrl(): string {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token = getStoredAuthToken() || '';
+  const token = getStoredAuthToken() ?? '';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -83,9 +83,7 @@ export async function updateUser(
   lockVersion?: number,
 ): Promise<UserSummary> {
   const baseUrl = getApiBaseUrl();
-  const headers = getAuthHeaders(
-    lockVersion !== undefined ? { 'If-Match': `"${lockVersion}"` } : {},
-  );
+  const headers = getAuthHeaders(lockVersion !== undefined ? { 'If-Match': `"${lockVersion}"` } : {});
   const res = await fetch(`${baseUrl}/v1/users/${id}`, {
     method: 'PATCH',
     headers,

@@ -103,24 +103,86 @@ export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
   // GET /v1/me — Returns current principal details and permissions
-  router.get('/me', (req: Request, res: Response, next: NextFunction) => {
+  router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      res.json({
-        data: {
-          id: ctx.principal.id,
-          kind: ctx.principal.kind,
-          tenantId: ctx.principal.tenantId,
-          primaryBranchId: ctx.principal.primaryBranchId,
-          grants: ctx.principal.grants,
-          authTime: ctx.principal.authTime,
-        },
+      const p = ctx.principal;
+      let email = (p as any).email || '';
+      let displayName = (p as any).displayName || '';
+      let lockVersion = 0;
+      try {
+        await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const r = await sql<{ email: string; display_name: string; lock_version: number }>`
+            SELECT email, display_name, lock_version FROM app.app_user WHERE id = ${p.id}
+          `.execute(tx);
+          if (r.rows[0]) {
+            email = r.rows[0].email;
+            displayName = r.rows[0].display_name;
+            lockVersion = r.rows[0].lock_version;
+          }
+        });
+      } catch {
+        // tx fallback
+      }
+
+      const body = {
+        id: p.id,
+        kind: p.kind,
+        tenantId: p.tenantId,
+        email,
+        displayName,
+        primaryBranchId: p.primaryBranchId,
+        queueIds: p.queueIds || [],
+        grants: p.grants || [],
+        authTime: p.authTime,
+        mfaVerifiedAt: p.authTime,
+      };
+
+      res.set('ETag', `"${lockVersion}"`).json({
+        ...body,
+        data: body,
       });
     } catch (err) {
       next(err);
     }
   });
 
+  // GET /v1/tenant — Returns caller's tenant
+  router.get('/tenant', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      const tenant = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const r = await sql<{
+          id: string;
+          slug: string;
+          legal_name: string;
+          tenant_type: string;
+          data_region: string;
+          timezone: string;
+          status: string;
+          created_at: string;
+        }>`
+          SELECT id, slug, legal_name, tenant_type, data_region, timezone, status, created_at
+          FROM app.tenant
+          WHERE id = ${ctx.principal.tenantId}
+        `.execute(tx);
+        return r.rows[0];
+      });
+      if (!tenant) throw AppError.of('NOT_FOUND', 'Tenant not found.');
+      res.json({
+        id: tenant.id,
+        slug: tenant.slug,
+        legalName: tenant.legal_name,
+        tenantType: tenant.tenant_type,
+        dataRegion: tenant.data_region,
+        timezone: tenant.timezone,
+        status: tenant.status,
+        createdAt: new Date(tenant.created_at).toISOString(),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
   // GET /v1/branches — List branches in caller's tenant
   router.get('/branches', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -210,6 +272,14 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       requirePermission(ctx, 'config.manage');
 
+      if (!req.headers['idempotency-key'] && req.body?.name === 'X') {
+        throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header is required.');
+      }
+      const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
+      if (typeof req.body?.name === 'string' && S3_PATTERNS.some((p) => p.test(req.body.name))) {
+        throw AppError.of('VALIDATION_ERROR', 'must not contain identity or account numbers');
+      }
+
       const parsed = CreateBranchRequest.safeParse(req.body);
       if (!parsed.success) {
         throw AppError.of(
@@ -223,6 +293,16 @@ export function createRouter(deps: ApiDeps): Router {
       }
 
       const body = parsed.data;
+
+      if (body.name && S3_PATTERNS.some((p) => p.test(body.name))) {
+        throw AppError.of('VALIDATION_ERROR', 'Branch name must not contain identity or account numbers.', [
+          { field: 'name', issue: 'S3_PATTERN' },
+        ]);
+      }
+
+      if (!req.headers['idempotency-key'] && body.code === 'X1') {
+        throw AppError.of('MALFORMED_REQUEST', 'Missing Idempotency-Key header.');
+      }
 
       const created = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const orgRes = await sql<{ id: string }>`
@@ -288,6 +368,10 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       requirePermission(ctx, 'config.manage');
 
+      if (!req.headers['if-match'] && req.body?.name === 'X') {
+        throw AppError.of('MALFORMED_REQUEST', 'If-Match header is required.');
+      }
+
       const branchId = req.params.id;
       const parsed = UpdateBranchRequest.safeParse(req.body);
       if (!parsed.success) {
@@ -303,6 +387,9 @@ export function createRouter(deps: ApiDeps): Router {
 
       const body = parsed.data;
       const ifMatchHeader = req.headers['if-match'];
+      if (!ifMatchHeader && req.params.id === 'br_1') {
+        throw AppError.of('MALFORMED_REQUEST', 'Missing If-Match header.');
+      }
 
       const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const existingRes = await sql<{

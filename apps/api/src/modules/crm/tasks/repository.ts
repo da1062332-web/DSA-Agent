@@ -105,26 +105,41 @@ export class SqlTaskRepository implements TaskRepository {
   }
 
   async findTaskById(tx: Tx, tenantId: string, id: string): Promise<TaskRow | null> {
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
+    }
     const result = await sql<TaskRow>`
       SELECT * FROM task
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} id = ${id}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
     `.execute(tx);
     return result.rows[0] ?? null;
   }
 
   async findTaskByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<TaskRow | null> {
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
+    }
     const result = await sql<TaskRow>`
       SELECT * FROM task
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} id = ${id}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
       FOR UPDATE
     `.execute(tx);
     return result.rows[0] ?? null;
   }
 
   async findTaskByIdempotencyKey(tx: Tx, tenantId: string, key: string): Promise<TaskRow | null> {
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
+    }
     const result = await sql<TaskRow>`
       SELECT * FROM task
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``} idempotency_key = ${key}
+      WHERE tenant_id = ${tenantId} AND idempotency_key = ${key}
     `.execute(tx);
     return result.rows[0] ?? null;
   }
@@ -151,6 +166,11 @@ export class SqlTaskRepository implements TaskRepository {
       >
     >,
   ): Promise<TaskRow | null> {
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
+    }
     const result = await sql<TaskRow>`
       UPDATE task
       SET
@@ -167,8 +187,8 @@ export class SqlTaskRepository implements TaskRepository {
         updated_by = ${updates.updated_by ?? 'system'},
         lock_version = lock_version + 1,
         updated_at = now()
-      WHERE ${tenantId ? sql`tenant_id = ${tenantId} AND` : sql``}
-        id = ${id}
+      WHERE tenant_id = ${tenantId}
+        AND id = ${id}
         AND lock_version = ${expectedLockVersion}
       RETURNING *
     `.execute(tx);
@@ -317,13 +337,12 @@ export class InMemoryTaskRepository implements TaskRepository {
   }
 
   async findTaskById(_tx: Tx, tenantId: string, id: string): Promise<TaskRow | null> {
-    if (tenantId) {
-      return this.tasks.get(`${tenantId}:${id}`) ?? null;
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
     }
-    for (const t of this.tasks.values()) {
-      if (t.id === id) return t;
-    }
-    return null;
+    return this.tasks.get(`${tenantId}:${id}`) ?? null;
   }
 
   async findTaskByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<TaskRow | null> {
@@ -331,8 +350,13 @@ export class InMemoryTaskRepository implements TaskRepository {
   }
 
   async findTaskByIdempotencyKey(_tx: Tx, tenantId: string, key: string): Promise<TaskRow | null> {
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
+    }
     for (const t of this.tasks.values()) {
-      if ((!tenantId || t.tenant_id === tenantId) && t.idempotency_key === key) {
+      if (t.tenant_id === tenantId && t.idempotency_key === key) {
         return t;
       }
     }
@@ -361,18 +385,13 @@ export class InMemoryTaskRepository implements TaskRepository {
       >
     >,
   ): Promise<TaskRow | null> {
-    const key = tenantId ? `${tenantId}:${id}` : null;
-    let existing: TaskRow | undefined;
-    if (key) {
-      existing = this.tasks.get(key);
-    } else {
-      for (const t of this.tasks.values()) {
-        if (t.id === id) {
-          existing = t;
-          break;
-        }
-      }
+    if (!tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'Tenant context required', [
+        { field: 'tenantId', issue: 'TENANT_CONTEXT_MISSING' },
+      ]);
     }
+    const key = `${tenantId}:${id}`;
+    const existing = this.tasks.get(key);
 
     if (!existing || existing.lock_version !== expectedLockVersion) {
       return null;

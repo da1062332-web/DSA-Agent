@@ -8,4 +8,5 @@ export * from './fake-user-directory';
 export * from './fake-decision';
 export * from './fake-application';
 export * from './fake-task';
+export * from './fake-complaint-subject';
 

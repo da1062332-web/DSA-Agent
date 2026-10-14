@@ -24,5 +24,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.spec.{ts,tsx}'],
     environment: 'node',
+    // Unit tests use relative API paths; a developer's .env.local must not change them.
+    env: { VITE_API_BASE_URL: '' },
   },
 });

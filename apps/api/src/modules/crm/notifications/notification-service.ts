@@ -356,7 +356,7 @@ export class NotificationService {
             throw AppError.of('NOT_FOUND', 'User profile not found');
           }
 
-          const profile: UserProfile = {
+          const profile: UserProfile & Record<string, unknown> = {
             id: row.id as UserProfile['id'],
             tenantId: row.tenant_id,
             email: row.email,
@@ -367,6 +367,9 @@ export class NotificationService {
             primaryBranchId: row.primary_branch_id,
             lockVersion: row.lock_version,
             notificationPreferences: PreferenceResolver.normalizePreferences(row.notification_preferences),
+            grants: ctx.principal.grants,
+            queueIds: ctx.principal.queueIds,
+            mfaVerifiedAt: ctx.principal.authTime,
           };
 
           return { profile, lockVersion: row.lock_version };
@@ -386,7 +389,7 @@ export class NotificationService {
       displayName: 'Staff User',
     };
 
-    const profile: UserProfile = {
+    const profile: UserProfile & Record<string, unknown> = {
       id: userId as UserProfile['id'],
       tenantId,
       email: memUser.email,
@@ -397,6 +400,9 @@ export class NotificationService {
       primaryBranchId: 'br_01JTESTBRANCH0000000000000',
       lockVersion: memUser.lockVersion,
       notificationPreferences: memUser.preferences,
+      grants: ctx.principal.grants,
+      queueIds: ctx.principal.queueIds,
+      mfaVerifiedAt: ctx.principal.authTime,
     };
 
     return { profile, lockVersion: memUser.lockVersion };
@@ -474,7 +480,7 @@ export class NotificationService {
           `.execute(tx);
 
           const updated = updateRes.rows[0]!;
-          const profile: UserProfile = {
+          const profile: UserProfile & Record<string, unknown> = {
             id: updated.id as UserProfile['id'],
             tenantId: updated.tenant_id,
             email: updated.email,
@@ -485,6 +491,9 @@ export class NotificationService {
             primaryBranchId: updated.primary_branch_id,
             lockVersion: updated.lock_version,
             notificationPreferences: PreferenceResolver.normalizePreferences(updated.notification_preferences),
+            grants: ctx.principal.grants,
+            queueIds: ctx.principal.queueIds,
+            mfaVerifiedAt: ctx.principal.authTime,
           };
 
           return { profile, lockVersion: updated.lock_version };
@@ -515,7 +524,7 @@ export class NotificationService {
     memUser.preferences = preferences;
     NotificationService.memoryUserProfiles.set(userId, memUser);
 
-    const profile: UserProfile = {
+    const profile: UserProfile & Record<string, unknown> = {
       id: userId as UserProfile['id'],
       tenantId,
       email: memUser.email,
@@ -526,6 +535,9 @@ export class NotificationService {
       primaryBranchId: 'br_01JTESTBRANCH0000000000000',
       lockVersion: memUser.lockVersion,
       notificationPreferences: memUser.preferences,
+      grants: ctx.principal.grants,
+      queueIds: ctx.principal.queueIds,
+      mfaVerifiedAt: ctx.principal.authTime,
     };
 
     return { profile, lockVersion: memUser.lockVersion };

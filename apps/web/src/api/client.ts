@@ -22,6 +22,7 @@ export class ApiError extends Error {
 export interface ApiRequest {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  headers?: Record<string, string>;
   /** The ETag version the edit is based on; sent as If-Match. */
   version?: number;
   /** Reuse the same key when retrying the same submit. Generated for POSTs when omitted. */
@@ -61,28 +62,15 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
   const config = readConfig();
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
 
-  let token: string | undefined;
-  try {
-    const raw = localStorage.getItem('dsa_auth_session');
-    if (raw) {
-      const parsed = JSON.parse(raw) as { access_token?: string };
-      token = parsed.access_token;
-    }
-  } catch {
-    // Ignore storage errors
-  }
-
-  if (!token) {
-    try {
-      const { data } = await getSupabase().auth.getSession();
-      token = data.session?.access_token;
-    } catch {
-      // Ignore session fetch errors
-    }
-  }
-
+  const { data } = await getSupabase().auth.getSession();
   const headers = new Headers({ Accept: 'application/json' });
+  const token = data.session?.access_token ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (req.headers) {
+    for (const [k, v] of Object.entries(req.headers)) {
+      headers.set(k, v);
+    }
+  }
   if (req.body !== undefined) headers.set('Content-Type', 'application/json');
   if (req.idempotencyKey) headers.set('Idempotency-Key', req.idempotencyKey);
   if (req.version !== undefined) headers.set('If-Match', `"${req.version}"`);

@@ -1,9 +1,6 @@
 // apps/web/src/features/customers/api.ts — owner: Dev 5 (MOD-CUST)
-import type {
-  ConsentResource,
-  CustomerResource,
-  RecordConsentPayload,
-} from './types';
+import type { ConsentResource, CustomerResource, RecordConsentPayload } from './types';
+import { getStoredAuthToken } from '../../auth/token';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -38,7 +35,7 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = localStorage.getItem('dsa_token');
+  const token = getStoredAuthToken() || localStorage.getItem('dsa_token');
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -102,10 +99,7 @@ export async function recordCustomerConsent(
   return data;
 }
 
-export async function withdrawConsent(
-  consentId: string,
-  reason?: string,
-): Promise<ConsentResource> {
+export async function withdrawConsent(consentId: string, reason?: string): Promise<ConsentResource> {
   const { data } = await request<ConsentResource>(`/v1/consents/${consentId}/withdrawal`, {
     method: 'POST',
     idempotencyKey: generateIdempotencyKey(),
