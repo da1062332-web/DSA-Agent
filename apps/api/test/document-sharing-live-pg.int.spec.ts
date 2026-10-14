@@ -13,7 +13,7 @@ import { DocumentSharingService } from '../src/modules/origination/document-shar
 const nextUlid = monotonicFactory();
 
 try {
-  process.loadEnvFile(path.resolve(__dirname, '../../../.env'));
+  process.loadEnvFile(path.resolve(__dirname, '../.env'));
 } catch {
   // Ignore if already loaded
 }

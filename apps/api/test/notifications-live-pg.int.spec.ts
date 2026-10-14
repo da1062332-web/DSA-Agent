@@ -13,7 +13,7 @@ import { NotificationService } from '../src/modules/crm/notifications/notificati
 const nextUlid = monotonicFactory();
 
 try {
-  process.loadEnvFile(path.resolve(__dirname, '../../../.env'));
+  process.loadEnvFile(path.resolve(__dirname, '../.env'));
 } catch {
   // Ignore if already loaded
 }
