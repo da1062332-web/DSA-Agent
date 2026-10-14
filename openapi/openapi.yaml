@@ -24,6 +24,8 @@ tags:
     description: Notifications and user preferences (MOD-NTF).
   - name: MOD-TASK Tasks
     description: Task lifecycle, queues, assignment, and SLA tracking (MOD-TASK).
+  - name: MOD-BRE Rules
+    description: Business Rule Engine, decision definitions, authoring, and lifecycle (MOD-BRE).
   - name: MOD-VRF Verification
     description: Verification cases, KYC checks, and document review attestation (MOD-VRF).
 components:
@@ -9960,6 +9962,4175 @@ paths:
                 required:
                   - task
                   - followUpTask
+  /v1/decision-definitions:
+    get:
+      operationId: API-BRE-001
+      summary: List supported decision definitions and schemas
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of decision definitions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        registryVersion:
+                          type: string
+                        tier:
+                          type: string
+                          enum: &a45
+                            - T1
+                            - T2
+                            - T3
+                        inputSchema:
+                          type: object
+                          additionalProperties: {}
+                        outputSchema:
+                          type: object
+                          additionalProperties: {}
+                        allowedHitPolicies:
+                          type: array
+                          items:
+                            type: string
+                            enum: &a46
+                              - UNIQUE
+                              - FIRST
+                              - PRIORITY
+                              - COLLECT
+                              - RULE_ORDER
+                        bindingMode:
+                          type: string
+                          enum: &a47
+                            - EVAL
+                            - EVENT
+                            - PIN
+                        fallbackPolicy:
+                          type: string
+                          enum: &a48
+                            - DEFAULT_OUTPUT
+                            - FAIL_CLOSED
+                            - MANUAL_REVIEW
+                        fallbackOutput:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        unknownPolicy:
+                          type: string
+                          enum: &a49
+                            - IGNORE
+                            - UNDETERMINED
+                        recordingLevel:
+                          type: string
+                          enum: &a50
+                            - ALWAYS
+                            - SAMPLED
+                        scopeChain:
+                          type: array
+                          items:
+                            type: string
+                        overridable:
+                          type: boolean
+                        enabled:
+                          type: boolean
+                        dependencies:
+                          type: array
+                          items:
+                            type: string
+                          default: &a51 []
+                      required:
+                        - key
+                        - registryVersion
+                        - tier
+                        - inputSchema
+                        - outputSchema
+                        - allowedHitPolicies
+                        - bindingMode
+                        - fallbackPolicy
+                        - fallbackOutput
+                        - unknownPolicy
+                        - recordingLevel
+                        - scopeChain
+                        - overridable
+                        - enabled
+                required:
+                  - data
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+  /v1/decision-definitions/{key}:
+    get:
+      operationId: API-BRE-002
+      summary: Get decision definition by key
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: key
+          in: path
+      responses:
+        "200":
+          description: Decision definition details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  registryVersion:
+                    type: string
+                  tier:
+                    type: string
+                    enum: *a45
+                  inputSchema:
+                    type: object
+                    additionalProperties: {}
+                  outputSchema:
+                    type: object
+                    additionalProperties: {}
+                  allowedHitPolicies:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a46
+                  bindingMode:
+                    type: string
+                    enum: *a47
+                  fallbackPolicy:
+                    type: string
+                    enum: *a48
+                  fallbackOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  unknownPolicy:
+                    type: string
+                    enum: *a49
+                  recordingLevel:
+                    type: string
+                    enum: *a50
+                  scopeChain:
+                    type: array
+                    items:
+                      type: string
+                  overridable:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  dependencies:
+                    type: array
+                    items:
+                      type: string
+                    default: *a51
+                required:
+                  - key
+                  - registryVersion
+                  - tier
+                  - inputSchema
+                  - outputSchema
+                  - allowedHitPolicies
+                  - bindingMode
+                  - fallbackPolicy
+                  - fallbackOutput
+                  - unknownPolicy
+                  - recordingLevel
+                  - scopeChain
+                  - overridable
+                  - enabled
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Decision definition not found
+  /v1/rule-sets:
+    post:
+      operationId: API-BRE-003
+      summary: Create a new rule set with initial draft version
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decisionKey:
+                  type: string
+                  enum:
+                    - DK-lead.duplicate
+                    - DK-customer.duplicate
+                    - DK-lead.assignment
+                    - DK-sla.target
+                    - DK-document.requirements
+                    - DK-application.completeness
+                scopeType:
+                  type: string
+                  enum: &a52
+                    - TENANT_DEFAULT
+                    - BRANCH
+                    - LENDER
+                    - PRODUCT_VERSION
+                  default: TENANT_DEFAULT
+                scopeRef:
+                  type:
+                    - string
+                    - "null"
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+              required:
+                - decisionKey
+                - name
+      responses:
+        "201":
+          description: Rule set created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rs_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  decisionKey:
+                    type: string
+                  scopeType:
+                    type: string
+                    enum: *a52
+                  scopeRef:
+                    type:
+                      - string
+                      - "null"
+                  name:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  origin:
+                    type: string
+                    enum: &a53
+                      - PLATFORM_SEED
+                      - TENANT
+                  status:
+                    type: string
+                    enum: &a54
+                      - ACTIVE
+                      - ARCHIVED
+                  activeVersionId:
+                    type:
+                      - string
+                      - "null"
+                  scheduledVersionId:
+                    type:
+                      - string
+                      - "null"
+                  draftVersionCount:
+                    type: integer
+                    default: 0
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - decisionKey
+                  - scopeType
+                  - scopeRef
+                  - name
+                  - ownerUserId
+                  - origin
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+        "409":
+          description: Rule set already exists
+    get:
+      operationId: API-BRE-004
+      summary: List rule sets with filtering
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: decisionKey
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: scopeType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: ownerUserId
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Page of rule sets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^rs_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        decisionKey:
+                          type: string
+                        scopeType:
+                          type: string
+                          enum: *a52
+                        scopeRef:
+                          type:
+                            - string
+                            - "null"
+                        name:
+                          type: string
+                        ownerUserId:
+                          type:
+                            - string
+                            - "null"
+                        origin:
+                          type: string
+                          enum: *a53
+                        status:
+                          type: string
+                          enum: *a54
+                        activeVersionId:
+                          type:
+                            - string
+                            - "null"
+                        scheduledVersionId:
+                          type:
+                            - string
+                            - "null"
+                        draftVersionCount:
+                          type: integer
+                          default: 0
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - decisionKey
+                        - scopeType
+                        - scopeRef
+                        - name
+                        - ownerUserId
+                        - origin
+                        - status
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: number
+                      totalCount:
+                        type: number
+                    required:
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+  /v1/rule-sets/{ruleSetId}:
+    get:
+      operationId: API-BRE-005
+      summary: Get rule set details
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      responses:
+        "200":
+          description: Rule set details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rs_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  decisionKey:
+                    type: string
+                  scopeType:
+                    type: string
+                    enum: *a52
+                  scopeRef:
+                    type:
+                      - string
+                      - "null"
+                  name:
+                    type: string
+                  ownerUserId:
+                    type:
+                      - string
+                      - "null"
+                  origin:
+                    type: string
+                    enum: *a53
+                  status:
+                    type: string
+                    enum: *a54
+                  activeVersionId:
+                    type:
+                      - string
+                      - "null"
+                  scheduledVersionId:
+                    type:
+                      - string
+                      - "null"
+                  draftVersionCount:
+                    type: integer
+                    default: 0
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - decisionKey
+                  - scopeType
+                  - scopeRef
+                  - name
+                  - ownerUserId
+                  - origin
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Rule set not found
+  /v1/rule-sets/{ruleSetId}/versions:
+    get:
+      operationId: API-BRE-006
+      summary: List versions of a rule set
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      responses:
+        "200":
+          description: List of rule set versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        ruleSetId:
+                          type: string
+                        versionNo:
+                          type: integer
+                        status:
+                          type: string
+                          enum: &a56
+                            - DRAFT
+                            - IN_REVIEW
+                            - APPROVED
+                            - SCHEDULED
+                            - ACTIVE
+                            - SUSPENDED
+                            - SUPERSEDED
+                            - RETIRED
+                            - REJECTED
+                            - ABANDONED
+                        hitPolicy:
+                          type: string
+                          enum: *a46
+                        aggregator:
+                          type:
+                            - string
+                            - "null"
+                          enum: &a55
+                            - SUM
+                            - MIN
+                            - MAX
+                            - COUNT
+                        authoringForm:
+                          type: string
+                          enum: &a57
+                            - RULES
+                            - DECISION_TABLE
+                          default: RULES
+                        definition:
+                          type: object
+                          properties:
+                            schemaVersion:
+                              type: number
+                              enum:
+                                - 1
+                            hitPolicy:
+                              type: string
+                              enum: *a46
+                            aggregator:
+                              type: string
+                              enum: *a55
+                            defaultOutput:
+                              type:
+                                - object
+                                - "null"
+                              additionalProperties: {}
+                            rules:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  uid:
+                                    type: string
+                                    pattern: ^RUL-[A-Z0-9-]{2,30}$
+                                  name:
+                                    type: string
+                                    minLength: 1
+                                  description:
+                                    type: string
+                                  orderNo:
+                                    type: integer
+                                    minimum: 0
+                                  priority:
+                                    type: integer
+                                    minimum: 0
+                                  enabled:
+                                    type: boolean
+                                    default: true
+                                  conditions:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        field:
+                                          type: string
+                                          minLength: 1
+                                        operator:
+                                          type: string
+                                          enum: &a58
+                                            - ==
+                                            - "!="
+                                            - ">"
+                                            - <
+                                            - ">="
+                                            - <=
+                                            - in
+                                            - not_in
+                                            - contains
+                                            - matches
+                                            - is_null
+                                            - is_not_null
+                                        value: {}
+                                      required:
+                                        - field
+                                        - operator
+                                    maxItems: 25
+                                  output:
+                                    type: object
+                                    additionalProperties: {}
+                                  explanation:
+                                    type: string
+                                required:
+                                  - uid
+                                  - name
+                                  - conditions
+                                  - output
+                              maxItems: 200
+                          required:
+                            - schemaVersion
+                            - rules
+                        defaultOutput:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        contentHash:
+                          type: string
+                        effectiveFrom:
+                          type:
+                            - string
+                            - "null"
+                        effectiveTo:
+                          type:
+                            - string
+                            - "null"
+                        changeReason:
+                          type:
+                            - string
+                            - "null"
+                        lineageVersionId:
+                          type:
+                            - string
+                            - "null"
+                        editors:
+                          type: array
+                          items:
+                            type: string
+                        createdBy:
+                          type: string
+                        createdAt:
+                          type: string
+                        submittedBy:
+                          type:
+                            - string
+                            - "null"
+                        submittedAt:
+                          type:
+                            - string
+                            - "null"
+                        publishedBy:
+                          type:
+                            - string
+                            - "null"
+                        publishedAt:
+                          type:
+                            - string
+                            - "null"
+                        suspendedBy:
+                          type:
+                            - string
+                            - "null"
+                        suspendedAt:
+                          type:
+                            - string
+                            - "null"
+                        suspendReason:
+                          type:
+                            - string
+                            - "null"
+                        lastValidationId:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: integer
+                      required:
+                        - id
+                        - tenantId
+                        - ruleSetId
+                        - versionNo
+                        - status
+                        - hitPolicy
+                        - definition
+                        - contentHash
+                        - editors
+                        - createdBy
+                        - createdAt
+                        - lockVersion
+                required:
+                  - data
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Rule set not found
+    post:
+      operationId: API-BRE-007
+      summary: Create a new draft version for a rule set
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cloneFromVersionId:
+                  type: string
+                changeReason:
+                  type: string
+                  maxLength: 500
+                hitPolicy:
+                  type: string
+                  enum: *a46
+                  default: FIRST
+                aggregator:
+                  type: string
+                  enum: *a55
+      responses:
+        "201":
+          description: Draft version created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+        "409":
+          description: Draft limit reached
+  /v1/rule-set-versions/{versionId}:
+    get:
+      operationId: API-BRE-008
+      summary: Get rule set version details and definition
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      responses:
+        "200":
+          description: Version details and AST definition
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Version not found
+    put:
+      operationId: API-BRE-009
+      summary: Update draft rule set definition with optimistic concurrency
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: if-match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                definition:
+                  type: object
+                  properties:
+                    schemaVersion:
+                      type: number
+                      enum:
+                        - 1
+                    hitPolicy:
+                      type: string
+                      enum: *a46
+                    aggregator:
+                      type: string
+                      enum: *a55
+                    defaultOutput:
+                      type:
+                        - object
+                        - "null"
+                      additionalProperties: {}
+                    rules:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          uid:
+                            type: string
+                            pattern: ^RUL-[A-Z0-9-]{2,30}$
+                          name:
+                            type: string
+                            minLength: 1
+                          description:
+                            type: string
+                          orderNo:
+                            type: integer
+                            minimum: 0
+                          priority:
+                            type: integer
+                            minimum: 0
+                          enabled:
+                            type: boolean
+                            default: true
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  minLength: 1
+                                operator:
+                                  type: string
+                                  enum: *a58
+                                value: {}
+                              required:
+                                - field
+                                - operator
+                            maxItems: 25
+                          output:
+                            type: object
+                            additionalProperties: {}
+                          explanation:
+                            type: string
+                        required:
+                          - uid
+                          - name
+                          - conditions
+                          - output
+                      maxItems: 200
+                  required:
+                    - schemaVersion
+                    - rules
+                hitPolicy:
+                  type: string
+                  enum: *a46
+                aggregator:
+                  type: string
+                  enum: *a55
+                defaultOutput:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: {}
+                changeReason:
+                  type: string
+                  maxLength: 500
+              required:
+                - definition
+      responses:
+        "200":
+          description: Draft version updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "400":
+          description: Validation error / If-Match required
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+        "409":
+          description: Version conflict or non-DRAFT version
+  /v1/rule-set-versions/{versionId}/validate:
+    post:
+      operationId: API-BRE-010
+      summary: Validate rule definition against schemas, operators, and conflicts
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      responses:
+        "200":
+          description: Validation report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^val_[0-9A-HJKMNP-TV-Z]{26}$
+                  versionId:
+                    type: string
+                  contentHash:
+                    type: string
+                  result:
+                    type: string
+                    enum:
+                      - PASS
+                      - FAIL
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        severity:
+                          type: string
+                          enum:
+                            - ERROR
+                            - WARNING
+                        message:
+                          type: string
+                        ruleUid:
+                          type: string
+                        path:
+                          type: string
+                      required:
+                        - code
+                        - severity
+                        - message
+                  testsSummary:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      passed:
+                        type: number
+                      failed:
+                        type: number
+                    default:
+                      total: 0
+                      passed: 0
+                      failed: 0
+                    required:
+                      - total
+                      - passed
+                      - failed
+                  runBy:
+                    type: string
+                  runAt:
+                    type: string
+                required:
+                  - id
+                  - versionId
+                  - contentHash
+                  - result
+                  - issues
+                  - runBy
+                  - runAt
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Version not found
+  /v1/rule-set-versions/{versionId}/simulations:
+    post:
+      operationId: API-BRE-011
+      summary: Simulate rule evaluation against synthetic inputs
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                facts:
+                  type: object
+                  additionalProperties: {}
+                scope:
+                  type: object
+                  properties:
+                    branchId:
+                      type: string
+                    lenderId:
+                      type: string
+                    productVersionId:
+                      type: string
+                  default: {}
+                stepBudget:
+                  type: integer
+                  minimum: 10
+                  maximum: 5000
+                  default: 1000
+              required:
+                - facts
+      responses:
+        "201":
+          description: Simulation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  versionId:
+                    type: string
+                  kind:
+                    type: string
+                    enum: &a59
+                      - MANUAL
+                      - TEST_SUITE
+                  contentHash:
+                    type: string
+                  status:
+                    type: string
+                    enum: &a60
+                      - COMPLETED
+                      - FAILED
+                  summary:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: &a61
+                          - OK
+                          - NO_MATCH
+                          - UNKNOWN
+                          - ERROR
+                          - TIMEOUT
+                      outputs:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      matchedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                      fallbackApplied:
+                        type: boolean
+                      fallbackPolicy:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a48
+                      errorCode:
+                        type:
+                          - string
+                          - "null"
+                      durationUs:
+                        type: number
+                      trace:
+                        type: object
+                        additionalProperties: {}
+                    required:
+                      - status
+                      - outputs
+                      - matchedRuleUids
+                      - fallbackApplied
+                      - durationUs
+                  requestedBy:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - versionId
+                  - kind
+                  - contentHash
+                  - status
+                  - summary
+                  - requestedBy
+                  - createdAt
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+  /v1/rule-simulations/{simulationId}:
+    get:
+      operationId: API-BRE-012
+      summary: Get simulation results and trace
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: simulationId
+          in: path
+      responses:
+        "200":
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^sim_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  versionId:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a59
+                  contentHash:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a60
+                  summary:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: *a61
+                      outputs:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      matchedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                      fallbackApplied:
+                        type: boolean
+                      fallbackPolicy:
+                        type:
+                          - string
+                          - "null"
+                        enum: *a48
+                      errorCode:
+                        type:
+                          - string
+                          - "null"
+                      durationUs:
+                        type: number
+                      trace:
+                        type: object
+                        additionalProperties: {}
+                    required:
+                      - status
+                      - outputs
+                      - matchedRuleUids
+                      - fallbackApplied
+                      - durationUs
+                  requestedBy:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - versionId
+                  - kind
+                  - contentHash
+                  - status
+                  - summary
+                  - requestedBy
+                  - createdAt
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Simulation not found
+  /v1/rule-sets/{ruleSetId}/comparisons:
+    post:
+      operationId: API-BRE-013
+      summary: Compare two rule versions and diff evaluation outputs
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                baseVersionId:
+                  type: string
+                  minLength: 1
+                targetVersionId:
+                  type: string
+                  minLength: 1
+                sampleFacts:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: {}
+                  default: []
+              required:
+                - baseVersionId
+                - targetVersionId
+      responses:
+        "200":
+          description: Comparison diff and sample evaluation report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  baseVersionId:
+                    type: string
+                  targetVersionId:
+                    type: string
+                  ruleDiffs:
+                    type: object
+                    properties:
+                      addedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                      removedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                      modifiedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                      unchangedRuleUids:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - addedRuleUids
+                      - removedRuleUids
+                      - modifiedRuleUids
+                      - unchangedRuleUids
+                  sampleEvaluationDifferences:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sampleIndex:
+                          type: number
+                        baseOutput:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        targetOutput:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        different:
+                          type: boolean
+                      required:
+                        - sampleIndex
+                        - baseOutput
+                        - targetOutput
+                        - different
+                required:
+                  - baseVersionId
+                  - targetVersionId
+                  - ruleDiffs
+                  - sampleEvaluationDifferences
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Version not found
+  /v1/rule-set-versions/{versionId}/impact-analyses:
+    post:
+      operationId: API-BRE-014
+      summary: Execute impact analysis and test suite execution summary
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                testSuiteRun:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Impact analysis report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versionId:
+                    type: string
+                  contentHash:
+                    type: string
+                  testCasesTotal:
+                    type: number
+                  testCasesPassed:
+                    type: number
+                  testCasesFailed:
+                    type: number
+                  readyForReview:
+                    type: boolean
+                  notes:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - versionId
+                  - contentHash
+                  - testCasesTotal
+                  - testCasesPassed
+                  - testCasesFailed
+                  - readyForReview
+                  - notes
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Version not found
+  /v1/rule-sets/{ruleSetId}/test-cases:
+    get:
+      operationId: API-BRE-015
+      summary: List synthetic test cases for rule set
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      responses:
+        "200":
+          description: List of test cases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^tc_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        ruleSetId:
+                          type: string
+                        name:
+                          type: string
+                        evaluationTime:
+                          type: string
+                        scope:
+                          type: object
+                          additionalProperties: {}
+                        input:
+                          type: object
+                          additionalProperties: {}
+                        expectedStatus:
+                          type: string
+                          enum: &a62
+                            - OK
+                            - NO_MATCH
+                            - UNKNOWN
+                        expectedOutput:
+                          type: object
+                          additionalProperties: {}
+                        active:
+                          type: boolean
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - ruleSetId
+                        - name
+                        - evaluationTime
+                        - scope
+                        - input
+                        - expectedStatus
+                        - expectedOutput
+                        - active
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                required:
+                  - data
+        "401":
+          description: Unauthenticated
+    post:
+      operationId: API-BRE-016
+      summary: Create test case for rule set
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                evaluationTime:
+                  type: string
+                  format: date-time
+                scope:
+                  type: object
+                  additionalProperties: {}
+                  default: {}
+                input:
+                  type: object
+                  additionalProperties: {}
+                expectedStatus:
+                  type: string
+                  enum:
+                    - OK
+                    - NO_MATCH
+                    - UNKNOWN
+                  default: OK
+                expectedOutput:
+                  type: object
+                  additionalProperties: {}
+                active:
+                  type: boolean
+                  default: true
+              required:
+                - name
+                - input
+                - expectedOutput
+      responses:
+        "201":
+          description: Test case created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^tc_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  name:
+                    type: string
+                  evaluationTime:
+                    type: string
+                  scope:
+                    type: object
+                    additionalProperties: {}
+                  input:
+                    type: object
+                    additionalProperties: {}
+                  expectedStatus:
+                    type: string
+                    enum: *a62
+                  expectedOutput:
+                    type: object
+                    additionalProperties: {}
+                  active:
+                    type: boolean
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - name
+                  - evaluationTime
+                  - scope
+                  - input
+                  - expectedStatus
+                  - expectedOutput
+                  - active
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+  /v1/rule-test-cases/{testCaseId}:
+    put:
+      operationId: API-BRE-017
+      summary: Update test case
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: testCaseId
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: if-match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                input:
+                  type: object
+                  additionalProperties: {}
+                expectedStatus:
+                  type: string
+                  enum:
+                    - OK
+                    - NO_MATCH
+                    - UNKNOWN
+                expectedOutput:
+                  type: object
+                  additionalProperties: {}
+                active:
+                  type: boolean
+      responses:
+        "200":
+          description: Test case updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^tc_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  name:
+                    type: string
+                  evaluationTime:
+                    type: string
+                  scope:
+                    type: object
+                    additionalProperties: {}
+                  input:
+                    type: object
+                    additionalProperties: {}
+                  expectedStatus:
+                    type: string
+                    enum: *a62
+                  expectedOutput:
+                    type: object
+                    additionalProperties: {}
+                  active:
+                    type: boolean
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - name
+                  - evaluationTime
+                  - scope
+                  - input
+                  - expectedStatus
+                  - expectedOutput
+                  - active
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Test case not found
+  /v1/rule-set-versions/{versionId}/submit:
+    post:
+      operationId: API-BRE-018
+      summary: Submit rule version for review
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                changeReason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - changeReason
+      responses:
+        "200":
+          description: Version transitioned to IN_REVIEW
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated
+        "409":
+          description: Invalid transition
+        "422":
+          description: Validation evidence missing or stale
+  /v1/rule-set-versions/{versionId}/reviews:
+    post:
+      operationId: API-BRE-019
+      summary: Submit maker-checker review decision (Approve / Reject / Changes)
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seat:
+                  type: string
+                  enum:
+                    - RULE_APPROVER
+                    - COMMISSION_APPROVER
+                    - COMPLIANCE
+                    - PLATFORM
+                  default: RULE_APPROVER
+                action:
+                  type: string
+                  enum:
+                    - APPROVE
+                    - REQUEST_CHANGES
+                    - REJECT
+                comment:
+                  type: string
+                  minLength: 3
+                  maxLength: 2000
+                reviewedContentHash:
+                  type: string
+                  pattern: ^sha256:[0-9a-f]{64}$
+              required:
+                - action
+                - comment
+                - reviewedContentHash
+      responses:
+        "200":
+          description: Review decision recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated or step-up required
+        "403":
+          description: SOD-01 Maker-checker violation
+        "409":
+          description: Hash mismatch or invalid state
+  /v1/rule-set-versions/{versionId}/publish:
+    post:
+      operationId: API-BRE-020
+      summary: Publish approved rule version to ACTIVE or SCHEDULED
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                effectiveTo:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - reason
+      responses:
+        "200":
+          description: Version published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated or step-up required
+        "409":
+          description: Effective range conflict or invalid state
+  /v1/rule-set-versions/{versionId}/suspend:
+    post:
+      operationId: API-BRE-021
+      summary: Emergency suspend an active rule set version
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                suspendReason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - suspendReason
+      responses:
+        "200":
+          description: Version suspended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated or step-up required
+        "409":
+          description: Invalid transition
+  /v1/rule-set-versions/{versionId}/reinstate:
+    post:
+      operationId: API-BRE-022
+      summary: Reinstate a suspended rule set version to ACTIVE
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - reason
+      responses:
+        "200":
+          description: Version reinstated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated or step-up required
+        "403":
+          description: Separation of duties violation
+        "409":
+          description: Invalid transition
+  /v1/rule-set-versions/{versionId}/retire:
+    post:
+      operationId: API-BRE-023
+      summary: Retire rule set version
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: versionId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - reason
+      responses:
+        "200":
+          description: Version retired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated
+        "409":
+          description: Invalid transition
+  /v1/rule-sets/{ruleSetId}/rollbacks:
+    post:
+      operationId: API-BRE-024
+      summary: Rollback rule set to a previously active version
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: ruleSetId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetVersionId:
+                  type: string
+                  minLength: 1
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+              required:
+                - targetVersionId
+                - reason
+      responses:
+        "200":
+          description: Rule set rolled back
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^rsv_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  ruleSetId:
+                    type: string
+                  versionNo:
+                    type: integer
+                  status:
+                    type: string
+                    enum: *a56
+                  hitPolicy:
+                    type: string
+                    enum: *a46
+                  aggregator:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a55
+                  authoringForm:
+                    type: string
+                    enum: *a57
+                    default: RULES
+                  definition:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      hitPolicy:
+                        type: string
+                        enum: *a46
+                      aggregator:
+                        type: string
+                        enum: *a55
+                      defaultOutput:
+                        type:
+                          - object
+                          - "null"
+                        additionalProperties: {}
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            uid:
+                              type: string
+                              pattern: ^RUL-[A-Z0-9-]{2,30}$
+                            name:
+                              type: string
+                              minLength: 1
+                            description:
+                              type: string
+                            orderNo:
+                              type: integer
+                              minimum: 0
+                            priority:
+                              type: integer
+                              minimum: 0
+                            enabled:
+                              type: boolean
+                              default: true
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    minLength: 1
+                                  operator:
+                                    type: string
+                                    enum: *a58
+                                  value: {}
+                                required:
+                                  - field
+                                  - operator
+                              maxItems: 25
+                            output:
+                              type: object
+                              additionalProperties: {}
+                            explanation:
+                              type: string
+                          required:
+                            - uid
+                            - name
+                            - conditions
+                            - output
+                        maxItems: 200
+                    required:
+                      - schemaVersion
+                      - rules
+                  defaultOutput:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  contentHash:
+                    type: string
+                  effectiveFrom:
+                    type:
+                      - string
+                      - "null"
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                  changeReason:
+                    type:
+                      - string
+                      - "null"
+                  lineageVersionId:
+                    type:
+                      - string
+                      - "null"
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  submittedBy:
+                    type:
+                      - string
+                      - "null"
+                  submittedAt:
+                    type:
+                      - string
+                      - "null"
+                  publishedBy:
+                    type:
+                      - string
+                      - "null"
+                  publishedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendedBy:
+                    type:
+                      - string
+                      - "null"
+                  suspendedAt:
+                    type:
+                      - string
+                      - "null"
+                  suspendReason:
+                    type:
+                      - string
+                      - "null"
+                  lastValidationId:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: integer
+                required:
+                  - id
+                  - tenantId
+                  - ruleSetId
+                  - versionNo
+                  - status
+                  - hitPolicy
+                  - definition
+                  - contentHash
+                  - editors
+                  - createdBy
+                  - createdAt
+                  - lockVersion
+        "401":
+          description: Unauthenticated or step-up required
+        "409":
+          description: Target version not eligible
+  /v1/decisions/{decisionKey}/evaluations:
+    post:
+      operationId: API-BRE-025
+      summary: Evaluate decision against facts (live or simulation mode)
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: decisionKey
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: idempotency-key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - LEAD
+                        - CUSTOMER
+                        - LOAN_APPLICATION
+                        - TASK
+                    id:
+                      type: string
+                  required:
+                    - type
+                    - id
+                facts:
+                  type: object
+                  additionalProperties: {}
+                scope:
+                  type: object
+                  properties:
+                    branchId:
+                      type: string
+                    lenderId:
+                      type: string
+                    productVersionId:
+                      type: string
+                  default: {}
+                evaluationTime:
+                  type: string
+                  format: date-time
+                mode:
+                  type: string
+                  enum:
+                    - LIVE
+                    - SIMULATION
+                  default: LIVE
+              required:
+                - subject
+                - facts
+      responses:
+        "200":
+          description: Decision evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decisionRecordId:
+                    type: string
+                  decisionKey:
+                    type: string
+                  ruleSetVersionId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum:
+                      - OK
+                      - NO_MATCH
+                      - UNKNOWN
+                      - ERROR
+                      - TIMEOUT
+                      - NO_VERSION
+                  outputs:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  fallbackApplied:
+                    type: boolean
+                  fallbackPolicy:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a48
+                  errorCode:
+                    type:
+                      - string
+                      - "null"
+                  matchedRuleUids:
+                    type: array
+                    items:
+                      type: string
+                  inputHash:
+                    type: string
+                  replayed:
+                    type: boolean
+                  durationUs:
+                    type: number
+                required:
+                  - decisionRecordId
+                  - decisionKey
+                  - ruleSetVersionId
+                  - status
+                  - outputs
+                  - fallbackApplied
+                  - matchedRuleUids
+                  - inputHash
+                  - replayed
+                  - durationUs
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Decision key unknown
+  /v1/decision-records:
+    get:
+      operationId: API-BRE-026
+      summary: List decision execution records with filtering
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: decisionKey
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: subjectType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: subjectId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: ruleSetVersionId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: status
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Page of decision records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^dr_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        decisionKey:
+                          type: string
+                        ruleSetVersionId:
+                          type:
+                            - string
+                            - "null"
+                        subjectType:
+                          type: string
+                        subjectId:
+                          type: string
+                        evaluationTime:
+                          type: string
+                        idempotencyKey:
+                          type: string
+                        inputHash:
+                          type: string
+                        inputSnapshot:
+                          type: object
+                          additionalProperties: {}
+                        outputs:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        matchedRuleUids:
+                          type: array
+                          items:
+                            type: string
+                        missingFields:
+                          type: array
+                          items:
+                            type: string
+                        status:
+                          type: string
+                          enum: &a63
+                            - OK
+                            - NO_MATCH
+                            - UNKNOWN
+                            - ERROR
+                            - TIMEOUT
+                            - NO_VERSION
+                        fallbackApplied:
+                          type: boolean
+                        fallbackPolicy:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a48
+                        errorCode:
+                          type:
+                            - string
+                            - "null"
+                        durationUs:
+                          type: number
+                        correlationId:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - decisionKey
+                        - ruleSetVersionId
+                        - subjectType
+                        - subjectId
+                        - evaluationTime
+                        - idempotencyKey
+                        - inputHash
+                        - inputSnapshot
+                        - outputs
+                        - matchedRuleUids
+                        - missingFields
+                        - status
+                        - fallbackApplied
+                        - durationUs
+                        - correlationId
+                        - createdAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: number
+                      totalCount:
+                        type: number
+                    required:
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden
+  /v1/decision-records/{id}:
+    get:
+      operationId: API-BRE-027
+      summary: Get decision record details and execution trace
+      tags:
+        - MOD-BRE Rules
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Decision record details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^dr_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  decisionKey:
+                    type: string
+                  ruleSetVersionId:
+                    type:
+                      - string
+                      - "null"
+                  subjectType:
+                    type: string
+                  subjectId:
+                    type: string
+                  evaluationTime:
+                    type: string
+                  idempotencyKey:
+                    type: string
+                  inputHash:
+                    type: string
+                  inputSnapshot:
+                    type: object
+                    additionalProperties: {}
+                  outputs:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: {}
+                  matchedRuleUids:
+                    type: array
+                    items:
+                      type: string
+                  missingFields:
+                    type: array
+                    items:
+                      type: string
+                  status:
+                    type: string
+                    enum: *a63
+                  fallbackApplied:
+                    type: boolean
+                  fallbackPolicy:
+                    type:
+                      - string
+                      - "null"
+                    enum: *a48
+                  errorCode:
+                    type:
+                      - string
+                      - "null"
+                  durationUs:
+                    type: number
+                  correlationId:
+                    type: string
+                  createdAt:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - decisionKey
+                  - ruleSetVersionId
+                  - subjectType
+                  - subjectId
+                  - evaluationTime
+                  - idempotencyKey
+                  - inputHash
+                  - inputSnapshot
+                  - outputs
+                  - matchedRuleUids
+                  - missingFields
+                  - status
+                  - fallbackApplied
+                  - durationUs
+                  - correlationId
+                  - createdAt
+        "401":
+          description: Unauthenticated
+        "404":
+          description: Decision record not found
   /v1/verifications:
     get:
       operationId: API-VRF-001
@@ -10041,7 +14212,7 @@ paths:
                             - "null"
                         verificationType:
                           type: string
-                          enum: &a45
+                          enum: &a64
                             - DOCUMENT_REVIEW
                             - IDENTITY_KYC
                             - RESIDENCE_FI
@@ -10050,7 +14221,7 @@ paths:
                             - BANK_STATEMENT
                         status:
                           type: string
-                          enum: &a47
+                          enum: &a66
                             - INITIATED
                             - ASSIGNED
                             - IN_PROGRESS
@@ -10062,7 +14233,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a48
+                          enum: &a67
                             - POSITIVE
                             - NEGATIVE
                             - REFER_TO_CREDIT
@@ -10079,7 +14250,7 @@ paths:
                           type: string
                         priority:
                           type: string
-                          enum: &a46
+                          enum: &a65
                             - HIGH
                             - MEDIUM
                             - LOW
@@ -10103,7 +14274,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a49
+                          enum: &a68
                             - ADDRESS_NOT_FOUND
                             - APPLICANT_UNKNOWN
                             - DOCUMENT_FORGED
@@ -10182,13 +14353,13 @@ paths:
                   type: string
                 verificationType:
                   type: string
-                  enum: *a45
+                  enum: *a64
                 branchId:
                   type: string
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a46
+                  enum: *a65
                   default: MEDIUM
                 assignedToUserId:
                   type: string
@@ -10234,15 +14405,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a45
+                    enum: *a64
                   status:
                     type: string
-                    enum: *a47
+                    enum: *a66
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a48
+                    enum: *a67
                   assignedToUserId:
                     type:
                       - string
@@ -10255,7 +14426,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a46
+                    enum: *a65
                   scheduledAt:
                     type:
                       - string
@@ -10276,7 +14447,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a49
+                    enum: *a68
                   checklistItmIds:
                     type: array
                     items:
@@ -10350,15 +14521,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a45
+                    enum: *a64
                   status:
                     type: string
-                    enum: *a47
+                    enum: *a66
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a48
+                    enum: *a67
                   assignedToUserId:
                     type:
                       - string
@@ -10371,7 +14542,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a46
+                    enum: *a65
                   scheduledAt:
                     type:
                       - string
@@ -10392,7 +14563,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a49
+                    enum: *a68
                   checklistItmIds:
                     type: array
                     items:
@@ -10453,10 +14624,10 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a47
+                  enum: *a66
                 priority:
                   type: string
-                  enum: *a46
+                  enum: *a65
                 assignedToUserId:
                   type:
                     - string
@@ -10502,15 +14673,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a45
+                    enum: *a64
                   status:
                     type: string
-                    enum: *a47
+                    enum: *a66
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a48
+                    enum: *a67
                   assignedToUserId:
                     type:
                       - string
@@ -10523,7 +14694,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a46
+                    enum: *a65
                   scheduledAt:
                     type:
                       - string
@@ -10544,7 +14715,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a49
+                    enum: *a68
                   checklistItmIds:
                     type: array
                     items:
@@ -10605,14 +14776,14 @@ paths:
               properties:
                 outcome:
                   type: string
-                  enum: *a48
+                  enum: *a67
                 findingsSummary:
                   type: string
                   minLength: 5
                   maxLength: 2000
                 rejectionReason:
                   type: string
-                  enum: *a49
+                  enum: *a68
                 markStatus:
                   type: string
                   enum:
@@ -10648,15 +14819,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a45
+                    enum: *a64
                   status:
                     type: string
-                    enum: *a47
+                    enum: *a66
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a48
+                    enum: *a67
                   assignedToUserId:
                     type:
                       - string
@@ -10669,7 +14840,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a46
+                    enum: *a65
                   scheduledAt:
                     type:
                       - string
@@ -10690,7 +14861,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a49
+                    enum: *a68
                   checklistItmIds:
                     type: array
                     items:
