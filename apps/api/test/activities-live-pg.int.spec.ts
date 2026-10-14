@@ -13,7 +13,7 @@ import type { Database, RequestContext } from '@dsa/contracts';
 
 // Load .env from root if not already loaded
 try {
-  process.loadEnvFile(path.resolve(__dirname, '../../../.env'));
+  process.loadEnvFile(path.resolve(__dirname, '../.env'));
 } catch {
   // Ignore if already set in environment
 }
