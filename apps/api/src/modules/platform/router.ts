@@ -14,7 +14,8 @@
 // - PATCH /v1/branches/:id (update branch)
 // - GET /v1/config (get tenant & org config)
 // - PATCH /v1/config (update tenant & org config)
-import type { PermissionCode, RequestContext } from '@dsa/contracts';
+import type { PermissionCode, RequestContext, Tx } from '@dsa/contracts';
+import { withIdempotency } from '@dsa/kernel';
 import {
   AppError,
   AssignRoleRequest,
@@ -31,11 +32,9 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../types';
-import { registerBranchRoutes } from './branches';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
-import { registerUserRoutes } from './users';
 
 const nextUlid = monotonicFactory();
 
@@ -109,8 +108,8 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getContext(req);
       const p = ctx.principal;
-      let email = (p as any).email || '';
-      let displayName = (p as any).displayName || '';
+      let email = (p as { email?: string }).email || '';
+      let displayName = (p as { displayName?: string }).displayName || '';
       let lockVersion = 0;
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -309,7 +308,10 @@ export function createRouter(deps: ApiDeps): Router {
         throw AppError.of('MALFORMED_REQUEST', 'Missing Idempotency-Key header.');
       }
 
-      const created = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      // The create runs in one transaction. With an Idempotency-Key, a replay returns the original branch and a reused key with
+      // a different body is refused (IDEMPOTENCY_KEY_REUSED). Without a key the create works as before.
+      const idemKey = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
+      const createBranch = async (tx: Tx) => {
         const orgRes = await sql<{ id: string }>`
           SELECT id FROM app.organisation WHERE tenant_id = ${ctx.principal.tenantId} LIMIT 1
         `.execute(tx);
@@ -347,6 +349,13 @@ export function createRouter(deps: ApiDeps): Router {
             ${ctx.principal.id}
           )
         `.execute(tx);
+        await deps.audit.record(tx, ctx, {
+          action: 'branch.created',
+          entityType: 'BRANCH',
+          entityId: branchId,
+          after: { code: body.code, name: body.name, status: 'ACTIVE' },
+          permissionUsed: 'config.manage',
+        });
 
         return {
           id: branchId,
@@ -358,10 +367,117 @@ export function createRouter(deps: ApiDeps): Router {
           status: 'ACTIVE' as const,
           lockVersion: 0,
         };
-      });
-
+      };
+      if (idemKey) {
+        const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
+          withIdempotency(tx, ctx, { key: idemKey, method: 'POST', path: '/v1/branches', body }, async () => {
+            const b = await createBranch(tx);
+            return { status: 201, body: b, resourceRef: b.id };
+          }),
+        );
+        res.setHeader('ETag', `"${result.body.lockVersion}"`);
+        if (result.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        res.status(result.status).json(result.body);
+        return;
+      }
+      const created = await deps.txRunner.withTenantTx(ctx, (tx) => createBranch(tx));
       res.setHeader('ETag', `"${created.lockVersion}"`);
       res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/branches/:id/deactivation — Deactivate a branch with no active users (requires config.manage; If-Match).
+  // Same rules as branches.ts: the branch's queues stop with it, and every change is audited in the same transaction.
+  router.post('/branches/:id/deactivation', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = getContext(req);
+      requirePermission(ctx, 'config.manage');
+      const ifMatchHeader = req.headers['if-match'];
+      if (!ifMatchHeader) {
+        throw AppError.of('MALFORMED_REQUEST', 'If-Match header is required.');
+      }
+      const expectedVersion = Number(String(ifMatchHeader).replace(/^"|"$/g, ''));
+      const branchId = String(req.params.id);
+
+      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const found = await sql<{
+          id: string;
+          organisation_id: string;
+          code: string;
+          name: string;
+          pincode: string | null;
+          timezone: string;
+          status: string;
+          lock_version: number;
+        }>`
+          SELECT id, organisation_id, code, name, pincode, timezone, status, lock_version
+          FROM app.branch
+          WHERE id = ${branchId} AND tenant_id = ${ctx.principal.tenantId}
+          FOR UPDATE
+        `.execute(tx);
+        const current = found.rows[0];
+        if (!current) {
+          throw AppError.of('NOT_FOUND', `Branch ${branchId} not found.`);
+        }
+        if (current.lock_version !== expectedVersion) {
+          throw AppError.of(
+            'VERSION_CONFLICT',
+            'The record was changed by someone else. Reload and try again.',
+            [{ field: 'If-Match', issue: 'STALE', meta: { currentVersion: current.lock_version } }],
+          );
+        }
+        if (current.status !== 'ACTIVE') {
+          throw AppError.of('INVALID_TRANSITION', 'The branch is already inactive.');
+        }
+
+        const users = await sql<{ n: number }>`
+          SELECT count(*)::int AS n FROM app.app_user
+          WHERE primary_branch_id = ${branchId} AND status IN ('ACTIVE', 'INVITED')
+        `.execute(tx);
+        const userCount = users.rows[0]?.n ?? 0;
+        if (userCount > 0) {
+          throw AppError.of(
+            'INVALID_STATE',
+            'Move the users whose primary branch this is before deactivating it.',
+            [{ issue: 'BRANCH_HAS_USERS', meta: { userCount } }],
+          );
+        }
+
+        // The branch touch trigger bumps lock_version, so the returned value is the new version.
+        const upd = await sql<{ lock_version: number }>`
+          UPDATE app.branch SET status = 'INACTIVE', updated_by = ${ctx.principal.id}
+          WHERE id = ${branchId} AND tenant_id = ${ctx.principal.tenantId}
+          RETURNING lock_version
+        `.execute(tx);
+        await sql`
+          UPDATE app.work_queue SET active = false, updated_by = ${ctx.principal.id}
+          WHERE branch_id = ${branchId} AND active
+        `.execute(tx);
+        await deps.audit.record(tx, ctx, {
+          action: 'branch.deactivated',
+          entityType: 'BRANCH',
+          entityId: branchId,
+          before: { status: 'ACTIVE' },
+          after: { status: 'INACTIVE' },
+          permissionUsed: 'config.manage',
+        });
+
+        return {
+          id: current.id,
+          organisationId: current.organisation_id,
+          code: current.code,
+          name: current.name,
+          pincode: current.pincode,
+          timezone: current.timezone,
+          status: 'INACTIVE' as const,
+          lockVersion: Number(upd.rows[0]?.lock_version),
+        };
+      });
+
+      res.setHeader('ETag', `"${updated.lockVersion}"`);
+      res.status(200).json(updated);
     } catch (err) {
       next(err);
     }
@@ -448,6 +564,15 @@ export function createRouter(deps: ApiDeps): Router {
             AND lock_version = ${current.lock_version}
         `.execute(tx);
 
+        await deps.audit.record(tx, ctx, {
+          action: 'branch.updated',
+          entityType: 'BRANCH',
+          entityId: String(branchId),
+          before: { name: current.name, status: current.status },
+          after: { name: newName, status: newStatus },
+          permissionUsed: 'config.manage',
+        });
+
         return {
           id: current.id,
           organisationId: current.organisation_id,
@@ -497,7 +622,7 @@ export function createRouter(deps: ApiDeps): Router {
         const orgResult = await sql<{
           id: string;
           legal_name: string;
-          constitution: any;
+          constitution: string | null;
           status: 'ACTIVE' | 'INACTIVE';
           lock_version: number;
         }>`
@@ -575,7 +700,7 @@ export function createRouter(deps: ApiDeps): Router {
         const orgResult = await sql<{
           id: string;
           legal_name: string;
-          constitution: any;
+          constitution: string | null;
           status: 'ACTIVE' | 'INACTIVE';
           lock_version: number;
         }>`
@@ -642,7 +767,7 @@ export function createRouter(deps: ApiDeps): Router {
         const refreshedOrgRes = await sql<{
           id: string;
           legal_name: string;
-          constitution: any;
+          constitution: string | null;
           status: 'ACTIVE' | 'INACTIVE';
           lock_version: number;
         }>`
