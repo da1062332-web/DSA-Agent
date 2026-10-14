@@ -6,9 +6,11 @@ import { LoginPage } from './auth/LoginPage';
 import { MfaPage } from './auth/MfaPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './auth/PasswordPages';
 import { SecurityPage } from './auth/SecurityPage';
+import { PublicUploadPage } from './features/document-sharing/PublicUploadPage';
 import { AppLayout } from './shell/AppLayout';
 import { HomePage } from './shell/HomePage';
 import { Placeholder } from './shell/Placeholder';
+import { RouteErrorBoundary } from './shell/RouteErrorBoundary';
 
 const featureModules = import.meta.glob<{ routes: RouteObject[] }>('./features/*/routes.tsx', {
   eager: true,
@@ -21,8 +23,10 @@ export const routes: RouteObject[] = [
   { path: '/mfa', element: <MfaPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/upload/:token', element: <PublicUploadPage /> },
   {
     element: <AppLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/account/security', element: <SecurityPage /> },

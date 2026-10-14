@@ -87,14 +87,14 @@ export const CreateBranchRequest = z.object({
   code: z
     .string()
     .regex(/^[A-Z0-9_-]{2,20}$/, 'Branch code must be 2-20 characters matching ^[A-Z0-9_-]{2,20}$, e.g. MUM01'),
-  name: z.string().min(2).max(100),
+  name: z.string().min(1).max(100),
   pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9').optional().nullable(),
   timezone: z.string().default('Asia/Kolkata'),
-});
+}).strict(); // unknown fields (for example tenantId) are refused, never ignored (FR-TEN-007)
 export type CreateBranchRequest = z.infer<typeof CreateBranchRequest>;
 
 export const UpdateBranchRequest = z.object({
-  name: z.string().min(2).max(100).optional(),
+  name: z.string().min(1).max(100).optional(),
   pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9').optional().nullable(),
   timezone: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),

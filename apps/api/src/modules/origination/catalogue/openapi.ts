@@ -1,286 +1,324 @@
-// apps/api/src/modules/origination/catalogue/openapi.ts — owner: Developer 5 (Bhushan)
-import {
-  CreateEmpanelmentInputSchema,
-  CreateLenderInputSchema,
-  CreateProductInputSchema,
-  CreateProductVersionInputSchema,
-  EmpanelmentResponseSchema,
-  LenderContactResponseSchema,
-  LenderResponseSchema,
-  ProductResponseSchema,
-  ProductVersionResponseSchema,
-  SetLenderContactsInputSchema,
-  UpdateEmpanelmentInputSchema,
-  UpdateLenderInputSchema,
-  UpdateProductStatusInputSchema,
-} from '@dsa/contracts';
+// OpenAPI registration for origination/catalogue (owner: Dev 3). Swagger groups: MOD-LND Lenders, MOD-PRD Products.
+// tools/gen-openapi.ts writes openapi/openapi.yaml.
+import { listResponse } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
-import { z } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
+import {
+  ContactsPut,
+  Empanelment,
+  EmpanelmentCreate,
+  EmpanelmentPatch,
+  Lender,
+  LenderContact,
+  LenderCreate,
+  LenderPatch,
+  ListQuery,
+} from './schemas';
+import {
+  Product,
+  ProductCreate,
+  ProductListQuery,
+  ProductPatch,
+  ProductStatusChange,
+  ProductVersion,
+  ProductVersionCreate,
+} from './products-schemas';
 
 export const tags = [
-  { name: 'MOD-LND Lenders', description: 'Lender directory, empanelment and contact management (MOD-LND).' },
-  { name: 'MOD-PRD Products', description: 'Loan product catalogue and immutable versioning (MOD-PRD).' },
+  {
+    name: 'MOD-LND Lenders',
+    description:
+      'Lender directory, status and empanelments (MOD-LND, SUB-LND.01, .02, .05). Writes need config.manage; a paused lender blocks new cases with 422 LENDER_PAUSED.',
+  },
+  {
+    name: 'MOD-PRD Products',
+    description:
+      'Loan products and their immutable, effective-dated versions (MOD-PRD, ENT-043, ENT-044). Writes need config.manage. A version never changes after it is created; a change is a new version.',
+  },
 ];
 
-export function registerOpenApi(registry: OpenAPIRegistry): void {
-  registry.register('CreateLenderInput', CreateLenderInputSchema);
-  registry.register('UpdateLenderInput', UpdateLenderInputSchema);
-  registry.register('LenderResponse', LenderResponseSchema);
-  registry.register('CreateEmpanelmentInput', CreateEmpanelmentInputSchema);
-  registry.register('EmpanelmentResponse', EmpanelmentResponseSchema);
-  registry.register('CreateProductInput', CreateProductInputSchema);
-  registry.register('ProductResponse', ProductResponseSchema);
-  registry.register('CreateProductVersionInput', CreateProductVersionInputSchema);
-  registry.register('ProductVersionResponse', ProductVersionResponseSchema);
+const json = (schema: ZodTypeAny) => ({ 'application/json': { schema } });
 
-  // API-LND-001: POST /v1/lenders
+export function registerOpenApi(registry: OpenAPIRegistry): void {
+  const tag = ['MOD-LND Lenders'];
+  const writeHeaders = (idem: boolean, ifMatch: boolean) => [
+    ...(idem ? [{ $ref: '#/components/parameters/IdempotencyKey' }] : []),
+    ...(ifMatch ? [{ $ref: '#/components/parameters/IfMatch' }] : []),
+  ];
+
   registry.registerPath({
     method: 'post',
     path: '/v1/lenders',
+    tags: tag,
     operationId: 'API-LND-001',
-    summary: 'Create lender (API-LND-001)',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      headers: z.object({ 'Idempotency-Key': z.string() }),
-      body: { content: { 'application/json': { schema: CreateLenderInputSchema } }, required: true },
-    },
+    summary: 'Create a lender (config.manage)',
+    parameters: writeHeaders(true, false),
+    request: { body: { required: true, content: json(LenderCreate) } },
     responses: {
-      201: {
-        description: 'Lender created',
-        content: { 'application/json': { schema: LenderResponseSchema } },
-      },
+      201: { description: 'Created', content: json(Lender) },
+      401: { description: 'UNAUTHENTICATED' },
+      403: { description: 'FORBIDDEN' },
+      422: { description: 'VALIDATION_ERROR' },
     },
   });
 
-  // API-LND-002: GET /v1/lenders
   registry.registerPath({
     method: 'get',
     path: '/v1/lenders',
+    tags: tag,
     operationId: 'API-LND-002',
-    summary: 'List lenders (API-LND-002)',
-    tags: ['MOD-LND Lenders'],
+    summary: 'List lenders (any signed-in staff)',
+    request: { query: ListQuery as never },
     responses: {
-      200: {
-        description: 'List of lenders',
-        content: {
-          'application/json': {
-            schema: z.object({
-              data: z.array(LenderResponseSchema),
-              meta: z.object({ nextCursor: z.string().nullable(), limit: z.number() }),
-            }),
-          },
-        },
-      },
+      200: { description: 'Page of lenders', content: json(listResponse(Lender)) },
+      401: { description: 'UNAUTHENTICATED' },
     },
   });
 
-  // API-LND-003: PATCH /v1/lenders/{id}
-  registry.registerPath({
-    method: 'patch',
-    path: '/v1/lenders/{id}',
-    operationId: 'API-LND-003',
-    summary: 'Update lender (API-LND-003)',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      headers: z.object({ 'If-Match': z.string() }),
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: UpdateLenderInputSchema } }, required: true },
-    },
-    responses: {
-      200: {
-        description: 'Lender updated',
-        content: { 'application/json': { schema: LenderResponseSchema } },
-      },
-    },
-  });
-
-  // GET /v1/lenders/{id}
   registry.registerPath({
     method: 'get',
     path: '/v1/lenders/{id}',
-    operationId: 'API-LND-007',
-    summary: 'Get lender by ID',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      params: z.object({ id: z.string() }),
-    },
+    tags: tag,
+    operationId: 'API-LND-002-GET',
+    summary: 'One lender (any signed-in staff)',
     responses: {
-      200: {
-        description: 'Lender details',
-        content: { 'application/json': { schema: LenderResponseSchema } },
-      },
+      200: { description: 'Lender', content: json(Lender) },
+      404: { description: 'NOT_FOUND' },
     },
   });
 
-  // API-LND-004: POST /v1/lenders/{id}/empanelments
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/lenders/{id}',
+    tags: tag,
+    operationId: 'API-LND-003',
+    summary: 'Update a lender, including PAUSED or TERMINATED status with a reason (config.manage)',
+    parameters: writeHeaders(false, true),
+    request: { body: { required: true, content: json(LenderPatch) } },
+    responses: {
+      200: { description: 'Updated', content: json(Lender) },
+      403: { description: 'FORBIDDEN' },
+      409: { description: 'VERSION_CONFLICT' },
+      422: { description: 'VALIDATION_ERROR' },
+    },
+  });
+
   registry.registerPath({
     method: 'post',
     path: '/v1/lenders/{id}/empanelments',
+    tags: tag,
     operationId: 'API-LND-004',
-    summary: 'Add empanelment (API-LND-004)',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: CreateEmpanelmentInputSchema } }, required: true },
-    },
+    summary: 'Add an empanelment (DSA code, validity, permitted product categories) (config.manage)',
+    parameters: writeHeaders(true, false),
+    request: { body: { required: true, content: json(EmpanelmentCreate) } },
     responses: {
-      201: {
-        description: 'Empanelment added',
-        content: { 'application/json': { schema: EmpanelmentResponseSchema } },
-      },
+      201: { description: 'Created', content: json(Empanelment) },
+      403: { description: 'FORBIDDEN' },
+      409: { description: 'INVALID_STATE (duplicate DSA code for this lender)' },
+      422: { description: 'VALIDATION_ERROR' },
     },
   });
 
-  // GET /v1/empanelments/{id}
-  registry.registerPath({
-    method: 'get',
-    path: '/v1/empanelments/{id}',
-    operationId: 'API-LND-008',
-    summary: 'Get empanelment by ID',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      params: z.object({ id: z.string() }),
-    },
-    responses: {
-      200: {
-        description: 'Empanelment details',
-        content: { 'application/json': { schema: EmpanelmentResponseSchema } },
-      },
-    },
-  });
-
-  // API-LND-005: PATCH /v1/empanelments/{id}
   registry.registerPath({
     method: 'patch',
     path: '/v1/empanelments/{id}',
+    tags: tag,
     operationId: 'API-LND-005',
-    summary: 'Update empanelment (API-LND-005)',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      headers: z.object({ 'If-Match': z.string() }),
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: UpdateEmpanelmentInputSchema } }, required: true },
-    },
+    summary: 'Update an empanelment: end date, categories, status (config.manage)',
+    parameters: writeHeaders(false, true),
+    request: { body: { required: true, content: json(EmpanelmentPatch) } },
     responses: {
-      200: {
-        description: 'Empanelment updated',
-        content: { 'application/json': { schema: EmpanelmentResponseSchema } },
-      },
+      200: { description: 'Updated', content: json(Empanelment) },
+      403: { description: 'FORBIDDEN' },
+      409: { description: 'VERSION_CONFLICT' },
+      422: { description: 'VALIDATION_ERROR' },
     },
   });
 
-  // API-LND-006: PUT /v1/lenders/{id}/contacts
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/lenders/{id}/empanelments',
+    tags: tag,
+    operationId: 'API-LND-004-LIST',
+    summary: 'Empanelments of a lender (any signed-in staff). Read-only; for the lender screen.',
+    responses: {
+      200: { description: 'Empanelments', content: json(listResponse(Empanelment)) },
+      404: { description: 'NOT_FOUND' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/lenders/{id}/contacts',
+    tags: tag,
+    operationId: 'API-LND-006-GET',
+    summary: 'Current contacts of a lender (any signed-in staff)',
+    responses: {
+      200: { description: 'Current contacts', content: json(listResponse(LenderContact)) },
+      404: { description: 'NOT_FOUND' },
+    },
+  });
+
   registry.registerPath({
     method: 'put',
     path: '/v1/lenders/{id}/contacts',
+    tags: tag,
     operationId: 'API-LND-006',
-    summary: 'Set lender contacts (API-LND-006)',
-    tags: ['MOD-LND Lenders'],
-    request: {
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: SetLenderContactsInputSchema } }, required: true },
-    },
+    summary: 'Replace the contact list; previous contacts are kept as history (config.manage)',
+    parameters: writeHeaders(false, true),
+    request: { body: { required: true, content: json(ContactsPut) } },
     responses: {
-      200: {
-        description: 'Contacts set',
-        content: { 'application/json': { schema: z.object({ data: z.array(LenderContactResponseSchema) }) } },
-      },
+      200: { description: 'New contact list', content: json(listResponse(LenderContact)) },
+      403: { description: 'FORBIDDEN' },
+      409: { description: 'VERSION_CONFLICT' },
+      422: { description: 'VALIDATION_ERROR' },
     },
   });
 
-  // API-PRD-001: POST /v1/products
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/lenders/{id}/contacts/{contactId}',
+    tags: tag,
+    operationId: 'API-LND-006-DEL',
+    summary: 'Remove one contact; the row is kept as history (config.manage; If-Match on the lender version)',
+    parameters: writeHeaders(false, true),
+    responses: {
+      200: {
+        description: 'Removed',
+        content: json(z.object({ removedId: z.string(), lenderVersion: z.number().int() })),
+      },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      409: { description: 'VERSION_CONFLICT' },
+    },
+  });
+
+  registerProductOpenApi(registry);
+}
+
+function registerProductOpenApi(registry: OpenAPIRegistry): void {
+  const tag = ['MOD-PRD Products'];
+  const writeHeaders = (idem: boolean, ifMatch: boolean) => [
+    ...(idem ? [{ $ref: '#/components/parameters/IdempotencyKey' }] : []),
+    ...(ifMatch ? [{ $ref: '#/components/parameters/IfMatch' }] : []),
+  ];
+
   registry.registerPath({
     method: 'post',
     path: '/v1/products',
+    tags: tag,
     operationId: 'API-PRD-001',
-    summary: 'Create loan product (API-PRD-001)',
-    tags: ['MOD-PRD Products'],
-    request: {
-      body: { content: { 'application/json': { schema: CreateProductInputSchema } }, required: true },
-    },
+    summary: 'Create a product under an existing lender (config.manage)',
+    parameters: writeHeaders(true, false),
+    request: { body: { required: true, content: json(ProductCreate) } },
     responses: {
-      201: {
-        description: 'Product created',
-        content: { 'application/json': { schema: ProductResponseSchema } },
-      },
+      201: { description: 'Created', content: json(Product) },
+      401: { description: 'UNAUTHENTICATED' },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (lender)' },
+      409: { description: 'INVALID_STATE (lender terminated)' },
+      422: { description: 'VALIDATION_ERROR' },
     },
   });
 
-  // API-PRD-002: GET /v1/products
   registry.registerPath({
     method: 'get',
     path: '/v1/products',
+    tags: tag,
     operationId: 'API-PRD-002',
-    summary: 'List products catalogue (API-PRD-002)',
-    tags: ['MOD-PRD Products'],
+    summary: 'List products (any signed-in staff)',
+    request: { query: ProductListQuery as never },
     responses: {
-      200: {
-        description: 'Product catalogue',
-        content: {
-          'application/json': {
-            schema: z.object({
-              data: z.array(ProductResponseSchema),
-              meta: z.object({ nextCursor: z.string().nullable(), limit: z.number() }),
-            }),
-          },
-        },
-      },
+      200: { description: 'Page of products', content: json(listResponse(Product)) },
+      401: { description: 'UNAUTHENTICATED' },
     },
   });
 
-  // API-PRD-003: POST /v1/products/{id}/versions
-  registry.registerPath({
-    method: 'post',
-    path: '/v1/products/{id}/versions',
-    operationId: 'API-PRD-003',
-    summary: 'Create new immutable product version (API-PRD-003)',
-    tags: ['MOD-PRD Products'],
-    request: {
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: CreateProductVersionInputSchema } }, required: true },
-    },
-    responses: {
-      201: {
-        description: 'Product version created',
-        content: { 'application/json': { schema: ProductVersionResponseSchema } },
-      },
-    },
-  });
-
-  // API-PRD-004: GET /v1/product-versions/{id}
   registry.registerPath({
     method: 'get',
-    path: '/v1/product-versions/{id}',
-    operationId: 'API-PRD-004',
-    summary: 'Get product version detail (API-PRD-004)',
-    tags: ['MOD-PRD Products'],
-    request: {
-      params: z.object({ id: z.string() }),
-    },
+    path: '/v1/products/{id}',
+    tags: tag,
+    operationId: 'API-PRD-002-GET',
+    summary: 'One product (any signed-in staff)',
     responses: {
-      200: {
-        description: 'Product version detail',
-        content: { 'application/json': { schema: ProductVersionResponseSchema } },
-      },
+      200: { description: 'Product', content: json(Product) },
+      404: { description: 'NOT_FOUND' },
     },
   });
 
-  // API-PRD-005: POST /v1/products/{id}/status
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/products/{id}',
+    tags: tag,
+    operationId: 'API-PRD-006',
+    summary:
+      'Edit basic product details: name, category, applicant types, secured, owner, next review (config.manage). Versions are not changed.',
+    parameters: writeHeaders(false, true),
+    request: { body: { required: true, content: json(ProductPatch) } },
+    responses: {
+      200: { description: 'Updated', content: json(Product) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      409: { description: 'VERSION_CONFLICT or INVALID_STATE (duplicate name under the lender)' },
+      422: { description: 'VALIDATION_ERROR' },
+    },
+  });
+
   registry.registerPath({
     method: 'post',
     path: '/v1/products/{id}/status',
+    tags: tag,
     operationId: 'API-PRD-005',
-    summary: 'Update product status (API-PRD-005)',
-    tags: ['MOD-PRD Products'],
-    request: {
-      params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: UpdateProductStatusInputSchema } }, required: true },
-    },
+    summary: 'Activate or deactivate a product; deactivation needs a reason (config.manage)',
+    parameters: writeHeaders(false, true),
+    request: { body: { required: true, content: json(ProductStatusChange) } },
     responses: {
-      200: {
-        description: 'Product status updated',
-        content: { 'application/json': { schema: ProductResponseSchema } },
-      },
+      200: { description: 'Updated', content: json(Product) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      409: { description: 'VERSION_CONFLICT or INVALID_TRANSITION' },
+      422: { description: 'VALIDATION_ERROR' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/products/{id}/versions',
+    tags: tag,
+    operationId: 'API-PRD-003',
+    summary: 'Add a new terms version; earlier versions it replaces are retired (config.manage)',
+    parameters: writeHeaders(true, false),
+    request: { body: { required: true, content: json(ProductVersionCreate) } },
+    responses: {
+      201: { description: 'Created', content: json(ProductVersion) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      422: { description: 'VALIDATION_ERROR (for example, effective date not after the latest version)' },
+      409: { description: 'INVALID_STATE (product inactive)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/products/{id}/versions',
+    tags: tag,
+    operationId: 'API-PRD-003-LIST',
+    summary: 'All versions of a product, newest first (any signed-in staff)',
+    responses: {
+      200: { description: 'Versions', content: json(listResponse(ProductVersion)) },
+      404: { description: 'NOT_FOUND' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/product-versions/{id}',
+    tags: tag,
+    operationId: 'API-PRD-004',
+    summary: 'One version, with isCurrent (any signed-in staff)',
+    responses: {
+      200: { description: 'Version', content: json(ProductVersion) },
+      404: { description: 'NOT_FOUND' },
     },
   });
 }

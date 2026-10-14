@@ -8,13 +8,16 @@ import {
   Button,
   CircularProgress,
   Divider,
+  Drawer,
   ListItemText,
   Menu,
   MenuItem,
   Toolbar,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { errorText } from '../api/client';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
@@ -22,23 +25,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
-
-const NAV = [
-  { to: '/leads', label: 'Leads' },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/applications', label: 'Applications' },
-  { to: '/lenders', label: 'Lenders' },
-  { to: '/products', label: 'Products' },
-  { to: '/commission', label: 'Commission' },
-  { to: '/payouts', label: 'Payouts' },
-  { to: '/grievances', label: 'Grievances' },
-  { to: '/rules', label: 'Rules' },
-  { to: '/decisions', label: 'Decisions' },
-  { to: '/messaging', label: 'Messaging' },
-  { to: '/users', label: 'Users' },
-  { to: '/roles', label: 'Access Control' },
-  { to: '/config', label: 'Configuration' },
-];
+import { SidebarContent } from './Sidebar';
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10, px: 2 }}>{children}</Box>
@@ -49,8 +36,19 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { session, aal, signOut } = useAuth();
   const me = useMe();
-  const tenant = useTenant();
+  // Only call the API once the sign-in has passed the mandatory MFA check (see the guard below).
+  const mfaPassed =
+    !!session &&
+    !!aal &&
+    !me.isPending &&
+    !(aal.next === 'aal2' && aal.current !== 'aal2') &&
+    !(aal.next !== 'aal2' && mfaRequired(me.data));
+  const tenant = useTenant(mfaPassed);
   const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const theme = useTheme();
+  const wide = useMediaQuery(theme.breakpoints.up('md'));
+  useEffect(() => setDrawerOpen(false), [location.pathname]);
 
   if (session === undefined)
     return (
@@ -65,7 +63,6 @@ export function AppLayout() {
         <CircularProgress />
       </Centered>
     );
-
   if (me.isError) {
     return (
       <Centered>
@@ -93,7 +90,8 @@ export function AppLayout() {
   return (
     <StepUpProvider>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <AppBar position="static" elevation={0}>
+        {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
+        <AppBar position="sticky" elevation={0} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }}>
           <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
             <Typography
               variant="h6"
@@ -103,20 +101,9 @@ export function AppLayout() {
             >
               {tenant.data?.legalName ?? 'DSA CRM'}
             </Typography>
-            {NAV.map((item) => (
-              <Button
-                key={item.to}
-                color="inherit"
-                component={RouterLink}
-                to={item.to}
-                data-testid={`shell.nav.${item.label.toLowerCase()}`}
-              >
-                {item.label}
-              </Button>
-            ))}
-            {isAdmin && (
-              <Button color="inherit" component={RouterLink} to="/admin" data-testid="shell.nav.admin">
-                Admin
+            {!wide && (
+              <Button color="inherit" onClick={() => setDrawerOpen(true)} data-testid="shell.menu">
+                Menu
               </Button>
             )}
 
@@ -156,8 +143,31 @@ export function AppLayout() {
             </Box>
           </Toolbar>
         </AppBar>
-        <Box component="main">
-          <Outlet />
+        <Box sx={{ display: 'flex' }}>
+          <Drawer
+            variant={wide ? 'permanent' : 'temporary'}
+            open={wide || drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            sx={{
+              width: 260,
+              flexShrink: 0,
+              // On desktop the sidebar sits below the 64px header, so it must be 64px shorter than the window,
+              // or its last items hang off the bottom of the screen and cannot be scrolled into view.
+              '& .MuiDrawer-paper': {
+                width: 260,
+                boxSizing: 'border-box',
+                top: { md: 64 },
+                height: { md: 'calc(100% - 64px)' },
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+              },
+            }}
+          >
+            <SidebarContent isAdmin={isAdmin} onNavigate={() => setDrawerOpen(false)} />
+          </Drawer>
+          <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>
+            <Outlet />
+          </Box>
         </Box>
       </Box>
     </StepUpProvider>
