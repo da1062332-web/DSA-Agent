@@ -14,6 +14,7 @@ export * from './messaging';
 export * from './notification';
 export * from './verification';
 export * from './rules';
+export * from './automation';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
