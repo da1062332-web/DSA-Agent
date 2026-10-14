@@ -302,11 +302,12 @@ export class SqlSanctionRepository implements SanctionRepository {
       `UPDATE app.loan_application SET
         status = $3,
         sub_status = $4,
+        product_version_id = COALESCE(product_version_id, (SELECT product_version_id FROM app.lender_case WHERE id = $6)),
         lock_version = lock_version + 1,
         updated_at = now(),
         updated_by = $5
        WHERE tenant_id = $1 AND id = $2`,
-      [tenantId, appId, newStatus, subStatus, actor],
+      [tenantId, appId, newStatus, subStatus, actor, causedByCaseId ?? null],
     );
 
     const histId = `ash_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -341,11 +342,14 @@ export class SqlSanctionRepository implements SanctionRepository {
   }
 
   async emitOutboxEvent(tx: Tx, event: OutboxEventRecord): Promise<void> {
+    const rawType = event.eventName.replace(/:/g, '.').toLowerCase();
+    const eventType = /^[a-z_]+\.[a-z_]+$/.test(rawType) ? rawType : 'sanction.updated';
     await (tx as any).query(
       `INSERT INTO app.outbox_event (
-        id, tenant_id, event_name, aggregate_type, aggregate_id, payload, occurred_at
-      ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())`,
-      [event.id, event.tenantId, event.eventName, event.aggregateType, event.aggregateId, JSON.stringify(event.payload)],
+        id, tenant_id, event_type, event_version, subject_type, subject_id,
+        payload, correlation_id, chain_depth, created_at
+      ) VALUES ($1, $2, $3, 1, $4, $5, $6::jsonb, 'system', 0, now())`,
+      [event.id, event.tenantId, eventType, event.aggregateType, event.aggregateId, JSON.stringify(event.payload)],
     );
   }
 }

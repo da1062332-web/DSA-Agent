@@ -342,6 +342,7 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
       SET
         status = ${status},
         sub_status = ${subStatus},
+        product_version_id = COALESCE(product_version_id, (SELECT product_version_id FROM lender_case WHERE id = ${causedByLenderCaseId})),
         updated_at = now(),
         updated_by = ${actor},
         lock_version = lock_version + 1
@@ -396,28 +397,29 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     await sql`
       INSERT INTO outbox_event (
         id, tenant_id, event_type, event_version, subject_type, subject_id,
-        correlation_id, causation_id, chain_depth, data, occurred_at
+        correlation_id, causation_id, chain_depth, payload, created_at
       ) VALUES (
-        ${event.id}, ${event.tenant_id}, ${event.event_type}, ${event.event_version},
-        ${event.subject_type}, ${event.subject_id}, ${event.correlation_id},
-        ${event.causation_id ?? null}, ${event.chain_depth}, ${JSON.stringify(event.data)},
-        ${event.occurred_at}
+        ${event.id}, ${event.tenant_id}, ${event.event_type}, ${event.event_version ?? 1},
+        ${event.subject_type}, ${event.subject_id}, ${event.correlation_id ?? 'system'},
+        ${event.causation_id ?? null}, ${event.chain_depth ?? 0}, ${JSON.stringify(event.data ?? event.payload ?? {})}::jsonb,
+        ${event.occurred_at ?? event.created_at ?? new Date()}
       )
     `.execute(tx);
   }
 
   async insertAuditEvent(tx: Tx, audit: any): Promise<void> {
+    const actorType = audit.actor_kind === 'SERVICE' ? 'SERVICE' : 'USER';
     await sql`
       INSERT INTO audit_event (
-        id, tenant_id, actor, actor_kind, action, subject_type, subject_id,
-        correlation_id, ip_address, user_agent, from_state, to_state,
-        metadata, occurred_at
+        id, tenant_id, actor_type, actor_id, action, entity_type, entity_id,
+        correlation_id, occurred_at, after, ip, user_agent
       ) VALUES (
-        ${audit.id}, ${audit.tenant_id}, ${audit.actor}, ${audit.actor_kind},
-        ${audit.action}, ${audit.subject_type}, ${audit.subject_id},
-        ${audit.correlation_id}, ${audit.ip_address ?? null}, ${audit.user_agent ?? null},
-        ${audit.from_state ?? null}, ${audit.to_state ?? null},
-        ${JSON.stringify(audit.metadata)}, ${audit.occurred_at}
+        ${audit.id}, ${audit.tenant_id}, ${actorType}, ${audit.actor ?? audit.actor_id ?? 'system'},
+        ${audit.action}, ${audit.subject_type ?? audit.entity_type}, ${audit.subject_id ?? audit.entity_id},
+        ${audit.correlation_id ?? 'system'}, ${audit.occurred_at ?? new Date()},
+        ${audit.metadata ? JSON.stringify(audit.metadata) : null}::jsonb,
+        ${audit.ip_address ?? audit.ip ?? null},
+        ${audit.user_agent ?? null}
       )
     `.execute(tx);
   }
