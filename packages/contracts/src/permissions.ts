@@ -37,6 +37,15 @@ export const PERMISSION_CODES = [
   'message.send',
   'complaint.create',
   'complaint.manage',
+  'document.upload',
+  'share.create',
+  'verification.perform',
+  'verification.read',
+  'connector.manage',
+  'connector.read',
+  'connector.bank_change_approve',
+  'connector.attribution_change',
+  'connector.dispute_resolve',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
