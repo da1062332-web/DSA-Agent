@@ -63,7 +63,6 @@ export function AppLayout() {
         <CircularProgress />
       </Centered>
     );
-
   if (me.isError) {
     return (
       <Centered>

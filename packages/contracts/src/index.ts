@@ -15,6 +15,8 @@ export * from './document-sharing';
 export * from './verification';
 export * from './connector';
 export * from './config';
+export * from './lender-case';
+export * from './sanction';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';

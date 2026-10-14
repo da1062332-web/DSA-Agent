@@ -83,7 +83,6 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
-
   const v1 = express.Router();
   v1.use(opts.auth ?? authPlaceholder);
   v1.use(rateLimit());

@@ -191,7 +191,7 @@ export function createRouter(
   });
 
   // API-LEAD-007: POST /v1/leads/:id/conversion — Atomic Conversion (TASK-110)
-  router.post('/leads/:id/conversion', async (req: Request, res: Response) => {
+  router.post(['/leads/:id/conversion', '/leads/:id/conversions'], async (req: Request, res: Response) => {
     const ctx = getRequestContext(req);
     const id = extractParamId(req);
     const ifMatch = extractIfMatch(req);
