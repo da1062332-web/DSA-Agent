@@ -36,6 +36,70 @@ import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
 
+const nextUlid = monotonicFactory();
+
+function getContext(req: Request): RequestContext {
+  if (!req.ctx || !req.ctx.principal) {
+    throw AppError.of('UNAUTHENTICATED', 'Missing or invalid access token.');
+  }
+  return req.ctx;
+}
+
+function requirePermission(ctx: RequestContext, code: PermissionCode): void {
+  const { principal } = ctx;
+  if (principal.kind === 'SERVICE') return;
+  const hasGrant = principal.grants.some((g) => g.code === code);
+  if (!hasGrant) {
+    throw AppError.of('FORBIDDEN', `Permission denied: ${code} required.`);
+  }
+}
+
+interface RawUserRow {
+  id: string;
+  tenant_id: string;
+  email: string;
+  mobile_e164: string | null;
+  display_name: string;
+  user_type: string;
+  status: string;
+  availability: string;
+  primary_branch_id: string;
+  lock_version: number;
+  created_at: string | Date;
+  updated_at: string | Date;
+  assigned_roles?: string[] | string | null;
+}
+
+function formatUserRow(row: RawUserRow) {
+  let roles: string[] = [];
+  if (Array.isArray(row.assigned_roles)) {
+    roles = row.assigned_roles.filter(Boolean);
+  } else if (typeof row.assigned_roles === 'string' && row.assigned_roles.trim()) {
+    try {
+      const parsed = JSON.parse(row.assigned_roles);
+      if (Array.isArray(parsed)) roles = parsed.filter(Boolean);
+    } catch {
+      roles = [row.assigned_roles];
+    }
+  }
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    email: row.email,
+    mobileE164: row.mobile_e164 ?? null,
+    displayName: row.display_name,
+    userType: row.user_type,
+    status: row.status,
+    availability: row.availability,
+    primaryBranchId: row.primary_branch_id,
+    assignedRoles: roles,
+    lockVersion: Number(row.lock_version ?? 0),
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
+  };
+}
+
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 

@@ -73,10 +73,10 @@ describe('Loan Products Frontend Components & API Compatibility', () => {
     const { apiFetch } = await import('../../api/client');
     const mockApiFetch = vi.mocked(apiFetch);
 
-    await updateProductStatus('prd_001', 'PAUSED');
+    await updateProductStatus('prd_001', 'INACTIVE');
     expect(mockApiFetch).toHaveBeenCalledWith('/v1/products/prd_001/status', {
       method: 'POST',
-      body: { status: 'PAUSED' },
+      body: { status: 'INACTIVE' },
     });
   });
 });
