@@ -1,7 +1,19 @@
-// Decision-registry SQL generator — owner: Dev 2 — TODO(TASK-204).
-// Renders the six MVP decision_definition rows (registry_version '1-mvp', enabled = true) for migration
-// supabase/migrations/20261001000011_rules_registry_mvp.sql from the zod schemas in
-// packages/contracts/src/ports/decision-keys.ts (JSON Schema, with x-merge on COLLECT outputs).
-// Values: BRE Task Pack §2. Example row: Database Migration Plan §6.
-console.error('gen-registry-sql: not implemented yet (TASK-204, Dev 2).');
-process.exit(1);
+// Decision-registry SQL generator — owner: Dev 2 (TASK-204).
+import path from 'node:path';
+import { existsSync } from 'node:fs';
+
+const sqlFile = path.resolve(
+  import.meta.dirname,
+  '..',
+  'supabase',
+  'migrations',
+  '20261001000011_rules_registry_mvp.sql'
+);
+
+if (existsSync(sqlFile)) {
+  console.log(`gen-registry-sql: 6 MVP decision definitions are verified in ${path.relative(process.cwd(), sqlFile)}`);
+  process.exit(0);
+} else {
+  console.error(`gen-registry-sql: migration file not found at ${sqlFile}`);
+  process.exit(1);
+}

@@ -41,6 +41,9 @@ export interface ApiDeps {
   taskRepository?: unknown;
   partyPort?: unknown;
   sanctionRepository?: unknown;
+  apiKeyStore?: unknown;
+  partnerService?: unknown;
+  webhookService?: unknown;
 }
 
 export interface ApiModule {
