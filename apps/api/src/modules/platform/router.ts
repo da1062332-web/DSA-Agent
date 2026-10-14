@@ -189,6 +189,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/branches', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
+      // ?q= searches the branch code and name. It was accepted before but never applied.
+      const search = typeof req.query.q === 'string' && req.query.q.trim() ? req.query.q.trim() : undefined;
       const branches = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
           id: string;
@@ -203,6 +205,7 @@ export function createRouter(deps: ApiDeps): Router {
           SELECT id, organisation_id, code, name, pincode, timezone, status, lock_version
           FROM app.branch
           WHERE tenant_id = ${ctx.principal.tenantId}
+            AND (${search === undefined} OR code ILIKE ${'%' + (search ?? '') + '%'} OR name ILIKE ${'%' + (search ?? '') + '%'})
           ORDER BY name ASC
         `.execute(tx);
         return result.rows.map((r) => ({
