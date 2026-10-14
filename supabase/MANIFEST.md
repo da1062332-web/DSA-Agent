@@ -20,7 +20,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-021 | `20261001000021_origination_application.sql`                    | Dev 3        | TASK-301                | loan_application, application_party, application_status_history, checklist_item                                                                                        | M-003, M-020 |
 | M-022 | `20261001000022_origination_lender_case.sql`                    | Dev 4        | TASK-301 part           | lender_case, lender_case_status_history, submission_package                                                                                                            | M-021        |
 | M-023a | `20261001000023_lender_contacts_and_fields.sql` | Dev 3 | MOD-LND (Module 14) | lender.global_lender_ref, empanelment.permitted_geos and agreement_document_id, lender_contact (ENT-042) | M-020 |
-| M-023b | `20261001000023_origination_sanction_disbursement.sql` | Dev 3 | MOD-SND / TASK-402 | sanction (ENT-055), disbursement_tranche (ENT-056) | M-022 |
+| M-031 | `20261001000031_origination_sanction_disbursement.sql` | Dev 3 | MOD-SND / TASK-402 | sanction (ENT-055), disbursement_tranche (ENT-056) | M-022 |
 | M-024 | `20261001000024_product_terms_and_links.sql` | Dev 3 | MOD-PRD (Module 15) | loan_product_version.fee_text, geo_rules, document_profile_id, workflow_profile, eligibility_scope | M-020 |
 | M-028 | `20261001000028_complaints.sql` | Dev 3 | MOD-GRV (Module 13) | complaint (ENT-034); permissions complaint.create, complaint.manage and their role grants | M-020, M-001 |
 | M-029 | `20261001000029_application_hold.sql` | Dev 3 | MOD-APP (Module 16) | loan_application.on_hold, hold_reason, hold_until with hold checks (API-APP-010) | M-021 |
