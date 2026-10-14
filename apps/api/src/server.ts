@@ -14,6 +14,7 @@ import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { createTxRunner } from './kernel-min/tx-runner';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
+import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
 
 let config: ApiConfig;
@@ -37,6 +38,7 @@ const app = createApp({
     userDirectory: createUserDirectory(),
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
+    lenderPort: createLenderPort(),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,

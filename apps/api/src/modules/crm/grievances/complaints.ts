@@ -44,6 +44,21 @@ const snapshot = (r: Row) => ({
 /** The acknowledgement reference the customer quotes. The last eight characters of the ULID are random. */
 const ackRef = (id: string) => `GRV-${id.slice(-8)}`;
 
+/** A referral must name a lender in this tenant. The lender check comes from origination/catalogue through a port. */
+async function requireKnownLender(deps: ApiDeps, tx: Tx, lenderId: string): Promise<void> {
+  if (!deps.lenderPort) {
+    throw AppError.of(
+      'DEPENDENCY_UNAVAILABLE',
+      'The lender check is not available, so the referral cannot be saved.',
+    );
+  }
+  if (!(await deps.lenderPort.exists(tx, lenderId))) {
+    throw AppError.of('VALIDATION_ERROR', 'The referred lender was not found.', [
+      { field: 'lenderReferral.lenderId', issue: 'NOT_FOUND' },
+    ]);
+  }
+}
+
 async function requireActiveOwner(tx: Tx, userId: string): Promise<void> {
   const u = await sql<{
     id: string;
@@ -151,6 +166,7 @@ export function registerComplaintRoutes(router: Router, deps: ApiDeps): void {
         throw AppError.of('INVALID_TRANSITION', 'The complaint is already in progress.');
       }
       if (input.ownerUserId) await requireActiveOwner(tx, input.ownerUserId);
+      if (input.lenderReferral) await requireKnownLender(deps, tx, input.lenderReferral.lenderId);
 
       const referral =
         input.lenderReferral === undefined

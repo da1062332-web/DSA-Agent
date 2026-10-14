@@ -15,6 +15,7 @@ import { createApp } from '../../apps/api/src/app';
 import { createDb } from '../../apps/api/src/kernel-min/db';
 import { createTxRunner } from '../../apps/api/src/kernel-min/tx-runner';
 import { createApplicationSubjectPort } from '../../apps/api/src/modules/origination/applications/subject-port';
+import { createLenderPort } from '../../apps/api/src/modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from '../../apps/api/src/modules/origination/catalogue/product-version-port';
 import { fakeAuth, testPrincipal } from '../../apps/api/test/support/fake-auth';
 
@@ -77,6 +78,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     userDirectory: createUserDirectory(),
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
+    lenderPort: createLenderPort(),
   };
 
   const principalOf = (t: TenantFixture, codes: PermissionCode[], userIndex: 0 | 1): Principal =>
