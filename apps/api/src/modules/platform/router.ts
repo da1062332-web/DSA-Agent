@@ -1068,6 +1068,9 @@ export function createRouter(deps: ApiDeps): Router {
         typeof req.query.cursor === 'string' && req.query.cursor.trim() ? req.query.cursor.trim() : undefined;
       const statusFilter =
         typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
+      // Filter by the user's primary branch. It was accepted by the schema but never applied, so every branch's users came back.
+      const branchFilter =
+        typeof req.query.branchId === 'string' && req.query.branchId.trim() ? req.query.branchId.trim() : undefined;
       const searchFilter =
         typeof req.query.search === 'string' && req.query.search.trim()
           ? req.query.search.trim().toLowerCase()
@@ -1110,6 +1113,9 @@ export function createRouter(deps: ApiDeps): Router {
 
         if (statusFilter) {
           rows = rows.filter((u) => u.status === statusFilter);
+        }
+        if (branchFilter) {
+          rows = rows.filter((u) => u.primaryBranchId === branchFilter);
         }
         if (searchFilter) {
           rows = rows.filter(
