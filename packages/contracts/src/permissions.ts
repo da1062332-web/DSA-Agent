@@ -32,6 +32,7 @@ export const PERMISSION_CODES = [
   'rule.publish',
   'rule.suspend',
   'audit.read',
+  'audit.export_evidence',
   'config.manage',
   'user.manage',
   'sanction.record',

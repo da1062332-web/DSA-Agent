@@ -1736,6 +1736,7 @@ paths:
                             - rule.publish
                             - rule.suspend
                             - audit.read
+                            - audit.export_evidence
                             - config.manage
                             - user.manage
                             - sanction.record
@@ -8187,7 +8188,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-14T11:52:23.494Z
+                  default: 2026-10-14T17:20:29.199Z
               required:
                 - paymentRef
       responses:
@@ -20140,4 +20141,674 @@ paths:
                   - deliveryStatus
                   - httpStatus
                   - durationMs
+  /v1/audit-events:
+    get:
+      summary: Search audit events with cursor-based pagination (API-AUD-001, API-AUD-002)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: &a98
+              - USER
+              - SERVICE
+          required: false
+          name: actorType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: actorId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: action
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          required: false
+          name: entityType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: entityId
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: dateFrom
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: dateTo
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: correlationId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: decisionRecordId
+          in: query
+      responses:
+        "200":
+          description: Filtered list of audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^aud_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        seq:
+                          type: integer
+                        occurredAt:
+                          type: string
+                          format: date-time
+                        actorType:
+                          type: string
+                          enum: *a98
+                        actorId:
+                          type: string
+                        action:
+                          type: string
+                        entityType:
+                          type: string
+                        entityId:
+                          type:
+                            - string
+                            - "null"
+                        permissionUsed:
+                          type:
+                            - string
+                            - "null"
+                        approvalRef:
+                          type:
+                            - string
+                            - "null"
+                        reason:
+                          type:
+                            - string
+                            - "null"
+                        decisionRecordId:
+                          type:
+                            - string
+                            - "null"
+                        before:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        after:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: {}
+                        externalSideEffect:
+                          type: boolean
+                        correlationId:
+                          type: string
+                        ip:
+                          type:
+                            - string
+                            - "null"
+                        userAgent:
+                          type:
+                            - string
+                            - "null"
+                        prevHash:
+                          type:
+                            - string
+                            - "null"
+                        hash:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - tenantId
+                        - occurredAt
+                        - actorType
+                        - actorId
+                        - action
+                        - entityType
+                        - entityId
+                        - externalSideEffect
+                        - correlationId
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.read)
+  /v1/audit-events/{id}:
+    get:
+      summary: Retrieve a single audit event by identifier
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Audit event detail
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.read)
+        "404":
+          description: Audit event not found
+  /v1/audit-events/{id}/decision-record:
+    get:
+      summary: Retrieve the MOD-BRE decision record linked to an audit event
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Linked MOD-BRE decision record
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.read)
+        "404":
+          description: Audit event or linked decision record not found
+  /v1/audit-chain/verification:
+    get:
+      summary: Verify cryptographic hash chain integrity and tamper evidence (API-AUD-003)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Audit chain verification report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - VERIFIED
+                      - TAMPERED
+                      - BROKEN_CHAIN
+                      - INCOMPLETE
+                      - EMPTY
+                  tenantId:
+                    type: string
+                  totalEvents:
+                    type: integer
+                    minimum: 0
+                  sealedEvents:
+                    type: integer
+                    minimum: 0
+                  unsealedEvents:
+                    type: integer
+                    minimum: 0
+                  verifiedRange:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      fromSeq:
+                        type:
+                          - integer
+                          - "null"
+                      toSeq:
+                        type:
+                          - integer
+                          - "null"
+                      genesisHash:
+                        type:
+                          - string
+                          - "null"
+                      latestHash:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - fromSeq
+                      - toSeq
+                      - genesisHash
+                      - latestHash
+                  tamperedEvents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seq:
+                          type: integer
+                        id:
+                          type: string
+                        reason:
+                          type: string
+                      required:
+                        - seq
+                        - id
+                        - reason
+                  verifiedAt:
+                    type: string
+                    format: date-time
+                  details:
+                    type: string
+                required:
+                  - status
+                  - tenantId
+                  - totalEvents
+                  - sealedEvents
+                  - unsealedEvents
+                  - verifiedRange
+                  - verifiedAt
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.read)
+  /v1/audit-chain/seal:
+    post:
+      summary: Seal unsealed audit events into the cryptographic hash chain
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Seal execution summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenantId:
+                    type: string
+                  sealedCount:
+                    type: integer
+                  lastSequence:
+                    type:
+                      - integer
+                      - "null"
+                  latestHash:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - tenantId
+                  - sealedCount
+                  - lastSequence
+                  - latestHash
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.read)
+  /v1/evidence-packs:
+    post:
+      summary: Request asynchronous audit evidence pack export (TASK-408)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dateFrom:
+                  type: string
+                  format: date-time
+                dateTo:
+                  type: string
+                  format: date-time
+                entityType:
+                  type: string
+                entityId:
+                  type: string
+                action:
+                  type: string
+                actorId:
+                  type: string
+                includeDecisionRecords:
+                  type: boolean
+                  default: true
+                format:
+                  type: string
+                  enum:
+                    - json
+                    - zip
+                  default: json
+      responses:
+        "202":
+          description: Evidence pack export initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^evp_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  requestedBy:
+                    type: string
+                  status:
+                    type: string
+                    enum: &a99
+                      - PENDING
+                      - PROCESSING
+                      - COMPLETED
+                      - FAILED
+                  filters:
+                    type: object
+                    additionalProperties: {}
+                  recordCount:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  checksum:
+                    type:
+                      - string
+                      - "null"
+                  fileUrl:
+                    type:
+                      - string
+                      - "null"
+                  createdAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  expiresAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  errorMessage:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - requestedBy
+                  - status
+                  - filters
+                  - recordCount
+                  - checksum
+                  - fileUrl
+                  - createdAt
+                  - completedAt
+                  - expiresAt
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.export_evidence)
+    get:
+      summary: List evidence packs for tenant
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of evidence packs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^evp_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        requestedBy:
+                          type: string
+                        status:
+                          type: string
+                          enum: *a99
+                        filters:
+                          type: object
+                          additionalProperties: {}
+                        recordCount:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        checksum:
+                          type:
+                            - string
+                            - "null"
+                        fileUrl:
+                          type:
+                            - string
+                            - "null"
+                        createdAt:
+                          type: string
+                          format: date-time
+                        completedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        expiresAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        errorMessage:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - tenantId
+                        - requestedBy
+                        - status
+                        - filters
+                        - recordCount
+                        - checksum
+                        - fileUrl
+                        - createdAt
+                        - completedAt
+                        - expiresAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.export_evidence)
+  /v1/evidence-packs/{id}:
+    get:
+      summary: Get evidence pack status and download metadata
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Evidence pack details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^evp_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  requestedBy:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a99
+                  filters:
+                    type: object
+                    additionalProperties: {}
+                  recordCount:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  checksum:
+                    type:
+                      - string
+                      - "null"
+                  fileUrl:
+                    type:
+                      - string
+                      - "null"
+                  createdAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  expiresAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  errorMessage:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - requestedBy
+                  - status
+                  - filters
+                  - recordCount
+                  - checksum
+                  - fileUrl
+                  - createdAt
+                  - completedAt
+                  - expiresAt
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.export_evidence)
+        "404":
+          description: Evidence pack not found
+  /v1/evidence-packs/{id}/download:
+    get:
+      summary: Download evidence pack JSON archive with independent authorization and tenant scoping
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Evidence pack download package
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires audit.export_evidence)
+        "404":
+          description: Evidence pack not found
+        "409":
+          description: Evidence pack not ready for download or expired
 webhooks: {}
