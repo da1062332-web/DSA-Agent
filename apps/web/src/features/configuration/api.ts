@@ -1,4 +1,5 @@
 import { readConfig } from '../../config';
+import { getStoredAuthToken } from '../../auth/token';
 import type {
   BranchConfig,
   CreateBranchInput,
@@ -6,7 +7,6 @@ import type {
   UpdateBranchInput,
   UpdateTenantConfigInput,
 } from './types';
-import { getStoredAuthToken } from '../../auth/token';
 
 function getApiBaseUrl(): string {
   const config = readConfig();
