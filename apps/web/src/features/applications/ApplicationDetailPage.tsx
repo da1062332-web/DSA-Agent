@@ -5,8 +5,9 @@ import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typograph
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
-import { useCommand, useResource } from '../admin/api';
+import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
+import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import {
   STATUS_LABELS,
@@ -61,6 +62,7 @@ export function ApplicationDetailPage() {
         </Alert>
       )}
 
+      <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
 
@@ -236,6 +238,156 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
             </Stack>
           </Stack>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const CANCEL_REASONS = [
+  { value: 'DUPLICATE', label: 'Duplicate' },
+  { value: 'CREATED_IN_ERROR', label: 'Created in error' },
+  { value: 'INELIGIBLE', label: 'Ineligible' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
+
+/** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-10
+ *  (cancel). Only the steps the caller's permissions and the current status allow are shown. The API re-checks all of it. */
+function TransitionCard({ app }: { app: Application }) {
+  const me = useMe();
+  const canUpdate = hasPermission(me.data, 'application.update');
+  const canReview = hasPermission(me.data, 'application.review');
+  const canCancel = hasPermission(me.data, 'application.cancel');
+  const [productId, setProductId] = useState('');
+  const [versionId, setVersionId] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+
+  const showStart = app.status === 'DRAFT' && canUpdate;
+  const showReview = app.status === 'DOCUMENTS_PENDING' && canReview;
+  const showCancel = ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'].includes(app.status) && canCancel;
+
+  // Products of this application's category, then their versions. Only versions in force today can be chosen.
+  const products = useLookup<Product>(
+    '/v1/products',
+    { category: app.productCategory, status: 'ACTIVE' },
+    showStart,
+  );
+  const versions = useLookup<ProductVersion>(
+    `/v1/products/${productId}/versions`,
+    {},
+    showStart && !!productId,
+  );
+  const inForce = (versions.data ?? []).filter((v) => v.isCurrent);
+
+  const run = useCommand<
+    {
+      transitionCode: 'T-APP-01' | 'T-APP-02' | 'T-APP-10';
+      productVersionId?: string;
+      cancelReason?: string;
+    },
+    Application
+  >(
+    () => ({ path: `/v1/applications/${app.id}/transitions`, method: 'POST', version: app.version }),
+    [[`/v1/applications/${app.id}`], ['/v1/applications']],
+  );
+
+  if (!showStart && !showReview && !showCancel) return null;
+
+  return (
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Next step
+        </Typography>
+        <ErrorAlert error={run.error} />
+        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+          {showStart && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Choose the product and the version in force today, then start the documents.
+              </Typography>
+              <TextField
+                select
+                label="Product"
+                value={productId}
+                onChange={(e) => {
+                  setProductId(e.target.value);
+                  setVersionId('');
+                }}
+                helperText={
+                  products.data?.length === 0 ? `No active ${app.productCategory} products.` : undefined
+                }
+              >
+                {(products.data ?? []).map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Product version"
+                value={versionId}
+                onChange={(e) => setVersionId(e.target.value)}
+                disabled={!productId}
+                helperText={productId && inForce.length === 0 ? 'No version is in force today.' : undefined}
+              >
+                {inForce.map((v) => (
+                  <MenuItem key={v.id} value={v.id}>
+                    Version {v.versionNo} (from {formatDate(v.effectiveFrom)})
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Stack direction="row">
+                <Button
+                  variant="contained"
+                  disabled={!versionId || run.isPending}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-01', productVersionId: versionId })}
+                >
+                  Start documents
+                </Button>
+              </Stack>
+            </>
+          )}
+
+          {showReview && (
+            <Stack direction="row">
+              <Button
+                variant="contained"
+                disabled={run.isPending}
+                onClick={() => run.mutate({ transitionCode: 'T-APP-02' })}
+              >
+                Send to review
+              </Button>
+            </Stack>
+          )}
+
+          {showCancel && (
+            <>
+              <TextField
+                select
+                label="Cancel reason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              >
+                {CANCEL_REASONS.map((r) => (
+                  <MenuItem key={r.value} value={r.value}>
+                    {r.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Stack direction="row">
+                <Button
+                  variant="outlined"
+                  color="error"
+                  disabled={!cancelReason || run.isPending}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
+                >
+                  Cancel application
+                </Button>
+              </Stack>
+            </>
+          )}
+        </Stack>
       </CardContent>
     </Card>
   );

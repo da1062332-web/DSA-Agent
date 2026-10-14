@@ -2,6 +2,7 @@ import type {
   ApplicationPort,
   AuditPort,
   ComplaintSubjectPort,
+  ProductVersionPort,
   Authz,
   Clock,
   ConsentPort,
@@ -28,6 +29,8 @@ export interface ApiDeps {
   applicationPort?: ApplicationPort;
   /** Confirms complaint subjects exist in the caller tenant (MOD-GRV). Required for complaint intake; fails closed without it. */
   complaintSubjectPort?: ComplaintSubjectPort;
+  /** Checks a product version for an application transition (T-APP-01). Provided by origination/catalogue. */
+  productVersionPort?: ProductVersionPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;

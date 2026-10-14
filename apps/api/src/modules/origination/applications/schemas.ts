@@ -126,3 +126,23 @@ export const ApplicationHold = z
       });
     }
   });
+
+// ---- Transitions (API-APP-005). Only T-APP-01, 02 and 10 are built: the T-APP table in the spec is not available, so the
+// other codes are not accepted until the table is confirmed. ----
+export const CancelReason = z.enum(['DUPLICATE', 'CREATED_IN_ERROR', 'INELIGIBLE', 'OTHER']);
+export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
+  z
+    .object({
+      transitionCode: z.literal('T-APP-01'),
+      productVersionId: z.string().trim().min(3).max(64),
+    })
+    .strict(),
+  z.object({ transitionCode: z.literal('T-APP-02') }).strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-10'),
+      cancelReason: CancelReason,
+    })
+    .strict(),
+]);
+export type ApplicationTransition = z.infer<typeof ApplicationTransition>;

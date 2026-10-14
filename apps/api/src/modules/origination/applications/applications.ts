@@ -8,7 +8,7 @@ import type { Response, Router } from 'express';
 import { sql, type RawBuilder } from 'kysely';
 import { ifMatchVersion, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
-import { iso, keysetPage, updateVersioned, type Row } from './db';
+import { assertVersion, iso, keysetPage, updateVersioned, type Row } from './db';
 import type { Application } from './schemas';
 import {
   ApplicationHold,
@@ -70,7 +70,7 @@ export function applicationScope(ctx: RequestContext, code: PermissionCode): Raw
 }
 
 /** Locks one application the caller may see. Out of scope or another tenant reads as NOT_FOUND. */
-async function loadScopedForUpdate(
+export async function loadScopedForUpdate(
   tx: Tx,
   ctx: RequestContext,
   code: PermissionCode,
@@ -147,6 +147,7 @@ export function registerApplicationRoutes(router: Router, deps: ApiDeps): void {
 
     const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const current = await loadScopedForUpdate(tx, ctx, 'application.update', req.params.id);
+      assertVersion(current, version);
       if (!EDITABLE_STATUSES.includes(current.status as never)) {
         throw AppError.of(
           'INVALID_STATE',
@@ -180,6 +181,7 @@ export function registerApplicationRoutes(router: Router, deps: ApiDeps): void {
 
     const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const current = await loadScopedForUpdate(tx, ctx, 'application.update', req.params.id);
+      assertVersion(current, version);
       if (TERMINAL_STATUSES.includes(current.status as never)) {
         throw AppError.of(
           'INVALID_STATE',
