@@ -17,7 +17,7 @@ import {
 import { useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { errorText } from '../api/client';
-import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
+import { hasPermission, mfaRequired, useMe } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
@@ -44,7 +44,6 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { session, aal, signOut } = useAuth();
   const me = useMe();
-  const tenant = useTenant();
   const [menu, setMenu] = useState<HTMLElement | null>(null);
 
   if (session === undefined)
@@ -97,7 +96,7 @@ export function AppLayout() {
               to="/"
               sx={{ color: 'inherit', textDecoration: 'none', mr: 2, fontWeight: 700 }}
             >
-              {tenant.data?.legalName ?? 'DSA CRM'}
+              DSA CRM
             </Typography>
             {NAV.map((item) => (
               <Button

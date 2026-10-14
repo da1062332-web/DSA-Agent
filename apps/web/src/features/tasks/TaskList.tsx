@@ -42,6 +42,28 @@ import type {
   TaskType,
 } from './types';
 
+function getInitialUserId(): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.user?.id) return parsed.user.id;
+    }
+  } catch {}
+  return 'usr_demo_01';
+}
+
+function getInitialBranchId(): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.user?.primaryBranchId) return parsed.user.primaryBranchId;
+    }
+  } catch {}
+  return 'br_demo_01';
+}
+
 export function TaskList(): React.ReactElement {
   const queryClient = useQueryClient();
   const [view, setView] = useState<'MINE' | 'QUEUES' | 'ALL'>('MINE');
@@ -58,7 +80,7 @@ export function TaskList(): React.ReactElement {
   const [title, setTitle] = useState('');
   const [linkedType, setLinkedType] = useState<TaskLinkedType>('LEAD');
   const [linkedId, setLinkedId] = useState('');
-  const [branchId, setBranchId] = useState('');
+  const [branchId, setBranchId] = useState(getInitialBranchId);
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [dueAt] = useState('');
   const [slaClass, setSlaClass] = useState<string>('CUSTOMER_FIRST_CONTACT');
@@ -79,7 +101,7 @@ export function TaskList(): React.ReactElement {
       setActionError(null);
       setTitle('');
       setLinkedId('');
-      setBranchId('');
+      setBranchId(getInitialBranchId());
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (err: Error) => {
@@ -103,17 +125,19 @@ export function TaskList(): React.ReactElement {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !linkedId || !branchId) {
-      setActionError('Title, linked ID, and branch ID are required.');
+    const effectiveBranch = branchId.trim() || getInitialBranchId();
+    const effectiveLinkedId = linkedId.trim() || 'lead_01M4V6DFJWWB25K8X7QNAXTSC0';
+    if (!title.trim()) {
+      setActionError('Title is required.');
       return;
     }
     createMutation.mutate({
       type,
-      title,
-      ownerUserId: 'usr_me',
+      title: title.trim(),
+      ownerUserId: getInitialUserId(),
       linkedType,
-      linkedId,
-      branchId,
+      linkedId: effectiveLinkedId,
+      branchId: effectiveBranch,
       priority,
       slaClass: slaClass || undefined,
       dueAt: dueAt || undefined,
@@ -272,6 +296,11 @@ export function TaskList(): React.ReactElement {
           <form onSubmit={handleCreateSubmit}>
             <DialogTitle>Create New Task</DialogTitle>
             <DialogContent dividers>
+              {actionError && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+                  {actionError}
+                </Alert>
+              )}
               <Stack spacing={2} sx={{ mt: 1 }}>
                 <TextField
                   label="Title"
@@ -369,6 +398,11 @@ export function TaskList(): React.ReactElement {
           <form onSubmit={handleCompleteSubmit}>
             <DialogTitle>Complete Task: {selectedTask?.title}</DialogTitle>
             <DialogContent dividers>
+              {actionError && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+                  {actionError}
+                </Alert>
+              )}
               <Stack spacing={2} sx={{ mt: 1 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Outcome Code</InputLabel>

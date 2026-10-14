@@ -44,7 +44,18 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null;
+  let token = typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null;
+  if (!token && typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('dsa_auth_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        token = parsed.access_token || parsed.token || null;
+      }
+    } catch {
+      // ignore
+    }
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
