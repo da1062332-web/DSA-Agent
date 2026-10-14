@@ -38,6 +38,9 @@ export interface ApiDeps {
   taskRepository?: unknown;
   partyPort?: unknown;
   sanctionRepository?: unknown;
+  targetRepository?: unknown;
+  reportingRepository?: unknown;
+  importRepository?: unknown;
 }
 
 export interface ApiModule {

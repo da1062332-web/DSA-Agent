@@ -14,6 +14,8 @@ import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as sanctions from './modules/origination/sanctions/openapi';
+import * as targets from './modules/crm/targets/openapi';
+import * as reporting from './modules/reporting/openapi';
 import * as platform from './modules/platform/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
 
@@ -27,6 +29,8 @@ const MODULES = [
   compliance,
   tasks,
   grievances,
+  targets,
+  reporting,
   rulesApi,
   catalogue,
   applications,
