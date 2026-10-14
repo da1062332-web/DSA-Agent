@@ -39,6 +39,11 @@ export const PERMISSION_CODES = [
   'verification.create',
   'verification.update',
   'verification.complete',
+  'automation.read',
+  'automation.author',
+  'automation.approve',
+  'automation.execute',
+  'automation.operator',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
