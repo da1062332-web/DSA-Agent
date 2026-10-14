@@ -8,7 +8,8 @@ import {
   type QueryKey,
 } from '@tanstack/react-query';
 import { useRef } from 'react';
-import { apiFetch, newIdempotencyKey, type ApiRequest } from '../../api/client';
+import { apiFetch, errorText, newIdempotencyKey, type ApiRequest } from '../../api/client';
+import { useToast } from '../../shell/toast';
 
 export interface ListPage<T> {
   data: T[];
@@ -138,8 +139,11 @@ export function useResource<T>(path: string | null) {
 export function useCommand<TBody, TResult>(
   request: (body: TBody) => { path: string } & Omit<ApiRequest, 'body' | 'idempotencyKey'>,
   invalidate: QueryKey[],
+  /** Toast shown when the write succeeds. Pass null for none (for example when the screen shows its own result). */
+  successMessage: string | null = 'Saved.',
 ) {
   const qc = useQueryClient();
+  const toast = useToast();
   const key = useRef(newIdempotencyKey());
   const mutation = useMutation({
     mutationFn: (body: TBody) => {
@@ -152,8 +156,10 @@ export function useCommand<TBody, TResult>(
     },
     onSuccess: async () => {
       key.current = newIdempotencyKey();
+      if (successMessage) toast.success(successMessage);
       await Promise.all(invalidate.map((k) => qc.invalidateQueries({ queryKey: k })));
     },
+    onError: (err) => toast.error(errorText(err)),
   });
   return { ...mutation, resetKey: () => (key.current = newIdempotencyKey()) };
 }

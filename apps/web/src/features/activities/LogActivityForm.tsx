@@ -36,6 +36,7 @@ export interface LogActivityFormProps {
   onSuccess?: (activity: Activity) => void;
   defaultSubjectType?: SubjectType;
   defaultSubjectId?: string;
+  lockSubject?: boolean;
   apiBaseUrl?: string;
 }
 
@@ -45,6 +46,7 @@ export function LogActivityForm({
   onSuccess,
   defaultSubjectType = 'LEAD',
   defaultSubjectId = '',
+  lockSubject = false,
   apiBaseUrl = '/v1',
 }: LogActivityFormProps) {
   const [kind, setKind] = useState<ActivityKind>('CALL');
@@ -63,6 +65,14 @@ export function LogActivityForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) {
+      setErrorMessage(null);
+      setSuccessNotice(null);
+      setFieldErrors({});
+    }
+  }, [open]);
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
@@ -181,7 +191,7 @@ export function LogActivityForm({
               id="subject-type-select"
               value={subjectType}
               label="Subject Type"
-              disabled={Boolean(defaultSubjectId && defaultSubjectType)}
+              disabled={lockSubject}
               onChange={(e) => setSubjectType(e.target.value as SubjectType)}
               data-testid="activity.log-form.subject-type"
             >
@@ -201,7 +211,7 @@ export function LogActivityForm({
             label="Subject ID"
             id="subject-id-input"
             value={subjectId}
-            disabled={Boolean(defaultSubjectId)}
+            disabled={lockSubject}
             onChange={(e) => setSubjectId(e.target.value)}
             error={Boolean(fieldErrors.subjectId)}
             helperText={fieldErrors.subjectId}

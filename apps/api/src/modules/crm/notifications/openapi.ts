@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 export const tags = [
   { name: 'MOD-NTF Notifications', description: 'Notifications and user preferences (MOD-NTF).' },
+  { name: 'MOD-USR Users', description: 'User profile preferences (MOD-USR).' },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {

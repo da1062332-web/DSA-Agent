@@ -12,7 +12,7 @@ import type { Database, RequestContext } from '@dsa/contracts';
 const nextUlid = monotonicFactory();
 
 try {
-  process.loadEnvFile(path.resolve(__dirname, '../../../.env'));
+  process.loadEnvFile(path.resolve(__dirname, '../.env'));
 } catch {
   // Ignore if already loaded
 }

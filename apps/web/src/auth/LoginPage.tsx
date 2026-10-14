@@ -15,15 +15,18 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { getSupabase } from './supabase';
+import { TimeoutError, withTimeout } from './timeout';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session } = useAuth();
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  const { session, signOut } = useAuth();
+  const requested = (location.state as { from?: string } | null)?.from ?? '/';
+  // Only in-app paths: the page reloads to this address after sign-in, so it must never point at another site.
+  const from = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +50,8 @@ export function LoginPage() {
 
     setIsLoading(true);
     try {
-      const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+      // A request stuck behind another open tab would otherwise leave the form on "Authenticating..." forever.
+      const { error } = await withTimeout(getSupabase().auth.signInWithPassword({ email, password }), 15_000);
       if (error) {
         // Same message for unknown email and wrong password (no account enumeration).
         setErrorMessage(
@@ -55,17 +59,56 @@ export function LoginPage() {
         );
         return;
       }
-      navigate(from, { replace: true });
-    } catch {
+      // A full load, not an in-app navigation: the new user must not see anything kept in memory for the previous one.
+      window.location.replace(from);
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        setErrorMessage('Sign-in is taking too long. Close any other open tabs of this app, then try again.');
+        return;
+      }
       setErrorMessage(
-        'Cannot reach the sign-in service. Is the local Supabase stack running (npm run db:start)?',
+        'Cannot reach the sign-in service. Please check your network and Supabase connection.',
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (session) return <Navigate to={from} replace />;
+  // Already signed in: say who it is and let the user choose. Silent redirects hid the sign-in form, so signing in
+  // as another person looked like it had not worked.
+  if (session) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: '#f4f6f8',
+          p: 2,
+        }}
+      >
+        <Card sx={{ width: '100%', maxWidth: 420, borderRadius: 3 }}>
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <Typography variant="h5" component="h1" fontWeight={700} gutterBottom>
+              Already signed in
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }} data-testid="login.signedInAs">
+              You are signed in as {session.user.email}. To sign in as someone else, sign out first.
+            </Typography>
+            <Stack spacing={1.5}>
+              <Button variant="contained" onClick={() => navigate(from, { replace: true })}>
+                Continue as {session.user.email}
+              </Button>
+              <Button variant="outlined" onClick={() => void signOut()} data-testid="login.signOutFirst">
+                Sign out and use another account
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
 
   return (
     <Box

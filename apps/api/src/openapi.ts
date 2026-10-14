@@ -5,6 +5,7 @@ import { z } from 'zod';
 import * as compliance from './modules/compliance/openapi';
 import * as activities from './modules/crm/activities/openapi';
 import * as customers from './modules/crm/customers/openapi';
+import * as grievances from './modules/crm/grievances/openapi';
 import * as leads from './modules/crm/leads/openapi';
 import * as messaging from './modules/crm/messaging/openapi';
 import * as notifications from './modules/crm/notifications/openapi';
@@ -13,6 +14,7 @@ import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
 import * as finance from './modules/finance/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
+import * as sanctions from './modules/origination/sanctions/openapi';
 import * as platform from './modules/platform/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
 
@@ -26,10 +28,12 @@ const MODULES = [
   compliance,
   finance,
   tasks,
+  grievances,
   rulesApi,
   catalogue,
   applications,
   lenderCases,
+  sanctions,
 ];
 
 export function buildOpenApiDocument() {
