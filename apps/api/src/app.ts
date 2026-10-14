@@ -83,6 +83,16 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
+  // Platform Admin routes (API-TEN-002, API-ADM-001..API-ADM-009)
+  const platformAdminMod = apiModules.find((m) => m.name === 'platform-admin');
+  if (platformAdminMod) {
+    const platformRouter = express.Router();
+    platformRouter.use(opts.auth ?? authPlaceholder);
+    platformRouter.use(rateLimit());
+    platformRouter.use(express.json({ limit: '10mb' }));
+    platformRouter.use(platformAdminMod.createRouter(opts.deps));
+    app.use('/platform', platformRouter);
+  }
 
   const v1 = express.Router();
   v1.use(opts.auth ?? authPlaceholder);

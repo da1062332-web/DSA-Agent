@@ -14,10 +14,14 @@ import * as applications from './modules/origination/applications/openapi';
 import * as catalogue from './modules/origination/catalogue/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as platform from './modules/platform/openapi';
+import * as platformAdmin from './modules/platform-admin/openapi';
+import * as integrations from './modules/integrations/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
 
 const MODULES = [
   platform,
+  platformAdmin,
+  integrations,
   leads,
   customers,
   activities,
