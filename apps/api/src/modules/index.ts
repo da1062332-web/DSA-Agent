@@ -14,6 +14,7 @@ import * as documentSharing from './origination/document-sharing/router';
 import * as verifications from './origination/verifications/router';
 import * as connectors from './origination/connectors/router';
 import * as lenderCases from './origination/lender-cases/router';
+import * as sanctions from './origination/sanctions/router';
 import * as platform from './platform/router';
 import * as rulesApi from './rules/api/router';
 import type { ApiModule } from './types';
@@ -35,5 +36,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'origination/document-sharing', owner: 'Dev 1', createRouter: documentSharing.createRouter },
   { name: 'origination/verifications', owner: 'Dev 2', createRouter: verifications.createRouter },
   { name: 'origination/connectors', owner: 'Dev 1', createRouter: connectors.createRouter },
+  { name: 'origination/sanctions', owner: 'Dev 3', createRouter: sanctions.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.

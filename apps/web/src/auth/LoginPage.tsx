@@ -58,7 +58,7 @@ export function LoginPage() {
       navigate(from, { replace: true });
     } catch {
       setErrorMessage(
-        'Cannot reach the sign-in service. Is the local Supabase stack running (npm run db:start)?',
+        'Cannot reach the sign-in service. Please check your network and Supabase connection.',
       );
     } finally {
       setIsLoading(false);

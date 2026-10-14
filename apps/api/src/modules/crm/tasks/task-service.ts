@@ -161,6 +161,14 @@ export class TaskService {
     // 1. Idempotency check
     const existing = await this.deps.repository.findTaskByIdempotencyKey(tx, tenantId, idempotencyKey);
     if (existing) {
+      if (
+        existing.type !== input.type ||
+        existing.linked_type !== input.linkedType ||
+        existing.linked_id !== input.linkedId ||
+        existing.branch_id !== input.branchId
+      ) {
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
+      }
       return {
         resource: this.toResource(existing),
         isReplayed: true,
@@ -413,6 +421,11 @@ export class TaskService {
     const task = await this.deps.repository.findTaskByIdForUpdate(tx, tenantId, id);
 
     requireTaskAccess(ctx, 'task.update', task);
+
+    // ETag concurrency check first before replay or follow-up side effects
+    if (expectedLockVersion !== task.lock_version) {
+      throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
+    }
 
     // If already completed, idempotent replay check
     if (task.status === 'COMPLETED') {

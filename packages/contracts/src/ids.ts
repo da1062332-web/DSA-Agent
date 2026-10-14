@@ -44,13 +44,19 @@ export const ID_PREFIXES = [
   'upl',
   'shr',
   'doc',
-  'dsr',
   'ver',
   'con',
   'cag',
   'cba',
   'cdp',
   'car',
+  'lcs',
+  'lcsh',
+  'qry',
+  'dsr',
+  'snc',
+  'trn',
+  'exa',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

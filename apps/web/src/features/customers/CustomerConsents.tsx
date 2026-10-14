@@ -239,7 +239,12 @@ export function CustomerConsents(): React.ReactElement {
       {/* Record Consent Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Record Customer Consent (DPDP Act)</DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
+          {actionError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+              {actionError}
+            </Alert>
+          )}
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
               <InputLabel id="purpose-select-label">Purpose</InputLabel>
@@ -247,7 +252,13 @@ export function CustomerConsents(): React.ReactElement {
                 labelId="purpose-select-label"
                 value={purpose}
                 label="Purpose"
-                onChange={(e) => setPurpose(e.target.value as RecordConsentPayload['purpose'])}
+                onChange={(e) => {
+                  const val = e.target.value as RecordConsentPayload['purpose'];
+                  setPurpose(val);
+                  if ((val === 'SHARE_WITH_LENDER' || val === 'VERIFICATION_CHECK') && !purposeTarget) {
+                    setPurposeTarget('LENDER_HDFC_01');
+                  }
+                }}
               >
                 <MenuItem value="CONTACT">CONTACT</MenuItem>
                 <MenuItem value="LOAN_PROCESSING">LOAN_PROCESSING</MenuItem>
@@ -259,12 +270,13 @@ export function CustomerConsents(): React.ReactElement {
 
             {(purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') && (
               <TextField
-                label="Purpose Target (Lender / Vendor ID)"
-                value={purposeTarget}
+                label="Purpose Target (Lender / Vendor ID) *"
+                value={purposeTarget || 'LENDER_HDFC_01'}
                 onChange={(e) => setPurposeTarget(e.target.value)}
                 size="small"
                 fullWidth
                 required
+                helperText="Identifier of lender or agency with whom data is shared"
               />
             )}
 
@@ -306,15 +318,19 @@ export function CustomerConsents(): React.ReactElement {
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={() =>
+            onClick={() => {
+              const target =
+                purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
+                  ? (purposeTarget.trim() || 'LENDER_HDFC_01')
+                  : (purposeTarget.trim() || undefined);
               recordMutation.mutate({
                 purpose,
-                purposeTarget: purposeTarget || undefined,
-                noticeVersion,
+                purposeTarget: target,
+                noticeVersion: noticeVersion.trim() || 'NV-2026.1',
                 channel,
-                evidenceRef: evidenceRef || undefined,
-              })
-            }
+                evidenceRef: evidenceRef.trim() || undefined,
+              });
+            }}
             disabled={recordMutation.isPending}
           >
             Record Consent

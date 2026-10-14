@@ -61,9 +61,9 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Origination (DOM-E)',
     items: [
       { label: 'Applications', to: '/applications' },
-      { label: 'Lender cases', task: 'MOD-LCS' },
+      { label: 'Lender cases', to: '/lender-cases' },
       { label: 'Eligibility', task: 'MOD-ELG' },
-      { label: 'Sanction and disbursement', task: 'MOD-SND' },
+      { label: 'Sanction and disbursement', to: '/sanctions' },
     ],
   },
   {

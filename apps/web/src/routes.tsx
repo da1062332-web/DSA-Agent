@@ -10,6 +10,7 @@ import { PublicUploadPage } from './features/document-sharing/PublicUploadPage';
 import { AppLayout } from './shell/AppLayout';
 import { HomePage } from './shell/HomePage';
 import { Placeholder } from './shell/Placeholder';
+import { RouteErrorBoundary } from './shell/RouteErrorBoundary';
 
 const featureModules = import.meta.glob<{ routes: RouteObject[] }>('./features/*/routes.tsx', {
   eager: true,
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
   { path: '/upload/:token', element: <PublicUploadPage /> },
   {
     element: <AppLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/account/security', element: <SecurityPage /> },
