@@ -44,7 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Follow-ups and communication (DOM-C)',
     items: [
       { label: 'Tasks', to: '/tasks' },
-      { label: 'Activity', task: 'MOD-ACT' },
+      { label: 'Activity', to: '/activities' },
       { label: 'Messaging', to: '/messaging' },
       { label: 'Notifications', to: '/notifications' },
       { label: 'Grievances', to: '/complaints' },
@@ -61,17 +61,17 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Origination (DOM-E)',
     items: [
       { label: 'Applications', to: '/applications' },
-      { label: 'Lender cases', task: 'MOD-LCS' },
+      { label: 'Lender cases', to: '/lender-cases' },
       { label: 'Eligibility', task: 'MOD-ELG' },
-      { label: 'Sanction and disbursement', task: 'MOD-SND' },
+      { label: 'Sanction and disbursement', to: '/sanctions' },
     ],
   },
   {
     title: 'KYC, documents and verification (DOM-F)',
     items: [
       { label: 'Documents', task: 'MOD-DOC' },
-      { label: 'Document sharing', task: 'MOD-DSH' },
-      { label: 'Verification', task: 'MOD-VER' },
+      { label: 'Document sharing', to: '/document-sharing' },
+      { label: 'Verification', to: '/verifications' },
     ],
   },
   {
@@ -95,7 +95,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Connectors (DOM-J)',
     items: [
-      { label: 'Connectors', task: 'MOD-CON' },
+      { label: 'Connectors', to: '/connectors' },
       { label: 'Connector portal', task: 'MOD-CPT' },
     ],
   },

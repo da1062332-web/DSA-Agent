@@ -73,14 +73,7 @@ export function LeadDetail() {
 
   // Mutations
   const transitionMutation = useMutation({
-    mutationFn: (variables: {
-      transitionCode: string;
-      reasonCode?: string;
-      qualApplicantType?: string;
-      qualMonthlyIncome?: string;
-      qualRequestedAmount?: { amount: string; currency: string };
-      disqualificationReason?: string;
-    }) => {
+    mutationFn: (variables: Parameters<typeof transitionLead>[1]) => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return transitionLead(id, variables, etag);
     },
@@ -298,16 +291,50 @@ export function LeadDetail() {
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Customer Created / Linked:</Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  {conversionResult.customerId} ({conversionResult.customerNumber})
+                  {conversionResult.customerId}
                 </Typography>
+                <Button
+                  component={RouterLink}
+                  to={`/customers/${conversionResult.customerId}/consents`}
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  sx={{ mt: 1 }}
+                >
+                  Manage Customer DPDP Consents →
+                </Button>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Loan Application Created:</Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  {conversionResult.applicationId} ({conversionResult.applicationNumber})
+                  {conversionResult.applicationId}
                 </Typography>
               </Grid>
             </Grid>
+          </CardContent>
+        </Card>
+      )}
+
+      {lead.state === 'CONVERTED' && lead.customerId && !conversionResult && (
+        <Card sx={{ mb: 3, bgcolor: 'success.50', border: 1, borderColor: 'success.200' }}>
+          <CardContent>
+            <Typography variant="h6" color="success.main" fontWeight="bold" gutterBottom>
+              Lead Converted to Customer
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+              <Typography variant="body1">
+                Linked Customer: <strong>{lead.customerId}</strong>
+              </Typography>
+              <Button
+                component={RouterLink}
+                to={`/customers/${lead.customerId}/consents`}
+                variant="contained"
+                color="success"
+                size="small"
+              >
+                Manage Customer DPDP Consents →
+              </Button>
+            </Stack>
           </CardContent>
         </Card>
       )}
@@ -498,14 +525,30 @@ export function LeadDetail() {
           <Button
             variant="contained"
             color="success"
-            onClick={() =>
+            onClick={() => {
+              const formattedAmt = qualAmount && qualAmount.trim()
+                ? (/^\d+$/.test(qualAmount.trim())
+                    ? `${qualAmount.trim()}.00`
+                    : /^\d+\.\d$/.test(qualAmount.trim())
+                      ? `${qualAmount.trim()}0`
+                      : qualAmount.trim())
+                : '500000.00';
               transitionMutation.mutate({
                 transitionCode: 'T-LEAD-04',
-                qualApplicantType,
-                qualMonthlyIncome,
-                qualRequestedAmount: qualAmount ? { amount: qualAmount, currency: 'INR' } : undefined,
-              })
-            }
+                qualification: {
+                  applicantType: qualApplicantType || 'SALARIED',
+                  requestedAmount: {
+                    amount: formattedAmt,
+                    currency: 'INR',
+                  },
+                },
+                qualApplicantType: qualApplicantType || 'SALARIED',
+                qualRequestedAmount: {
+                  amount: formattedAmt,
+                  currency: 'INR',
+                },
+              });
+            }}
             disabled={transitionMutation.isPending}
             data-testid="qualify.submit"
           >

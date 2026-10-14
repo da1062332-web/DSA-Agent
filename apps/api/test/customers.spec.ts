@@ -6,8 +6,10 @@ import { InMemoryCustomerRepository } from '../src/modules/crm/customers/reposit
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
 const inMemoryTxRunner: TxRunner = {
-  async withTenantTx<T>(_ctx: RequestContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
-    return fn({} as Tx);
+  async withTenantTx<T>(ctx: RequestContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
+    const tx = {} as any;
+    tx.tenantId = ctx.principal.tenantId;
+    return fn(tx as Tx);
   },
 };
 
@@ -583,13 +585,19 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
 
       const { CustomerService } = await import('../src/modules/crm/customers/customer-service');
       const service = new CustomerService({ repository });
-      const party = await service.getParty({} as Tx, customerId);
+      const party = await service.getParty({ tenantId: tenantA } as unknown as Tx, customerId);
 
       expect(party).not.toBeNull();
       expect(party?.customerId).toBe(customerId);
       expect(party?.partyType).toBe('INDIVIDUAL');
       expect(party?.displayNameMasked).toBe('R***l S****a');
       expect(party?.homeBranchId).toBe(validCustomerPayload.homeBranchId);
+
+      // Calling PartyPort across tenants or without tenant context returns null (fail-closed)
+      const partyOtherTenant = await service.getParty({ tenantId: tenantB } as unknown as Tx, customerId);
+      expect(partyOtherTenant).toBeNull();
+      const partyNoTenant = await service.getParty({} as Tx, customerId);
+      expect(partyNoTenant).toBeNull();
     });
 
     it('implements ConsentPort.findActive correctly for customer consent', async () => {
@@ -612,18 +620,30 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
       const { CustomerService } = await import('../src/modules/crm/customers/customer-service');
       const service = new CustomerService({ repository });
 
-      const active = await service.findActive({} as Tx, {
+      const active = await service.findActive({ tenantId: tenantA } as unknown as Tx, {
         customerId,
         purpose: 'LOAN_PROCESSING',
       });
       expect(active).not.toBeNull();
       expect(active?.consentId).toMatch(/^cnst_/);
 
-      const notFound = await service.findActive({} as Tx, {
+      const notFound = await service.findActive({ tenantId: tenantA } as unknown as Tx, {
         customerId,
         purpose: 'MARKETING',
       });
       expect(notFound).toBeNull();
+
+      // Calling ConsentPort across tenants or without tenant context returns null (fail-closed)
+      const crossConsent = await service.findActive({ tenantId: tenantB } as unknown as Tx, {
+        customerId,
+        purpose: 'LOAN_PROCESSING',
+      });
+      expect(crossConsent).toBeNull();
+      const noTenantConsent = await service.findActive({} as Tx, {
+        customerId,
+        purpose: 'LOAN_PROCESSING',
+      });
+      expect(noTenantConsent).toBeNull();
     });
 
     it('enforces strict tenant isolation on customer repository and port lookups', async () => {

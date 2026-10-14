@@ -13,6 +13,7 @@ import { rateLimit } from './http/rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { apiModules } from './modules';
 import { createPublicMessagingRouter } from './modules/crm/messaging/router';
+import { createPublicDocumentSharingRouter } from './modules/origination/document-sharing/router';
 import type { ApiDeps } from './modules/types';
 import { buildOpenApiDocument } from './openapi';
 
@@ -74,11 +75,12 @@ export function createApp(opts: CreateAppOptions): Express {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
   app.use('/swagger', swaggerUi.serve, swaggerUi.setup(openApiDoc));
 
-  // Public routes (API-MSG-005): POST /public/v1/webhooks/messaging/:provider/:connectionPathId
+  // Public routes (API-MSG-005, API-DSH-003..005)
   const publicV1 = express.Router();
   publicV1.use(rateLimit());
-  publicV1.use(express.json({ limit: '1mb' }));
+  publicV1.use(express.json({ limit: '25mb' }));
   publicV1.use(createPublicMessagingRouter(opts.deps));
+  publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
   const v1 = express.Router();

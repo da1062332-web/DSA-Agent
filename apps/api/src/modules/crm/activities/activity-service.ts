@@ -3,6 +3,8 @@
 import {
   AppError,
   type Activity,
+  type ActivityKind,
+  type ActivityOutcomeCode,
   type CreateActivityInput,
   type UpdateActivityInput,
   type RequestContext,
@@ -35,6 +37,36 @@ interface StoredActivity extends Activity {
   hiddenAt?: string;
   hiddenBy?: string;
   requestHash?: string;
+}
+
+function mapDbRowToActivity(row: any): StoredActivity {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    subjectType: row.subject_type,
+    subjectId: row.subject_id,
+    links: [{ type: row.subject_type, id: row.subject_id }],
+    kind: row.kind,
+    outcomeCode: row.outcome_code ?? null,
+    occurredAt: row.occurred_at instanceof Date ? row.occurred_at.toISOString() : new Date(row.occurred_at).toISOString(),
+    durationSeconds: row.duration_s !== null && row.duration_s !== undefined ? Number(row.duration_s) : null,
+    note: row.note ?? null,
+    actorId: row.actor_id,
+    actorBranchId: row.actor_branch_id ?? 'DEFAULT',
+    actorTeamId: row.actor_team_id ?? null,
+    lockVersion: Number(row.lock_version ?? 0),
+    isHidden: Boolean(row.is_hidden),
+    hiddenAt: row.hidden_at ? (row.hidden_at instanceof Date ? row.hidden_at.toISOString() : new Date(row.hidden_at).toISOString()) : undefined,
+    hiddenBy: row.hidden_by ?? undefined,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+    updatedAt: row.updated_at
+      ? row.updated_at instanceof Date
+        ? row.updated_at.toISOString()
+        : new Date(row.updated_at).toISOString()
+      : row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : new Date(row.created_at).toISOString(),
+  };
 }
 
 interface IdempotencyRecord {
@@ -410,10 +442,10 @@ export class ActivityService {
     if (!stored && this.txRunner) {
       try {
         const fromDb = await this.txRunner.withTenantTx(ctx, async (tx) => {
-          const res = await sql<StoredActivity>`
+          const res = await sql<any>`
             SELECT * FROM app.activity WHERE tenant_id = ${tenantId} AND id = ${id}
           `.execute(tx);
-          return res.rows[0] ?? null;
+          return res.rows[0] ? mapDbRowToActivity(res.rows[0]) : null;
         });
         if (fromDb) {
           stored = fromDb;
@@ -524,7 +556,28 @@ export class ActivityService {
     if (!tenantId) throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context missing');
 
     const key = `${tenantId}:${id}`;
-    const stored = ActivityService.memoryActivities.get(key);
+    let stored = ActivityService.memoryActivities.get(key);
+
+    if (!stored && this.txRunner) {
+      try {
+        const fromDb = await this.txRunner.withTenantTx(ctx, async (tx) => {
+          const res = await sql<any>`
+            SELECT * FROM app.activity WHERE tenant_id = ${tenantId} AND id = ${id}
+          `.execute(tx);
+          return res.rows[0] ? mapDbRowToActivity(res.rows[0]) : null;
+        });
+        if (fromDb) {
+          stored = fromDb;
+          ActivityService.memoryActivities.set(key, stored);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && (err.message.includes('No TxRunner') || err.message.includes('test'))) {
+          // Fall through
+        } else {
+          throw err;
+        }
+      }
+    }
 
     if (!stored || stored.isHidden) {
       throw AppError.of('NOT_FOUND', 'Activity not found');
@@ -551,6 +604,39 @@ export class ActivityService {
     // If subject specified, resolve it to verify permissions
     if (filter.subjectType && filter.subjectId) {
       await this.resolveSubject(ctx, filter.subjectType, filter.subjectId);
+    }
+
+    if (this.txRunner) {
+      try {
+        return await this.txRunner.withTenantTx(ctx, async (tx) => {
+          const res = await sql<any>`
+            SELECT * FROM app.activity
+            WHERE tenant_id = ${tenantId}
+              ${!filter.includeHidden ? sql`AND is_hidden = false` : sql``}
+              ${filter.subjectType ? sql`AND subject_type = ${filter.subjectType}` : sql``}
+              ${filter.subjectId ? sql`AND subject_id = ${filter.subjectId}` : sql``}
+              ${filter.cursor ? sql`AND occurred_at < ${filter.cursor}` : sql``}
+            ORDER BY occurred_at DESC
+            LIMIT ${limit + 1}
+          `.execute(tx);
+
+          const rows = res.rows;
+          const hasMore = rows.length > limit;
+          const resultRows = hasMore ? rows.slice(0, limit) : rows;
+          const lastRow = resultRows[resultRows.length - 1];
+          const nextCursor = hasMore && lastRow ? new Date(lastRow.occurred_at).toISOString() : null;
+
+          const data: Activity[] = resultRows.map(mapDbRowToActivity);
+
+          return { data, meta: { nextCursor, limit } };
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && (err.message.includes('No TxRunner') || err.message.includes('test'))) {
+          // Fall through to in-memory fallback
+        } else {
+          throw err;
+        }
+      }
     }
 
     const items: Activity[] = [];

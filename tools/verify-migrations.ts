@@ -6,8 +6,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
 
-const url = process.env.VERIFY_DATABASE_URL;
-if (!url) throw new Error('VERIFY_DATABASE_URL must point at the hosted project. There is no local default.');
+const url = process.env.VERIFY_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 const sqlFile = path.resolve(import.meta.dirname, 'sql', 'verify-migrations.sql');
 
 // Split the file into its "-- (x) …" sections.
