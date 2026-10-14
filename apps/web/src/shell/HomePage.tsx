@@ -5,15 +5,72 @@ import { useMe } from '../api/useMe';
 export function HomePage() {
   const me = useMe();
   const cards = [
-    { title: 'Leads & CRM', desc: 'Capture, qualify and assign loan borrower leads.', to: '/leads', badge: 'Leads' },
-    { title: 'Tasks Management', desc: 'Track underwriting checklist items and follow-ups.', to: '/tasks', badge: 'Tasks' },
-    { title: 'Loan Applications', desc: 'Originate, review and submit NBFC loan files.', to: '/applications', badge: 'Origination' },
-    { title: 'Verification Cases', desc: 'Document review attestation, KYC checks, and field investigation.', to: '/verifications', badge: 'Module 19' },
-    { title: 'Decision Rules', desc: 'Simulate and manage business eligibility rules.', to: '/rules', badge: 'BRE Engine' },
-    { title: 'Omnichannel Messaging', desc: 'Templates, dispatch, send-eligibility guard, and delivery tracking.', to: '/messaging', badge: 'Messaging' },
-    { title: 'User Management', desc: 'Manage staff accounts, branch assignments, and roles.', to: '/users', badge: 'Users' },
-    { title: 'Access Control', desc: 'Configure tenant roles, permission policies, and RBAC matrix.', to: '/roles', badge: 'Access Control' },
-    { title: 'Tenant Configuration', desc: 'Manage organization details, operational SLAs, and branch network.', to: '/config', badge: 'Configuration' },
+    {
+      title: 'Leads & CRM',
+      desc: 'Capture, qualify and assign loan borrower leads.',
+      to: '/leads',
+      badge: 'Leads',
+    },
+    {
+      title: 'Tasks Management',
+      desc: 'Track underwriting checklist items and follow-ups.',
+      to: '/tasks',
+      badge: 'Tasks',
+    },
+    {
+      title: 'Loan Applications',
+      desc: 'Originate, review and submit NBFC loan files.',
+      to: '/applications',
+      badge: 'Origination',
+    },
+    {
+      title: 'Decision Rules',
+      desc: 'Simulate and manage business eligibility rules.',
+      to: '/rules',
+      badge: 'BRE Engine',
+    },
+    {
+      title: 'Omnichannel Messaging',
+      desc: 'Templates, dispatch, send-eligibility guard, and delivery tracking.',
+      to: '/messaging',
+      badge: 'Messaging',
+    },
+    {
+      title: 'User Management',
+      desc: 'Manage staff accounts, branch assignments, and roles.',
+      to: '/users',
+      badge: 'Users',
+    },
+    {
+      title: 'Access Control',
+      desc: 'Configure tenant roles, permission policies, and RBAC matrix.',
+      to: '/roles',
+      badge: 'Access Control',
+    },
+    {
+      title: 'Document Sharing',
+      desc: 'Customer upload links, OTP verification portal, and lender share packages.',
+      to: '/document-sharing',
+      badge: 'Sharing',
+    },
+    {
+      title: 'Verification Workbench',
+      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification (MOD-VER).',
+      to: '/verifications',
+      badge: 'Verification',
+    },
+    {
+      title: 'Connector Management',
+      desc: 'Onboarding, bank dual-control SOD, agreements, reattribution, and disputes (MOD-CON).',
+      to: '/connectors',
+      badge: 'Connectors',
+    },
+    {
+      title: 'Tenant Configuration',
+      desc: 'Manage organization details, operational SLAs, and branch network.',
+      to: '/config',
+      badge: 'Configuration',
+    },
   ];
 
   return (

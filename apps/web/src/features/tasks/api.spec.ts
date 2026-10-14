@@ -1,5 +1,6 @@
 // apps/web/src/features/tasks/api.spec.ts — owner: Dev 6 (MOD-08 Tasks Frontend API Client Tests)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setAuthToken } from '../../auth/token';
 import {
   ApiError,
   completeTask,
@@ -51,9 +52,7 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
   });
 
   it('listTasks formats query string and returns data and nextCursor', async () => {
-    const mockTasks = [
-      { id: 'task_01', title: 'Call Lead', status: 'OPEN', priority: 'HIGH' },
-    ];
+    const mockTasks = [{ id: 'task_01', title: 'Call Lead', status: 'OPEN', priority: 'HIGH' }];
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -67,7 +66,8 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     const result = await listTasks({ view: 'MINE', status: 'OPEN', limit: 10, cursor: 'cur_0' });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    const calledUrl = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0]![0];
+    const calledUrl = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]![0];
     expect(calledUrl).toContain('/v1/tasks?');
     expect(calledUrl).toContain('view=MINE');
     expect(calledUrl).toContain('status=OPEN');
@@ -89,9 +89,12 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
 
     const result = await getTask('task_02');
 
-    expect(global.fetch).toHaveBeenCalledWith('/v1/tasks/task_02', expect.objectContaining({
-      headers: expect.any(Headers),
-    }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/v1/tasks/task_02',
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    );
     expect(result.task).toEqual(mockTask);
     expect(result.etag).toBe('W/"task_02:0"');
   });
@@ -118,7 +121,8 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     const result = await createTask(payload);
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    const [url, options] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0]!;
+    const [url, options] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]!;
     expect(url).toBe('/v1/tasks');
     expect(options.method).toBe('POST');
     expect(options.body).toBe(JSON.stringify(payload));
@@ -136,10 +140,13 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
 
     const result = await updateTask('task_04', 'W/"task_04:0"', { priority: 'LOW' });
 
-    expect(global.fetch).toHaveBeenCalledWith('/v1/tasks/task_04', expect.objectContaining({
-      method: 'PATCH',
-      body: JSON.stringify({ priority: 'LOW' }),
-    }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/v1/tasks/task_04',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ priority: 'LOW' }),
+      }),
+    );
     expect(result).toEqual(mockUpdated);
   });
 
@@ -160,10 +167,13 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
       completionNote: 'Spoke with lead',
     });
 
-    expect(global.fetch).toHaveBeenCalledWith('/v1/tasks/task_05/completion', expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ outcomeCode: 'CONNECTED', completionNote: 'Spoke with lead' }),
-    }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/v1/tasks/task_05/completion',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ outcomeCode: 'CONNECTED', completionNote: 'Spoke with lead' }),
+      }),
+    );
     expect(result).toEqual(mockCompletion);
   });
 
@@ -189,8 +199,8 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     });
   });
 
-  it('attaches Authorization bearer token from localStorage if present', async () => {
-    mockLocalStorage.setItem('dsa_token', 'jwt_test_token_123');
+  it('attaches the Supabase session bearer token when one is set', async () => {
+    setAuthToken('jwt_test_token_123');
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -200,7 +210,8 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
 
     await listTasks({ view: 'MINE' });
 
-    const callHeaders = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0]![1].headers as Headers;
+    const callHeaders = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]![1].headers as Headers;
     expect(callHeaders.get('Authorization')).toBe('Bearer jwt_test_token_123');
   });
 });

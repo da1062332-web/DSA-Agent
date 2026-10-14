@@ -1,10 +1,6 @@
 // apps/web/src/features/tasks/api.ts — owner: Dev 6 (MOD-08 Tasks)
-import type {
-  CompleteTaskPayload,
-  CreateTaskPayload,
-  TaskResource,
-  UpdateTaskPayload,
-} from './types';
+import type { CompleteTaskPayload, CreateTaskPayload, TaskResource, UpdateTaskPayload } from './types';
+import { getStoredAuthToken } from '../../auth/token';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -39,7 +35,7 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = localStorage.getItem('dsa_token');
+  const token = getStoredAuthToken() || localStorage.getItem('dsa_token');
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

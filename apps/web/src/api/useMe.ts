@@ -29,24 +29,36 @@ export function useMe() {
   const { session } = useAuth();
   return useQuery({
     queryKey: ['me', session?.user.id],
-    queryFn: () => apiFetch<Me>('/v1/me'),
+    queryFn: async () => {
+      const res = await apiFetch<any>('/v1/me');
+      const unwrapped = res?.data ?? res;
+      return {
+        ...unwrapped,
+        grants: Array.isArray(unwrapped?.grants) ? unwrapped.grants : [],
+      } as Me;
+    },
     enabled: !!session,
     retry: false,
     staleTime: 60_000,
   });
 }
 
-export function useTenant() {
+/** Tenant facts. Pass enabled=false until the MFA gate has passed: the API refuses every call but /v1/me at aal1. */
+export function useTenant(enabled = true) {
   const { session } = useAuth();
   return useQuery({
     queryKey: ['tenant', session?.user.id],
-    queryFn: () => apiFetch<Tenant>('/v1/tenant'),
-    enabled: !!session,
+    queryFn: async () => {
+      const res = await apiFetch<any>('/v1/tenant');
+      return (res?.data ?? res) as Tenant;
+    },
+    enabled: !!session && enabled,
     staleTime: 300_000,
   });
 }
 
-export const hasPermission = (me: Me | undefined, code: string) => !!me?.grants?.some((g) => g.code === code);
+export const hasPermission = (me: Me | undefined, code: string) =>
+  !!me?.grants?.some?.((g) => g.code === code);
 
 /** Doc 03 §5.1: MFA is mandatory for admin, owner, branch manager, loan ops, verifier, compliance, finance,
  *  rule roles and auditors. In the MVP these are the users holding any of these permissions. */

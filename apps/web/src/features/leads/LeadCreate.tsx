@@ -20,6 +20,21 @@ import {
 } from '@mui/material';
 import { createLead, ApiError } from './api';
 
+function getInitialBranchId(): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.user?.primaryBranchId) {
+        return parsed.user.primaryBranchId;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return 'br_demo_01';
+}
+
 export function LeadCreate() {
   const navigate = useNavigate();
 
@@ -30,7 +45,7 @@ export function LeadCreate() {
   const [amount, setAmount] = useState('500000');
   const [currency] = useState('INR');
   const [pincode, setPincode] = useState('560001');
-  const [branchId, setBranchId] = useState('br_blr_01');
+  const [branchId, setBranchId] = useState(getInitialBranchId);
   const [source, setSource] = useState('WALK_IN');
   const [subSource, setSubSource] = useState('');
   const [campaign, setCampaign] = useState('');
@@ -68,12 +83,20 @@ export function LeadCreate() {
     setLoading(true);
 
     try {
+      const formattedAmount = amount.trim()
+        ? /^\d+$/.test(amount.trim())
+          ? `${amount.trim()}.00`
+          : /^\d+\.\d$/.test(amount.trim())
+            ? `${amount.trim()}0`
+            : amount.trim()
+        : null;
+
       const res = await createLead({
         fullName: fullName.trim(),
         mobile: mobile.trim(),
         email: email.trim() || null,
         productCategory,
-        indicativeAmount: amount.trim() ? { amount: amount.trim(), currency } : null,
+        indicativeAmount: formattedAmount ? { amount: formattedAmount, currency } : null,
         pincode: pincode.trim() || null,
         branchId: branchId.trim(),
         source,

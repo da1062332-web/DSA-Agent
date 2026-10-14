@@ -2,40 +2,16 @@
 // nothing is copied to localStorage or sessionStorage by hand. `aal` says whether this session has passed TOTP
 // (currentLevel aal2) and whether the user has a verified factor (nextLevel aal2).
 import type { AuthenticatorAssuranceLevels, Session } from '@supabase/supabase-js';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getSupabase } from './supabase';
+import { setAuthToken } from './token';
 
 export interface Aal {
   current: AuthenticatorAssuranceLevels | null;
   next: AuthenticatorAssuranceLevels | null;
 }
 
-const SESSION_STORAGE_KEY = 'dsa_auth_session';
-
-export function getStoredSession(): Session | null {
-  try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveStoredSession(session: Session | null): void {
-  try {
-    if (session) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-      if (session.access_token) {
-        localStorage.setItem('dsa_auth_token', session.access_token);
-      }
-    } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-      localStorage.removeItem('dsa_auth_token');
-    }
-  } catch {
-    // Ignore storage write errors
-  }
-}
 
 interface AuthState {
   /** undefined while the stored session is being read. */
@@ -44,7 +20,6 @@ interface AuthState {
   aal: Aal | undefined;
   /** Set after Supabase opens the app from a password-reset link. */
   recovering: boolean;
-  setSession(session: Session | null): void;
   refreshAal(): Promise<void>;
   signOut(scope?: 'local' | 'others' | 'global'): Promise<void>;
 }
@@ -52,45 +27,51 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<Session | null | undefined>(undefined);
+  const queryClient = useQueryClient();
+  const lastUserId = useRef<string | undefined>(undefined);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [aal, setAal] = useState<Aal | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
 
-  const setSession = useCallback((newSession: Session | null) => {
-    saveStoredSession(newSession);
-    setSessionState(newSession);
+  const refreshAal = useCallback(async () => {
+    const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+    // On error the guard treats the session as aal1 with no factor; the API still enforces step-up itself.
+    setAal(
+      error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },
+    );
   }, []);
 
-  const refreshAal = useCallback(async () => {
-    try {
-      const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
-      setAal(
-        error || !data ? { current: 'aal1', next: null } : { current: data.currentLevel, next: data.nextLevel },
-      );
-    } catch {
-      setAal({ current: 'aal1', next: null });
+  // Remove session copies left by older builds. Nothing reads them now, and a stale copy can show another user's name.
+  useEffect(() => {
+    for (const k of ['dsa_auth_user', 'dsa_auth_token', 'dsa_token', 'dsa_auth_session']) {
+      try {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      } catch {
+        // Storage can be blocked; nothing to clean.
+      }
     }
   }, []);
 
   useEffect(() => {
-    const stored = getStoredSession();
-    if (stored) {
-      setSessionState(stored);
-      return;
-    }
-    try {
-      const supabase = getSupabase();
-      void supabase.auth.getSession().then(({ data }) => setSessionState(data.session));
-      const { data } = supabase.auth.onAuthStateChange((event, next) => {
-        if (event === 'PASSWORD_RECOVERY') setRecovering(true);
-        if (next) saveStoredSession(next);
-        setSessionState(next);
-      });
-      return () => data.subscription.unsubscribe();
-    } catch {
-      setSessionState(null);
-    }
-  }, []);
+    const supabase = getSupabase();
+    // The token is set here, not in an effect: child components mount in the same render as the new session, and
+    // their effects run before any parent effect, so they would read the previous user's token.
+    const applySession = (next: Session | null) => {
+      const previousUser = lastUserId.current;
+      lastUserId.current = next?.user.id;
+      setAuthToken(next?.access_token);
+      // A different user (or sign-out) must not see cached data from the previous session.
+      if (previousUser !== undefined && previousUser !== next?.user.id) queryClient.clear();
+      setSession(next);
+    };
+    void supabase.auth.getSession().then(({ data }) => applySession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      applySession(next);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [queryClient]);
 
   useEffect(() => {
     if (session) void refreshAal();
@@ -98,18 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session, refreshAal]);
 
   const signOut = useCallback(async (scope: 'local' | 'others' | 'global' = 'local') => {
-    saveStoredSession(null);
-    setSessionState(null);
-    try {
-      await getSupabase().auth.signOut({ scope });
-    } catch {
-      // Ignore signout errors
-    }
+    await getSupabase().auth.signOut({ scope });
     if (scope !== 'others') setRecovering(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, aal, recovering, setSession, refreshAal, signOut }}>
+    <AuthContext.Provider value={{ session, aal, recovering, refreshAal, signOut }}>
       {children}
     </AuthContext.Provider>
   );
