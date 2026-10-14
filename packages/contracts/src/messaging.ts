@@ -153,8 +153,8 @@ export type MessageRecord = z.infer<typeof MessageRecordSchema>;
  * Filter for Listing Messages (GET /v1/messages?subjectType=&subjectId=)
  */
 export const ListMessagesQuerySchema = z.object({
-  subjectType: z.enum(['LEAD', 'CUSTOMER', 'LOAN_APPLICATION']),
-  subjectId: z.string().min(1),
+  subjectType: z.enum(['LEAD', 'CUSTOMER', 'LOAN_APPLICATION']).optional(),
+  subjectId: z.string().min(1).optional(),
   channel: MessageChannelSchema.optional(),
   status: MessageStatusSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),

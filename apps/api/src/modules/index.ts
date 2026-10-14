@@ -10,6 +10,9 @@ import * as notifications from './crm/notifications/router';
 import * as tasks from './crm/tasks/router';
 import * as applications from './origination/applications/router';
 import * as catalogue from './origination/catalogue/router';
+import * as documentSharing from './origination/document-sharing/router';
+import * as verifications from './origination/verifications/router';
+import * as connectors from './origination/connectors/router';
 import * as lenderCases from './origination/lender-cases/router';
 import * as platform from './platform/router';
 import * as rulesApi from './rules/api/router';
@@ -29,5 +32,8 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
   { name: 'origination/lender-cases', owner: 'Dev 4', createRouter: lenderCases.createRouter },
+  { name: 'origination/document-sharing', owner: 'Dev 1', createRouter: documentSharing.createRouter },
+  { name: 'origination/verifications', owner: 'Dev 2', createRouter: verifications.createRouter },
+  { name: 'origination/connectors', owner: 'Dev 1', createRouter: connectors.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.
