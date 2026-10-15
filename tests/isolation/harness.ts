@@ -20,7 +20,8 @@ import { createProductVersionPort } from '../../apps/api/src/modules/origination
 import { fakeAuth, testPrincipal } from '../../apps/api/test/support/fake-auth';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
-const MIGRATIONS_DIR = path.join(ROOT, 'supabase/migrations');
+// DSA_MIGRATIONS_DIR points the harness at another folder of migrations, to test a corrected copy without editing the real files.
+const MIGRATIONS_DIR = process.env.DSA_MIGRATIONS_DIR ?? path.join(ROOT, 'supabase/migrations');
 
 /** Natural keys shared by both tenants. */
 export const KEYS = { branchCode: 'MUM01', teamName: 'Sales', queueCode: 'MUM01-INTAKE' } as const;

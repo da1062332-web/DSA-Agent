@@ -1,4 +1,4 @@
-import type { RouteObject } from 'react-router-dom';
+import { createMemoryRouter, type RouteObject } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { routes } from './routes';
 
@@ -33,5 +33,10 @@ describe('route table', () => {
   it('registers no path twice', () => {
     const paths = collectPaths(routes);
     expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  it('builds a router from the whole table (an undefined route entry would throw here)', () => {
+    expect(() => createMemoryRouter(routes)).not.toThrow();
+    expect(routes.flatMap((r) => r.children ?? []).every((r) => r !== undefined && r !== null)).toBe(true);
   });
 });

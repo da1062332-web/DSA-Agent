@@ -27,6 +27,7 @@ export interface Application {
   customerId: string;
   branchId: string;
   productCategory: string;
+  productVersionId: string | null;
   requestedAmount: string;
   currency: string;
   tenureMonths: number | null;

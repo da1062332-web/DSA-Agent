@@ -23,6 +23,8 @@ export const PERMISSION_CODES = [
   'application.update',
   'application.cancel',
   'application.review',
+  'eligibility.override',
+  'eligibility.override',
   'document.review',
   'lender_case.submit',
   'lender_case.update_status',
