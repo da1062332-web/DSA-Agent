@@ -14,6 +14,7 @@ import {
   CreateDataCorrectionRequestSchema,
   CreateSupportAccessRequestSchema,
   ListPlatformTenantsQuerySchema,
+  RevokeSupportAccessRequestSchema,
   MasterDataImportRequestSchema,
   PauseQueueRequestSchema,
   ResumeQueueRequestSchema,
@@ -47,27 +48,52 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }
   };
 
-  /** The permission, held by a user of the platform tenant. */
-  const requirePlatform = (ctx: RequestContext, code: PermissionCode): void => {
-    requirePermission(ctx, code);
-    if (!isPlatformRealm(ctx.principal)) {
-      throw AppError.of('FORBIDDEN', 'This action is for platform operators only.');
-    }
-  };
-
-  /** The permission, held by a user of a customer tenant (never a platform operator or a service identity). */
-  const requireTenant = (ctx: RequestContext, code: PermissionCode): void => {
-    requirePermission(ctx, code);
-    if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
-      throw AppError.of('FORBIDDEN', 'This action belongs to a customer tenant.');
-    }
-  };
-
   /** An audit event for an action that has no database write of its own (the in-memory parts of the console). */
   const audit = (ctx: RequestContext, event: AuditEventInput): Promise<void> =>
     deps.txRunner.withTenantTx(ctx, async (tx) => {
       await deps.audit.record(tx, ctx, event);
     });
+
+  /** A refusal on a sensitive route is itself recorded. The 403 stands even if the audit write fails. */
+  const refuse = async (ctx: RequestContext, required: string, realm: 'platform' | 'tenant', message: string): Promise<never> => {
+    try {
+      await audit(ctx, {
+        action: 'platform.access_denied',
+        entityType: 'ROUTE',
+        entityId: null,
+        after: { required, realm, principalKind: ctx.principal.kind },
+        permissionUsed: required,
+      });
+    } catch {
+      // never turn a refusal into an error
+    }
+    throw AppError.of('FORBIDDEN', message);
+  };
+
+  /** The permission, held by a user of the platform tenant. */
+  const requirePlatform = async (ctx: RequestContext, code: PermissionCode): Promise<void> => {
+    if (!ctx.principal.grants.some((g) => g.code === code)) {
+      await refuse(ctx, code, 'platform', `Permission denied: ${code} required.`);
+    }
+    if (!isPlatformRealm(ctx.principal)) {
+      await refuse(ctx, code, 'platform', 'This action is for platform operators only.');
+    }
+  };
+
+  /** The permission, held by a user of a customer tenant (never a platform operator or a service identity). */
+  const requireTenant = async (ctx: RequestContext, code: PermissionCode): Promise<void> => {
+    requirePermission(ctx, code);
+    if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
+      await refuse(ctx, code, 'tenant', 'This action belongs to a customer tenant.');
+    }
+  };
+
+  /** Only the data-correction executor, a service identity, marks a correction executed (Module 40, SUB-ADM.07). */
+  const requireExecutor = (ctx: RequestContext): void => {
+    if (ctx.principal.kind !== 'SERVICE' || ctx.principal.id !== 'SYSTEM:data-correction-executor') {
+      throw AppError.of('FORBIDDEN', 'Only the data correction executor can mark a correction as executed.');
+    }
+  };
 
   const getParam = (req: Request, name: string): string => String(req.params[name] ?? '');
 
@@ -88,7 +114,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/tenants', '/platform/v1/tenants'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.console');
+      await requirePlatform(ctx, 'platform.console');
       const query = ListPlatformTenantsQuerySchema.parse(req.query);
       res.json(await service.listTenants(ctx, query));
     }),
@@ -100,7 +126,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/flags', '/platform/v1/flags'],
     handle(async (ctx, _req, res) => {
-      requirePlatform(ctx, 'platform.flags');
+      await requirePlatform(ctx, 'platform.flags');
       res.json(await service.listFeatureFlags());
     }),
   );
@@ -108,7 +134,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/flags/:key', '/platform/v1/flags/:key'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.flags');
+      await requirePlatform(ctx, 'platform.flags');
       const scope = (req.query.scope as string) || 'GLOBAL';
       const flag = await service.getFeatureFlag(getParam(req, 'key'), scope);
       res.set('ETag', `"${flag.lockVersion}"`);
@@ -119,7 +145,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.put(
     ['/v1/flags/:key', '/platform/v1/flags/:key'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.flags');
+      await requirePlatform(ctx, 'platform.flags');
       const input = UpdateFeatureFlagRequestSchema.parse(req.body);
       const updated = await service.putFeatureFlag(getParam(req, 'key'), input, req.get('if-match'), ctx.principal.id);
       await audit(ctx, {
@@ -140,7 +166,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/master-data', '/platform/v1/master-data'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.master_data');
+      await requirePlatform(ctx, 'platform.master_data');
       res.json(await service.getMasterData(req.query.listCode as string | undefined));
     }),
   );
@@ -148,7 +174,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/master-data/imports', '/platform/v1/master-data/imports'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.master_data');
+      await requirePlatform(ctx, 'platform.master_data');
       const body = MasterDataImportRequestSchema.parse(req.body);
       const result = await service.importMasterData(body, ctx.principal.id);
       if (!body.dryRun) {
@@ -170,7 +196,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/jobs', '/platform/v1/jobs'],
     handle(async (ctx, _req, res) => {
-      requirePlatform(ctx, 'platform.jobs');
+      await requirePlatform(ctx, 'platform.jobs');
       res.json(await service.getJobsAndQueues());
     }),
   );
@@ -178,7 +204,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/queues/:queue/pause', '/platform/v1/queues/:queue/pause'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.jobs');
+      await requirePlatform(ctx, 'platform.jobs');
       const input = PauseQueueRequestSchema.parse(req.body);
       const result = await service.pauseQueue(getParam(req, 'queue'), input, ctx.principal.id);
       await audit(ctx, {
@@ -195,7 +221,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/queues/:queue/resume', '/platform/v1/queues/:queue/resume'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.jobs');
+      await requirePlatform(ctx, 'platform.jobs');
       const input = ResumeQueueRequestSchema.parse(req.body);
       const result = await service.resumeQueue(getParam(req, 'queue'), input, ctx.principal.id);
       await audit(ctx, {
@@ -212,7 +238,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/dead-letters/:id/replay', '/platform/v1/dead-letters/:id/replay'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.jobs');
+      await requirePlatform(ctx, 'platform.jobs');
       const result = await service.replayDeadLetter(getParam(req, 'id'));
       await audit(ctx, {
         action: 'platform.dead_letter_replayed',
@@ -227,7 +253,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/dead-letters/:id/discard', '/platform/v1/dead-letters/:id/discard'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.jobs');
+      await requirePlatform(ctx, 'platform.jobs');
       const result = await service.discardDeadLetter(getParam(req, 'id'));
       await audit(ctx, {
         action: 'platform.dead_letter_discarded',
@@ -245,7 +271,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/health', '/platform/v1/health'],
     handle(async (ctx, _req, res) => {
-      requirePlatform(ctx, 'platform.console');
+      await requirePlatform(ctx, 'platform.console');
       res.json(await service.getSystemHealth());
     }),
   );
@@ -261,11 +287,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     handle(async (ctx, req, res) => {
       const tenantId = req.query.tenantId as string | undefined;
       if (isPlatformRealm(ctx.principal)) {
-        requirePlatform(ctx, 'platform.support_access');
+        await requirePlatform(ctx, 'platform.support_access');
         res.json(await service.listSupportAccessRequests(ctx, tenantId));
         return;
       }
-      requireTenant(ctx, 'config.manage');
+      await requireTenant(ctx, 'config.manage');
       if (tenantId !== undefined && tenantId !== ctx.principal.tenantId) {
         throw AppError.of('FORBIDDEN', 'You can only list your own tenant\'s requests.');
       }
@@ -276,7 +302,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/support-access-requests', '/platform/v1/support-access-requests'],
     handle(async (ctx, req, res) => {
-      requirePlatform(ctx, 'platform.support_access');
+      await requirePlatform(ctx, 'platform.support_access');
       const input = CreateSupportAccessRequestSchema.parse(req.body);
       res.status(201).json(await service.createSupportAccessRequest(ctx, input));
     }),
@@ -285,9 +311,18 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/support-access-requests/:id/approval', '/support-access-requests/:id/approval'],
     handle(async (ctx, req, res) => {
-      requireTenant(ctx, 'config.manage');
+      await requireTenant(ctx, 'config.manage');
       const input = ApproveSupportAccessRequestSchema.parse(req.body);
       res.json(await service.approveSupportAccessRequest(ctx, getParam(req, 'id'), input));
+    }),
+  );
+
+  router.post(
+    ['/v1/support-access-requests/:id/revocation', '/support-access-requests/:id/revocation'],
+    handle(async (ctx, req, res) => {
+      await requireTenant(ctx, 'config.manage');
+      RevokeSupportAccessRequestSchema.parse(req.body ?? {});
+      res.json(await service.revokeSupportAccessRequest(ctx, getParam(req, 'id')));
     }),
   );
 
@@ -297,7 +332,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/data-corrections', '/data-corrections'],
     handle(async (ctx, _req, res) => {
-      requireTenant(ctx, 'data_correction.request');
+      await requireTenant(ctx, 'data_correction.request');
       res.json(await service.listDataCorrections(ctx));
     }),
   );
@@ -305,49 +340,27 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.post(
     ['/v1/data-corrections', '/data-corrections'],
     handle(async (ctx, req, res) => {
-      requireTenant(ctx, 'data_correction.request');
+      await requireTenant(ctx, 'data_correction.request');
       const input = CreateDataCorrectionRequestSchema.parse(req.body);
-      const result = await service.createDataCorrectionRequest(ctx, input);
-      await audit(ctx, {
-        action: 'data_correction.requested',
-        entityType: 'DATA_CORRECTION',
-        entityId: result.id,
-        after: { scriptRef: result.scriptRef },
-        reason: result.justification,
-        permissionUsed: 'data_correction.request',
-      });
-      res.status(201).json(result);
+      res.status(201).json(await service.createDataCorrectionRequest(ctx, input));
     }),
   );
 
   router.post(
     ['/v1/data-corrections/:id/approval', '/data-corrections/:id/approval'],
     handle(async (ctx, req, res) => {
-      requireTenant(ctx, 'data_correction.approve');
+      await requireTenant(ctx, 'data_correction.approve');
       const input = ApproveDataCorrectionRequestSchema.parse(req.body);
-      const result = await service.approveDataCorrectionRequest(ctx, getParam(req, 'id'), input);
-      await audit(ctx, {
-        action: input.decision === 'APPROVED' ? 'data_correction.approved' : 'data_correction.rejected',
-        entityType: 'DATA_CORRECTION',
-        entityId: result.id,
-        permissionUsed: 'data_correction.approve',
-      });
-      res.json(result);
+      res.json(await service.approveDataCorrectionRequest(ctx, getParam(req, 'id'), input));
     }),
   );
 
+  // Executed by the correction executor (a service identity), never by a person. The executor carries the tenant in its token.
   router.post(
     ['/v1/data-corrections/:id/execute', '/data-corrections/:id/execute'],
     handle(async (ctx, req, res) => {
-      requireTenant(ctx, 'data_correction.approve');
-      const result = await service.executeDataCorrection(ctx, getParam(req, 'id'));
-      await audit(ctx, {
-        action: 'data_correction.executed',
-        entityType: 'DATA_CORRECTION',
-        entityId: result.id,
-        permissionUsed: 'data_correction.approve',
-      });
-      res.json(result);
+      requireExecutor(ctx);
+      res.json(await service.executeDataCorrection(ctx, getParam(req, 'id')));
     }),
   );
 
@@ -357,7 +370,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   router.get(
     ['/v1/releases', '/platform/v1/releases'],
     handle(async (ctx, _req, res) => {
-      requirePlatform(ctx, 'platform.release');
+      await requirePlatform(ctx, 'platform.release');
       res.json(await service.getReleases());
     }),
   );

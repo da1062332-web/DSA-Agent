@@ -16,6 +16,7 @@ import {
   PlatformTenantSummarySchema,
   ReleaseRegisterItemSchema,
   ResumeQueueRequestSchema,
+  RevokeSupportAccessRequestSchema,
   SupportAccessGrantSchema,
   SystemHealthReportSchema,
   UpdateFeatureFlagRequestSchema,
@@ -37,6 +38,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('SupportAccessGrant', SupportAccessGrantSchema);
   registry.register('CreateSupportAccessRequest', CreateSupportAccessRequestSchema);
   registry.register('ApproveSupportAccessRequest', ApproveSupportAccessRequestSchema);
+  registry.register('RevokeSupportAccessRequest', RevokeSupportAccessRequestSchema);
   registry.register('DataCorrectionRequest', DataCorrectionRequestSchema);
   registry.register('CreateDataCorrectionRequest', CreateDataCorrectionRequestSchema);
   registry.register('ApproveDataCorrectionRequest', ApproveDataCorrectionRequestSchema);

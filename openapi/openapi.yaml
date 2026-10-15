@@ -115,7 +115,9 @@ components:
           type: integer
           minimum: 0
         applicationsCount:
-          type: integer
+          type:
+            - integer
+            - "null"
           minimum: 0
         entitlements:
           type: array
@@ -561,6 +563,12 @@ components:
           type: string
       required:
         - decision
+    RevokeSupportAccessRequest:
+      type: object
+      properties:
+        comments:
+          type: string
+          maxLength: 500
     DataCorrectionRequest:
       type: object
       properties:
@@ -573,9 +581,21 @@ components:
         scriptRef:
           type: string
         dryRunDiffKey:
-          type: string
+          type:
+            - string
+            - "null"
         dryRunDiff:
-          type: string
+          type:
+            - string
+            - "null"
+        targetEntity:
+          type:
+            - string
+            - "null"
+        changeDescription:
+          type:
+            - string
+            - "null"
         requestedBy:
           type: string
         approvedBy:
@@ -628,7 +648,6 @@ components:
           type: string
           minLength: 5
       required:
-        - tenantId
         - justification
         - scriptRef
         - targetEntity
@@ -9341,7 +9360,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T09:08:20.828Z
+                  default: 2026-10-15T10:59:47.785Z
               required:
                 - paymentRef
       responses:

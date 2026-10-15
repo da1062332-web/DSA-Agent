@@ -1,26 +1,30 @@
 -- 0050_platform_realm.sql  (owner: Dev 1, MOD-TEN Module 1 and MOD-ADM Module 40)
--- NOT APPLIED to the hosted project. It needs review and approval of these exact changes first.
+-- Apply once, inside one transaction, as a role that bypasses row-level security (the hosted `postgres` role does).
+-- Run the preflight and backup in tools/sql/0050 first; the rollback is tools/sql/0050/rollback.sql.
 --
 -- Puts platform operators in their own realm. Until now migration 0046 granted every platform.* permission to
 -- ROLE-ORG-OWNER and ROLE-TENANT-ADMIN of each customer tenant, and left two global tables (feature_flag, master_data_item)
 -- without row-level security although the API role can write them. This migration:
---   1. adds a platform tenant (tenant_type PLATFORM) and ROLE-PLATFORM-SUPERADMIN and ROLE-PLATFORM-SUPPORT inside it;
---   2. moves the six operator permissions to those roles and removes them from every customer-tenant role;
---   3. keeps data_correction.* in the tenant realm (the spec has tenant users request and a tenant admin approve), but
---      removes data_correction.approve from ROLE-ORG-OWNER so that only ROLE-TENANT-ADMIN approves (Module 40 roles line);
+--   1. adds a platform tenant (tenant_type PLATFORM), its organisation and branch (an app_user needs a branch), and
+--      ROLE-PLATFORM-SUPERADMIN and ROLE-PLATFORM-SUPPORT inside it;
+--   2. moves the six operator permissions to those roles and removes them from every customer-tenant role (30 rows on hosted);
+--   3. keeps data_correction.* in the tenant realm. Module 40 has tenant users request and the tenant admin approve, and
+--      Module 5 (SUB-ACL.03) lets small tenants designate ROLE-ORG-OWNER as the checker, so ROLE-ORG-OWNER KEEPS
+--      data_correction.approve. SOD-08 (requester is not approver) is enforced by a CHECK constraint below;
 --   4. adds app.is_platform_realm() and uses it so the database itself enforces the realm:
 --        - platform operators may read tenant metadata (the tenant table only) and nothing else across tenants;
 --        - only a platform session may write feature flags and master data;
 --        - a platform session may file and read support-access requests for any tenant, but only the target tenant's own
 --          administrators can approve, deny or revoke them;
 --        - data_correction_request stays tenant-isolated: platform operators cannot read the business values in it.
--- Platform users are not created here: create the first superadmin in Supabase Auth and app_user, then assign the role
--- (see docs/PENDING_APPROVALS.md, section 1).
+-- Platform users are not created here (they need a Supabase Auth account): use tools/provision-platform-admin.ts
+-- (see docs/MODULE_1_PLATFORM_REALM_REVIEW.md, section 9).
 SET search_path = app, extensions, public;
 
 -- 1. The realm test. The id must match PLATFORM_TENANT_ID in packages/contracts/src/platform-realm.ts.
+--    coalesce: with no tenant set app_tenant() is NULL, and NULL = 'x' is NULL, which "IF NOT ..." would treat as not-false. It must be false.
 CREATE OR REPLACE FUNCTION is_platform_realm() RETURNS boolean LANGUAGE sql STABLE AS
-$$ SELECT app_tenant() = 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG' $$;
+$$ SELECT coalesce(app_tenant() = 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG', false) $$;
 
 -- 2. A tenant type for the platform tenant.
 ALTER TABLE tenant DROP CONSTRAINT IF EXISTS tenant_tenant_type_check;
@@ -30,6 +34,16 @@ ALTER TABLE tenant ADD CONSTRAINT tenant_tenant_type_check
 INSERT INTO tenant (id, slug, legal_name, tenant_type, data_region, timezone, status, created_by)
 VALUES ('ten_01M4ZG67WTS51Q0XN7F1Y9CCYG', 'platform-operations', 'Platform Operations', 'PLATFORM', 'IN',
         'Asia/Kolkata', 'ACTIVE', 'SYSTEM:migration')
+ON CONFLICT (id) DO NOTHING;
+
+-- The platform tenant needs an organisation and a branch: app_user.primary_branch_id is required and references branch.
+INSERT INTO organisation (id, tenant_id, legal_name, constitution, status, created_by, updated_by)
+VALUES ('org_01M4ZG67WZ2ZPNJ361KHB1DGK6', 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG', 'Platform Operations', 'OTHER', 'ACTIVE',
+        'SYSTEM:migration', 'SYSTEM:migration')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO branch (id, tenant_id, organisation_id, code, name, status, created_by, updated_by)
+VALUES ('br_01M4ZJ8H51XBQ0A3RWZSBVRZAP', 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG', 'org_01M4ZG67WZ2ZPNJ361KHB1DGK6', 'PLATFORM',
+        'Platform operations', 'ACTIVE', 'SYSTEM:migration', 'SYSTEM:migration')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. The two platform roles, inside the platform tenant only.
@@ -57,11 +71,7 @@ DELETE FROM role_permission
  WHERE permission_code IN ('platform.console', 'platform.flags', 'platform.master_data', 'platform.jobs',
                            'platform.support_access', 'platform.release')
    AND tenant_id <> 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG';
-
--- Only the tenant administrator approves a data correction; the owner keeps the right to request one.
-DELETE FROM role_permission rp
- USING role r
- WHERE rp.role_id = r.id AND r.code = 'ROLE-ORG-OWNER' AND rp.permission_code = 'data_correction.approve';
+-- data_correction.approve stays on ROLE-ORG-OWNER and ROLE-TENANT-ADMIN (see the header): nothing else is deleted.
 
 -- 5. The platform console reads tenant metadata across tenants. This is the one cross-tenant read on a business table's
 --    parent; the tenant row holds no business data. Writes to tenant stay limited to a tenant's own row (tenant_self).
@@ -119,7 +129,44 @@ BEGIN
 END
 $$;
 REVOKE ALL ON FUNCTION platform_tenant_user_counts() FROM PUBLIC;
+-- Supabase's default privileges can also hand new functions to its own API roles; the app schema is not exposed to them, but
+-- least privilege says they get nothing. (These roles do not exist on a plain PostgreSQL, hence the check.)
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('REVOKE ALL ON FUNCTION platform_tenant_user_counts() FROM %I', r);
+    END IF;
+  END LOOP;
+END
+$$;
 GRANT EXECUTE ON FUNCTION platform_tenant_user_counts() TO dsa_app;
 
--- data_correction_request keeps its tenant_isolation policy: it holds old and new business values, so the platform realm
--- gets no access to it.
+-- 9. data_correction_request keeps its tenant_isolation policy: it holds business values and references, so the platform realm
+--    gets no access to it. The 0046 shape (entity, field, old and new value) does not match the API (justification, script
+--    reference, requester, approver), so the API columns are added and the legacy ones become optional. The only existing row is a
+--    leftover live-test record. SOD-08 (ENT-112): the approver differs from the requester, as a constraint.
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS justification       text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS script_ref          text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS target_entity       text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS change_description  text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS dry_run_diff_key    text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS dry_run_diff        text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS requested_by        text;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS executed_at         timestamptz;
+ALTER TABLE data_correction_request ADD COLUMN IF NOT EXISTS executor_identity   text NOT NULL DEFAULT 'SERVICE:data-correction-executor';
+ALTER TABLE data_correction_request ALTER COLUMN entity_type  DROP NOT NULL;
+ALTER TABLE data_correction_request ALTER COLUMN entity_id    DROP NOT NULL;
+ALTER TABLE data_correction_request ALTER COLUMN field_name   DROP NOT NULL;
+ALTER TABLE data_correction_request ALTER COLUMN new_value    DROP NOT NULL;
+ALTER TABLE data_correction_request ALTER COLUMN reason       DROP NOT NULL;
+ALTER TABLE data_correction_request ALTER COLUMN submitted_by DROP NOT NULL;
+ALTER TABLE data_correction_request DROP CONSTRAINT IF EXISTS data_correction_request_status_check;
+ALTER TABLE data_correction_request ADD CONSTRAINT data_correction_request_status_check
+  CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'FAILED'));
+ALTER TABLE data_correction_request ADD CONSTRAINT data_correction_request_sod08_check
+  CHECK (approved_by IS NULL OR requested_by IS NULL OR approved_by <> requested_by);
+-- A row is either the legacy shape (submitted_by) or the API shape (requester, justification and script reference).
+ALTER TABLE data_correction_request ADD CONSTRAINT data_correction_request_shape_check
+  CHECK (submitted_by IS NOT NULL OR (requested_by IS NOT NULL AND justification IS NOT NULL AND script_ref IS NOT NULL));

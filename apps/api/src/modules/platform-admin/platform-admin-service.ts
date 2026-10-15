@@ -34,12 +34,11 @@ export class PlatformAdminService {
   private masterData: Map<string, MasterDataItem[]> = new Map();
   private queues: Map<string, JobQueueInfo> = new Map();
   private deadLetters: Map<string, DeadLetterItem> = new Map();
-  private dataCorrections: Map<string, DataCorrectionRequest> = new Map();
   private startTimestamp: number = Date.now();
 
   private readonly store: PlatformStore;
 
-  /** Tenant metadata and support-access requests are stored in the database (see platform-store.ts). The rest is in memory. */
+  /** Tenant metadata, support access and data corrections are stored in the database (platform-store.ts). Flags, master data, queues and releases are still in memory. */
   constructor(private readonly deps: ApiDeps, store?: PlatformStore) {
     this.store = store ?? new PgPlatformStore(deps);
     this.seedDefaults();
@@ -494,63 +493,19 @@ export class PlatformAdminService {
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
   // ==========================================
 
-  /** A correction belongs to one tenant, taken from the signed-in user. Another tenant's record reads as missing. */
-  private ownCorrection(ctx: RequestContext, id: string): DataCorrectionRequest {
-    const record = this.dataCorrections.get(id);
-    if (!record || record.tenantId !== ctx.principal.tenantId) {
-      throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
-    }
-    return record;
-  }
-
   async listDataCorrections(ctx: RequestContext): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
-    const list = Array.from(this.dataCorrections.values()).filter((c) => c.tenantId === ctx.principal.tenantId);
+    const list = await this.store.listDataCorrections(ctx);
     return { data: list, meta: { total: list.length } };
   }
 
+  /** A correction belongs to one tenant, taken from the signed-in user. A tenantId in the body is accepted only if it matches. */
   async createDataCorrectionRequest(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
     if (req.tenantId !== undefined && req.tenantId !== ctx.principal.tenantId) {
       throw AppError.of('VALIDATION_ERROR', 'A data correction can only be requested for your own tenant.', [
         { field: 'tenantId', issue: 'NOT_YOUR_TENANT' },
       ]);
     }
-    const tenantId = ctx.principal.tenantId;
-    const id = `dcr_${nextUlid()}`;
-    const dryRunDiffKey = `diff_${nextUlid().slice(-8)}`;
-
-    const simulatedDiff = JSON.stringify(
-      {
-        action: 'UPDATE',
-        targetEntity: req.targetEntity,
-        scriptRef: req.scriptRef,
-        tenantId,
-        changeDescription: req.changeDescription,
-        diffPreview: {
-          before: { status: 'PENDING_REMEDY', errorFlag: true },
-          after: { status: 'REMEDIED', errorFlag: false },
-        },
-      },
-      null,
-      2,
-    );
-
-    const record: DataCorrectionRequest = {
-      id,
-      tenantId,
-      justification: req.justification,
-      scriptRef: req.scriptRef,
-      dryRunDiffKey,
-      dryRunDiff: simulatedDiff,
-      requestedBy: ctx.principal.id,
-      approvedBy: null,
-      status: 'PENDING',
-      executedAt: null,
-      executorIdentity: 'SERVICE:data-correction-executor',
-      createdAt: new Date().toISOString(),
-    };
-
-    this.dataCorrections.set(id, record);
-    return record;
+    return this.store.createDataCorrection(ctx, req);
   }
 
   async approveDataCorrectionRequest(
@@ -558,35 +513,16 @@ export class PlatformAdminService {
     correctionId: string,
     req: ApproveDataCorrectionRequest,
   ): Promise<DataCorrectionRequest> {
-    const record = this.ownCorrection(ctx, correctionId);
-
-    // Separation of Duties (SOD-08): Approver must differ from requester!
-    if (record.requestedBy === ctx.principal.id) {
-      throw AppError.of(
-        'SOD_VIOLATION',
-        'Separation of Duties violation (SOD-08): The approver must differ from the requester.',
-      );
-    }
-
-    if (record.status !== 'PENDING') {
-      throw AppError.of('INVALID_STATE', `Data correction '${correctionId}' is already in state '${record.status}'.`);
-    }
-
-    record.status = req.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
-    record.approvedBy = ctx.principal.id;
-    return record;
+    return this.store.decideDataCorrection(ctx, correctionId, req.decision);
   }
 
+  /** Called by the correction executor (a service identity) once it has applied an approved correction. */
   async executeDataCorrection(ctx: RequestContext, correctionId: string): Promise<DataCorrectionRequest> {
-    const record = this.ownCorrection(ctx, correctionId);
-    if (record.status !== 'APPROVED') {
-      throw AppError.of('INVALID_STATE', `Data correction must be APPROVED prior to execution (current: ${record.status}).`);
-    }
+    return this.store.markDataCorrectionExecuted(ctx, correctionId);
+  }
 
-    // Must be executed by service identity
-    record.status = 'EXECUTED';
-    record.executedAt = new Date().toISOString();
-    return record;
+  async revokeSupportAccessRequest(ctx: RequestContext, grantId: string): Promise<SupportAccessGrant> {
+    return this.store.revokeSupportGrant(ctx, grantId);
   }
 
   // ==========================================
