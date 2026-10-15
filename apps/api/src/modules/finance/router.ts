@@ -18,6 +18,7 @@ import {
   type RequestContext,
   type Tx,
 } from '@dsa/contracts';
+import { withIdempotency } from '@dsa/kernel';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
 import type { ApiDeps } from '../types';
@@ -64,7 +65,11 @@ function handleZodError(err: ZodError): never {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   const repository = new SqlFinanceRepository();
-  const service = new FinanceService({ repository, audit: deps.audit });
+  const service = new FinanceService({
+    repository,
+    audit: deps.audit,
+    outbox: deps.outboxPort,
+  });
 
   // --- COMMISSION PLANS ---
 
@@ -339,8 +344,27 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.request');
       const parsed = CreatePayoutRequestInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-requests', body: parsed.data },
+            async () => {
+              const result = await service.createPayoutRequest(tx, ctx, parsed.data);
+              return { status: 201, body: result };
+            },
+          );
+        });
+        res.setHeader('ETag', `"${cmd.body.lockVersion}"`);
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.createPayoutRequest(tx, ctx, parsed.data);
@@ -356,6 +380,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-requests', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'finance.view');
       const connectorId = typeof req.query.connectorId === 'string' ? req.query.connectorId : undefined;
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
       const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
@@ -374,6 +399,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-requests/:id', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'finance.view');
       const id = extractParam(req.params.id, 'id');
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.getPayoutRequest(tx, ctx, id);
@@ -389,9 +415,28 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.approve');
+      deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = PayoutApprovalInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/approval`, body: parsed.data },
+            async () => {
+              const result = await service.approvePayoutRequest(tx, ctx, id, parsed.data);
+              return { status: 200, body: result };
+            },
+          );
+        });
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.approvePayoutRequest(tx, ctx, id, parsed.data);
@@ -406,9 +451,27 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests/:id/cancel', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.request');
       const id = extractParam(req.params.id, 'id');
       const parsed = CancelPayoutRequestInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/cancel`, body: parsed.data },
+            async () => {
+              const result = await service.cancelPayoutRequest(tx, ctx, id, parsed.data);
+              return { status: 200, body: result };
+            },
+          );
+        });
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.cancelPayoutRequest(tx, ctx, id, parsed.data);
@@ -423,9 +486,29 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests/:id/payment', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = RecordPaymentInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment`, body: parsed.data },
+            async () => {
+              const result = await service.recordPayoutPayment(tx, ctx, id, parsed.data);
+              return { status: 200, body: result };
+            },
+          );
+        });
+        res.setHeader('ETag', `"${cmd.body.lockVersion}"`);
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.recordPayoutPayment(tx, ctx, id, parsed.data);
@@ -441,9 +524,28 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests/:id/payment-failure', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
       const id = extractParam(req.params.id, 'id');
       const parsed = RecordPaymentFailureInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment-failure`, body: parsed.data },
+            async () => {
+              const result = await service.recordPayoutFailure(tx, ctx, id, parsed.data);
+              return { status: 200, body: result };
+            },
+          );
+        });
+        res.setHeader('ETag', `"${cmd.body.lockVersion}"`);
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.recordPayoutFailure(tx, ctx, id, parsed.data);
@@ -461,8 +563,26 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-batches', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
       const parsed = CreatePayoutBatchInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-batches', body: parsed.data },
+            async () => {
+              const result = await service.createPayoutBatch(tx, ctx, parsed.data);
+              return { status: 201, body: result };
+            },
+          );
+        });
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.createPayoutBatch(tx, ctx, parsed.data);
@@ -477,14 +597,17 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-batches/:id/bank-file', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
-      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
-        return service.getPayoutBatch(tx, ctx, id);
+      const fileData = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.getPayoutBatchBankFile(tx, ctx, id);
       });
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="batch-${result.id}.csv"`);
-      res.send(`PayoutId,Status\n${result.payoutIds.join('\n')}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileData.filename}"`);
+      res.setHeader('X-Checksum-SHA256', fileData.sha256);
+      res.send(fileData.buffer);
     } catch (err) {
       next(err);
     }
