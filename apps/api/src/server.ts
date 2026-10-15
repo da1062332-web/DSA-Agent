@@ -13,6 +13,8 @@ import { loadConfig, type ApiConfig } from './config';
 import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { createTxRunner } from './kernel-min/tx-runner';
+import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
+import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';

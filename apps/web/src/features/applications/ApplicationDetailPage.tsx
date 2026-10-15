@@ -4,11 +4,13 @@
 import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
+import { EligibilityCard } from './EligibilityCard';
 import {
   STATUS_LABELS,
   canEditDetails,
@@ -65,9 +67,11 @@ export function ApplicationDetailPage() {
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
+      <EligibilityCard applicationId={a.id} hasProduct={!!a.productVersionId} />
 
-      {/* Extension point: the lender-case panel (MOD-LCS, Dev 4) mounts here. Nothing renders until it is added. */}
-      <div data-slot="application.lender-cases" />
+      <div data-slot="application.lender-cases">
+        <LenderCasePanel applicationId={a.id} />
+      </div>
     </>
   );
 }

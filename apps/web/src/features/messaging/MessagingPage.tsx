@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -35,6 +36,7 @@ export function MessagingPage({
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [denied, setDenied] = useState(false);
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -42,6 +44,7 @@ export function MessagingPage({
       const res = await fetch(`${apiBaseUrl}/message-templates`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      if (res.status === 403) setDenied(true);
       if (res.ok) {
         const body = await res.json().catch(() => null);
         setTemplates(body?.data || []);
@@ -57,6 +60,7 @@ export function MessagingPage({
       const res = await fetch(`${apiBaseUrl}/messages`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      if (res.status === 403) setDenied(true);
       if (res.ok) {
         const body = await res.json().catch(() => null);
         setMessages(body?.data || []);
@@ -87,6 +91,11 @@ export function MessagingPage({
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {denied && (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="messaging.noAccess">
+          You don't have access to messaging. Ask your administrator to grant you the message.send permission.
+        </Alert>
+      )}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h4" fontWeight={700}>

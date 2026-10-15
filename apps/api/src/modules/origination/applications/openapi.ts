@@ -2,6 +2,7 @@
 import { listResponse } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { type ZodTypeAny } from 'zod';
+import { EligibilityAssessment, EligibilityListQuery, OverrideRequest } from './eligibility-schemas';
 import {
   Application,
   ApplicationHold,
@@ -15,6 +16,11 @@ export const tags = [
     name: 'MOD-APP Loan Applications',
     description:
       'Internal loan file: list, read, edit and hold (MOD-APP, SUB-APP.01, .03). Reads need application.read; edits and holds need application.update and an If-Match version. Scope: RM sees own, branch roles see their branch, org owner sees the tenant. Transitions, parties, ownership, completeness and waivers are not in this slice.',
+  },
+  {
+    name: 'MOD-ELG Eligibility',
+    description:
+      'Preliminary eligibility assessment of an application (MOD-ELG). Run and history need application.read; an override needs eligibility.override and a reason. Until an eligibility rule set is published every criterion is UNKNOWN. It never promises approval.',
   },
 ];
 
@@ -108,6 +114,53 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       422: {
         description: 'VALIDATION_ERROR (unknown product version, wrong category, or missing cancel reason)',
       },
+    },
+  });
+
+  const elg = ['MOD-ELG Eligibility'];
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/eligibility-assessments',
+    tags: elg,
+    operationId: 'API-ELG-001',
+    summary: 'Run an eligibility assessment for the application (application.read)',
+    parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
+    responses: {
+      201: { description: 'Assessment recorded', content: json(EligibilityAssessment) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+      409: { description: 'INVALID_STATE (no product chosen yet)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/eligibility-assessments',
+    tags: elg,
+    operationId: 'API-ELG-002',
+    summary: 'Assessment history for the application, oldest first (application.read)',
+    request: { query: EligibilityListQuery as never },
+    responses: {
+      200: { description: 'Page of assessments', content: json(listResponse(EligibilityAssessment)) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/eligibility-assessments/{id}/overrides',
+    tags: elg,
+    operationId: 'API-ELG-003',
+    summary: 'Override a failed result with a reason (eligibility.override)',
+    parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
+    request: { body: { required: true, content: json(OverrideRequest) } },
+    responses: {
+      201: { description: 'Override recorded', content: json(EligibilityAssessment) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+      409: { description: 'INVALID_STATE (only a FAIL result can be overridden)' },
+      422: { description: 'VALIDATION_ERROR (unknown product version, or reason too short)' },
     },
   });
 }

@@ -468,5 +468,26 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
       expect(res.rows[0]?.status).toBe('ACTIVE');
     });
   });
+
+  it('PG-MSG-011 verifies message.send permission grants across tenant operational and admin roles', async () => {
+    const adminDbUrl = process.env.VERIFY_DATABASE_URL || process.env.DATABASE_URL;
+    const adminDb = createDb(adminDbUrl!, { poolMax: 2 });
+    try {
+      const grantRows = await sql<{ role_code: string; permission_code: string }>`
+        SELECT r.code AS role_code, rp.permission_code
+          FROM app.role_permission rp
+          JOIN app.role r ON r.id = rp.role_id
+         WHERE rp.permission_code = 'message.send'
+         ORDER BY r.code
+      `.execute(adminDb);
+      const roles = grantRows.rows.map((r) => r.role_code);
+      expect(roles).toContain('ROLE-ORG-OWNER');
+      expect(roles).toContain('ROLE-TENANT-ADMIN');
+      expect(roles).toContain('ROLE-BRANCH-MGR');
+      expect(roles).toContain('ROLE-LOAN-OPS');
+    } finally {
+      await adminDb.destroy();
+    }
+  });
 });
 

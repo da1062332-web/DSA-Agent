@@ -16,7 +16,15 @@ const featureModules = import.meta.glob<{ routes: RouteObject[] }>('./features/*
   eager: true,
 });
 
-export const featureRoutes: RouteObject[] = Object.values(featureModules).flatMap((m) => m.routes);
+// A feature whose routes did not load (a stale dev server, a failed import) is skipped and named in the console, so one
+// broken feature cannot take the whole app down with a router error.
+export const featureRoutes: RouteObject[] = Object.entries(featureModules).flatMap(([file, m]) => {
+  if (!Array.isArray(m?.routes)) {
+    console.error(`Routes missing for ${file}: restart the dev server (npm run dev -- --force) if this persists.`);
+    return [];
+  }
+  return m.routes.filter((r): r is RouteObject => !!r);
+});
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },

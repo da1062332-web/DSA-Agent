@@ -1,9 +1,11 @@
 // apps/api/test/finance.spec.ts — owner: Developer 5 (Bhushan)
 // Test coverage for Module 30: Commission and Payouts (MOD-COM / MOD-PAY)
 import type { PermissionCode, RequestContext, Tx, TxRunner } from '@dsa/contracts';
+import crypto from 'node:crypto';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { FinanceService } from '../src/modules/finance/finance-service';
+import { decryptPaymentRef } from '../src/modules/finance/crypto';
+import { FinanceService, type SettlementJournalPort } from '../src/modules/finance/finance-service';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
@@ -16,6 +18,7 @@ import type {
   PayoutRequestRow,
   RecalculationProposalRow,
 } from '../src/modules/finance/repository';
+import { InMemoryFinancialStorage } from '../src/modules/finance/storage';
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
 const fakeTxRunner: TxRunner = {
@@ -41,6 +44,7 @@ class InMemoryFinanceRepository implements FinanceRepository {
   payoutLines: PayoutLineRow[] = [];
   payoutApprovals: PayoutApprovalRow[] = [];
   batches: PayoutBatchRow[] = [];
+  outboxEvents: any[] = [];
 
   async insertCommissionPlan(_tx: Tx, row: CommissionPlanRow): Promise<void> {
     this.plans.push(row);
@@ -234,6 +238,20 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return l;
   }
 
+  async lockCommissionPayablesAscending(
+    _tx: Tx,
+    tenantId: string,
+    ids: string[],
+  ): Promise<CommissionPayableRow[]> {
+    const sorted = [...ids].sort();
+    const rows: CommissionPayableRow[] = [];
+    for (const id of sorted) {
+      const p = this.payables.find((x) => x.tenant_id === tenantId && x.id === id);
+      if (p) rows.push(p);
+    }
+    return rows;
+  }
+
   async insertPayoutApproval(_tx: Tx, row: PayoutApprovalRow): Promise<void> {
     this.payoutApprovals.push(row);
   }
@@ -243,15 +261,31 @@ class InMemoryFinanceRepository implements FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; failureReason?: string },
+    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
   ): Promise<PayoutRequestRow | null> {
     const p = this.payouts.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!p) return null;
     p.status = status;
     if (updates?.paidOn) p.paid_on = updates.paidOn;
     if (updates?.paymentRefMasked) p.payment_ref_masked = updates.paymentRefMasked;
+    if (updates?.paymentRefCiphertext) p.payment_ref_ciphertext = updates.paymentRefCiphertext;
     if (updates?.failureReason) p.failure_reason = updates.failureReason;
     return p;
+  }
+
+  async emitOutboxEvent(
+    _tx: Tx,
+    event: {
+      id: string;
+      tenantId: string;
+      eventType: string;
+      subjectType: string;
+      subjectId: string;
+      payload: Record<string, unknown>;
+      correlationId?: string;
+    },
+  ): Promise<void> {
+    this.outboxEvents.push(event);
   }
 
   async updateCommissionCalculationStatus(
@@ -1606,5 +1640,499 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     expect(p1Failed?.state).toBe('ELIGIBLE');
     const linesB = await repo.listPayoutLines(tx, makerCtx.principal.tenantId, payoutB.id);
     expect(linesB[0]?.status).toBe('PAYMENT_FAILED');
+  });
+
+  it('TC-PAY-015 AES-256-GCM encryption and masking of payment reference', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const service = new FinanceService({ repository: repo });
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_enc_01',
+        grants: [
+          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
+          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
+        ],
+      }),
+      correlationId: 'corr-enc-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_enc_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-enc-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    const pId = 'cpay_01JENC000000000000000000001';
+    await repo.insertCommissionPayable(tx, {
+      id: pId,
+      tenant_id: makerCtx.principal.tenantId,
+      calculation_id: 'ccal_01JENC00000000000000000001',
+      connector_id: 'con_enc_01',
+      share_rate: '0.700000',
+      amount: '12500.00',
+      currency: 'INR',
+      state: 'ELIGIBLE',
+      hold_reasons: null,
+      eligibility_decision_id: null,
+      lock_version: 0,
+      created_at: new Date(),
+      created_by: makerCtx.principal.id,
+      updated_at: new Date(),
+      updated_by: makerCtx.principal.id,
+    });
+
+    const payout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_enc_01',
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+    });
+    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
+
+    const rawUtr = 'HDFCN26101389472';
+    const paid = await service.recordPayoutPayment(tx, makerCtx, payout.id, {
+      paymentRef: rawUtr,
+      paidOn: new Date().toISOString(),
+    });
+
+    // Masked reference shown in response
+    expect(paid.paymentRefMasked).toBe('******9472');
+    // Raw reference or ciphertext must NEVER be exposed in response object
+    expect((paid as any).paymentRefCiphertext).toBeUndefined();
+    expect((paid as any).payment_ref_ciphertext).toBeUndefined();
+    expect((paid as any).paymentRef).toBeUndefined();
+
+    // Check encrypted ciphertext in repository persistence
+    const saved = await repo.findPayoutRequestById(tx, makerCtx.principal.tenantId, payout.id);
+    expect(saved?.payment_ref_ciphertext).toBeDefined();
+    expect(saved?.payment_ref_ciphertext).toMatch(/^aes256gcm:[0-9a-f]{24}:[0-9a-f]{32}:[0-9a-f]+$/);
+
+    // Decrypting recovers original plaintext
+    const decrypted = decryptPaymentRef(saved!.payment_ref_ciphertext!);
+    expect(decrypted).toBe(rawUtr);
+
+    // Tampering with ciphertext causes authentication failure
+    const tampered = saved!.payment_ref_ciphertext!.slice(0, -2) + '00';
+    expect(() => decryptPaymentRef(tampered)).toThrow();
+  });
+
+  it('TC-PAY-016 Bank file generation, formula injection protection, SHA-256 verification, and storage retrieval', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const storage = new InMemoryFinancialStorage();
+    const service = new FinanceService({ repository: repo, storage });
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_bf_01',
+        grants: [
+          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
+          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
+        ],
+      }),
+      correlationId: 'corr-bf-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_bf_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-bf-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    // Formula injection payload as connector ID
+    const formulaPayload = '=cmd|"/C calc"!A0';
+    const pId = 'cpay_01JBF000000000000000000001';
+    await repo.insertCommissionPayable(tx, {
+      id: pId,
+      tenant_id: makerCtx.principal.tenantId,
+      calculation_id: 'ccal_01JBF00000000000000000001',
+      connector_id: formulaPayload,
+      share_rate: '0.700000',
+      amount: '50000.00',
+      currency: 'INR',
+      state: 'ELIGIBLE',
+      hold_reasons: null,
+      eligibility_decision_id: null,
+      lock_version: 0,
+      created_at: new Date(),
+      created_by: makerCtx.principal.id,
+      updated_at: new Date(),
+      updated_by: makerCtx.principal.id,
+    });
+
+    const payout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: formulaPayload,
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+    });
+    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
+
+    // Generate batch
+    const batch = await service.createPayoutBatch(tx, makerCtx, {
+      payoutIds: [payout.id as any],
+    });
+    expect(batch.status).toBe('GENERATED');
+    expect(batch.fileObjectKey).toBe(`batches/${batch.id}.csv`);
+
+    // Retrieve file buffer from storage
+    const file = await service.getPayoutBatchBankFile(tx, makerCtx, batch.id);
+    expect(file.filename).toBe(`batch-${batch.id}.csv`);
+    expect(file.sha256).toBe(batch.fileSha256);
+
+    // Verify CSV Content and Formula Injection Sanitization
+    const csvContent = file.buffer.toString('utf8');
+    // Ensure formula injection prefix '\'' was prepended
+    expect(csvContent).toContain(`'=cmd|""/C calc""!A0`);
+
+    // Verify SHA-256 matches actual byte buffer
+    const realSha = crypto.createHash('sha256').update(file.buffer).digest('hex');
+    expect(realSha).toBe(batch.fileSha256);
+
+    // Tampering with stored file causes INTEGRITY_ERROR
+    await storage.save(makerCtx.principal.tenantId, batch.fileObjectKey!, Buffer.from('TAMPERED_CSV', 'utf8'), 'text/csv');
+    await expect(service.getPayoutBatchBankFile(tx, makerCtx, batch.id)).rejects.toThrowError(/checksum verification failed/);
+  });
+
+  it('TC-PAY-017 Maker-checker Step-Up MFA assurance requirement on approval, payment, and file export', async () => {
+    // 1. Approval requires Step-Up MFA
+    const appWithoutMfa = createTestApp({
+      auth: fakeAuth(
+        testPrincipal({
+          id: 'usr_approver_nomfa',
+          grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+          authTime: null, // No recent MFA step-up
+        }),
+      ),
+      deps: { txRunner: fakeTxRunner },
+    });
+    const resAppr = await request(appWithoutMfa)
+      .post('/v1/payout-requests/prq_01J00000000000000000000001/approval')
+      .send({ decision: 'APPROVED' });
+    expect(resAppr.status).toBe(401);
+    expect(resAppr.body.error.code).toBe('STEP_UP_REQUIRED');
+
+    // 2. Payment recording requires Step-Up MFA
+    const appPayWithoutMfa = createTestApp({
+      auth: fakeAuth(
+        testPrincipal({
+          id: 'usr_payer_nomfa',
+          grants: [{ code: 'payout.record_payment', scope: 'TENANT', branchIds: [] }],
+          authTime: null,
+        }),
+      ),
+      deps: { txRunner: fakeTxRunner },
+    });
+    const resPay = await request(appPayWithoutMfa)
+      .post('/v1/payout-requests/prq_01J00000000000000000000001/payment')
+      .send({ paymentRef: 'UTR12345678' });
+    expect(resPay.status).toBe(401);
+    expect(resPay.body.error.code).toBe('STEP_UP_REQUIRED');
+
+    // 3. Bank file export requires Step-Up MFA
+    const resFile = await request(appPayWithoutMfa)
+      .get('/v1/payout-batches/pbt_01J00000000000000000000001/bank-file');
+    expect(resFile.status).toBe(401);
+    expect(resFile.body.error.code).toBe('STEP_UP_REQUIRED');
+  });
+
+  it('TC-PAY-018 Failed payout retry linkage (retryOfPayoutId)', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const service = new FinanceService({ repository: repo });
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_retry_01',
+        grants: [
+          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
+          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
+        ],
+      }),
+      correlationId: 'corr-retry-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_retry_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-retry-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    const pId = 'cpay_01JRETRY000000000000000001';
+    await repo.insertCommissionPayable(tx, {
+      id: pId,
+      tenant_id: makerCtx.principal.tenantId,
+      calculation_id: 'ccal_01JRETRY000000000000000001',
+      connector_id: 'con_retry_01',
+      share_rate: '0.700000',
+      amount: '8000.00',
+      currency: 'INR',
+      state: 'ELIGIBLE',
+      hold_reasons: null,
+      eligibility_decision_id: null,
+      lock_version: 0,
+      created_at: new Date(),
+      created_by: makerCtx.principal.id,
+      updated_at: new Date(),
+      updated_by: makerCtx.principal.id,
+    });
+
+    const origPayout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_retry_01',
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+    });
+
+    // Cannot retry an unapproved or submitted payout
+    await expect(
+      service.createPayoutRequest(tx, makerCtx, {
+        connectorId: 'con_retry_01',
+        origin: 'FINANCE',
+        payableIds: [pId as any],
+        retryOfPayoutId: origPayout.id,
+      }),
+    ).rejects.toThrowError(/Only PAYMENT_FAILED payout requests can be retried/);
+
+    await service.approvePayoutRequest(tx, checkerCtx, origPayout.id, { decision: 'APPROVED' });
+
+    // Mark failed
+    await service.recordPayoutFailure(tx, makerCtx, origPayout.id, {
+      failureReason: 'Invalid Account Number',
+    });
+
+    // Now payable is back to ELIGIBLE
+    const pAfterFail = await repo.findCommissionPayableById(tx, makerCtx.principal.tenantId, pId);
+    expect(pAfterFail?.state).toBe('ELIGIBLE');
+
+    // Successfully create retry payout
+    const retryPayout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_retry_01',
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+      retryOfPayoutId: origPayout.id,
+    });
+    expect(retryPayout.status).toBe('SUBMITTED');
+    expect(retryPayout.retryOfPayoutId).toBe(origPayout.id);
+  });
+
+  it('TC-PAY-019 Deterministic payable row locking and revalidation in approval', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const service = new FinanceService({ repository: repo });
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_lock_01',
+        grants: [{ code: 'payout.request', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-lock-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_lock_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-lock-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    // Create 3 payables with IDs out of order
+    const pIds = ['cpay_01JZ', 'cpay_01JA', 'cpay_01JM'];
+    for (const id of pIds) {
+      await repo.insertCommissionPayable(tx, {
+        id,
+        tenant_id: makerCtx.principal.tenantId,
+        calculation_id: `ccal_${id}`,
+        connector_id: 'con_lock_01',
+        share_rate: '0.700000',
+        amount: '1000.00',
+        currency: 'INR',
+        state: 'ELIGIBLE',
+        hold_reasons: null,
+        eligibility_decision_id: null,
+        lock_version: 0,
+        created_at: new Date(),
+        created_by: makerCtx.principal.id,
+        updated_at: new Date(),
+        updated_by: makerCtx.principal.id,
+      });
+    }
+
+    // Verify lockCommissionPayablesAscending returns them sorted strictly ascending
+    const locked = await repo.lockCommissionPayablesAscending(tx, makerCtx.principal.tenantId, pIds);
+    expect(locked.map((x) => x.id)).toEqual(['cpay_01JA', 'cpay_01JM', 'cpay_01JZ']);
+
+    const payout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_lock_01',
+      origin: 'FINANCE',
+      payableIds: pIds as any,
+    });
+
+    // Simulate concurrent dispute: one payable placed ON_HOLD
+    const heldPayable = repo.payables.find((x) => x.id === 'cpay_01JM')!;
+    heldPayable.state = 'ON_HOLD';
+
+    // Approval must revalidate locked rows and fail with PAYABLE_ON_HOLD
+    await expect(
+      service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' }),
+    ).rejects.toThrowError(/PAYABLE_ON_HOLD/);
+  });
+
+  it('TC-PAY-020 MOD-LED Settlement Journal Integration (double-entry atomic balancing)', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const journalEntries: any[] = [];
+    const mockLedger: SettlementJournalPort = {
+      async postSettlementJournal(_tx, tenantId, entry) {
+        // Enforce double entry balancing
+        const totalDebit = entry.lines
+          .filter((l) => l.entryType === 'DEBIT')
+          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
+        const totalCredit = entry.lines
+          .filter((l) => l.entryType === 'CREDIT')
+          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.001) {
+          throw new Error('LEDGER_UNBALANCED: Debits and credits must balance');
+        }
+        journalEntries.push({ tenantId, ...entry });
+        return { entryId: 'ent_080_test_journal_01' };
+      },
+    };
+
+    const service = new FinanceService({
+      repository: repo,
+      settlementJournalPort: mockLedger,
+    });
+
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_led_01',
+        grants: [
+          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
+          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
+        ],
+      }),
+      correlationId: 'corr-led-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_led_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-led-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    const pId = 'cpay_01JLED00000000000000000001';
+    await repo.insertCommissionPayable(tx, {
+      id: pId,
+      tenant_id: makerCtx.principal.tenantId,
+      calculation_id: 'ccal_01JLED00000000000000000001',
+      connector_id: 'con_led_01',
+      share_rate: '0.700000',
+      amount: '7500.00',
+      currency: 'INR',
+      state: 'ELIGIBLE',
+      hold_reasons: null,
+      eligibility_decision_id: null,
+      lock_version: 0,
+      created_at: new Date(),
+      created_by: makerCtx.principal.id,
+      updated_at: new Date(),
+      updated_by: makerCtx.principal.id,
+    });
+
+    const payout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_led_01',
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+    });
+    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
+
+    // Record payment triggers atomic settlement journal posting
+    await service.recordPayoutPayment(tx, makerCtx, payout.id, {
+      paymentRef: 'HDFCN26101389999',
+      paidOn: new Date().toISOString(),
+    });
+
+    expect(journalEntries.length).toBe(1);
+    const j = journalEntries[0]!;
+    expect(j.payoutId).toBe(payout.id);
+    expect(j.lines).toEqual([
+      { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'DEBIT', amount: '7500.00' },
+      { accountCode: '1010-SETTLEMENT-BANK', entryType: 'CREDIT', amount: '7500.00' },
+    ]);
+  });
+
+  it('TC-PAY-021 Domain outbox and audit events emission on payout transitions', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const service = new FinanceService({ repository: repo });
+    const makerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_maker_evt_01',
+        grants: [
+          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
+          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
+        ],
+      }),
+      correlationId: 'corr-evt-01',
+      now: new Date(),
+    };
+    const checkerCtx: RequestContext = {
+      principal: testPrincipal({
+        id: 'usr_checker_evt_01',
+        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
+      }),
+      correlationId: 'corr-evt-02',
+      now: new Date(),
+    };
+    const tx = {} as Tx;
+
+    const pId = 'cpay_01JEVT00000000000000000001';
+    await repo.insertCommissionPayable(tx, {
+      id: pId,
+      tenant_id: makerCtx.principal.tenantId,
+      calculation_id: 'ccal_01JEVT00000000000000000001',
+      connector_id: 'con_evt_01',
+      share_rate: '0.700000',
+      amount: '3000.00',
+      currency: 'INR',
+      state: 'ELIGIBLE',
+      hold_reasons: null,
+      eligibility_decision_id: null,
+      lock_version: 0,
+      created_at: new Date(),
+      created_by: makerCtx.principal.id,
+      updated_at: new Date(),
+      updated_by: makerCtx.principal.id,
+    });
+
+    const payout = await service.createPayoutRequest(tx, makerCtx, {
+      connectorId: 'con_evt_01',
+      origin: 'FINANCE',
+      payableIds: [pId as any],
+    });
+    expect(repo.outboxEvents.some((e) => e.eventType === 'payout.created')).toBe(true);
+
+    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
+    expect(repo.outboxEvents.some((e) => e.eventType === 'payout.approved')).toBe(true);
+
+    await service.recordPayoutPayment(tx, makerCtx, payout.id, {
+      paymentRef: 'HDFCN26101389888',
+      paidOn: new Date().toISOString(),
+    });
+    expect(repo.outboxEvents.some((e) => e.eventType === 'payout.paid')).toBe(true);
+
+    // Ensure raw UTR is NEVER present in event payload
+    const paidEvt = repo.outboxEvents.find((e) => e.eventType === 'payout.paid');
+    expect(JSON.stringify(paidEvt)).not.toContain('HDFCN26101389888');
+    expect(paidEvt?.payload?.paymentRefMasked).toBe('******9888');
   });
 });

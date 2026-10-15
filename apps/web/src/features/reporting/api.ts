@@ -44,6 +44,7 @@ export function useControlTotals(summaryDate: string) {
 export function useRefreshProjections() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: 'Reporting data refreshed.' },
     mutationFn: (dates: { startDate: string; endDate: string }) =>
       apiFetch<{ status: string; message: string; refreshedAt: string }>('/v1/reporting/refresh', {
         method: 'POST',
@@ -129,6 +130,7 @@ export function useReportRuns() {
 export function useStartReportRun() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: 'Report run started.' },
     mutationFn: ({ code, dto }: { code: string; dto: CreateReportRunDto }) =>
       apiFetch<ReportRunDto>(`/v1/reports/${encodeURIComponent(code)}/runs`, {
         method: 'POST',
@@ -153,6 +155,7 @@ export function useExports() {
 export function useCreateExport() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: 'Export requested.' },
     mutationFn: (dto: CreateExportDto) =>
       apiFetch<ExportJobDto>('/v1/exports', {
         method: 'POST',
@@ -174,6 +177,7 @@ export function useReportSchedules() {
 export function useCreateReportSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: 'Report schedule created.' },
     mutationFn: (dto: CreateReportScheduleDto) =>
       apiFetch<ReportScheduleDto>('/v1/report-schedules', {
         method: 'POST',
@@ -188,6 +192,7 @@ export function useCreateReportSchedule() {
 export function useDeleteReportSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { successMessage: 'Report schedule deleted.' },
     mutationFn: (id: string) =>
       apiFetch<void>(`/v1/report-schedules/${encodeURIComponent(id)}`, {
         method: 'DELETE',

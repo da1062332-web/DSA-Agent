@@ -38,6 +38,7 @@ export function useTargetHistory(targetId: string | null) {
 export function useCreateTarget() {
   const queryClient = useQueryClient();
   return useMutation<TargetDto, Error, CreateTargetRequest>({
+    meta: { successMessage: 'Target created.' },
     mutationFn: (body) =>
       apiFetch<TargetDto>('/v1/targets', {
         method: 'POST',
@@ -57,6 +58,7 @@ export function useApproveTarget() {
     Error,
     { id: string; version: number; input: ApproveTargetRequest }
   >({
+    meta: { successMessage: 'Target approved.' },
     mutationFn: ({ id, version, input }) =>
       apiFetch<TargetDto>(`/v1/targets/${id}/approval`, {
         method: 'POST',

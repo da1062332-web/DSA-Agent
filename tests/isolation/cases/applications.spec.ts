@@ -78,4 +78,45 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
     const after = await request(a).get(`/v1/applications/${appId}`);
     expect(after.body.status).toBe('DRAFT');
   });
+
+  it('API-ELG-001 API-ELG-002 API-ELG-003: tenant B cannot assess, read or override a tenant A eligibility assessment', async () => {
+    const a = env.appAs(env.A, APP_CODES);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES, 'eligibility.override']);
+    // An application with a product, so tenant A can run an assessment.
+    await env.admin.query(
+      `insert into app.lender (id, tenant_id, name, lender_type, created_by, updated_by)
+       values ('lnd_iso_elg_a1', $1, 'Isolation Eligibility Lender', 'NBFC', $2, $2)`,
+      [env.A.tenantId, env.A.userIds[0]],
+    );
+    await env.admin.query(
+      `insert into app.loan_product (id, tenant_id, lender_id, name, category, applicant_types, secured, created_by, updated_by)
+       values ('prd_iso_elg_a1', $1, 'lnd_iso_elg_a1', 'Isolation Eligibility Product', 'PL', '{SALARIED}', false, $2, $2)`,
+      [env.A.tenantId, env.A.userIds[0]],
+    );
+    await env.admin.query(
+      `insert into app.loan_product_version (id, tenant_id, product_id, version_no, effective_from, amount_min, amount_max,
+                                             currency, tenure_min_months, tenure_max_months, created_by)
+       values ('prv_iso_elg_a1', $1, 'prd_iso_elg_a1', 1, '2026-01-01T00:00:00Z', 50000, 1000000, 'INR', 12, 60, $2)`,
+      [env.A.tenantId, env.A.userIds[0]],
+    );
+    await env.admin.query(`update app.loan_application set product_version_id = 'prv_iso_elg_a1', status = 'DOCUMENTS_PENDING' where id = $1`, [appId]);
+
+    const run = await request(a).post(`/v1/applications/${appId}/eligibility-assessments`).set('Idempotency-Key', 'iso-elg-run-1').send({});
+    expect(run.status).toBe(201);
+
+    expect(
+      (await request(b).post(`/v1/applications/${appId}/eligibility-assessments`).set('Idempotency-Key', 'iso-elg-run-hostile').send({})).status,
+    ).toBe(404);
+    expect((await request(b).get(`/v1/applications/${appId}/eligibility-assessments`)).status).toBe(404);
+    expect(
+      (
+        await request(b)
+          .post(`/v1/eligibility-assessments/${run.body.id}/overrides`)
+          .set('Idempotency-Key', 'iso-elg-override-hostile')
+          .send({ productVersionId: 'prv_iso_elg_a1', reason: 'Hostile override attempt' })
+      ).status,
+    ).toBe(404);
+    const history = await request(a).get(`/v1/applications/${appId}/eligibility-assessments`);
+    expect(history.body.data[0].overrides).toEqual([]);
+  });
 });

@@ -75,7 +75,7 @@ GRANT SELECT, INSERT, UPDATE ON app.evidence_pack TO dsa_app;
 -- ============================================================================
 -- Permissions: Seed audit.export_evidence and grant to auditor/compliance roles
 -- ============================================================================
-INSERT INTO app.permission (code, description, task_ref) VALUES
+INSERT INTO app.permission (code, description, introduced_in) VALUES
   ('audit.export_evidence', 'Generate and export tamper-evident audit evidence packs', 'TASK-408')
 ON CONFLICT (code) DO NOTHING;
 

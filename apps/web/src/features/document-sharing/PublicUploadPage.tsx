@@ -86,6 +86,7 @@ export function PublicUploadPage() {
 
   // 2. Verify OTP Mutation
   const verifyOtpMutation = useMutation({
+    meta: { successMessage: 'Code verified.' },
     mutationFn: (otp: string) =>
       apiFetch<VerifyUploadOtpResponse>(`/public/v1/upload/${token}/otp-verification`, {
         method: 'POST',
@@ -107,6 +108,7 @@ export function PublicUploadPage() {
 
   // 3. Upload File Mutation
   const uploadFileMutation = useMutation({
+    meta: { successMessage: 'File uploaded.' },
     mutationFn: async ({
       file,
       checklistItemId,
