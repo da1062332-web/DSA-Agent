@@ -1258,7 +1258,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-14
+          default: 2026-10-15
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -1781,6 +1781,12 @@ paths:
                             - partner.lead_ingest
                             - partner.application_read
                             - webhook.manage
+                            - target.manage
+                            - report.read
+                            - report.manage
+                            - report.schedule
+                            - import.run
+                            - export.run
                         scope:
                           type: string
                           enum:
@@ -8188,7 +8194,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-14T17:20:29.199Z
+                  default: 2026-10-15T04:19:08.984Z
               required:
                 - paymentRef
       responses:
@@ -9980,6 +9986,2120 @@ paths:
           description: VERSION_CONFLICT or INVALID_TRANSITION
         "422":
           description: VALIDATION_ERROR
+  /v1/targets:
+    post:
+      operationId: API-PERF-001
+      summary: "API-PERF-001: Create Target (Idempotent)"
+      tags:
+        - MOD-PERF Targets
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: Idempotency key (8-128 chars)
+          required: true
+          description: Idempotency key (8-128 chars)
+          name: idempotency-key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                period:
+                  type: string
+                  pattern: ^(\d{4}-(?:0[1-9]|1[0-2])|\d{4}-Q[1-4])$
+                dimensionType:
+                  type: string
+                  enum: &a51
+                    - BRANCH
+                    - USER
+                    - PRODUCT
+                dimensionId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                metricCode:
+                  type: string
+                  enum: &a52
+                    - DISBURSEMENT_AMOUNT
+                    - LEAD_COUNT
+                    - SANCTION_COUNT
+                targetValue:
+                  type: number
+                  minimum: 0
+                unit:
+                  type: string
+                  enum: &a53
+                    - INR
+                    - COUNT
+              required:
+                - period
+                - dimensionType
+                - dimensionId
+                - metricCode
+                - targetValue
+                - unit
+      responses:
+        "201":
+          description: Target created in PENDING_APPROVAL status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  period:
+                    type: string
+                  dimensionType:
+                    type: string
+                    enum: *a51
+                  dimensionId:
+                    type: string
+                  metricCode:
+                    type: string
+                    enum: *a52
+                  targetValue:
+                    type: number
+                  unit:
+                    type: string
+                    enum: *a53
+                  version:
+                    type: number
+                  status:
+                    type: string
+                    enum: &a54
+                      - PENDING_APPROVAL
+                      - APPROVED
+                      - SUPERSEDED
+                      - REJECTED
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  rejectionReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: number
+                  actualValue:
+                    type:
+                      - number
+                      - "null"
+                  achievementPercentage:
+                    type:
+                      - number
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - period
+                  - dimensionType
+                  - dimensionId
+                  - metricCode
+                  - targetValue
+                  - unit
+                  - version
+                  - status
+                  - createdBy
+                  - createdAt
+                  - updatedBy
+                  - updatedAt
+                  - approvedBy
+                  - approvedAt
+                  - rejectionReason
+                  - lockVersion
+                  - actualValue
+                  - achievementPercentage
+    get:
+      operationId: API-PERF-002
+      summary: "API-PERF-002: List Targets"
+      tags:
+        - MOD-PERF Targets
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: period
+          in: query
+        - schema:
+            type: string
+            enum: *a51
+          required: false
+          name: dimensionType
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: dimensionId
+          in: query
+        - schema:
+            type: string
+            enum: *a52
+          required: false
+          name: metricCode
+          in: query
+        - schema:
+            type: string
+            enum: *a54
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: List of targets matching query and branch scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        period:
+                          type: string
+                        dimensionType:
+                          type: string
+                          enum: *a51
+                        dimensionId:
+                          type: string
+                        metricCode:
+                          type: string
+                          enum: *a52
+                        targetValue:
+                          type: number
+                        unit:
+                          type: string
+                          enum: *a53
+                        version:
+                          type: number
+                        status:
+                          type: string
+                          enum: *a54
+                        createdBy:
+                          type: string
+                        createdAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        approvedBy:
+                          type:
+                            - string
+                            - "null"
+                        approvedAt:
+                          type:
+                            - string
+                            - "null"
+                        rejectionReason:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: number
+                        actualValue:
+                          type:
+                            - number
+                            - "null"
+                        achievementPercentage:
+                          type:
+                            - number
+                            - "null"
+                      required:
+                        - id
+                        - tenantId
+                        - period
+                        - dimensionType
+                        - dimensionId
+                        - metricCode
+                        - targetValue
+                        - unit
+                        - version
+                        - status
+                        - createdBy
+                        - createdAt
+                        - updatedBy
+                        - updatedAt
+                        - approvedBy
+                        - approvedAt
+                        - rejectionReason
+                        - lockVersion
+                        - actualValue
+                        - achievementPercentage
+                  nextCursor:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - items
+  /v1/targets/{id}/approval:
+    post:
+      operationId: API-PERF-003
+      summary: "API-PERF-003: Approve or Reject Target (Dual Control)"
+      tags:
+        - MOD-PERF Targets
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: Target lock version/ETag
+          required: true
+          description: Target lock version/ETag
+          name: if-match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - APPROVE
+                    - REJECT
+                rejectionReason:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 500
+              required:
+                - decision
+      responses:
+        "200":
+          description: Target approved or rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  period:
+                    type: string
+                  dimensionType:
+                    type: string
+                    enum: *a51
+                  dimensionId:
+                    type: string
+                  metricCode:
+                    type: string
+                    enum: *a52
+                  targetValue:
+                    type: number
+                  unit:
+                    type: string
+                    enum: *a53
+                  version:
+                    type: number
+                  status:
+                    type: string
+                    enum: *a54
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  rejectionReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: number
+                  actualValue:
+                    type:
+                      - number
+                      - "null"
+                  achievementPercentage:
+                    type:
+                      - number
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - period
+                  - dimensionType
+                  - dimensionId
+                  - metricCode
+                  - targetValue
+                  - unit
+                  - version
+                  - status
+                  - createdBy
+                  - createdAt
+                  - updatedBy
+                  - updatedAt
+                  - approvedBy
+                  - approvedAt
+                  - rejectionReason
+                  - lockVersion
+                  - actualValue
+                  - achievementPercentage
+  /v1/targets/{id}:
+    get:
+      operationId: API-PERF-004
+      summary: "API-PERF-004: Get Target By ID"
+      tags:
+        - MOD-PERF Targets
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Target details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  period:
+                    type: string
+                  dimensionType:
+                    type: string
+                    enum: *a51
+                  dimensionId:
+                    type: string
+                  metricCode:
+                    type: string
+                    enum: *a52
+                  targetValue:
+                    type: number
+                  unit:
+                    type: string
+                    enum: *a53
+                  version:
+                    type: number
+                  status:
+                    type: string
+                    enum: *a54
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  rejectionReason:
+                    type:
+                      - string
+                      - "null"
+                  lockVersion:
+                    type: number
+                  actualValue:
+                    type:
+                      - number
+                      - "null"
+                  achievementPercentage:
+                    type:
+                      - number
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - period
+                  - dimensionType
+                  - dimensionId
+                  - metricCode
+                  - targetValue
+                  - unit
+                  - version
+                  - status
+                  - createdBy
+                  - createdAt
+                  - updatedBy
+                  - updatedAt
+                  - approvedBy
+                  - approvedAt
+                  - rejectionReason
+                  - lockVersion
+                  - actualValue
+                  - achievementPercentage
+  /v1/targets/{id}/history:
+    get:
+      operationId: API-PERF-005
+      summary: "API-PERF-005: Get Target Revision History"
+      tags:
+        - MOD-PERF Targets
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: All versions for this target slice
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        period:
+                          type: string
+                        dimensionType:
+                          type: string
+                          enum: *a51
+                        dimensionId:
+                          type: string
+                        metricCode:
+                          type: string
+                          enum: *a52
+                        targetValue:
+                          type: number
+                        unit:
+                          type: string
+                          enum: *a53
+                        version:
+                          type: number
+                        status:
+                          type: string
+                          enum: *a54
+                        createdBy:
+                          type: string
+                        createdAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        approvedBy:
+                          type:
+                            - string
+                            - "null"
+                        approvedAt:
+                          type:
+                            - string
+                            - "null"
+                        rejectionReason:
+                          type:
+                            - string
+                            - "null"
+                        lockVersion:
+                          type: number
+                        actualValue:
+                          type:
+                            - number
+                            - "null"
+                        achievementPercentage:
+                          type:
+                            - number
+                            - "null"
+                      required:
+                        - id
+                        - tenantId
+                        - period
+                        - dimensionType
+                        - dimensionId
+                        - metricCode
+                        - targetValue
+                        - unit
+                        - version
+                        - status
+                        - createdBy
+                        - createdAt
+                        - updatedBy
+                        - updatedAt
+                        - approvedBy
+                        - approvedAt
+                        - rejectionReason
+                        - lockVersion
+                        - actualValue
+                        - achievementPercentage
+                  nextCursor:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - items
+  /v1/metrics:
+    get:
+      operationId: API-RPT-001
+      summary: "API-RPT-001: Query Canonical Operational & Outcome Metrics"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^(\d{4}-(?:0[1-9]|1[0-2])|\d{4}-Q[1-4])$
+          required: true
+          name: period
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: metricCodes
+          in: query
+        - schema:
+            type: string
+            enum: *a51
+          required: false
+          name: dimensionType
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: dimensionId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: branchId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: userId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: productId
+          in: query
+      responses:
+        "200":
+          description: Computed metrics response with target comparisons
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        metricCode:
+                          type: string
+                          enum: &a55
+                            - DISBURSEMENT_AMOUNT
+                            - LEAD_COUNT
+                            - SANCTION_COUNT
+                            - LEAD_QUALIFIED_COUNT
+                            - LEAD_CONVERTED_COUNT
+                            - ACTIVITY_COUNT
+                            - SANCTION_AMOUNT
+                            - DISBURSEMENT_COUNT
+                            - LEAD_CONVERSION_RATE
+                        metricName:
+                          type: string
+                        category:
+                          type: string
+                          enum: &a56
+                            - ACTIVITY
+                            - OUTCOME
+                            - EFFICIENCY
+                        unit:
+                          type: string
+                          enum: &a57
+                            - COUNT
+                            - INR
+                            - PERCENTAGE
+                        period:
+                          type: string
+                        dimensionType:
+                          type: string
+                          enum: *a51
+                        dimensionId:
+                          type: string
+                        actualValue:
+                          type: number
+                        targetValue:
+                          type:
+                            - number
+                            - "null"
+                        achievementPercentage:
+                          type:
+                            - number
+                            - "null"
+                        freshness:
+                          type: string
+                          format: date-time
+                        calculationNote:
+                          type: string
+                      required:
+                        - metricCode
+                        - metricName
+                        - category
+                        - unit
+                        - period
+                        - actualValue
+                        - targetValue
+                        - achievementPercentage
+                        - freshness
+                  meta:
+                    type: object
+                    properties:
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      tenantId:
+                        type: string
+                    required:
+                      - period
+                      - asOf
+                      - tenantId
+                required:
+                  - data
+                  - meta
+        "403":
+          description: Missing report.read permission or branch access violation
+  /v1/metrics/definitions:
+    get:
+      operationId: API-RPT-REG-01
+      summary: List Canonical Metric Definitions (ENT-094)
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of metric definitions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          enum: *a55
+                        name:
+                          type: string
+                          minLength: 1
+                          maxLength: 100
+                        description:
+                          type: string
+                          minLength: 1
+                          maxLength: 500
+                        category:
+                          type: string
+                          enum: *a56
+                        unit:
+                          type: string
+                          enum: *a57
+                        aggregationType:
+                          type: string
+                          enum:
+                            - SUM
+                            - COUNT
+                            - AVG
+                            - RATIO
+                        sourceDomain:
+                          type: string
+                          minLength: 1
+                          maxLength: 50
+                        version:
+                          type: integer
+                          exclusiveMinimum: 0
+                          default: 1
+                        formula:
+                          type: object
+                          additionalProperties: {}
+                          default: {}
+                        dateBasis:
+                          type: string
+                          enum:
+                            - CREATED_AT
+                            - UPDATED_AT
+                            - EVENT_AT
+                            - DISBURSED_AT
+                          default: CREATED_AT
+                        grain:
+                          type: string
+                          enum:
+                            - DAILY
+                            - WEEKLY
+                            - MONTHLY
+                            - QUARTERLY
+                          default: DAILY
+                        filters:
+                          type: object
+                          additionalProperties: {}
+                          default: {}
+                        owner:
+                          type: string
+                          default: SYSTEM
+                        effectiveFrom:
+                          type: string
+                          format: date-time
+                        createdAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - code
+                        - name
+                        - description
+                        - category
+                        - unit
+                        - aggregationType
+                        - sourceDomain
+                        - createdAt
+                required:
+                  - data
+  /v1/dashboards/{code}:
+    get:
+      operationId: API-RPT-002
+      summary: "API-RPT-002: Retrieve Aggregated Performance Dashboard"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: Dashboard code (EXECUTIVE, BRANCH, TEAM_PERFORMANCE, OPERATIONS, FINANCE, CONNECTOR, LEADERBOARD)
+          required: true
+          description: Dashboard code (EXECUTIVE, BRANCH, TEAM_PERFORMANCE, OPERATIONS, FINANCE, CONNECTOR, LEADERBOARD)
+          name: code
+          in: path
+        - schema:
+            type: string
+            pattern: ^(\d{4}-(?:0[1-9]|1[0-2])|\d{4}-Q[1-4])$
+            default: 2026-10
+          required: false
+          name: period
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: branchId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: userId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: productId
+          in: query
+      responses:
+        "200":
+          description: Dashboard representation
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - TEAM_PERFORMANCE
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      summary:
+                        type: object
+                        properties:
+                          leads:
+                            type: object
+                            properties:
+                              actual:
+                                type: number
+                              target:
+                                type:
+                                  - number
+                                  - "null"
+                              achievementPercentage:
+                                type:
+                                  - number
+                                  - "null"
+                            required:
+                              - actual
+                              - target
+                              - achievementPercentage
+                          sanctions:
+                            type: object
+                            properties:
+                              count:
+                                type: number
+                              amount:
+                                type: number
+                              targetCount:
+                                type:
+                                  - number
+                                  - "null"
+                              achievementPercentage:
+                                type:
+                                  - number
+                                  - "null"
+                            required:
+                              - count
+                              - amount
+                              - targetCount
+                              - achievementPercentage
+                          disbursements:
+                            type: object
+                            properties:
+                              count:
+                                type: number
+                              amount:
+                                type: number
+                              targetAmount:
+                                type:
+                                  - number
+                                  - "null"
+                              achievementPercentage:
+                                type:
+                                  - number
+                                  - "null"
+                            required:
+                              - count
+                              - amount
+                              - targetAmount
+                              - achievementPercentage
+                          conversionRate:
+                            type: number
+                          activityCount:
+                            type: number
+                        required:
+                          - leads
+                          - sanctions
+                          - disbursements
+                          - conversionRate
+                          - activityCount
+                      funnel:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            stage:
+                              type: string
+                            count:
+                              type: number
+                            rate:
+                              type: number
+                          required:
+                            - stage
+                            - count
+                            - rate
+                      breakdown:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            dimensionType:
+                              type: string
+                              enum: *a51
+                            dimensionId:
+                              type: string
+                            dimensionName:
+                              type: string
+                            leadCount:
+                              type: number
+                            sanctionCount:
+                              type: number
+                            disbursementAmount:
+                              type: number
+                            disbursementTarget:
+                              type:
+                                - number
+                                - "null"
+                            achievementPercentage:
+                              type:
+                                - number
+                                - "null"
+                          required:
+                            - dimensionType
+                            - dimensionId
+                            - dimensionName
+                            - leadCount
+                            - sanctionCount
+                            - disbursementAmount
+                            - disbursementTarget
+                            - achievementPercentage
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - summary
+                      - funnel
+                      - breakdown
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - LEADERBOARD
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      rankingStatus:
+                        type: string
+                        enum:
+                          - ACTIVE
+                          - BLOCKED_PENDING_APPROVAL
+                      unresolvedDecisions:
+                        type: array
+                        items:
+                          type: string
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            entityId:
+                              type: string
+                            entityName:
+                              type: string
+                            dimensionType:
+                              type: string
+                              enum: *a51
+                            branchName:
+                              type: string
+                            volume:
+                              type: number
+                            sanctionCount:
+                              type: number
+                            disbursementAmount:
+                              type: number
+                            conversionRate:
+                              type: number
+                            rank:
+                              type:
+                                - number
+                                - "null"
+                            score:
+                              type:
+                                - number
+                                - "null"
+                            guardrailStatus:
+                              type: string
+                              enum:
+                                - NORMAL
+                                - WARNING
+                                - PENALTY
+                                - INSUFFICIENT_DATA
+                              default: NORMAL
+                          required:
+                            - entityId
+                            - entityName
+                            - dimensionType
+                            - volume
+                            - sanctionCount
+                            - disbursementAmount
+                            - conversionRate
+                            - rank
+                            - score
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - rankingStatus
+                      - unresolvedDecisions
+                      - entries
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - EXECUTIVE
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      portfolioSummary:
+                        type: object
+                        properties:
+                          totalLeads:
+                            type: number
+                          qualifiedLeads:
+                            type: number
+                          sanctionedAmount:
+                            type: number
+                          disbursedAmount:
+                            type: number
+                          conversionRate:
+                            type: number
+                          activeBranches:
+                            type: number
+                        required:
+                          - totalLeads
+                          - qualifiedLeads
+                          - sanctionedAmount
+                          - disbursedAmount
+                          - conversionRate
+                          - activeBranches
+                      growthTrends:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            label:
+                              type: string
+                            leads:
+                              type: number
+                            sanctions:
+                              type: number
+                            disbursements:
+                              type: number
+                          required:
+                            - label
+                            - leads
+                            - sanctions
+                            - disbursements
+                      topBranches:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            branchId:
+                              type: string
+                            branchName:
+                              type: string
+                            disbursedAmount:
+                              type: number
+                            targetAmount:
+                              type:
+                                - number
+                                - "null"
+                            achievementRate:
+                              type:
+                                - number
+                                - "null"
+                          required:
+                            - branchId
+                            - branchName
+                            - disbursedAmount
+                            - targetAmount
+                            - achievementRate
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - portfolioSummary
+                      - growthTrends
+                      - topBranches
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - BRANCH
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      branchId:
+                        type: string
+                      branchName:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      summary:
+                        type: object
+                        properties:
+                          leadCount:
+                            type: number
+                          sanctionAmount:
+                            type: number
+                          disbursementAmount:
+                            type: number
+                          conversionRate:
+                            type: number
+                          teamMembersCount:
+                            type: number
+                        required:
+                          - leadCount
+                          - sanctionAmount
+                          - disbursementAmount
+                          - conversionRate
+                          - teamMembersCount
+                      officerPerformance:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            userId:
+                              type: string
+                            userName:
+                              type: string
+                            leadCount:
+                              type: number
+                            sanctionCount:
+                              type: number
+                            disbursementAmount:
+                              type: number
+                            conversionRate:
+                              type: number
+                          required:
+                            - userId
+                            - userName
+                            - leadCount
+                            - sanctionCount
+                            - disbursementAmount
+                            - conversionRate
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - branchId
+                      - branchName
+                      - asOf
+                      - summary
+                      - officerPerformance
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - OPERATIONS
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      throughput:
+                        type: object
+                        properties:
+                          leadsProcessed:
+                            type: number
+                          activeApplications:
+                            type: number
+                          pendingVerifications:
+                            type: number
+                          casesInUnderwriting:
+                            type: number
+                          sanctionsAwaitingDisbursement:
+                            type: number
+                        required:
+                          - leadsProcessed
+                          - activeApplications
+                          - pendingVerifications
+                          - casesInUnderwriting
+                          - sanctionsAwaitingDisbursement
+                      slaPerformance:
+                        type: object
+                        properties:
+                          totalTasks:
+                            type: number
+                          completedOnTime:
+                            type: number
+                          breachedTasks:
+                            type: number
+                          onTimeRate:
+                            type: number
+                        required:
+                          - totalTasks
+                          - completedOnTime
+                          - breachedTasks
+                          - onTimeRate
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - throughput
+                      - slaPerformance
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - FINANCE
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      disbursements:
+                        type: object
+                        properties:
+                          grossSanctionedAmount:
+                            type: number
+                          netDisbursedAmount:
+                            type: number
+                          pendingDisbursementAmount:
+                            type: number
+                          trancheCount:
+                            type: number
+                          averageTicketSize:
+                            type: number
+                        required:
+                          - grossSanctionedAmount
+                          - netDisbursedAmount
+                          - pendingDisbursementAmount
+                          - trancheCount
+                          - averageTicketSize
+                      productBreakdown:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            productId:
+                              type: string
+                            productName:
+                              type: string
+                            sanctionCount:
+                              type: number
+                            disbursedAmount:
+                              type: number
+                            sharePercentage:
+                              type: number
+                          required:
+                            - productId
+                            - productName
+                            - sanctionCount
+                            - disbursedAmount
+                            - sharePercentage
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - disbursements
+                      - productBreakdown
+                  - type: object
+                    properties:
+                      dashboardCode:
+                        type: string
+                        enum:
+                          - CONNECTOR
+                      title:
+                        type: string
+                      period:
+                        type: string
+                      asOf:
+                        type: string
+                        format: date-time
+                      channelSummary:
+                        type: object
+                        properties:
+                          totalConnectors:
+                            type: number
+                          activeConnectors:
+                            type: number
+                          leadsSourced:
+                            type: number
+                          disbursedVolume:
+                            type: number
+                        required:
+                          - totalConnectors
+                          - activeConnectors
+                          - leadsSourced
+                          - disbursedVolume
+                      topPartners:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            connectorId:
+                              type: string
+                            connectorName:
+                              type: string
+                            leadsCount:
+                              type: number
+                            disbursedAmount:
+                              type: number
+                          required:
+                            - connectorId
+                            - connectorName
+                            - leadsCount
+                            - disbursedAmount
+                    required:
+                      - dashboardCode
+                      - title
+                      - period
+                      - asOf
+                      - channelSummary
+                      - topPartners
+        "404":
+          description: Dashboard code not found
+  /v1/reporting/control-totals:
+    get:
+      operationId: FR-RPT-008
+      summary: Daily Reporting Control Totals Reconciliation
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: YYYY-MM-DD date to reconcile
+          required: false
+          description: YYYY-MM-DD date to reconcile
+          name: summaryDate
+          in: query
+      responses:
+        "200":
+          description: Reconciliation comparison between OLTP sources and reporting projection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summaryDate:
+                    type: string
+                  tenantId:
+                    type: string
+                  oltpTotals:
+                    type: object
+                    properties:
+                      leads:
+                        type: number
+                      sanctions:
+                        type: number
+                      sanctionAmount:
+                        type: number
+                      disbursements:
+                        type: number
+                      disbursementAmount:
+                        type: number
+                    required:
+                      - leads
+                      - sanctions
+                      - sanctionAmount
+                      - disbursements
+                      - disbursementAmount
+                  projectionTotals:
+                    type: object
+                    properties:
+                      leads:
+                        type: number
+                      sanctions:
+                        type: number
+                      sanctionAmount:
+                        type: number
+                      disbursements:
+                        type: number
+                      disbursementAmount:
+                        type: number
+                    required:
+                      - leads
+                      - sanctions
+                      - sanctionAmount
+                      - disbursements
+                      - disbursementAmount
+                  variance:
+                    type: object
+                    properties:
+                      leadsDiff:
+                        type: number
+                      sanctionsDiff:
+                        type: number
+                      sanctionAmountDiff:
+                        type: number
+                      disbursementsDiff:
+                        type: number
+                      disbursementAmountDiff:
+                        type: number
+                    required:
+                      - leadsDiff
+                      - sanctionsDiff
+                      - sanctionAmountDiff
+                      - disbursementsDiff
+                      - disbursementAmountDiff
+                  reconciled:
+                    type: boolean
+                  asOf:
+                    type: string
+                    format: date-time
+                required:
+                  - summaryDate
+                  - tenantId
+                  - oltpTotals
+                  - projectionTotals
+                  - variance
+                  - reconciled
+                  - asOf
+  /v1/reporting/refresh:
+    post:
+      operationId: API-RPT-REFRESH
+      summary: Refresh Operational Summary Reporting Projections
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                endDate:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+              required:
+                - startDate
+                - endDate
+      responses:
+        "200":
+          description: Projections refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  refreshedAt:
+                    type: string
+                required:
+                  - status
+                  - refreshedAt
+        "403":
+          description: Missing report.manage or config.manage permission
+  /v1/reports:
+    get:
+      operationId: API-RPT-CATALOGUE
+      summary: List Available Report Catalogue Items
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Catalogue of standard tabular reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          enum:
+                            - RPT_LEAD_PIPELINE
+                            - RPT_DISBURSEMENT_REGISTER
+                            - RPT_SANCTION_LEDGER
+                            - RPT_BRANCH_SUMMARY
+                            - RPT_ACTIVITY_AUDIT
+                            - RPT_TARGET_ACHIEVEMENT
+                        title:
+                          type: string
+                        category:
+                          type: string
+                          enum:
+                            - LEADS
+                            - DISBURSEMENTS
+                            - SANCTIONS
+                            - OPERATIONS
+                            - AUDIT
+                        description:
+                          type: string
+                        supportedFormats:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - CSV
+                              - XLSX
+                              - JSON
+                      required:
+                        - code
+                        - title
+                        - category
+                        - description
+                        - supportedFormats
+                required:
+                  - data
+  /v1/reports/{code}/runs:
+    post:
+      operationId: API-RPT-003
+      summary: "API-RPT-003: Execute Asynchronous Report Run"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            description: Report code from catalogue
+          required: true
+          description: Report code from catalogue
+          name: code
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  additionalProperties: {}
+                  default: {}
+                format:
+                  type: string
+                  enum:
+                    - CSV
+                    - XLSX
+                    - JSON
+                  default: CSV
+      responses:
+        "201":
+          description: Report run created and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  reportCode:
+                    type: string
+                  status:
+                    type: string
+                    enum: &a58
+                      - PENDING
+                      - RUNNING
+                      - COMPLETED
+                      - FAILED
+                  parameters:
+                    type: object
+                    additionalProperties: {}
+                  rowCount:
+                    type: number
+                  resultSummary:
+                    type: object
+                    additionalProperties: {}
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  downloadUrl:
+                    type:
+                      - string
+                      - "null"
+                  errorMessage:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - reportCode
+                  - status
+                  - parameters
+                  - rowCount
+                  - resultSummary
+                  - createdBy
+                  - createdAt
+                  - completedAt
+                  - downloadUrl
+                  - errorMessage
+        "404":
+          description: Report code not found in catalogue
+  /v1/report-runs/{id}:
+    get:
+      operationId: API-RPT-004
+      summary: "API-RPT-004: Retrieve Report Run Status & Results"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Report run details and result download link
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  reportCode:
+                    type: string
+                  status:
+                    type: string
+                    enum: *a58
+                  parameters:
+                    type: object
+                    additionalProperties: {}
+                  rowCount:
+                    type: number
+                  resultSummary:
+                    type: object
+                    additionalProperties: {}
+                  createdBy:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  downloadUrl:
+                    type:
+                      - string
+                      - "null"
+                  errorMessage:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - reportCode
+                  - status
+                  - parameters
+                  - rowCount
+                  - resultSummary
+                  - createdBy
+                  - createdAt
+                  - completedAt
+                  - downloadUrl
+                  - errorMessage
+        "404":
+          description: Report run not found
+  /v1/exports:
+    post:
+      operationId: API-RPT-006
+      summary: "API-RPT-006: Initiate Asynchronous Record-Level Export (ENT-111)"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exportType:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                fileFormat:
+                  type: string
+                  enum: &a59
+                    - CSV
+                    - XLSX
+                    - JSON
+                  default: CSV
+                filters:
+                  type: object
+                  additionalProperties: {}
+                  default: {}
+                scopeType:
+                  type: string
+                  enum:
+                    - TENANT
+                    - BRANCH
+                    - USER
+                  default: TENANT
+                scopeId:
+                  type: string
+              required:
+                - exportType
+      responses:
+        "201":
+          description: Export job initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  requesterId:
+                    type: string
+                  scopeType:
+                    type: string
+                    enum: &a60
+                      - TENANT
+                      - BRANCH
+                      - USER
+                  scopeId:
+                    type:
+                      - string
+                      - "null"
+                  exportType:
+                    type: string
+                  fileFormat:
+                    type: string
+                    enum: *a59
+                  filters:
+                    type: object
+                    additionalProperties: {}
+                  rowCount:
+                    type: number
+                  fileKey:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: &a61
+                      - PENDING
+                      - PROCESSING
+                      - COMPLETED
+                      - FAILED
+                  downloadUrl:
+                    type:
+                      - string
+                      - "null"
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  downloadedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - requesterId
+                  - scopeType
+                  - scopeId
+                  - exportType
+                  - fileFormat
+                  - filters
+                  - rowCount
+                  - fileKey
+                  - status
+                  - downloadUrl
+                  - expiresAt
+                  - downloadedAt
+                  - createdAt
+        "403":
+          description: Missing export.run permission or role scope violation
+  /v1/exports/{id}:
+    get:
+      operationId: API-RPT-007
+      summary: "API-RPT-007: Retrieve Export Job Status & Expiring Download Access"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Export job status and expiring presigned download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  requesterId:
+                    type: string
+                  scopeType:
+                    type: string
+                    enum: *a60
+                  scopeId:
+                    type:
+                      - string
+                      - "null"
+                  exportType:
+                    type: string
+                  fileFormat:
+                    type: string
+                    enum: *a59
+                  filters:
+                    type: object
+                    additionalProperties: {}
+                  rowCount:
+                    type: number
+                  fileKey:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a61
+                  downloadUrl:
+                    type:
+                      - string
+                      - "null"
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  downloadedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - requesterId
+                  - scopeType
+                  - scopeId
+                  - exportType
+                  - fileFormat
+                  - filters
+                  - rowCount
+                  - fileKey
+                  - status
+                  - downloadUrl
+                  - expiresAt
+                  - downloadedAt
+                  - createdAt
+        "404":
+          description: Export job not found
+        "410":
+          description: Export file has expired (exceeded 24 hours retention)
+  /v1/report-schedules:
+    post:
+      operationId: API-RPT-005
+      summary: "API-RPT-005: Create Recurring Report Distribution Schedule"
+      tags:
+        - Reporting
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reportCode:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                frequency:
+                  type: string
+                  enum: &a62
+                    - DAILY
+                    - WEEKLY
+                    - MONTHLY
+                filters:
+                  type: object
+                  additionalProperties: {}
+                  default: {}
+                recipientEmails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  minItems: 1
+                recipientScope:
+                  type: string
+                  enum:
+                    - TENANT
+                    - BRANCH
+                  default: TENANT
+              required:
+                - reportCode
+                - frequency
+                - recipientEmails
+      responses:
+        "201":
+          description: Report distribution schedule registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  reportCode:
+                    type: string
+                  frequency:
+                    type: string
+                    enum: *a62
+                  filters:
+                    type: object
+                    additionalProperties: {}
+                  recipientEmails:
+                    type: array
+                    items:
+                      type: string
+                  recipientScope:
+                    type: string
+                    enum:
+                      - TENANT
+                      - BRANCH
+                  createdBy:
+                    type: string
+                  isActive:
+                    type: boolean
+                  lastRunAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  nextRunAt:
+                    type: string
+                    format: date-time
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - reportCode
+                  - frequency
+                  - filters
+                  - recipientEmails
+                  - recipientScope
+                  - createdBy
+                  - isActive
+                  - lastRunAt
+                  - nextRunAt
+                  - createdAt
+        "403":
+          description: Missing report.schedule permission
   /v1/decision-definitions:
     get:
       operationId: API-BRE-001
@@ -10007,7 +12127,7 @@ paths:
                           type: string
                         tier:
                           type: string
-                          enum: &a51
+                          enum: &a63
                             - T1
                             - T2
                             - T3
@@ -10021,7 +12141,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: &a52
+                            enum: &a64
                               - UNIQUE
                               - FIRST
                               - PRIORITY
@@ -10029,13 +12149,13 @@ paths:
                               - RULE_ORDER
                         bindingMode:
                           type: string
-                          enum: &a53
+                          enum: &a65
                             - EVAL
                             - EVENT
                             - PIN
                         fallbackPolicy:
                           type: string
-                          enum: &a54
+                          enum: &a66
                             - DEFAULT_OUTPUT
                             - FAIL_CLOSED
                             - MANUAL_REVIEW
@@ -10046,12 +12166,12 @@ paths:
                           additionalProperties: {}
                         unknownPolicy:
                           type: string
-                          enum: &a55
+                          enum: &a67
                             - IGNORE
                             - UNDETERMINED
                         recordingLevel:
                           type: string
-                          enum: &a56
+                          enum: &a68
                             - ALWAYS
                             - SAMPLED
                         scopeChain:
@@ -10066,7 +12186,7 @@ paths:
                           type: array
                           items:
                             type: string
-                          default: &a57 []
+                          default: &a69 []
                       required:
                         - key
                         - registryVersion
@@ -10116,7 +12236,7 @@ paths:
                     type: string
                   tier:
                     type: string
-                    enum: *a51
+                    enum: *a63
                   inputSchema:
                     type: object
                     additionalProperties: {}
@@ -10127,13 +12247,13 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a52
+                      enum: *a64
                   bindingMode:
                     type: string
-                    enum: *a53
+                    enum: *a65
                   fallbackPolicy:
                     type: string
-                    enum: *a54
+                    enum: *a66
                   fallbackOutput:
                     type:
                       - object
@@ -10141,10 +12261,10 @@ paths:
                     additionalProperties: {}
                   unknownPolicy:
                     type: string
-                    enum: *a55
+                    enum: *a67
                   recordingLevel:
                     type: string
-                    enum: *a56
+                    enum: *a68
                   scopeChain:
                     type: array
                     items:
@@ -10157,7 +12277,7 @@ paths:
                     type: array
                     items:
                       type: string
-                    default: *a57
+                    default: *a69
                 required:
                   - key
                   - registryVersion
@@ -10202,7 +12322,7 @@ paths:
                     - DK-application.completeness
                 scopeType:
                   type: string
-                  enum: &a58
+                  enum: &a70
                     - TENANT_DEFAULT
                     - BRANCH
                     - LENDER
@@ -10239,7 +12359,7 @@ paths:
                     type: string
                   scopeType:
                     type: string
-                    enum: *a58
+                    enum: *a70
                   scopeRef:
                     type:
                       - string
@@ -10252,12 +12372,12 @@ paths:
                       - "null"
                   origin:
                     type: string
-                    enum: &a59
+                    enum: &a71
                       - PLATFORM_SEED
                       - TENANT
                   status:
                     type: string
-                    enum: &a60
+                    enum: &a72
                       - ACTIVE
                       - ARCHIVED
                   activeVersionId:
@@ -10366,7 +12486,7 @@ paths:
                           type: string
                         scopeType:
                           type: string
-                          enum: *a58
+                          enum: *a70
                         scopeRef:
                           type:
                             - string
@@ -10379,10 +12499,10 @@ paths:
                             - "null"
                         origin:
                           type: string
-                          enum: *a59
+                          enum: *a71
                         status:
                           type: string
-                          enum: *a60
+                          enum: *a72
                         activeVersionId:
                           type:
                             - string
@@ -10470,7 +12590,7 @@ paths:
                     type: string
                   scopeType:
                     type: string
-                    enum: *a58
+                    enum: *a70
                   scopeRef:
                     type:
                       - string
@@ -10483,10 +12603,10 @@ paths:
                       - "null"
                   origin:
                     type: string
-                    enum: *a59
+                    enum: *a71
                   status:
                     type: string
-                    enum: *a60
+                    enum: *a72
                   activeVersionId:
                     type:
                       - string
@@ -10565,7 +12685,7 @@ paths:
                           type: integer
                         status:
                           type: string
-                          enum: &a62
+                          enum: &a74
                             - DRAFT
                             - IN_REVIEW
                             - APPROVED
@@ -10578,19 +12698,19 @@ paths:
                             - ABANDONED
                         hitPolicy:
                           type: string
-                          enum: *a52
+                          enum: *a64
                         aggregator:
                           type:
                             - string
                             - "null"
-                          enum: &a61
+                          enum: &a73
                             - SUM
                             - MIN
                             - MAX
                             - COUNT
                         authoringForm:
                           type: string
-                          enum: &a63
+                          enum: &a75
                             - RULES
                             - DECISION_TABLE
                           default: RULES
@@ -10603,10 +12723,10 @@ paths:
                                 - 1
                             hitPolicy:
                               type: string
-                              enum: *a52
+                              enum: *a64
                             aggregator:
                               type: string
-                              enum: *a61
+                              enum: *a73
                             defaultOutput:
                               type:
                                 - object
@@ -10644,7 +12764,7 @@ paths:
                                           minLength: 1
                                         operator:
                                           type: string
-                                          enum: &a64
+                                          enum: &a76
                                             - ==
                                             - "!="
                                             - ">"
@@ -10786,11 +12906,11 @@ paths:
                   maxLength: 500
                 hitPolicy:
                   type: string
-                  enum: *a52
+                  enum: *a64
                   default: FIRST
                 aggregator:
                   type: string
-                  enum: *a61
+                  enum: *a73
       responses:
         "201":
           description: Draft version created
@@ -10810,18 +12930,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -10832,10 +12952,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -10873,7 +12993,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -11010,18 +13130,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -11032,10 +13152,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -11073,7 +13193,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -11208,10 +13328,10 @@ paths:
                         - 1
                     hitPolicy:
                       type: string
-                      enum: *a52
+                      enum: *a64
                     aggregator:
                       type: string
-                      enum: *a61
+                      enum: *a73
                     defaultOutput:
                       type:
                         - object
@@ -11249,7 +13369,7 @@ paths:
                                   minLength: 1
                                 operator:
                                   type: string
-                                  enum: *a64
+                                  enum: *a76
                                 value: {}
                               required:
                                 - field
@@ -11271,10 +13391,10 @@ paths:
                     - rules
                 hitPolicy:
                   type: string
-                  enum: *a52
+                  enum: *a64
                 aggregator:
                   type: string
-                  enum: *a61
+                  enum: *a73
                 defaultOutput:
                   type:
                     - object
@@ -11304,18 +13424,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -11326,10 +13446,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -11367,7 +13487,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -11619,14 +13739,14 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: &a65
+                    enum: &a77
                       - MANUAL
                       - TEST_SUITE
                   contentHash:
                     type: string
                   status:
                     type: string
-                    enum: &a66
+                    enum: &a78
                       - COMPLETED
                       - FAILED
                   summary:
@@ -11634,7 +13754,7 @@ paths:
                     properties:
                       status:
                         type: string
-                        enum: &a67
+                        enum: &a79
                           - OK
                           - NO_MATCH
                           - UNKNOWN
@@ -11655,7 +13775,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a54
+                        enum: *a66
                       errorCode:
                         type:
                           - string
@@ -11720,18 +13840,18 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a65
+                    enum: *a77
                   contentHash:
                     type: string
                   status:
                     type: string
-                    enum: *a66
+                    enum: *a78
                   summary:
                     type: object
                     properties:
                       status:
                         type: string
-                        enum: *a67
+                        enum: *a79
                       outputs:
                         type:
                           - object
@@ -11747,7 +13867,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a54
+                        enum: *a66
                       errorCode:
                         type:
                           - string
@@ -11990,7 +14110,7 @@ paths:
                           additionalProperties: {}
                         expectedStatus:
                           type: string
-                          enum: &a68
+                          enum: &a80
                             - OK
                             - NO_MATCH
                             - UNKNOWN
@@ -12106,7 +14226,7 @@ paths:
                     additionalProperties: {}
                   expectedStatus:
                     type: string
-                    enum: *a68
+                    enum: *a80
                   expectedOutput:
                     type: object
                     additionalProperties: {}
@@ -12212,7 +14332,7 @@ paths:
                     additionalProperties: {}
                   expectedStatus:
                     type: string
-                    enum: *a68
+                    enum: *a80
                   expectedOutput:
                     type: object
                     additionalProperties: {}
@@ -12293,18 +14413,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -12315,10 +14435,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -12356,7 +14476,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -12524,18 +14644,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -12546,10 +14666,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -12587,7 +14707,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -12742,18 +14862,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -12764,10 +14884,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -12805,7 +14925,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -12952,18 +15072,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -12974,10 +15094,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -13015,7 +15135,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -13162,18 +15282,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -13184,10 +15304,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -13225,7 +15345,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -13374,18 +15494,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -13396,10 +15516,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -13437,7 +15557,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -13588,18 +15708,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a74
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a64
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a73
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a75
                     default: RULES
                   definition:
                     type: object
@@ -13610,10 +15730,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a64
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a73
                       defaultOutput:
                         type:
                           - object
@@ -13651,7 +15771,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a76
                                   value: {}
                                 required:
                                   - field
@@ -13854,7 +15974,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a54
+                    enum: *a66
                   errorCode:
                     type:
                       - string
@@ -13984,7 +16104,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: &a69
+                          enum: &a81
                             - OK
                             - NO_MATCH
                             - UNKNOWN
@@ -13997,7 +16117,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a54
+                          enum: *a66
                         errorCode:
                           type:
                             - string
@@ -14108,14 +16228,14 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: *a69
+                    enum: *a81
                   fallbackApplied:
                     type: boolean
                   fallbackPolicy:
                     type:
                       - string
                       - "null"
-                    enum: *a54
+                    enum: *a66
                   errorCode:
                     type:
                       - string
@@ -14151,7 +16271,7 @@ paths:
           description: Decision record not found
   /v1/lenders:
     post:
-      tags: &a71
+      tags: &a83
         - MOD-LND Lenders
       operationId: API-LND-001
       summary: Create a lender (config.manage)
@@ -14170,7 +16290,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: &a70
+                  enum: &a82
                     - BANK
                     - NBFC
                     - HFC
@@ -14207,7 +16327,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a82
                   regulatorRef:
                     type:
                       - string
@@ -14218,7 +16338,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a72
+                    enum: &a84
                       - ACTIVE
                       - PAUSED
                       - TERMINATED
@@ -14250,7 +16370,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-002
       summary: List lenders (any signed-in staff)
       parameters:
@@ -14269,13 +16389,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a72
+            enum: *a84
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a70
+            enum: *a82
           required: false
           name: type
           in: query
@@ -14305,7 +16425,7 @@ paths:
                           type: string
                         lenderType:
                           type: string
-                          enum: *a70
+                          enum: *a82
                         regulatorRef:
                           type:
                             - string
@@ -14316,7 +16436,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a72
+                          enum: *a84
                         statusReason:
                           type:
                             - string
@@ -14357,7 +16477,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/lenders/{id}:
     get:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-002-GET
       summary: One lender (any signed-in staff)
       responses:
@@ -14375,7 +16495,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a82
                   regulatorRef:
                     type:
                       - string
@@ -14386,7 +16506,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a72
+                    enum: *a84
                   statusReason:
                     type:
                       - string
@@ -14411,7 +16531,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-003
       summary: Update a lender, including PAUSED or TERMINATED status with a reason (config.manage)
       parameters:
@@ -14429,7 +16549,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: *a70
+                  enum: *a82
                 regulatorRef:
                   type:
                     - string
@@ -14444,7 +16564,7 @@ paths:
                   maxLength: 60
                 status:
                   type: string
-                  enum: *a72
+                  enum: *a84
                 statusReason:
                   type:
                     - string
@@ -14467,7 +16587,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a82
                   regulatorRef:
                     type:
                       - string
@@ -14478,7 +16598,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a72
+                    enum: *a84
                   statusReason:
                     type:
                       - string
@@ -14508,7 +16628,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/empanelments:
     post:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-004
       summary: Add an empanelment (DSA code, validity, permitted product categories) (config.manage)
       parameters:
@@ -14535,7 +16655,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a73
+                    enum: &a85
                       - PL
                       - BL
                       - MSME
@@ -14590,7 +16710,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a73
+                      enum: *a85
                   permittedGeos:
                     type: array
                     items:
@@ -14601,7 +16721,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a74
+                    enum: &a86
                       - ACTIVE
                       - SUSPENDED
                       - EXPIRED
@@ -14631,7 +16751,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-004-LIST
       summary: Empanelments of a lender (any signed-in staff). Read-only; for the lender screen.
       responses:
@@ -14664,7 +16784,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a73
+                            enum: *a85
                         permittedGeos:
                           type: array
                           items:
@@ -14675,7 +16795,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a74
+                          enum: *a86
                         version:
                           type: integer
                         createdAt:
@@ -14714,7 +16834,7 @@ paths:
           description: NOT_FOUND
   /v1/empanelments/{id}:
     patch:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-005
       summary: "Update an empanelment: end date, categories, status (config.manage)"
       parameters:
@@ -14735,7 +16855,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a73
+                    enum: *a85
                   minItems: 1
                   maxItems: 9
                 permittedGeos:
@@ -14753,7 +16873,7 @@ paths:
                   maxLength: 64
                 status:
                   type: string
-                  enum: *a74
+                  enum: *a86
                 reason:
                   type:
                     - string
@@ -14786,7 +16906,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a73
+                      enum: *a85
                   permittedGeos:
                     type: array
                     items:
@@ -14797,7 +16917,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a74
+                    enum: *a86
                   version:
                     type: integer
                   createdAt:
@@ -14825,7 +16945,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts:
     get:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-006-GET
       summary: Current contacts of a lender (any signed-in staff)
       responses:
@@ -14896,7 +17016,7 @@ paths:
         "404":
           description: NOT_FOUND
     put:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-006
       summary: Replace the contact list; previous contacts are kept as history (config.manage)
       parameters:
@@ -15025,7 +17145,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts/{contactId}:
     delete:
-      tags: *a71
+      tags: *a83
       operationId: API-LND-006-DEL
       summary: Remove one contact; the row is kept as history (config.manage; If-Match on the lender version)
       parameters:
@@ -15053,7 +17173,7 @@ paths:
           description: VERSION_CONFLICT
   /v1/products:
     post:
-      tags: &a76
+      tags: &a88
         - MOD-PRD Products
       operationId: API-PRD-001
       summary: Create a product under an existing lender (config.manage)
@@ -15075,12 +17195,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a73
+                  enum: *a85
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: &a75
+                    enum: &a87
                       - INDIVIDUAL
                       - SALARIED
                       - SELF_EMPLOYED
@@ -15125,12 +17245,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a85
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a87
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15143,7 +17263,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a77
+                    enum: &a89
                       - ACTIVE
                       - INACTIVE
                   version:
@@ -15176,7 +17296,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-002
       summary: List products (any signed-in staff)
       parameters:
@@ -15200,13 +17320,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a77
+            enum: *a89
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a73
+            enum: *a85
           required: false
           name: category
           in: query
@@ -15238,12 +17358,12 @@ paths:
                           type: string
                         category:
                           type: string
-                          enum: *a73
+                          enum: *a85
                         applicantTypes:
                           type: array
                           items:
                             type: string
-                            enum: *a75
+                            enum: *a87
                         secured:
                           type: boolean
                         ownerUserId:
@@ -15256,7 +17376,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a77
+                          enum: *a89
                         version:
                           type: integer
                         createdAt:
@@ -15295,7 +17415,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/products/{id}:
     get:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-002-GET
       summary: One product (any signed-in staff)
       responses:
@@ -15315,12 +17435,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a85
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a87
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15333,7 +17453,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a89
                   version:
                     type: integer
                   createdAt:
@@ -15356,7 +17476,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-006
       summary: "Edit basic product details: name, category, applicant types, secured, owner, next review (config.manage). Versions are not changed."
       parameters:
@@ -15374,12 +17494,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a73
+                  enum: *a85
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: *a75
+                    enum: *a87
                   minItems: 1
                   maxItems: 7
                 secured:
@@ -15411,12 +17531,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a85
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a87
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15429,7 +17549,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a89
                   version:
                     type: integer
                   createdAt:
@@ -15459,7 +17579,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/status:
     post:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-005
       summary: Activate or deactivate a product; deactivation needs a reason (config.manage)
       parameters:
@@ -15473,7 +17593,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a77
+                  enum: *a89
                 reason:
                   type:
                     - string
@@ -15500,12 +17620,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a85
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a87
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15518,7 +17638,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a89
                   version:
                     type: integer
                   createdAt:
@@ -15548,7 +17668,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/versions:
     post:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-003
       summary: Add a new terms version; earlier versions it replaces are retired (config.manage)
       parameters:
@@ -15689,7 +17809,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: &a78
+                    enum: &a90
                       - ACTIVE
                       - RETIRED
                   isCurrent:
@@ -15724,7 +17844,7 @@ paths:
         "422":
           description: VALIDATION_ERROR (for example, effective date not after the latest version)
     get:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-003-LIST
       summary: All versions of a product, newest first (any signed-in staff)
       responses:
@@ -15794,7 +17914,7 @@ paths:
                           additionalProperties: {}
                         status:
                           type: string
-                          enum: *a78
+                          enum: *a90
                         isCurrent:
                           type: boolean
                         createdAt:
@@ -15837,7 +17957,7 @@ paths:
           description: NOT_FOUND
   /v1/product-versions/{id}:
     get:
-      tags: *a76
+      tags: *a88
       operationId: API-PRD-004
       summary: One version, with isCurrent (any signed-in staff)
       responses:
@@ -15902,7 +18022,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: *a78
+                    enum: *a90
                   isCurrent:
                     type: boolean
                   createdAt:
@@ -15930,7 +18050,7 @@ paths:
           description: NOT_FOUND
   /v1/applications:
     get:
-      tags: &a80
+      tags: &a92
         - MOD-APP Loan Applications
       operationId: API-APP-002
       summary: List applications in the caller scope (application.read)
@@ -15950,7 +18070,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a79
+            enum: &a91
               - DRAFT
               - DOCUMENTS_PENDING
               - UNDER_REVIEW
@@ -16016,7 +18136,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a81
+                          enum: &a93
                             - PERSONAL_NEEDS
                             - MEDICAL
                             - EDUCATION
@@ -16029,14 +18149,14 @@ paths:
                             - OTHER
                         applicantType:
                           type: string
-                          enum: &a82
+                          enum: &a94
                             - SALARIED
                             - SELF_EMPLOYED_PROFESSIONAL
                             - SELF_EMPLOYED_BUSINESS
                             - NON_INDIVIDUAL
                         status:
                           type: string
-                          enum: *a79
+                          enum: *a91
                         onHold:
                           type: boolean
                         holdReason:
@@ -16106,7 +18226,7 @@ paths:
           description: FORBIDDEN
   /v1/applications/{id}:
     get:
-      tags: *a80
+      tags: *a92
       operationId: API-APP-003
       summary: One application in the caller scope (application.read)
       responses:
@@ -16146,13 +18266,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a93
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a94
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a91
                   onHold:
                     type: boolean
                   holdReason:
@@ -16206,10 +18326,10 @@ paths:
         "404":
           description: NOT_FOUND (also when outside the caller scope)
     patch:
-      tags: *a80
+      tags: *a92
       operationId: API-APP-004
       summary: Edit the applicant request while the application is DRAFT or DOCUMENTS_PENDING (application.update)
-      parameters: &a83
+      parameters: &a95
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
@@ -16229,10 +18349,10 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a81
+                  enum: *a93
                 applicantType:
                   type: string
-                  enum: *a82
+                  enum: *a94
               additionalProperties: false
       responses:
         "200":
@@ -16271,13 +18391,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a93
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a94
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a91
                   onHold:
                     type: boolean
                   holdReason:
@@ -16336,10 +18456,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/applications/{id}/hold:
     put:
-      tags: *a80
+      tags: *a92
       operationId: API-APP-010
       summary: Put an application on hold with a reason, or clear the hold (application.update)
-      parameters: *a83
+      parameters: *a95
       requestBody:
         required: true
         content:
@@ -16398,13 +18518,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a93
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a94
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a91
                   onHold:
                     type: boolean
                   holdReason:
@@ -16463,7 +18583,7 @@ paths:
           description: VALIDATION_ERROR (a reason is required to hold)
   /v1/applications/{id}/transitions:
     post:
-      tags: *a80
+      tags: *a92
       operationId: API-APP-005
       summary: "Move an application: T-APP-01 select product and start documents, T-APP-02 send to review, T-APP-10 cancel with a reason"
       parameters:
@@ -16552,13 +18672,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a93
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a94
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a91
                   onHold:
                     type: boolean
                   holdReason:
@@ -16683,7 +18803,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: &a84
+                    enum: &a96
                       - DRAFT
                       - PACKAGE_READY
                       - SUBMITTED
@@ -16706,7 +18826,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a85
+                    enum: &a97
                       - PORTAL
                       - EMAIL
                       - API
@@ -16723,7 +18843,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a86
+                    enum: &a98
                       - MANUAL
                       - LENDER_API
                       - LENDER_FILE
@@ -16737,7 +18857,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a87
+                    enum: &a99
                       - POLICY
                       - INCOME
                       - CREDIT_HISTORY
@@ -16820,7 +18940,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a84
+                          enum: *a96
                         lenderReference:
                           type:
                             - string
@@ -16829,7 +18949,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a85
+                          enum: *a97
                         submittedAt:
                           type:
                             - string
@@ -16842,7 +18962,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a86
+                          enum: *a98
                         lastStatusAt:
                           type:
                             - string
@@ -16851,7 +18971,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a87
+                          enum: *a99
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -16925,7 +19045,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a84
+                    enum: *a96
                   lenderReference:
                     type:
                       - string
@@ -16934,7 +19054,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a85
+                    enum: *a97
                   submittedAt:
                     type:
                       - string
@@ -16947,7 +19067,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a86
+                    enum: *a98
                   lastStatusAt:
                     type:
                       - string
@@ -16956,7 +19076,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a87
+                    enum: *a99
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -17016,7 +19136,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: &a88
+                  enum: &a100
                     - SUBMISSION
                     - QUERY_RESPONSE
                   default: SUBMISSION
@@ -17047,7 +19167,7 @@ paths:
                         type: string
                       kind:
                         type: string
-                        enum: *a88
+                        enum: *a100
                       manifest:
                         type: object
                         additionalProperties: {}
@@ -17098,7 +19218,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a96
                       lenderReference:
                         type:
                           - string
@@ -17107,7 +19227,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a97
                       submittedAt:
                         type:
                           - string
@@ -17120,7 +19240,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a98
                       lastStatusAt:
                         type:
                           - string
@@ -17129,7 +19249,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a99
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -17197,7 +19317,7 @@ paths:
               properties:
                 channel:
                   type: string
-                  enum: *a85
+                  enum: *a97
                 lenderReference:
                   type: string
                   maxLength: 100
@@ -17263,14 +19383,14 @@ paths:
               properties:
                 toStatus:
                   type: string
-                  enum: *a84
+                  enum: *a96
                 statusSource:
                   type: string
-                  enum: *a86
+                  enum: *a98
                   default: MANUAL
                 declineReasonCode:
                   type: string
-                  enum: *a87
+                  enum: *a99
                 reasonText:
                   type: string
                   maxLength: 1000
@@ -17304,7 +19424,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a84
+                    enum: *a96
                   lenderReference:
                     type:
                       - string
@@ -17313,7 +19433,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a85
+                    enum: *a97
                   submittedAt:
                     type:
                       - string
@@ -17326,7 +19446,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a86
+                    enum: *a98
                   lastStatusAt:
                     type:
                       - string
@@ -17335,7 +19455,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a87
+                    enum: *a99
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -17473,7 +19593,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a96
                       lenderReference:
                         type:
                           - string
@@ -17482,7 +19602,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a97
                       submittedAt:
                         type:
                           - string
@@ -17495,7 +19615,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a98
                       lastStatusAt:
                         type:
                           - string
@@ -17504,7 +19624,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a99
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -17642,7 +19762,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a96
                       lenderReference:
                         type:
                           - string
@@ -17651,7 +19771,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a97
                       submittedAt:
                         type:
                           - string
@@ -17664,7 +19784,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a98
                       lastStatusAt:
                         type:
                           - string
@@ -17673,7 +19793,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a99
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -18188,7 +20308,7 @@ paths:
                             - "null"
                         verificationType:
                           type: string
-                          enum: &a89
+                          enum: &a101
                             - DOCUMENT_REVIEW
                             - IDENTITY_KYC
                             - RESIDENCE_FI
@@ -18197,7 +20317,7 @@ paths:
                             - BANK_STATEMENT
                         status:
                           type: string
-                          enum: &a91
+                          enum: &a103
                             - INITIATED
                             - ASSIGNED
                             - IN_PROGRESS
@@ -18209,7 +20329,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a92
+                          enum: &a104
                             - POSITIVE
                             - NEGATIVE
                             - REFER_TO_CREDIT
@@ -18226,7 +20346,7 @@ paths:
                           type: string
                         priority:
                           type: string
-                          enum: &a90
+                          enum: &a102
                             - HIGH
                             - MEDIUM
                             - LOW
@@ -18250,7 +20370,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a93
+                          enum: &a105
                             - ADDRESS_NOT_FOUND
                             - APPLICANT_UNKNOWN
                             - DOCUMENT_FORGED
@@ -18333,7 +20453,7 @@ paths:
                     - "null"
                 verificationType:
                   type: string
-                  enum: *a89
+                  enum: *a101
                 assignedToUserId:
                   type:
                     - string
@@ -18347,7 +20467,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a90
+                  enum: *a102
                   default: MEDIUM
                 scheduledAt:
                   type:
@@ -18391,15 +20511,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a101
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a103
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a104
                   assignedToUserId:
                     type:
                       - string
@@ -18412,7 +20532,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a102
                   scheduledAt:
                     type:
                       - string
@@ -18433,7 +20553,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a105
                   checklistItmIds:
                     type: array
                     items:
@@ -18507,15 +20627,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a101
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a103
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a104
                   assignedToUserId:
                     type:
                       - string
@@ -18528,7 +20648,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a102
                   scheduledAt:
                     type:
                       - string
@@ -18549,7 +20669,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a105
                   checklistItmIds:
                     type: array
                     items:
@@ -18610,10 +20730,10 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a91
+                  enum: *a103
                 priority:
                   type: string
-                  enum: *a90
+                  enum: *a102
                 assignedToUserId:
                   type:
                     - string
@@ -18659,15 +20779,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a101
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a103
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a104
                   assignedToUserId:
                     type:
                       - string
@@ -18680,7 +20800,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a102
                   scheduledAt:
                     type:
                       - string
@@ -18701,7 +20821,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a105
                   checklistItmIds:
                     type: array
                     items:
@@ -18762,14 +20882,14 @@ paths:
               properties:
                 outcome:
                   type: string
-                  enum: *a92
+                  enum: *a104
                 findingsSummary:
                   type: string
                   minLength: 5
                   maxLength: 2000
                 rejectionReason:
                   type: string
-                  enum: *a93
+                  enum: *a105
                 markStatus:
                   type: string
                   enum:
@@ -18805,15 +20925,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a101
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a103
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a104
                   assignedToUserId:
                     type:
                       - string
@@ -18826,7 +20946,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a102
                   scheduledAt:
                     type:
                       - string
@@ -18847,7 +20967,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a105
                   checklistItmIds:
                     type: array
                     items:
@@ -19213,7 +21333,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a94
+                    enum: &a106
                       - RECEIVED
                       - DUPLICATE_SUSPECTED
                       - QUALIFIED
@@ -19286,7 +21406,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a94
+                    enum: *a106
                   requestedAmount:
                     type: object
                     properties:
@@ -19342,7 +21462,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a94
+            enum: *a106
           required: false
           name: status
           in: query
@@ -19387,7 +21507,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         status:
                           type: string
-                          enum: *a94
+                          enum: *a106
                         requestedAmount:
                           type: object
                           properties:
@@ -19480,7 +21600,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a94
+                    enum: *a106
                   requestedAmount:
                     type: object
                     properties:
@@ -19589,7 +21709,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a95
+                    enum: &a107
                       - DRAFT
                       - SUBMITTED
                       - UNDERWRITING
@@ -19662,7 +21782,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a95
+                    enum: *a107
                   appliedAmount:
                     type: object
                     properties:
@@ -19873,7 +21993,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a97
+                    enum: &a109
                       - lead.created
                       - lead.duplicate_flagged
                       - lead.qualified
@@ -19921,7 +22041,7 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: &a96
+                    enum: &a108
                       - ACTIVE
                       - PAUSED
                       - REVOKED
@@ -19983,7 +22103,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: *a96
+                          enum: *a108
                         failureCount:
                           type: integer
                         lockVersion:
@@ -20092,7 +22212,7 @@ paths:
                   pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
                 eventType:
                   type: string
-                  enum: *a97
+                  enum: *a109
                 customData:
                   type: object
                   additionalProperties: {}
@@ -20162,7 +22282,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a98
+            enum: &a110
               - USER
               - SERVICE
           required: false
@@ -20247,7 +22367,7 @@ paths:
                           format: date-time
                         actorType:
                           type: string
-                          enum: *a98
+                          enum: *a110
                         actorId:
                           type: string
                         action:
@@ -20559,7 +22679,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a99
+                    enum: &a111
                       - PENDING
                       - PROCESSING
                       - COMPLETED
@@ -20639,7 +22759,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: *a99
+                          enum: *a111
                         filters:
                           type: object
                           additionalProperties: {}
@@ -20732,7 +22852,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a99
+                    enum: *a111
                   filters:
                     type: object
                     additionalProperties: {}

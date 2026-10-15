@@ -44,6 +44,9 @@ export interface ApiDeps {
   apiKeyStore?: unknown;
   partnerService?: unknown;
   webhookService?: unknown;
+  targetRepository?: unknown;
+  reportingRepository?: unknown;
+  importRepository?: unknown;
 }
 
 export interface ApiModule {

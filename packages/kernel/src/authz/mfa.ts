@@ -16,6 +16,7 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'rule.approve',
   'rule.publish',
   'rule.suspend',
+  'export.run',
 ];
 
 export function requiresMfa(principal: Principal): boolean {

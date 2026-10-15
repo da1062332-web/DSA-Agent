@@ -16,16 +16,20 @@ import * as verifications from './origination/verifications/router';
 import * as connectors from './origination/connectors/router';
 import * as lenderCases from './origination/lender-cases/router';
 import * as sanctions from './origination/sanctions/router';
+import * as targets from './crm/targets/router';
+import * as reporting from './reporting/router';
 import * as platform from './platform/router';
 import * as rulesApi from './rules/api/router';
 import * as verification from './verification/router';
 import * as automation from './automation/router';
 import * as partnerApi from './partner-api/router';
 import * as audit from './audit/router';
+import * as imports from './platform/imports/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
   { name: 'platform', owner: 'Dev 1', createRouter: platform.createRouter },
+  { name: 'imports', owner: 'Dev 1', createRouter: imports.createRouter },
   { name: 'crm/leads', owner: 'Dev 5', createRouter: leads.createRouter },
   { name: 'crm/customers', owner: 'Dev 5', createRouter: customers.createRouter },
   { name: 'crm/activities', owner: 'Dev 5', createRouter: activities.createRouter },
@@ -35,6 +39,8 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'finance', owner: 'Dev 5', createRouter: finance.createRouter },
   { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
+  { name: 'crm/targets', owner: 'Dev 5', createRouter: targets.createRouter },
+  { name: 'reporting', owner: 'Dev 5', createRouter: reporting.createRouter },
   { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
