@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
   Container,
@@ -36,8 +35,6 @@ import {
 } from '@mui/material';
 import type {
   ConsentPurposeCode,
-  DataSharingPurpose,
-  DataSharingRecipientType,
   DataSharingRecord,
   VerifyConsentResult,
 } from '@dsa/contracts';

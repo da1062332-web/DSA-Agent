@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { IdSchema } from './ids';
-import type { ScopeType } from './kernel';
 
 export const USER_STATUSES = ['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];

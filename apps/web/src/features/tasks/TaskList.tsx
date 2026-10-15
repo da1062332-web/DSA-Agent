@@ -49,7 +49,9 @@ function getInitialUserId(): string {
       const parsed = JSON.parse(raw);
       if (parsed?.user?.id) return parsed.user.id;
     }
-  } catch {}
+  } catch {
+    // Ignore parse error and fallback to default
+  }
   return 'usr_demo_01';
 }
 
@@ -60,7 +62,9 @@ function getInitialBranchId(): string {
       const parsed = JSON.parse(raw);
       if (parsed?.user?.primaryBranchId) return parsed.user.primaryBranchId;
     }
-  } catch {}
+  } catch {
+    // Ignore parse error and fallback to default
+  }
   return 'br_demo_01';
 }
 
