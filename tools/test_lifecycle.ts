@@ -325,7 +325,7 @@ async function run() {
     console.error('Failed to record sanction:', recordSanctionRes.status, JSON.stringify(recordSanctionRes.body, null, 2));
     process.exit(1);
   }
-  let sanction = recordSanctionRes.body;
+  const sanction = recordSanctionRes.body;
   console.log(`✓ Sanction recorded: ID=${sanction.id}, Version=${sanction.version}, Amount=${sanction.amount}, ValidUntil=${sanction.validUntil}`);
 
   // Record Tranche 1 (Disbursement)
