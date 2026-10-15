@@ -64,7 +64,7 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
 
   const { data } = await getSupabase().auth.getSession();
   const headers = new Headers({ Accept: 'application/json' });
-  const token = data.session?.access_token ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
+  const token = data.session?.access_token;
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (req.headers) {
     for (const [k, v] of Object.entries(req.headers)) {
@@ -123,9 +123,7 @@ export async function apiDownload(path: string, defaultFilename: string): Promis
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
 
   const { data } = await getSupabase().auth.getSession();
-  const token =
-    data.session?.access_token ??
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
+  const token = data.session?.access_token;
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
