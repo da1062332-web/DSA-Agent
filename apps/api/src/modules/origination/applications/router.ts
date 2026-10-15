@@ -4,11 +4,13 @@
 import { Router } from 'express';
 import type { ApiDeps } from '../../types';
 import { registerApplicationRoutes } from './applications';
+import { registerEligibilityRoutes } from './eligibility';
 import { registerTransitionRoutes } from './transitions';
 
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   registerApplicationRoutes(router, deps);
   registerTransitionRoutes(router, deps);
+  registerEligibilityRoutes(router, deps);
   return router;
 }

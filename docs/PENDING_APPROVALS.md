@@ -116,3 +116,33 @@ Nothing is implemented until one is chosen. Option B would be a small change in 
   no retry on 401/403, and a single clear "You don't have access" message for every 403 (screens and toasts).
 - Messaging page shows a notice when its requests are refused.
 - Tests added for the sidebar, retry policy, MFA helper, toast behaviour, Grievances access and the 403 message.
+
+## 7. Module 17 (Eligibility): built as a skeleton, waiting on approvals and rules (2026-10-15)
+
+Built and tested locally: API-ELG-001 (run), 002 (history), 003 (override), the Eligibility card on the application page,
+and migration `20261001000048_eligibility.sql`. **The migration is not applied to hosted.** Until it is, the endpoints return an error
+on hosted because the table does not exist.
+
+Needs from others before it does real work:
+- **Akash:** a published eligibility rule set. Until then every criterion is UNKNOWN (the spec's rule for missing data).
+  The one place to connect it is `evaluateCriteria` in `apps/api/src/modules/origination/applications/eligibility.ts`.
+- **You:** approval to apply `20261001000048_eligibility.sql` to hosted, and which roles get `eligibility.override`
+  (the spec says "approver roles"; no role is granted today).
+
+## 8. Beta cannot build a fresh database (found 2026-10-15, not caused by this work)
+
+The local live-database and isolation suites fail on a clean beta checkout because of Akash's migrations:
+1. `20261001000019_verification.sql` references `loan_application` (created in `…0021`), so it fails when applied in file order.
+   The manifest says it depends on M-021. It needs a number after 0021.
+2. `20261001000037_api_development.sql` and `20261001000042_audit_tamper_evidence.sql` insert into `app.permission (code, description, task_ref)`,
+   but the column is `introduced_in`. Both fail on a fresh database.
+Hosted already has these tables and permissions, so hosted is not affected. `supabase db reset` and the CI migrate step will fail.
+Merged migrations are never edited (manifest rule 1), so the fix is Akash's: new corrective files, or agreed renumbering.
+To test around it, the isolation harness accepts `DSA_MIGRATIONS_DIR` (a corrected copy of the migrations folder).
+
+Also found: 107 `/v1` operations have no isolation case (BRE 27, reporting 10, lender cases 8, commission 8, leads 7, customers 7,
+verification 6, sanctions 6, payouts 6, tasks 5, performance 5, messaging 4, activities 4, notifications 3, users 1). None are Module 13 to 17.
+
+Likely cause of RM having no complaint access: migration 0028 grants `complaint.create` and `complaint.manage` to
+`ROLE-SUPERVISOR` and `ROLE-AGENT`, which do not exist on hosted, so those grants matched no role there.
+
