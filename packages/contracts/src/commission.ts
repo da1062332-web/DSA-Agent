@@ -38,7 +38,7 @@ export const PAYABLE_STATES = [
 ] as const;
 export type PayableState = (typeof PAYABLE_STATES)[number];
 
-export const ADJUSTMENT_TYPES = ['CLAWBACK', 'CORRECTION', 'MANUAL'] as const;
+export const ADJUSTMENT_TYPES = ['WRITE_OFF', 'CLAWBACK', 'CORRECTION', 'TAX', 'MANUAL'] as const;
 export type AdjustmentType = (typeof ADJUSTMENT_TYPES)[number];
 
 export const CreateCommissionPlanInputSchema = z.object({
@@ -150,11 +150,14 @@ export type RejectClawbackInput = z.infer<typeof RejectClawbackInputSchema>;
 export const AdjustmentResponseSchema = z.object({
   id: IdSchema('adj'),
   adjustmentType: z.enum(ADJUSTMENT_TYPES),
+  type: z.string().optional(),
   calculationId: z.string().nullable(),
   payableId: z.string().nullable(),
+  exceptionId: z.string().nullable().optional(),
   amount: z.string(),
   reason: z.string(),
   evidenceRef: z.string().nullable(),
+  journalId: z.string().nullable().optional(),
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
   createdAt: z.string(),
   createdBy: z.string(),

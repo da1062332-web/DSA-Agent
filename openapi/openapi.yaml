@@ -2587,6 +2587,9 @@ components:
             type: string
             pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
           minItems: 1
+        retryOfPayoutId:
+          type: string
+          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
       required:
         - connectorId
         - payableIds
@@ -2625,6 +2628,10 @@ components:
             - string
             - "null"
         failureReason:
+          type:
+            - string
+            - "null"
+        retryOfPayoutId:
           type:
             - string
             - "null"
@@ -2861,6 +2868,8 @@ paths:
                             - commission.plan.approve
                             - commission.calculate
                             - finance.view
+                            - finance.reconcile
+                            - finance.dispute
                             - adjustment.create
                             - adjustment.approve
                             - payout.request
@@ -8839,9 +8848,13 @@ paths:
                   adjustmentType:
                     type: string
                     enum:
+                      - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
+                      - TAX
                       - MANUAL
+                  type:
+                    type: string
                   calculationId:
                     type:
                       - string
@@ -8850,11 +8863,19 @@ paths:
                     type:
                       - string
                       - "null"
+                  exceptionId:
+                    type:
+                      - string
+                      - "null"
                   amount:
                     type: string
                   reason:
                     type: string
                   evidenceRef:
+                    type:
+                      - string
+                      - "null"
+                  journalId:
                     type:
                       - string
                       - "null"
@@ -9073,6 +9094,9 @@ paths:
                     type: string
                     pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
                   minItems: 1
+                retryOfPayoutId:
+                  type: string
+                  pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
               required:
                 - connectorId
                 - payableIds
@@ -9108,6 +9132,10 @@ paths:
                       - string
                       - "null"
                   failureReason:
+                    type:
+                      - string
+                      - "null"
+                  retryOfPayoutId:
                     type:
                       - string
                       - "null"
@@ -9351,6 +9379,10 @@ paths:
                     type:
                       - string
                       - "null"
+                  retryOfPayoutId:
+                    type:
+                      - string
+                      - "null"
                   submittedBy:
                     type:
                       - string
@@ -9473,6 +9505,10 @@ paths:
                       - string
                       - "null"
                   failureReason:
+                    type:
+                      - string
+                      - "null"
+                  retryOfPayoutId:
                     type:
                       - string
                       - "null"

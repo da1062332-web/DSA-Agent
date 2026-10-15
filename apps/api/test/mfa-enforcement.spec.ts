@@ -55,4 +55,15 @@ describe('mandatory two-step verification at the API (SUB-AUTH.02)', () => {
       expect(res.body.error?.code, code).toBe('STEP_UP_REQUIRED');
     }
   });
+
+  it('TEST-MFA-API-06 bypass tokens or missing tokens are strictly rejected with UNAUTHENTICATED', async () => {
+    const app = appFor(withGrant('config.manage'), 'aal2');
+    const resBypass = await request(app).get('/v1/organisations').set('Authorization', 'Bearer dev-bypass-token');
+    expect(resBypass.status).toBe(401);
+    expect(ErrorEnvelope.parse(resBypass.body).error.code).toBe('UNAUTHENTICATED');
+
+    const resNone = await request(app).get('/v1/organisations');
+    expect(resNone.status).toBe(401);
+    expect(ErrorEnvelope.parse(resNone.body).error.code).toBe('UNAUTHENTICATED');
+  });
 });

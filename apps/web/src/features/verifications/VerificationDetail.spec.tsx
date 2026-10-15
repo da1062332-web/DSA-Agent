@@ -36,9 +36,10 @@ describe('Module 19 — Verification Detail & Create Dialog Component Rendering'
     expect(html).toContain('MuiCircularProgress-root');
   });
 
-  it('exports valid routes configuration for Module 19', () => {
-    expect(routes).toHaveLength(2);
-    expect(routes[0]?.path).toBe('/verifications');
-    expect(routes[1]?.path).toBe('/verifications/:id');
+  it('exports valid routes configuration for Verification module', () => {
+    const paths = routes.map((r) => r.path);
+    expect(paths).toContain('/verifications');
+    expect(paths).toContain('/verifications/:id');
+    expect(paths).toContain('/verifications/workbench');
   });
 });
