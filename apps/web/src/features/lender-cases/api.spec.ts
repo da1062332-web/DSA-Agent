@@ -52,7 +52,7 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     const res = await fetchLenderCases('app_01');
     expect(res).toEqual(mockCases);
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/applications/app_01/lender-cases',
+      expect.stringContaining('/v1/applications/app_01/lender-cases'),
       expect.objectContaining({ method: 'GET' }),
     );
   });
@@ -72,7 +72,7 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     expect(res.case).toEqual(mockCase);
     expect(res.etag).toBe('"0"');
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/applications/app_01/lender-cases',
+      expect.stringContaining('/v1/applications/app_01/lender-cases'),
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify(payload),

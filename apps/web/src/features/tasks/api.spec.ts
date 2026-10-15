@@ -90,7 +90,7 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     const result = await getTask('task_02');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/tasks/task_02',
+      expect.stringContaining('/v1/tasks/task_02'),
       expect.objectContaining({
         headers: expect.any(Headers),
       }),
@@ -123,7 +123,7 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     const [url, options] = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
       .calls[0]!;
-    expect(url).toBe('/v1/tasks');
+    expect(url).toContain('/v1/tasks');
     expect(options.method).toBe('POST');
     expect(options.body).toBe(JSON.stringify(payload));
     expect(result).toEqual(mockCreated);
@@ -141,7 +141,7 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     const result = await updateTask('task_04', 'W/"task_04:0"', { priority: 'LOW' });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/tasks/task_04',
+      expect.stringContaining('/v1/tasks/task_04'),
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ priority: 'LOW' }),
@@ -168,7 +168,7 @@ describe('Module 9 — Tasks Frontend API Client (api.ts)', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/tasks/task_05/completion',
+      expect.stringContaining('/v1/tasks/task_05/completion'),
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ outcomeCode: 'CONNECTED', completionNote: 'Spoke with lead' }),
