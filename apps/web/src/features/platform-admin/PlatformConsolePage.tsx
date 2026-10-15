@@ -100,14 +100,6 @@ function VpnKeyIcon(props: React.ComponentProps<typeof SvgIcon>) {
   );
 }
 
-function BuildIcon(props: React.ComponentProps<typeof SvgIcon>) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" />
-    </SvgIcon>
-  );
-}
-
 function NewReleasesIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
     <SvgIcon {...props}>
@@ -149,13 +141,8 @@ function WarningAmberIcon(props: React.ComponentProps<typeof SvgIcon>) {
 }
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  approveDataCorrection,
-  approveSupportAccessRequest,
-  createDataCorrection,
   createSupportAccessRequest,
   discardDeadLetter,
-  executeDataCorrection,
-  fetchDataCorrections,
   fetchFeatureFlags,
   fetchJobsAndQueues,
   fetchMasterData,
@@ -181,7 +168,6 @@ export function PlatformConsolePage() {
   const jobsQuery = useQuery({ queryKey: ['platform-jobs'], queryFn: fetchJobsAndQueues });
   const healthQuery = useQuery({ queryKey: ['platform-health'], queryFn: fetchSystemHealth, refetchInterval: 15000 });
   const supportQuery = useQuery({ queryKey: ['platform-support'], queryFn: () => fetchSupportAccessRequests() });
-  const correctionsQuery = useQuery({ queryKey: ['platform-corrections'], queryFn: fetchDataCorrections });
   const releasesQuery = useQuery({ queryKey: ['platform-releases'], queryFn: fetchReleases });
 
   // Dialog & Form States
@@ -193,17 +179,10 @@ export function PlatformConsolePage() {
   const [resumeReason, setResumeReason] = useState('');
 
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
-  const [supportTenantId, setSupportTenantId] = useState('ten_demo_01');
+  const [supportTenantId, setSupportTenantId] = useState('');
   const [supportReason, setSupportReason] = useState('');
   const [supportIncident, setSupportIncident] = useState('INC-2026-');
   const [supportDuration, setSupportDuration] = useState('2.0');
-
-  const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
-  const [corrTenantId, setCorrTenantId] = useState('ten_demo_01');
-  const [corrJustification, setCorrJustification] = useState('');
-  const [corrScriptRef, setCorrScriptRef] = useState('SCR-2026-');
-  const [corrTargetEntity, setCorrTargetEntity] = useState('LEAD');
-  const [corrDescription, setCorrDescription] = useState('');
 
   const [masterImportDialogOpen, setMasterImportDialogOpen] = useState(false);
   const [importListCode, setImportListCode] = useState('PINCODES');
@@ -269,44 +248,6 @@ export function PlatformConsolePage() {
     },
   });
 
-  const approveSupportMutation = useMutation({
-    meta: { successMessage: 'Support access decision saved.' },
-    mutationFn: ({ id, decision }: { id: string; decision: 'APPROVED' | 'DENIED' }) =>
-      approveSupportAccessRequest(id, decision, 'Action taken from Platform Console'),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-support'] }),
-  });
-
-  const createCorrectionMutation = useMutation({
-    meta: { successMessage: 'Data correction requested.' },
-    mutationFn: () =>
-      createDataCorrection({
-        tenantId: corrTenantId,
-        justification: corrJustification,
-        scriptRef: corrScriptRef,
-        targetEntity: corrTargetEntity,
-        changeDescription: corrDescription,
-      }),
-    onSuccess: () => {
-      setCorrectionDialogOpen(false);
-      setCorrJustification('');
-      setCorrDescription('');
-      queryClient.invalidateQueries({ queryKey: ['platform-corrections'] });
-    },
-  });
-
-  const approveCorrectionMutation = useMutation({
-    meta: { successMessage: 'Data correction approved.' },
-    mutationFn: ({ id, decision }: { id: string; decision: 'APPROVED' | 'REJECTED' }) =>
-      approveDataCorrection(id, decision, 'Approved from console preview'),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-corrections'] }),
-  });
-
-  const executeCorrectionMutation = useMutation({
-    meta: { successMessage: 'Data correction executed.' },
-    mutationFn: executeDataCorrection,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-corrections'] }),
-  });
-
   const previewImportMutation = useMutation({
     meta: { successMessage: 'Import preview ready.' },
     mutationFn: async (dryRun: boolean) =>
@@ -335,7 +276,6 @@ export function PlatformConsolePage() {
     queryClient.invalidateQueries({ queryKey: ['platform-jobs'] });
     queryClient.invalidateQueries({ queryKey: ['platform-health'] });
     queryClient.invalidateQueries({ queryKey: ['platform-support'] });
-    queryClient.invalidateQueries({ queryKey: ['platform-corrections'] });
     queryClient.invalidateQueries({ queryKey: ['platform-releases'] });
   };
 
@@ -393,7 +333,6 @@ export function PlatformConsolePage() {
           <Tab icon={<WorkIcon fontSize="small" />} iconPosition="start" label="Background Jobs" />
           <Tab icon={<HealthAndSafetyIcon fontSize="small" />} iconPosition="start" label="System Health" />
           <Tab icon={<VpnKeyIcon fontSize="small" />} iconPosition="start" label="Support Access (Break-Glass)" />
-          <Tab icon={<BuildIcon fontSize="small" />} iconPosition="start" label="Data Corrections" />
           <Tab icon={<NewReleasesIcon fontSize="small" />} iconPosition="start" label="Release Management" />
         </Tabs>
       </Paper>
@@ -767,7 +706,8 @@ export function PlatformConsolePage() {
                 Break-Glass Support Access Grants (CMP-ADM.06.1)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Enforcing Separation of Duties (SOD-06): Requesters cannot approve their own grants. Maximum duration: 4 hours.
+                Platform operators request access. The target tenant's administrator approves, denies or revokes it in their own
+                approvals screen (SOD-06). Maximum duration: 4 hours.
               </Typography>
             </Box>
             <Button variant="contained" color="warning" onClick={() => setSupportDialogOpen(true)}>
@@ -785,7 +725,6 @@ export function PlatformConsolePage() {
                   <TableCell>Requester / Approver</TableCell>
                   <TableCell>Duration Window</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell align="right">Tenant Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -812,31 +751,9 @@ export function PlatformConsolePage() {
                     <TableCell>
                       <Chip
                         label={grant.status}
-                        color={grant.status === 'APPROVED' ? 'success' : grant.status === 'PENDING' ? 'warning' : 'error'}
+                        color={grant.status === 'APPROVED' ? 'success' : grant.status === 'PENDING' ? 'warning' : 'default'}
                         size="small"
                       />
-                    </TableCell>
-                    <TableCell align="right">
-                      {grant.status === 'PENDING' && (
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            onClick={() => approveSupportMutation.mutate({ id: grant.id, decision: 'APPROVED' })}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            onClick={() => approveSupportMutation.mutate({ id: grant.id, decision: 'DENIED' })}
-                          >
-                            Deny
-                          </Button>
-                        </Box>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -846,90 +763,8 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 6: DATA CORRECTIONS (SUB-ADM.07) */}
+      {/* TAB 6: RELEASE MANAGEMENT (SUB-ADM.08) */}
       {tabIndex === 6 && (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box>
-              <Typography variant="h6" fontWeight={600}>
-                Governed Data Corrections (CMP-ADM.07.1)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Enforces SOD-08 (Requester != Approver). All scripts execute under a dedicated service identity.
-              </Typography>
-            </Box>
-            <Button variant="contained" onClick={() => setCorrectionDialogOpen(true)}>
-              New Correction Request
-            </Button>
-          </Box>
-
-          <Grid container spacing={2}>
-            {correctionsQuery.data?.data.map((c) => (
-              <Grid item xs={12} key={c.id}>
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={700}>
-                          {c.id}
-                        </Typography>
-                        <Chip label={c.scriptRef} size="small" variant="outlined" />
-                        <Chip
-                          label={c.status}
-                          color={c.status === 'EXECUTED' ? 'success' : c.status === 'APPROVED' ? 'primary' : 'warning'}
-                          size="small"
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        {c.status === 'PENDING' && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            onClick={() => approveCorrectionMutation.mutate({ id: c.id, decision: 'APPROVED' })}
-                          >
-                            Approve (SOD-08)
-                          </Button>
-                        )}
-                        {c.status === 'APPROVED' && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            onClick={() => executeCorrectionMutation.mutate(c.id)}
-                          >
-                            Execute Script
-                          </Button>
-                        )}
-                      </Box>
-                    </Box>
-
-                    <Typography variant="body2" sx={{ mb: 1.5 }}>
-                      <strong>Justification:</strong> {c.justification}
-                    </Typography>
-
-                    <Paper sx={{ p: 1.5, bgcolor: '#f8f9fa', borderRadius: 1.5, fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        Dry Run Diff Preview (Key: {c.dryRunDiffKey}):
-                      </Typography>
-                      <pre style={{ margin: 0 }}>{c.dryRunDiff}</pre>
-                    </Paper>
-
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5, fontSize: '0.75rem', color: 'text.secondary' }}>
-                      <span>Requested By: <code>{c.requestedBy}</code></span>
-                      <span>Approver: <code>{c.approvedBy || 'Pending'}</code></span>
-                      <span>Executor: <code>{c.executorIdentity}</code></span>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
-
-      {/* TAB 7: RELEASE MANAGEMENT (SUB-ADM.08) */}
-      {tabIndex === 7 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Box>
@@ -1085,8 +920,11 @@ export function PlatformConsolePage() {
             <FormControl fullWidth>
               <InputLabel>Target Tenant</InputLabel>
               <Select value={supportTenantId} label="Target Tenant" onChange={(e) => setSupportTenantId(e.target.value)}>
-                <MenuItem value="ten_demo_01">Alpha Demo Finserv (ten_demo_01)</MenuItem>
-                <MenuItem value="ten_demo_02">Beta Demo Loans (ten_demo_02)</MenuItem>
+                {(tenantsQuery.data?.data ?? []).map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    {t.legalName} ({t.id})
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <TextField
@@ -1122,65 +960,9 @@ export function PlatformConsolePage() {
             variant="contained"
             color="warning"
             onClick={() => createSupportMutation.mutate()}
-            disabled={!supportReason || parseFloat(supportDuration) > 4.0 || createSupportMutation.isPending}
+            disabled={!supportTenantId || !supportReason || parseFloat(supportDuration) > 4.0 || createSupportMutation.isPending}
           >
             Submit Request
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* DIALOG: New Data Correction */}
-      <Dialog open={correctionDialogOpen} onClose={() => setCorrectionDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Request Governed Data Correction</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel>Tenant</InputLabel>
-              <Select value={corrTenantId} label="Tenant" onChange={(e) => setCorrTenantId(e.target.value)}>
-                <MenuItem value="ten_demo_01">Alpha Demo Finserv</MenuItem>
-                <MenuItem value="ten_demo_02">Beta Demo Loans</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Script Reference"
-              fullWidth
-              required
-              value={corrScriptRef}
-              onChange={(e) => setCorrScriptRef(e.target.value)}
-            />
-            <TextField
-              label="Target Entity"
-              fullWidth
-              required
-              value={corrTargetEntity}
-              onChange={(e) => setCorrTargetEntity(e.target.value)}
-            />
-            <TextField
-              label="Change Description"
-              fullWidth
-              required
-              value={corrDescription}
-              onChange={(e) => setCorrDescription(e.target.value)}
-            />
-            <TextField
-              label="Audit Justification"
-              multiline
-              rows={3}
-              fullWidth
-              required
-              value={corrJustification}
-              onChange={(e) => setCorrJustification(e.target.value)}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCorrectionDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={() => createCorrectionMutation.mutate()}
-            disabled={!corrJustification || createCorrectionMutation.isPending}
-          >
-            Create Request
           </Button>
         </DialogActions>
       </Dialog>
