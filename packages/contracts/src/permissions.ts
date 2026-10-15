@@ -83,6 +83,16 @@ export const PERMISSION_CODES = [
   'report.schedule',
   'import.run',
   'export.run',
+  'platform.console',
+  'platform.flags',
+  'platform.master_data',
+  'platform.jobs',
+  'platform.support_access',
+  'platform.release',
+  'data_correction.request',
+  'data_correction.approve',
+  'integration.read',
+  'integration.manage',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

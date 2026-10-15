@@ -689,21 +689,40 @@ export class DocumentSharingService {
           };
 
           const shareId = `shr_${nextUlid()}`;
-          const dsrId = `dsr_${nextUlid()}`;
+          let dsrId: string;
           const expiresAt = new Date(ctx.now.getTime() + input.expiresInDays * 24 * 3600 * 1000);
 
           // 5. In the same transaction: create ENT-100 data_sharing_record
-          await sql`
-            INSERT INTO app.data_sharing_record (
-              id, tenant_id, subject_type, subject_id, recipient_type, recipient_id,
-              purpose, consent_ids, items, channel, source_ref, actor_id, shared_at
-            ) VALUES (
-              ${dsrId}, ${ctx.principal.tenantId}, 'LOAN_APPLICATION', ${app.id},
-              ${input.recipientType}, ${input.recipientId}, ${input.purpose},
-              ${[activeConsent.id]}::text[], ${JSON.stringify(manifest)}::jsonb,
-              'PORTAL', ${shareId}, ${ctx.principal.id}, ${ctx.now}
-            )
-          `.execute(tx);
+          if (this.deps.dataSharingPort) {
+            const recorded = await this.deps.dataSharingPort.record(tx, ctx, {
+              subjectType: 'LOAN_APPLICATION',
+              subjectId: app.id,
+              recipientType: input.recipientType,
+              recipientId: input.recipientId,
+              purpose: input.purpose,
+              consentIds: [activeConsent.id],
+              items: {
+                fields: manifest.documents.map((c) => c.documentType),
+                checklistItemIds: manifest.documents.map((c) => c.checklistItemId),
+              },
+              channel: 'PORTAL',
+              sourceRef: shareId,
+            });
+            dsrId = recorded.dataSharingRecordId;
+          } else {
+            dsrId = `dsr_${nextUlid()}`;
+            await sql`
+              INSERT INTO app.data_sharing_record (
+                id, tenant_id, subject_type, subject_id, recipient_type, recipient_id,
+                purpose, consent_ids, items, channel, source_ref, actor_id, shared_at
+              ) VALUES (
+                ${dsrId}, ${ctx.principal.tenantId}, 'LOAN_APPLICATION', ${app.id},
+                ${input.recipientType}, ${input.recipientId}, ${input.purpose},
+                ${[activeConsent.id]}::text[], ${JSON.stringify(manifest)}::jsonb,
+                'PORTAL', ${shareId}, ${ctx.principal.id}, ${ctx.now}
+              )
+            `.execute(tx);
+          }
 
           // 6. Create ENT-063 external_share
           await sql`

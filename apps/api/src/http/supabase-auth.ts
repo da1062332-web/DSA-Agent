@@ -20,7 +20,7 @@ export function supabaseAuth(deps: { verifier: TokenVerifier; resolver: Principa
       const now = new Date();
       const token = await deps.verifier.verify(raw);
       const principal = await deps.resolver.resolve(token, { correlationId: req.correlationId, now });
-      const profileOnly = req.method === 'GET' && req.path === '/me';
+      const profileOnly = req.method === 'GET' && (req.path === '/me' || req.path === '/v1/me');
       const skipMfa = process.env.DISABLE_MFA === 'true';
       if (!skipMfa && requiresMfa(principal) && token.aal !== 'aal2' && !profileOnly) {
         throw AppError.of(

@@ -83,6 +83,16 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
+  // Platform Admin routes (API-TEN-002, API-ADM-001..API-ADM-009)
+  const platformAdminMod = apiModules.find((m) => m.name === 'platform-admin');
+  if (platformAdminMod) {
+    const platformRouter = express.Router();
+    platformRouter.use(opts.auth ?? authPlaceholder);
+    platformRouter.use(rateLimit());
+    platformRouter.use(express.json({ limit: '10mb' }));
+    platformRouter.use(platformAdminMod.createRouter(opts.deps));
+    app.use('/platform', platformRouter);
+  }
   const v1 = express.Router();
   // Authenticated responses are per user and must never come from a cache. ETags are record versions ("0" for many
   // records and users), so a browser revalidating with If-None-Match would get 304 and show the previous user's data.
