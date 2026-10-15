@@ -5,49 +5,9 @@ Date drafted: 2026-10-15.
 
 ## 1. Module 1 (Tenant): `platform.console` and `platform.flags` for ROLE-PLATFORM-SUPERADMIN
 
-> **Update 2026-10-15: this section's premise has changed.** Piyush's migration 0046 (now on hosted) already created all the `platform.*`
-> permissions and granted them to `ROLE-ORG-OWNER` and `ROLE-TENANT-ADMIN` in every tenant (12 grants). No `ROLE-PLATFORM-SUPERADMIN`
-> exists, and there is no platform tenant (all 6 tenants are `DSA_ORG`). The draft SQL below is therefore outdated.
-> The console's tenant list runs inside the caller's tenant (RLS), so a tenant admin sees only their own tenant today: no cross-tenant leak yet.
-> But `platform.support_access`, `platform.release` and `platform.jobs` are described as cross-tenant operator powers.
-> Decision needed: (A) leave the grants as they are for now, or (B) create a platform tenant and role, move the grants,
-> and add a deliberate cross-tenant read path. B also removes the Platform Console from every tenant admin and breaks Piyush's tests that assume tenant-admin access.
-
-
-**Why.** `apps/api/src/modules/platform-admin/router.ts` requires `platform.console` and `platform.flags`. Hosted has neither
-permission, so nobody can open the Platform Console.
-
-**One design point to confirm.** `role` is per tenant (`tenant_id NOT NULL`, `UNIQUE (tenant_id, code)`), so a
-ROLE-PLATFORM-SUPERADMIN row has to live in a tenant. Hosted has Alpha, Beta and Demo DSA tenants, and no platform tenant.
-Options: (a) a dedicated "platform" tenant that holds the operators, or (b) add the role to an existing tenant.
-Option (a) matches the spec ("the platform console shows no tenant business data"). The draft below assumes
-a tenant whose id you supply.
-
-**Draft migration (proposed file name `20261001000044_platform_permissions.sql`, Dev 1 range 0040-0049). Not created in
-`supabase/migrations`, not applied:**
-
-```sql
-SET search_path = app, extensions, public;
-
--- 1. The two permission codes the platform console already checks.
-INSERT INTO permission (code, description, introduced_in) VALUES
-  ('platform.console', 'Open the platform console: tenant list, health and entitlements, no business data', 'M-044'),
-  ('platform.flags',   'Read and set feature flags',                                                       'M-044')
-ON CONFLICT (code) DO NOTHING;
-
--- 2. The role and its grants, in the tenant that holds platform operators. <PLATFORM_TENANT_ID> is to be confirmed.
-INSERT INTO role (id, tenant_id, code, name, is_template, created_by)
-VALUES ('rol_platform_superadmin', '<PLATFORM_TENANT_ID>', 'ROLE-PLATFORM-SUPERADMIN', 'Platform super admin', true, 'migration')
-ON CONFLICT (tenant_id, code) DO NOTHING;
-
-INSERT INTO role_permission (tenant_id, role_id, permission_code) VALUES
-  ('<PLATFORM_TENANT_ID>', 'rol_platform_superadmin', 'platform.console'),
-  ('<PLATFORM_TENANT_ID>', 'rol_platform_superadmin', 'platform.flags')
-ON CONFLICT DO NOTHING;
-```
-
-Before applying: confirm the platform tenant id, the real `role.id` convention, and that `role_permission` has no other required
-columns on hosted (the local migration shows `tenant_id`, `role_id`, `permission_code`). Add the MANIFEST.md row.
+> **Superseded 2026-10-15.** The platform realm was designed, built and rehearsed; the migration is not applied yet.
+> The current plan, runbook, first-user provisioning and rollback are in `docs/MODULE_1_PLATFORM_REALM_REVIEW.md`. The draft SQL that
+> used to be here was wrong (it assumed no platform permissions existed) and has been removed.
 
 ## 2. Module 16 (Applications): proposed withdraw and reopen transitions (NOT approved, not implemented)
 

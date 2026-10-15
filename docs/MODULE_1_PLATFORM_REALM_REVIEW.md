@@ -1,120 +1,248 @@
-# Module 1 (Tenant): platform realm. Review package
+# Module 1 (Tenant): platform realm. Final implementation and runbook
 
-Status: **prepared for review. Nothing in this package has been applied to the hosted database.**
-Migration: `supabase/migrations/20261001000050_platform_realm.sql` (in the repository, not applied).
-Date: 2026-10-15. Prepared by Vaibhav's assistant. Piyush owns the platform-admin code and must review it.
+Date: 2026-10-15. Project: DSA CRM, shared hosted Supabase development project `DSA-Agent` (`mlpkwwhnagxzinaohdxg`).
 
-## 1. What was wrong (found in review)
+## Status at a glance
 
-### 1.1 Permission grants in migration 0046
-
-| Grant | Where it is on hosted today | Verdict |
-|---|---|---|
-| `platform.console`, `.flags`, `.master_data`, `.jobs`, `.support_access`, `.release` | `ROLE-ORG-OWNER` and `ROLE-TENANT-ADMIN` of 5 tenants (30 grants, 7 users) | **Wrong.** MODULE 1 and 40 give these to ROLE-PLATFORM-SUPERADMIN and ROLE-PLATFORM-SUPPORT only. |
-| `data_correction.request` | `ROLE-ORG-OWNER`, `ROLE-TENANT-ADMIN`, `ROLE-BRANCH-MGR`, `ROLE-LOAN-OPS` | **Correct, tenant realm.** Routes are `/v1/data-corrections`, requested inside a tenant. Unchanged. |
-| `data_correction.approve` | `ROLE-ORG-OWNER`, `ROLE-TENANT-ADMIN` | **Partly wrong.** The spec says the tenant `ROLE-TENANT-ADMIN` approves. Removed from `ROLE-ORG-OWNER` only. This one is a judgement call: say if the owner should keep it. |
-
-### 1.2 Problems beyond the grants
-
-| # | Finding | Severity |
-|---|---|---|
-| 1 | `feature_flag` and `master_data_item` had no row-level security, and `dsa_app` can INSERT/UPDATE them, so the database let any tenant session change global flags and master data. Only the API check stood in the way. | High |
-| 2 | The router skipped every permission check for a `SERVICE` principal. | High |
-| 3 | The support-access and data-correction services stored data in memory (not in the tables 0046 created) and trusted a `tenantId` from the request body. | High |
-| 4 | Support-access approval needed only `config.manage` in any tenant, and was not tied to the request's tenant. Any tenant administrator could approve any tenant's request. | High |
-| 5 | A tenant admin holding `platform.support_access` could list every tenant's support requests with `?tenantId=`. Data-correction approve and execute were not tenant-scoped. | High |
-| 6 | The health route had no permission check at all. | Medium |
-| 7 | The console tenant list swallowed database errors and returned **made-up tenants and counts** (12 users, 48 applications, a fixed entitlement list). The service also seeded a fake APPROVED support grant and an APPROVED data correction. | Medium |
-| 8 | Piyush's live tests wrote rows to the hosted project: `support_access_grant` and `data_correction_request` each hold one test row (created_by `TEST` and `usr_maker`). | Low (cleanup needs approval) |
-
-Items 2 to 7 are code and are fixed in this package. Items 1 and 3 to 5 need the migration to be fully closed in the database.
-
-## 2. The design
-
-- One dedicated tenant, `ten_01M4ZG67WTS51Q0XN7F1Y9CCYG` ("Platform Operations", type `PLATFORM`), holds platform operators. Constant `PLATFORM_TENANT_ID` in `packages/contracts/src/platform-realm.ts`.
-- `ROLE-PLATFORM-SUPERADMIN`: the six `platform.*` permissions plus `audit.read` (for the platform tenant's own audit trail).
-- `ROLE-PLATFORM-SUPPORT`: `platform.console` and `platform.support_access` only ("metadata only").
-- Realm rule in the API: a platform permission works only for a signed-in **user** of the platform tenant. A tenant administrator with the same code is refused. Tenant routes (approvals, data corrections) work only for a user of a customer tenant, so an operator cannot approve their own request. Service identities have no shortcut in either realm.
-- Realm rule in the database: `app.is_platform_realm()` is true only in a session whose tenant is the platform tenant. Policies:
-
-| Table | Platform session | Customer-tenant session |
-|---|---|---|
-| `tenant` | read all rows (metadata) | own row only (unchanged) |
-| `feature_flag`, `master_data_item` | read and write | read only |
-| `support_access_grant` | read all, insert a PENDING request, **no update** | read own, update own (approve, deny, revoke), no insert |
-| `data_correction_request` | **no access** (it holds old and new business values) | own rows (unchanged) |
-| all business tables | **no access** (unchanged) | own rows (unchanged) |
-
-- Cross-tenant aggregate: `platform_tenant_user_counts()` returns active users per tenant (counts only), refuses to run outside the platform realm, and is the only cross-tenant read besides the tenant row.
-- Audit: every platform action and every cross-tenant read writes an audit event in the platform tenant (`platform.tenants_listed`, `platform.flag_set`, `platform.queue_paused`, `platform.support_access_requested`, `...approved`, `data_correction.requested`, and so on). Support-access events are written in the same transaction as the change.
-- MFA: all six `platform.*` codes and `data_correction.approve` are now in the mandatory-MFA list (API and web), so any platform operator needs an aal2 session. Step-up on individual platform actions is not added.
-
-## 3. What the migration does to hosted (exact effects)
-
-1. Creates function `is_platform_realm()` and, after review, `platform_tenant_user_counts()`.
-2. Replaces the `tenant_type` check to allow `PLATFORM`.
-3. Inserts 1 tenant, 2 roles, 9 role grants (platform tenant only).
-4. **Deletes 30 `role_permission` rows** (the operator permissions of tenant roles) and **2 rows** (`data_correction.approve` of the owner role).
-5. Adds policy `platform_read` to `tenant`; enables and forces RLS on `feature_flag` and `master_data_item` with 3 policies each.
-6. `support_access_grant`: adds 3 columns with defaults, replaces the status check, adds a four-hour window check (`NOT VALID`, so the one leftover test row is not rejected), replaces the single `tenant_isolation` policy with 3 policies.
-7. Does not touch `data_correction_request`, any business table, any user, or any other role.
-
-Not done by the migration: creating the first platform user. After approval, create the superadmin in Supabase Auth, add the `app_user` row in the platform tenant, and assign `ROLE-PLATFORM-SUPERADMIN` (MFA enrolment follows at first sign-in).
-
-## 4. Impact analysis
-
-| Who | Effect |
+| Item | State |
 |---|---|
-| 7 users who hold `platform.*` today (tenant admins and owners) | Lose the Platform Console and its sidebar item. Nothing else changes for them. |
-| Tenant administrators | Still approve support access and data corrections, but **there is no screen for it yet**: those tabs are inside the Platform Console page, which only operators can open. The APIs work (`/v1/support-access-requests`, `/v1/data-corrections`). A small tenant-side approvals page is the follow-up. |
-| Platform operators | New: sign in as users of the platform tenant. They see tenant metadata and active-user counts. Business counts show as null. Entitlements show empty until SUB-TEN.03 exists. |
-| Piyush's tests | `platform-admin.spec.ts` updated (17 tests, was 9): platform principal now uses `PLATFORM_TENANT_ID`, tenant and platform permissions are separated, in-memory store injected. His `platform-admin-live-pg.int.spec.ts` is unchanged and still reads and writes hosted when `DATABASE_URL` is set, see risk below. |
-| Fresh database builds | Unchanged by this work. They still fail on Akash's migrations 0019, 0037 and 0042, so the new live tests ran on a corrected copy of the migrations folder. |
+| Code, tests, tools, screens, documentation | Done and committed locally. **Not pushed.** |
+| Migration `20261001000050_platform_realm.sql` | Final. **Not applied to hosted.** Waiting for the owner's explicit confirmation of the exact write. |
+| Hosted read-only preflight | Run 2026-10-15: 15 of 15 required checks pass. |
+| Hosted backup | Taken and verified (section 11). |
+| First platform superadmin | Not created. Needs the migration first (section 9). |
+| Hosted post-apply verification | **Not run yet**, because nothing has been applied. The scripts exist and were rehearsed (section 7). |
 
-## 5. Test results (local only)
+Migration file: 172 lines, `sha256 d8029ef53af46a99fa71bd5fa3a485910bd0909b9fe83c167d791f114e35eb2a`. If the file changes, rebuild the apply file and take the checksum again.
+
+## 1. What was wrong
+
+**Permission grants (migration 0046).** All six `platform.*` operator permissions were granted to `ROLE-ORG-OWNER` and `ROLE-TENANT-ADMIN` of customer tenants: 30 grants across 5 roles, held by 7 accounts (5 people: admin@alpha.com, admin@beta.com, admin@dsa.com, owner@alpha.com, owner@beta.com). Module 1 and 40 give these to `ROLE-PLATFORM-SUPERADMIN` and `ROLE-PLATFORM-SUPPORT` only.
+
+**Other findings, all fixed in this change unless marked.**
+
+| # | Finding | Where |
+|---|---|---|
+| 1 | `feature_flag` and `master_data_item` had no row-level security although the API database role can write them. | database |
+| 2 | The router skipped every permission check for a `SERVICE` principal. | API |
+| 3 | Support-access and data-correction requests lived in memory, took `tenantId` from the request body, and approval was not tied to the request's tenant: any tenant admin could approve any tenant's request. | API |
+| 4 | A tenant admin holding `platform.support_access` could list every tenant's support requests with `?tenantId=`. | API |
+| 5 | "Execute correction" let a person mark a correction executed without anything being executed; the dry-run diff was invented text. | API |
+| 6 | The console tenant list swallowed database errors and returned made-up tenants, counts and entitlements; sample "APPROVED" records were seeded. | API |
+| 7 | The health route had no permission check. | API |
+| 8 | The support-access dialog offered two hard-coded tenant ids, one of which does not exist on hosted. | web |
+| 9 | The platform tenant had no organisation or branch, so no platform user could ever be created (`app_user.primary_branch_id` is required). | database |
+| 10 | **Found by the rehearsal, fixed:** `is_platform_realm()` returned NULL (not false) when no tenant was set, so `IF NOT is_platform_realm()` did not raise and a database session with no tenant could call the user-count function. | migration |
+| 11 | New functions can be auto-granted to Supabase's `anon`, `authenticated` and `service_role` by default privileges (confirmed in the hosted preflight). | migration |
+| 12 | Drift, **not changed**: hosted `app_user` has a `password_hash` column that no migration creates (3 of 62 rows populated). The provisioning tool never writes it. | hosted schema |
+| 13 | Drift, **not changed**: hosted has no migration-history table, so there is nothing to repair; migrations were applied as direct SQL. | hosted |
+
+## 2. What changed, and where
+
+| Layer | Files | Why |
+|---|---|---|
+| Migration | `supabase/migrations/20261001000050_platform_realm.sql`, `supabase/MANIFEST.md` (M-050) | Platform tenant, organisation, branch, roles, grant move, realm function, RLS, support and correction table changes |
+| Contracts | `packages/contracts/src/platform-realm.ts` (new), `platform-admin.ts`, `ids.ts`, `index.ts` | Platform tenant id, realm test, nullable dry-run, revoke schema, `sag` and `dcr` id prefixes |
+| Kernel | `packages/kernel/src/authz/mfa.ts` | Mandatory MFA for all six `platform.*` codes and `data_correction.approve` |
+| API | `modules/platform-admin/router.ts`, `platform-admin-service.ts`, `platform-store.ts` (new), `openapi.ts` | Realm guards, audited refusals, revocation, database-backed support access and corrections |
+| Web | `features/approvals/*` (new), `features/platform-admin/PlatformConsolePage.tsx`, `shell/Sidebar.tsx`, `api/useMe.ts` | Tenant-side approvals screen; the console no longer offers tenant actions |
+| Tools | `tools/provision-platform-admin.ts`, `tools/package.json`, `tools/sql/0050/*` | First-user provisioning; preflight, backup, verify, rollback scripts |
+| Tests | `apps/api/test/platform-admin.spec.ts` (updated), `platform-realm.int.spec.ts`, `provision-platform-admin.int.spec.ts`, `platform-realm-ops.int.spec.ts`; web specs for approvals, sidebar, routes, console | Evidence |
+| Test harness | `tests/isolation/harness.ts` | `DSA_MIGRATIONS_DIR` and `DSA_PG_IMAGE` options |
+
+## 3. Final architecture and role-wise permissions
+
+One dedicated tenant, `ten_01M4ZG67WTS51Q0XN7F1Y9CCYG` ("Platform Operations", type `PLATFORM`), with its own organisation and branch, holds platform operators. A platform permission works only for a signed-in **user** of that tenant (API) and only in a session whose tenant is that one (database, `app.is_platform_realm()`). Tenant routes need a user of a customer tenant. Service identities have no shortcut.
+
+| Role | Realm | Holds |
+|---|---|---|
+| `ROLE-PLATFORM-SUPERADMIN` | platform | `platform.console`, `.flags`, `.master_data`, `.jobs`, `.support_access`, `.release`, `audit.read` |
+| `ROLE-PLATFORM-SUPPORT` | platform | `platform.console`, `platform.support_access` (metadata only) |
+| `ROLE-TENANT-ADMIN`, `ROLE-ORG-OWNER` | customer tenant | `config.manage` (approve, deny, revoke support access), `data_correction.request`, `data_correction.approve`. **No `platform.*`.** |
+| `ROLE-BRANCH-MGR`, `ROLE-LOAN-OPS` | customer tenant | `data_correction.request` |
+| Correction executor | service identity `SYSTEM:data-correction-executor`, bound to one tenant | marks an APPROVED correction EXECUTED |
+
+| Action | Platform superadmin | Platform support | Tenant admin / owner | Branch mgr / loan ops | Anyone else | Unauthenticated |
+|---|---|---|---|---|---|---|
+| Console, flags, master data, jobs, health, releases | yes | console only | 403 (audited) | 403 | 403 | 401 |
+| List customer tenants (metadata, active-user count) | yes | yes | 403 (audited) | 403 | 403 | 401 |
+| File a support-access request for a tenant | yes | yes | 403 (audited) | 403 | 403 | 401 |
+| See support requests | all | all | own tenant only | no | no | 401 |
+| Approve, deny, revoke support access | no (403) | no (403) | own tenant only | no | no | 401 |
+| Request a data correction | no (403) | no | yes, own tenant | yes, own tenant | no | 401 |
+| Approve a data correction | no | no | yes, not their own request | no | no | 401 |
+| Mark a correction executed | no | no | no (403) | no | no | executor only |
+| Read business data of any tenant | **no** | **no** | own tenant | own scope | own scope | no |
+
+Database policies: `tenant` readable by the platform session (all rows) and by each tenant (own row); `feature_flag` and `master_data_item` readable by all, writable only in the platform realm; `support_access_grant` readable by the target tenant and the platform realm, insertable only by the platform realm as PENDING, updatable only by the target tenant; `data_correction_request` visible only to its own tenant (the platform realm cannot read it); `platform_tenant_user_counts()` is the one cross-tenant aggregate, counts only, refused outside the platform realm.
+
+Audit: every platform action and cross-tenant read, every support-access and correction change (written in the same transaction as the change), and every refused attempt on a platform route (`platform.access_denied`, in the caller's own tenant).
+
+## 4. Migration effects, statement group by statement group
+
+| # | Effect on hosted | Rows |
+|---|---|---|
+| 1 | Create `is_platform_realm()` (stable, invoker, false when no tenant) | function |
+| 2 | Widen `tenant_tenant_type_check` to allow `PLATFORM`; insert the platform tenant | +1 tenant |
+| 3 | Insert the platform organisation and branch (code `PLATFORM`) | +1, +1 |
+| 4 | Insert the two platform roles and 9 grants | +2, +9 |
+| 5 | **Delete** operator permissions from every customer-tenant role | **-30** |
+| 6 | Policy `platform_read` on `tenant` | policy |
+| 7 | Enable and force RLS on `feature_flag` and `master_data_item`; 3 policies each | 6 policies |
+| 8 | `support_access_grant`: add `scope`, `incident_ref`, `starts_at`; five-state status check; four-hour window check **NOT VALID**; replace `tenant_isolation` with 3 policies | schema |
+| 9 | Create `platform_tenant_user_counts()` (security definer, fixed search_path); revoke execute from PUBLIC, `anon`, `authenticated`, `service_role`; grant to `dsa_app` | function |
+| 10 | `data_correction_request`: add 9 API columns; make 6 legacy columns optional; five-state status check; SOD-08 check (approver differs from requester); row-shape check | schema |
+
+Not touched: any user, any business table, any other role, `data_correction.approve` and `data_correction.request` grants (5 and 9 rows stay), the existing leftover rows (they are kept).
+
+## 5. Decisions
+
+- **`ROLE-ORG-OWNER` keeps `data_correction.approve`.** Module 5 (SUB-ACL.03) says small tenants designate ROLE-ORG-OWNER as the checker, and SOD-08 (now a database constraint as well as an API rule) stops anyone approving their own request. Removing it was not needed for realm separation and would have removed a legitimate approver (the owners of Alpha and Beta have no admin role). Module 40 names `ROLE-TENANT-ADMIN` as the usual approver: both can.
+- **Data corrections stay tenant-realm** (Module 40: `/v1/data-corrections`, tenant staff request, a different person approves). Tenant admins approve through the new Approvals screen.
+- **Nobody executes a correction by hand.** Only the executor service identity can mark one EXECUTED. No executor exists yet, so approved corrections wait. The API no longer invents a dry-run diff: it is null until an executor attaches a real one.
+- **The platform realm cannot read `data_correction_request`**, because it holds business references and values.
+- **ORG-OWNER and TENANT-ADMIN lose the Platform Console.** That is the point.
+
+## 6. Hosted read-only results so far (2026-10-15)
+
+- Linked project: `DSA-Agent` (`mlpkwwhnagxzinaohdxg`, ap-south-1, PostgreSQL 17.11, healthy). The other two projects on the account are in a different organisation and are not linked.
+- Executing role: `postgres`, not superuser, **`rolbypassrls = true`**. It can `SET ROLE dsa_api` (member, no privilege inheritance); `dsa_api` does not bypass RLS.
+- No migration-history table exists (nothing to repair; do not run `migration repair`).
+- No id, slug, role or function collisions. Constraint names the migration drops by name exist.
+- Preflight (`tools/sql/0050/preflight.sql`): **15 of 15 required rows PASS.**
+- Counts: 30 operator grants to delete; 5 `data_correction.approve`; 9 `data_correction.request`; 1 support row and 1 correction row (leftover live-test records); 5 flags (one is a test flag); 9 master data rows.
+- Default privileges on the schema grant new objects to `anon`, `authenticated` and `service_role` (the migration revokes them explicitly).
+
+## 7. Test results and known failures
+
+All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 
 | Suite | Result |
 |---|---|
-| `platform-admin.spec.ts` (unit, Piyush's file updated) | 17 passed |
-| `platform-realm.int.spec.ts` (new, real PostgreSQL 16, RLS applies) | 10 passed |
-| Full API unit suite | 736 passed (51 files) |
-| Web suite, kernel suite | 199 passed, 21 passed |
-| Typecheck (root, web, api), web production build | clean, built |
-| Lint on changed files | clean except 3 errors in `platform-admin-service.ts` that exist unchanged in the committed original |
-| Live-database regression on the corrected migrations (platform.int, mfa.int, eligibility, applications.int, grievances.int, catalogue, platform-realm) | 77 of 78 passed. The one failure, `TEST-ORG-INT-01` (expected 422 to be 409), fails identically without migration 0050, so it is not caused by this work. |
-| Isolation suite | 31 of 32 passed; the failure is the known inventory check (107 operations of other modules without isolation cases) |
+| Typecheck: contracts, kernel, api, web, tools | 0 errors each |
+| Kernel unit | 21 passed |
+| API unit | 737 passed, **1 failed** (not mine, below) |
+| Web unit and production build | 210 passed, build succeeds |
+| `platform-admin.spec.ts` (unit, updated) | 19 passed |
+| `platform-realm.int.spec.ts` (real PostgreSQL, RLS applies) | 13 passed on 16 and on 17 |
+| `provision-platform-admin.int.spec.ts` | 10 passed |
+| `platform-realm-ops.int.spec.ts` (runbook rehearsal) | 9 passed |
+| `eligibility.int.spec.ts` | 6 passed |
+| Live regression on corrected migrations (platform, provision, ops, eligibility, applications, grievances, catalogue, platform.int, mfa.int) | 99 of 100; the one failure is below |
+| Isolation suite | 31 of 32; the failure is the inventory check below |
+| Lint on changed files | clean, except 3 errors in `platform-admin-service.ts` that exist unchanged in the committed original |
 
-What the 10 live tests prove: platform roles and grants exist and no customer-tenant role holds an operator permission; the two DELETE statements remove exactly the intended grants and keep the tenant admin's; the tenant list shows metadata only, excludes the platform tenant, and is audited; a tenant admin holding every platform code gets 403 and the database shows them only their own tenant and refuses the count function; flags and master data are readable by all and writable only by a platform session; the full support-access lifecycle (operator files, operator cannot approve through the API or SQL, another tenant sees nothing and gets 404, the target tenant approves, the audit trail has both events); the database refuses a pre-approved insert, a tenant-made insert and a five-hour window; the platform realm reads no data-correction values and no rows of nine business tables.
+**What the rehearsal proves** (`platform-realm-ops.int.spec.ts`): on a database built to match hosted's pre-state, the real scripts run in runbook order. Preflight passes; backup is consistent; apply in one transaction passes all of `verify.sql`; `verify-behaviour.sql` passes every line as the API role and leaves nothing behind; applying twice fails whole and changes nothing; rollback restores the signature (policies, constraints, columns, RLS, grants, role-permission rows, roles, tenants, functions, row counts) **exactly**; preflight passes again after rollback; apply works again after rollback; with platform audit events present, rollback suspends the platform tenant but still restores everything else; rollback refuses, changing nothing, when API-shaped corrections exist.
 
-## 6. Reconciliation of migrations 0044 to 0049 (repository, manifest, hosted)
+**Failures that are not caused by this work (evidence):**
 
-| Migration | In repo | In manifest | Hosted state | Finding |
+| Failure | Evidence |
+|---|---|
+| API unit `TEST-WFA-TMR-001` (Akash, workflow timers) | The test hard-codes the execution start as 2026-10-14 10:30Z and the engine fails executions older than 24 h (`EXECUTION_LIFETIME_EXCEEDED`). It passed earlier today and began failing as the clock passed 10:30Z. I printed the real error and left the file untouched. |
+| `platform.int` `TEST-ORG-INT-01` (expected 422 to be 409) | Fails identically with migration 0050 removed. |
+| Isolation inventory `INV-02` | 107 `/v1` operations of other modules have no isolation case (BRE 27, reporting 10, lender cases 8, commission 8, leads 7, customers 7, verification 6, sanctions 6, payouts 6, tasks 5, performance 5, messaging 4, activities 4, notifications 3, users 1). None belong to Modules 13 to 17 or 1. Isolation coverage is **not** complete. |
+| Fresh database cannot be built from beta | Akash's `0019_verification.sql` needs a table made in `0021`; `0037` and `0042` insert into a column `task_ref` that does not exist. The tests use a corrected copy of the migrations folder through `DSA_MIGRATIONS_DIR`. Hosted is unaffected. |
+| 3 lint errors in `platform-admin-service.ts` | Identical in the committed original. |
+
+**Not tested:** anything through a real Supabase Auth login (needs your TOTP), the API running against hosted, and the new Approvals screen in a browser. Those are in section 10.
+
+## 8. Commands, in order
+
+Working directory for every command: `C:\Users\Vaibhav\Desktop\Work\Qloax Intern\DSA\DSA-Agent` (Git Bash: `cd "C:/Users/Vaibhav/Desktop/Work/Qloax Intern/DSA/DSA-Agent"`). **R** = read-only (a file may be written locally); **W** = writes to hosted.
+
+| Step | Command | Type | Expect | If it fails |
 |---|---|---|---|---|
-| 0044 payout permissions and roles | yes | yes (M-044) | 4 permissions present; `ROLE-COMMISSION-APPROVER` in **5 of 6** tenants | Test Tenant B (`ten_01JTESTTENANT00000000000002`) lacks the role. Likely created after 0044 ran. Role ids use prefix `rol_` (other roles use `role_`). |
-| 0045 messaging role grants | yes | yes | 16 grants expected, 16 present, none missing | Matches exactly. |
-| 0046 platform admin | yes | yes | tables and permissions present | Grants wrong (section 1); flags and master data without RLS; 2 leftover test rows. Fixed by 0050. |
-| 0047 verifier roles and grants | yes | yes | `ROLE-DOC-VERIFIER` 6/6, `ROLE-VERIFIER` 6/6, `ROLE-COMPLIANCE` 6; `verification.*` and `document.review` present | Matches. |
-| 0048 eligibility | yes | yes | applied and verified earlier today | Matches. |
-| 0049 reconciliation | yes | yes | not checked in this review | Needs Piyush's confirmation that it is applied. |
+| 1 | `git status -sb` and `git log --oneline -8` | R | the platform commits, branch ahead of origin | stop; tell me what differs |
+| 2 | `npx supabase projects list` | R | the row with `"linked":true` is `DSA-Agent`, ref `mlpkwwhnagxzinaohdxg` | run `npx supabase link --project-ref mlpkwwhnagxzinaohdxg`; do not continue on another project |
+| 3 | `npx supabase db query --linked -f tools/sql/0050/preflight.sql` | R | every `REQUIRED` row `PASS` (15) | any FAIL: do not apply; read the `actual` column |
+| 4 | `mkdir -p ~/dsa-backups/0050 && npx supabase db query --linked -f tools/sql/0050/backup.sql > ~/dsa-backups/0050/backup-before.json` | R (writes a local file) | a JSON file of about 185 KB | empty or error: do not continue |
+| 5 | `npx supabase db query --linked -f tools/sql/0050/live-counts.sql > ~/dsa-backups/0050/live-now.json` then `node tools/sql/0050/check-backup.mjs ~/dsa-backups/0050/backup-before.json ~/dsa-backups/0050/live-now.json` | R | all rows `PASS`, exit code 0 | a FAIL means hosted changed since the backup: redo step 4 |
+| 6 | `node tools/sql/0050/restore-grants.mjs ~/dsa-backups/0050/backup-before.json > ~/dsa-backups/0050/restore-grants.sql` | R (local) | first line `Restores 702 role_permission rows` | do not apply without a restorable backup |
+| 7 | `( echo "BEGIN;"; cat supabase/migrations/20261001000050_platform_realm.sql; echo; echo "COMMIT;" ) > ~/dsa-backups/0050/apply-run.sql` then `sha256sum supabase/migrations/20261001000050_platform_realm.sql` | R (local) | `d8029ef5…eb2a` | a different checksum means the file changed: stop and re-review |
+| 8 | **`npx supabase db query --linked -f ~/dsa-backups/0050/apply-run.sql`** | **W** | no error; rows `[]` | **any error: stop, do not retry.** Run step 3 again to see the state, then decide (it is one transaction, so a failure should leave nothing applied) |
+| 9 | `npx supabase db query --linked -f tools/sql/0050/verify.sql` | R | every row `PASS` | see section 12 for rollback |
+| 10 | `npx supabase db query --linked -f tools/sql/0050/verify-behaviour.sql` | R (rolls back on purpose) | an **error message** starting `VERIFY-BEHAVIOUR (rolled back on purpose)` followed by `PASS \|` lines and no `FAIL` | a different error message means the script itself failed |
 
-The manifest now has rows for 0044 to 0050 after this change (M-050 added). Piyush's migrations 0044 to 0049 are in the repository, which closes the earlier gap.
+Steps 1 to 7 change nothing on hosted. Step 8 is the only write. After step 10, go to section 9.
 
-## 7. Risks and what is deliberately not done
+## 9. Creating the first platform superadmin (separate write, separate confirmation)
 
-- **Piyush's live tests run against hosted.** `platform-admin-live-pg`, `connectors-live-pg`, `messaging-live-pg`, `payouts-live-pg` and `reconciliation-live-pg` read `DATABASE_URL` from `apps/api/.env`. With a hosted URL in that file, `npm run test:int` writes test rows into the hosted project. Run int suites by name only, or point `DATABASE_URL` elsewhere. This should change.
-- Feature flags, master data, queues, dead letters, releases and **data corrections are still in memory** (lost on restart, separate per mount). Only tenant metadata and support access are database-backed. Data corrections need a table that matches the spec (ENT-112); the 0046 table has a different shape and is unused by the service.
-- No step-up on individual platform actions, no real tenant lifecycle endpoints (`platform.tenant.*` from the spec are not in the permission catalogue).
-- Support access grants a **record**, not a session: nothing yet lets an operator act inside a tenant. The grant is metadata and audit only.
-- The two leftover hosted test rows are not deleted (a hosted change).
-- Rollback: the migration is additive except the 32 deleted grant rows. To roll back, re-insert those grants from migration 0046's statements and drop the new policies and function. Taking a backup of `app.role_permission` before applying is recommended.
+Needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` (the `dsa_api` role) in `apps/api/.env`; the tool reads them from the environment and prints none. It refuses `postgres`/`service_role` database URLs, a `--project-ref` that does not match `SUPABASE_URL`, and an existing Auth account belonging to another tenant. It never sets a password.
 
-## 8. Message for Piyush (draft, not sent)
+```bash
+# 1. DRY RUN (reads only; shows what would be created)
+npm run provision:platform-admin -w @dsa/tools -- --email <your real address> --name "<Your Name>" --project-ref mlpkwwhnagxzinaohdxg
+# 2. WRITE, after reading the plan (creates the Auth account, app_user and role assignment; prints a one-time link)
+npm run provision:platform-admin -w @dsa/tools -- --email <your real address> --name "<Your Name>" --project-ref mlpkwwhnagxzinaohdxg --apply
+```
 
-> Piyush: Vaibhav is moving the platform permissions out of the tenant roles (spec: only ROLE-PLATFORM-SUPERADMIN and
-> ROLE-PLATFORM-SUPPORT hold platform.*). Review this PR, mainly `platform-admin/router.ts`, the new `platform-store.ts`, and
-> `supabase/migrations/20261001000050_platform_realm.sql`. Things that change in your area: (1) platform routes now need the
-> permission AND a user of the platform tenant; tenant routes (support approval, data corrections) need a customer-tenant user;
-> (2) the SERVICE bypass in the router is gone; (3) support access and the tenant list now use the database
-> (PgPlatformStore); the in-memory store is only for unit tests; (4) data corrections ignore a body tenantId and use the
-> signed-in tenant; (5) I edited platform-admin.spec.ts to match. Please also: stop your live-pg tests writing to the hosted
-> project, tell us whether 0049 is applied, and say if ROLE-ORG-OWNER should keep data_correction.approve. Nothing is applied to hosted.
+Use an address that is **not** already a user of any tenant (Supabase emails are unique across the project). Open the one-time link yourself, set a password, sign in; the app then forces you to enrol an authenticator app (TOTP) because every platform permission requires MFA. Never paste the link or the code into chat or a ticket.
+
+Recovery: the run is repeatable. If it stopped after creating the Auth account, run the same command again (it reuses the account, which belongs to the platform tenant, and finishes the rest). If the database step fails, the tool deletes the Auth account that run created; if that deletion also fails it tells you the id to delete in the Supabase dashboard. If the one-time link was lost or expired, add `--new-link`. To remove a platform user later: delete the Auth account in the dashboard and deactivate the `app_user`. For a second operator with the limited role, add `--role support`.
+
+## 10. Testing each kind of user
+
+After steps 8 to 10 and 9:
+
+| As | Do | Expect |
+|---|---|---|
+| Platform superadmin | sign in, enrol TOTP, open `/platform-admin` | sidebar shows Platform Console; tenant list shows customer tenants (not the platform tenant) with active-user counts and no business data; the browser's `GET /v1/me` lists the seven grants |
+| Platform superadmin | Support Access tab: request access for a tenant | request appears PENDING; there is no Approve button |
+| Platform support (`--role support`) | open `/platform-admin` | only what `platform.console` and `platform.support_access` allow; flags, jobs and releases return 403 |
+| Tenant admin (`admin@alpha.com`) | sign in, look at the sidebar | no Platform Console; **Approvals** present; `/platform-admin` shows a clear no-access message |
+| Tenant admin | Approvals, Support access: approve or deny the platform request, then revoke an approved one | status changes; another tenant's admin sees none of it |
+| Tenant admin | Approvals, Data corrections: request one; a different admin or the owner approves it | the requester's own Approve button is disabled (SOD-08); an approved one reads "waiting for the executor" |
+| Unauthorised | open any platform URL signed out; open it as an RM | 401 and the login redirect; 403 |
+
+The refused attempts show up as `platform.access_denied` events in the audit trail of the caller's tenant.
+
+## 11. Backup and rollback
+
+**Backup taken 2026-10-15 10:58 UTC**, outside the repository:
+`C:\Users\Vaibhav\dsa-backups\0050\` holds `backup-before.json` (`sha256 c2934ddfe6fb12aed1fee122543c6cb1fe908c5c3b95183d07a0c17223db58d4`, 184,657 bytes), `restore-grants.sql`, `live-now.json` and `apply-run.sql`. Verified: JSON structure; every row count in the file, the recorded count and the live count agree (role_permission 702, role 49, tenant 6, support 1, correction 1, flags 5, master 9); the role-permission rows hash identically to live; the 30 operator grants and 5 `data_correction.approve` grants are in it; no password, secret, token or hash column is in any saved row; and the generated restore SQL **ran on a throwaway PostgreSQL 17** (702 rows, 30 operator, 5 approve) and ran a second time without error. It holds user ids and tenant names: treat it like production data and do not commit it. Hosted may also keep its own daily backups depending on the plan: check the Supabase dashboard, because this runbook does not rely on them.
+
+**Rollback** (only if 0050 was applied and must be undone):
+
+```bash
+( echo "BEGIN;"; cat tools/sql/0050/rollback.sql; node tools/sql/0050/restore-grants.mjs ~/dsa-backups/0050/backup-before.json; echo "COMMIT;" ) > ~/dsa-backups/0050/rollback-run.sql
+npx supabase db query --linked -f ~/dsa-backups/0050/rollback-run.sql      # W, one transaction
+npx supabase db query --linked -f tools/sql/0050/preflight.sql             # R: every REQUIRED row passes again
+```
+
+It drops the new policies and functions, turns RLS off on the two global tables, restores `tenant_isolation`, the original status checks and the original columns, deletes the platform tenant and everything in it, and re-inserts the 30 grants from the backup. It **stops, changing nothing**, if the new shape already holds data the old one cannot (a DENIED support request, or a correction requested through the API): export and remove those first. If audit events about platform actions exist, the platform tenant is **suspended instead of deleted** (audit is append-only). It cannot undo Supabase Auth accounts: delete platform users in the dashboard. Rehearsed end to end (section 7).
+
+## 12. Git
+
+Everything is committed on local `beta`; nothing is pushed. To deliver:
+
+1. `git status -sb` (clean) and `git log --oneline origin/beta..HEAD` (read the commits).
+2. `git fetch` then `git log HEAD..origin/beta` to see what others pushed; merge `origin/beta` into `beta` if needed (no force-push), re-run `npm run typecheck -w @dsa/api -w @dsa/web` and `npm test -w @dsa/web`.
+3. `git push origin beta` only after the hosted steps you want are done and verified. Push the migration file only once it is applied or you are sure of the plan, since CI applies migrations to an empty database (which Akash's files currently break).
+
+## 13. Remaining limitations
+
+- Flags, master data, queues, dead letters and releases are still held in memory inside the API process (lost on restart). Their tables now have the right row-level protection, but the API does not use them yet: a flag value can be any type and master data is versioned, which the existing tables do not model.
+- No correction executor exists, so approved corrections stay approved. A real dry-run diff must be attached by that executor.
+- Support access is a **record and an audit trail**. Nothing yet lets an operator act inside a tenant; the grant does not open any data.
+- No per-action step-up for platform operators beyond mandatory MFA; no tenant lifecycle endpoints (`platform.tenant.*` are not in the permission catalogue).
+- The two leftover hosted test rows (one support request, one correction) and the extra test feature flag are not deleted (that would be a hosted write). Piyush's live tests still insert rows into hosted when `DATABASE_URL` points there: run integration suites by file name only.
+- Isolation coverage: 107 other operations have no isolation case.
+- Hosted drift: `app_user.password_hash` exists outside any migration.
+
+## 14. Checklist
+
+| | Item |
+|---|---|
+| Done | Platform tenant, org, branch, roles, grant move, realm function and policies, in the migration (final, rehearsed) |
+| Done | Realm guards, audited refusals, no service bypass, database-backed support access and corrections, revocation, executor-only execution |
+| Done | Mandatory MFA for platform permissions (API and web lists) |
+| Done | Tenant-side Approvals screen; console cleaned of tenant actions and fake data |
+| Done | Provisioning tool with dry run, recovery and cleanup |
+| Done | Preflight, backup, verify, behaviour and rollback scripts, rehearsed on PostgreSQL 16 and 17 |
+| Done | Hosted read-only preflight (15 of 15) and a verified, restore-tested backup |
+| Done | Tests and documentation; local commits |
+| Pending (you) | Confirm the exact hosted write (step 8) after reading section 4 and the checksum |
+| Pending (you) | Create the first platform superadmin (section 9) and run the checks in section 10 |
+| Pending (you) | Push, when you decide (section 12) |
+| Blocked | Applying through CI or a fresh database until Akash's migrations 0019, 0037 and 0042 are corrected |
+| Open follow-ups | Persisting flags and master data; building the correction executor; isolation cases for the other 107 operations; the one workflow test with a hard-coded date |
