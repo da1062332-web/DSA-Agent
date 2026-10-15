@@ -1,4 +1,5 @@
 // apps/web/src/features/lender-cases/api.spec.ts — owner: Dev 4 (MOD-LCS API Client Unit Tests)
+import { setAuthToken } from '../../auth/token';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
@@ -15,23 +16,12 @@ import {
 describe('Module 18 — Lender Cases Frontend API Client', () => {
   const originalFetch = global.fetch;
 
-  let mockStorage: Record<string, string> = {};
-
   beforeEach(() => {
-    mockStorage = { dsa_token: 'test-token-123' };
-    (global as any).localStorage = {
-      getItem: (k: string) => mockStorage[k] ?? null,
-      setItem: (k: string, v: string) => {
-        mockStorage[k] = v;
-      },
-      clear: () => {
-        mockStorage = {};
-      },
-    };
+    setAuthToken('test-token-123');
   });
 
   afterEach(() => {
-    delete (global as any).localStorage;
+    setAuthToken(undefined);
     global.fetch = originalFetch;
     vi.restoreAllMocks();
   });
