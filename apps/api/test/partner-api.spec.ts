@@ -1,8 +1,9 @@
 // apps/api/test/partner-api.spec.ts — owner: Akash (Module 37: API Development MOD-DEV)
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
+import type { Principal } from '@dsa/contracts';
 import { createApp } from '../src/app';
-import { testDeps } from './support/fake-auth';
+import { fakeAuth, testDeps, testPrincipal } from './support/fake-auth';
 import {
   hashApiKey,
   InMemoryApiKeyStore,
@@ -1125,6 +1126,178 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
         expect(item.signingSecret).toBeUndefined();
         expect(item.secretHash).toBeUndefined();
       }
+    });
+  });
+
+  // ==========================================================================
+  // Module 36: API Management (MOD-API) - /v1/api-clients
+  // ==========================================================================
+
+  describe('Module 36: API Management (MOD-API) - /v1/api-clients', () => {
+    function createTestAdminApp(principalOverrides: Partial<Principal> = {}) {
+      const apiKeyStore = new InMemoryApiKeyStore();
+      const baseDeps = testDeps();
+      const partnerService = new PartnerApiService(baseDeps, apiKeyStore);
+      const webhookService = new WebhookDeliveryService(baseDeps);
+
+      const deps = {
+        ...baseDeps,
+        apiKeyStore,
+        partnerService,
+        webhookService,
+      };
+
+      const app = createApp({
+        deps,
+        corsAllowedOrigins: ['*'],
+        auth: fakeAuth(
+          testPrincipal({
+            tenantId: TENANT_A,
+            grants: [
+              { code: 'api.manage', scope: 'TENANT', branchIds: [] },
+              { code: 'api.read', scope: 'TENANT', branchIds: [] },
+            ],
+            ...principalOverrides,
+          }),
+        ),
+      });
+
+      return { app, partnerService };
+    }
+
+    it('TEST-API-MGT-001 lists api clients for tenant (initially empty)', async () => {
+      const { app } = createTestAdminApp();
+      const res = await request(app).get('/v1/api-clients');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBe(0);
+    });
+
+    it('TEST-API-MGT-002 creates api client, issues clt_ ID and one-time clientSecret', async () => {
+      const { app } = createTestAdminApp();
+      const payload = {
+        name: 'Fintech Integration Client',
+        partnerName: 'Fintech Corp India',
+        scopes: ['partner.lead_ingest', 'partner.application_read'],
+        rateLimitRpm: 240,
+        allowedIps: ['203.0.113.15'],
+      };
+
+      const res = await request(app)
+        .post('/v1/api-clients')
+        .send(payload);
+
+      expect(res.status).toBe(201);
+      expect(res.body.id).toMatch(/^clt_/);
+      expect(res.body.clientId).toMatch(/^clt_/);
+      expect(res.body.clientSecret).toMatch(/^sec_/); // one-time secret returned
+      expect(res.body.name).toBe(payload.name);
+      expect(res.body.partnerName).toBe(payload.partnerName);
+      expect(res.body.scopes).toEqual(payload.scopes);
+      expect(res.body.rateLimitRpm).toBe(240);
+      expect(res.body.status).toBe('ACTIVE');
+    });
+
+    it('TEST-API-MGT-003 gets api client details and ensures clientSecret is NOT exposed', async () => {
+      const { app } = createTestAdminApp();
+      const createRes = await request(app)
+        .post('/v1/api-clients')
+        .send({
+          name: 'Read Test Client',
+          partnerName: 'Read Partner',
+          scopes: ['partner.lead_ingest'],
+        });
+
+      const clientId = createRes.body.id;
+      const getRes = await request(app).get(`/v1/api-clients/${clientId}`);
+
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.id).toBe(clientId);
+      expect(getRes.body.clientSecret).toBeUndefined(); // Secret never exposed on read
+      expect(getRes.body.clientSecretHash).toBeUndefined();
+    });
+
+    it('TEST-API-MGT-004 updates api client configuration and status', async () => {
+      const { app } = createTestAdminApp();
+      const createRes = await request(app)
+        .post('/v1/api-clients')
+        .send({
+          name: 'Update Test Client',
+          partnerName: 'Update Partner',
+          scopes: ['partner.lead_ingest'],
+          rateLimitRpm: 120,
+        });
+
+      const clientId = createRes.body.id;
+      const patchRes = await request(app)
+        .patch(`/v1/api-clients/${clientId}`)
+        .send({
+          status: 'SUSPENDED',
+          rateLimitRpm: 300,
+        });
+
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.status).toBe('SUSPENDED');
+      expect(patchRes.body.rateLimitRpm).toBe(300);
+    });
+
+    it('TEST-API-MGT-005 rotates client secret returning new secret', async () => {
+      const { app } = createTestAdminApp();
+      const createRes = await request(app)
+        .post('/v1/api-clients')
+        .send({
+          name: 'Rotate Secret Client',
+          partnerName: 'Rotate Partner',
+          scopes: ['partner.lead_ingest'],
+        });
+
+      const initialSecret = createRes.body.clientSecret;
+      const clientId = createRes.body.id;
+
+      const rotateRes = await request(app)
+        .post(`/v1/api-clients/${clientId}/rotate-secret`);
+
+      expect(rotateRes.status).toBe(200);
+      expect(rotateRes.body.clientId).toBe(createRes.body.clientId);
+      expect(rotateRes.body.clientSecret).toMatch(/^sec_/);
+      expect(rotateRes.body.clientSecret).not.toBe(initialSecret);
+    });
+
+    it('TEST-API-MGT-006 deletes api client', async () => {
+      const { app } = createTestAdminApp();
+      const createRes = await request(app)
+        .post('/v1/api-clients')
+        .send({
+          name: 'Delete Test Client',
+          partnerName: 'Delete Partner',
+          scopes: ['partner.lead_ingest'],
+        });
+
+      const clientId = createRes.body.id;
+      const delRes = await request(app).delete(`/v1/api-clients/${clientId}`);
+      expect(delRes.status).toBe(204);
+
+      const getRes = await request(app).get(`/v1/api-clients/${clientId}`);
+      expect(getRes.status).toBe(404);
+    });
+
+    it('TEST-API-MGT-007 rejects creation when caller lacks api.manage with 403 FORBIDDEN', async () => {
+      // User with only api.read, missing api.manage
+      const { app } = createTestAdminApp({
+        grants: [{ code: 'api.read', scope: 'TENANT', branchIds: [] }],
+      });
+
+      const res = await request(app)
+        .post('/v1/api-clients')
+        .send({
+          name: 'Unauthorized Client',
+          partnerName: 'Hacker Corp',
+          scopes: ['partner.lead_ingest'],
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
     });
   });
 });

@@ -47,6 +47,7 @@ const MVP_DECISION_KEYS: DecisionKey[] = [
   'DK-sla.target',
   'DK-document.requirements',
   'DK-application.completeness',
+  'DK-application.eligibility',
 ];
 
 export function RulesListPage() {

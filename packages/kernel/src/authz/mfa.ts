@@ -7,6 +7,7 @@ import type { Principal, PermissionCode } from '@dsa/contracts';
 export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'config.manage',
   'user.manage',
+  'role.manage',
   'audit.read',
   'document.review',
   'lender_case.submit',

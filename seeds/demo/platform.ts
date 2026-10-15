@@ -61,13 +61,14 @@ export const ROLES: RoleSeed[] = [
   {
     code: 'ROLE-TENANT-ADMIN',
     name: 'Tenant administrator',
-    permissions: ['config.manage', 'user.manage', 'audit.read', 'verification.read', 'verification.perform'],
+    permissions: ['config.manage', 'user.manage', 'role.manage', 'audit.read', 'verification.read', 'verification.perform'],
   },
   {
     code: 'ROLE-ORG-OWNER',
     name: 'DSA owner',
     permissions: [
       'config.manage',
+      'role.manage',
       'lead.read',
       'customer.read',
       'task.read',

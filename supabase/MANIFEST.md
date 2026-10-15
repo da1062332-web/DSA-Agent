@@ -40,6 +40,8 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-042 | `20261001000042_audit_tamper_evidence.sql`                       | Dev 1 / 6    | TASK-105 / TASK-408 / MOD-AUD | audit_event hash chain columns (prev_hash, hash), evidence_pack table, audit.export_evidence permission                                                                  | M-001, M-002 |
 | M-043a | `20261001000043_integrations.sql`                                | Dev 1        | MOD-INT (Module 28)     | integration_connection (ENT-103); permissions integration.manage, integration.read                                                      | M-001        |
 | M-043b | `20261001000043_security_monitoring_incidents.sql`               | Dev 1 / Platform | TASK-431 / MOD-SEC      | security_event (ENT-096), incident_record (ENT-102), security.incident and security.vuln permissions | M-001, M-002 |
+| M-044 | `20261001000044_access_control_and_api_clients.sql`              | Dev 2 / Akash    | MOD-ACC / MOD-BRE / MOD-API | role.manage permission, DK-application.eligibility registry, and app.api_client credentials table | M-001, M-011, M-037 |
+
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 

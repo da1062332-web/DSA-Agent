@@ -93,7 +93,8 @@ export const ADMINISTRATIVE_NAV: NavItem[] = [
     testId: 'shell.nav.access control',
     isAllowed: (me) =>
       hasPermission(me, 'config.manage') ||
-      hasPermission(me, 'user.manage'),
+      hasPermission(me, 'user.manage') ||
+      hasPermission(me, 'role.manage'),
   },
   {
     to: '/config',
