@@ -2587,6 +2587,9 @@ components:
             type: string
             pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
           minItems: 1
+        retryOfPayoutId:
+          type: string
+          pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
       required:
         - connectorId
         - payableIds
@@ -2625,6 +2628,10 @@ components:
             - string
             - "null"
         failureReason:
+          type:
+            - string
+            - "null"
+        retryOfPayoutId:
           type:
             - string
             - "null"
@@ -9065,6 +9072,9 @@ paths:
                     type: string
                     pattern: ^cpay_[0-9A-HJKMNP-TV-Z]{26}$
                   minItems: 1
+                retryOfPayoutId:
+                  type: string
+                  pattern: ^prq_[0-9A-HJKMNP-TV-Z]{26}$
               required:
                 - connectorId
                 - payableIds
@@ -9100,6 +9110,10 @@ paths:
                       - string
                       - "null"
                   failureReason:
+                    type:
+                      - string
+                      - "null"
+                  retryOfPayoutId:
                     type:
                       - string
                       - "null"
@@ -9305,7 +9319,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T04:16:43.838Z
+                  default: 2026-10-15T07:27:14.838Z
               required:
                 - paymentRef
       responses:
@@ -9340,6 +9354,10 @@ paths:
                       - string
                       - "null"
                   failureReason:
+                    type:
+                      - string
+                      - "null"
+                  retryOfPayoutId:
                     type:
                       - string
                       - "null"
@@ -9465,6 +9483,10 @@ paths:
                       - string
                       - "null"
                   failureReason:
+                    type:
+                      - string
+                      - "null"
+                  retryOfPayoutId:
                     type:
                       - string
                       - "null"

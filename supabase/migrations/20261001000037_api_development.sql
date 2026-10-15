@@ -5,7 +5,7 @@
 SET search_path = app, extensions, public;
 
 -- Seed permission codes for Module 37
-INSERT INTO app.permission (code, description, task_ref) VALUES
+INSERT INTO app.permission (code, description, introduced_in) VALUES
   ('api.read', 'Read API keys, developer configurations and API analytics', 'TASK-437'),
   ('api.manage', 'Create, rotate, and revoke API keys and developer configurations', 'TASK-437'),
   ('partner.lead_ingest', 'Ingest leads and initiate applications via Partner API gateway', 'TASK-437'),

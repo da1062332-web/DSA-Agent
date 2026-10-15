@@ -27,7 +27,7 @@ interface Props {
 export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
   const [applicationId, setApplicationId] = useState('');
   const [verificationType, setVerificationType] = useState<VerificationType>('DOCUMENT_REVIEW');
-  const [branchId, setBranchId] = useState('br_mumbai');
+  const [branchId, setBranchId] = useState('br_demo_01');
   const [priority, setPriority] = useState<VerificationPriority>('MEDIUM');
   const [findingsSummary, setFindingsSummary] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,7 +112,8 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
                 onChange={(e) => setBranchId(e.target.value)}
                 data-testid="verification.create.branch"
               >
-                <MenuItem value="br_mumbai">Mumbai Central (MUM01)</MenuItem>
+                <MenuItem value="br_demo_01">Mumbai Central (MUM01)</MenuItem>
+                <MenuItem value="br_mumbai">Mumbai Central (MUM01 Legacy)</MenuItem>
                 <MenuItem value="br_pune">Pune Camp (PUN01)</MenuItem>
               </Select>
             </FormControl>

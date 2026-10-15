@@ -104,7 +104,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Commission', task: 'MOD-COM' },
       { label: 'Ledger', task: 'MOD-LED' },
-      { label: 'Payouts', task: 'MOD-PAY' },
+      { label: 'Payouts', to: '/payouts' },
       { label: 'Reconciliation', task: 'MOD-REC' },
       { label: 'Invoices', task: 'MOD-INV' },
     ],

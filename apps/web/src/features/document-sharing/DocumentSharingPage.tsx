@@ -41,6 +41,15 @@ import type {
   UploadLinkRecord,
 } from '@dsa/contracts';
 
+const APPROVED_CHECKLIST_REQUIREMENTS = [
+  { id: 'chk_pan_card', label: 'PAN Card (Identity Proof)' },
+  { id: 'chk_bank_statement', label: 'Bank Statement (6 Months)' },
+  { id: 'chk_salary_slip', label: 'Salary Slips (3 Months)' },
+  { id: 'chk_address_proof', label: 'Address / Aadhaar Proof' },
+  { id: 'chk_itr_filing', label: 'ITR / Form 16' },
+  { id: 'chk_business_proof', label: 'Business Registration' },
+];
+
 export function DocumentSharingPage() {
   const queryClient = useQueryClient();
   const [tabIndex, setTabIndex] = useState(0);
@@ -57,6 +66,15 @@ export function DocumentSharingPage() {
   const [linkMaxUses, setLinkMaxUses] = useState(5);
   const [linkOtpRequired, setLinkOtpRequired] = useState(true);
   const [createdLinkResult, setCreatedLinkResult] = useState<any | null>(null);
+
+  const toggleChecklistItem = (itemId: string) => {
+    const current = linkItems.split(',').map((s) => s.trim()).filter(Boolean);
+    if (current.includes(itemId)) {
+      setLinkItems(current.filter((id) => id !== itemId).join(', '));
+    } else {
+      setLinkItems([...current, itemId].join(', '));
+    }
+  };
 
   // Share Form State
   const [shareAppId, setShareAppId] = useState('app_01ARZ3NDEKTSV4RRFFQ69G5FAV');
@@ -394,14 +412,38 @@ export function DocumentSharingPage() {
                   helperText="Prefix: app_ followed by 26-char ULID"
                 />
 
-                <TextField
-                  label="Checklist Item IDs (comma-separated)"
-                  fullWidth
-                  required
-                  value={linkItems}
-                  onChange={(e) => setLinkItems(e.target.value)}
-                  helperText="Documents requested from applicant"
-                />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+                    Approved Document Requirements (Click to select/deselect):
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+                    {APPROVED_CHECKLIST_REQUIREMENTS.map((req) => {
+                      const selected = linkItems
+                        .split(',')
+                        .map((s) => s.trim())
+                        .includes(req.id);
+                      return (
+                        <Chip
+                          key={req.id}
+                          label={req.label}
+                          size="small"
+                          color={selected ? 'primary' : 'default'}
+                          variant={selected ? 'filled' : 'outlined'}
+                          onClick={() => toggleChecklistItem(req.id)}
+                          clickable
+                        />
+                      );
+                    })}
+                  </Stack>
+                  <TextField
+                    label="Checklist Item IDs (comma-separated)"
+                    fullWidth
+                    required
+                    value={linkItems}
+                    onChange={(e) => setLinkItems(e.target.value)}
+                    helperText="Approved requirements or custom checklist IDs for this loan application"
+                  />
+                </Box>
 
                 <Stack direction="row" spacing={2}>
                   <FormControl fullWidth>
