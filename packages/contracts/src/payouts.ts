@@ -21,6 +21,7 @@ export const CreatePayoutRequestInputSchema = z.object({
   connectorId: z.string().min(1),
   origin: z.enum(PAYOUT_ORIGINS).default('FINANCE'),
   payableIds: z.array(IdSchema('cpay')).min(1),
+  retryOfPayoutId: IdSchema('prq').optional(),
 });
 export type CreatePayoutRequestInput = z.infer<typeof CreatePayoutRequestInputSchema>;
 
@@ -45,6 +46,7 @@ export const PayoutRequestResponseSchema = z.object({
   paymentRefMasked: z.string().nullable(),
   paidOn: z.string().nullable(),
   failureReason: z.string().nullable(),
+  retryOfPayoutId: z.string().nullable().optional(),
   submittedBy: z.string().nullable(),
   submittedAt: z.string().nullable(),
   lines: z.array(PayoutLineResponseSchema).optional(),

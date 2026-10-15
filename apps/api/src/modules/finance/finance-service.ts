@@ -22,6 +22,7 @@ import {
   type PayoutRequestResponse,
   type PermissionCode,
   type RecalculationProposalResponse,
+  type OutboxPort,
   type RecordPaymentFailureInput,
   type RecordPaymentInput,
   type RequestContext,
@@ -30,6 +31,7 @@ import {
 } from '@dsa/contracts';
 import { createHash } from 'crypto';
 import { ulid } from 'ulid';
+import { encryptPaymentRef, maskPaymentRef } from './crypto';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
@@ -41,10 +43,39 @@ import type {
   PayoutRequestRow,
   RecalculationProposalRow,
 } from './repository';
+import {
+  generateBankFileCsv,
+  InMemoryFinancialStorage,
+  type FinancialStoragePort,
+} from './storage';
+
+export interface SettlementJournalEntry {
+  sourceRef: string;
+  payoutId: string;
+  amount: string;
+  currency: string;
+  paidOn: Date;
+  lines: Array<{
+    accountCode: string;
+    entryType: 'DEBIT' | 'CREDIT';
+    amount: string;
+  }>;
+}
+
+export interface SettlementJournalPort {
+  postSettlementJournal(
+    tx: Tx,
+    tenantId: string,
+    entry: SettlementJournalEntry,
+  ): Promise<{ entryId: string }>;
+}
 
 export interface FinanceServiceDeps {
   repository: FinanceRepository;
   audit?: AuditPort;
+  outbox?: OutboxPort;
+  storage?: FinancialStoragePort;
+  settlementJournalPort?: SettlementJournalPort;
 }
 
 // Deterministic fixed-point integer math (scale: paise = 1/100 INR)
@@ -68,10 +99,39 @@ function computeAmountWithRate(amountPaise: bigint, rate: number): bigint {
 }
 
 export class FinanceService {
-  constructor(private readonly deps: FinanceServiceDeps) {}
+  private readonly storage: FinancialStoragePort;
+
+  constructor(private readonly deps: FinanceServiceDeps) {
+    this.storage = deps.storage || new InMemoryFinancialStorage();
+  }
 
   private nextId(prefix: string): string {
     return `${prefix}_${ulid()}`;
+  }
+
+  private async emitEvent(
+    tx: Tx,
+    ctx: RequestContext,
+    event: { type: string; subject: { type: string; id: string }; data: Record<string, unknown> },
+  ): Promise<void> {
+    if (this.deps.outbox) {
+      await this.deps.outbox.emit(tx, ctx, {
+        type: event.type,
+        subject: event.subject,
+        data: event.data,
+        causationId: ctx.correlationId,
+      });
+    } else if (this.deps.repository.emitOutboxEvent) {
+      await this.deps.repository.emitOutboxEvent(tx, {
+        id: `evt_${ulid()}`,
+        tenantId: ctx.principal.tenantId,
+        eventType: event.type,
+        subjectType: event.subject.type,
+        subjectId: event.subject.id,
+        payload: event.data,
+        correlationId: ctx.correlationId,
+      });
+    }
   }
 
   private assertPermission(ctx: RequestContext, permission: PermissionCode): void {
@@ -528,6 +588,21 @@ export class FinanceService {
     this.assertPermission(ctx, 'payout.request');
 
     const tenantId = ctx.principal.tenantId;
+
+    // Retry handling (SUB-PAY.04)
+    if (input.retryOfPayoutId) {
+      const prevPayout = await this.deps.repository.findPayoutRequestById(tx, tenantId, input.retryOfPayoutId);
+      if (!prevPayout) {
+        throw AppError.of('NOT_FOUND', `Prior payout request ${input.retryOfPayoutId} for retry not found.`);
+      }
+      if (prevPayout.status !== 'PAYMENT_FAILED') {
+        throw AppError.of('INVALID_STATE', `Only PAYMENT_FAILED payout requests can be retried (current: ${prevPayout.status}).`);
+      }
+      if (prevPayout.connector_id !== input.connectorId) {
+        throw AppError.of('VALIDATION_ERROR', `Prior payout belongs to connector ${prevPayout.connector_id}, not ${input.connectorId}.`);
+      }
+    }
+
     const uniquePayableIds = new Set(input.payableIds);
     if (uniquePayableIds.size !== input.payableIds.length) {
       throw AppError.of('VALIDATION_ERROR', 'Duplicate payable IDs provided in payout request.');
@@ -571,7 +646,7 @@ export class FinanceService {
       payment_ref_masked: null,
       paid_on: null,
       failure_reason: null,
-      retry_of_payout_id: null,
+      retry_of_payout_id: input.retryOfPayoutId ?? null,
       submitted_by: ctx.principal.id,
       submitted_at: now,
       lock_version: 0,
@@ -616,6 +691,34 @@ export class FinanceService {
         createdAt: lineRow.created_at.toISOString(),
       });
     }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_request.created',
+        entityType: 'payout_request',
+        entityId: payoutId,
+        after: {
+          connectorId: reqRow.connector_id,
+          total: reqRow.total,
+          currency: reqRow.currency,
+          origin: reqRow.origin,
+          lineCount: linesToCreate.length,
+          retryOfPayoutId: reqRow.retry_of_payout_id,
+        },
+      });
+    }
+
+    await this.emitEvent(tx, ctx, {
+      type: 'payout.created',
+      subject: { type: 'payout_request', id: payoutId },
+      data: {
+        payoutId,
+        connectorId: reqRow.connector_id,
+        total: reqRow.total,
+        currency: reqRow.currency,
+        lineCount: linesToCreate.length,
+      },
+    });
 
     const response = this.toPayoutResponse(reqRow);
     response.lines = createdLines;
@@ -678,13 +781,16 @@ export class FinanceService {
     }
 
     const lines = await this.deps.repository.listPayoutLines(tx, tenantId, id);
+    const payableIds = lines.map((l) => l.payable_id);
 
-    // If any payable is ON_HOLD, reject with 409 INVALID_STATE with detail PAYABLE_ON_HOLD
-    for (const line of lines) {
-      const payable = await this.deps.repository.findCommissionPayableById(tx, tenantId, line.payable_id);
-      if (payable && payable.state === 'ON_HOLD') {
+    // Concurrency hardening: Lock constituent payables deterministically in ascending ID order (SELECT ... FOR UPDATE)
+    const lockedPayables = await this.deps.repository.lockCommissionPayablesAscending(tx, tenantId, payableIds);
+
+    // Revalidate eligibility & holds under exclusive lock
+    for (const payable of lockedPayables) {
+      if (payable.state === 'ON_HOLD') {
         throw AppError.of('INVALID_STATE', '[PAYABLE_ON_HOLD] Cannot approve payout request: one or more payables are ON_HOLD', [
-          { field: line.payable_id, issue: 'PAYABLE_ON_HOLD' },
+          { field: payable.id, issue: 'PAYABLE_ON_HOLD' },
         ]);
       }
     }
@@ -716,6 +822,31 @@ export class FinanceService {
         await this.deps.repository.updateCommissionPayableState(tx, tenantId, line.payable_id, 'ELIGIBLE');
       }
     }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: input.decision === 'APPROVED' ? 'payout_request.approved' : 'payout_request.rejected',
+        entityType: 'payout_request',
+        entityId: id,
+        after: {
+          decision: input.decision,
+          comment: input.comment ?? null,
+          total: payout.total,
+          lineCount: lines.length,
+        },
+      });
+    }
+
+    await this.emitEvent(tx, ctx, {
+      type: input.decision === 'APPROVED' ? 'payout.approved' : 'payout.rejected',
+      subject: { type: 'payout_request', id },
+      data: {
+        payoutId: id,
+        decision: input.decision,
+        approverId: ctx.principal.id,
+        total: payout.total,
+      },
+    });
 
     return {
       id: approvalId,
@@ -755,6 +886,27 @@ export class FinanceService {
       await this.deps.repository.updateCommissionPayableState(tx, tenantId, line.payable_id, 'ELIGIBLE');
     }
 
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_request.cancelled',
+        entityType: 'payout_request',
+        entityId: id,
+        after: {
+          status: 'CANCELLED',
+          total: payout.total,
+        },
+      });
+    }
+
+    await this.emitEvent(tx, ctx, {
+      type: 'payout.cancelled',
+      subject: { type: 'payout_request', id },
+      data: {
+        payoutId: id,
+        total: payout.total,
+      },
+    });
+
     return this.toPayoutResponse(updated!);
   }
 
@@ -775,12 +927,32 @@ export class FinanceService {
       throw AppError.of('INVALID_STATE', `Payout ${id} is not APPROVED (status: ${payout.status}).`);
     }
 
-    const masked = `******${input.paymentRef.slice(-4)}`;
+    // Encrypt payment reference using AES-256-GCM and retain masked value for display
+    const ciphertext = encryptPaymentRef(input.paymentRef);
+    const masked = maskPaymentRef(input.paymentRef) || `******${input.paymentRef.slice(-4)}`;
     const paidOn = new Date(input.paidOn);
+
+    // MOD-LED Settlement Journal Integration (ENT-080 / ENT-081)
+    if (this.deps.settlementJournalPort) {
+      const debitAccount = '2100-COMMISSION-PAYABLE';
+      const creditAccount = '1010-SETTLEMENT-BANK';
+      await this.deps.settlementJournalPort.postSettlementJournal(tx, tenantId, {
+        sourceRef: id,
+        payoutId: id,
+        amount: payout.total,
+        currency: payout.currency,
+        paidOn,
+        lines: [
+          { accountCode: debitAccount, entryType: 'DEBIT', amount: payout.total },
+          { accountCode: creditAccount, entryType: 'CREDIT', amount: payout.total },
+        ],
+      });
+    }
 
     const updated = await this.deps.repository.updatePayoutStatus(tx, tenantId, id, 'PAYMENT_RECORDED', {
       paidOn,
       paymentRefMasked: masked,
+      paymentRefCiphertext: ciphertext,
     });
 
     const lines = await this.deps.repository.listPayoutLines(tx, tenantId, id);
@@ -788,6 +960,32 @@ export class FinanceService {
       await this.deps.repository.updatePayoutLineStatus(tx, tenantId, line.id, 'PAYMENT_RECORDED');
       await this.deps.repository.updateCommissionPayableState(tx, tenantId, line.payable_id, 'PAID');
     }
+
+    if (this.deps.audit) {
+      // Security: NEVER log plaintext paymentRef or encryption keys
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_request.payment_recorded',
+        entityType: 'payout_request',
+        entityId: id,
+        after: {
+          paidOn: paidOn.toISOString(),
+          paymentRefMasked: masked,
+          total: payout.total,
+        },
+      });
+    }
+
+    await this.emitEvent(tx, ctx, {
+      type: 'payout.paid',
+      subject: { type: 'payout_request', id },
+      data: {
+        payoutId: id,
+        paidOn: paidOn.toISOString(),
+        paymentRefMasked: masked,
+        total: payout.total,
+        currency: payout.currency,
+      },
+    });
 
     return this.toPayoutResponse(updated!);
   }
@@ -801,6 +999,11 @@ export class FinanceService {
     this.assertPermission(ctx, 'payout.record_payment');
 
     const tenantId = ctx.principal.tenantId;
+    const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, id);
+    if (!payout) {
+      throw AppError.of('NOT_FOUND', `Payout request ${id} not found.`);
+    }
+
     const updated = await this.deps.repository.updatePayoutStatus(tx, tenantId, id, 'PAYMENT_FAILED', {
       failureReason: input.failureReason,
     });
@@ -810,6 +1013,28 @@ export class FinanceService {
       await this.deps.repository.updatePayoutLineStatus(tx, tenantId, line.id, 'PAYMENT_FAILED');
       await this.deps.repository.updateCommissionPayableState(tx, tenantId, line.payable_id, 'ELIGIBLE');
     }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_request.payment_failed',
+        entityType: 'payout_request',
+        entityId: id,
+        after: {
+          failureReason: input.failureReason,
+          total: payout.total,
+        },
+      });
+    }
+
+    await this.emitEvent(tx, ctx, {
+      type: 'payout.failed',
+      subject: { type: 'payout_request', id },
+      data: {
+        payoutId: id,
+        failureReason: input.failureReason,
+        total: payout.total,
+      },
+    });
 
     return this.toPayoutResponse(updated!);
   }
@@ -823,22 +1048,65 @@ export class FinanceService {
   ): Promise<PayoutBatchResponse> {
     this.assertPermission(ctx, 'payout.record_payment');
 
+    const tenantId = ctx.principal.tenantId;
+    const uniqueIds = new Set(input.payoutIds);
+    if (uniqueIds.size !== input.payoutIds.length) {
+      throw AppError.of('VALIDATION_ERROR', 'Duplicate payout IDs provided in batch request.');
+    }
+
+    const validPayouts: PayoutRequestRow[] = [];
+    for (const pid of input.payoutIds) {
+      const p = await this.deps.repository.findPayoutRequestById(tx, tenantId, pid);
+      if (!p) {
+        throw AppError.of('NOT_FOUND', `Payout request ${pid} not found.`);
+      }
+      if (p.status !== 'APPROVED' && p.status !== 'PAYMENT_RECORDED') {
+        throw AppError.of('INVALID_STATE', `Payout ${pid} is not in eligible status for batching (current: ${p.status}).`);
+      }
+      validPayouts.push(p);
+    }
+
     const id = this.nextId('pbt');
     const now = new Date();
-    const sha = createHash('sha256').update(input.payoutIds.join(',')).digest('hex');
+
+    // Generate real, deterministic bank file with formula injection protection
+    const records = validPayouts.map((p) => ({
+      id: p.id,
+      connectorId: p.connector_id,
+      total: String(p.total),
+      currency: p.currency,
+    }));
+    const fileResult = generateBankFileCsv(id, records);
+    const objectKey = `batches/${id}.csv`;
+
+    // Persist file via financial storage port
+    await this.storage.save(tenantId, objectKey, fileResult.buffer, 'text/csv');
 
     const row: PayoutBatchRow = {
       id,
-      tenant_id: ctx.principal.tenantId,
+      tenant_id: tenantId,
       payout_ids: input.payoutIds,
-      file_object_key: `batches/${id}.csv`,
-      file_sha256: sha,
+      file_object_key: objectKey,
+      file_sha256: fileResult.sha256,
       status: 'GENERATED',
       generated_by: ctx.principal.id,
       generated_at: now,
     };
 
     await this.deps.repository.insertPayoutBatch(tx, row);
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_batch.created',
+        entityType: 'payout_batch',
+        entityId: id,
+        after: {
+          payoutCount: input.payoutIds.length,
+          fileObjectKey: objectKey,
+          fileSha256: fileResult.sha256,
+        },
+      });
+    }
 
     return {
       id: row.id as any,
@@ -864,6 +1132,53 @@ export class FinanceService {
       status: row.status as any,
       generatedBy: row.generated_by,
       generatedAt: row.generated_at.toISOString(),
+    };
+  }
+
+  async getPayoutBatchBankFile(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+  ): Promise<{ buffer: Buffer; filename: string; sha256: string }> {
+    this.assertPermission(ctx, 'payout.record_payment');
+
+    const tenantId = ctx.principal.tenantId;
+    const batch = await this.deps.repository.findPayoutBatchById(tx, tenantId, id);
+    if (!batch) {
+      throw AppError.of('NOT_FOUND', `Payout batch ${id} not found.`);
+    }
+
+    if (!batch.file_object_key) {
+      throw AppError.of('NOT_FOUND', `Bank file object key missing for batch ${id}.`);
+    }
+
+    const buffer = await this.storage.get(tenantId, batch.file_object_key);
+    if (!buffer) {
+      throw AppError.of('NOT_FOUND', `Bank file not found in storage for batch ${id}.`);
+    }
+
+    // Verify cryptographic SHA-256 integrity against database record
+    const sha = createHash('sha256').update(buffer).digest('hex');
+    if (batch.file_sha256 && sha !== batch.file_sha256) {
+      throw AppError.of('CONTENT_HASH_MISMATCH', 'Bank file checksum verification failed: SHA-256 mismatch.');
+    }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'payout_batch.downloaded',
+        entityType: 'payout_batch',
+        entityId: id,
+        after: {
+          fileSha256: sha,
+          fileSizeBytes: buffer.length,
+        },
+      });
+    }
+
+    return {
+      buffer,
+      filename: `batch-${id}.csv`,
+      sha256: sha,
     };
   }
 
@@ -952,6 +1267,7 @@ export class FinanceService {
       paymentRefMasked: row.payment_ref_masked,
       paidOn: row.paid_on ? row.paid_on.toISOString() : null,
       failureReason: row.failure_reason,
+      retryOfPayoutId: row.retry_of_payout_id ?? null,
       submittedBy: row.submitted_by,
       submittedAt: row.submitted_at ? row.submitted_at.toISOString() : null,
       lockVersion: row.lock_version,
