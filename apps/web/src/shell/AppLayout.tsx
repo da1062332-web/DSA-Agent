@@ -36,8 +36,13 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { session, aal, signOut } = useAuth();
   const me = useMe();
-  const disableMfa = true;
-  const mfaPassed = !!session && !me.isPending;
+  // Only call the API once the sign-in has passed the mandatory MFA check (see the guard below).
+  const mfaPassed =
+    !!session &&
+    !!aal &&
+    !me.isPending &&
+    !(aal.next === 'aal2' && aal.current !== 'aal2') &&
+    !(aal.next !== 'aal2' && mfaRequired(me.data));
   const tenant = useTenant(mfaPassed);
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -52,7 +57,7 @@ export function AppLayout() {
       </Centered>
     );
   if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (me.isPending)
+  if (!aal || me.isPending)
     return (
       <Centered>
         <CircularProgress />
@@ -75,8 +80,8 @@ export function AppLayout() {
     );
   }
 
-  const needsChallenge = false;
-  const needsEnrolment = false;
+  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
+  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
