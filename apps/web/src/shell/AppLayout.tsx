@@ -20,7 +20,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { errorText } from '../api/client';
-import { hasPermission, useMe, useTenant } from '../api/useMe';
+import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
@@ -34,7 +34,7 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, signOut } = useAuth();
+  const { session, aal, signOut } = useAuth();
   const me = useMe();
   const mfaPassed = !!session && !me.isPending;
   const tenant = useTenant(mfaPassed);
@@ -74,8 +74,16 @@ export function AppLayout() {
     );
   }
 
-  const needsChallenge = false;
-  const needsEnrolment = false;
+  const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
+  if (!skipMfa && aal === undefined)
+    return (
+      <Centered>
+        <CircularProgress />
+      </Centered>
+    );
+
+  const needsChallenge = !skipMfa && aal?.next === 'aal2' && aal?.current !== 'aal2';
+  const needsEnrolment = !skipMfa && aal?.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
