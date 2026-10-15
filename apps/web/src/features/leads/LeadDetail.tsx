@@ -73,6 +73,7 @@ export function LeadDetail() {
 
   // Mutations
   const transitionMutation = useMutation({
+    meta: { successMessage: 'Lead status updated.' },
     mutationFn: (variables: Parameters<typeof transitionLead>[1]) => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return transitionLead(id, variables, etag);
@@ -94,6 +95,7 @@ export function LeadDetail() {
   });
 
   const assignMutation = useMutation({
+    meta: { successMessage: 'Lead assigned.' },
     mutationFn: (variables: { toUserId?: string; reasonCode: string }) => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return assignLead(id, variables, etag);
@@ -114,6 +116,7 @@ export function LeadDetail() {
   });
 
   const convertMutation = useMutation({
+    meta: { successMessage: 'Lead converted to an application.' },
     mutationFn: () => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return convertLead(id, etag);

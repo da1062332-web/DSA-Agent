@@ -99,6 +99,7 @@ export function TaskList(): React.ReactElement {
   });
 
   const createMutation = useMutation({
+    meta: { successMessage: 'Task created.' },
     mutationFn: (payload: CreateTaskPayload) => createTask(payload),
     onSuccess: () => {
       setOpenCreateDialog(false);
@@ -114,6 +115,7 @@ export function TaskList(): React.ReactElement {
   });
 
   const completeMutation = useMutation({
+    meta: { successMessage: 'Task completed.' },
     mutationFn: ({ id, etag, payload }: { id: string; etag: string; payload: CompleteTaskPayload }) =>
       completeTask(id, etag, payload),
     onSuccess: () => {

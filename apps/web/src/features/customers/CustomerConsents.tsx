@@ -67,6 +67,7 @@ export function CustomerConsents(): React.ReactElement {
   });
 
   const recordMutation = useMutation({
+    meta: { successMessage: 'Consent recorded.' },
     mutationFn: (payload: RecordConsentPayload) =>
       recordCustomerConsent(customerId, payload),
     onSuccess: () => {
@@ -81,6 +82,7 @@ export function CustomerConsents(): React.ReactElement {
   });
 
   const withdrawMutation = useMutation({
+    meta: { successMessage: 'Consent withdrawn.' },
     mutationFn: (consentId: string) => withdrawConsent(consentId, 'User withdrawal via UI'),
     onSuccess: () => {
       setActionError(null);

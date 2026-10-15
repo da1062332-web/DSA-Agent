@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { ApiError } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList } from '../admin/api';
 import { ErrorAlert, LoadMore, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
@@ -68,9 +69,12 @@ export function ComplaintsPage() {
     '/v1/complaints',
     { status: status || undefined, category: category || undefined },
     50,
+    canManage,
   );
   const [creating, setCreating] = useState(false);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
+  const refused = list.error instanceof ApiError && list.error.httpStatus === 403;
+  const denied = (!canManage && !canCreate) || refused;
 
   return (
     <>
@@ -85,12 +89,12 @@ export function ComplaintsPage() {
           )
         }
       />
-      {!canManage && !canCreate && (
+      {denied && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="complaints.noAccess">
-          You need the complaint permissions to view or record complaints. Ask your administrator.
+          You don't have access to complaints. Ask your administrator to grant you the complaint permissions.
         </Alert>
       )}
-      {!canManage && canCreate && (
+      {!denied && !canManage && canCreate && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You can record complaints. The queue and handling need the complaint handling permission.
         </Alert>
@@ -129,7 +133,7 @@ export function ComplaintsPage() {
               ))}
             </TextField>
           </Stack>
-          <ErrorAlert error={list.error} />
+          {!refused && <ErrorAlert error={list.error} />}
           {list.isPending ? (
             <Loading />
           ) : (

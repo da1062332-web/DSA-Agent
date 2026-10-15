@@ -163,7 +163,11 @@ export function AppLayout() {
               },
             }}
           >
-            <SidebarContent isAdmin={isAdmin} onNavigate={() => setDrawerOpen(false)} />
+            <SidebarContent
+              isAdmin={isAdmin}
+              can={(code) => hasPermission(me.data, code)}
+              onNavigate={() => setDrawerOpen(false)}
+            />
           </Drawer>
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>
             <Outlet />

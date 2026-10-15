@@ -2,7 +2,7 @@
 // so a toast looks like the rest of the UI. Toasts confirm an action or report a failure; field-level problems stay
 // next to the field they belong to.
 import { Alert, Snackbar, type AlertColor } from '@mui/material';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 interface Toast {
   id: number;
@@ -18,6 +18,13 @@ export interface ToastApi {
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
+
+/** Lets code outside React (the query client's mutation cache) raise a toast through the mounted provider. */
+let bridge: ToastApi | null = null;
+export const toastBridge = {
+  success: (m: string) => bridge?.success(m),
+  error: (m: string) => bridge?.error(m),
+};
 
 /** How long a toast stays: errors stay longer so they can be read. */
 const DURATION_MS: Record<AlertColor, number> = { success: 4000, info: 4000, warning: 6000, error: 8000 };
@@ -40,6 +47,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }),
     [push],
   );
+
+  useEffect(() => {
+    bridge = api;
+    return () => {
+      if (bridge === api) bridge = null;
+    };
+  }, [api]);
 
   return (
     <ToastContext.Provider value={api}>

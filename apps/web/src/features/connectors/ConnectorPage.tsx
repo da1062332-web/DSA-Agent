@@ -180,6 +180,7 @@ export function ConnectorPage() {
 
   // Mutations
   const createConnectorMutation = useMutation({
+    meta: { successMessage: 'Connector created.' },
     mutationFn: async (data: CreateConnectorInput) => {
       return apiFetch<ConnectorResource>('/v1/connectors', {
         method: 'POST',
@@ -196,6 +197,7 @@ export function ConnectorPage() {
   });
 
   const activateConnectorMutation = useMutation({
+    meta: { successMessage: 'Connector activated.' },
     mutationFn: async ({ id, lockVersion, verificationId }: { id: string; lockVersion: number; verificationId: string }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/activation`, {
         method: 'POST',
@@ -213,6 +215,7 @@ export function ConnectorPage() {
   });
 
   const updateStatusMutation = useMutation({
+    meta: { successMessage: 'Connector status updated.' },
     mutationFn: async ({ id, lockVersion, targetStatus, reason }: { id: string; lockVersion: number; targetStatus: string; reason: string }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/status`, {
         method: 'POST',
@@ -230,6 +233,7 @@ export function ConnectorPage() {
   });
 
   const createBankAccountMutation = useMutation({
+    meta: { successMessage: 'Bank account added.' },
     mutationFn: async ({ connectorId, data }: { connectorId: string; data: CreateConnectorBankAccountInput }) => {
       return apiFetch<ConnectorBankAccountResource>(`/v1/connectors/${connectorId}/bank-accounts`, {
         method: 'POST',
@@ -246,6 +250,7 @@ export function ConnectorPage() {
   });
 
   const approveBankAccountMutation = useMutation({
+    meta: { successMessage: 'Bank account approved.' },
     mutationFn: async ({ connectorId, accountId }: { connectorId: string; accountId: string }) => {
       return apiFetch<ConnectorBankAccountResource>(
         `/v1/connectors/${connectorId}/bank-accounts/${accountId}/approval`,
@@ -261,6 +266,7 @@ export function ConnectorPage() {
   });
 
   const createAgreementMutation = useMutation({
+    meta: { successMessage: 'Agreement saved.' },
     mutationFn: async ({ connectorId, data }: { connectorId: string; data: CreateConnectorAgreementInput }) => {
       return apiFetch<ConnectorAgreementResource>(`/v1/connectors/${connectorId}/agreements`, {
         method: 'POST',
@@ -277,6 +283,7 @@ export function ConnectorPage() {
   });
 
   const createAttributionMutation = useMutation({
+    meta: { successMessage: 'Attribution change requested.' },
     mutationFn: async (data: CreateAttributionChangeRequestInput) => {
       return apiFetch<AttributionChangeRequestResource>('/v1/attribution-change-requests', {
         method: 'POST',
@@ -293,6 +300,7 @@ export function ConnectorPage() {
   });
 
   const approveAttributionMutation = useMutation({
+    meta: { successMessage: 'Attribution change approved.' },
     mutationFn: async ({ id, lockVersion }: { id: string; lockVersion: number }) => {
       return apiFetch<AttributionChangeRequestResource>(`/v1/attribution-change-requests/${id}/approval`, {
         method: 'POST',
@@ -308,6 +316,7 @@ export function ConnectorPage() {
   });
 
   const resolveDisputeMutation = useMutation({
+    meta: { successMessage: 'Dispute resolved.' },
     mutationFn: async ({ id, lockVersion, data }: { id: string; lockVersion: number; data: ResolveAttributionDisputeInput }) => {
       return apiFetch<AttributionDisputeResource>(`/v1/attribution-disputes/${id}/resolution`, {
         method: 'POST',

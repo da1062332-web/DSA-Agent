@@ -112,6 +112,7 @@ export function IntegrationsPage() {
 
   // Ping Mutation
   const pingMutation = useMutation({
+    meta: { successMessage: 'Connection tested.' },
     mutationFn: ({ provider, capability }: { provider: string; capability: string }) =>
       pingIntegration(provider, capability),
     onSuccess: () => {
@@ -121,6 +122,7 @@ export function IntegrationsPage() {
 
   // Save Mutation
   const saveMutation = useMutation({
+    meta: { successMessage: 'Integration saved.' },
     mutationFn: async () => {
       let parsedConfig: Record<string, unknown> = {};
       try {
