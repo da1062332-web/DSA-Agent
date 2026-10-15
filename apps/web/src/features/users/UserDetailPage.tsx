@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Divider,
   FormControl,
   Grid,
   InputLabel,
@@ -27,7 +26,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
   assignUserRole,
   fetchBranches,
@@ -40,7 +39,6 @@ import type { Branch, Role, UserSummary } from './types';
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const [user, setUser] = useState<UserSummary | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);

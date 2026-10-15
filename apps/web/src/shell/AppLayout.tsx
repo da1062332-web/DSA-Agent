@@ -20,7 +20,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { errorText } from '../api/client';
-import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
+import { hasPermission, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
@@ -34,9 +34,8 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, aal, signOut } = useAuth();
+  const { session, signOut } = useAuth();
   const me = useMe();
-  const disableMfa = true;
   const mfaPassed = !!session && !me.isPending;
   const tenant = useTenant(mfaPassed);
   const [menu, setMenu] = useState<HTMLElement | null>(null);

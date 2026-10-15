@@ -72,6 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Documents', task: 'MOD-DOC' },
       { label: 'Document sharing', to: '/document-sharing' },
       { label: 'Verification', to: '/verifications' },
+      { label: 'Verification workbench', to: '/verifications/workbench' },
     ],
   },
   {
@@ -104,9 +105,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Commission, payouts and reconciliation (DOM-K)',
     items: [
-      { label: 'Commission', task: 'MOD-COM' },
+      { label: 'Commission', to: '/commission' },
       { label: 'Ledger', task: 'MOD-LED' },
-      { label: 'Payouts', task: 'MOD-PAY' },
+      { label: 'Payouts', to: '/payouts' },
       { label: 'Reconciliation', task: 'MOD-REC' },
       { label: 'Invoices', task: 'MOD-INV' },
     ],
