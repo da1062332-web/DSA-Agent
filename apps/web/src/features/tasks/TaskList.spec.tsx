@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { setAuthToken } from '../../auth/token';
 import { TaskList } from './TaskList';
 
 function renderTaskList(initialPath = '/tasks') {
@@ -43,5 +44,13 @@ describe('Module 9 — TaskList Frontend Component Rendering (UI-TASK-001)', () 
 
     // Query is initially in loading state before client hydration
     expect(html).toContain('MuiCircularProgress-root');
+  });
+
+  it('renders correctly when Supabase session token is present via setAuthToken', () => {
+    setAuthToken('header.eyJzdWIiOiJ1c3JfdGVzdF85OSIsInByaW1hcnlCcmFuY2hJZCI6ImJybl90ZXN0Xzk5In0.sig');
+    const html = renderTaskList();
+
+    expect(html).toContain('Task Management (UI-TASK-001)');
+    setAuthToken(undefined);
   });
 });

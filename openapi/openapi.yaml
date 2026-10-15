@@ -2915,6 +2915,8 @@ paths:
                             - data_correction.approve
                             - integration.read
                             - integration.manage
+                            - attendance.manage
+                            - invoice.manage
                         scope:
                           type: string
                           enum:
@@ -9341,7 +9343,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T09:08:20.828Z
+                  default: 2026-10-15T10:47:14.916Z
               required:
                 - paymentRef
       responses:

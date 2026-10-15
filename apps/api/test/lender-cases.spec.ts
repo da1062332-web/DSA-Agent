@@ -60,6 +60,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
     tenantId: tenantB,
     grants: [
       { code: 'lender_case.submit', scope: 'TENANT', branchIds: [] },
+      { code: 'lender_case.update_status', scope: 'TENANT', branchIds: [] },
       { code: 'application.read', scope: 'TENANT', branchIds: [] },
     ],
   });
@@ -421,6 +422,32 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       expect(submitRes.status).toBe(422);
       expect(submitRes.body.error.code).toBe('CONSENT_REQUIRED');
     });
+
+    it('rejects submission when caller lacks lender_case.submit permission with 403 FORBIDDEN', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post(`/v1/applications/${appId}/lender-cases`)
+        .send(validPayload);
+      const caseId = createRes.body.id;
+
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+
+      const unauthorizedUser = testPrincipal({
+        tenantId: tenantA,
+        grants: [
+          { code: 'application.read', scope: 'TENANT', branchIds: [] },
+          { code: 'lender_case.update_status', scope: 'TENANT', branchIds: [] },
+        ],
+      });
+      const unauthApp = getApp(unauthorizedUser);
+
+      const submitRes = await request(unauthApp)
+        .post(`/v1/lender-cases/${caseId}/submission`)
+        .send({ channel: 'PORTAL' });
+
+      expect(submitRes.status).toBe(403);
+      expect(submitRes.body.error.code).toBe('FORBIDDEN');
+    });
   });
 
   describe('API-LCS-005: Status Updates & Application Roll-up', () => {
@@ -582,6 +609,24 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       const res = await request(appB).get(`/v1/lender-cases/${caseId}`);
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('NOT_FOUND');
+
+      // Tenant B cannot submit Tenant A case -> 404
+      const submitRes = await request(appB)
+        .post(`/v1/lender-cases/${caseId}/submission`)
+        .send({ channel: 'PORTAL' });
+      expect(submitRes.status).toBe(404);
+
+      // Tenant B cannot update status of Tenant A case -> 404
+      const statusRes = await request(appB)
+        .post(`/v1/lender-cases/${caseId}/status-updates`)
+        .set('If-Match', '"0"')
+        .send({ toStatus: 'UNDER_PROCESSING' });
+      expect(statusRes.status).toBe(404);
+
+      // Tenant B cannot list lender cases for Tenant A application -> 404 NOT_FOUND
+      const listRes = await request(appB).get(`/v1/applications/${appId}/lender-cases`);
+      expect(listRes.status).toBe(404);
+      expect(listRes.body.error.code).toBe('NOT_FOUND');
     });
   });
 });

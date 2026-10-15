@@ -99,6 +99,40 @@ export async function recordCustomerConsent(
   return data;
 }
 
+export async function listCustomers(params: {
+  partyType?: 'INDIVIDUAL' | 'ENTITY';
+  status?: 'ACTIVE' | 'MERGED';
+  homeBranchId?: string;
+  limit?: number;
+  cursor?: string;
+} = {}): Promise<{ data: CustomerResource[]; meta: { nextCursor: string | null; limit: number } }> {
+  const query = new URLSearchParams();
+  if (params.partyType) query.set('partyType', params.partyType);
+  if (params.status) query.set('status', params.status);
+  if (params.homeBranchId) query.set('homeBranchId', params.homeBranchId);
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.cursor) query.set('cursor', params.cursor);
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const { data } = await request<{ data: CustomerResource[]; meta: { nextCursor: string | null; limit: number } }>(
+    `/v1/customers${qs}`,
+  );
+  return data;
+}
+
+export async function updateCustomer(
+  id: string,
+  payload: { fullName?: string; homeBranchId?: string },
+  etag?: string,
+): Promise<{ customer: CustomerResource; etag?: string }> {
+  const { data, etag: newEtag } = await request<CustomerResource>(`/v1/customers/${id}`, {
+    method: 'PATCH',
+    ifMatch: etag,
+    body: JSON.stringify(payload),
+  });
+  return { customer: data, etag: newEtag };
+}
+
 export async function withdrawConsent(consentId: string, reason?: string): Promise<ConsentResource> {
   const { data } = await request<ConsentResource>(`/v1/consents/${consentId}/withdrawal`, {
     method: 'POST',

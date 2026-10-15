@@ -28,6 +28,8 @@ import * as partnerApi from './partner-api/router';
 import * as audit from './audit/router';
 import * as imports from './platform/imports/router';
 import * as reconciliation from './reconciliation/router';
+import * as workforce from './crm/workforce/router';
+import * as invoices from './invoices/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
@@ -42,9 +44,11 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'crm/notifications', owner: 'Dev 1', createRouter: notifications.createRouter },
   { name: 'compliance', owner: 'Dev 5', createRouter: compliance.createRouter },
   { name: 'finance', owner: 'Dev 5', createRouter: finance.createRouter },
+  { name: 'invoices', owner: 'Dev 5', createRouter: invoices.createRouter },
   { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
   { name: 'crm/targets', owner: 'Dev 5', createRouter: targets.createRouter },
+  { name: 'crm/workforce', owner: 'Dev 1', createRouter: workforce.createRouter },
   { name: 'reporting', owner: 'Dev 5', createRouter: reporting.createRouter },
   { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },

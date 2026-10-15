@@ -38,6 +38,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
     grants: [
       { code: 'task.read', scope: 'TENANT', branchIds: [] },
       { code: 'task.create', scope: 'TENANT', branchIds: [] },
+      { code: 'task.update', scope: 'TENANT', branchIds: [] },
     ],
   });
 
@@ -786,6 +787,25 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const crossRes = await request(appB).get(`/v1/tasks/${taskId}`);
       expect(crossRes.status).toBe(404);
       expect(crossRes.body.error.code).toBe('NOT_FOUND');
+
+      // Tenant B lists tasks -> does not see Tenant A's task
+      const listResB = await request(appB).get('/v1/tasks');
+      expect(listResB.status).toBe(200);
+      expect(listResB.body.data.some((t: any) => t.id === taskId)).toBe(false);
+
+      // Tenant B attempts to complete Tenant A's task -> 404 NOT_FOUND
+      const completeResB = await request(appB)
+        .post(`/v1/tasks/${taskId}/completion`)
+        .set('If-Match', `W/"${taskId}:0"`)
+        .send({ outcomeCode: 'CONNECTED' });
+      expect(completeResB.status).toBe(404);
+
+      // Tenant B attempts to reassign Tenant A's task -> 404 NOT_FOUND
+      const assignResB = await request(appB)
+        .post(`/v1/tasks/${taskId}/assignment`)
+        .set('If-Match', `W/"${taskId}:0"`)
+        .send({ toUserId: 'usr_tenant_b_user', reasonCode: 'MANUAL' });
+      expect(assignResB.status).toBe(404);
     });
 
     it('returns 409 INVALID_STATE for deferred snooze and bulk-reassignment endpoints', async () => {
