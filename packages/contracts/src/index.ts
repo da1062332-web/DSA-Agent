@@ -25,6 +25,7 @@ export * from './rules';
 export * from './automation';
 export * from './partner-api';
 export * from './audit';
+export * from './security';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';

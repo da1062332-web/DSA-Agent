@@ -1258,7 +1258,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-14
+          default: 2026-10-15
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -1781,6 +1781,8 @@ paths:
                             - partner.lead_ingest
                             - partner.application_read
                             - webhook.manage
+                            - security.incident
+                            - security.vuln
                         scope:
                           type: string
                           enum:
@@ -8188,7 +8190,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-14T17:20:29.199Z
+                  default: 2026-10-15T05:04:35.443Z
               required:
                 - paymentRef
       responses:
@@ -20811,4 +20813,1125 @@ paths:
           description: Evidence pack not found
         "409":
           description: Evidence pack not ready for download or expired
+  /v1/incidents:
+    post:
+      operationId: API-SEC-001
+      summary: Record a security incident (API-SEC-001)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: &a100
+                    - DATA_BREACH
+                    - UNAUTHORIZED_ACCESS
+                    - MALWARE
+                    - DENIAL_OF_SERVICE
+                    - PRIVILEGE_ESCALATION
+                    - CREDENTIAL_LEAK
+                    - OTHER
+                severity:
+                  type: string
+                  enum: &a101
+                    - LOW
+                    - MEDIUM
+                    - HIGH
+                    - CRITICAL
+                detectedAt:
+                  type: string
+                  format: date-time
+                personalDataInvolved:
+                  type: boolean
+                  default: false
+                affectedTenants:
+                  type: array
+                  items:
+                    type: string
+                  default: []
+                notifications:
+                  type: object
+                  properties:
+                    authority:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                    tenant:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                    individual:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                  default: {}
+                status:
+                  type: string
+                  enum: &a102
+                    - OPEN
+                    - INVESTIGATING
+                    - CONTAINED
+                    - RESOLVED
+                    - CLOSED
+                  default: OPEN
+                postMortemRef:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 512
+              required:
+                - type
+                - severity
+                - detectedAt
+      responses:
+        "201":
+          description: Incident record created
+          headers:
+            ETag:
+              schema:
+                type: string
+              required: false
+            Idempotent-Replayed:
+              schema:
+                type: string
+              required: false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^inc_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  type:
+                    type: string
+                    enum: *a100
+                  severity:
+                    type: string
+                    enum: *a101
+                  detectedAt:
+                    type: string
+                    format: date-time
+                  personalDataInvolved:
+                    type: boolean
+                  affectedTenants:
+                    type: array
+                    items:
+                      type: string
+                  notifications:
+                    type: object
+                    properties:
+                      authority:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      tenant:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      individual:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                  status:
+                    type: string
+                    enum: *a102
+                  postMortemRef:
+                    type:
+                      - string
+                      - "null"
+                    maxLength: 512
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                    format: date-time
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - severity
+                  - detectedAt
+                  - personalDataInvolved
+                  - affectedTenants
+                  - notifications
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "400":
+          description: Missing Idempotency-Key or Malformed Request
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires security.incident)
+        "422":
+          description: Validation error
+    get:
+      operationId: API-SEC-004
+      summary: List security incidents in the acting tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a102
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a101
+          required: false
+          name: severity
+          in: query
+        - schema:
+            type: string
+            enum: *a100
+          required: false
+          name: type
+          in: query
+      responses:
+        "200":
+          description: List of security incidents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^inc_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                          pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                        type:
+                          type: string
+                          enum: *a100
+                        severity:
+                          type: string
+                          enum: *a101
+                        detectedAt:
+                          type: string
+                          format: date-time
+                        personalDataInvolved:
+                          type: boolean
+                        affectedTenants:
+                          type: array
+                          items:
+                            type: string
+                        notifications:
+                          type: object
+                          properties:
+                            authority:
+                              type: object
+                              properties:
+                                notified:
+                                  type: boolean
+                                notifiedAt:
+                                  type:
+                                    - string
+                                    - "null"
+                                  format: date-time
+                                evidenceRef:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 512
+                                recipient:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 256
+                              required:
+                                - notified
+                                - notifiedAt
+                            tenant:
+                              type: object
+                              properties:
+                                notified:
+                                  type: boolean
+                                notifiedAt:
+                                  type:
+                                    - string
+                                    - "null"
+                                  format: date-time
+                                evidenceRef:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 512
+                                recipient:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 256
+                              required:
+                                - notified
+                                - notifiedAt
+                            individual:
+                              type: object
+                              properties:
+                                notified:
+                                  type: boolean
+                                notifiedAt:
+                                  type:
+                                    - string
+                                    - "null"
+                                  format: date-time
+                                evidenceRef:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 512
+                                recipient:
+                                  type:
+                                    - string
+                                    - "null"
+                                  maxLength: 256
+                              required:
+                                - notified
+                                - notifiedAt
+                        status:
+                          type: string
+                          enum: *a102
+                        postMortemRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        lockVersion:
+                          type: integer
+                          minimum: 0
+                        createdAt:
+                          type: string
+                          format: date-time
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                          format: date-time
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - type
+                        - severity
+                        - detectedAt
+                        - personalDataInvolved
+                        - affectedTenants
+                        - notifications
+                        - status
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires security.incident)
+  /v1/incidents/{id}:
+    patch:
+      operationId: API-SEC-002
+      summary: Update incident assessments and notification timestamps (API-SEC-002)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                severity:
+                  type: string
+                  enum: *a101
+                personalDataInvolved:
+                  type: boolean
+                affectedTenants:
+                  type: array
+                  items:
+                    type: string
+                notifications:
+                  type: object
+                  properties:
+                    authority:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                    tenant:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                    individual:
+                      type: object
+                      properties:
+                        notified:
+                          type: boolean
+                        notifiedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        evidenceRef:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 512
+                        recipient:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                      required:
+                        - notified
+                        - notifiedAt
+                status:
+                  type: string
+                  enum: *a102
+                postMortemRef:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 512
+      responses:
+        "200":
+          description: Incident updated successfully
+          headers:
+            ETag:
+              schema:
+                type: string
+              required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^inc_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  type:
+                    type: string
+                    enum: *a100
+                  severity:
+                    type: string
+                    enum: *a101
+                  detectedAt:
+                    type: string
+                    format: date-time
+                  personalDataInvolved:
+                    type: boolean
+                  affectedTenants:
+                    type: array
+                    items:
+                      type: string
+                  notifications:
+                    type: object
+                    properties:
+                      authority:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      tenant:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      individual:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                  status:
+                    type: string
+                    enum: *a102
+                  postMortemRef:
+                    type:
+                      - string
+                      - "null"
+                    maxLength: 512
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                    format: date-time
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - severity
+                  - detectedAt
+                  - personalDataInvolved
+                  - affectedTenants
+                  - notifications
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "400":
+          description: Missing If-Match or Malformed Request
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires security.incident)
+        "404":
+          description: Incident not found
+        "409":
+          description: Version conflict (stale update) or Invalid transition
+        "422":
+          description: Validation error
+    get:
+      operationId: API-SEC-003
+      summary: Retrieve single incident record by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Incident details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^inc_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  type:
+                    type: string
+                    enum: *a100
+                  severity:
+                    type: string
+                    enum: *a101
+                  detectedAt:
+                    type: string
+                    format: date-time
+                  personalDataInvolved:
+                    type: boolean
+                  affectedTenants:
+                    type: array
+                    items:
+                      type: string
+                  notifications:
+                    type: object
+                    properties:
+                      authority:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      tenant:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                      individual:
+                        type: object
+                        properties:
+                          notified:
+                            type: boolean
+                          notifiedAt:
+                            type:
+                              - string
+                              - "null"
+                            format: date-time
+                          evidenceRef:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 512
+                          recipient:
+                            type:
+                              - string
+                              - "null"
+                            maxLength: 256
+                        required:
+                          - notified
+                          - notifiedAt
+                  status:
+                    type: string
+                    enum: *a102
+                  postMortemRef:
+                    type:
+                      - string
+                      - "null"
+                    maxLength: 512
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                    format: date-time
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - severity
+                  - detectedAt
+                  - personalDataInvolved
+                  - affectedTenants
+                  - notifications
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires security.incident)
+        "404":
+          description: Incident not found
+  /v1/security/events:
+    post:
+      operationId: API-SEC-005
+      summary: Record a security monitoring event (ENT-096)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: &a103
+                    - AUTH_FAILURE
+                    - PERMISSION_DENIED
+                    - RATE_LIMIT_EXCEEDED
+                    - SUSPICIOUS_ACCESS
+                    - DATA_EXPORT
+                    - CONFIGURATION_CHANGE
+                    - INTEGRITY_VIOLATION
+                principal:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                ip:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                severity:
+                  type: string
+                  enum: &a104
+                    - LOW
+                    - MEDIUM
+                    - HIGH
+                    - CRITICAL
+                details:
+                  type: object
+                  additionalProperties: {}
+                  default: {}
+              required:
+                - type
+                - principal
+                - ip
+                - severity
+      responses:
+        "201":
+          description: Security event recorded with sanitized details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^sec_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                    pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                  type:
+                    type: string
+                    enum: *a103
+                  principal:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  ip:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  severity:
+                    type: string
+                    enum: *a104
+                  details:
+                    type: object
+                    additionalProperties: {}
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - type
+                  - principal
+                  - ip
+                  - severity
+                  - details
+                  - createdAt
+        "401":
+          description: Unauthenticated
+        "422":
+          description: Validation error
+    get:
+      operationId: API-SEC-006
+      summary: List security monitoring events (InfoSec / Compliance authorized)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a103
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            enum: *a104
+          required: false
+          name: severity
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: false
+          name: principal
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: dateFrom
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: dateTo
+          in: query
+      responses:
+        "200":
+          description: List of security events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^sec_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                          pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
+                        type:
+                          type: string
+                          enum: *a103
+                        principal:
+                          type: string
+                          minLength: 1
+                          maxLength: 128
+                        ip:
+                          type: string
+                          minLength: 1
+                          maxLength: 64
+                        severity:
+                          type: string
+                          enum: *a104
+                        details:
+                          type: object
+                          additionalProperties: {}
+                        createdAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - id
+                        - tenantId
+                        - type
+                        - principal
+                        - ip
+                        - severity
+                        - details
+                        - createdAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Unauthenticated
+        "403":
+          description: Forbidden (requires security.incident)
 webhooks: {}
