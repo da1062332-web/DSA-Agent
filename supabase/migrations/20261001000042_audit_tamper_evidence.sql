@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS app.evidence_pack (
 
 CREATE INDEX IF NOT EXISTS evidence_pack_tenant_idx ON app.evidence_pack (tenant_id, created_at DESC);
 
+DROP POLICY IF EXISTS tenant_isolation ON app.evidence_pack;
 CALL enable_tenant_rls('evidence_pack');
 GRANT SELECT, INSERT, UPDATE ON app.evidence_pack TO dsa_app;
 

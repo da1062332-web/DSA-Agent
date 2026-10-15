@@ -9,6 +9,8 @@ import {
   CreateWebhookSubscriptionSchema,
   SandboxEchoRequestSchema,
   SandboxSimulateEventRequestSchema,
+  CreateApiClientSchema,
+  UpdateApiClientSchema,
   type RequestContext,
 } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
@@ -244,6 +246,72 @@ export function createRouter(
       const input = SandboxSimulateEventRequestSchema.parse(req.body);
       const result = await webhookService.simulateEvent(ctx, input);
       res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================================================
+  // API Management & Client Credentials (MOD-API)
+  // ==========================================================================
+
+  router.get('/api-clients', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const result = await partnerService.listApiClients(ctx);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/api-clients', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const input = CreateApiClientSchema.parse(req.body);
+      const result = await partnerService.createApiClient(ctx, input);
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/api-clients/:id', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const result = await partnerService.getApiClient(ctx, paramStr(req.params.id));
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch('/api-clients/:id', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const input = UpdateApiClientSchema.parse(req.body);
+      const result = await partnerService.updateApiClient(ctx, paramStr(req.params.id), input);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/api-clients/:id', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      await partnerService.deleteApiClient(ctx, paramStr(req.params.id));
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/api-clients/:id/rotate-secret', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const result = await partnerService.rotateClientSecret(ctx, paramStr(req.params.id));
+      res.json(result);
     } catch (err) {
       next(err);
     }

@@ -482,6 +482,22 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
 
       const resB = await request(appB).get(`/v1/targets/${targetId}`);
       expect(resB.status).toBe(404);
+
+      // User from Tenant B lists targets -> does not see Tenant A target
+      const listB = await request(appB).get('/v1/targets?period=2026-10');
+      expect(listB.status).toBe(200);
+      expect(listB.body.items.some((t: any) => t.id === targetId)).toBe(false);
+
+      // User from Tenant B attempts to approve Tenant A target -> 404
+      const approveB = await request(appB)
+        .post(`/v1/targets/${targetId}/approval`)
+        .set('If-Match', '"1"')
+        .send({ decision: 'APPROVE', comment: 'Cross-tenant approval attempt' });
+      expect(approveB.status).toBe(404);
+
+      // User from Tenant B attempts to view history of Tenant A target -> 404
+      const histB = await request(appB).get(`/v1/targets/${targetId}/history`);
+      expect(histB.status).toBe(404);
     });
 
     it('returns actualValue as null in MVP since MOD-RPT is unbuilt', async () => {

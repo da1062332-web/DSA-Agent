@@ -220,6 +220,165 @@ export async function listDecisionDefinitions(
   return result.rows.map((row) => formatDecisionDefinition(row, depMap.get(row.key) || []));
 }
 
+export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinition {
+  switch (decisionKey) {
+    case 'DK-application.eligibility':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        defaultOutput: {
+          result: 'REFER',
+          maxEligibleAmount: null,
+          reasons: [{ code: 'MANUAL_REVIEW', text: 'Application referred for underwriter review' }],
+        },
+        rules: [
+          {
+            uid: 'RUL-ELG-001',
+            name: 'Low Credit Score Rejection',
+            description: 'Reject applicant if credit bureau score is below 600',
+            orderNo: 0,
+            priority: 100,
+            enabled: true,
+            conditions: [{ field: 'applicant.credit_score', operator: '<', value: 600 }],
+            output: {
+              result: 'INELIGIBLE',
+              maxEligibleAmount: null,
+              reasons: [{ code: 'CREDIT_SCORE_LOW', text: 'Credit bureau score below acceptable threshold (min 600)' }],
+            },
+            explanation: 'Bureau score of applicant is below credit risk cutoff',
+          },
+          {
+            uid: 'RUL-ELG-002',
+            name: 'Minimum Net Monthly Income Rejection',
+            description: 'Reject applicant if monthly net income is below 25,000 INR',
+            orderNo: 1,
+            priority: 90,
+            enabled: true,
+            conditions: [{ field: 'applicant.monthly_income.amount', operator: '<', value: 25000 }],
+            output: {
+              result: 'INELIGIBLE',
+              maxEligibleAmount: null,
+              reasons: [{ code: 'INCOME_BELOW_MINIMUM', text: 'Monthly net income is below minimum requirement of 25,000 INR' }],
+            },
+            explanation: 'Net take-home income does not meet minimum retail borrowing cutoff',
+          },
+          {
+            uid: 'RUL-ELG-003',
+            name: 'Prime Borrower High Eligibility Pass',
+            description: 'Applicant with credit score >= 750 and income >= 75,000 qualifies for prime sanction',
+            orderNo: 2,
+            priority: 80,
+            enabled: true,
+            conditions: [
+              { field: 'applicant.credit_score', operator: '>=', value: 750 },
+              { field: 'applicant.monthly_income.amount', operator: '>=', value: 75000 },
+            ],
+            output: {
+              result: 'ELIGIBLE',
+              maxEligibleAmount: { amount: '2500000.00', currency: 'INR' },
+              reasons: [{ code: 'PRIME_BORROWER_ELIGIBLE', text: 'Applicant meets prime credit and income benchmarks' }],
+            },
+            explanation: 'High credit score and strong income qualification',
+          },
+          {
+            uid: 'RUL-ELG-004',
+            name: 'Standard Salaried Borrower Pass',
+            description: 'Applicant with credit score >= 650 and income >= 25,000 qualifies for standard sanction',
+            orderNo: 3,
+            priority: 70,
+            enabled: true,
+            conditions: [
+              { field: 'applicant.credit_score', operator: '>=', value: 650 },
+              { field: 'applicant.monthly_income.amount', operator: '>=', value: 25000 },
+            ],
+            output: {
+              result: 'ELIGIBLE',
+              maxEligibleAmount: { amount: '1000000.00', currency: 'INR' },
+              reasons: [{ code: 'STANDARD_ELIGIBLE', text: 'Applicant satisfies standard eligibility criteria' }],
+            },
+            explanation: 'Satisfies baseline credit and income requirements',
+          },
+        ],
+      };
+
+    case 'DK-document.requirements':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'COLLECT',
+        defaultOutput: {
+          documents: [
+            { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
+            { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+          ],
+        },
+        rules: [
+          {
+            uid: 'RUL-DOC-001',
+            name: 'Salaried Income Verification Documents',
+            orderNo: 0,
+            enabled: true,
+            conditions: [
+              { field: 'party.applicant_type', operator: '==', value: 'SALARIED' },
+            ],
+            output: {
+              documents: [
+                { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
+                { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+                { typeCode: 'SALARY_SLIP', mandatory: true, count: 3, periodMonths: 3 },
+                { typeCode: 'BANK_STATEMENT', mandatory: true, count: 1, periodMonths: 6 },
+              ],
+            },
+          },
+        ],
+      };
+
+    case 'DK-application.completeness':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        defaultOutput: {
+          result: 'INCOMPLETE',
+          reasons: [{ code: 'INITIAL_ASSESSMENT', text: 'Application completeness evaluation pending' }],
+        },
+        rules: [
+          {
+            uid: 'RUL-CMP-001',
+            name: 'Missing Consent Check',
+            orderNo: 0,
+            enabled: true,
+            conditions: [
+              { field: 'parties.all_processing_consent', operator: '==', value: false },
+            ],
+            output: {
+              result: 'INCOMPLETE',
+              reasons: [{ code: 'NO_PROCESSING_CONSENT', text: 'All parties must execute active data processing consent' }],
+            },
+          },
+          {
+            uid: 'RUL-CMP-002',
+            name: 'Mandatory Documents Missing Check',
+            orderNo: 1,
+            enabled: true,
+            conditions: [
+              { field: 'application.mandatory_pending_count', operator: '>', value: 0 },
+            ],
+            output: {
+              result: 'INCOMPLETE',
+              reasons: [{ code: 'MANDATORY_DOCUMENTS_PENDING', text: 'Required mandatory KYC and income documents are missing' }],
+            },
+          },
+        ],
+      };
+
+    default:
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        rules: [],
+      };
+  }
+}
+
 // ---------------- Rule Sets ----------------
 export async function createRuleSet(
   tx: Tx,
@@ -258,12 +417,8 @@ export async function createRuleSet(
 
   const row = result.rows[0]!;
 
-  // Create initial empty draft version v1
-  const initialDef: RuleSetDefinition = {
-    schemaVersion: 1,
-    hitPolicy: 'FIRST',
-    rules: [],
-  };
+  // Create initial approved default draft version v1
+  const initialDef: RuleSetDefinition = getApprovedDefaultRuleSet(input.decisionKey);
   const hash = computeContentHash(initialDef);
 
   await sql`

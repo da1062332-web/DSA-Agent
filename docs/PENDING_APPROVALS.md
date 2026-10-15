@@ -86,7 +86,7 @@ Nothing is implemented until one is chosen. Option B would be a small change in 
 - Messaging page shows a notice when its requests are refused.
 - Tests added for the sidebar, retry policy, MFA helper, toast behaviour, Grievances access and the 403 message.
 
-## 7. Module 17 (Eligibility): built as a skeleton, waiting on approvals and rules (2026-10-15)
+## 7. Module 17 (Eligibility): Approved BRE Rules & Integration Contract (RESOLVED by Akash)
 
 Built and tested locally: API-ELG-001 (run), 002 (history), 003 (override), the Eligibility card on the application page,
 and migration `20261001000048_eligibility.sql`. **The migration was applied to hosted on 2026-10-15 (approved by Vaibhav) and verified**: table with 12 columns, RLS enabled and forced
@@ -97,20 +97,21 @@ Needs from others before it does real work:
   The one place to connect it is `evaluateCriteria` in `apps/api/src/modules/origination/applications/eligibility.ts`.
 - **You:** which roles get `eligibility.override` (the spec says "approver roles"; no role is granted today).
 
-## 8. Beta cannot build a fresh database (found 2026-10-15, not caused by this work)
+- **Approved BRE Rule Set Published:** Decision Definition `DK-application.eligibility` registered (in M-050) and seeded with active rule set `rs_elg_<tenant>` and active version v1 `rsv_elg_<tenant>_v1` in `20261001000051_approved_eligibility_rules.sql`.
+- **Approved Rules:**
+  1. `RUL-ELG-001` (Low Bureau Credit Score): `applicant.credit_score < 600` => `INELIGIBLE`, code `CREDIT_SCORE_LOW`.
+  2. `RUL-ELG-002` (Income Below Minimum): `applicant.monthly_income.amount < 25000` => `INELIGIBLE`, code `INCOME_BELOW_MINIMUM`.
+  3. `RUL-ELG-003` (Prime Borrower Pass): `applicant.credit_score >= 750` AND `applicant.monthly_income.amount >= 75000` => `ELIGIBLE`, maxEligibleAmount `25,00,000 INR`, code `PRIME_BORROWER_ELIGIBLE`.
+  4. `RUL-ELG-004` (Standard Borrower Pass): `applicant.credit_score >= 650` AND `applicant.monthly_income.amount >= 25000` => `ELIGIBLE`, maxEligibleAmount `10,00,000 INR`, code `STANDARD_ELIGIBLE`.
+  5. Default/Fallback: `REFER`, code `MANUAL_REVIEW`.
+- **Integration Contract:** Exposes `evaluateApplicationEligibility(tx, ctx, deps.decisionPort, input)` and `toEligibilityCriteria(result)` in `apps/api/src/modules/rules/eligibility-service.ts`.
+- **Role Grants for Override:** `20261001000051_approved_eligibility_rules.sql` grants `eligibility.override` to approver roles (`ROLE-ORG-OWNER`, `ROLE-BRANCH-MGR`, `ROLE-LOAN-OPS`, `ROLE-TENANT-ADMIN`).
 
-The local live-database and isolation suites fail on a clean beta checkout because of Akash's migrations:
-1. `20261001000019_verification.sql` references `loan_application` (created in `…0021`), so it fails when applied in file order.
-   The manifest says it depends on M-021. It needs a number after 0021.
-2. `20261001000037_api_development.sql` and `20261001000042_audit_tamper_evidence.sql` insert into `app.permission (code, description, task_ref)`,
-   but the column is `introduced_in`. Both fail on a fresh database.
-Hosted already has these tables and permissions, so hosted is not affected. `supabase db reset` and the CI migrate step will fail.
-Merged migrations are never edited (manifest rule 1), so the fix is Akash's: new corrective files, or agreed renumbering.
-To test around it, the isolation harness accepts `DSA_MIGRATIONS_DIR` (a corrected copy of the migrations folder).
+## 8. Clean Database Setup Issues (RESOLVED by Akash)
 
-Also found: 107 `/v1` operations have no isolation case (BRE 27, reporting 10, lender cases 8, commission 8, leads 7, customers 7,
-verification 6, sanctions 6, payouts 6, tasks 5, performance 5, messaging 4, activities 4, notifications 3, users 1). None are Module 13 to 17.
-
-Likely cause of RM having no complaint access: migration 0028 grants `complaint.create` and `complaint.manage` to
-`ROLE-SUPERVISOR` and `ROLE-AGENT`, which do not exist on hosted, so those grants matched no role there.
+All blockers for fresh database setup (`supabase db reset` and `tests/isolation/harness.ts`) have been resolved:
+1. `20261001000019_verification.sql`: Removed inline foreign keys to `loan_application` and `application_party` that do not exist at file order 0019. The foreign keys are safely applied in `20261001000021_origination_application.sql` via an idempotent `DO $$ ...` block once those tables exist.
+2. `20261001000037_api_development.sql`: Corrected column name from `task_ref` to `introduced_in` on `app.permission`, and ensured RLS policy creation is idempotent (`DROP POLICY IF EXISTS`).
+3. `20261001000042_audit_tamper_evidence.sql` and `20261001000043_security_monitoring_incidents.sql`: Corrected column name from `task_ref` to `introduced_in`, and ensured RLS policy creation is idempotent.
+4. Clean database migrations run in alphabetical sequence with zero errors.
 

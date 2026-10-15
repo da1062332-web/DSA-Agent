@@ -65,7 +65,7 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('TEST-BRE-003 lists decision definitions including all 6 MVP keys', async () => {
+  it('TEST-BRE-003 lists decision definitions including all MVP keys and eligibility', async () => {
     const store = createMockRulesStore();
     const app = createTestApp({
       auth: fakeAuth(authorPrincipal),
@@ -75,12 +75,13 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     const res = await request(app).get('/v1/decision-definitions');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
-    expect(res.body.data.length).toBe(6);
+    expect(res.body.data.length).toBe(7);
 
     const keys = res.body.data.map((d: { key: string }) => d.key);
     expect(keys).toContain('DK-lead.duplicate');
     expect(keys).toContain('DK-lead.assignment');
     expect(keys).toContain('DK-application.completeness');
+    expect(keys).toContain('DK-application.eligibility');
   });
 
   it('TEST-BRE-004 gets single decision definition with ETag and returns 404 for unknown key', async () => {
@@ -1136,5 +1137,54 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     expect(res.body.fallbackPolicy).toBe('DEFAULT_OUTPUT');
     expect(res.body.matchedRuleUids).toHaveLength(0);
   });
+
+  it('TEST-BRE-031 creates rule set for DK-application.eligibility with approved default rules', async () => {
+    const store = createMockRulesStore();
+    const app = createTestApp({
+      auth: fakeAuth(authorPrincipal),
+      deps: { txRunner: store.runner },
+    });
+
+    const createRes = await request(app)
+      .post('/v1/rule-sets')
+      .send({
+        decisionKey: 'DK-application.eligibility',
+        scopeType: 'TENANT_DEFAULT',
+        name: 'Tenant Default Eligibility Policy',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.decisionKey).toBe('DK-application.eligibility');
+
+    // Retrieve initial draft version and assert approved business rules are populated
+    const v1Res = await request(app).get(`/v1/rule-sets/${createRes.body.id}/versions`);
+    expect(v1Res.status).toBe(200);
+    expect(v1Res.body.data[0].definition.rules.length).toBeGreaterThanOrEqual(2);
+    expect(v1Res.body.data[0].definition.rules.some((r: any) => r.uid === 'RUL-ELG-001')).toBe(true);
+  });
+
+  it('TEST-BRE-032 evaluates DK-application.completeness and document checklist requirements', async () => {
+    const store = createMockRulesStore();
+    const app = createTestApp({
+      auth: fakeAuth(authorPrincipal),
+      deps: { txRunner: store.runner },
+    });
+
+    // Evaluate completeness when consent is missing
+    const incompleteRes = await request(app)
+      .post('/v1/decisions/DK-application.completeness/evaluations')
+      .send({
+        subject: { type: 'LOAN_APPLICATION', id: 'app_01JTEST0001' },
+        facts: {
+          parties: { all_processing_consent: false },
+          application: { mandatory_pending_count: 2, rejected_mandatory_count: 0 },
+        },
+      });
+
+    expect(incompleteRes.status).toBe(200);
+    expect(incompleteRes.body.decisionKey).toBe('DK-application.completeness');
+    expect(incompleteRes.body.outputs.result).toBe('INCOMPLETE');
+  });
 });
+
 

@@ -10,6 +10,7 @@ export const DECISION_KEYS = [
   'DK-sla.target',
   'DK-document.requirements',
   'DK-application.completeness',
+  'DK-application.eligibility',
 ] as const;
 
 export const DECISION_TIERS = ['T1', 'T2', 'T3'] as const;

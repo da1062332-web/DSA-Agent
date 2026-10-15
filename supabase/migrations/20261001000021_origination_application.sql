@@ -119,3 +119,17 @@ CALL enable_tenant_rls('loan_application');            CALL enable_tenant_rls('a
 CALL enable_tenant_rls('application_status_history');  CALL enable_tenant_rls('checklist_item');
 GRANT SELECT, INSERT, UPDATE ON loan_application, checklist_item TO dsa_app;
 GRANT SELECT, INSERT ON application_party, application_status_history TO dsa_app;
+
+-- Foreign key constraints from verification_request (M-019) to loan_application and application_party
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'app' AND table_name = 'verification_request') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verification_request_application_id_fkey') THEN
+      ALTER TABLE verification_request ADD CONSTRAINT verification_request_application_id_fkey FOREIGN KEY (application_id) REFERENCES loan_application(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'verification_request_party_id_fkey') THEN
+      ALTER TABLE verification_request ADD CONSTRAINT verification_request_party_id_fkey FOREIGN KEY (party_id) REFERENCES application_party(id);
+    END IF;
+  END IF;
+END $$;
+

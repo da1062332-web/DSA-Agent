@@ -79,6 +79,19 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     ],
   });
 
+  const otherTenantExportUser = testPrincipal({
+    tenantId: tenantB,
+    id: 'usr_tenant_b_exporter',
+    primaryBranchId: 'brn_b1',
+    authTime: new Date().toISOString(),
+    grants: [
+      { code: 'report.read', scope: 'TENANT', branchIds: [] },
+      { code: 'report.manage', scope: 'TENANT', branchIds: [] },
+      { code: 'report.schedule', scope: 'TENANT', branchIds: [] },
+      { code: 'export.run', scope: 'TENANT', branchIds: [] },
+    ],
+  });
+
   function getApp(principal = reportingUser) {
     return createTestApp({
       auth: fakeAuth(principal),
@@ -774,6 +787,113 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       const app = getApp(exportUser);
       const downloadRes = await request(app).get('/v1/exports/exp_nonexistent/download');
       expect(downloadRes.status).toBe(404);
+    });
+
+    it('TC-IMP-EXP-001b rejects export creation when authTime is older than 900s (MFA step-up expired)', async () => {
+      const expiredMfaUser = testPrincipal({
+        tenantId: tenantA,
+        id: 'usr_expired_mfa_exporter',
+        primaryBranchId: 'brn_main',
+        authTime: new Date(Date.now() - 1000 * 1000).toISOString(), // 1000s ago > 900s limit
+        grants: [
+          { code: 'report.read', scope: 'TENANT', branchIds: [] },
+          { code: 'export.run', scope: 'TENANT', branchIds: [] },
+        ],
+      });
+      const app = getApp(expiredMfaUser);
+
+      const res = await request(app)
+        .post('/v1/exports')
+        .send({
+          exportType: 'METRICS',
+          fileFormat: 'CSV',
+          filters: {},
+          scopeType: 'TENANT',
+        });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('STEP_UP_REQUIRED');
+    });
+
+    it('TC-RPT-033 isolates exports across tenants (Tenant B cannot read, list, or download Tenant A export)', async () => {
+      const appA = getApp(exportUser);
+      const appB = getApp(otherTenantExportUser);
+
+      const createRes = await request(appA)
+        .post('/v1/exports')
+        .send({
+          exportType: 'METRICS',
+          fileFormat: 'CSV',
+          filters: {},
+          scopeType: 'TENANT',
+        });
+
+      expect(createRes.status).toBe(201);
+      const exportId = createRes.body.id;
+
+      // Tenant B attempts to read export job -> 404
+      const getResB = await request(appB).get(`/v1/exports/${exportId}`);
+      expect(getResB.status).toBe(404);
+
+      // Tenant B attempts to download export file -> 404
+      const dlResB = await request(appB).get(`/v1/exports/${exportId}/download`);
+      expect(dlResB.status).toBe(404);
+
+      // Tenant B lists exports -> does not contain Tenant A export
+      const listResB = await request(appB).get('/v1/exports');
+      expect(listResB.status).toBe(200);
+      expect(listResB.body.data.some((e: any) => e.id === exportId)).toBe(false);
+    });
+
+    it('TC-RPT-034 isolates report runs across tenants (Tenant B cannot read, list, or download Tenant A report run)', async () => {
+      const appA = getApp(reportingUser);
+      const appB = getApp(otherTenantUser);
+
+      const runRes = await request(appA)
+        .post('/v1/reports/RPT_LEAD_PIPELINE/runs')
+        .send({ format: 'CSV' });
+
+      expect(runRes.status).toBe(202);
+      const runId = runRes.body.id;
+
+      // Tenant B attempts to read Tenant A report run -> 404
+      const getResB = await request(appB).get(`/v1/report-runs/${runId}`);
+      expect(getResB.status).toBe(404);
+
+      // Tenant B attempts to download Tenant A report run -> 404
+      const dlResB = await request(appB).get(`/v1/report-runs/${runId}/download`);
+      expect(dlResB.status).toBe(404);
+
+      // Tenant B lists report runs -> does not contain Tenant A report run
+      const listResB = await request(appB).get('/v1/report-runs');
+      expect(listResB.status).toBe(200);
+      expect(listResB.body.data.some((r: any) => r.id === runId)).toBe(false);
+    });
+
+    it('TC-RPT-035 isolates report schedules across tenants (Tenant B cannot list or delete Tenant A schedule)', async () => {
+      const appA = getApp(schedulerUser);
+      const appB = getApp(otherTenantExportUser);
+
+      const schedRes = await request(appA)
+        .post('/v1/report-schedules')
+        .send({
+          reportCode: 'RPT_LEAD_PIPELINE',
+          frequency: 'DAILY',
+          recipientEmails: ['analyst@tenant-a.com'],
+          recipientScope: 'TENANT',
+        });
+
+      expect(schedRes.status).toBe(201);
+      const scheduleId = schedRes.body.id;
+
+      // Tenant B attempts to delete Tenant A schedule -> 404
+      const delResB = await request(appB).delete(`/v1/report-schedules/${scheduleId}`);
+      expect(delResB.status).toBe(404);
+
+      // Tenant B lists schedules -> does not contain Tenant A schedule
+      const listResB = await request(appB).get('/v1/report-schedules');
+      expect(listResB.status).toBe(200);
+      expect(listResB.body.data.some((s: any) => s.id === scheduleId)).toBe(false);
     });
   });
 });

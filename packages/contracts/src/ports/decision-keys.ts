@@ -11,7 +11,8 @@ export type DecisionKey =
   | 'DK-lead.assignment'
   | 'DK-sla.target'
   | 'DK-document.requirements'
-  | 'DK-application.completeness';
+  | 'DK-application.completeness'
+  | 'DK-application.eligibility';
 
 export type ProductCategory = 'PL' | 'BL' | 'MSME' | 'LAP' | 'HL' | 'VL' | 'GL' | 'EL' | 'OTHER';
 export type ApplicantType =
@@ -89,6 +90,28 @@ export interface Facts {
     product: { min_amount: Money; max_amount: Money };
     parties: { all_processing_consent: boolean };
   };
+  'DK-application.eligibility': {
+    applicant: {
+      age?: number;
+      monthly_income?: Money;
+      credit_score?: number;
+      employment_type?: ApplicantType;
+      pincode?: string;
+    };
+    application: {
+      requested_amount: Money;
+      tenure_months?: number;
+      loan_purpose?: string;
+    };
+    product: {
+      min_amount: Money;
+      max_amount: Money;
+      min_age?: number;
+      max_age?: number;
+      min_income?: Money;
+      min_credit_score?: number;
+    };
+  };
 }
 
 type DupOut = {
@@ -111,6 +134,11 @@ export interface Outputs {
   };
   'DK-application.completeness': {
     result: 'COMPLETE' | 'INCOMPLETE';
+    reasons: { code: string; text: string }[];
+  };
+  'DK-application.eligibility': {
+    result: 'ELIGIBLE' | 'INELIGIBLE' | 'REFER';
+    maxEligibleAmount: Money | null;
     reasons: { code: string; text: string }[];
   };
 }

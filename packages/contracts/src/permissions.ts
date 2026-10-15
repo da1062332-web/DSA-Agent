@@ -37,6 +37,7 @@ export const PERMISSION_CODES = [
   'audit.export_evidence',
   'config.manage',
   'user.manage',
+  'role.manage',
   'sanction.record',
   'disbursement.record',
   'disbursement.verify',
@@ -97,6 +98,10 @@ export const PERMISSION_CODES = [
   'data_correction.approve',
   'integration.read',
   'integration.manage',
+  'security.incident',
+  'security.vuln',
+  'attendance.manage',
+  'invoice.manage',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

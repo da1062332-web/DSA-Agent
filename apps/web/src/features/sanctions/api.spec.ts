@@ -1,5 +1,5 @@
-// apps/web/src/features/sanctions/api.spec.ts — owner: Dev 3 (MOD-SND Frontend Tests)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setAuthToken } from '../../auth/token';
 import { sanctionsApi } from './api';
 
 describe('Module 19 — Sanctions Frontend API Client', () => {
@@ -121,5 +121,23 @@ describe('Module 19 — Sanctions Frontend API Client', () => {
         disbursedOn: '2026-10-05',
       }),
     ).rejects.toThrow('Tranche exceeds remaining limit');
+  });
+
+  it('attaches the Supabase session bearer token via getStoredAuthToken', async () => {
+    setAuthToken('jwt_supabase_sanctions_token');
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+      headers: new Headers(),
+    });
+
+    await sanctionsApi.listSanctions('lcs_test_01');
+
+    const calledHeaders = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]![1]?.headers as Headers;
+    expect(calledHeaders.get('Authorization')).toBe('Bearer jwt_supabase_sanctions_token');
+
+    setAuthToken(undefined);
   });
 });
