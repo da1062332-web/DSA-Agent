@@ -23,7 +23,7 @@ describe('createQueryClient mutation toasts', () => {
 
   it('shows the API error text on failure', async () => {
     const bad = vi.spyOn(toastBridge, 'error');
-    await run({}, () => Promise.reject(new ApiError('FORBIDDEN', 403, 'Not allowed.')));
+    await run({}, () => Promise.reject(new ApiError('INVALID_STATE', 409, 'Not allowed.')));
     expect(bad).toHaveBeenCalledWith('Not allowed.');
   });
 

@@ -31,8 +31,8 @@ export interface NavGroup {
 }
 
 // Permissions the API checks for each screen (DSA Notion module pages MSG, GRV, LCS and SND; the routers for the rest).
-// Items without anyOf (Home, Activity, Lenders, Products, Performance, Reports, Security and the Soon items) are
-// shown to everyone: their API does not name a read permission, so hiding them would be a guess.
+// Items without anyOf (Home, Activity, Notifications, Lenders, Products, Security and the Soon items) are shown to
+// everyone: the spec says any staff may read them, so there is no permission to check.
 const RULE_PERMISSIONS = ['rule.author', 'rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'];
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -100,9 +100,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Team and performance (DOM-I)',
     items: [
-      { label: 'Performance Dashboard', to: '/performance' },
-      { label: 'Targets', to: '/targets' },
-      { label: 'Leaderboard', to: '/performance/leaderboard' },
+      { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
+      { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
+      { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
       { label: 'Workforce', task: 'MOD-WRK' },
     ],
   },
@@ -126,8 +126,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Reporting (DOM-L)',
     items: [
-      { label: 'Reports & Catalogue', to: '/reports' },
-      { label: 'Performance Dashboards', to: '/performance' },
+      { label: 'Reports & Catalogue', to: '/reports', anyOf: ['report.read', 'report.manage'] },
+      { label: 'Performance Dashboards', to: '/performance', anyOf: ['report.read'] },
     ],
   },
   {
@@ -149,15 +149,15 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Administration (DOM-O)',
     adminOnly: true,
     items: [
-      { label: 'Organisation', to: '/admin/organisation' },
-      { label: 'Branches', to: '/admin/branches' },
-      { label: 'Teams', to: '/admin/teams' },
-      { label: 'Work queues', to: '/admin/queues' },
-      { label: 'Users', to: '/users' },
-      { label: 'Access control', to: '/roles' },
-      { label: 'Configuration', to: '/config' },
-      { label: 'Platform Console', to: '/platform-admin' },
-      { label: 'Import and export', to: '/admin/import-export' },
+      { label: 'Organisation', to: '/admin/organisation', anyOf: ['config.manage'] },
+      { label: 'Branches', to: '/admin/branches', anyOf: ['config.manage'] },
+      { label: 'Teams', to: '/admin/teams', anyOf: ['config.manage'] },
+      { label: 'Work queues', to: '/admin/queues', anyOf: ['config.manage'] },
+      { label: 'Users', to: '/users', anyOf: ['user.manage'] },
+      { label: 'Access control', to: '/roles', anyOf: ['user.manage'] },
+      { label: 'Configuration', to: '/config', anyOf: ['config.manage'] },
+      { label: 'Platform Console', to: '/platform-admin', anyOf: ['platform.console'] },
+      { label: 'Import and export', to: '/admin/import-export', anyOf: ['import.run', 'export.run'] },
     ],
   },
 ];
