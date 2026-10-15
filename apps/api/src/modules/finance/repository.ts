@@ -217,6 +217,7 @@ export interface FinanceRepository {
     tenantId: string,
     filters: { connectorId?: string; status?: string; cursor?: string; limit: number },
   ): Promise<{ rows: PayoutRequestRow[]; nextCursor: string | null }>;
+  lockCommissionPayablesAscending(tx: Tx, tenantId: string, ids: string[]): Promise<CommissionPayableRow[]>;
   insertPayoutLine(tx: Tx, row: PayoutLineRow): Promise<void>;
   listPayoutLines(tx: Tx, tenantId: string, payoutId: string): Promise<PayoutLineRow[]>;
   updatePayoutLineStatus(tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutLineRow | null>;
@@ -227,8 +228,20 @@ export interface FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; failureReason?: string },
+    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
   ): Promise<PayoutRequestRow | null>;
+  emitOutboxEvent?(
+    tx: Tx,
+    event: {
+      id: string;
+      tenantId: string;
+      eventType: string;
+      subjectType: string;
+      subjectId: string;
+      payload: Record<string, unknown>;
+      correlationId?: string;
+    },
+  ): Promise<void>;
 
   // Payout Batches
   insertPayoutBatch(tx: Tx, row: PayoutBatchRow): Promise<void>;
@@ -557,6 +570,22 @@ export class SqlFinanceRepository implements FinanceRepository {
     return res.rows[0] ?? null;
   }
 
+  async lockCommissionPayablesAscending(
+    tx: Tx,
+    tenantId: string,
+    ids: string[],
+  ): Promise<CommissionPayableRow[]> {
+    if (ids.length === 0) return [];
+    const sortedIds = [...ids].sort();
+    const res = await sql<CommissionPayableRow>`
+      SELECT * FROM commission_payable
+      WHERE tenant_id = ${tenantId} AND id = ANY(${sortedIds}::text[])
+      ORDER BY id ASC
+      FOR UPDATE
+    `.execute(tx);
+    return res.rows;
+  }
+
   async insertPayoutApproval(tx: Tx, row: PayoutApprovalRow): Promise<void> {
     await sql`
       INSERT INTO payout_approval (
@@ -573,7 +602,7 @@ export class SqlFinanceRepository implements FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; failureReason?: string },
+    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
   ): Promise<PayoutRequestRow | null> {
     const res = await sql<PayoutRequestRow>`
       UPDATE payout_request
@@ -581,12 +610,36 @@ export class SqlFinanceRepository implements FinanceRepository {
         status = ${status},
         paid_on = COALESCE(${updates?.paidOn ?? null}, paid_on),
         payment_ref_masked = COALESCE(${updates?.paymentRefMasked ?? null}, payment_ref_masked),
+        payment_ref_ciphertext = COALESCE(${updates?.paymentRefCiphertext ?? null}, payment_ref_ciphertext),
         failure_reason = COALESCE(${updates?.failureReason ?? null}, failure_reason),
         updated_at = now()
       WHERE tenant_id = ${tenantId} AND id = ${id}
       RETURNING *
     `.execute(tx);
     return res.rows[0] ?? null;
+  }
+
+  async emitOutboxEvent(
+    tx: Tx,
+    event: {
+      id: string;
+      tenantId: string;
+      eventType: string;
+      subjectType: string;
+      subjectId: string;
+      payload: Record<string, unknown>;
+      correlationId?: string;
+    },
+  ): Promise<void> {
+    await sql`
+      INSERT INTO outbox_event (
+        id, tenant_id, event_type, event_version, subject_type, subject_id,
+        payload, correlation_id, chain_depth, created_at
+      ) VALUES (
+        ${event.id}, ${event.tenantId}, ${event.eventType}, 1, ${event.subjectType}, ${event.subjectId},
+        ${JSON.stringify(event.payload)}::jsonb, ${event.correlationId ?? 'system'}, 0, now()
+      )
+    `.execute(tx);
   }
 
   async insertPayoutBatch(tx: Tx, row: PayoutBatchRow): Promise<void> {

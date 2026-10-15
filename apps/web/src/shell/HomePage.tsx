@@ -66,6 +66,48 @@ export function HomePage() {
       badge: 'Connectors',
     },
     {
+      title: 'Commissions',
+      desc: 'Commission rule tiers, rate slabs, partner splits, and earnings calculation.',
+      to: '/commission',
+      badge: 'Commissions',
+    },
+    {
+      title: 'Payouts & Invoices',
+      desc: 'Partner payout runs, approvals, bank disbursement batches, and reconciliation.',
+      to: '/payouts',
+      badge: 'Payouts',
+    },
+    {
+      title: 'Sanctions & Disbursals',
+      desc: 'Lender sanction letter parsing, condition tracking, and multi-tranche disbursals.',
+      to: '/sanctions',
+      badge: 'Sanctions',
+    },
+    {
+      title: 'Reporting & Analytics',
+      desc: 'Standard report catalogue, operational KPIs, export jobs, and pipeline projections.',
+      to: '/reports',
+      badge: 'Reports',
+    },
+    {
+      title: 'Performance & Targets',
+      desc: 'Agent quota targets, pipeline velocity, team leaderboards, and achievement badges.',
+      to: '/performance',
+      badge: 'Performance',
+    },
+    {
+      title: 'Privacy & Governance',
+      desc: 'Customer DPDP consent records, data retention policies, and compliance audit trail.',
+      to: '/privacy',
+      badge: 'Governance',
+    },
+    {
+      title: 'Platform Console',
+      desc: 'Multi-tenant settings, audit streaming, telemetry, and platform operational console.',
+      to: '/platform-admin',
+      badge: 'Platform',
+    },
+    {
       title: 'Tenant Configuration',
       desc: 'Manage organization details, operational SLAs, and branch network.',
       to: '/config',

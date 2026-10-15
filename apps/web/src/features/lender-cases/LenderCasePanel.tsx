@@ -99,6 +99,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const createMutation = useMutation({
+    meta: { successMessage: 'Lender case created.' },
     mutationFn: () =>
       createLenderCase(applicationId, {
         lenderId: newLenderId,
@@ -120,6 +121,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const packageMutation = useMutation({
+    meta: { successMessage: 'Submission package built.' },
     mutationFn: (caseItem: LenderCaseResource) =>
       buildPackage(caseItem.id, {}, `"${caseItem.lockVersion}"`),
     onSuccess: () => {
@@ -133,6 +135,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const submitMutation = useMutation({
+    meta: { successMessage: 'Case submitted to the lender.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
       return submitLenderCase(
@@ -154,6 +157,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const statusMutation = useMutation({
+    meta: { successMessage: 'Case status updated.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
       return updateLenderCaseStatus(
@@ -179,6 +183,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const queryMutation = useMutation({
+    meta: { successMessage: 'Lender query recorded.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
       return recordLenderQuery(
@@ -201,6 +206,7 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
   });
 
   const responseMutation = useMutation({
+    meta: { successMessage: 'Response recorded.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
       return recordQueryResponse(activeCase.id, { text: responseText });

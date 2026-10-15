@@ -128,14 +128,23 @@ export function VerificationListPage() {
             Manage document attestation, identity KYC, and field investigation workflows
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          onClick={() => setCreateOpen(true)}
-          data-testid="verification.btn.create"
-          sx={{ fontWeight: 600 }}
-        >
-          + New Verification
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/verifications/workbench')}
+            sx={{ fontWeight: 600 }}
+          >
+            Workbench View
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => setCreateOpen(true)}
+            data-testid="verification.btn.create"
+            sx={{ fontWeight: 600 }}
+          >
+            + New Verification
+          </Button>
+        </Stack>
       </Box>
 
       {/* KPI Summary Cards */}

@@ -64,7 +64,7 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
 
   const { data } = await getSupabase().auth.getSession();
   const headers = new Headers({ Accept: 'application/json' });
-  const token = data.session?.access_token ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
+  const token = data.session?.access_token;
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (req.headers) {
     for (const [k, v] of Object.entries(req.headers)) {
@@ -110,9 +110,13 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
   return body as T;
 }
 
+/** Shown wherever the API refuses a request for lack of permission. */
+export const ACCESS_DENIED_TEXT = "You don't have access to this. Ask your administrator to grant you the permission.";
+
 /** A readable message for an error, including field details from VALIDATION_ERROR. */
 export function errorText(err: unknown): string {
   if (!(err instanceof ApiError)) return err instanceof Error ? err.message : 'Something went wrong.';
+  if (err.httpStatus === 403) return ACCESS_DENIED_TEXT;
   const fields = err.details.filter((d) => d.field).map((d) => `${d.field}: ${d.issue.toLowerCase()}`);
   const ref = err.correlationId ? ` (ref ${err.correlationId})` : '';
   return `${err.message}${fields.length ? ` — ${fields.join(', ')}` : ''}${ref}`;
@@ -123,9 +127,7 @@ export async function apiDownload(path: string, defaultFilename: string): Promis
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
 
   const { data } = await getSupabase().auth.getSession();
-  const token =
-    data.session?.access_token ??
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
+  const token = data.session?.access_token;
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
@@ -155,6 +157,4 @@ export async function apiDownload(path: string, defaultFilename: string): Promis
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  window.URL.revokeObjectURL(blobUrl);
 }
-

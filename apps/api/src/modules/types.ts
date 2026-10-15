@@ -2,6 +2,7 @@ import type {
   ApplicationPort,
   AuditPort,
   ComplaintSubjectPort,
+  LenderPort,
   ProductVersionPort,
   Authz,
   Clock,
@@ -32,6 +33,8 @@ export interface ApiDeps {
   complaintSubjectPort?: ComplaintSubjectPort;
   /** Checks a product version for an application transition (T-APP-01). Provided by origination/catalogue. */
   productVersionPort?: ProductVersionPort;
+  /** Confirms a lender exists in the tenant, for complaint referrals. Provided by origination/catalogue. */
+  lenderPort?: LenderPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;

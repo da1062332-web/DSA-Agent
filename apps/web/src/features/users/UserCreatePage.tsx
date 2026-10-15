@@ -17,7 +17,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Stack,
   TextField,
   Typography,
 } from '@mui/material';
@@ -59,7 +58,7 @@ export function UserCreatePage() {
         if (firstBranch) {
           setPrimaryBranchId(firstBranch.id);
         }
-      } catch (err) {
+      } catch (_err) {
         setErrorMessage('Failed to load branches and roles options.');
       } finally {
         setLoadingLookups(false);

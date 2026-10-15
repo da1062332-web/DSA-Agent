@@ -104,8 +104,9 @@ export const RECORD_TYPES: RecordType[] = ['LEAD', 'APPLICATION', 'TASK'];
 type Filters = Record<string, string | undefined>;
 
 /** Cursor-paged list (Contracts §5): pages are fetched on demand with "Load more". */
-export function useList<T>(path: string, filters: Filters = {}, limit = 50) {
+export function useList<T>(path: string, filters: Filters = {}, limit = 50, enabled = true) {
   return useInfiniteQuery({
+    enabled,
     queryKey: [path, filters],
     queryFn: ({ pageParam }) =>
       apiFetch<ListPage<T>>(path, { query: { ...filters, limit, cursor: pageParam ?? undefined } }),
@@ -146,6 +147,7 @@ export function useCommand<TBody, TResult>(
   const toast = useToast();
   const key = useRef(newIdempotencyKey());
   const mutation = useMutation({
+    meta: { handled: true },
     mutationFn: (body: TBody) => {
       const { path, ...rest } = request(body);
       return apiFetch<TResult>(path, {

@@ -35,6 +35,7 @@ export const ID_PREFIXES = [
   'cnst',
   'pty',
   'ash',
+  'elg',
   'lsh',
   'asg',
   'act',
@@ -95,6 +96,11 @@ export const ID_PREFIXES = [
   'sec',
   'inc',
   'clt',
+  'stm',
+  'stl',
+  'rmt',
+  'rex',
+  'dsp',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

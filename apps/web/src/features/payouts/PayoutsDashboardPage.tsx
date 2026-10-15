@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   CardHeader,
   Checkbox,
   Chip,

@@ -191,6 +191,11 @@ describe('TEST-GRV-INT grievances against the database', () => {
   });
 
   it('TEST-GRV-INT-07 referral to a lender is recorded with a time, and clearing it leaves none', async () => {
+    await env.admin.query(
+      `insert into app.lender (id, tenant_id, name, lender_type, created_by, updated_by)
+       values ('lnd_grv_demo_1', $1, 'Referral Lender', 'NBFC', $2, $2)`,
+      [env.A.tenantId, env.A.userIds[0]],
+    );
     const c = await openComplaint('refer');
     const a = env.appAs(env.A, GRV);
     const referred = await request(a)
@@ -220,6 +225,34 @@ describe('TEST-GRV-INT grievances against the database', () => {
       'complaint.referred',
       'complaint.referred',
     ]);
+  });
+
+  it('TEST-GRV-INT-15 a referral must name a lender in this tenant; an unknown or other-tenant lender is 422', async () => {
+    const c = await openComplaint('lender-check');
+    const a = env.appAs(env.A, GRV);
+    const unknown = await request(a)
+      .patch(`/v1/complaints/${c.body.id}`)
+      .set('If-Match', etag(c))
+      .send({ lenderReferral: { lenderId: 'lnd_grv_missing_9', reference: 'LND-REF-0001' } });
+    expect(unknown.status).toBe(422);
+    expect(unknown.body.error.details[0]).toMatchObject({
+      field: 'lenderReferral.lenderId',
+      issue: 'NOT_FOUND',
+    });
+
+    await env.admin.query(
+      `insert into app.lender (id, tenant_id, name, lender_type, created_by, updated_by)
+       values ('lnd_grv_b_only', $1, 'Tenant B Lender', 'NBFC', $2, $2)`,
+      [env.B.tenantId, env.B.userIds[0]],
+    );
+    const other = await request(a)
+      .patch(`/v1/complaints/${c.body.id}`)
+      .set('If-Match', etag(c))
+      .send({ lenderReferral: { lenderId: 'lnd_grv_b_only', reference: 'LND-REF-0002' } });
+    expect(other.status).toBe(422);
+    expect(other.body.error.details[0].issue).toBe('NOT_FOUND');
+    const still = await request(a).get(`/v1/complaints/${c.body.id}`);
+    expect(still.body.lenderReferral).toEqual({});
   });
 
   it('TEST-GRV-INT-08 a stale If-Match is 409 and changes nothing', async () => {

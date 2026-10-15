@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
   Container,
@@ -36,8 +35,6 @@ import {
 } from '@mui/material';
 import type {
   ConsentPurposeCode,
-  DataSharingPurpose,
-  DataSharingRecipientType,
   DataSharingRecord,
   VerifyConsentResult,
 } from '@dsa/contracts';
@@ -89,6 +86,7 @@ export function PrivacyDashboard(): React.ReactElement {
 
   // Verify Consent Mutation
   const verifyMutation = useMutation({
+    meta: { successMessage: 'Verification saved.' },
     mutationFn: checkConsent,
     onSuccess: (data) => {
       setVerifyResult(data);
