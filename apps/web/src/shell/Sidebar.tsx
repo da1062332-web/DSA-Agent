@@ -121,7 +121,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Integrations and API (DOM-M)',
     items: [
-      { label: 'Integrations', task: 'MOD-INT' },
+      { label: 'Integrations', to: '/integrations' },
       { label: 'API management', task: 'MOD-API' },
     ],
   },
@@ -129,7 +129,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Security and compliance (DOM-N)',
     items: [
       { label: 'Audit', task: 'MOD-AUD' },
-      { label: 'Privacy and consent', task: 'MOD-PRV' },
+      { label: 'Privacy and consent', to: '/privacy' },
       { label: 'Security', to: '/account/security' },
     ],
   },
@@ -144,7 +144,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Users', to: '/users' },
       { label: 'Access control', to: '/roles' },
       { label: 'Configuration', to: '/config' },
-      { label: 'Administration', task: 'MOD-ADM' },
+      { label: 'Platform Console', to: '/platform-admin' },
       { label: 'Import and export', to: '/admin/import-export' },
     ],
   },
@@ -157,7 +157,7 @@ export function visibleGroups(isAdmin: boolean): NavGroup[] {
 
 export function SidebarContent({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void }) {
   return (
-    <Box data-testid="shell.sidebar" sx={{ py: 1 }}>
+    <Box data-testid="shell.sidebar" sx={{ py: 1, pb: 6 }}>
       {visibleGroups(isAdmin).map((group, i) => (
         <Box key={group.title}>
           {i > 0 && <Divider sx={{ my: 1 }} />}

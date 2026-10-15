@@ -28,9 +28,9 @@ export interface PartyPort {
 export interface DataSharingRecordInput {
   subjectType: 'LOAN_APPLICATION';
   subjectId: string;
-  recipientType: 'LENDER';
+  recipientType: 'LENDER' | 'CO_LENDER' | 'PARTNER' | 'AUDITOR';
   recipientId: string;
-  purpose: 'LENDER_SUBMISSION';
+  purpose: 'LENDER_SUBMISSION' | 'PORTFOLIO_REVIEW' | 'AUDIT_INSPECTION';
   consentIds: string[];
   items: { fields: string[]; checklistItemIds: string[] };
   channel: 'PORTAL' | 'EMAIL' | 'API' | 'PHYSICAL';

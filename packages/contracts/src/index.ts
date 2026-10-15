@@ -28,6 +28,9 @@ export * from './audit';
 export * from './target';
 export * from './reporting';
 export * from './import-export';
+export * from './compliance';
+export * from './platform-admin';
+export * from './integrations';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
