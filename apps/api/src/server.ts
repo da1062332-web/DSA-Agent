@@ -16,6 +16,7 @@ import { createTxRunner } from './kernel-min/tx-runner';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
+import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 
 let config: ApiConfig;
@@ -30,6 +31,8 @@ const logger = pino({ level: config.LOG_LEVEL });
 const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
 const ids = createIdGenerator();
+const complaintSubjectPort = createCompositeComplaintSubjectPort();
+
 const app = createApp({
   deps: {
     txRunner,
@@ -37,7 +40,7 @@ const app = createApp({
     audit: createAuditPort(ids),
     ids,
     userDirectory: createUserDirectory(),
-    complaintSubjectPort: createApplicationSubjectPort(),
+    complaintSubjectPort,
     productVersionPort: createProductVersionPort(),
     dataSharingPort: new PostgresDataSharingPort(),
   },
@@ -56,9 +59,21 @@ const server = app.listen(config.PORT, () => {
   logger.info({ port: config.PORT, env: config.NODE_ENV }, 'api listening');
 });
 
+import { startBackgroundWorker } from './modules/platform/worker';
+
+const worker = startBackgroundWorker({
+  txRunner,
+  authz: createAuthz(),
+  audit: createAuditPort(ids),
+  ids,
+  userDirectory: createUserDirectory(),
+  complaintSubjectPort,
+});
+
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     logger.info({ signal }, 'shutting down');
+    worker.stop();
     server.close(() => {
       void db.destroy().finally(() => process.exit(0));
     });
