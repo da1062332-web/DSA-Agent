@@ -77,6 +77,817 @@ components:
       required:
         - nextCursor
         - limit
+    PlatformTenantSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        legalName:
+          type: string
+        tenantType:
+          type: string
+          enum:
+            - DSA_ORG
+            - NBFC_DISTRIBUTION
+        dataRegion:
+          type: string
+        timezone:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - SUSPENDED
+            - OFFBOARDING
+        createdAt:
+          type: string
+        createdBy:
+          type: string
+        healthStatus:
+          type: string
+          enum:
+            - HEALTHY
+            - DEGRADED
+            - ACTION_REQUIRED
+        activeUsersCount:
+          type: integer
+          minimum: 0
+        applicationsCount:
+          type: integer
+          minimum: 0
+        entitlements:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - slug
+        - legalName
+        - tenantType
+        - dataRegion
+        - timezone
+        - status
+        - createdAt
+        - createdBy
+        - healthStatus
+        - activeUsersCount
+        - applicationsCount
+        - entitlements
+    ListPlatformTenantsQuery:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - SUSPENDED
+            - OFFBOARDING
+        search:
+          type: string
+        limit:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 100
+          default: 50
+        cursor:
+          type: string
+    FeatureFlag:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 2
+          maxLength: 100
+        scope:
+          type: string
+          enum: &a1
+            - GLOBAL
+            - TENANT
+            - COHORT
+        value:
+          anyOf:
+            - type: boolean
+            - type: object
+              additionalProperties: {}
+            - type: string
+            - type: number
+        owner:
+          type: string
+          minLength: 2
+        removeBy:
+          type:
+            - string
+            - "null"
+        description:
+          type: string
+        lockVersion:
+          type: integer
+          minimum: 0
+          default: 0
+        updatedAt:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - key
+        - scope
+        - value
+        - owner
+        - updatedAt
+        - updatedBy
+    UpdateFeatureFlagRequest:
+      type: object
+      properties:
+        scope:
+          type: string
+          enum: *a1
+          default: GLOBAL
+        value:
+          anyOf:
+            - type: boolean
+            - type: object
+              additionalProperties: {}
+            - type: string
+            - type: number
+        owner:
+          type: string
+          minLength: 2
+        removeBy:
+          type:
+            - string
+            - "null"
+        description:
+          type: string
+      required:
+        - value
+    MasterDataItem:
+      type: object
+      properties:
+        id:
+          type: string
+        listCode:
+          type: string
+          minLength: 2
+          maxLength: 50
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        attributes:
+          type: object
+          additionalProperties: {}
+        version:
+          type: integer
+          exclusiveMinimum: 0
+        label:
+          type: string
+        active:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - listCode
+        - code
+        - attributes
+        - version
+        - label
+        - createdAt
+    MasterDataImportRequest:
+      type: object
+      properties:
+        listCode:
+          type: string
+          minLength: 2
+          maxLength: 50
+        version:
+          type: integer
+          exclusiveMinimum: 0
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                minLength: 1
+              label:
+                type: string
+                minLength: 1
+              attributes:
+                type: object
+                additionalProperties: {}
+                default: {}
+            required:
+              - code
+              - label
+          minItems: 1
+        dryRun:
+          type: boolean
+          default: false
+      required:
+        - listCode
+        - items
+    JobQueueInfo:
+      type: object
+      properties:
+        queue:
+          type: string
+        activeJobs:
+          type: integer
+          minimum: 0
+        failedJobs:
+          type: integer
+          minimum: 0
+        delayedJobs:
+          type: integer
+          minimum: 0
+        completedJobs:
+          type: integer
+          minimum: 0
+        paused:
+          type: boolean
+        pausedReason:
+          type:
+            - string
+            - "null"
+        pausedAt:
+          type:
+            - string
+            - "null"
+        pausedBy:
+          type:
+            - string
+            - "null"
+      required:
+        - queue
+        - activeJobs
+        - failedJobs
+        - delayedJobs
+        - completedJobs
+        - paused
+    DeadLetterItem:
+      type: object
+      properties:
+        id:
+          type: string
+        queue:
+          type: string
+        originalJobId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: {}
+        errorReason:
+          type: string
+        failedAt:
+          type: string
+        retryCount:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - UNRESOLVED
+            - REPLAYED
+            - DISCARDED
+      required:
+        - id
+        - queue
+        - originalJobId
+        - payload
+        - errorReason
+        - failedAt
+        - retryCount
+        - status
+    PauseQueueRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 5
+      required:
+        - reason
+    ResumeQueueRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 5
+      required:
+        - reason
+    SystemHealthReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - HEALTHY
+            - DEGRADED
+            - DOWN
+        timestamp:
+          type: string
+        uptimeSeconds:
+          type: number
+          minimum: 0
+        version:
+          type: string
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - UP
+                    - DEGRADED
+                    - DOWN
+                latencyMs:
+                  type: number
+                  minimum: 0
+                poolUtilization:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+              required:
+                - status
+                - latencyMs
+                - poolUtilization
+            redisQueue:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - UP
+                    - DEGRADED
+                    - DOWN
+                    - SIMULATED
+                message:
+                  type: string
+              required:
+                - status
+                - message
+            authService:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - UP
+                    - DEGRADED
+                    - DOWN
+                provider:
+                  type: string
+              required:
+                - status
+                - provider
+          required:
+            - database
+            - redisQueue
+            - authService
+        memoryUsage:
+          type: object
+          properties:
+            rssMb:
+              type: number
+              minimum: 0
+            heapUsedMb:
+              type: number
+              minimum: 0
+            heapTotalMb:
+              type: number
+              minimum: 0
+          required:
+            - rssMb
+            - heapUsedMb
+            - heapTotalMb
+      required:
+        - status
+        - timestamp
+        - uptimeSeconds
+        - version
+        - dependencies
+        - memoryUsage
+    SupportAccessGrant:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        requester:
+          type: string
+        approver:
+          type:
+            - string
+            - "null"
+        reason:
+          type: string
+        scope:
+          type: string
+        startsAt:
+          type: string
+        endsAt:
+          type: string
+        incidentRef:
+          type: string
+        status:
+          type: string
+          enum:
+            - PENDING
+            - APPROVED
+            - DENIED
+            - EXPIRED
+            - REVOKED
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - tenantId
+        - tenantName
+        - requester
+        - reason
+        - scope
+        - startsAt
+        - endsAt
+        - incidentRef
+        - status
+        - createdAt
+        - updatedAt
+    CreateSupportAccessRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 10
+        scope:
+          type: string
+          minLength: 2
+          default: READ_METADATA_AND_CONFIG
+        incidentRef:
+          type: string
+          minLength: 3
+        durationHours:
+          type: number
+          minimum: 0.25
+          maximum: 4
+      required:
+        - tenantId
+        - reason
+        - incidentRef
+        - durationHours
+    ApproveSupportAccessRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+            - APPROVED
+            - DENIED
+        comments:
+          type: string
+      required:
+        - decision
+    DataCorrectionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        justification:
+          type: string
+        scriptRef:
+          type: string
+        dryRunDiffKey:
+          type: string
+        dryRunDiff:
+          type: string
+        requestedBy:
+          type: string
+        approvedBy:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - PENDING
+            - APPROVED
+            - REJECTED
+            - EXECUTED
+            - FAILED
+        executedAt:
+          type:
+            - string
+            - "null"
+        executorIdentity:
+          type: string
+          default: SERVICE:data-correction-executor
+        createdAt:
+          type: string
+      required:
+        - id
+        - tenantId
+        - justification
+        - scriptRef
+        - dryRunDiffKey
+        - dryRunDiff
+        - requestedBy
+        - status
+        - createdAt
+    CreateDataCorrectionRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          minLength: 1
+        justification:
+          type: string
+          minLength: 10
+        scriptRef:
+          type: string
+          minLength: 3
+        targetEntity:
+          type: string
+          minLength: 2
+        changeDescription:
+          type: string
+          minLength: 5
+      required:
+        - tenantId
+        - justification
+        - scriptRef
+        - targetEntity
+        - changeDescription
+    ApproveDataCorrectionRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+            - APPROVED
+            - REJECTED
+        comments:
+          type: string
+      required:
+        - decision
+    ReleaseRegisterItem:
+      type: object
+      properties:
+        version:
+          type: string
+        status:
+          type: string
+          enum:
+            - CANDIDATE
+            - STAGING
+            - PUBLISHED
+            - ARCHIVED
+        targetDate:
+          type: string
+        gitTag:
+          type:
+            - string
+            - "null"
+        releaseNotesRef:
+          type: string
+        rulePackVersion:
+          type: string
+        migrationVersion:
+          type: string
+        gates:
+          type: object
+          properties:
+            rel001:
+              type: boolean
+            rel002:
+              type: boolean
+            rel003:
+              type: boolean
+            rel004:
+              type: boolean
+          required:
+            - rel001
+            - rel002
+            - rel003
+            - rel004
+        notesSummary:
+          type: string
+      required:
+        - version
+        - status
+        - targetDate
+        - gitTag
+        - releaseNotesRef
+        - rulePackVersion
+        - migrationVersion
+        - gates
+        - notesSummary
+    IntegrationEnvironment:
+      type: string
+      enum: &a2
+        - SANDBOX
+        - PRODUCTION
+    IntegrationStatus:
+      type: string
+      enum: &a3
+        - ACTIVE
+        - INACTIVE
+        - DEGRADED
+        - SUSPENDED
+    CapabilityDescriptor:
+      type: object
+      properties:
+        capability:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          enum:
+            - MESSAGING
+            - VERIFICATION
+            - STORAGE
+            - BANKING
+            - BUREAU
+        description:
+          type: string
+        requiredConfigFields:
+          type: array
+          items:
+            type: string
+        dataClassification:
+          type: string
+          enum:
+            - S1
+            - S2
+            - S3
+            - S4
+        supportedProviders:
+          type: array
+          items:
+            type: string
+      required:
+        - capability
+        - displayName
+        - category
+        - description
+        - requiredConfigFields
+        - dataClassification
+        - supportedProviders
+    HealthCheckResult:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+        latencyMs:
+          type: number
+          minimum: 0
+        message:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        statusCode:
+          type: integer
+      required:
+        - healthy
+        - latencyMs
+        - checkedAt
+    IntegrationConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^itc_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        provider:
+          type: string
+          minLength: 1
+        capability:
+          type: string
+          minLength: 1
+        environment:
+          type: string
+          enum: *a2
+        credentialRef:
+          type: string
+          pattern: ^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$
+        config:
+          type: object
+          additionalProperties: {}
+        status:
+          type: string
+          enum: *a3
+        health:
+          type:
+            - object
+            - "null"
+          properties:
+            healthy:
+              type: boolean
+            latencyMs:
+              type: number
+              minimum: 0
+            message:
+              type: string
+            checkedAt:
+              type: string
+              format: date-time
+            statusCode:
+              type: integer
+          required:
+            - healthy
+            - latencyMs
+            - checkedAt
+        lockVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - id
+        - tenantId
+        - provider
+        - capability
+        - environment
+        - credentialRef
+        - config
+        - status
+        - lockVersion
+        - createdAt
+        - createdBy
+        - updatedAt
+        - updatedBy
+    ListIntegrationsQuery:
+      type: object
+      properties:
+        environment:
+          type: string
+          enum: *a2
+        capability:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: *a3
+        cursor:
+          type: string
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+    ConfigureIntegrationRequest:
+      type: object
+      properties:
+        capability:
+          type: string
+          minLength: 1
+        environment:
+          type: string
+          enum: *a2
+        credentialRef:
+          type: string
+          pattern: ^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$
+        config:
+          type: object
+          additionalProperties: {}
+        status:
+          type: string
+          enum: *a3
+          default: ACTIVE
+      required:
+        - capability
+        - environment
+        - credentialRef
+        - config
     CreateLeadInput:
       type: object
       properties:
@@ -95,7 +906,7 @@ components:
           format: email
         productCategory:
           type: string
-          enum: &a22
+          enum: &a28
             - PL
             - BL
             - MSME
@@ -129,7 +940,7 @@ components:
           minLength: 1
         source:
           type: string
-          enum: &a23
+          enum: &a29
             - WALK_IN
             - PHONE
             - WEBSITE
@@ -158,7 +969,7 @@ components:
             - "null"
         priority:
           type: string
-          enum: &a1
+          enum: &a4
             - HIGH
             - MEDIUM
             - LOW
@@ -167,13 +978,13 @@ components:
           type: array
           items:
             type: string
-          default: &a24 []
+          default: &a30 []
         consent:
           type: object
           properties:
             purpose:
               type: string
-              enum: &a25
+              enum: &a31
                 - CONTACT
                 - LOAN_PROCESSING
                 - SHARE_WITH_LENDER
@@ -189,7 +1000,7 @@ components:
               pattern: ^[a-zA-Z0-9._-]{2,40}$
             channel:
               type: string
-              enum: &a26
+              enum: &a32
                 - IN_PERSON
                 - PHONE
                 - WEB_FORM
@@ -243,7 +1054,7 @@ components:
           pattern: ^[1-9][0-9]{5}$
         priority:
           type: string
-          enum: *a1
+          enum: *a4
         tags:
           type: array
           items:
@@ -257,7 +1068,7 @@ components:
           type:
             - string
             - "null"
-          enum: &a2
+          enum: &a5
             - SALARIED
             - SELF_EMPLOYED_PROFESSIONAL
             - SELF_EMPLOYED_BUSINESS
@@ -291,7 +1102,7 @@ components:
       properties:
         transitionCode:
           type: string
-          enum: &a27
+          enum: &a33
             - T-LEAD-01
             - T-LEAD-02
             - T-LEAD-04
@@ -305,7 +1116,7 @@ components:
           type:
             - string
             - "null"
-          enum: &a28
+          enum: &a34
             - NOT_INTERESTED
             - NOT_ELIGIBLE
             - DUPLICATE
@@ -321,7 +1132,7 @@ components:
           properties:
             applicantType:
               type: string
-              enum: *a2
+              enum: *a5
             requestedAmount:
               type: object
               properties:
@@ -362,7 +1173,7 @@ components:
             - "null"
         reasonCode:
           type: string
-          enum: &a29
+          enum: &a35
             - AUTO_ROUTING
             - ROUTING_FALLBACK
             - MANUAL
@@ -383,7 +1194,7 @@ components:
       properties:
         partyType:
           type: string
-          enum: &a30
+          enum: &a36
             - INDIVIDUAL
             - ENTITY
         fullName:
@@ -431,7 +1242,7 @@ components:
       properties:
         purpose:
           type: string
-          enum: &a31
+          enum: &a37
             - CONTACT
             - LOAN_PROCESSING
             - SHARE_WITH_LENDER
@@ -444,7 +1255,7 @@ components:
           pattern: ^[A-Z0-9._-]{2,40}$
         channel:
           type: string
-          enum: &a32
+          enum: &a38
             - IN_PERSON
             - PHONE
             - WEB_FORM
@@ -477,7 +1288,7 @@ components:
           type: string
         subjectType:
           type: string
-          enum: &a3
+          enum: &a6
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -490,7 +1301,7 @@ components:
             properties:
               type:
                 type: string
-                enum: *a3
+                enum: *a6
               id:
                 type: string
                 minLength: 1
@@ -499,7 +1310,7 @@ components:
               - id
         kind:
           type: string
-          enum: &a4
+          enum: &a7
             - CALL
             - MEETING
             - VISIT
@@ -508,7 +1319,7 @@ components:
           type:
             - string
             - "null"
-          enum: &a5
+          enum: &a8
             - CONNECTED
             - NO_ANSWER
             - BUSY
@@ -566,10 +1377,10 @@ components:
       properties:
         kind:
           type: string
-          enum: *a4
+          enum: *a7
         subjectType:
           type: string
-          enum: *a3
+          enum: *a6
         subjectId:
           type: string
           minLength: 1
@@ -580,7 +1391,7 @@ components:
             properties:
               type:
                 type: string
-                enum: *a3
+                enum: *a6
               id:
                 type: string
                 minLength: 1
@@ -591,7 +1402,7 @@ components:
           type:
             - string
             - "null"
-          enum: *a5
+          enum: *a8
         occurredAt:
           type: string
           format: date-time
@@ -620,7 +1431,7 @@ components:
           type:
             - string
             - "null"
-          enum: *a5
+          enum: *a8
         durationSeconds:
           type:
             - integer
@@ -651,7 +1462,7 @@ components:
           type: string
         channel:
           type: string
-          enum: &a6
+          enum: &a9
             - EMAIL
             - SMS
             - WHATSAPP
@@ -659,7 +1470,7 @@ components:
           type: string
         category:
           type: string
-          enum: &a7
+          enum: &a10
             - TRANSACTIONAL
             - MARKETING
             - OPERATIONAL
@@ -691,7 +1502,7 @@ components:
           exclusiveMinimum: 0
         status:
           type: string
-          enum: &a8
+          enum: &a11
             - DRAFT
             - APPROVED
             - DEPRECATED
@@ -733,7 +1544,7 @@ components:
           pattern: ^[a-z0-9._-]+$
         channel:
           type: string
-          enum: *a6
+          enum: *a9
         language:
           type: string
           minLength: 2
@@ -741,7 +1552,7 @@ components:
           default: en
         category:
           type: string
-          enum: *a7
+          enum: *a10
           default: TRANSACTIONAL
         body:
           type: string
@@ -763,7 +1574,7 @@ components:
                 maxLength: 200
             required:
               - name
-          default: &a33 []
+          default: &a39 []
         providerTemplateId:
           type:
             - string
@@ -771,7 +1582,7 @@ components:
           maxLength: 100
         status:
           type: string
-          enum: *a8
+          enum: *a11
           default: APPROVED
       required:
         - code
@@ -787,12 +1598,12 @@ components:
           type: string
         direction:
           type: string
-          enum: &a36
+          enum: &a42
             - OUTBOUND
             - INBOUND
         channel:
           type: string
-          enum: *a6
+          enum: *a9
         subjectType:
           type: string
         subjectId:
@@ -814,7 +1625,7 @@ components:
             - "null"
         status:
           type: string
-          enum: &a9
+          enum: &a12
             - BLOCKED
             - QUEUED
             - SENT
@@ -828,7 +1639,7 @@ components:
             properties:
               status:
                 type: string
-                enum: *a9
+                enum: *a12
               timestamp:
                 type: string
               reason:
@@ -877,7 +1688,7 @@ components:
       properties:
         subjectType:
           type: string
-          enum: &a34
+          enum: &a40
             - LEAD
             - CUSTOMER
             - LOAN_APPLICATION
@@ -886,7 +1697,7 @@ components:
           minLength: 1
         channel:
           type: string
-          enum: *a6
+          enum: *a9
         templateCode:
           type: string
           minLength: 1
@@ -912,7 +1723,7 @@ components:
               - type: string
               - type: number
               - type: boolean
-          default: &a35 {}
+          default: &a41 {}
         correlationId:
           type: string
       required:
@@ -933,7 +1744,7 @@ components:
           type: string
         category:
           type: string
-          enum: &a10
+          enum: &a13
             - TASK
             - LEAD
             - APPLICATION
@@ -985,14 +1796,14 @@ components:
             whatsapp:
               type: boolean
               default: false
-          default: &a11
+          default: &a14
             inApp: true
             email: false
             sms: false
             whatsapp: false
         digestFrequency:
           type: string
-          enum: &a12
+          enum: &a15
             - IMMEDIATE
             - DAILY_DIGEST
             - MUTED
@@ -1001,8 +1812,8 @@ components:
           type: array
           items:
             type: string
-            enum: *a10
-          default: &a13 []
+            enum: *a13
+          default: &a16 []
     UserProfile:
       type: object
       properties:
@@ -1045,17 +1856,17 @@ components:
                 whatsapp:
                   type: boolean
                   default: false
-              default: *a11
+              default: *a14
             digestFrequency:
               type: string
-              enum: *a12
+              enum: *a15
               default: IMMEDIATE
             mutedCategories:
               type: array
               items:
                 type: string
-                enum: *a10
-              default: *a13
+                enum: *a13
+              default: *a16
       required:
         - id
         - tenantId
@@ -1088,17 +1899,17 @@ components:
                 whatsapp:
                   type: boolean
                   default: false
-              default: *a11
+              default: *a14
             digestFrequency:
               type: string
-              enum: *a12
+              enum: *a15
               default: IMMEDIATE
             mutedCategories:
               type: array
               items:
                 type: string
-                enum: *a10
-              default: *a13
+                enum: *a13
+              default: *a16
         preferences:
           type: object
           properties:
@@ -1117,17 +1928,17 @@ components:
                 whatsapp:
                   type: boolean
                   default: false
-              default: *a11
+              default: *a14
             digestFrequency:
               type: string
-              enum: *a12
+              enum: *a15
               default: IMMEDIATE
             mutedCategories:
               type: array
               items:
                 type: string
-                enum: *a10
-              default: *a13
+                enum: *a13
+              default: *a16
     MarkNotificationsReadInput:
       type: object
       properties:
@@ -1140,6 +1951,302 @@ components:
           maxItems: 100
       required:
         - notificationIds
+    DataSharingRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^dsr_[0-9A-HJKMNP-TV-Z]{26}$
+        tenantId:
+          type: string
+        subjectType:
+          type: string
+          enum:
+            - LOAN_APPLICATION
+        subjectId:
+          type: string
+        recipientType:
+          type: string
+          enum: &a17
+            - LENDER
+            - CO_LENDER
+            - PARTNER
+            - AUDITOR
+        recipientId:
+          type: string
+        purpose:
+          type: string
+          enum: &a18
+            - LENDER_SUBMISSION
+            - PORTFOLIO_REVIEW
+            - AUDIT_INSPECTION
+        consentIds:
+          type: array
+          items:
+            type: string
+        items:
+          type: object
+          properties:
+            fields:
+              type: array
+              items:
+                type: string
+            checklistItemIds:
+              type: array
+              items:
+                type: string
+          required:
+            - fields
+            - checklistItemIds
+        channel:
+          type: string
+          enum: &a19
+            - PORTAL
+            - EMAIL
+            - API
+            - PHYSICAL
+        sourceRef:
+          type: string
+        actorId:
+          type: string
+        sharedAt:
+          type: string
+      required:
+        - id
+        - tenantId
+        - subjectType
+        - subjectId
+        - recipientType
+        - recipientId
+        - purpose
+        - consentIds
+        - items
+        - channel
+        - sourceRef
+        - actorId
+        - sharedAt
+    ListDataSharingRecordsQuery:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        offset:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          default: 0
+        subjectId:
+          type: string
+        recipientType:
+          type: string
+          enum: *a17
+        purpose:
+          type: string
+          enum: *a18
+    ListDataSharingRecordsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                pattern: ^dsr_[0-9A-HJKMNP-TV-Z]{26}$
+              tenantId:
+                type: string
+              subjectType:
+                type: string
+                enum:
+                  - LOAN_APPLICATION
+              subjectId:
+                type: string
+              recipientType:
+                type: string
+                enum: *a17
+              recipientId:
+                type: string
+              purpose:
+                type: string
+                enum: *a18
+              consentIds:
+                type: array
+                items:
+                  type: string
+              items:
+                type: object
+                properties:
+                  fields:
+                    type: array
+                    items:
+                      type: string
+                  checklistItemIds:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - fields
+                  - checklistItemIds
+              channel:
+                type: string
+                enum: *a19
+              sourceRef:
+                type: string
+              actorId:
+                type: string
+              sharedAt:
+                type: string
+            required:
+              - id
+              - tenantId
+              - subjectType
+              - subjectId
+              - recipientType
+              - recipientId
+              - purpose
+              - consentIds
+              - items
+              - channel
+              - sourceRef
+              - actorId
+              - sharedAt
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - items
+        - total
+        - limit
+        - offset
+    PrivacyStats:
+      type: object
+      properties:
+        activeConsentsCount:
+          type: integer
+          minimum: 0
+        withdrawnConsentsCount:
+          type: integer
+          minimum: 0
+        totalSharingRecordsCount:
+          type: integer
+          minimum: 0
+        consentsByPurpose:
+          type: object
+          additionalProperties:
+            type: number
+        sharingByRecipientType:
+          type: object
+          additionalProperties:
+            type: number
+        protectionPolicies:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              tier:
+                type: string
+                enum:
+                  - S0
+                  - S1
+                  - S2
+                  - S3
+                  - S4
+              strategy:
+                type: string
+              description:
+                type: string
+            required:
+              - field
+              - tier
+              - strategy
+              - description
+      required:
+        - activeConsentsCount
+        - withdrawnConsentsCount
+        - totalSharingRecordsCount
+        - consentsByPurpose
+        - sharingByRecipientType
+        - protectionPolicies
+    VerifyConsentInput:
+      type: object
+      properties:
+        customerId:
+          type: string
+        leadId:
+          type: string
+        purpose:
+          type: string
+          enum:
+            - CONTACT
+            - LOAN_PROCESSING
+            - SHARE_WITH_LENDER
+            - VERIFICATION_CHECK
+            - MARKETING
+        purposeTarget:
+          type: string
+      required:
+        - purpose
+    VerifyConsentResult:
+      type: object
+      properties:
+        hasConsent:
+          type: boolean
+        consentId:
+          type:
+            - string
+            - "null"
+        source:
+          type:
+            - string
+            - "null"
+          enum:
+            - CUSTOMER
+            - LEAD
+        purpose:
+          type: string
+        purposeTarget:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - WITHDRAWN
+            - MISSING
+        channel:
+          type:
+            - string
+            - "null"
+        noticeVersion:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type:
+            - string
+            - "null"
+      required:
+        - hasConsent
+        - consentId
+        - source
+        - purpose
+        - purposeTarget
+        - status
+        - channel
+        - noticeVersion
+        - createdAt
     CreateCommissionPlanInput:
       type: object
       properties:
@@ -1148,14 +2255,14 @@ components:
           pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
         qualifyingEvent:
           type: string
-          enum: &a14
+          enum: &a20
             - DISBURSEMENT
             - SANCTION
             - FIRST_EMI
           default: DISBURSEMENT
         basis:
           type: string
-          enum: &a15
+          enum: &a21
             - DISBURSED_AMOUNT
             - SANCTION_AMOUNT
             - NET_LOAN
@@ -1178,7 +2285,7 @@ components:
             - "null"
         status:
           type: string
-          enum: &a16
+          enum: &a22
             - DRAFT
             - PENDING_APPROVAL
             - ACTIVE
@@ -1197,10 +2304,10 @@ components:
           pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
         qualifyingEvent:
           type: string
-          enum: *a14
+          enum: *a20
         basis:
           type: string
-          enum: *a15
+          enum: *a21
         roundingMode:
           type: string
         clawbackWindowDays:
@@ -1211,7 +2318,7 @@ components:
             - "null"
         status:
           type: string
-          enum: *a16
+          enum: *a22
         lockVersion:
           type: integer
         createdAt:
@@ -1258,7 +2365,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-14
+          default: 2026-10-15
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -1313,12 +2420,12 @@ components:
           type: string
         calcKind:
           type: string
-          enum: &a37
+          enum: &a43
             - PROJECTED
             - EARNED
         status:
           type: string
-          enum: &a38
+          enum: &a44
             - PROJECTED
             - EARNED
             - ACCRUED
@@ -1412,7 +2519,7 @@ components:
         preview:
           type: object
           additionalProperties: {}
-          default: &a39 {}
+          default: &a45 {}
       required:
         - reason
         - affectedCalculationIds
@@ -1433,7 +2540,7 @@ components:
           additionalProperties: {}
         status:
           type: string
-          enum: &a40
+          enum: &a46
             - PENDING
             - APPROVED
             - REJECTED
@@ -1470,7 +2577,7 @@ components:
           minLength: 1
         origin:
           type: string
-          enum: &a17
+          enum: &a23
             - CONNECTOR
             - FINANCE
           default: FINANCE
@@ -1493,10 +2600,10 @@ components:
           type: string
         origin:
           type: string
-          enum: *a17
+          enum: *a23
         status:
           type: string
-          enum: &a41
+          enum: &a47
             - DRAFT
             - SUBMITTED
             - APPROVED
@@ -1606,7 +2713,7 @@ components:
             - "null"
         status:
           type: string
-          enum: &a42
+          enum: &a48
             - GENERATED
             - DOWNLOADED
             - PROCESSED
@@ -1781,6 +2888,16 @@ paths:
                             - partner.lead_ingest
                             - partner.application_read
                             - webhook.manage
+                            - platform.console
+                            - platform.flags
+                            - platform.master_data
+                            - platform.jobs
+                            - platform.support_access
+                            - platform.release
+                            - data_correction.request
+                            - data_correction.approve
+                            - integration.read
+                            - integration.manage
                         scope:
                           type: string
                           enum:
@@ -1849,17 +2966,17 @@ paths:
                         whatsapp:
                           type: boolean
                           default: false
-                      default: *a11
+                      default: *a14
                     digestFrequency:
                       type: string
-                      enum: *a12
+                      enum: *a15
                       default: IMMEDIATE
                     mutedCategories:
                       type: array
                       items:
                         type: string
-                        enum: *a10
-                      default: *a13
+                        enum: *a13
+                      default: *a16
                 preferences:
                   type: object
                   properties:
@@ -1878,17 +2995,17 @@ paths:
                         whatsapp:
                           type: boolean
                           default: false
-                      default: *a11
+                      default: *a14
                     digestFrequency:
                       type: string
-                      enum: *a12
+                      enum: *a15
                       default: IMMEDIATE
                     mutedCategories:
                       type: array
                       items:
                         type: string
-                        enum: *a10
-                      default: *a13
+                        enum: *a13
+                      default: *a16
       responses:
         "200":
           description: Updated user profile
@@ -1941,17 +3058,17 @@ paths:
                           whatsapp:
                             type: boolean
                             default: false
-                        default: *a11
+                        default: *a14
                       digestFrequency:
                         type: string
-                        enum: *a12
+                        enum: *a15
                         default: IMMEDIATE
                       mutedCategories:
                         type: array
                         items:
                           type: string
-                          enum: *a10
-                        default: *a13
+                          enum: *a13
+                        default: *a16
                 required:
                   - id
                   - tenantId
@@ -2237,7 +3354,7 @@ paths:
                           type: string
                         constitution:
                           type: string
-                          enum: &a18
+                          enum: &a24
                             - PROPRIETORSHIP
                             - PARTNERSHIP
                             - LLP
@@ -2296,7 +3413,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a18
+                    enum: *a24
                   status:
                     type: string
                   version:
@@ -2332,7 +3449,7 @@ paths:
                   maxLength: 200
                 constitution:
                   type: string
-                  enum: *a18
+                  enum: *a24
               additionalProperties: false
       responses:
         "200":
@@ -2348,7 +3465,7 @@ paths:
                     type: string
                   constitution:
                     type: string
-                    enum: *a18
+                    enum: *a24
                   status:
                     type: string
                   version:
@@ -2470,7 +3587,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a19
+            enum: &a25
               - ACTIVE
               - INACTIVE
           required: false
@@ -2828,7 +3945,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a19
+            enum: *a25
           required: false
           name: status
           in: query
@@ -3160,7 +4277,7 @@ paths:
                   maxLength: 120
                 kind:
                   type: string
-                  enum: &a20
+                  enum: &a26
                     - INTAKE
                     - UNASSIGNED
                     - TEAM
@@ -3178,7 +4295,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a21
+                    enum: &a27
                       - LEAD
                       - APPLICATION
                       - TASK
@@ -3205,7 +4322,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a20
+                    enum: *a26
                   branchId:
                     type:
                       - string
@@ -3218,7 +4335,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a21
+                      enum: *a27
                   active:
                     type: boolean
                   memberCount:
@@ -3289,7 +4406,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a19
+            enum: *a25
           required: false
           name: status
           in: query
@@ -3320,7 +4437,7 @@ paths:
                           type: string
                         kind:
                           type: string
-                          enum: *a20
+                          enum: *a26
                         branchId:
                           type:
                             - string
@@ -3333,7 +4450,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a21
+                            enum: *a27
                         active:
                           type: boolean
                         memberCount:
@@ -3394,7 +4511,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a20
+                    enum: *a26
                   branchId:
                     type:
                       - string
@@ -3407,7 +4524,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a21
+                      enum: *a27
                   active:
                     type: boolean
                   memberCount:
@@ -3476,7 +4593,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a21
+                    enum: *a27
                   minItems: 1
               additionalProperties: false
       responses:
@@ -3495,7 +4612,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a20
+                    enum: *a26
                   branchId:
                     type:
                       - string
@@ -3508,7 +4625,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a21
+                      enum: *a27
                   active:
                     type: boolean
                   memberCount:
@@ -3610,7 +4727,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a20
+                    enum: *a26
                   branchId:
                     type:
                       - string
@@ -3623,7 +4740,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a21
+                      enum: *a27
                   active:
                     type: boolean
                   memberCount:
@@ -3711,7 +4828,7 @@ paths:
                   format: email
                 productCategory:
                   type: string
-                  enum: *a22
+                  enum: *a28
                 indicativeAmount:
                   type:
                     - object
@@ -3736,7 +4853,7 @@ paths:
                   minLength: 1
                 source:
                   type: string
-                  enum: *a23
+                  enum: *a29
                 subSource:
                   type:
                     - string
@@ -3758,19 +4875,19 @@ paths:
                     - "null"
                 priority:
                   type: string
-                  enum: *a1
+                  enum: *a4
                   default: MEDIUM
                 tags:
                   type: array
                   items:
                     type: string
-                  default: *a24
+                  default: *a30
                 consent:
                   type: object
                   properties:
                     purpose:
                       type: string
-                      enum: *a25
+                      enum: *a31
                       default: CONTACT
                     purposeTarget:
                       type:
@@ -3781,7 +4898,7 @@ paths:
                       pattern: ^[a-zA-Z0-9._-]{2,40}$
                     channel:
                       type: string
-                      enum: *a26
+                      enum: *a32
                     evidenceRef:
                       type:
                         - string
@@ -3982,7 +5099,7 @@ paths:
                   pattern: ^[1-9][0-9]{5}$
                 priority:
                   type: string
-                  enum: *a1
+                  enum: *a4
                 tags:
                   type: array
                   items:
@@ -3996,7 +5113,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a2
+                  enum: *a5
                 qualRequestedAmount:
                   type:
                     - object
@@ -4066,7 +5183,7 @@ paths:
               properties:
                 transitionCode:
                   type: string
-                  enum: *a27
+                  enum: *a33
                 reasonCode:
                   type:
                     - string
@@ -4075,7 +5192,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a28
+                  enum: *a34
                 nextFollowUpAt:
                   type:
                     - string
@@ -4086,7 +5203,7 @@ paths:
                   properties:
                     applicantType:
                       type: string
-                      enum: *a2
+                      enum: *a5
                     requestedAmount:
                       type: object
                       properties:
@@ -4163,7 +5280,7 @@ paths:
                     - "null"
                 reasonCode:
                   type: string
-                  enum: *a29
+                  enum: *a35
                   default: MANUAL
                 transferOpenTasks:
                   type: boolean
@@ -4256,7 +5373,7 @@ paths:
               properties:
                 partyType:
                   type: string
-                  enum: *a30
+                  enum: *a36
                 fullName:
                   type: string
                   minLength: 2
@@ -4629,7 +5746,7 @@ paths:
               properties:
                 purpose:
                   type: string
-                  enum: *a31
+                  enum: *a37
                 purposeTarget:
                   type: string
                 noticeVersion:
@@ -4637,7 +5754,7 @@ paths:
                   pattern: ^[A-Z0-9._-]{2,40}$
                 channel:
                   type: string
-                  enum: *a32
+                  enum: *a38
                 evidenceRef:
                   type: string
                   maxLength: 255
@@ -4755,10 +5872,10 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: *a4
+                  enum: *a7
                 subjectType:
                   type: string
-                  enum: *a3
+                  enum: *a6
                 subjectId:
                   type: string
                   minLength: 1
@@ -4769,7 +5886,7 @@ paths:
                     properties:
                       type:
                         type: string
-                        enum: *a3
+                        enum: *a6
                       id:
                         type: string
                         minLength: 1
@@ -4780,7 +5897,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a5
+                  enum: *a8
                 occurredAt:
                   type: string
                   format: date-time
@@ -4817,7 +5934,7 @@ paths:
                     type: string
                   subjectType:
                     type: string
-                    enum: *a3
+                    enum: *a6
                   subjectId:
                     type: string
                   links:
@@ -4827,7 +5944,7 @@ paths:
                       properties:
                         type:
                           type: string
-                          enum: *a3
+                          enum: *a6
                         id:
                           type: string
                           minLength: 1
@@ -4836,12 +5953,12 @@ paths:
                         - id
                   kind:
                     type: string
-                    enum: *a4
+                    enum: *a7
                   outcomeCode:
                     type:
                       - string
                       - "null"
-                    enum: *a5
+                    enum: *a8
                   occurredAt:
                     type: string
                   durationSeconds:
@@ -5149,7 +6266,7 @@ paths:
                           type: string
                         subjectType:
                           type: string
-                          enum: *a3
+                          enum: *a6
                         subjectId:
                           type: string
                         links:
@@ -5159,7 +6276,7 @@ paths:
                             properties:
                               type:
                                 type: string
-                                enum: *a3
+                                enum: *a6
                               id:
                                 type: string
                                 minLength: 1
@@ -5168,12 +6285,12 @@ paths:
                               - id
                         kind:
                           type: string
-                          enum: *a4
+                          enum: *a7
                         outcomeCode:
                           type:
                             - string
                             - "null"
-                          enum: *a5
+                          enum: *a8
                         occurredAt:
                           type: string
                         durationSeconds:
@@ -5263,7 +6380,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a5
+                  enum: *a8
                 durationSeconds:
                   type:
                     - integer
@@ -5297,7 +6414,7 @@ paths:
                     type: string
                   subjectType:
                     type: string
-                    enum: *a3
+                    enum: *a6
                   subjectId:
                     type: string
                   links:
@@ -5307,7 +6424,7 @@ paths:
                       properties:
                         type:
                           type: string
-                          enum: *a3
+                          enum: *a6
                         id:
                           type: string
                           minLength: 1
@@ -5316,12 +6433,12 @@ paths:
                         - id
                   kind:
                     type: string
-                    enum: *a4
+                    enum: *a7
                   outcomeCode:
                     type:
                       - string
                       - "null"
-                    enum: *a5
+                    enum: *a8
                   occurredAt:
                     type: string
                   durationSeconds:
@@ -5604,7 +6721,7 @@ paths:
                     type: string
                   subjectType:
                     type: string
-                    enum: *a3
+                    enum: *a6
                   subjectId:
                     type: string
                   links:
@@ -5614,7 +6731,7 @@ paths:
                       properties:
                         type:
                           type: string
-                          enum: *a3
+                          enum: *a6
                         id:
                           type: string
                           minLength: 1
@@ -5623,12 +6740,12 @@ paths:
                         - id
                   kind:
                     type: string
-                    enum: *a4
+                    enum: *a7
                   outcomeCode:
                     type:
                       - string
                       - "null"
-                    enum: *a5
+                    enum: *a8
                   occurredAt:
                     type: string
                   durationSeconds:
@@ -5743,7 +6860,7 @@ paths:
                   pattern: ^[a-z0-9._-]+$
                 channel:
                   type: string
-                  enum: *a6
+                  enum: *a9
                 language:
                   type: string
                   minLength: 2
@@ -5751,7 +6868,7 @@ paths:
                   default: en
                 category:
                   type: string
-                  enum: *a7
+                  enum: *a10
                   default: TRANSACTIONAL
                 body:
                   type: string
@@ -5773,7 +6890,7 @@ paths:
                         maxLength: 200
                     required:
                       - name
-                  default: *a33
+                  default: *a39
                 providerTemplateId:
                   type:
                     - string
@@ -5781,7 +6898,7 @@ paths:
                   maxLength: 100
                 status:
                   type: string
-                  enum: *a8
+                  enum: *a11
                   default: APPROVED
               required:
                 - code
@@ -5804,12 +6921,12 @@ paths:
                     type: string
                   channel:
                     type: string
-                    enum: *a6
+                    enum: *a9
                   language:
                     type: string
                   category:
                     type: string
-                    enum: *a7
+                    enum: *a10
                   body:
                     type: string
                   variables:
@@ -5837,7 +6954,7 @@ paths:
                     exclusiveMinimum: 0
                   status:
                     type: string
-                    enum: *a8
+                    enum: *a11
                   lockVersion:
                     type: integer
                     minimum: 0
@@ -5881,12 +6998,12 @@ paths:
                     type: string
                   channel:
                     type: string
-                    enum: *a6
+                    enum: *a9
                   language:
                     type: string
                   category:
                     type: string
-                    enum: *a7
+                    enum: *a10
                   body:
                     type: string
                   variables:
@@ -5914,7 +7031,7 @@ paths:
                     exclusiveMinimum: 0
                   status:
                     type: string
-                    enum: *a8
+                    enum: *a11
                   lockVersion:
                     type: integer
                     minimum: 0
@@ -6120,19 +7237,19 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a6
+            enum: *a9
           required: false
           name: channel
           in: query
         - schema:
             type: string
-            enum: *a7
+            enum: *a10
           required: false
           name: category
           in: query
         - schema:
             type: string
-            enum: *a8
+            enum: *a11
           required: false
           name: status
           in: query
@@ -6171,12 +7288,12 @@ paths:
                           type: string
                         channel:
                           type: string
-                          enum: *a6
+                          enum: *a9
                         language:
                           type: string
                         category:
                           type: string
-                          enum: *a7
+                          enum: *a10
                         body:
                           type: string
                         variables:
@@ -6204,7 +7321,7 @@ paths:
                           exclusiveMinimum: 0
                         status:
                           type: string
-                          enum: *a8
+                          enum: *a11
                         lockVersion:
                           type: integer
                           minimum: 0
@@ -6354,13 +7471,13 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a34
+                  enum: *a40
                 subjectId:
                   type: string
                   minLength: 1
                 channel:
                   type: string
-                  enum: *a6
+                  enum: *a9
                 templateCode:
                   type: string
                   minLength: 1
@@ -6386,7 +7503,7 @@ paths:
                       - type: string
                       - type: number
                       - type: boolean
-                  default: *a35
+                  default: *a41
                 correlationId:
                   type: string
               required:
@@ -6410,10 +7527,10 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a36
+                    enum: *a42
                   channel:
                     type: string
-                    enum: *a6
+                    enum: *a9
                   subjectType:
                     type: string
                   subjectId:
@@ -6435,7 +7552,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a9
+                    enum: *a12
                   statusHistory:
                     type: array
                     items:
@@ -6443,7 +7560,7 @@ paths:
                       properties:
                         status:
                           type: string
-                          enum: *a9
+                          enum: *a12
                         timestamp:
                           type: string
                         reason:
@@ -6501,10 +7618,10 @@ paths:
                     type: string
                   direction:
                     type: string
-                    enum: *a36
+                    enum: *a42
                   channel:
                     type: string
-                    enum: *a6
+                    enum: *a9
                   subjectType:
                     type: string
                   subjectId:
@@ -6526,7 +7643,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a9
+                    enum: *a12
                   statusHistory:
                     type: array
                     items:
@@ -6534,7 +7651,7 @@ paths:
                       properties:
                         status:
                           type: string
-                          enum: *a9
+                          enum: *a12
                         timestamp:
                           type: string
                         reason:
@@ -6729,13 +7846,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a6
+            enum: *a9
           required: false
           name: channel
           in: query
         - schema:
             type: string
-            enum: *a9
+            enum: *a12
           required: false
           name: status
           in: query
@@ -6772,10 +7889,10 @@ paths:
                           type: string
                         direction:
                           type: string
-                          enum: *a36
+                          enum: *a42
                         channel:
                           type: string
-                          enum: *a6
+                          enum: *a9
                         subjectType:
                           type: string
                         subjectId:
@@ -6797,7 +7914,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a9
+                          enum: *a12
                         statusHistory:
                           type: array
                           items:
@@ -6805,7 +7922,7 @@ paths:
                             properties:
                               status:
                                 type: string
-                                enum: *a9
+                                enum: *a12
                               timestamp:
                                 type: string
                               reason:
@@ -7003,7 +8120,7 @@ paths:
                           type: string
                         category:
                           type: string
-                          enum: *a10
+                          enum: *a13
                         title:
                           type: string
                           minLength: 1
@@ -7333,11 +8450,11 @@ paths:
                   pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
                 qualifyingEvent:
                   type: string
-                  enum: *a14
+                  enum: *a20
                   default: DISBURSEMENT
                 basis:
                   type: string
-                  enum: *a15
+                  enum: *a21
                   default: DISBURSED_AMOUNT
                 roundingMode:
                   type: string
@@ -7357,7 +8474,7 @@ paths:
                     - "null"
                 status:
                   type: string
-                  enum: *a16
+                  enum: *a22
                   default: DRAFT
               required:
                 - lenderId
@@ -7377,10 +8494,10 @@ paths:
                     pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
                   qualifyingEvent:
                     type: string
-                    enum: *a14
+                    enum: *a20
                   basis:
                     type: string
-                    enum: *a15
+                    enum: *a21
                   roundingMode:
                     type: string
                   clawbackWindowDays:
@@ -7391,7 +8508,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a16
+                    enum: *a22
                   lockVersion:
                     type: integer
                   createdAt:
@@ -7442,10 +8559,10 @@ paths:
               properties:
                 qualifyingEvent:
                   type: string
-                  enum: *a14
+                  enum: *a20
                 basis:
                   type: string
-                  enum: *a15
+                  enum: *a21
                 roundingMode:
                   type: string
                 clawbackWindowDays:
@@ -7453,7 +8570,7 @@ paths:
                   minimum: 0
                 status:
                   type: string
-                  enum: *a16
+                  enum: *a22
       responses:
         "200":
           description: Plan updated
@@ -7470,10 +8587,10 @@ paths:
                     pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
                   qualifyingEvent:
                     type: string
-                    enum: *a14
+                    enum: *a20
                   basis:
                     type: string
-                    enum: *a15
+                    enum: *a21
                   roundingMode:
                     type: string
                   clawbackWindowDays:
@@ -7484,7 +8601,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a16
+                    enum: *a22
                   lockVersion:
                     type: integer
                   createdAt:
@@ -7552,10 +8669,10 @@ paths:
                     pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
                   qualifyingEvent:
                     type: string
-                    enum: *a14
+                    enum: *a20
                   basis:
                     type: string
-                    enum: *a15
+                    enum: *a21
                   roundingMode:
                     type: string
                   clawbackWindowDays:
@@ -7566,7 +8683,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a16
+                    enum: *a22
                   lockVersion:
                     type: integer
                   createdAt:
@@ -7641,10 +8758,10 @@ paths:
                     type: string
                   calcKind:
                     type: string
-                    enum: *a37
+                    enum: *a43
                   status:
                     type: string
-                    enum: *a38
+                    enum: *a44
                   lockVersion:
                     type: integer
                   createdAt:
@@ -7830,7 +8947,7 @@ paths:
                 preview:
                   type: object
                   additionalProperties: {}
-                  default: *a39
+                  default: *a45
               required:
                 - reason
                 - affectedCalculationIds
@@ -7856,7 +8973,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: *a40
+                    enum: *a46
                   approvedBy:
                     type:
                       - string
@@ -7940,7 +9057,7 @@ paths:
                   minLength: 1
                 origin:
                   type: string
-                  enum: *a17
+                  enum: *a23
                   default: FINANCE
                 payableIds:
                   type: array
@@ -7966,10 +9083,10 @@ paths:
                     type: string
                   origin:
                     type: string
-                    enum: *a17
+                    enum: *a23
                   status:
                     type: string
-                    enum: *a41
+                    enum: *a47
                   total:
                     type: string
                   currency:
@@ -8145,7 +9262,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a41
+                    enum: *a47
                   total:
                     type: string
                   lineCount:
@@ -8188,7 +9305,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-14T17:20:29.199Z
+                  default: 2026-10-15T04:16:43.838Z
               required:
                 - paymentRef
       responses:
@@ -8206,10 +9323,10 @@ paths:
                     type: string
                   origin:
                     type: string
-                    enum: *a17
+                    enum: *a23
                   status:
                     type: string
-                    enum: *a41
+                    enum: *a47
                   total:
                     type: string
                   currency:
@@ -8331,10 +9448,10 @@ paths:
                     type: string
                   origin:
                     type: string
-                    enum: *a17
+                    enum: *a23
                   status:
                     type: string
-                    enum: *a41
+                    enum: *a47
                   total:
                     type: string
                   currency:
@@ -8462,7 +9579,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a42
+                    enum: *a48
                   generatedBy:
                     type: string
                   generatedAt:
@@ -8497,7 +9614,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a45
+                  enum: &a51
                     - FOLLOW_UP
                     - CALL
                     - MEETING
@@ -8517,7 +9634,7 @@ paths:
                   minLength: 1
                 linkedType:
                   type: string
-                  enum: &a44
+                  enum: &a50
                     - LEAD
                     - LOAN_APPLICATION
                     - LENDER_CASE
@@ -8529,7 +9646,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: &a43
+                  enum: &a49
                     - HIGH
                     - MEDIUM
                     - LOW
@@ -8692,13 +9809,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a43
+            enum: *a49
           required: false
           name: priority
           in: query
         - schema:
             type: string
-            enum: *a44
+            enum: *a50
           required: false
           name: linkedType
           in: query
@@ -9003,7 +10120,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a43
+                  enum: *a49
                 dueAt:
                   type: string
                   format: date-time
@@ -9165,7 +10282,7 @@ paths:
                       type: boolean
                     followUpType:
                       type: string
-                      enum: *a45
+                      enum: *a51
                       default: FOLLOW_UP
                     followUpDueAt:
                       type: string
@@ -9390,7 +10507,7 @@ paths:
                   - followUpTask
   /v1/complaints:
     post:
-      tags: &a49
+      tags: &a55
         - MOD-GRV Grievances
       operationId: API-GRV-001
       summary: Record a complaint against a lead or application and issue an acknowledgement reference (complaint.create)
@@ -9405,7 +10522,7 @@ paths:
               properties:
                 complainantType:
                   type: string
-                  enum: &a46
+                  enum: &a52
                     - LEAD
                     - APPLICATION
                 complainantId:
@@ -9414,7 +10531,7 @@ paths:
                   maxLength: 64
                 channel:
                   type: string
-                  enum: &a47
+                  enum: &a53
                     - PHONE
                     - EMAIL
                     - BRANCH
@@ -9423,7 +10540,7 @@ paths:
                     - OTHER
                 category:
                   type: string
-                  enum: &a48
+                  enum: &a54
                     - SERVICE
                     - PROCESS
                     - CHARGES
@@ -9458,20 +10575,20 @@ paths:
                     type: string
                   complainantType:
                     type: string
-                    enum: *a46
+                    enum: *a52
                   complainantId:
                     type: string
                   channel:
                     type: string
-                    enum: *a47
+                    enum: *a53
                   category:
                     type: string
-                    enum: *a48
+                    enum: *a54
                   description:
                     type: string
                   status:
                     type: string
-                    enum: &a50
+                    enum: &a56
                       - OPEN
                       - IN_PROGRESS
                       - RESOLVED
@@ -9528,7 +10645,7 @@ paths:
         "422":
           description: VALIDATION_ERROR (for example, SUBJECT_UNSUPPORTED for a lead complaint)
     get:
-      tags: *a49
+      tags: *a55
       operationId: API-GRV-002
       summary: Complaint queue, filtered by status, category or owner (complaint.manage)
       parameters:
@@ -9547,13 +10664,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a50
+            enum: *a56
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a48
+            enum: *a54
           required: false
           name: category
           in: query
@@ -9579,20 +10696,20 @@ paths:
                           type: string
                         complainantType:
                           type: string
-                          enum: *a46
+                          enum: *a52
                         complainantId:
                           type: string
                         channel:
                           type: string
-                          enum: *a47
+                          enum: *a53
                         category:
                           type: string
-                          enum: *a48
+                          enum: *a54
                         description:
                           type: string
                         status:
                           type: string
-                          enum: *a50
+                          enum: *a56
                         ownerUserId:
                           type:
                             - string
@@ -9656,7 +10773,7 @@ paths:
           description: FORBIDDEN
   /v1/complaints/{id}:
     get:
-      tags: *a49
+      tags: *a55
       operationId: API-GRV-002-GET
       summary: One complaint (complaint.manage)
       responses:
@@ -9671,20 +10788,20 @@ paths:
                     type: string
                   complainantType:
                     type: string
-                    enum: *a46
+                    enum: *a52
                   complainantId:
                     type: string
                   channel:
                     type: string
-                    enum: *a47
+                    enum: *a53
                   category:
                     type: string
-                    enum: *a48
+                    enum: *a54
                   description:
                     type: string
                   status:
                     type: string
-                    enum: *a50
+                    enum: *a56
                   ownerUserId:
                     type:
                       - string
@@ -9734,7 +10851,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a49
+      tags: *a55
       operationId: API-GRV-003
       summary: Assign an owner, change category or due date, refer to a lender, or start work (complaint.manage)
       parameters:
@@ -9754,7 +10871,7 @@ paths:
                   maxLength: 64
                 category:
                   type: string
-                  enum: *a48
+                  enum: *a54
                 dueAt:
                   type:
                     - string
@@ -9794,20 +10911,20 @@ paths:
                     type: string
                   complainantType:
                     type: string
-                    enum: *a46
+                    enum: *a52
                   complainantId:
                     type: string
                   channel:
                     type: string
-                    enum: *a47
+                    enum: *a53
                   category:
                     type: string
-                    enum: *a48
+                    enum: *a54
                   description:
                     type: string
                   status:
                     type: string
-                    enum: *a50
+                    enum: *a56
                   ownerUserId:
                     type:
                       - string
@@ -9862,7 +10979,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/complaints/{id}/resolution:
     post:
-      tags: *a49
+      tags: *a55
       operationId: API-GRV-004
       summary: Resolve a complaint with a written resolution, or reopen a resolved one (complaint.manage)
       parameters:
@@ -9914,20 +11031,20 @@ paths:
                     type: string
                   complainantType:
                     type: string
-                    enum: *a46
+                    enum: *a52
                   complainantId:
                     type: string
                   channel:
                     type: string
-                    enum: *a47
+                    enum: *a53
                   category:
                     type: string
-                    enum: *a48
+                    enum: *a54
                   description:
                     type: string
                   status:
                     type: string
-                    enum: *a50
+                    enum: *a56
                   ownerUserId:
                     type:
                       - string
@@ -10007,7 +11124,7 @@ paths:
                           type: string
                         tier:
                           type: string
-                          enum: &a51
+                          enum: &a57
                             - T1
                             - T2
                             - T3
@@ -10021,7 +11138,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: &a52
+                            enum: &a58
                               - UNIQUE
                               - FIRST
                               - PRIORITY
@@ -10029,13 +11146,13 @@ paths:
                               - RULE_ORDER
                         bindingMode:
                           type: string
-                          enum: &a53
+                          enum: &a59
                             - EVAL
                             - EVENT
                             - PIN
                         fallbackPolicy:
                           type: string
-                          enum: &a54
+                          enum: &a60
                             - DEFAULT_OUTPUT
                             - FAIL_CLOSED
                             - MANUAL_REVIEW
@@ -10046,12 +11163,12 @@ paths:
                           additionalProperties: {}
                         unknownPolicy:
                           type: string
-                          enum: &a55
+                          enum: &a61
                             - IGNORE
                             - UNDETERMINED
                         recordingLevel:
                           type: string
-                          enum: &a56
+                          enum: &a62
                             - ALWAYS
                             - SAMPLED
                         scopeChain:
@@ -10066,7 +11183,7 @@ paths:
                           type: array
                           items:
                             type: string
-                          default: &a57 []
+                          default: &a63 []
                       required:
                         - key
                         - registryVersion
@@ -10116,7 +11233,7 @@ paths:
                     type: string
                   tier:
                     type: string
-                    enum: *a51
+                    enum: *a57
                   inputSchema:
                     type: object
                     additionalProperties: {}
@@ -10127,13 +11244,13 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a52
+                      enum: *a58
                   bindingMode:
                     type: string
-                    enum: *a53
+                    enum: *a59
                   fallbackPolicy:
                     type: string
-                    enum: *a54
+                    enum: *a60
                   fallbackOutput:
                     type:
                       - object
@@ -10141,10 +11258,10 @@ paths:
                     additionalProperties: {}
                   unknownPolicy:
                     type: string
-                    enum: *a55
+                    enum: *a61
                   recordingLevel:
                     type: string
-                    enum: *a56
+                    enum: *a62
                   scopeChain:
                     type: array
                     items:
@@ -10157,7 +11274,7 @@ paths:
                     type: array
                     items:
                       type: string
-                    default: *a57
+                    default: *a63
                 required:
                   - key
                   - registryVersion
@@ -10202,7 +11319,7 @@ paths:
                     - DK-application.completeness
                 scopeType:
                   type: string
-                  enum: &a58
+                  enum: &a64
                     - TENANT_DEFAULT
                     - BRANCH
                     - LENDER
@@ -10239,7 +11356,7 @@ paths:
                     type: string
                   scopeType:
                     type: string
-                    enum: *a58
+                    enum: *a64
                   scopeRef:
                     type:
                       - string
@@ -10252,12 +11369,12 @@ paths:
                       - "null"
                   origin:
                     type: string
-                    enum: &a59
+                    enum: &a65
                       - PLATFORM_SEED
                       - TENANT
                   status:
                     type: string
-                    enum: &a60
+                    enum: &a66
                       - ACTIVE
                       - ARCHIVED
                   activeVersionId:
@@ -10366,7 +11483,7 @@ paths:
                           type: string
                         scopeType:
                           type: string
-                          enum: *a58
+                          enum: *a64
                         scopeRef:
                           type:
                             - string
@@ -10379,10 +11496,10 @@ paths:
                             - "null"
                         origin:
                           type: string
-                          enum: *a59
+                          enum: *a65
                         status:
                           type: string
-                          enum: *a60
+                          enum: *a66
                         activeVersionId:
                           type:
                             - string
@@ -10470,7 +11587,7 @@ paths:
                     type: string
                   scopeType:
                     type: string
-                    enum: *a58
+                    enum: *a64
                   scopeRef:
                     type:
                       - string
@@ -10483,10 +11600,10 @@ paths:
                       - "null"
                   origin:
                     type: string
-                    enum: *a59
+                    enum: *a65
                   status:
                     type: string
-                    enum: *a60
+                    enum: *a66
                   activeVersionId:
                     type:
                       - string
@@ -10565,7 +11682,7 @@ paths:
                           type: integer
                         status:
                           type: string
-                          enum: &a62
+                          enum: &a68
                             - DRAFT
                             - IN_REVIEW
                             - APPROVED
@@ -10578,19 +11695,19 @@ paths:
                             - ABANDONED
                         hitPolicy:
                           type: string
-                          enum: *a52
+                          enum: *a58
                         aggregator:
                           type:
                             - string
                             - "null"
-                          enum: &a61
+                          enum: &a67
                             - SUM
                             - MIN
                             - MAX
                             - COUNT
                         authoringForm:
                           type: string
-                          enum: &a63
+                          enum: &a69
                             - RULES
                             - DECISION_TABLE
                           default: RULES
@@ -10603,10 +11720,10 @@ paths:
                                 - 1
                             hitPolicy:
                               type: string
-                              enum: *a52
+                              enum: *a58
                             aggregator:
                               type: string
-                              enum: *a61
+                              enum: *a67
                             defaultOutput:
                               type:
                                 - object
@@ -10644,7 +11761,7 @@ paths:
                                           minLength: 1
                                         operator:
                                           type: string
-                                          enum: &a64
+                                          enum: &a70
                                             - ==
                                             - "!="
                                             - ">"
@@ -10786,11 +11903,11 @@ paths:
                   maxLength: 500
                 hitPolicy:
                   type: string
-                  enum: *a52
+                  enum: *a58
                   default: FIRST
                 aggregator:
                   type: string
-                  enum: *a61
+                  enum: *a67
       responses:
         "201":
           description: Draft version created
@@ -10810,18 +11927,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -10832,10 +11949,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -10873,7 +11990,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -11010,18 +12127,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -11032,10 +12149,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -11073,7 +12190,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -11208,10 +12325,10 @@ paths:
                         - 1
                     hitPolicy:
                       type: string
-                      enum: *a52
+                      enum: *a58
                     aggregator:
                       type: string
-                      enum: *a61
+                      enum: *a67
                     defaultOutput:
                       type:
                         - object
@@ -11249,7 +12366,7 @@ paths:
                                   minLength: 1
                                 operator:
                                   type: string
-                                  enum: *a64
+                                  enum: *a70
                                 value: {}
                               required:
                                 - field
@@ -11271,10 +12388,10 @@ paths:
                     - rules
                 hitPolicy:
                   type: string
-                  enum: *a52
+                  enum: *a58
                 aggregator:
                   type: string
-                  enum: *a61
+                  enum: *a67
                 defaultOutput:
                   type:
                     - object
@@ -11304,18 +12421,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -11326,10 +12443,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -11367,7 +12484,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -11619,14 +12736,14 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: &a65
+                    enum: &a71
                       - MANUAL
                       - TEST_SUITE
                   contentHash:
                     type: string
                   status:
                     type: string
-                    enum: &a66
+                    enum: &a72
                       - COMPLETED
                       - FAILED
                   summary:
@@ -11634,7 +12751,7 @@ paths:
                     properties:
                       status:
                         type: string
-                        enum: &a67
+                        enum: &a73
                           - OK
                           - NO_MATCH
                           - UNKNOWN
@@ -11655,7 +12772,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a54
+                        enum: *a60
                       errorCode:
                         type:
                           - string
@@ -11720,18 +12837,18 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a65
+                    enum: *a71
                   contentHash:
                     type: string
                   status:
                     type: string
-                    enum: *a66
+                    enum: *a72
                   summary:
                     type: object
                     properties:
                       status:
                         type: string
-                        enum: *a67
+                        enum: *a73
                       outputs:
                         type:
                           - object
@@ -11747,7 +12864,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a54
+                        enum: *a60
                       errorCode:
                         type:
                           - string
@@ -11990,7 +13107,7 @@ paths:
                           additionalProperties: {}
                         expectedStatus:
                           type: string
-                          enum: &a68
+                          enum: &a74
                             - OK
                             - NO_MATCH
                             - UNKNOWN
@@ -12106,7 +13223,7 @@ paths:
                     additionalProperties: {}
                   expectedStatus:
                     type: string
-                    enum: *a68
+                    enum: *a74
                   expectedOutput:
                     type: object
                     additionalProperties: {}
@@ -12212,7 +13329,7 @@ paths:
                     additionalProperties: {}
                   expectedStatus:
                     type: string
-                    enum: *a68
+                    enum: *a74
                   expectedOutput:
                     type: object
                     additionalProperties: {}
@@ -12293,18 +13410,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -12315,10 +13432,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -12356,7 +13473,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -12524,18 +13641,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -12546,10 +13663,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -12587,7 +13704,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -12742,18 +13859,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -12764,10 +13881,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -12805,7 +13922,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -12952,18 +14069,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -12974,10 +14091,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -13015,7 +14132,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -13162,18 +14279,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -13184,10 +14301,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -13225,7 +14342,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -13374,18 +14491,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -13396,10 +14513,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -13437,7 +14554,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -13588,18 +14705,18 @@ paths:
                     type: integer
                   status:
                     type: string
-                    enum: *a62
+                    enum: *a68
                   hitPolicy:
                     type: string
-                    enum: *a52
+                    enum: *a58
                   aggregator:
                     type:
                       - string
                       - "null"
-                    enum: *a61
+                    enum: *a67
                   authoringForm:
                     type: string
-                    enum: *a63
+                    enum: *a69
                     default: RULES
                   definition:
                     type: object
@@ -13610,10 +14727,10 @@ paths:
                           - 1
                       hitPolicy:
                         type: string
-                        enum: *a52
+                        enum: *a58
                       aggregator:
                         type: string
-                        enum: *a61
+                        enum: *a67
                       defaultOutput:
                         type:
                           - object
@@ -13651,7 +14768,7 @@ paths:
                                     minLength: 1
                                   operator:
                                     type: string
-                                    enum: *a64
+                                    enum: *a70
                                   value: {}
                                 required:
                                   - field
@@ -13854,7 +14971,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a54
+                    enum: *a60
                   errorCode:
                     type:
                       - string
@@ -13984,7 +15101,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: &a69
+                          enum: &a75
                             - OK
                             - NO_MATCH
                             - UNKNOWN
@@ -13997,7 +15114,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a54
+                          enum: *a60
                         errorCode:
                           type:
                             - string
@@ -14108,14 +15225,14 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: *a69
+                    enum: *a75
                   fallbackApplied:
                     type: boolean
                   fallbackPolicy:
                     type:
                       - string
                       - "null"
-                    enum: *a54
+                    enum: *a60
                   errorCode:
                     type:
                       - string
@@ -14151,7 +15268,7 @@ paths:
           description: Decision record not found
   /v1/lenders:
     post:
-      tags: &a71
+      tags: &a77
         - MOD-LND Lenders
       operationId: API-LND-001
       summary: Create a lender (config.manage)
@@ -14170,7 +15287,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: &a70
+                  enum: &a76
                     - BANK
                     - NBFC
                     - HFC
@@ -14207,7 +15324,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a76
                   regulatorRef:
                     type:
                       - string
@@ -14218,7 +15335,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a72
+                    enum: &a78
                       - ACTIVE
                       - PAUSED
                       - TERMINATED
@@ -14250,7 +15367,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-002
       summary: List lenders (any signed-in staff)
       parameters:
@@ -14269,13 +15386,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a72
+            enum: *a78
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a70
+            enum: *a76
           required: false
           name: type
           in: query
@@ -14305,7 +15422,7 @@ paths:
                           type: string
                         lenderType:
                           type: string
-                          enum: *a70
+                          enum: *a76
                         regulatorRef:
                           type:
                             - string
@@ -14316,7 +15433,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a72
+                          enum: *a78
                         statusReason:
                           type:
                             - string
@@ -14357,7 +15474,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/lenders/{id}:
     get:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-002-GET
       summary: One lender (any signed-in staff)
       responses:
@@ -14375,7 +15492,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a76
                   regulatorRef:
                     type:
                       - string
@@ -14386,7 +15503,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a72
+                    enum: *a78
                   statusReason:
                     type:
                       - string
@@ -14411,7 +15528,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-003
       summary: Update a lender, including PAUSED or TERMINATED status with a reason (config.manage)
       parameters:
@@ -14429,7 +15546,7 @@ paths:
                   maxLength: 120
                 lenderType:
                   type: string
-                  enum: *a70
+                  enum: *a76
                 regulatorRef:
                   type:
                     - string
@@ -14444,7 +15561,7 @@ paths:
                   maxLength: 60
                 status:
                   type: string
-                  enum: *a72
+                  enum: *a78
                 statusReason:
                   type:
                     - string
@@ -14467,7 +15584,7 @@ paths:
                     type: string
                   lenderType:
                     type: string
-                    enum: *a70
+                    enum: *a76
                   regulatorRef:
                     type:
                       - string
@@ -14478,7 +15595,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a72
+                    enum: *a78
                   statusReason:
                     type:
                       - string
@@ -14508,7 +15625,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/empanelments:
     post:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-004
       summary: Add an empanelment (DSA code, validity, permitted product categories) (config.manage)
       parameters:
@@ -14535,7 +15652,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a73
+                    enum: &a79
                       - PL
                       - BL
                       - MSME
@@ -14590,7 +15707,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a73
+                      enum: *a79
                   permittedGeos:
                     type: array
                     items:
@@ -14601,7 +15718,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a74
+                    enum: &a80
                       - ACTIVE
                       - SUSPENDED
                       - EXPIRED
@@ -14631,7 +15748,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-004-LIST
       summary: Empanelments of a lender (any signed-in staff). Read-only; for the lender screen.
       responses:
@@ -14664,7 +15781,7 @@ paths:
                           type: array
                           items:
                             type: string
-                            enum: *a73
+                            enum: *a79
                         permittedGeos:
                           type: array
                           items:
@@ -14675,7 +15792,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a74
+                          enum: *a80
                         version:
                           type: integer
                         createdAt:
@@ -14714,7 +15831,7 @@ paths:
           description: NOT_FOUND
   /v1/empanelments/{id}:
     patch:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-005
       summary: "Update an empanelment: end date, categories, status (config.manage)"
       parameters:
@@ -14735,7 +15852,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a73
+                    enum: *a79
                   minItems: 1
                   maxItems: 9
                 permittedGeos:
@@ -14753,7 +15870,7 @@ paths:
                   maxLength: 64
                 status:
                   type: string
-                  enum: *a74
+                  enum: *a80
                 reason:
                   type:
                     - string
@@ -14786,7 +15903,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: *a73
+                      enum: *a79
                   permittedGeos:
                     type: array
                     items:
@@ -14797,7 +15914,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a74
+                    enum: *a80
                   version:
                     type: integer
                   createdAt:
@@ -14825,7 +15942,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts:
     get:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-006-GET
       summary: Current contacts of a lender (any signed-in staff)
       responses:
@@ -14896,7 +16013,7 @@ paths:
         "404":
           description: NOT_FOUND
     put:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-006
       summary: Replace the contact list; previous contacts are kept as history (config.manage)
       parameters:
@@ -15025,7 +16142,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/lenders/{id}/contacts/{contactId}:
     delete:
-      tags: *a71
+      tags: *a77
       operationId: API-LND-006-DEL
       summary: Remove one contact; the row is kept as history (config.manage; If-Match on the lender version)
       parameters:
@@ -15053,7 +16170,7 @@ paths:
           description: VERSION_CONFLICT
   /v1/products:
     post:
-      tags: &a76
+      tags: &a82
         - MOD-PRD Products
       operationId: API-PRD-001
       summary: Create a product under an existing lender (config.manage)
@@ -15075,12 +16192,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a73
+                  enum: *a79
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: &a75
+                    enum: &a81
                       - INDIVIDUAL
                       - SALARIED
                       - SELF_EMPLOYED
@@ -15125,12 +16242,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a79
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a81
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15143,7 +16260,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: &a77
+                    enum: &a83
                       - ACTIVE
                       - INACTIVE
                   version:
@@ -15176,7 +16293,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-002
       summary: List products (any signed-in staff)
       parameters:
@@ -15200,13 +16317,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a77
+            enum: *a83
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a73
+            enum: *a79
           required: false
           name: category
           in: query
@@ -15238,12 +16355,12 @@ paths:
                           type: string
                         category:
                           type: string
-                          enum: *a73
+                          enum: *a79
                         applicantTypes:
                           type: array
                           items:
                             type: string
-                            enum: *a75
+                            enum: *a81
                         secured:
                           type: boolean
                         ownerUserId:
@@ -15256,7 +16373,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a77
+                          enum: *a83
                         version:
                           type: integer
                         createdAt:
@@ -15295,7 +16412,7 @@ paths:
           description: UNAUTHENTICATED
   /v1/products/{id}:
     get:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-002-GET
       summary: One product (any signed-in staff)
       responses:
@@ -15315,12 +16432,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a79
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a81
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15333,7 +16450,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a83
                   version:
                     type: integer
                   createdAt:
@@ -15356,7 +16473,7 @@ paths:
         "404":
           description: NOT_FOUND
     patch:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-006
       summary: "Edit basic product details: name, category, applicant types, secured, owner, next review (config.manage). Versions are not changed."
       parameters:
@@ -15374,12 +16491,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a73
+                  enum: *a79
                 applicantTypes:
                   type: array
                   items:
                     type: string
-                    enum: *a75
+                    enum: *a81
                   minItems: 1
                   maxItems: 7
                 secured:
@@ -15411,12 +16528,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a79
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a81
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15429,7 +16546,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a83
                   version:
                     type: integer
                   createdAt:
@@ -15459,7 +16576,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/status:
     post:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-005
       summary: Activate or deactivate a product; deactivation needs a reason (config.manage)
       parameters:
@@ -15473,7 +16590,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a77
+                  enum: *a83
                 reason:
                   type:
                     - string
@@ -15500,12 +16617,12 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a73
+                    enum: *a79
                   applicantTypes:
                     type: array
                     items:
                       type: string
-                      enum: *a75
+                      enum: *a81
                   secured:
                     type: boolean
                   ownerUserId:
@@ -15518,7 +16635,7 @@ paths:
                       - "null"
                   status:
                     type: string
-                    enum: *a77
+                    enum: *a83
                   version:
                     type: integer
                   createdAt:
@@ -15548,7 +16665,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/products/{id}/versions:
     post:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-003
       summary: Add a new terms version; earlier versions it replaces are retired (config.manage)
       parameters:
@@ -15689,7 +16806,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: &a78
+                    enum: &a84
                       - ACTIVE
                       - RETIRED
                   isCurrent:
@@ -15724,7 +16841,7 @@ paths:
         "422":
           description: VALIDATION_ERROR (for example, effective date not after the latest version)
     get:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-003-LIST
       summary: All versions of a product, newest first (any signed-in staff)
       responses:
@@ -15794,7 +16911,7 @@ paths:
                           additionalProperties: {}
                         status:
                           type: string
-                          enum: *a78
+                          enum: *a84
                         isCurrent:
                           type: boolean
                         createdAt:
@@ -15837,7 +16954,7 @@ paths:
           description: NOT_FOUND
   /v1/product-versions/{id}:
     get:
-      tags: *a76
+      tags: *a82
       operationId: API-PRD-004
       summary: One version, with isCurrent (any signed-in staff)
       responses:
@@ -15902,7 +17019,7 @@ paths:
                     additionalProperties: {}
                   status:
                     type: string
-                    enum: *a78
+                    enum: *a84
                   isCurrent:
                     type: boolean
                   createdAt:
@@ -15930,7 +17047,7 @@ paths:
           description: NOT_FOUND
   /v1/applications:
     get:
-      tags: &a80
+      tags: &a86
         - MOD-APP Loan Applications
       operationId: API-APP-002
       summary: List applications in the caller scope (application.read)
@@ -15950,7 +17067,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a79
+            enum: &a85
               - DRAFT
               - DOCUMENTS_PENDING
               - UNDER_REVIEW
@@ -16016,7 +17133,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a81
+                          enum: &a87
                             - PERSONAL_NEEDS
                             - MEDICAL
                             - EDUCATION
@@ -16029,14 +17146,14 @@ paths:
                             - OTHER
                         applicantType:
                           type: string
-                          enum: &a82
+                          enum: &a88
                             - SALARIED
                             - SELF_EMPLOYED_PROFESSIONAL
                             - SELF_EMPLOYED_BUSINESS
                             - NON_INDIVIDUAL
                         status:
                           type: string
-                          enum: *a79
+                          enum: *a85
                         onHold:
                           type: boolean
                         holdReason:
@@ -16106,7 +17223,7 @@ paths:
           description: FORBIDDEN
   /v1/applications/{id}:
     get:
-      tags: *a80
+      tags: *a86
       operationId: API-APP-003
       summary: One application in the caller scope (application.read)
       responses:
@@ -16146,13 +17263,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a87
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a88
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a85
                   onHold:
                     type: boolean
                   holdReason:
@@ -16206,10 +17323,10 @@ paths:
         "404":
           description: NOT_FOUND (also when outside the caller scope)
     patch:
-      tags: *a80
+      tags: *a86
       operationId: API-APP-004
       summary: Edit the applicant request while the application is DRAFT or DOCUMENTS_PENDING (application.update)
-      parameters: &a83
+      parameters: &a89
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
@@ -16229,10 +17346,10 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a81
+                  enum: *a87
                 applicantType:
                   type: string
-                  enum: *a82
+                  enum: *a88
               additionalProperties: false
       responses:
         "200":
@@ -16271,13 +17388,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a87
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a88
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a85
                   onHold:
                     type: boolean
                   holdReason:
@@ -16336,10 +17453,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/applications/{id}/hold:
     put:
-      tags: *a80
+      tags: *a86
       operationId: API-APP-010
       summary: Put an application on hold with a reason, or clear the hold (application.update)
-      parameters: *a83
+      parameters: *a89
       requestBody:
         required: true
         content:
@@ -16398,13 +17515,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a87
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a88
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a85
                   onHold:
                     type: boolean
                   holdReason:
@@ -16463,7 +17580,7 @@ paths:
           description: VALIDATION_ERROR (a reason is required to hold)
   /v1/applications/{id}/transitions:
     post:
-      tags: *a80
+      tags: *a86
       operationId: API-APP-005
       summary: "Move an application: T-APP-01 select product and start documents, T-APP-02 send to review, T-APP-10 cancel with a reason"
       parameters:
@@ -16552,13 +17669,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a81
+                    enum: *a87
                   applicantType:
                     type: string
-                    enum: *a82
+                    enum: *a88
                   status:
                     type: string
-                    enum: *a79
+                    enum: *a85
                   onHold:
                     type: boolean
                   holdReason:
@@ -16683,7 +17800,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: &a84
+                    enum: &a90
                       - DRAFT
                       - PACKAGE_READY
                       - SUBMITTED
@@ -16706,7 +17823,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a85
+                    enum: &a91
                       - PORTAL
                       - EMAIL
                       - API
@@ -16723,7 +17840,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a86
+                    enum: &a92
                       - MANUAL
                       - LENDER_API
                       - LENDER_FILE
@@ -16737,7 +17854,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a87
+                    enum: &a93
                       - POLICY
                       - INCOME
                       - CREDIT_HISTORY
@@ -16820,7 +17937,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a84
+                          enum: *a90
                         lenderReference:
                           type:
                             - string
@@ -16829,7 +17946,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a85
+                          enum: *a91
                         submittedAt:
                           type:
                             - string
@@ -16842,7 +17959,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a86
+                          enum: *a92
                         lastStatusAt:
                           type:
                             - string
@@ -16851,7 +17968,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a87
+                          enum: *a93
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -16925,7 +18042,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a84
+                    enum: *a90
                   lenderReference:
                     type:
                       - string
@@ -16934,7 +18051,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a85
+                    enum: *a91
                   submittedAt:
                     type:
                       - string
@@ -16947,7 +18064,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a86
+                    enum: *a92
                   lastStatusAt:
                     type:
                       - string
@@ -16956,7 +18073,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a87
+                    enum: *a93
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -17016,7 +18133,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: &a88
+                  enum: &a94
                     - SUBMISSION
                     - QUERY_RESPONSE
                   default: SUBMISSION
@@ -17047,7 +18164,7 @@ paths:
                         type: string
                       kind:
                         type: string
-                        enum: *a88
+                        enum: *a94
                       manifest:
                         type: object
                         additionalProperties: {}
@@ -17098,7 +18215,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a90
                       lenderReference:
                         type:
                           - string
@@ -17107,7 +18224,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a91
                       submittedAt:
                         type:
                           - string
@@ -17120,7 +18237,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a92
                       lastStatusAt:
                         type:
                           - string
@@ -17129,7 +18246,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a93
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -17197,7 +18314,7 @@ paths:
               properties:
                 channel:
                   type: string
-                  enum: *a85
+                  enum: *a91
                 lenderReference:
                   type: string
                   maxLength: 100
@@ -17263,14 +18380,14 @@ paths:
               properties:
                 toStatus:
                   type: string
-                  enum: *a84
+                  enum: *a90
                 statusSource:
                   type: string
-                  enum: *a86
+                  enum: *a92
                   default: MANUAL
                 declineReasonCode:
                   type: string
-                  enum: *a87
+                  enum: *a93
                 reasonText:
                   type: string
                   maxLength: 1000
@@ -17304,7 +18421,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a84
+                    enum: *a90
                   lenderReference:
                     type:
                       - string
@@ -17313,7 +18430,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a85
+                    enum: *a91
                   submittedAt:
                     type:
                       - string
@@ -17326,7 +18443,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a86
+                    enum: *a92
                   lastStatusAt:
                     type:
                       - string
@@ -17335,7 +18452,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a87
+                    enum: *a93
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -17473,7 +18590,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a90
                       lenderReference:
                         type:
                           - string
@@ -17482,7 +18599,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a91
                       submittedAt:
                         type:
                           - string
@@ -17495,7 +18612,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a92
                       lastStatusAt:
                         type:
                           - string
@@ -17504,7 +18621,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a93
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -17642,7 +18759,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a84
+                        enum: *a90
                       lenderReference:
                         type:
                           - string
@@ -17651,7 +18768,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a85
+                        enum: *a91
                       submittedAt:
                         type:
                           - string
@@ -17664,7 +18781,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a86
+                        enum: *a92
                       lastStatusAt:
                         type:
                           - string
@@ -17673,7 +18790,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a87
+                        enum: *a93
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -18188,7 +19305,7 @@ paths:
                             - "null"
                         verificationType:
                           type: string
-                          enum: &a89
+                          enum: &a95
                             - DOCUMENT_REVIEW
                             - IDENTITY_KYC
                             - RESIDENCE_FI
@@ -18197,7 +19314,7 @@ paths:
                             - BANK_STATEMENT
                         status:
                           type: string
-                          enum: &a91
+                          enum: &a97
                             - INITIATED
                             - ASSIGNED
                             - IN_PROGRESS
@@ -18209,7 +19326,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a92
+                          enum: &a98
                             - POSITIVE
                             - NEGATIVE
                             - REFER_TO_CREDIT
@@ -18226,7 +19343,7 @@ paths:
                           type: string
                         priority:
                           type: string
-                          enum: &a90
+                          enum: &a96
                             - HIGH
                             - MEDIUM
                             - LOW
@@ -18250,7 +19367,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a93
+                          enum: &a99
                             - ADDRESS_NOT_FOUND
                             - APPLICANT_UNKNOWN
                             - DOCUMENT_FORGED
@@ -18333,7 +19450,7 @@ paths:
                     - "null"
                 verificationType:
                   type: string
-                  enum: *a89
+                  enum: *a95
                 assignedToUserId:
                   type:
                     - string
@@ -18347,7 +19464,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a90
+                  enum: *a96
                   default: MEDIUM
                 scheduledAt:
                   type:
@@ -18391,15 +19508,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a95
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a97
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a98
                   assignedToUserId:
                     type:
                       - string
@@ -18412,7 +19529,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a96
                   scheduledAt:
                     type:
                       - string
@@ -18433,7 +19550,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a99
                   checklistItmIds:
                     type: array
                     items:
@@ -18507,15 +19624,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a95
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a97
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a98
                   assignedToUserId:
                     type:
                       - string
@@ -18528,7 +19645,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a96
                   scheduledAt:
                     type:
                       - string
@@ -18549,7 +19666,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a99
                   checklistItmIds:
                     type: array
                     items:
@@ -18610,10 +19727,10 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a91
+                  enum: *a97
                 priority:
                   type: string
-                  enum: *a90
+                  enum: *a96
                 assignedToUserId:
                   type:
                     - string
@@ -18659,15 +19776,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a95
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a97
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a98
                   assignedToUserId:
                     type:
                       - string
@@ -18680,7 +19797,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a96
                   scheduledAt:
                     type:
                       - string
@@ -18701,7 +19818,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a99
                   checklistItmIds:
                     type: array
                     items:
@@ -18762,14 +19879,14 @@ paths:
               properties:
                 outcome:
                   type: string
-                  enum: *a92
+                  enum: *a98
                 findingsSummary:
                   type: string
                   minLength: 5
                   maxLength: 2000
                 rejectionReason:
                   type: string
-                  enum: *a93
+                  enum: *a99
                 markStatus:
                   type: string
                   enum:
@@ -18805,15 +19922,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a89
+                    enum: *a95
                   status:
                     type: string
-                    enum: *a91
+                    enum: *a97
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a92
+                    enum: *a98
                   assignedToUserId:
                     type:
                       - string
@@ -18826,7 +19943,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a90
+                    enum: *a96
                   scheduledAt:
                     type:
                       - string
@@ -18847,7 +19964,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a93
+                    enum: *a99
                   checklistItmIds:
                     type: array
                     items:
@@ -19213,7 +20330,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a94
+                    enum: &a100
                       - RECEIVED
                       - DUPLICATE_SUSPECTED
                       - QUALIFIED
@@ -19286,7 +20403,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a94
+                    enum: *a100
                   requestedAmount:
                     type: object
                     properties:
@@ -19342,7 +20459,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a94
+            enum: *a100
           required: false
           name: status
           in: query
@@ -19387,7 +20504,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         status:
                           type: string
-                          enum: *a94
+                          enum: *a100
                         requestedAmount:
                           type: object
                           properties:
@@ -19480,7 +20597,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a94
+                    enum: *a100
                   requestedAmount:
                     type: object
                     properties:
@@ -19589,7 +20706,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a95
+                    enum: &a101
                       - DRAFT
                       - SUBMITTED
                       - UNDERWRITING
@@ -19662,7 +20779,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a95
+                    enum: *a101
                   appliedAmount:
                     type: object
                     properties:
@@ -19873,7 +20990,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a97
+                    enum: &a103
                       - lead.created
                       - lead.duplicate_flagged
                       - lead.qualified
@@ -19921,7 +21038,7 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: &a96
+                    enum: &a102
                       - ACTIVE
                       - PAUSED
                       - REVOKED
@@ -19983,7 +21100,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: *a96
+                          enum: *a102
                         failureCount:
                           type: integer
                         lockVersion:
@@ -20092,7 +21209,7 @@ paths:
                   pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
                 eventType:
                   type: string
-                  enum: *a97
+                  enum: *a103
                 customData:
                   type: object
                   additionalProperties: {}
@@ -20162,7 +21279,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a98
+            enum: &a104
               - USER
               - SERVICE
           required: false
@@ -20247,7 +21364,7 @@ paths:
                           format: date-time
                         actorType:
                           type: string
-                          enum: *a98
+                          enum: *a104
                         actorId:
                           type: string
                         action:
@@ -20559,7 +21676,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a99
+                    enum: &a105
                       - PENDING
                       - PROCESSING
                       - COMPLETED
@@ -20639,7 +21756,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: *a99
+                          enum: *a105
                         filters:
                           type: object
                           additionalProperties: {}
@@ -20732,7 +21849,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a99
+                    enum: *a105
                   filters:
                     type: object
                     additionalProperties: {}

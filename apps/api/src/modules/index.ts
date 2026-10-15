@@ -17,6 +17,8 @@ import * as connectors from './origination/connectors/router';
 import * as lenderCases from './origination/lender-cases/router';
 import * as sanctions from './origination/sanctions/router';
 import * as platform from './platform/router';
+import * as platformAdmin from './platform-admin/router';
+import * as integrations from './integrations/router';
 import * as rulesApi from './rules/api/router';
 import * as verification from './verification/router';
 import * as automation from './automation/router';
@@ -26,6 +28,8 @@ import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
   { name: 'platform', owner: 'Dev 1', createRouter: platform.createRouter },
+  { name: 'platform-admin', owner: 'Dev 1', createRouter: platformAdmin.createRouter },
+  { name: 'integrations', owner: 'Dev 1', createRouter: integrations.createRouter },
   { name: 'crm/leads', owner: 'Dev 5', createRouter: leads.createRouter },
   { name: 'crm/customers', owner: 'Dev 5', createRouter: customers.createRouter },
   { name: 'crm/activities', owner: 'Dev 5', createRouter: activities.createRouter },
