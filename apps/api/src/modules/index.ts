@@ -27,6 +27,7 @@ import * as automation from './automation/router';
 import * as partnerApi from './partner-api/router';
 import * as audit from './audit/router';
 import * as imports from './platform/imports/router';
+import * as security from './security/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
@@ -57,5 +58,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'automation', owner: 'Dev 1 / Dev 6', createRouter: automation.createRouter },
   { name: 'partner-api', owner: 'Dev 2 / Dev 6', createRouter: partnerApi.createRouter },
   { name: 'audit', owner: 'Dev 1 / Dev 6', createRouter: audit.createRouter },
+  { name: 'security', owner: 'Dev 1 / Platform', createRouter: security.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.

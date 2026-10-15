@@ -31,6 +31,7 @@ export * from './import-export';
 export * from './compliance';
 export * from './platform-admin';
 export * from './integrations';
+export * from './security';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';
