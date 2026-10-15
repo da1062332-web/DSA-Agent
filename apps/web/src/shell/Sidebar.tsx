@@ -88,7 +88,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Team and performance (DOM-I)',
     items: [
-      { label: 'Performance', task: 'MOD-PERF' },
+      { label: 'Performance Dashboard', to: '/performance' },
+      { label: 'Targets', to: '/targets' },
+      { label: 'Leaderboard', to: '/performance/leaderboard' },
       { label: 'Workforce', task: 'MOD-WRK' },
     ],
   },
@@ -111,7 +113,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Reporting (DOM-L)',
-    items: [{ label: 'Reports', task: 'MOD-RPT' }],
+    items: [
+      { label: 'Reports & Catalogue', to: '/reports' },
+      { label: 'Performance Dashboards', to: '/performance' },
+    ],
   },
   {
     title: 'Integrations and API (DOM-M)',
@@ -140,7 +145,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Access control', to: '/roles' },
       { label: 'Configuration', to: '/config' },
       { label: 'Platform Console', to: '/platform-admin' },
-      { label: 'Import and export', task: 'MOD-IMP' },
+      { label: 'Import and export', to: '/admin/import-export' },
     ],
   },
 ];

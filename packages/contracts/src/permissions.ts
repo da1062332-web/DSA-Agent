@@ -77,6 +77,12 @@ export const PERMISSION_CODES = [
   'partner.lead_ingest',
   'partner.application_read',
   'webhook.manage',
+  'target.manage',
+  'report.read',
+  'report.manage',
+  'report.schedule',
+  'import.run',
+  'export.run',
   'platform.console',
   'platform.flags',
   'platform.master_data',
@@ -90,3 +96,4 @@ export const PERMISSION_CODES = [
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
+
