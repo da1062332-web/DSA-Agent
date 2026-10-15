@@ -103,7 +103,20 @@ async function signature(): Promise<unknown> {
   };
 }
 
-const checks = async (file: string) => (await db.query(sqlOf(file))).rows as { name?: string; actual?: string; severity?: string; result: string }[];
+/**
+ * Runs a read-only check script on a FRESH connection, as the hosted CLI does. The connection that applied the migration has run
+ * SET search_path = app, so on it PostgreSQL prints policy expressions as app_tenant(); a fresh session prints app.app_tenant(),
+ * which is what hosted shows. Checking on the old connection hid a real defect in verify.sql.
+ */
+const checks = async (file: string) => {
+  const fresh = new pg.Client({ connectionString: container.getConnectionUri() });
+  await fresh.connect();
+  try {
+    return (await fresh.query(sqlOf(file))).rows as { name?: string; actual?: string; severity?: string; result: string }[];
+  } finally {
+    await fresh.end();
+  }
+};
 const applyFile = () => wrap(readFileSync(MIGRATION, 'utf8'));
 const backupFile = path.join(work, 'backup-before.json');
 

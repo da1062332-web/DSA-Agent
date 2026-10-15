@@ -106,7 +106,7 @@ Not touched: any user, any business table, any other role, `data_correction.appr
 ## 6. Hosted read-only results so far (2026-10-15)
 
 - Linked project: `DSA-Agent` (`mlpkwwhnagxzinaohdxg`, ap-south-1, PostgreSQL 17.11, healthy). The other two projects on the account are in a different organisation and are not linked.
-- Executing role: `postgres`, not superuser, **`rolbypassrls = true`**. It can `SET ROLE dsa_api` (member, no privilege inheritance); `dsa_api` does not bypass RLS.
+- Executing role: `postgres`, not superuser, **`rolbypassrls = true`**; `dsa_api` does not bypass RLS. **`postgres` cannot `SET ROLE dsa_api`.** It is a member of `dsa_api` but without the `SET` option (`pg_has_role('postgres','dsa_api','SET')` is `false`; on PostgreSQL 16 and later `MEMBER` is not enough). An earlier version of this document said it could; that was a wrong test, found when a harmless probe on hosted failed with `permission denied to set role "dsa_api"`. No privilege was granted to work around it. Real role enforcement is therefore tested by connecting **as** `dsa_api` (`enforcement-check.mjs`), not by switching to it.
 - No migration-history table exists (nothing to repair; do not run `migration repair`).
 - No id, slug, role or function collisions. Constraint names the migration drops by name exist.
 - Preflight (`tools/sql/0050/preflight.sql`): **15 of 15 required rows PASS.**
@@ -127,12 +127,26 @@ All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 | `platform-realm.int.spec.ts` (real PostgreSQL, RLS applies) | 13 passed on 16 and on 17 |
 | `provision-platform-admin.int.spec.ts` | 10 passed |
 | `platform-realm-ops.int.spec.ts` (runbook rehearsal) | 9 passed |
+| `platform-realm-enforcement.int.spec.ts` (both verification scripts, six deliberate breaks) | 13 passed |
+| Realm, provisioning, runbook and verification suites together | 45 of 45 on PostgreSQL 16 and 45 of 45 on 17 |
 | `eligibility.int.spec.ts` | 6 passed |
 | Live regression on corrected migrations (platform, provision, ops, eligibility, applications, grievances, catalogue, platform.int, mfa.int) | 99 of 100; the one failure is below |
 | Isolation suite | 31 of 32; the failure is the inventory check below |
 | Lint on changed files | clean, except 3 errors in `platform-admin-service.ts` that exist unchanged in the committed original |
 
-**What the rehearsal proves** (`platform-realm-ops.int.spec.ts`): on a database built to match hosted's pre-state, the real scripts run in runbook order. Preflight passes; backup is consistent; apply in one transaction passes all of `verify.sql`; `verify-behaviour.sql` passes every line as the API role and leaves nothing behind; applying twice fails whole and changes nothing; rollback restores the signature (policies, constraints, columns, RLS, grants, role-permission rows, roles, tenants, functions, row counts) **exactly**; preflight passes again after rollback; apply works again after rollback; with platform audit events present, rollback suspends the platform tenant but still restores everything else; rollback refuses, changing nothing, when API-shaped corrections exist.
+**What the rehearsal proves** (`platform-realm-ops.int.spec.ts`): on a database built to match hosted's pre-state, the real scripts run in runbook order. Preflight passes; backup is consistent; apply in one transaction passes all of `verify.sql`; `verify-behaviour.sql` (policy logic and enforcement preconditions, run as `postgres`) passes every line and leaves nothing behind; applying twice fails whole and changes nothing; rollback restores the signature (policies, constraints, columns, RLS, grants, role-permission rows, roles, tenants, functions, row counts) **exactly**; preflight passes again after rollback; apply works again after rollback; with platform audit events present, rollback suspends the platform tenant but still restores everything else; rollback refuses, changing nothing, when API-shaped corrections exist.
+
+**What each verification script proves, and does not** (`platform-realm-enforcement.int.spec.ts`, 13 tests, run on a role built like hosted's `postgres`: not a superuser, bypasses RLS, no `SET` on `dsa_api`):
+
+| Script | Runs as | Proves | Does **not** prove |
+|---|---|---|---|
+| `verify.sql` | `postgres` | The structure is as designed: tenant, roles, grants, policies and constraints exist with the expected definitions; functions have the right security settings and privileges | That any policy is applied to anyone |
+| `verify-behaviour.sql` | `postgres` (no role switch) | **`[ENFORCEMENT-PRECONDITIONS]`**: RLS is enabled and forced on all five protected tables; `dsa_api` is not a superuser, cannot bypass RLS and owns none of them; every policy is permissive. **`[POLICY-LOGIC]`**: the real policy expressions, read from `pg_policies`, give the right answer for a platform session, a customer session and a session with no tenant: which rows would be seen, which writes (for hypothetical rows) would be allowed or refused | That PostgreSQL **enforces** the policies on `dsa_api`. `postgres` is exempt from RLS, so this script cannot test enforcement, and it says so in its output |
+| `enforcement-check.mjs` | **`dsa_api` itself** (from `DATABASE_URL`) | **`[ROLE-ENFORCEMENT]`**: with the real API role, a platform session sees all tenants and a customer session only its own; refused writes are really refused (SQLSTATE 42501) for flags, master data, support requests and corrections; a platform session cannot approve a support request or read corrections or business rows; the user-count function is refused outside the platform realm. `--with-writes` also proves the allowed writes work. Everything runs in one transaction that is always rolled back | Nothing about other roles; it refuses to run as a superuser, `postgres`, `service_role` or any role that bypasses RLS, because the result would mean nothing |
+
+"Enforced" means: the preconditions in `verify-behaviour.sql` pass **and** `enforcement-check.mjs` passes. Either alone is not enough.
+
+**These scripts can fail.** The rehearsal breaks the policies on purpose and requires both scripts to notice, then undoes each break: a permissive flag-insert policy; RLS switched off on the support table; a policy that shows data corrections to the platform realm; a platform UPDATE policy on support requests; a platform policy on `customer`; `dsa_api` given BYPASSRLS (preconditions fail and the enforcement script refuses to run); and `is_platform_realm()` returning NULL with no tenant. All six are caught, and after each undo both scripts pass again. Verified on PostgreSQL 16 and 17.
 
 **Failures that are not caused by this work (evidence):**
 
@@ -144,7 +158,7 @@ All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 | Fresh database cannot be built from beta | Akash's `0019_verification.sql` needs a table made in `0021`; `0037` and `0042` insert into a column `task_ref` that does not exist. The tests use a corrected copy of the migrations folder through `DSA_MIGRATIONS_DIR`. Hosted is unaffected. |
 | 3 lint errors in `platform-admin-service.ts` | Identical in the committed original. |
 
-**Not tested:** anything through a real Supabase Auth login (needs your TOTP), the API running against hosted, and the new Approvals screen in a browser. Those are in section 10.
+**Not tested:** anything through a real Supabase Auth login (needs your TOTP), the API running against hosted, the new Approvals screen in a browser, and **`enforcement-check.mjs` and `verify-behaviour.sql` against the hosted database** (they need the migration applied first; both were rehearsed on throwaway PostgreSQL only). Those are in sections 8 and 10.
 
 ## 8. Commands, in order
 
@@ -160,10 +174,14 @@ Working directory for every command: `C:\Users\Vaibhav\Desktop\Work\Qloax Intern
 | 6 | `node tools/sql/0050/restore-grants.mjs ~/dsa-backups/0050/backup-before.json > ~/dsa-backups/0050/restore-grants.sql` | R (local) | first line `Restores 702 role_permission rows` | do not apply without a restorable backup |
 | 7 | `( echo "BEGIN;"; cat supabase/migrations/20261001000050_platform_realm.sql; echo; echo "COMMIT;" ) > ~/dsa-backups/0050/apply-run.sql` then `sha256sum supabase/migrations/20261001000050_platform_realm.sql` | R (local) | `d8029ef5…eb2a` | a different checksum means the file changed: stop and re-review |
 | 8 | **`npx supabase db query --linked -f ~/dsa-backups/0050/apply-run.sql`** | **W** | no error; rows `[]` | **any error: stop, do not retry.** Run step 3 again to see the state, then decide (it is one transaction, so a failure should leave nothing applied) |
-| 9 | `npx supabase db query --linked -f tools/sql/0050/verify.sql` | R | every row `PASS` | see section 12 for rollback |
-| 10 | `npx supabase db query --linked -f tools/sql/0050/verify-behaviour.sql` | R (rolls back on purpose) | an **error message** starting `VERIFY-BEHAVIOUR (rolled back on purpose)` followed by `PASS \|` lines and no `FAIL` | a different error message means the script itself failed |
+| 9 | `npx supabase db query --linked -f tools/sql/0050/verify.sql` | R | every row `PASS` (32 rows) | see section 11 for rollback |
+| 10 | `npx supabase db query --linked -f tools/sql/0050/verify-behaviour.sql` | R (raises on purpose, writes nothing) | an **error message** that starts `VERIFY-BEHAVIOUR (rolled back on purpose). RESULT: PASS=<n> FAIL=0.` and lists `PASS \|` lines tagged `[ENFORCEMENT-PRECONDITIONS]` and `[POLICY-LOGIC]` | any `FAIL` line: stop and read it. An error that does **not** start with `VERIFY-BEHAVIOUR` means the script itself failed (for example `ABORT: needs at least two customer tenants`) |
+| 11 | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs` | R (refused writes only; one transaction, always rolled back) | lines `PASS \| [ROLE-ENFORCEMENT] ...`, ending `RESULT: PASS=<n> FAIL=0 SKIP=<k>. The transaction was rolled back: nothing was kept.` and exit code 0 | `FAIL` means enforcement is not what the design says: do not provision users; run section 11 rollback if needed. Exit code 2 means it refused to run (wrong role in `DATABASE_URL`) |
+| 12 | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs --with-writes` (optional) | T: runs INSERT and UPDATE statements **inside the transaction, then rolls it back**; nothing is kept | the same, with the allowed-write lines now `PASS` instead of `SKIP` | as step 11 |
 
-Steps 1 to 7 change nothing on hosted. Step 8 is the only write. After step 10, go to section 9.
+`SKIP` lines are not passes: they mean there was nothing to look at (for example no support request exists) or a check is opt-in. Step 11 reads and attempts writes that must be refused. If you do not want the script to execute any INSERT or UPDATE statement at all, even refused ones, skip steps 11 and 12 and rely on step 10 plus the API checks in section 10; the document then calls enforcement *unproven on hosted*.
+
+Steps 1 to 7 change nothing on hosted. Step 8 is the only write. After step 11 (and 12 if you choose), go to section 9.
 
 ## 9. Creating the first platform superadmin (separate write, separate confirmation)
 
@@ -227,6 +245,7 @@ Everything is committed on local `beta`; nothing is pushed. To deliver:
 - No per-action step-up for platform operators beyond mandatory MFA; no tenant lifecycle endpoints (`platform.tenant.*` are not in the permission catalogue).
 - The two leftover hosted test rows (one support request, one correction) and the extra test feature flag are not deleted (that would be a hosted write). Piyush's live tests still insert rows into hosted when `DATABASE_URL` points there: run integration suites by file name only.
 - Isolation coverage: 107 other operations have no isolation case.
+- On hosted, `postgres` cannot `SET ROLE dsa_api` (no `SET` option on the membership). I did not grant it, because that would widen what the migration role can do just to make a test run. Role enforcement is tested by `enforcement-check.mjs` connecting as `dsa_api` instead.
 - Hosted drift: `app_user.password_hash` exists outside any migration.
 
 ## 14. Checklist
@@ -238,11 +257,11 @@ Everything is committed on local `beta`; nothing is pushed. To deliver:
 | Done | Mandatory MFA for platform permissions (API and web lists) |
 | Done | Tenant-side Approvals screen; console cleaned of tenant actions and fake data |
 | Done | Provisioning tool with dry run, recovery and cleanup |
-| Done | Preflight, backup, verify, behaviour and rollback scripts, rehearsed on PostgreSQL 16 and 17 |
+| Done | Preflight, backup, verify, behaviour, role-enforcement and rollback scripts, rehearsed on PostgreSQL 16 and 17, including deliberate breaks |
 | Done | Hosted read-only preflight (15 of 15) and a verified, restore-tested backup |
 | Done | Tests and documentation; local commits |
 | Pending (you) | Confirm the exact hosted write (step 8) after reading section 4 and the checksum |
-| Pending (you) | Create the first platform superadmin (section 9) and run the checks in section 10 |
+| Pending (you) | Run steps 9 to 11 on hosted after applying; create the first platform superadmin (section 9) and run the checks in section 10 |
 | Pending (you) | Push, when you decide (section 12) |
 | Blocked | Applying through CI or a fresh database until Akash's migrations 0019, 0037 and 0042 are corrected |
 | Open follow-ups | Persisting flags and master data; building the correction executor; isolation cases for the other 107 operations; the one workflow test with a hard-coded date |
