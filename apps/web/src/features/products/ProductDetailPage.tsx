@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardContent,
@@ -15,7 +14,6 @@ import {
   DialogTitle,
   Divider,
   Grid,
-  Paper,
   Stack,
   Table,
   TableBody,
@@ -33,7 +31,6 @@ import { createProductVersion, fetchProductById } from './api';
 import type {
   CreateProductVersionInput,
   LoanProduct,
-  ProductVersion,
 } from './types';
 
 export function ProductDetailPage() {

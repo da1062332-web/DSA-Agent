@@ -64,7 +64,7 @@ export function ProductCataloguePage() {
   const [formLenderId, setFormLenderId] = useState<string>('');
   const [formName, setFormName] = useState<string>('');
   const [formCategory, setFormCategory] = useState<ProductCategory>('HOME_LOAN');
-  const [formApplicantTypes, setFormApplicantTypes] = useState<string[]>(['SALARIED', 'SELF_EMPLOYED']);
+  const [formApplicantTypes] = useState<string[]>(['SALARIED', 'SELF_EMPLOYED']);
   const [formSecured, setFormSecured] = useState<boolean>(true);
   const [formAmountMin, setFormAmountMin] = useState<number>(500000);
   const [formAmountMax, setFormAmountMax] = useState<number>(50000000);
