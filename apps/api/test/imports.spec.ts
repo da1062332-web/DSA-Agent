@@ -3,6 +3,7 @@ import type { RequestContext, Tx, TxRunner } from '@dsa/contracts';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryImportRepository } from '../src/modules/platform/imports/repository';
+import { InMemoryReportingRepository } from '../src/modules/reporting/repository';
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
 const inMemoryTxRunner: TxRunner = {
@@ -15,6 +16,7 @@ const inMemoryTxRunner: TxRunner = {
 
 describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   let repository: InMemoryImportRepository;
+  let reportingRepo: InMemoryReportingRepository;
 
   const tenantA = 'ten_tenant_alpha';
   const tenantB = 'ten_tenant_beta';
@@ -23,10 +25,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     tenantId: tenantA,
     id: 'usr_importer_a',
     primaryBranchId: 'brn_a1',
+    authTime: new Date().toISOString(),
     grants: [
       { code: 'lead.create', scope: 'TENANT', branchIds: [] },
       { code: 'customer.create', scope: 'TENANT', branchIds: [] },
       { code: 'import.run', scope: 'TENANT', branchIds: [] },
+      { code: 'export.run', scope: 'TENANT', branchIds: [] },
     ],
   });
 
@@ -34,21 +38,25 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     tenantId: tenantA,
     id: 'usr_unauth',
     primaryBranchId: 'brn_a1',
-    grants: [], // No import or create permissions
+    authTime: null,
+    grants: [], // No import, export, or create permissions
   });
 
   const tenantBUser = testPrincipal({
     tenantId: tenantB,
     id: 'usr_importer_b',
     primaryBranchId: 'brn_b1',
+    authTime: new Date().toISOString(),
     grants: [
       { code: 'lead.create', scope: 'TENANT', branchIds: [] },
       { code: 'import.run', scope: 'TENANT', branchIds: [] },
+      { code: 'export.run', scope: 'TENANT', branchIds: [] },
     ],
   });
 
   beforeEach(() => {
     repository = new InMemoryImportRepository();
+    reportingRepo = new InMemoryReportingRepository();
   });
 
   function getApp(principal = importerUserA) {
@@ -57,6 +65,7 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
       deps: {
         txRunner: inMemoryTxRunner,
         importRepository: repository,
+        reportingRepository: reportingRepo,
         audit: {
           record: async () => 'aud_test',
         },
@@ -409,7 +418,7 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     expect(rollbackRes.body.error?.message).toContain('24-hour rollback window');
   });
 
-  it('TC-IMP-013 enforces cross-tenant isolation and blocks Tenant B from accessing Tenant A batch', async () => {
+  it('TC-IMP-013 enforces cross-tenant isolation across all import operations', async () => {
     const appA = getApp(importerUserA);
     const appB = getApp(tenantBUser);
 
@@ -424,15 +433,150 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
 
     const batchId = createRes.body.id;
 
-    // Tenant B attempts to read Tenant A's batch
+    // Tenant B attempts to read Tenant A's batch -> 404
     const getRes = await request(appB).get(`/v1/imports/${batchId}`);
     expect(getRes.status).toBe(404);
 
-    // Tenant B attempts to rollback Tenant A's batch
+    // Tenant B attempts to configure mapping on Tenant A's batch -> 404
+    const mapRes = await request(appB)
+      .post(`/v1/imports/${batchId}/mapping`)
+      .send({
+        columnMapping: { 'Full Name': 'fullName', 'Phone Number': 'mobile' },
+      });
+    expect(mapRes.status).toBe(404);
+
+    // Tenant B attempts to commit Tenant A's batch -> 404
+    const commitRes = await request(appB).post(`/v1/imports/${batchId}/commit`).send({});
+    expect(commitRes.status).toBe(404);
+
+    // Tenant B attempts to download Tenant A's validation error report -> 404
+    const reportRes = await request(appB).get(`/v1/imports/${batchId}/report`);
+    expect(reportRes.status).toBe(404);
+
+    // Tenant B attempts to rollback Tenant A's batch -> 404
     const rollbackRes = await request(appB)
       .post(`/v1/imports/${batchId}/rollback`)
       .send({ reason: 'Cross-tenant tampering attempt' });
-
     expect(rollbackRes.status).toBe(404);
+
+    // Tenant B lists batches -> Tenant A's batch is not present
+    const listRes = await request(appB).get('/v1/imports');
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data.some((b: any) => b.id === batchId)).toBe(false);
+  });
+
+  it('TC-IMP-014 verifies export authentication, MFA step-up controls, and cross-tenant isolation', async () => {
+    const appAuthorized = getApp(importerUserA);
+    const appUnauth = getApp(unauthorizedUser);
+    const appTenantB = getApp(tenantBUser);
+
+    // 1. Missing permission -> 403 FORBIDDEN
+    const forbiddenRes = await request(appUnauth)
+      .post('/v1/exports')
+      .send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
+    expect(forbiddenRes.status).toBe(403);
+
+    // 2. Missing/stale MFA authTime -> 401 STEP_UP_REQUIRED
+    const staleUser = testPrincipal({
+      tenantId: tenantA,
+      id: 'usr_stale_exp',
+      primaryBranchId: 'brn_a1',
+      authTime: null,
+      grants: [{ code: 'export.run', scope: 'TENANT', branchIds: [] }],
+    });
+    const appStale = getApp(staleUser);
+    const stepUpRes = await request(appStale)
+      .post('/v1/exports')
+      .send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
+    expect(stepUpRes.status).toBe(401);
+    expect(stepUpRes.body.error?.code).toBe('STEP_UP_REQUIRED');
+
+    // 3. Authorized caller with fresh MFA -> 201 CREATED
+    const successRes = await request(appAuthorized)
+      .post('/v1/exports')
+      .send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
+    expect(successRes.status).toBe(201);
+    const exportId = successRes.body.id;
+
+    // 4. Cross-tenant export access -> 404
+    const crossTenantGet = await request(appTenantB).get(`/v1/exports/${exportId}`);
+    expect(crossTenantGet.status).toBe(404);
+
+    const crossTenantDl = await request(appTenantB).get(`/v1/exports/${exportId}/download`);
+    expect(crossTenantDl.status).toBe(404);
+  });
+
+  it('TC-IMP-015 verifies end-to-end 24-hour rollback lifecycle', async () => {
+    const app = getApp(importerUserA);
+
+    const createRes = await request(app)
+      .post('/v1/imports')
+      .send({
+        targetEntity: 'LEAD',
+        fileFormat: 'CSV',
+        filename: 'leads_lifecycle_rollback.csv',
+        contentBase64: sampleCsvContent,
+      });
+
+    const batchId = createRes.body.id;
+
+    await request(app)
+      .post(`/v1/imports/${batchId}/mapping`)
+      .send({
+        columnMapping: {
+          'Full Name': 'fullName',
+          'Phone Number': 'mobile',
+        },
+      });
+
+    await request(app).post(`/v1/imports/${batchId}/commit`).send({});
+
+    // Rollback within 24h succeeds
+    const rollbackRes = await request(app)
+      .post(`/v1/imports/${batchId}/rollback`)
+      .send({ reason: 'Operator requested rollback within SLA' });
+
+    expect(rollbackRes.status).toBe(200);
+    expect(rollbackRes.body.status).toBe('ROLLED_BACK');
+    expect(rollbackRes.body.rolledBackAt).toBeDefined();
+
+    // Idempotent repeat rollback returns the already rolled back batch with 200 OK
+    const repeatRes = await request(app)
+      .post(`/v1/imports/${batchId}/rollback`)
+      .send({ reason: 'Repeated rollback attempt' });
+    expect(repeatRes.status).toBe(200);
+    expect(repeatRes.body.status).toBe('ROLLED_BACK');
+
+    // Attempting to rollback an uncommitted/mapped batch fails with 422 VALIDATION_ERROR
+    const uncommittedBatch = await request(app)
+      .post('/v1/imports')
+      .send({
+        targetEntity: 'LEAD',
+        fileFormat: 'CSV',
+        filename: 'uncommitted.csv',
+        contentBase64: sampleCsvContent,
+      });
+    const uncommittedId = uncommittedBatch.body.id;
+
+    const invalidRollback = await request(app)
+      .post(`/v1/imports/${uncommittedId}/rollback`)
+      .send({ reason: 'Premature rollback attempt' });
+    expect(invalidRollback.status).toBe(422);
+    expect(invalidRollback.body.error?.code).toBe('VALIDATION_ERROR');
   });
 });

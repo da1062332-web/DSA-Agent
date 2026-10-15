@@ -1,4 +1,4 @@
--- 20261001000031_report_manage_permission.sql (owner: Dev 5, TASK-414, MOD-RPT Privileged Refresh)
+-- 20261001000036_report_manage_permission.sql (owner: Dev 5, TASK-414, MOD-RPT Privileged Refresh)
 -- Privileged permission for refreshing reporting projections and managing reporting engine.
 SET search_path = app, extensions, public;
 
