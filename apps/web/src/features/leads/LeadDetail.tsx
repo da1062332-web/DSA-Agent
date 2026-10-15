@@ -253,6 +253,16 @@ export function LeadDetail() {
                 Assign
               </Button>
             )}
+
+            <Button
+              variant="outlined"
+              color="warning"
+              component={RouterLink}
+              to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
+              data-testid="lead.action.grievance"
+            >
+              Grievance / Complaint
+            </Button>
           </Stack>
         </Stack>
       </Box>
@@ -474,6 +484,33 @@ export function LeadDetail() {
                   <Typography variant="caption" color="text.secondary">Created At</Typography>
                   <Typography variant="body1">{new Date(lead.createdAt).toLocaleString()}</Typography>
                 </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Grievance & Complaints Integration */}
+        <Grid item xs={12}>
+          <Card sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+            <CardContent>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2}>
+                <Box>
+                  <Typography variant="h6" fontWeight="semibold">
+                    Grievances & Customer Complaints
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Registered complaints for this lead are linked to the Grievances module (MOD-GRV).
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  component={RouterLink}
+                  to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
+                  data-testid="lead.view-grievances"
+                >
+                  Manage Lead Complaints →
+                </Button>
               </Stack>
             </CardContent>
           </Card>

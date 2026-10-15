@@ -37,7 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Leads and customers (DOM-B)',
     items: [
       { label: 'Leads', to: '/leads' },
-      { label: 'Customers', task: 'MOD-CUST' },
+      { label: 'Customers', to: '/customers' },
     ],
   },
   {
