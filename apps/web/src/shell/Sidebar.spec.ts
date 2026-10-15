@@ -54,6 +54,17 @@ describe('platform realm in the sidebar', () => {
     expect(visibleGroups(false, (c) => operator.has(c)).flatMap((g) => g.items.map((i) => i.label))).not.toContain('Users');
   });
 
+  it('TEST-REALM-WEB-004 in the platform realm the menu has no tenant screens, whatever the permissions', () => {
+    const everything = () => true;
+    // Not an admin: a platform operator holds no config.manage or user.manage, and still needs the Platform Console.
+    const shown = visibleGroups(false, everything, true).flatMap((g) => g.items.map((i) => i.label));
+    expect([...shown].sort()).toEqual(['Home', 'Platform Console', 'Security']);
+    for (const tenantScreen of ['Leads', 'Customers', 'Payouts', 'Workforce', 'Invoices', 'Reconciliation', 'Approvals'])
+      expect(shown).not.toContain(tenantScreen);
+    // A customer tenant is unaffected, and still has no Platform Console without the permission.
+    expect(visibleGroups(true, everything, false).flatMap((g) => g.items).length).toBeGreaterThan(30);
+  });
+
   it('TEST-REALM-WEB-003 the Platform Console item needs platform.console even for an admin', () => {
     expect(labels((c) => c === 'config.manage' || c === 'user.manage', true)).not.toContain('Platform Console');
     expect(labels((c) => c === 'platform.console', true)).toContain('Platform Console');

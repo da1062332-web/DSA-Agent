@@ -163,25 +163,40 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+/** A platform operator has no customer data, so the menu offers only these screens (the API refuses the rest anyway). */
+const PLATFORM_REALM_SCREENS = new Set(['/', '/platform-admin', '/account/security']);
+
 /** Groups and items the current user may see. A group with no visible item is dropped. */
-export function visibleGroups(isAdmin: boolean, can: (code: string) => boolean = () => true): NavGroup[] {
-  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin)
-    .map((g) => ({ ...g, items: g.items.filter((i) => !i.anyOf || i.anyOf.some(can)) }))
+export function visibleGroups(
+  isAdmin: boolean,
+  can: (code: string) => boolean = () => true,
+  platformRealm = false,
+): NavGroup[] {
+  // A platform operator holds no tenant admin permission, yet its one admin-group screen is the Platform Console.
+  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm)
+    .map((g) => ({
+      ...g,
+      items: g.items.filter(
+        (i) => (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
+      ),
+    }))
     .filter((g) => g.items.length > 0);
 }
 
 export function SidebarContent({
   isAdmin,
   can,
+  platformRealm,
   onNavigate,
 }: {
   isAdmin: boolean;
   can?: (code: string) => boolean;
+  platformRealm?: boolean;
   onNavigate?: () => void;
 }) {
   return (
     <Box data-testid="shell.sidebar" sx={{ py: 1, pb: 6 }}>
-      {visibleGroups(isAdmin, can).map((group, i) => (
+      {visibleGroups(isAdmin, can, platformRealm).map((group, i) => (
         <Box key={group.title}>
           {i > 0 && <Divider sx={{ my: 1 }} />}
           <List
