@@ -27,6 +27,7 @@ import * as automation from './automation/router';
 import * as partnerApi from './partner-api/router';
 import * as audit from './audit/router';
 import * as imports from './platform/imports/router';
+import * as workforce from './crm/workforce/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
@@ -44,6 +45,7 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
   { name: 'crm/targets', owner: 'Dev 5', createRouter: targets.createRouter },
+  { name: 'crm/workforce', owner: 'Dev 1', createRouter: workforce.createRouter },
   { name: 'reporting', owner: 'Dev 5', createRouter: reporting.createRouter },
   { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },
   { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
