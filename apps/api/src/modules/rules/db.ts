@@ -220,6 +220,141 @@ export async function listDecisionDefinitions(
   return result.rows.map((row) => formatDecisionDefinition(row, depMap.get(row.key) || []));
 }
 
+export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinition {
+  switch (decisionKey) {
+    case 'DK-application.eligibility':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        defaultOutput: {
+          result: 'REFER',
+          maxEligibleAmount: null,
+          reasons: [{ code: 'MANUAL_REVIEW', text: 'Application requires manual underwriting review' }],
+        },
+        rules: [
+          {
+            uid: 'RUL-ELG-001',
+            name: 'Minimum Credit Score Failure',
+            orderNo: 0,
+            enabled: true,
+            conditions: [
+              { field: 'applicant.credit_score', operator: '<', value: 650 },
+            ],
+            output: {
+              result: 'INELIGIBLE',
+              maxEligibleAmount: null,
+              reasons: [{ code: 'LOW_CREDIT_SCORE', text: 'Credit score is below the minimum required threshold of 650' }],
+            },
+          },
+          {
+            uid: 'RUL-ELG-002',
+            name: 'Age Criteria Failure',
+            orderNo: 1,
+            enabled: true,
+            conditions: [
+              { field: 'applicant.age', operator: '<', value: 21 },
+            ],
+            output: {
+              result: 'INELIGIBLE',
+              maxEligibleAmount: null,
+              reasons: [{ code: 'AGE_CRITERIA_FAILED', text: 'Applicant is below the minimum entry age of 21 years' }],
+            },
+          },
+          {
+            uid: 'RUL-ELG-003',
+            name: 'Standard Eligible Assessment',
+            orderNo: 2,
+            enabled: true,
+            conditions: [
+              { field: 'applicant.credit_score', operator: '>=', value: 700 },
+            ],
+            output: {
+              result: 'ELIGIBLE',
+              maxEligibleAmount: { amount: '2500000.00', currency: 'INR' },
+              reasons: [{ code: 'PRIME_BORROWER', text: 'Meets prime borrower eligibility criteria' }],
+            },
+          },
+        ],
+      };
+
+    case 'DK-document.requirements':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'COLLECT',
+        defaultOutput: {
+          documents: [
+            { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
+            { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+          ],
+        },
+        rules: [
+          {
+            uid: 'RUL-DOC-001',
+            name: 'Salaried Income Verification Documents',
+            orderNo: 0,
+            enabled: true,
+            conditions: [
+              { field: 'party.applicant_type', operator: '==', value: 'SALARIED' },
+            ],
+            output: {
+              documents: [
+                { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
+                { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+                { typeCode: 'SALARY_SLIP', mandatory: true, count: 3, periodMonths: 3 },
+                { typeCode: 'BANK_STATEMENT', mandatory: true, count: 1, periodMonths: 6 },
+              ],
+            },
+          },
+        ],
+      };
+
+    case 'DK-application.completeness':
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        defaultOutput: {
+          result: 'INCOMPLETE',
+          reasons: [{ code: 'INITIAL_ASSESSMENT', text: 'Application completeness evaluation pending' }],
+        },
+        rules: [
+          {
+            uid: 'RUL-CMP-001',
+            name: 'Missing Consent Check',
+            orderNo: 0,
+            enabled: true,
+            conditions: [
+              { field: 'parties.all_processing_consent', operator: '==', value: false },
+            ],
+            output: {
+              result: 'INCOMPLETE',
+              reasons: [{ code: 'NO_PROCESSING_CONSENT', text: 'All parties must execute active data processing consent' }],
+            },
+          },
+          {
+            uid: 'RUL-CMP-002',
+            name: 'Mandatory Documents Missing Check',
+            orderNo: 1,
+            enabled: true,
+            conditions: [
+              { field: 'application.mandatory_pending_count', operator: '>', value: 0 },
+            ],
+            output: {
+              result: 'INCOMPLETE',
+              reasons: [{ code: 'MANDATORY_DOCUMENTS_PENDING', text: 'Required mandatory KYC and income documents are missing' }],
+            },
+          },
+        ],
+      };
+
+    default:
+      return {
+        schemaVersion: 1,
+        hitPolicy: 'FIRST',
+        rules: [],
+      };
+  }
+}
+
 // ---------------- Rule Sets ----------------
 export async function createRuleSet(
   tx: Tx,
@@ -258,12 +393,8 @@ export async function createRuleSet(
 
   const row = result.rows[0]!;
 
-  // Create initial empty draft version v1
-  const initialDef: RuleSetDefinition = {
-    schemaVersion: 1,
-    hitPolicy: 'FIRST',
-    rules: [],
-  };
+  // Create initial approved default draft version v1
+  const initialDef: RuleSetDefinition = getApprovedDefaultRuleSet(input.decisionKey);
   const hash = computeContentHash(initialDef);
 
   await sql`

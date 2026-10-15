@@ -83,7 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Workflow automation (DOM-H)',
-    items: [{ label: 'Automation rules', task: 'MOD-WFA' }],
+    items: [{ label: 'Automation rules', to: '/automations' }],
   },
   {
     title: 'Team and performance (DOM-I)',
@@ -122,13 +122,13 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Integrations and API (DOM-M)',
     items: [
       { label: 'Integrations', to: '/integrations' },
-      { label: 'API management', task: 'MOD-API' },
+      { label: 'API management', to: '/api-management' },
     ],
   },
   {
     title: 'Security and compliance (DOM-N)',
     items: [
-      { label: 'Audit', task: 'MOD-AUD' },
+      { label: 'Audit', to: '/audit' },
       { label: 'Privacy and consent', to: '/privacy' },
       { label: 'Security', to: '/account/security' },
     ],

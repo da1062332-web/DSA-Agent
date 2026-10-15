@@ -35,6 +35,7 @@ export const PERMISSION_CODES = [
   'audit.export_evidence',
   'config.manage',
   'user.manage',
+  'role.manage',
   'sanction.record',
   'disbursement.record',
   'disbursement.verify',

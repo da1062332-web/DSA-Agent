@@ -309,3 +309,55 @@ export const SandboxSimulateEventResponseSchema = z.object({
   durationMs: z.number().int().nullable(),
 });
 export type SandboxSimulateEventResponse = z.infer<typeof SandboxSimulateEventResponseSchema>;
+
+// ============================================================================
+// 6. API Management & Client Credentials (MOD-API)
+// ============================================================================
+
+export const ApiClientStatusSchema = z.enum(['ACTIVE', 'SUSPENDED', 'REVOKED']);
+export type ApiClientStatus = z.infer<typeof ApiClientStatusSchema>;
+
+export const CreateApiClientSchema = z.object({
+  name: z.string().min(2).max(100),
+  partnerName: z.string().min(2).max(100),
+  scopes: z.array(z.string().min(2).max(60)).min(1).default(['partner.lead_ingest']),
+  rateLimitRpm: z.number().int().min(10).max(10000).default(120),
+  allowedIps: z.array(z.string().min(7).max(45)).optional(),
+});
+export type CreateApiClientInput = z.infer<typeof CreateApiClientSchema>;
+
+export const UpdateApiClientSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  partnerName: z.string().min(2).max(100).optional(),
+  status: ApiClientStatusSchema.optional(),
+  scopes: z.array(z.string().min(2).max(60)).optional(),
+  rateLimitRpm: z.number().int().min(10).max(10000).optional(),
+  allowedIps: z.array(z.string().min(7).max(45)).nullable().optional(),
+});
+export type UpdateApiClientInput = z.infer<typeof UpdateApiClientSchema>;
+
+export const ApiClientResponseSchema = z.object({
+  id: IdSchema('clt'),
+  clientId: z.string(),
+  tenantId: IdSchema('ten'),
+  name: z.string(),
+  partnerName: z.string(),
+  status: ApiClientStatusSchema,
+  scopes: z.array(z.string()),
+  rateLimitRpm: z.number().int(),
+  allowedIps: z.array(z.string()).nullable(),
+  lastUsedAt: z.string().nullable(),
+  lockVersion: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  clientSecret: z.string().optional(),
+});
+export type ApiClientResponse = z.infer<typeof ApiClientResponseSchema>;
+
+export const RotateClientSecretResponseSchema = z.object({
+  clientId: z.string(),
+  clientSecret: z.string(),
+  rotatedAt: z.string(),
+});
+export type RotateClientSecretResponse = z.infer<typeof RotateClientSecretResponseSchema>;
+

@@ -1,8 +1,20 @@
 // OpenAPI registration for module platform (owner: see router.ts). Register this module's paths with zod schemas;
 // tools/gen-openapi.ts writes openapi/openapi.yaml (never hand-edited; CI fails on a diff).
-import { listResponse } from '@dsa/contracts';
+import {
+  listResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+  AssignRoleRequest,
+  UserRoleAssignmentSummary,
+  UserEffectiveGrants,
+  RoleSummary,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+  PermissionSummary,
+  UserSummary as FullUserSummary,
+} from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
-import type { ZodTypeAny } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import {
   Branch,
   BranchCreate,
@@ -27,7 +39,13 @@ import {
   WorkQueuePatch,
 } from './schemas';
 
-type Method = 'get' | 'post' | 'patch' | 'put';
+export const tags = [
+  { name: 'MOD-USR Users', description: 'User management, staff accounts, profiles, and assignments (MOD-USR).' },
+  { name: 'MOD-ACL Access Control', description: 'Role-based access control, custom roles, and permission catalog (MOD-ACL).' },
+  { name: 'MOD-ORG Organisation', description: 'Organisation hierarchy, branches, teams, and work queues (MOD-ORG).' },
+];
+
+type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 interface Op {
   method: Method;
   path: string;
@@ -39,6 +57,7 @@ interface Op {
   query?: ZodTypeAny;
   idem?: boolean;
   ifMatch?: boolean;
+  tags?: string[];
 }
 
 const json = (schema: ZodTypeAny) => ({ 'application/json': { schema } });
@@ -51,14 +70,129 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       id: 'API-USR-010',
       summary: 'The signed-in user: profile, grants, MFA state',
       response: MeResponse,
+      tags: ['MOD-USR Users'],
     },
     {
       method: 'get',
       path: '/v1/users',
       id: 'API-USR-LIST',
-      summary: 'Users of the tenant (no contact data)',
+      summary: 'Users of the tenant with role aggregation and search',
       response: UserList,
       query: UserListQuery,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users',
+      id: 'API-USR-CREATE',
+      summary: 'Create a new staff user',
+      body: CreateUserRequest,
+      response: FullUserSummary,
+      status: 201,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'get',
+      path: '/v1/users/{id}',
+      id: 'API-USR-GET',
+      summary: 'Get user details by ID',
+      response: FullUserSummary,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'patch',
+      path: '/v1/users/{id}',
+      id: 'API-USR-UPDATE',
+      summary: 'Update user profile, status, or availability',
+      body: UpdateUserRequest,
+      response: FullUserSummary,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'get',
+      path: '/v1/users/{id}/roles',
+      id: 'API-USR-ROLES-LIST',
+      summary: 'List roles assigned to a user',
+      response: listResponse(UserRoleAssignmentSummary),
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users/{id}/roles',
+      id: 'API-USR-ROLES-ASSIGN',
+      summary: 'Assign a role to a user (enforces SOD-05)',
+      body: AssignRoleRequest,
+      response: UserRoleAssignmentSummary,
+      status: 201,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'delete',
+      path: '/v1/users/{id}/roles/{roleId}',
+      id: 'API-USR-ROLES-REMOVE',
+      summary: 'Remove role assignment from a user (enforces SOD-05)',
+      response: z.object({ status: z.string() }),
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'get',
+      path: '/v1/users/{id}/permissions',
+      id: 'API-USR-PERMS-GET',
+      summary: 'Calculate effective permissions for a user',
+      response: UserEffectiveGrants,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'get',
+      path: '/v1/roles',
+      id: 'API-ACL-ROLES-LIST',
+      summary: 'List roles in tenant with permissions',
+      response: listResponse(RoleSummary),
+      tags: ['MOD-ACL Access Control'],
+    },
+    {
+      method: 'post',
+      path: '/v1/roles',
+      id: 'API-ACL-ROLES-CREATE',
+      summary: 'Create a custom role',
+      body: CreateRoleRequest,
+      response: RoleSummary,
+      status: 201,
+      tags: ['MOD-ACL Access Control'],
+    },
+    {
+      method: 'get',
+      path: '/v1/roles/{id}',
+      id: 'API-ACL-ROLES-GET',
+      summary: 'Get role details by ID',
+      response: RoleSummary,
+      tags: ['MOD-ACL Access Control'],
+    },
+    {
+      method: 'patch',
+      path: '/v1/roles/{id}',
+      id: 'API-ACL-ROLES-UPDATE',
+      summary: 'Update role name or permissions',
+      body: UpdateRoleRequest,
+      response: RoleSummary,
+      ifMatch: true,
+      tags: ['MOD-ACL Access Control'],
+    },
+    {
+      method: 'delete',
+      path: '/v1/roles/{id}',
+      id: 'API-ACL-ROLES-DELETE',
+      summary: 'Delete a custom role',
+      response: z.object({ status: z.string() }),
+      tags: ['MOD-ACL Access Control'],
+    },
+    {
+      method: 'get',
+      path: '/v1/permissions',
+      id: 'API-ACL-PERMS-LIST',
+      summary: 'List catalog permissions',
+      response: listResponse(PermissionSummary),
+      tags: ['MOD-ACL Access Control'],
     },
     {
       method: 'get',
@@ -230,6 +364,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       path: op.path,
       operationId: op.id,
       summary: op.summary,
+      tags: op.tags ?? ['MOD-ORG Organisation'],
       ...(headers.length ? { parameters: headers } : {}),
       request: {
         ...(op.query ? { query: op.query as never } : {}),

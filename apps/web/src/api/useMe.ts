@@ -65,6 +65,7 @@ export const hasPermission = (me: Me | undefined, code: string) =>
 const MFA_REQUIRED = [
   'config.manage',
   'user.manage',
+  'role.manage',
   'audit.read',
   'document.review',
   'lender_case.submit',
