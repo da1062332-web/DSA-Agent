@@ -86,6 +86,7 @@ export function PrivacyDashboard(): React.ReactElement {
 
   // Verify Consent Mutation
   const verifyMutation = useMutation({
+    meta: { successMessage: 'Verification saved.' },
     mutationFn: checkConsent,
     onSuccess: (data) => {
       setVerifyResult(data);

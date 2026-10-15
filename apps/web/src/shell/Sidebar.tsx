@@ -19,6 +19,8 @@ export interface NavItem {
   to?: string;
   /** Spec reference, shown in the tooltip for items that are not built. */
   task?: string;
+  /** Shown only to users holding at least one of these permissions. Omit to show the item to everyone signed in. */
+  anyOf?: string[];
 }
 
 export interface NavGroup {
@@ -28,6 +30,11 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+// Permissions the API checks for each screen (DSA Notion module pages MSG, GRV, LCS and SND; the routers for the rest).
+// Items without anyOf (Home, Activity, Lenders, Products, Performance, Reports, Security and the Soon items) are
+// shown to everyone: their API does not name a read permission, so hiding them would be a guess.
+const RULE_PERMISSIONS = ['rule.author', 'rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Overview',
@@ -36,18 +43,18 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Leads and customers (DOM-B)',
     items: [
-      { label: 'Leads', to: '/leads' },
+      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
       { label: 'Customers', task: 'MOD-CUST' },
     ],
   },
   {
     title: 'Follow-ups and communication (DOM-C)',
     items: [
-      { label: 'Tasks', to: '/tasks' },
+      { label: 'Tasks', to: '/tasks', anyOf: ['task.read'] },
       { label: 'Activity', to: '/activities' },
-      { label: 'Messaging', to: '/messaging' },
+      { label: 'Messaging', to: '/messaging', anyOf: ['message.send', 'config.manage'] },
       { label: 'Notifications', to: '/notifications' },
-      { label: 'Grievances', to: '/complaints' },
+      { label: 'Grievances', to: '/complaints', anyOf: ['complaint.create', 'complaint.manage'] },
     ],
   },
   {
@@ -60,26 +67,30 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Origination (DOM-E)',
     items: [
-      { label: 'Applications', to: '/applications' },
-      { label: 'Lender cases', to: '/lender-cases' },
+      { label: 'Applications', to: '/applications', anyOf: ['application.read'] },
+      { label: 'Lender cases', to: '/lender-cases', anyOf: ['application.read', 'lender_case.submit'] },
       { label: 'Eligibility', task: 'MOD-ELG' },
-      { label: 'Sanction and disbursement', to: '/sanctions' },
+      {
+        label: 'Sanction and disbursement',
+        to: '/sanctions',
+        anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
+      },
     ],
   },
   {
     title: 'KYC, documents and verification (DOM-F)',
     items: [
       { label: 'Documents', task: 'MOD-DOC' },
-      { label: 'Document sharing', to: '/document-sharing' },
-      { label: 'Verification', to: '/verifications' },
+      { label: 'Document sharing', to: '/document-sharing', anyOf: ['document.upload', 'share.create'] },
+      { label: 'Verification', to: '/verifications', anyOf: ['verification.read', 'verification.perform'] },
       { label: 'Verification workbench', to: '/verifications/workbench' },
     ],
   },
   {
     title: 'Business rules (DOM-G)',
     items: [
-      { label: 'Rule sets', to: '/rules' },
-      { label: 'Decisions', to: '/decisions' },
+      { label: 'Rule sets', to: '/rules', anyOf: RULE_PERMISSIONS },
+      { label: 'Decisions', to: '/decisions', anyOf: RULE_PERMISSIONS },
     ],
   },
   {
@@ -98,7 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Connectors (DOM-J)',
     items: [
-      { label: 'Connectors', to: '/connectors' },
+      { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
       { label: 'Connector portal', task: 'MOD-CPT' },
     ],
   },
@@ -122,7 +133,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Integrations and API (DOM-M)',
     items: [
-      { label: 'Integrations', to: '/integrations' },
+      { label: 'Integrations', to: '/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },
       { label: 'API management', task: 'MOD-API' },
     ],
   },
@@ -130,7 +141,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Security and compliance (DOM-N)',
     items: [
       { label: 'Audit', task: 'MOD-AUD' },
-      { label: 'Privacy and consent', to: '/privacy' },
+      { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
       { label: 'Security', to: '/account/security' },
     ],
   },
@@ -151,15 +162,25 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-/** Groups and items the current user may see. */
-export function visibleGroups(isAdmin: boolean): NavGroup[] {
-  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin);
+/** Groups and items the current user may see. A group with no visible item is dropped. */
+export function visibleGroups(isAdmin: boolean, can: (code: string) => boolean = () => true): NavGroup[] {
+  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin)
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.anyOf || i.anyOf.some(can)) }))
+    .filter((g) => g.items.length > 0);
 }
 
-export function SidebarContent({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void }) {
+export function SidebarContent({
+  isAdmin,
+  can,
+  onNavigate,
+}: {
+  isAdmin: boolean;
+  can?: (code: string) => boolean;
+  onNavigate?: () => void;
+}) {
   return (
     <Box data-testid="shell.sidebar" sx={{ py: 1, pb: 6 }}>
-      {visibleGroups(isAdmin).map((group, i) => (
+      {visibleGroups(isAdmin, can).map((group, i) => (
         <Box key={group.title}>
           {i > 0 && <Divider sx={{ my: 1 }} />}
           <List

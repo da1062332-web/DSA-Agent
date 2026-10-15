@@ -80,6 +80,7 @@ export function DocumentSharingPage() {
 
   // Mutations
   const createLinkMutation = useMutation({
+    meta: { successMessage: 'Upload link created.' },
     mutationFn: (payload: any) =>
       apiFetch<UploadLinkRecord & { uploadUrl: string; generatedOtp?: string }>('/v1/upload-links', {
         method: 'POST',
@@ -97,6 +98,7 @@ export function DocumentSharingPage() {
   });
 
   const revokeLinkMutation = useMutation({
+    meta: { successMessage: 'Upload link revoked.' },
     mutationFn: (id: string) =>
       apiFetch(`/v1/upload-links/${id}/revocation`, { method: 'POST' }),
     onSuccess: () => {
@@ -109,6 +111,7 @@ export function DocumentSharingPage() {
   });
 
   const createShareMutation = useMutation({
+    meta: { successMessage: 'Share created.' },
     mutationFn: (payload: any) =>
       apiFetch<ExternalShareRecord>('/v1/shares', {
         method: 'POST',
@@ -126,6 +129,7 @@ export function DocumentSharingPage() {
   });
 
   const revokeShareMutation = useMutation({
+    meta: { successMessage: 'Share revoked.' },
     mutationFn: (id: string) =>
       apiFetch(`/v1/shares/${id}/revocation`, { method: 'POST' }),
     onSuccess: () => {

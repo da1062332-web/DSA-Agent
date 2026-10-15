@@ -99,6 +99,7 @@ export function VerificationPage() {
 
   // Create Verification Mutation (API-VER-001)
   const createMutation = useMutation({
+    meta: { successMessage: 'Verification requested.' },
     mutationFn: (payload: CreateVerificationInput) =>
       apiFetch<VerificationRecord>('/v1/verifications', {
         method: 'POST',

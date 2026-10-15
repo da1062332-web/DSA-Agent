@@ -213,6 +213,7 @@ export function PlatformConsolePage() {
 
   // Mutations
   const toggleFlagMutation = useMutation({
+    meta: { successMessage: 'Flag updated.' },
     mutationFn: async ({ key, value }: { key: string; value: boolean }) => {
       return updateFeatureFlag(key, { value, scope: 'GLOBAL' });
     },
@@ -220,6 +221,7 @@ export function PlatformConsolePage() {
   });
 
   const pauseQueueMutation = useMutation({
+    meta: { successMessage: 'Queue paused.' },
     mutationFn: () => pauseQueue(selectedQueue, pauseReason),
     onSuccess: () => {
       setPauseDialogOpen(false);
@@ -229,6 +231,7 @@ export function PlatformConsolePage() {
   });
 
   const resumeQueueMutation = useMutation({
+    meta: { successMessage: 'Queue resumed.' },
     mutationFn: () => resumeQueue(selectedQueue, resumeReason),
     onSuccess: () => {
       setResumeDialogOpen(false);
@@ -238,16 +241,19 @@ export function PlatformConsolePage() {
   });
 
   const replayDlMutation = useMutation({
+    meta: { successMessage: 'Item replayed.' },
     mutationFn: replayDeadLetter,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-jobs'] }),
   });
 
   const discardDlMutation = useMutation({
+    meta: { successMessage: 'Item discarded.' },
     mutationFn: discardDeadLetter,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-jobs'] }),
   });
 
   const createSupportMutation = useMutation({
+    meta: { successMessage: 'Support access requested.' },
     mutationFn: () =>
       createSupportAccessRequest({
         tenantId: supportTenantId,
@@ -264,12 +270,14 @@ export function PlatformConsolePage() {
   });
 
   const approveSupportMutation = useMutation({
+    meta: { successMessage: 'Support access decision saved.' },
     mutationFn: ({ id, decision }: { id: string; decision: 'APPROVED' | 'DENIED' }) =>
       approveSupportAccessRequest(id, decision, 'Action taken from Platform Console'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-support'] }),
   });
 
   const createCorrectionMutation = useMutation({
+    meta: { successMessage: 'Data correction requested.' },
     mutationFn: () =>
       createDataCorrection({
         tenantId: corrTenantId,
@@ -287,17 +295,20 @@ export function PlatformConsolePage() {
   });
 
   const approveCorrectionMutation = useMutation({
+    meta: { successMessage: 'Data correction approved.' },
     mutationFn: ({ id, decision }: { id: string; decision: 'APPROVED' | 'REJECTED' }) =>
       approveDataCorrection(id, decision, 'Approved from console preview'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-corrections'] }),
   });
 
   const executeCorrectionMutation = useMutation({
+    meta: { successMessage: 'Data correction executed.' },
     mutationFn: executeDataCorrection,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-corrections'] }),
   });
 
   const previewImportMutation = useMutation({
+    meta: { successMessage: 'Import preview ready.' },
     mutationFn: async (dryRun: boolean) =>
       importMasterData({
         listCode: importListCode,

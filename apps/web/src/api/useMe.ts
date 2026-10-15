@@ -76,4 +76,4 @@ const MFA_REQUIRED = [
   'rule.suspend',
   'export.run',
 ];
-export const mfaRequired = (_me: Me | undefined) => false;
+export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));
