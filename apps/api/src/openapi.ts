@@ -24,6 +24,7 @@ import * as rulesApi from './modules/rules/api/openapi';
 import * as verification from './modules/verification/openapi';
 import * as partnerApi from './modules/partner-api/openapi';
 import * as audit from './modules/audit/openapi';
+import * as ledger from './modules/ledger/openapi';
 
 const MODULES = [
   platform,
@@ -36,6 +37,7 @@ const MODULES = [
   notifications,
   compliance,
   finance,
+  ledger,
   tasks,
   grievances,
   targets,
