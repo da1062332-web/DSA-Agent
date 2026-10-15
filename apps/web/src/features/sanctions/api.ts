@@ -8,6 +8,7 @@ import type {
   VerifyTrancheInput,
   VoidTrancheInput,
 } from './types';
+import { getStoredAuthToken } from '../../auth/token';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -15,18 +16,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
 
-  let token = typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null;
-  if (!token && typeof localStorage !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('dsa_auth_session');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        token = parsed.access_token || parsed.token || null;
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const token = getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

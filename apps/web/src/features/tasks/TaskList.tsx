@@ -32,6 +32,8 @@ import {
   Paper,
 } from '@mui/material';
 import { createTask, completeTask, listTasks } from './api';
+import { getStoredAuthToken } from '../../auth/token';
+import { useMe } from '../../api/useMe';
 import type {
   CompleteTaskPayload,
   CreateTaskPayload,
@@ -42,7 +44,33 @@ import type {
   TaskType,
 } from './types';
 
+function parseJwtPayload(token: string | undefined): any {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length >= 2 && parts[1]) {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    }
+  } catch {
+    // Ignore parse error and fallback
+  }
+  return null;
+}
+
 function getInitialUserId(): string {
+  const token = getStoredAuthToken();
+  const payload = parseJwtPayload(token);
+  if (payload?.sub) return payload.sub;
+  if (payload?.user_id) return payload.user_id;
+  if (payload?.id) return payload.id;
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
     if (raw) {
@@ -56,6 +84,11 @@ function getInitialUserId(): string {
 }
 
 function getInitialBranchId(): string {
+  const token = getStoredAuthToken();
+  const payload = parseJwtPayload(token);
+  if (payload?.primaryBranchId) return payload.primaryBranchId;
+  if (payload?.branch_id) return payload.branch_id;
+  if (payload?.app_metadata?.primaryBranchId) return payload.app_metadata.primaryBranchId;
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
     if (raw) {
@@ -70,6 +103,7 @@ function getInitialBranchId(): string {
 
 export function TaskList(): React.ReactElement {
   const queryClient = useQueryClient();
+  const { data: me } = useMe();
   const [view, setView] = useState<'MINE' | 'QUEUES' | 'ALL'>('MINE');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
@@ -129,7 +163,7 @@ export function TaskList(): React.ReactElement {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const effectiveBranch = branchId.trim() || getInitialBranchId();
+    const effectiveBranch = branchId.trim() || me?.primaryBranchId || getInitialBranchId();
     const effectiveLinkedId = linkedId.trim() || 'lead_01M4V6DFJWWB25K8X7QNAXTSC0';
     if (!title.trim()) {
       setActionError('Title is required.');
@@ -138,7 +172,7 @@ export function TaskList(): React.ReactElement {
     createMutation.mutate({
       type,
       title: title.trim(),
-      ownerUserId: getInitialUserId(),
+      ownerUserId: me?.id || getInitialUserId(),
       linkedType,
       linkedId: effectiveLinkedId,
       branchId: effectiveBranch,
