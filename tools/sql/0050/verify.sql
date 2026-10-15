@@ -58,9 +58,15 @@ checks(sort, name, expected, actual, pass) AS (
   (26, 'policies on data_correction_request (unchanged: tenant only, no platform access)', 'tenant_isolation[ALL]',
      (SELECT string_agg(policyname || '[' || cmd || ']', ', ' ORDER BY policyname) FROM pg_policies WHERE schemaname = 'app' AND tablename = 'data_correction_request'),
      (SELECT string_agg(policyname || '[' || cmd || ']', ', ' ORDER BY policyname) FROM pg_policies WHERE schemaname = 'app' AND tablename = 'data_correction_request') = 'tenant_isolation[ALL]'),
-  (27, 'a platform session cannot UPDATE support requests (no platform UPDATE policy; the only UPDATE policy is the tenant one)', '1 UPDATE policy, tenant_id = app_tenant()',
+  -- Check 27 compares the policy expression after removing everything that varies with how PostgreSQL prints it: parentheses, whitespace,
+  -- the ::text casts and the "app." schema prefix (a fresh session prints app.app_tenant(); one with app on its search_path prints app_tenant()).
+  -- What is left must be exactly: tenant_id = app_tenant() AND status = ANY (ARRAY['PENDING','ACTIVE']). is_platform_realm must appear in neither USING nor WITH CHECK.
+  (27, 'a platform session cannot UPDATE support requests (no platform UPDATE policy; the only UPDATE policy is the tenant one)', 'exactly 1 UPDATE policy: tenant_id = app_tenant() AND status IN (PENDING, ACTIVE); no is_platform_realm() in USING or WITH CHECK',
      (SELECT count(*)::text || ' UPDATE policy: ' || coalesce(max(qual), '') FROM pg_policies WHERE schemaname = 'app' AND tablename = 'support_access_grant' AND cmd = 'UPDATE'),
-     (SELECT count(*) = 1 AND bool_and(qual LIKE '%tenant_id = app_tenant()%' AND qual NOT LIKE '%is_platform_realm%') FROM pg_policies WHERE schemaname = 'app' AND tablename = 'support_access_grant' AND cmd = 'UPDATE')),
+     (SELECT count(*) = 1
+         AND coalesce(bool_and(regexp_replace(qual, '[()[:space:]]|::text|app\.', '', 'g') = 'tenant_id=app_tenantANDstatus=ANYARRAY[''PENDING'',''ACTIVE'']'), false)
+         AND coalesce(bool_and(position('is_platform_realm' IN coalesce(qual, '') || ' ' || coalesce(with_check, '')) = 0), false)
+        FROM pg_policies WHERE schemaname = 'app' AND tablename = 'support_access_grant' AND cmd = 'UPDATE')),
   (28, 'a platform session may INSERT a support request only as PENDING and un-approved', 'with_check has is_platform_realm, PENDING, approved_by IS NULL',
      (SELECT coalesce(max(with_check), 'missing') FROM pg_policies WHERE schemaname = 'app' AND tablename = 'support_access_grant' AND policyname = 'grant_platform_request'),
      (SELECT coalesce(bool_and(with_check LIKE '%is_platform_realm%' AND with_check LIKE '%PENDING%' AND with_check LIKE '%approved_by IS NULL%'), false) FROM pg_policies WHERE schemaname = 'app' AND tablename = 'support_access_grant' AND policyname = 'grant_platform_request')),
