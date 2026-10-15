@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS app.api_key (
 CREATE INDEX IF NOT EXISTS idx_api_key_tenant_partner ON app.api_key (tenant_id, partner_id);
 CREATE INDEX IF NOT EXISTS idx_api_key_lookup ON app.api_key (key_hash, status);
 
+DROP POLICY IF EXISTS tenant_isolation ON app.api_key;
 CALL enable_tenant_rls('app.api_key');
 GRANT SELECT, INSERT, UPDATE ON app.api_key TO dsa_app;
 
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS app.webhook_subscription (
 CREATE INDEX IF NOT EXISTS idx_webhook_sub_tenant_partner ON app.webhook_subscription (tenant_id, partner_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_sub_active ON app.webhook_subscription (tenant_id, status);
 
+DROP POLICY IF EXISTS tenant_isolation ON app.webhook_subscription;
 CALL enable_tenant_rls('app.webhook_subscription');
 GRANT SELECT, INSERT, UPDATE ON app.webhook_subscription TO dsa_app;
 
@@ -113,6 +115,7 @@ CREATE TABLE IF NOT EXISTS app.webhook_delivery_log (
 CREATE INDEX IF NOT EXISTS idx_webhook_del_sub ON app.webhook_delivery_log (tenant_id, subscription_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_webhook_del_retry ON app.webhook_delivery_log (status, next_retry_at) WHERE status = 'PENDING_RETRY';
 
+DROP POLICY IF EXISTS tenant_isolation ON app.webhook_delivery_log;
 CALL enable_tenant_rls('app.webhook_delivery_log');
 GRANT SELECT, INSERT, UPDATE ON app.webhook_delivery_log TO dsa_app;
 

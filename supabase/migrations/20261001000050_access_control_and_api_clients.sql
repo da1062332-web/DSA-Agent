@@ -1,4 +1,4 @@
--- Migration: 20261001000044_access_control_and_api_clients.sql
+-- Migration: 20261001000050_access_control_and_api_clients.sql
 -- Owner: Akash (Dev 2 / Coordinator, Modules 5, 23, 36)
 -- Covers:
 -- 1. Module 5 (Access Control): Seed role.manage permission, grant to admin roles, and reconcile hosted users with valid roles
@@ -116,5 +116,6 @@ CREATE TABLE IF NOT EXISTS app.api_client (
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_client_tenant ON app.api_client (tenant_id, status);
+DROP POLICY IF EXISTS tenant_isolation ON app.api_client;
 CALL enable_tenant_rls('api_client');
 GRANT SELECT, INSERT, UPDATE, DELETE ON app.api_client TO dsa_app;

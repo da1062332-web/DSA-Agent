@@ -64,3 +64,22 @@ export async function evaluateApplicationEligibility(
     replayed: decision.replayed,
   };
 }
+
+/**
+ * Adapter helper to transform BRE Decision outputs into Module 17 Criterion[] array
+ */
+export function toEligibilityCriteria(result: EligibilityEvaluationResult): Array<{
+  code: string;
+  result: 'PASS' | 'FAIL' | 'UNKNOWN';
+  reason: string;
+}> {
+  const criterionResult: 'PASS' | 'FAIL' | 'UNKNOWN' =
+    result.result === 'ELIGIBLE' ? 'PASS' : result.result === 'INELIGIBLE' ? 'FAIL' : 'UNKNOWN';
+
+  return result.reasons.map((r) => ({
+    code: r.code,
+    result: criterionResult,
+    reason: r.text,
+  }));
+}
+
