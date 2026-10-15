@@ -6,6 +6,7 @@ import type {
   Authz,
   Clock,
   ConsentPort,
+  DataSharingPort,
   DecisionPort,
   IdGenerator,
   OutboxPort,
@@ -35,6 +36,7 @@ export interface ApiDeps {
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;
   consentPort?: ConsentPort;
+  dataSharingPort?: DataSharingPort;
   clock?: Clock;
   leadRepository?: unknown;
   customerRepository?: unknown;
