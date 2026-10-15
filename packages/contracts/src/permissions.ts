@@ -48,6 +48,8 @@ export const PERMISSION_CODES = [
   'commission.plan.approve',
   'commission.calculate',
   'finance.view',
+  'finance.reconcile',
+  'finance.dispute',
   'adjustment.create',
   'adjustment.approve',
   'payout.request',
