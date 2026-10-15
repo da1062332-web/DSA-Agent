@@ -25,6 +25,7 @@ import {
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../types';
+import { PgPlatformStore, type PlatformStore } from './platform-store';
 
 const nextUlid = monotonicFactory();
 
@@ -33,11 +34,14 @@ export class PlatformAdminService {
   private masterData: Map<string, MasterDataItem[]> = new Map();
   private queues: Map<string, JobQueueInfo> = new Map();
   private deadLetters: Map<string, DeadLetterItem> = new Map();
-  private supportGrants: Map<string, SupportAccessGrant> = new Map();
   private dataCorrections: Map<string, DataCorrectionRequest> = new Map();
   private startTimestamp: number = Date.now();
 
-  constructor(private readonly deps: ApiDeps) {
+  private readonly store: PlatformStore;
+
+  /** Tenant metadata and support-access requests are stored in the database (see platform-store.ts). The rest is in memory. */
+  constructor(private readonly deps: ApiDeps, store?: PlatformStore) {
+    this.store = store ?? new PgPlatformStore(deps);
     this.seedDefaults();
   }
 
@@ -180,49 +184,8 @@ export class PlatformAdminService {
       this.deadLetters.set(dl.id, dl);
     }
 
-    // ----------------------------------------------------
-    // Seed Sample Support Access & Data Corrections (SUB-ADM.06 & SUB-ADM.07)
-    // ----------------------------------------------------
-    const sampleGrant: SupportAccessGrant = {
-      id: 'sag_01JTESTSAG0000000000001',
-      tenantId: 'ten_demo_01',
-      tenantName: 'Alpha Demo Finserv',
-      requester: 'usr_platform_support_01',
-      approver: 'usr_demo_admin_01',
-      reason: 'Diagnose lead routing failure on queue MUM01-INTAKE during outage INC-2026-4401',
-      scope: 'READ_METADATA_AND_CONFIG',
-      startsAt: new Date(Date.now() - 1800000).toISOString(),
-      endsAt: new Date(Date.now() + 5400000).toISOString(),
-      incidentRef: 'INC-2026-4401',
-      status: 'APPROVED',
-      createdAt: new Date(Date.now() - 2000000).toISOString(),
-      updatedAt: new Date(Date.now() - 1800000).toISOString(),
-    };
-    this.supportGrants.set(sampleGrant.id, sampleGrant);
-
-    const sampleCorrection: DataCorrectionRequest = {
-      id: 'dcr_01JTESTDCR0000000000001',
-      tenantId: 'ten_demo_01',
-      justification: 'Correct erroneously recorded PAN formatting in metadata index per ticket CORR-889',
-      scriptRef: 'SCR-2026-0889-FIX-LEAD-METADATA',
-      dryRunDiffKey: 'diff_k_88921',
-      dryRunDiff: JSON.stringify(
-        {
-          before: { branchCode: 'MUM_01_OLD', status: 'INACTIVE' },
-          after: { branchCode: 'MUM01', status: 'ACTIVE' },
-          affectedRows: 1,
-        },
-        null,
-        2,
-      ),
-      requestedBy: 'usr_ops_lead_01',
-      approvedBy: 'usr_compliance_officer_02',
-      status: 'APPROVED',
-      executedAt: null,
-      executorIdentity: 'SERVICE:data-correction-executor',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    };
-    this.dataCorrections.set(sampleCorrection.id, sampleCorrection);
+    // Support-access requests live in the database (platform-store.ts). Data corrections start empty: a record that
+    // looks approved must come from a real request.
   }
 
   // ==========================================
@@ -230,86 +193,9 @@ export class PlatformAdminService {
   // ==========================================
 
   async listTenants(ctx: RequestContext, query: ListPlatformTenantsQuery): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
-    // Platform Console restriction: NO tenant business data exposed!
-    // Queries only tenant metadata from database, falling back cleanly if offline.
-    const tenants: PlatformTenantSummary[] = [];
-
-    try {
-      await this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-        const rows = await sql<{
-          id: string;
-          slug: string;
-          legal_name: string;
-          tenant_type: 'DSA_ORG' | 'NBFC_DISTRIBUTION';
-          data_region: string;
-          timezone: string;
-          status: 'ACTIVE' | 'SUSPENDED' | 'OFFBOARDING';
-          created_at: string | Date;
-          created_by: string;
-        }>`
-          SELECT id, slug, legal_name, tenant_type, data_region, timezone, status, created_at, created_by
-          FROM tenant
-          ORDER BY created_at DESC
-        `.execute(tx);
-
-        for (const r of rows.rows) {
-          tenants.push({
-            id: r.id,
-            slug: r.slug,
-            legalName: r.legal_name,
-            tenantType: r.tenant_type,
-            dataRegion: r.data_region,
-            timezone: r.timezone,
-            status: r.status,
-            createdAt: new Date(r.created_at).toISOString(),
-            createdBy: r.created_by,
-            healthStatus: r.status === 'ACTIVE' ? 'HEALTHY' : 'DEGRADED',
-            activeUsersCount: 12,
-            applicationsCount: 48,
-            entitlements: ['WORKFLOW_A', 'BRE_ROUTING', 'LENDER_DISPATCH', 'CONSENT_VAULT'],
-          });
-        }
-      });
-    } catch {
-      // Fallback demo tenants if RLS blocks cross-tenant query or in test mocks
-    }
-
-    if (tenants.length === 0) {
-      tenants.push(
-        {
-          id: 'ten_demo_01',
-          slug: 'demo-alpha',
-          legalName: 'Alpha Demo Finserv Pvt Ltd',
-          tenantType: 'DSA_ORG',
-          dataRegion: 'IN',
-          timezone: 'Asia/Kolkata',
-          status: 'ACTIVE',
-          createdAt: '2026-10-01T00:00:00.000Z',
-          createdBy: 'SYSTEM:platform',
-          healthStatus: 'HEALTHY',
-          activeUsersCount: 14,
-          applicationsCount: 62,
-          entitlements: ['WORKFLOW_A', 'BRE_ROUTING', 'LENDER_DISPATCH', 'CONSENT_VAULT', 'MESSAGING'],
-        },
-        {
-          id: 'ten_demo_02',
-          slug: 'demo-beta',
-          legalName: 'Beta Demo Loans Pvt Ltd',
-          tenantType: 'NBFC_DISTRIBUTION',
-          dataRegion: 'IN',
-          timezone: 'Asia/Kolkata',
-          status: 'ACTIVE',
-          createdAt: '2026-10-02T00:00:00.000Z',
-          createdBy: 'SYSTEM:platform',
-          healthStatus: 'HEALTHY',
-          activeUsersCount: 8,
-          applicationsCount: 29,
-          entitlements: ['WORKFLOW_A', 'BRE_ROUTING', 'LENDER_DISPATCH'],
-        },
-      );
-    }
-
-    let filtered = tenants;
+    // Platform console restriction: tenant metadata only, no business data. The database allows this read in the platform
+    // realm only. A failure is reported, never replaced by sample tenants.
+    let filtered = await this.store.listTenants(ctx);
     if (query.status) {
       filtered = filtered.filter((t) => t.status === query.status);
     }
@@ -317,7 +203,6 @@ export class PlatformAdminService {
       const q = query.search.toLowerCase();
       filtered = filtered.filter((t) => t.legalName.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q));
     }
-
     return { data: filtered, meta: { total: filtered.length } };
   }
 
@@ -584,85 +469,52 @@ export class PlatformAdminService {
   // SUB-ADM.06: Support Access (API-ADM-006 / API-ADM-007)
   // ==========================================
 
-  async listSupportAccessRequests(tenantId?: string): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
-    let list = Array.from(this.supportGrants.values());
-    if (tenantId) {
-      list = list.filter((g) => g.tenantId === tenantId);
-    }
+  async listSupportAccessRequests(ctx: RequestContext, tenantId?: string): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
+    const list = await this.store.listSupportGrants(ctx, tenantId);
     return { data: list, meta: { total: list.length } };
   }
 
-  async createSupportAccessRequest(req: CreateSupportAccessRequest, requesterId: string): Promise<SupportAccessGrant> {
+  async createSupportAccessRequest(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant> {
     // Constraint: ends_at must be no more than four hours after starts_at
     if (req.durationHours > 4.0 || req.durationHours <= 0) {
       throw AppError.of('VALIDATION_ERROR', 'Access duration must be greater than zero and cannot exceed 4.0 hours.');
     }
-
-    const now = new Date();
-    const ends = new Date(now.getTime() + req.durationHours * 3600 * 1000);
-    const id = `sag_${nextUlid()}`;
-
-    const grant: SupportAccessGrant = {
-      id,
-      tenantId: req.tenantId,
-      tenantName: req.tenantId === 'ten_demo_02' ? 'Beta Demo Loans' : 'Alpha Demo Finserv',
-      requester: requesterId,
-      approver: null,
-      reason: req.reason,
-      scope: req.scope,
-      startsAt: now.toISOString(),
-      endsAt: ends.toISOString(),
-      incidentRef: req.incidentRef,
-      status: 'PENDING',
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    };
-
-    this.supportGrants.set(id, grant);
-    return grant;
+    return this.store.createSupportGrant(ctx, req);
   }
 
   async approveSupportAccessRequest(
+    ctx: RequestContext,
     grantId: string,
     req: ApproveSupportAccessRequest,
-    approverId: string,
   ): Promise<SupportAccessGrant> {
-    const grant = this.supportGrants.get(grantId);
-    if (!grant) {
-      throw AppError.of('NOT_FOUND', `Support access grant request '${grantId}' not found.`);
-    }
-
-    // Separation of Duties (SOD-06): Requester cannot approve their own request!
-    if (grant.requester === approverId) {
-      throw AppError.of(
-        'SOD_VIOLATION',
-        'Separation of Duties violation (SOD-06): The requester cannot approve their own support access request.',
-      );
-    }
-
-    if (grant.status !== 'PENDING') {
-      throw AppError.of('INVALID_STATE', `Grant request '${grantId}' is already ${grant.status}.`);
-    }
-
-    grant.status = req.decision === 'APPROVED' ? 'APPROVED' : 'DENIED';
-    grant.approver = approverId;
-    grant.updatedAt = new Date().toISOString();
-    return grant;
+    return this.store.decideSupportGrant(ctx, grantId, req.decision);
   }
 
   // ==========================================
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
   // ==========================================
 
-  async listDataCorrections(tenantId?: string): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
-    let list = Array.from(this.dataCorrections.values());
-    if (tenantId) {
-      list = list.filter((c) => c.tenantId === tenantId);
+  /** A correction belongs to one tenant, taken from the signed-in user. Another tenant's record reads as missing. */
+  private ownCorrection(ctx: RequestContext, id: string): DataCorrectionRequest {
+    const record = this.dataCorrections.get(id);
+    if (!record || record.tenantId !== ctx.principal.tenantId) {
+      throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
     }
+    return record;
+  }
+
+  async listDataCorrections(ctx: RequestContext): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
+    const list = Array.from(this.dataCorrections.values()).filter((c) => c.tenantId === ctx.principal.tenantId);
     return { data: list, meta: { total: list.length } };
   }
 
-  async createDataCorrectionRequest(req: CreateDataCorrectionRequest, requesterId: string): Promise<DataCorrectionRequest> {
+  async createDataCorrectionRequest(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
+    if (req.tenantId !== undefined && req.tenantId !== ctx.principal.tenantId) {
+      throw AppError.of('VALIDATION_ERROR', 'A data correction can only be requested for your own tenant.', [
+        { field: 'tenantId', issue: 'NOT_YOUR_TENANT' },
+      ]);
+    }
+    const tenantId = ctx.principal.tenantId;
     const id = `dcr_${nextUlid()}`;
     const dryRunDiffKey = `diff_${nextUlid().slice(-8)}`;
 
@@ -671,7 +523,7 @@ export class PlatformAdminService {
         action: 'UPDATE',
         targetEntity: req.targetEntity,
         scriptRef: req.scriptRef,
-        tenantId: req.tenantId,
+        tenantId,
         changeDescription: req.changeDescription,
         diffPreview: {
           before: { status: 'PENDING_REMEDY', errorFlag: true },
@@ -684,12 +536,12 @@ export class PlatformAdminService {
 
     const record: DataCorrectionRequest = {
       id,
-      tenantId: req.tenantId,
+      tenantId,
       justification: req.justification,
       scriptRef: req.scriptRef,
       dryRunDiffKey,
       dryRunDiff: simulatedDiff,
-      requestedBy: requesterId,
+      requestedBy: ctx.principal.id,
       approvedBy: null,
       status: 'PENDING',
       executedAt: null,
@@ -702,17 +554,14 @@ export class PlatformAdminService {
   }
 
   async approveDataCorrectionRequest(
+    ctx: RequestContext,
     correctionId: string,
     req: ApproveDataCorrectionRequest,
-    approverId: string,
   ): Promise<DataCorrectionRequest> {
-    const record = this.dataCorrections.get(correctionId);
-    if (!record) {
-      throw AppError.of('NOT_FOUND', `Data correction request '${correctionId}' not found.`);
-    }
+    const record = this.ownCorrection(ctx, correctionId);
 
     // Separation of Duties (SOD-08): Approver must differ from requester!
-    if (record.requestedBy === approverId) {
+    if (record.requestedBy === ctx.principal.id) {
       throw AppError.of(
         'SOD_VIOLATION',
         'Separation of Duties violation (SOD-08): The approver must differ from the requester.',
@@ -724,15 +573,12 @@ export class PlatformAdminService {
     }
 
     record.status = req.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
-    record.approvedBy = approverId;
+    record.approvedBy = ctx.principal.id;
     return record;
   }
 
-  async executeDataCorrection(correctionId: string): Promise<DataCorrectionRequest> {
-    const record = this.dataCorrections.get(correctionId);
-    if (!record) {
-      throw AppError.of('NOT_FOUND', `Data correction request '${correctionId}' not found.`);
-    }
+  async executeDataCorrection(ctx: RequestContext, correctionId: string): Promise<DataCorrectionRequest> {
+    const record = this.ownCorrection(ctx, correctionId);
     if (record.status !== 'APPROVED') {
       throw AppError.of('INVALID_STATE', `Data correction must be APPROVED prior to execution (current: ${record.status}).`);
     }

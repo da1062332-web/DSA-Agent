@@ -19,6 +19,14 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'export.run',
   'payout.approve',
   'payout.record_payment',
+  // Platform realm (MODULE 1: MFA mandatory for platform roles) and four-eyes data correction approval.
+  'platform.console',
+  'platform.flags',
+  'platform.master_data',
+  'platform.jobs',
+  'platform.support_access',
+  'platform.release',
+  'data_correction.approve',
 ];
 
 export function requiresMfa(principal: Principal): boolean {
