@@ -20,6 +20,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { errorText } from '../api/client';
+import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
@@ -167,6 +168,7 @@ export function AppLayout() {
             <SidebarContent
               isAdmin={isAdmin}
               can={(code) => hasPermission(me.data, code)}
+              platformRealm={me.data?.tenantId === PLATFORM_TENANT_ID}
               onNavigate={() => setDrawerOpen(false)}
             />
           </Drawer>
