@@ -17,11 +17,19 @@ import * as connectors from './origination/connectors/router';
 import * as lenderCases from './origination/lender-cases/router';
 import * as sanctions from './origination/sanctions/router';
 import * as platform from './platform/router';
+import * as platformAdmin from './platform-admin/router';
+import * as integrations from './integrations/router';
 import * as rulesApi from './rules/api/router';
+import * as verification from './verification/router';
+import * as automation from './automation/router';
+import * as partnerApi from './partner-api/router';
+import * as audit from './audit/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
   { name: 'platform', owner: 'Dev 1', createRouter: platform.createRouter },
+  { name: 'platform-admin', owner: 'Dev 1', createRouter: platformAdmin.createRouter },
+  { name: 'integrations', owner: 'Dev 1', createRouter: integrations.createRouter },
   { name: 'crm/leads', owner: 'Dev 5', createRouter: leads.createRouter },
   { name: 'crm/customers', owner: 'Dev 5', createRouter: customers.createRouter },
   { name: 'crm/activities', owner: 'Dev 5', createRouter: activities.createRouter },
@@ -36,8 +44,12 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
   { name: 'origination/lender-cases', owner: 'Dev 4', createRouter: lenderCases.createRouter },
   { name: 'origination/document-sharing', owner: 'Dev 1', createRouter: documentSharing.createRouter },
+  { name: 'verification', owner: 'Dev 2', createRouter: verification.createRouter },
   { name: 'origination/verifications', owner: 'Dev 2', createRouter: verifications.createRouter },
   { name: 'origination/connectors', owner: 'Dev 1', createRouter: connectors.createRouter },
   { name: 'origination/sanctions', owner: 'Dev 3', createRouter: sanctions.createRouter },
+  { name: 'automation', owner: 'Dev 1 / Dev 6', createRouter: automation.createRouter },
+  { name: 'partner-api', owner: 'Dev 2 / Dev 6', createRouter: partnerApi.createRouter },
+  { name: 'audit', owner: 'Dev 1 / Dev 6', createRouter: audit.createRouter },
 ];
 // rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.

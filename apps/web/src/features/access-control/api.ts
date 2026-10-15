@@ -1,4 +1,5 @@
 import { readConfig } from '../../config';
+import { getStoredAuthToken } from '../../auth/token';
 import type {
   CreateRoleInput,
   Permission,
@@ -7,7 +8,6 @@ import type {
   UserEffectiveGrants,
   UserRoleAssignment,
 } from './types';
-import { getStoredAuthToken } from '../../auth/token';
 
 function getApiBaseUrl(): string {
   const config = readConfig();
