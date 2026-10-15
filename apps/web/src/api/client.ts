@@ -84,7 +84,12 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
     res = await fetch(url, {
       method: req.method,
       headers,
-      body: req.body === undefined ? undefined : JSON.stringify(req.body),
+      body:
+        req.body === undefined
+          ? undefined
+          : typeof req.body === 'string'
+            ? req.body
+            : JSON.stringify(req.body),
       // Never answer from the browser's HTTP cache: responses are per user, and a revalidated cached copy could be
       // the previous user's.
       cache: 'no-store',
@@ -112,3 +117,44 @@ export function errorText(err: unknown): string {
   const ref = err.correlationId ? ` (ref ${err.correlationId})` : '';
   return `${err.message}${fields.length ? ` — ${fields.join(', ')}` : ''}${ref}`;
 }
+
+export async function apiDownload(path: string, defaultFilename: string): Promise<void> {
+  const config = readConfig();
+  if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
+
+  const { data } = await getSupabase().auth.getSession();
+  const token =
+    data.session?.access_token ??
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_auth_token') : null);
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const url = path.startsWith('http') ? new URL(path) : new URL(`${config.data.VITE_API_BASE_URL}${path}`);
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const env = ErrorEnvelope.safeParse(body);
+    if (env.success) {
+      throw new ApiError(env.data.error.code, env.data.error.httpStatus, env.data.error.message);
+    }
+    throw new ApiError('INTERNAL_ERROR', res.status, `Download failed (${res.status})`);
+  }
+
+  let filename = defaultFilename;
+  const disposition = res.headers.get('content-disposition');
+  if (disposition && disposition.includes('filename=')) {
+    const match = /filename=["']?([^"';]+)["']?/.exec(disposition);
+    if (match?.[1]) filename = match[1];
+  }
+
+  const blob = await res.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(blobUrl);
+}
+

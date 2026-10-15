@@ -23,3 +23,4 @@ supabase/.temp/
 .DS_Store
 Thumbs.db
 reports/
+uploads/
