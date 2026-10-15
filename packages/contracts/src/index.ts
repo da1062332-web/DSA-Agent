@@ -31,6 +31,7 @@ export * from './reporting';
 export * from './import-export';
 export * from './compliance';
 export * from './platform-admin';
+export * from './platform-realm';
 export * from './integrations';
 export type { Database } from './db';
 

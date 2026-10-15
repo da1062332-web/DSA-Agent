@@ -17,7 +17,8 @@ export const PlatformTenantSummarySchema = z.object({
   createdBy: z.string(),
   healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'ACTION_REQUIRED']),
   activeUsersCount: z.number().int().nonnegative(),
-  applicationsCount: z.number().int().nonnegative(),
+  /** Business counts are not shown in the platform console. Always null. */
+  applicationsCount: z.number().int().nonnegative().nullable(),
   entitlements: z.array(z.string()),
 });
 
@@ -252,7 +253,8 @@ export const DataCorrectionRequestSchema = z.object({
 export type DataCorrectionRequest = z.infer<typeof DataCorrectionRequestSchema>;
 
 export const CreateDataCorrectionRequestSchema = z.object({
-  tenantId: z.string().min(1),
+  /** Never trusted: a correction belongs to the caller's own tenant. Accepted only if it equals that tenant. */
+  tenantId: z.string().min(1).optional(),
   justification: z.string().min(10, 'Justification required (min 10 characters)'),
   scriptRef: z.string().min(3, 'Script reference required (e.g. SCR-2026-001)'),
   targetEntity: z.string().min(2),
