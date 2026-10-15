@@ -50,6 +50,7 @@ export interface ApiDeps {
   reportingRepository?: unknown;
   importRepository?: unknown;
   workforceRepository?: unknown;
+  invoiceRepository?: unknown;
 }
 
 export interface ApiModule {
