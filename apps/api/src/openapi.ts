@@ -16,10 +16,17 @@ import * as finance from './modules/finance/openapi';
 import * as lenderCases from './modules/origination/lender-cases/openapi';
 import * as sanctions from './modules/origination/sanctions/openapi';
 import * as platform from './modules/platform/openapi';
+import * as platformAdmin from './modules/platform-admin/openapi';
+import * as integrations from './modules/integrations/openapi';
 import * as rulesApi from './modules/rules/api/openapi';
+import * as verification from './modules/verification/openapi';
+import * as partnerApi from './modules/partner-api/openapi';
+import * as audit from './modules/audit/openapi';
 
 const MODULES = [
   platform,
+  platformAdmin,
+  integrations,
   leads,
   customers,
   activities,
@@ -34,6 +41,9 @@ const MODULES = [
   applications,
   lenderCases,
   sanctions,
+  verification,
+  partnerApi,
+  audit,
 ];
 
 export function buildOpenApiDocument() {

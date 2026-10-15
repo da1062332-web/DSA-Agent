@@ -1,6 +1,6 @@
 import { readConfig } from '../../config';
-import type { Branch, CreateUserInput, Role, UpdateUserInput, UserSummary } from './types';
 import { getStoredAuthToken } from '../../auth/token';
+import type { Branch, CreateUserInput, Role, UpdateUserInput, UserSummary } from './types';
 
 function getApiBaseUrl(): string {
   const config = readConfig();

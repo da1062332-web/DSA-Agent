@@ -157,7 +157,7 @@ export function AppLayout() {
                 width: 260,
                 boxSizing: 'border-box',
                 top: { md: 64 },
-                height: { md: 'calc(100% - 64px)' },
+                height: { md: 'calc(100vh - 64px)', xs: '100%' },
                 overflowY: 'auto',
                 overscrollBehavior: 'contain',
               },

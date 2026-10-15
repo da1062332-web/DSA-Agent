@@ -1,2 +1,6 @@
-// @dsa/bre-core — owner: Dev 2. Empty at Gate 0 (TASK-001); filled by TASK-202..205. See README.md.
-export {};
+// packages/bre-core/src/index.ts — owner: Dev 2 (pure functions, no I/O)
+export * from './ast/types';
+export * from './canonical-json';
+export * from './validate/validator';
+export * from './compile/compiler';
+export * from './evaluate/evaluator';

@@ -5,6 +5,7 @@ import { FakeUserDirectoryPort } from '@dsa/contracts/fakes';
 import { createAuditPort, createAuthz, createIdGenerator } from '@dsa/kernel';
 import type { Express, RequestHandler } from 'express';
 import { createApp } from '../../src/app';
+import { LiveDecisionEngine } from '../../src/modules/rules/engine/decision-engine';
 import type { ApiDeps } from '../../src/modules/types';
 
 export function fakeAuth(principal: Principal): RequestHandler {
@@ -48,6 +49,7 @@ export function testDeps(overrides: Partial<ApiDeps> = {}): ApiDeps {
     audit: createAuditPort(ids),
     ids,
     userDirectory: new FakeUserDirectoryPort(),
+    decisionPort: new LiveDecisionEngine(),
     ...overrides,
   };
 }

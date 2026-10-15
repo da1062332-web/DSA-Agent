@@ -16,6 +16,7 @@ import { createTxRunner } from './kernel-min/tx-runner';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
+import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 
 let config: ApiConfig;
 try {
@@ -38,7 +39,7 @@ const app = createApp({
     userDirectory: createUserDirectory(),
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
-    lenderPort: createLenderPort(),
+    dataSharingPort: new PostgresDataSharingPort(),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,
