@@ -232,13 +232,14 @@ export class AutomationEngine {
 
       // 1. Execution lifetime check
       if (currentExec.startedAt) {
-        const elapsed = Date.now() - new Date(currentExec.startedAt).getTime();
+        const nowMs = ctx.now ? ctx.now.getTime() : Date.now();
+        const elapsed = nowMs - new Date(currentExec.startedAt).getTime();
         if (elapsed > this.workerConfig.maxExecutionLifetimeMs) {
           return this.transitionExecution(ctx, currentExec, workerId, {
             status: 'FAILED',
             errorCode: 'EXECUTION_LIFETIME_EXCEEDED',
             errorMessage: `Execution exceeded maximum lifetime of ${this.workerConfig.maxExecutionLifetimeMs} ms`,
-            completedAt: new Date().toISOString(),
+            completedAt: (ctx.now ? ctx.now : new Date()).toISOString(),
           });
         }
       }

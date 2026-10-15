@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
-  IconButton,
   LinearProgress,
   MenuItem,
   Stack,
@@ -25,7 +24,6 @@ import {
   TableRow,
   Tabs,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -47,7 +45,6 @@ import type {
   AgentWorkforceSummary,
   AvailabilityStatus,
   CreateDelegationInput,
-  DelegationRecord,
 } from './types';
 
 const AVAILABILITY_CONFIG: Record<
@@ -630,7 +627,7 @@ export function WorkforcePage() {
               <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: 'none', height: '100%' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight={600} sx={{ color: '#0f172a', mb: 2 }}>
-                    Workforce Attendance Log
+                    Workforce Attendance Log {canManageAttendance ? '(All Agents)' : '(My Log)'}
                   </Typography>
                   <TableContainer sx={{ maxHeight: 320 }}>
                     <Table size="small">
