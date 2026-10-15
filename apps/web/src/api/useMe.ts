@@ -1,5 +1,4 @@
 // GET /v1/me (API-USR-010) and GET /v1/tenant — owner: Dev 1.
-import { PERMISSION_CODES } from '@dsa/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useOptionalAuth } from '../auth/AuthProvider';
 import { apiFetch } from './client';
@@ -31,27 +30,14 @@ export function useMe() {
   return useQuery({
     queryKey: ['me', session?.user.id],
     queryFn: async () => {
-      try {
-        const res = await apiFetch<any>('/v1/me');
-        const unwrapped = res?.data ?? res;
-        return {
-          ...unwrapped,
-          grants: Array.isArray(unwrapped?.grants) ? unwrapped.grants : [],
-        } as Me;
-      } catch {
-        return {
-          id: 'usr_demo_01',
-          tenantId: 'ten_demo_01',
-          email: 'admin@dsa.com',
-          displayName: 'Admin User',
-          primaryBranchId: null,
-          queueIds: [],
-          grants: PERMISSION_CODES.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
-          mfaVerifiedAt: new Date().toISOString(),
-        };
-      }
+      const res = await apiFetch<any>('/v1/me');
+      const unwrapped = res?.data ?? res;
+      return {
+        ...unwrapped,
+        grants: Array.isArray(unwrapped?.grants) ? unwrapped.grants : [],
+      } as Me;
     },
-    enabled: true,
+    enabled: !!session,
     retry: false,
     staleTime: 60_000,
   });
@@ -63,23 +49,10 @@ export function useTenant(enabled = true) {
   return useQuery({
     queryKey: ['tenant', session?.user.id],
     queryFn: async () => {
-      try {
-        const res = await apiFetch<any>('/v1/tenant');
-        return (res?.data ?? res) as Tenant;
-      } catch {
-        return {
-          id: 'ten_demo_01',
-          slug: 'demo-dsa',
-          legalName: 'Demo DSA Financial Services Ltd',
-          tenantType: 'DSA',
-          dataRegion: 'ap-south-1',
-          timezone: 'Asia/Kolkata',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        };
-      }
+      const res = await apiFetch<any>('/v1/tenant');
+      return (res?.data ?? res) as Tenant;
     },
-    enabled: enabled,
+    enabled: !!session && enabled,
     staleTime: 300_000,
   });
 }
