@@ -8,6 +8,7 @@
     "gen:openapi": "tsx gen-openapi.ts",
     "verify:migrations": "tsx --env-file-if-exists=../apps/api/.env verify-migrations.ts",
     "provision:tenant": "tsx --env-file-if-exists=../apps/api/.env provision-tenant.ts",
+    "provision:platform-admin": "tsx --env-file-if-exists=../apps/api/.env provision-platform-admin.ts",
     "test-token": "tsx --env-file-if-exists=../apps/api/.env test-token.ts",
     "gen:registry-sql": "tsx gen-registry-sql.ts",
     "typecheck": "tsc -p tsconfig.json",
