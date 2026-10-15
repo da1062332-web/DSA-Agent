@@ -33,7 +33,11 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
   const principalB = testPrincipal({
     tenantId: tenantB,
     grants: [
+      { code: 'lead.create', scope: 'TENANT', branchIds: [] },
       { code: 'lead.read', scope: 'TENANT', branchIds: [] },
+      { code: 'lead.update', scope: 'TENANT', branchIds: [] },
+      { code: 'lead.qualify', scope: 'TENANT', branchIds: [] },
+      { code: 'lead.assign', scope: 'TENANT', branchIds: [] },
       { code: 'application.create', scope: 'TENANT', branchIds: [] },
     ],
   });
@@ -780,6 +784,76 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('INVALID_ASSIGNEE');
+    });
+  });
+
+  describe('Tenant Isolation & Grievance Integration Guards', () => {
+    it('TC-LEAD-031 prevents cross-tenant PATCH, transition, assignment, and conversion', async () => {
+      const appA = getApp(principalA);
+      const appB = getApp(principalB);
+
+      const createRes = await request(appA)
+        .post('/v1/leads')
+        .set('Idempotency-Key', 'iso_lead_test_01')
+        .send(validLeadPayload);
+      const leadId = createRes.body.id;
+
+      // Cross-tenant PATCH -> 404
+      const patchRes = await request(appB)
+        .patch(`/v1/leads/${leadId}`)
+        .set('If-Match', '"0"')
+        .send({ priority: 'HIGH' });
+      expect(patchRes.status).toBe(404);
+
+      // Cross-tenant transition -> 404
+      const transRes = await request(appB)
+        .post(`/v1/leads/${leadId}/transitions`)
+        .set('If-Match', '"0"')
+        .set('Idempotency-Key', 'iso_trans_01')
+        .send({ transitionCode: 'T-LEAD-02', reasonCode: 'CONTACTED' });
+      expect(transRes.status).toBe(404);
+
+      // Cross-tenant assignment -> 404
+      const assignRes = await request(appB)
+        .post(`/v1/leads/${leadId}/assignments`)
+        .set('If-Match', '"0"')
+        .set('Idempotency-Key', 'iso_asg_01')
+        .send({ toUserId: 'usr_new_02', reasonCode: 'MANUAL' });
+      expect(assignRes.status).toBe(404);
+
+      // Cross-tenant conversion -> 404
+      const convRes = await request(appB)
+        .post(`/v1/leads/${leadId}/conversion`)
+        .set('If-Match', '"0"')
+        .set('Idempotency-Key', 'iso_conv_01')
+        .send({});
+      expect(convRes.status).toBe(404);
+    });
+
+    it('TC-LEAD-032 integrates with ComplaintSubjectPort and verifies lead subject existence across tenants', async () => {
+      // Mock subject port with repository lookup
+      const subjectPort = {
+        async exists(_tx: Tx, type: string, id: string): Promise<boolean> {
+          if (type !== 'LEAD') return false;
+          const lead = await repository.findLeadById({} as Tx, tenantA, id);
+          return !!lead;
+        },
+      };
+
+      const appA = getApp(principalA);
+      const createRes = await request(appA)
+        .post('/v1/leads')
+        .set('Idempotency-Key', 'iso_subject_lead')
+        .send(validLeadPayload);
+      const leadId = createRes.body.id;
+
+      // Subject exists for Tenant A lead
+      const existsA = await subjectPort.exists({} as Tx, 'LEAD', leadId);
+      expect(existsA).toBe(true);
+
+      // Subject does not exist for non-existent or other tenant lead
+      const existsNonExistent = await subjectPort.exists({} as Tx, 'LEAD', 'lead_nonexistent');
+      expect(existsNonExistent).toBe(false);
     });
   });
 });

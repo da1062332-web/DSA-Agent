@@ -2920,6 +2920,8 @@ paths:
                             - integration.manage
                             - security.incident
                             - security.vuln
+                            - attendance.manage
+                            - invoice.manage
                         scope:
                           type: string
                           enum:
@@ -10146,7 +10148,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T10:47:43.795Z
+                  default: 2026-10-15T11:34:35.937Z
               required:
                 - paymentRef
       responses:

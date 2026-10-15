@@ -30,7 +30,7 @@ This document provides the definitive final closure assessment of `MOD-PERF` (Te
 | Prerequisite | Status in Codebase & Manifest | Verification Details & Evidence |
 |---|---|---|
 | **TASK-428** (MOD-PERF SUB-PERF.01 Targets) | **`COMPLETED`** | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L26) under Migration `M-028` (`20261001000028_targets.sql`). Implemented in `apps/api/src/modules/crm/targets/` and `apps/web/src/features/targets/`. 17 API unit/contract tests and 6 live PostgreSQL tests pass. |
-| **TASK-414** (MOD-RPT Canonical Reporting) | **`COMPLETED`** | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L27) under Migration `M-029` (`20261001000029_reporting.sql`) and `M-031` (`20261001000031_report_manage_permission.sql`). Implemented in `apps/api/src/modules/reporting/` and consumed by `apps/web/src/features/performance/`. 16 API tests and 4 live PostgreSQL tests pass. |
+| **TASK-414** (MOD-RPT Canonical Reporting) | **`COMPLETED`** | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L27) under Migration `M-029` (`20261001000029_reporting.sql`) and `M-036` (`20261001000036_report_manage_permission.sql`). Implemented in `apps/api/src/modules/reporting/` and consumed by `apps/web/src/features/performance/`. 16 API tests and 4 live PostgreSQL tests pass. |
 | **MOD-ORG** (Platform & Organizational Hierarchy) | **`COMPLETED`** | Implemented under Module 2 in `apps/api/src/modules/platform/` (`organisation.ts`, `branches.ts`, `teams.ts`, `queues.ts`). Verified in `apps/api/test/platform.spec.ts`. Supplies organizational and branch scoping consumed by target and reporting authorization. |
 
 ---

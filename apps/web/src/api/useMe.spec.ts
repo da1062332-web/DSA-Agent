@@ -112,4 +112,30 @@ describe('mfaRequired enforcement check', () => {
       expect(mfaRequired(user), `Expected mfaRequired to be true for ${code}`).toBe(true);
     }
   });
+
+  it('returns true when user holds privileged administrative/sensitive permissions', () => {
+    const adminUser: Me = {
+      id: 'usr_2',
+      tenantId: 'ten_1',
+      email: 'admin@dsa.com',
+      displayName: 'Admin',
+      primaryBranchId: null,
+      queueIds: [],
+      grants: [{ code: 'config.manage', scope: 'TENANT', branchIds: [] }],
+      mfaVerifiedAt: null,
+    };
+    expect(mfaRequired(adminUser)).toBe(true);
+
+    const reviewerUser: Me = {
+      id: 'usr_3',
+      tenantId: 'ten_1',
+      email: 'reviewer@dsa.com',
+      displayName: 'Reviewer',
+      primaryBranchId: null,
+      queueIds: [],
+      grants: [{ code: 'application.review', scope: 'TENANT', branchIds: [] }],
+      mfaVerifiedAt: null,
+    };
+    expect(mfaRequired(reviewerUser)).toBe(true);
+  });
 });

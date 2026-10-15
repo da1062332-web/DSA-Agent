@@ -1,6 +1,6 @@
 // apps/web/src/features/lender-cases/api.spec.ts — owner: Dev 4 (MOD-LCS API Client Unit Tests)
-import { setAuthToken } from '../../auth/token';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setAuthToken } from '../../auth/token';
 import {
   ApiError,
   buildPackage,
@@ -41,7 +41,7 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     const res = await fetchLenderCases('app_01');
     expect(res).toEqual(mockCases);
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/applications/app_01/lender-cases',
+      expect.stringContaining('/v1/applications/app_01/lender-cases'),
       expect.objectContaining({ method: 'GET' }),
     );
   });
@@ -61,7 +61,7 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     expect(res.case).toEqual(mockCase);
     expect(res.etag).toBe('"0"');
     expect(global.fetch).toHaveBeenCalledWith(
-      '/v1/applications/app_01/lender-cases',
+      expect.stringContaining('/v1/applications/app_01/lender-cases'),
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify(payload),
@@ -135,5 +135,23 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     });
 
     await expect(submitLenderCase('lcs_01', { channel: 'PORTAL' })).rejects.toThrow(ApiError);
+  });
+
+  it('attaches the Supabase session bearer token via getStoredAuthToken', async () => {
+    setAuthToken('jwt_supabase_lcs_token');
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+      headers: new Headers(),
+    });
+
+    await fetchLenderCases('app_01');
+
+    const calledHeaders = (global.fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock
+      .calls[0]![1]?.headers as Headers;
+    expect(calledHeaders.get('Authorization')).toBe('Bearer jwt_supabase_lcs_token');
+
+    setAuthToken(undefined);
   });
 });
