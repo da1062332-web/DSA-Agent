@@ -475,6 +475,54 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       const getRes = await request(appB).get(`/v1/sanctions/${sanctionId}`);
       expect(getRes.status).toBe(404);
       expect(getRes.body.error.code).toBe('NOT_FOUND');
+
+      // Tenant B cannot record tranche on Tenant A sanction -> 404
+      const trancheRes = await request(appB)
+        .post(`/v1/sanctions/${sanctionId}/tranches`)
+        .send({
+          amount: 200000,
+          disbursedOn: '2026-10-15',
+          utr: 'HDFCCROSS001',
+          loanAccountNumber: '987654321098',
+          evidenceDocumentId: 'doc_ev_01',
+        });
+      expect(trancheRes.status).toBe(404);
+      expect(trancheRes.body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('verifies tenant admin (ROLE-TENANT-ADMIN / ROLE-ORG-OWNER) possesses full sanction and disbursement grants', async () => {
+      const tenantAdmin = testPrincipal({
+        tenantId: tenantA,
+        id: 'usr_tenant_admin_alpha',
+        primaryBranchId: branchA,
+        grants: [
+          { code: 'sanction.record', scope: 'TENANT', branchIds: [] },
+          { code: 'disbursement.record', scope: 'TENANT', branchIds: [] },
+          { code: 'disbursement.verify', scope: 'TENANT', branchIds: [] },
+          { code: 'disbursement.exception_approve', scope: 'TENANT', branchIds: [] },
+          { code: 'application.read', scope: 'TENANT', branchIds: [] },
+        ],
+      });
+
+      const app = getApp(tenantAdmin);
+      const sRes = await request(app)
+        .post(`/v1/lender-cases/${caseId}/sanctions`)
+        .send(validSanctionPayload);
+      expect(sRes.status).toBe(201);
+      expect(sRes.body.id).toMatch(/^snc_/);
+
+      const tRes = await request(app)
+        .post(`/v1/sanctions/${sRes.body.id}/tranches`)
+        .send({
+          amount: 500000,
+          disbursedOn: '2026-10-15',
+          utr: 'UTR-ADMIN-001',
+          loanAccountNumber: '987654321098',
+          evidenceDocumentId: 'doc_ev_admin',
+        });
+      expect(tRes.status).toBe(201);
+      expect(tRes.body.tranche.id).toMatch(/^trn_/);
+      expect(tRes.body.tranche.status).toBe('RECORDED');
     });
   });
 });

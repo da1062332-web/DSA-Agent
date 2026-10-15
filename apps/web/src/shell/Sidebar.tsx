@@ -43,8 +43,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Leads and customers (DOM-B)',
     items: [
-      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
-      { label: 'Customers', task: 'MOD-CUST' },
+      { label: 'Leads', to: '/leads' },
+      { label: 'Customers', to: '/customers' },
     ],
   },
   {
@@ -103,7 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
       { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
       { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
-      { label: 'Workforce', task: 'MOD-WRK' },
+      { label: 'Workforce', to: '/workforce' },
     ],
   },
   {
@@ -120,7 +120,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Ledger', task: 'MOD-LED' },
       { label: 'Payouts', to: '/payouts' },
       { label: 'Reconciliation', to: '/reconciliation' },
-      { label: 'Invoices', task: 'MOD-INV' },
+      { label: 'Invoices', to: '/invoices' },
     ],
   },
   {

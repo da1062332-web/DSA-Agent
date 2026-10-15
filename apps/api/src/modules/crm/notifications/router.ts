@@ -136,6 +136,11 @@ export function createRouter(
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
 
+      const hasPref = Boolean(req.body?.notificationPreferences || req.body?.preferences);
+      if (!hasPref) {
+        return next();
+      }
+
       const ifMatch = req.get('If-Match');
       if (!ifMatch) {
         throw AppError.of('VALIDATION_ERROR', 'If-Match header is required for updating profile preferences', [

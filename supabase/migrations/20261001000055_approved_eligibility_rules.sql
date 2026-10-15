@@ -1,4 +1,4 @@
--- Migration: 20261001000051_approved_eligibility_rules.sql
+-- Migration: 20261001000055_approved_eligibility_rules.sql
 -- Owner: Akash (Dev 2 / Coordinator, Module 20/23: Business Rule Engine)
 -- Covers:
 -- 1. Seed approved rule sets, active version (v1), and rules for DK-application.eligibility across all tenants

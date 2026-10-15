@@ -1,4 +1,4 @@
--- Migration: 20261001000050_access_control_and_api_clients.sql
+-- Migration: 20261001000054_access_control_and_api_clients.sql
 -- Owner: Akash (Dev 2 / Coordinator, Modules 5, 23, 36)
 -- Covers:
 -- 1. Module 5 (Access Control): Seed role.manage permission, grant to admin roles, and reconcile hosted users with valid roles
