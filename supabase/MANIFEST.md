@@ -42,6 +42,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-044 | `20261001000044_sanction_disbursement_role_grants.sql`           | Dev 3        | MOD-SND (Module 19)     | sanction and disbursement role grants for tenant admin roles (ROLE-TENANT-ADMIN, ROLE-ORG-OWNER, ROLE-BRANCH-MGR, ROLE-LOAN-OPS)        | M-001, M-031 |
 | M-045 | `20261001000045_reconcile_tenant_admin_operational_grants.sql`   | Dev 1        | AUDIT-REC / MOD-ADM     | reconcile operational role grants for tenant admins (Alpha/Beta/DSA) and revoke DELETE on report_schedule                                 | M-001, M-044 |
 | M-046 | `20261001000046_workforce_management.sql`                         | Dev 1        | MOD-WRK (Module 26)     | delegation (ENT-038), attendance_record (ENT-039), app_user capacity (ENT-005), and attendance.manage permission                        | M-001, M-045 |
+| M-047 | `20261001000047_invoices_and_statements.sql`                      | Dev 5        | TASK-418 / MOD-INV      | invoice (ENT-092), ledger_entry (ENT-081), invoice.manage permission                                                                    | M-001, M-040, M-046 |
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 
