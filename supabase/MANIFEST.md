@@ -33,6 +33,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-040 | `20261001000040_lender_contacts_and_commission_payouts.sql`     | Dev 5        | TASK-418 / MOD-LND / MOD-COM | commission_plan (ENT-076), commission_calculation (ENT-077), commission_payable (ENT-078), payout_request (ENT-082), payout_line (ENT-083), payout_approval (ENT-084), payout_batch (ENT-085), adjustment (ENT-090), recalculation_proposal (ENT-093) | M-001, M-020, M-023 |
 | M-041 | `20261001000041_workflow_automation.sql`                        | Dev 1 / 6    | TASK-401 / MOD-WFA      | automation_definition, automation_version, automation_execution, automation_step_execution, scheduled_trigger, wfa_dead_letter, automation.* permissions              | M-001, M-002 |
 | M-042 | `20261001000042_audit_tamper_evidence.sql`                       | Dev 1 / 6    | TASK-105 / TASK-408 / MOD-AUD | audit_event hash chain columns (prev_hash, hash), evidence_pack table, audit.export_evidence permission | M-001, M-002 |
+| M-043 | `20261001000043_security_monitoring_incidents.sql`               | Dev 1 / Platform | TASK-431 / MOD-SEC      | security_event (ENT-096), incident_record (ENT-102), security.incident and security.vuln permissions | M-001, M-002 |
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 

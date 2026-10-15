@@ -77,6 +77,8 @@ export const PERMISSION_CODES = [
   'partner.lead_ingest',
   'partner.application_read',
   'webhook.manage',
+  'security.incident',
+  'security.vuln',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
