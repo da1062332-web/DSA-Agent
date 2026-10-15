@@ -6,7 +6,7 @@ import type { Me } from '../../api/useMe';
 
 const me = vi.hoisted(() => ({ grants: [] as { code: string; scope: string; branchIds: string[] }[] }));
 vi.mock('../../api/useMe', async (orig) => ({
-  ...(await orig<typeof import('../../api/useMe')>()),
+  ...(await orig<Record<string, unknown>>()),
   useMe: () => ({ data: { grants: me.grants } as Me }),
 }));
 

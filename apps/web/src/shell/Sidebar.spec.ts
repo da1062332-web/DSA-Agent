@@ -39,6 +39,27 @@ describe('sidebar visibility by permission', () => {
   });
 });
 
+describe('platform realm in the sidebar', () => {
+  it('TEST-REALM-WEB-001 a tenant administrator (no platform permission) sees Approvals but not the Platform Console', () => {
+    const tenantAdmin = new Set(['config.manage', 'user.manage', 'data_correction.request', 'data_correction.approve']);
+    const shown = labels((c) => tenantAdmin.has(c), true);
+    expect(shown).toContain('Approvals');
+    expect(shown).not.toContain('Platform Console');
+  });
+
+  it('TEST-REALM-WEB-002 a platform operator sees the Platform Console, and not the tenant administration screens', () => {
+    const operator = new Set(['platform.console', 'platform.flags', 'platform.support_access']);
+    const shown = labels((c) => operator.has(c), false);
+    expect(shown).not.toContain('Approvals');
+    expect(visibleGroups(false, (c) => operator.has(c)).flatMap((g) => g.items.map((i) => i.label))).not.toContain('Users');
+  });
+
+  it('TEST-REALM-WEB-003 the Platform Console item needs platform.console even for an admin', () => {
+    expect(labels((c) => c === 'config.manage' || c === 'user.manage', true)).not.toContain('Platform Console');
+    expect(labels((c) => c === 'platform.console', true)).toContain('Platform Console');
+  });
+});
+
 describe('retry policy', () => {
   it('does not retry refused requests', () => {
     expect(shouldRetry(0, new ApiError('FORBIDDEN', 403, 'no'))).toBe(false);

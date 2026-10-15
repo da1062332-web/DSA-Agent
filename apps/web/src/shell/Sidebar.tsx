@@ -142,6 +142,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Audit', task: 'MOD-AUD' },
       { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
+      { label: 'Approvals', to: '/approvals', anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'] },
       { label: 'Security', to: '/account/security' },
     ],
   },
