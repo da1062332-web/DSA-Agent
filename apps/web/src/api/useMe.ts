@@ -75,5 +75,7 @@ const MFA_REQUIRED = [
   'rule.publish',
   'rule.suspend',
   'export.run',
+  'payout.approve',
+  'payout.record_payment',
 ];
 export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));
