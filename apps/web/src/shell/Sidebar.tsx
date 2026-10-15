@@ -92,7 +92,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Performance Dashboard', to: '/performance' },
       { label: 'Targets', to: '/targets' },
       { label: 'Leaderboard', to: '/performance/leaderboard' },
-      { label: 'Workforce', task: 'MOD-WRK' },
+      { label: 'Workforce', to: '/workforce' },
     ],
   },
   {
