@@ -221,6 +221,13 @@ export const ApproveSupportAccessRequestSchema = z.object({
 
 export type ApproveSupportAccessRequest = z.infer<typeof ApproveSupportAccessRequestSchema>;
 
+/** The target tenant ends an approved access early (a tenant-realm action). */
+export const RevokeSupportAccessRequestSchema = z.object({
+  comments: z.string().max(500).optional(),
+});
+
+export type RevokeSupportAccessRequest = z.infer<typeof RevokeSupportAccessRequestSchema>;
+
 // ==========================================
 // SUB-ADM.07: Data Correction (CMP-ADM.07.1 / API-ADM-008 / API-ADM-009)
 // ==========================================
@@ -240,8 +247,11 @@ export const DataCorrectionRequestSchema = z.object({
   tenantId: z.string(),
   justification: z.string(),
   scriptRef: z.string(),
-  dryRunDiffKey: z.string(),
-  dryRunDiff: z.string(),
+  /** Set when the correction executor attaches a real dry-run diff. Null until then; never made up by the API. */
+  dryRunDiffKey: z.string().nullable(),
+  dryRunDiff: z.string().nullable(),
+  targetEntity: z.string().nullable().optional(),
+  changeDescription: z.string().nullable().optional(),
   requestedBy: z.string(),
   approvedBy: z.string().nullable().optional(),
   status: DataCorrectionStatusSchema,

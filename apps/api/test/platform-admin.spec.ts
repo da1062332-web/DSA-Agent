@@ -42,6 +42,10 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     grants: [{ code: 'data_correction.request', scope: 'TENANT', branchIds: [] }],
   });
 
+  // The correction executor: a service identity bound to one tenant by its token.
+  const executorFor = (tenantId: string) =>
+    testPrincipal({ kind: 'SERVICE', id: 'SYSTEM:data-correction-executor', tenantId, grants: [] });
+
   // An administrator of a different customer tenant.
   const otherTenantAdmin = testPrincipal({
     id: 'usr_other_admin_55',
@@ -180,6 +184,14 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
         const res = await (request(app) as unknown as Record<string, (p: string) => request.Test>)[method]!(path).send({});
         expect(res.status, `${method} ${path}`).toBe(403);
       }
+    });
+
+    it('TEST-REALM-009 a refused attempt on a platform route is itself audited, with the permission it wanted', async () => {
+      auditLog.length = 0;
+      const res = await request(createTestApp(tenantAdminWithPlatformCodes)).get('/platform/v1/flags');
+      expect(res.status).toBe(403);
+      expect(auditLog).toHaveLength(1);
+      expect(auditLog[0]).toMatchObject({ action: 'platform.access_denied', permissionUsed: 'platform.flags', after: { realm: 'platform', principalKind: 'USER' } });
     });
 
     it('TEST-REALM-002 a service identity gets no shortcut: it is refused on platform and tenant routes', async () => {
@@ -396,6 +408,25 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       expect(approvedRes.body.approver).toBe(tenantAdmin.id);
     });
 
+    it('TEST-REALM-008 the target tenant can revoke an approved access; others cannot, and a pending one cannot be revoked', async () => {
+      const operator = createTestApp(platformAdmin);
+      const made = await request(operator)
+        .post('/platform/v1/support-access-requests')
+        .send({ tenantId: 'ten_demo_01', reason: 'Investigate stuck queue after the outage', incidentRef: 'INC-2026-7777', durationHours: 1 });
+      const id = made.body.id;
+      const admin = createTestApp(tenantAdmin);
+
+      expect((await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(409); // still pending
+      await request(admin).post(`/v1/support-access-requests/${id}/approval`).send({ decision: 'APPROVED' });
+
+      expect((await request(operator).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(403);
+      expect((await request(createTestApp(otherTenantAdmin)).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(404);
+      const revoked = await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({});
+      expect(revoked.status).toBe(200);
+      expect(revoked.body.status).toBe('REVOKED');
+      expect((await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(409);
+    });
+
     it('TEST-REALM-004 a tenant administrator cannot list another tenant by passing tenantId', async () => {
       const res = await request(createTestApp(tenantAdmin)).get('/v1/support-access-requests?tenantId=ten_other_01');
       expect(res.status).toBe(403);
@@ -420,8 +451,9 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       expect(createRes.status).toBe(201);
       expect(createRes.body.status).toBe('PENDING');
       expect(createRes.body.tenantId).toBe('ten_demo_01');
-      expect(createRes.body.dryRunDiffKey).toBeDefined();
-      expect(createRes.body.dryRunDiff).toBeDefined();
+      // No dry-run diff is invented: it stays null until the executor attaches a real one.
+      expect(createRes.body.dryRunDiffKey).toBeNull();
+      expect(createRes.body.dryRunDiff).toBeNull();
       const corrId = createRes.body.id;
 
       // The requester cannot approve (no approve permission at all)
@@ -438,9 +470,13 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const approveRes = await request(adminApp).post(`/v1/data-corrections/${corrId}/approval`).send({ decision: 'APPROVED' });
       expect(approveRes.status).toBe(200);
       expect(approveRes.body.status).toBe('APPROVED');
-      const execRes = await request(adminApp).post(`/v1/data-corrections/${corrId}/execute`);
+      // A person cannot mark it executed; only the executor service identity of that tenant can.
+      expect((await request(adminApp).post(`/v1/data-corrections/${corrId}/execute`)).status).toBe(403);
+      const execRes = await request(createTestApp(executorFor('ten_demo_01'))).post(`/v1/data-corrections/${corrId}/execute`);
       expect(execRes.status).toBe(200);
       expect(execRes.body.status).toBe('EXECUTED');
+      // and not twice
+      expect((await request(createTestApp(executorFor('ten_demo_01'))).post(`/v1/data-corrections/${corrId}/execute`)).status).toBe(409);
     });
 
     it('TEST-REALM-005 the tenant comes from the signed-in user: another tenant is refused and cannot see or act on the record', async () => {
@@ -456,7 +492,9 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const list = await request(otherApp).get('/v1/data-corrections');
       expect(list.body.data.map((c: { id: string }) => c.id)).not.toContain(mine.body.id);
       expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/approval`).send({ decision: 'APPROVED' })).status).toBe(404);
-      expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(404);
+      expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(403);
+      // another tenant's executor cannot see it either
+      expect((await request(createTestApp(executorFor('ten_other_01'))).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(404);
     });
 
     it('TEST-REALM-006 a platform operator cannot request, approve or list data corrections', async () => {
@@ -465,11 +503,11 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       expect((await request(app).post('/v1/data-corrections').send(body)).status).toBe(403);
     });
 
-    it('TEST-REALM-007 requests and approvals are audited', async () => {
-      auditLog.length = 0;
+    it('TEST-REALM-007 requests and approvals are audited by the store, in the same transaction as the change', async () => {
+      store.audit.length = 0;
       const created = await request(createTestApp(tenantRequester)).post('/v1/data-corrections').send(body);
       await request(createTestApp(tenantAdmin)).post(`/v1/data-corrections/${created.body.id}/approval`).send({ decision: 'APPROVED' });
-      expect(auditLog.map((e) => e.action)).toEqual(['data_correction.requested', 'data_correction.approved']);
+      expect(store.audit).toEqual(['data_correction.requested', 'data_correction.approved']);
     });
   });
 

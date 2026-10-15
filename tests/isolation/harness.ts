@@ -51,7 +51,7 @@ export interface IsolationEnv {
 export const ALL_ADMIN: PermissionCode[] = ['config.manage', 'user.manage'];
 
 export async function startIsolationEnv(): Promise<IsolationEnv> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer('postgres:16').start();
+  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
 
