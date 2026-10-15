@@ -120,14 +120,13 @@ Nothing is implemented until one is chosen. Option B would be a small change in 
 ## 7. Module 17 (Eligibility): built as a skeleton, waiting on approvals and rules (2026-10-15)
 
 Built and tested locally: API-ELG-001 (run), 002 (history), 003 (override), the Eligibility card on the application page,
-and migration `20261001000048_eligibility.sql`. **The migration is not applied to hosted.** Until it is, the endpoints return an error
-on hosted because the table does not exist.
+and migration `20261001000048_eligibility.sql`. **The migration was applied to hosted on 2026-10-15 (approved by Vaibhav) and verified**: table with 12 columns, RLS enabled and forced
+with the `tenant_isolation` policy, INSERT/SELECT/UPDATE for `dsa_app` only, and the `eligibility.override` permission (granted to no role).
 
 Needs from others before it does real work:
 - **Akash:** a published eligibility rule set. Until then every criterion is UNKNOWN (the spec's rule for missing data).
   The one place to connect it is `evaluateCriteria` in `apps/api/src/modules/origination/applications/eligibility.ts`.
-- **You:** approval to apply `20261001000048_eligibility.sql` to hosted, and which roles get `eligibility.override`
-  (the spec says "approver roles"; no role is granted today).
+- **You:** which roles get `eligibility.override` (the spec says "approver roles"; no role is granted today).
 
 ## 8. Beta cannot build a fresh database (found 2026-10-15, not caused by this work)
 

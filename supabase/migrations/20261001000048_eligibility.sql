@@ -1,5 +1,5 @@
 -- 0048_eligibility.sql  (owner: Dev 3, MOD-ELG Eligibility, DSA Notion MODULE 17, ENT-050)
--- Additive. NOT APPLIED to the hosted project: it needs approval of this exact change first.
+-- Additive. Applied to the hosted project on 2026-10-15 with Vaibhav's approval; table, RLS policy, grants and permission verified.
 -- Stores each preliminary eligibility assessment of an application. Results are per product version and per criterion
 -- (PASS, FAIL or UNKNOWN). A criterion whose data or rule is unavailable is UNKNOWN. Overrides are appended with a reason.
 -- Assessments are never deleted. No role is granted eligibility.override here: who may override is a business decision.
