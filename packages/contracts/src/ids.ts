@@ -92,6 +92,8 @@ export const ID_PREFIXES = [
   'imp',
   'job',
   'itc',
+  'sec',
+  'inc',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

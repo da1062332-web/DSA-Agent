@@ -93,6 +93,8 @@ export const PERMISSION_CODES = [
   'data_correction.approve',
   'integration.read',
   'integration.manage',
+  'security.incident',
+  'security.vuln',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
