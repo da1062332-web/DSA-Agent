@@ -5,6 +5,15 @@ Date drafted: 2026-10-15.
 
 ## 1. Module 1 (Tenant): `platform.console` and `platform.flags` for ROLE-PLATFORM-SUPERADMIN
 
+> **Update 2026-10-15: this section's premise has changed.** Piyush's migration 0046 (now on hosted) already created all the `platform.*`
+> permissions and granted them to `ROLE-ORG-OWNER` and `ROLE-TENANT-ADMIN` in every tenant (12 grants). No `ROLE-PLATFORM-SUPERADMIN`
+> exists, and there is no platform tenant (all 6 tenants are `DSA_ORG`). The draft SQL below is therefore outdated.
+> The console's tenant list runs inside the caller's tenant (RLS), so a tenant admin sees only their own tenant today: no cross-tenant leak yet.
+> But `platform.support_access`, `platform.release` and `platform.jobs` are described as cross-tenant operator powers.
+> Decision needed: (A) leave the grants as they are for now, or (B) create a platform tenant and role, move the grants,
+> and add a deliberate cross-tenant read path. B also removes the Platform Console from every tenant admin and breaks Piyush's tests that assume tenant-admin access.
+
+
 **Why.** `apps/api/src/modules/platform-admin/router.ts` requires `platform.console` and `platform.flags`. Hosted has neither
 permission, so nobody can open the Platform Console.
 
