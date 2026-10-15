@@ -148,6 +148,7 @@ export function createMockPlatformStore() {
 
   const permissions: MockPermissionRecord[] = [
     { code: 'user.manage', description: 'Manage users', introduced_in: 'MVP-4D' },
+    { code: 'role.manage', description: 'Manage roles and role-permission assignments', introduced_in: 'MVP-4D' },
     { code: 'config.manage', description: 'Manage configuration', introduced_in: 'MVP-4D' },
     { code: 'lead.read', description: 'Read leads in scope', introduced_in: 'MVP-4D' },
     { code: 'lead.create', description: 'Create leads', introduced_in: 'MVP-4D' },
@@ -195,7 +196,7 @@ export function createMockPlatformStore() {
       name: 'Admin',
       is_template: true,
       version: 1,
-      permissions: ['user.manage', 'config.manage'],
+      permissions: ['user.manage', 'role.manage', 'config.manage'],
     },
     {
       id: 'rol_loan_officer',

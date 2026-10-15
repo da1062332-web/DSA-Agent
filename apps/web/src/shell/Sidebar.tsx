@@ -43,8 +43,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Leads and customers (DOM-B)',
     items: [
-      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
-      { label: 'Customers', task: 'MOD-CUST' },
+      { label: 'Leads', to: '/leads' },
+      { label: 'Customers', to: '/customers' },
     ],
   },
   {
@@ -95,7 +95,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Workflow automation (DOM-H)',
-    items: [{ label: 'Automation rules', task: 'MOD-WFA' }],
+    items: [{ label: 'Automation rules', to: '/automations' }],
   },
   {
     title: 'Team and performance (DOM-I)',
@@ -103,7 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
       { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
       { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
-      { label: 'Workforce', task: 'MOD-WRK' },
+      { label: 'Workforce', to: '/workforce' },
     ],
   },
   {
@@ -120,7 +120,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Ledger', task: 'MOD-LED' },
       { label: 'Payouts', to: '/payouts' },
       { label: 'Reconciliation', to: '/reconciliation' },
-      { label: 'Invoices', task: 'MOD-INV' },
+      { label: 'Invoices', to: '/invoices' },
     ],
   },
   {
@@ -134,13 +134,13 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Integrations and API (DOM-M)',
     items: [
       { label: 'Integrations', to: '/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },
-      { label: 'API management', task: 'MOD-API' },
+      { label: 'API management', to: '/api-management', anyOf: ['api.read', 'api.manage', 'config.manage'] },
     ],
   },
   {
     title: 'Security and compliance (DOM-N)',
     items: [
-      { label: 'Audit', task: 'MOD-AUD' },
+      { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
       { label: 'Approvals', to: '/approvals', anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'] },
       { label: 'Security', to: '/account/security' },

@@ -17,6 +17,10 @@ import {
   SandboxSimulateEventRequestSchema,
   SandboxSimulateEventResponseSchema,
   WebhookSubscriptionResponseSchema,
+  CreateApiClientSchema,
+  UpdateApiClientSchema,
+  ApiClientResponseSchema,
+  RotateClientSecretResponseSchema,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
@@ -235,6 +239,98 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       200: {
         description: 'Simulation outcome',
         content: { 'application/json': { schema: SandboxSimulateEventResponseSchema } },
+      },
+    },
+  });
+
+  // 7. API Management & Client Credentials (MOD-API)
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/api-clients',
+    summary: 'List API clients registered for the tenant',
+    tags: ['MOD-API API Management'],
+    responses: {
+      200: {
+        description: 'List of registered API clients',
+        content: { 'application/json': { schema: z.object({ data: z.array(ApiClientResponseSchema) }) } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/api-clients',
+    summary: 'Register and issue credentials for an external API client',
+    tags: ['MOD-API API Management'],
+    request: {
+      body: { content: { 'application/json': { schema: CreateApiClientSchema } } },
+    },
+    responses: {
+      201: {
+        description: 'API client registered with one-time unmasked secret',
+        content: { 'application/json': { schema: ApiClientResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/api-clients/{id}',
+    summary: 'Get details of an API client',
+    tags: ['MOD-API API Management'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'API client details',
+        content: { 'application/json': { schema: ApiClientResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/api-clients/{id}',
+    summary: 'Update API client configuration, status, scopes, or rate limits',
+    tags: ['MOD-API API Management'],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: UpdateApiClientSchema } } },
+    },
+    responses: {
+      200: {
+        description: 'Updated API client details',
+        content: { 'application/json': { schema: ApiClientResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/api-clients/{id}',
+    summary: 'Revoke and delete an API client',
+    tags: ['MOD-API API Management'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      204: { description: 'API client revoked successfully' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/api-clients/{id}/rotate-secret',
+    summary: 'Rotate client secret for an API client',
+    tags: ['MOD-API API Management'],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Rotated client secret payload',
+        content: { 'application/json': { schema: RotateClientSecretResponseSchema } },
       },
     },
   });

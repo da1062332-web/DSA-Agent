@@ -40,7 +40,7 @@ However, an exhaustive inspection of the repository against the full Module 31 e
 
 The assessment performed a thorough, read-only inspection of the repository across:
 1. **Shared Contracts & Typing:** `packages/contracts/src/` (`reporting.ts`, `permissions.ts`, `events.ts`, `kernel.ts`).
-2. **Database Schema & Migrations:** `supabase/migrations/` (`20261001000029_reporting.sql`, `20261001000031_report_manage_permission.sql`, `20261001000002_kernel_infra.sql`), `supabase/MANIFEST.md`.
+2. **Database Schema & Migrations:** `supabase/migrations/` (`20261001000029_reporting.sql`, `20261001000036_report_manage_permission.sql`, `20261001000002_kernel_infra.sql`), `supabase/MANIFEST.md`.
 3. **Backend API Services & Modules:** `apps/api/src/modules/reporting/` (`service.ts`, `repository.ts`, `router.ts`, `openapi.ts`, `types.ts`, `index.ts`), `apps/api/src/modules/crm/targets/`.
 4. **Kernel Infrastructure:** `packages/kernel/` (outbox, audit, context, MFA step-up auth, RLS utilities).
 5. **Frontend Applications:** `apps/web/src/features/performance/`, `apps/web/src/shell/Sidebar.tsx`.

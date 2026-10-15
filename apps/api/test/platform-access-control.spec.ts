@@ -584,4 +584,55 @@ describe('Module 5: Access Control (RBAC API)', () => {
       expect(afterPerms.body.grants.some((g: any) => g.code === 'task.create')).toBe(false);
     });
   });
+
+  describe('TEST-ACL-007: role.manage Permission Guard & Mapping', () => {
+    const roleManagerPrincipal = testPrincipal({
+      id: 'usr_role_mgr_only',
+      tenantId: 'ten_01JTESTTENANT00000000000000',
+      grants: [
+        {
+          code: 'role.manage',
+          scope: 'TENANT',
+          branchIds: [],
+        },
+      ],
+    });
+
+    it('allows user with role.manage to list permissions and roles', async () => {
+      const store = createMockPlatformStore();
+      const app = createTestApp({
+        auth: fakeAuth(roleManagerPrincipal),
+        deps: { txRunner: store.runner },
+      });
+
+      const permsRes = await request(app).get('/v1/permissions');
+      expect(permsRes.status).toBe(200);
+      expect(permsRes.body.data.some((p: any) => p.code === 'role.manage')).toBe(true);
+
+      const rolesRes = await request(app).get('/v1/roles');
+      expect(rolesRes.status).toBe(200);
+      expect(rolesRes.body.data.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('allows user with role.manage to create a custom role', async () => {
+      const store = createMockPlatformStore();
+      const app = createTestApp({
+        auth: fakeAuth(roleManagerPrincipal),
+        deps: { txRunner: store.runner },
+      });
+
+      const createRes = await request(app)
+        .post('/v1/roles')
+        .send({
+          code: 'ROLE-AUDIT-OFFICER',
+          name: 'Audit Officer',
+          permissions: ['lead.read', 'task.read', 'role.manage'],
+        });
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.code).toBe('ROLE-AUDIT-OFFICER');
+      expect(createRes.body.permissions).toContain('role.manage');
+    });
+  });
 });
+

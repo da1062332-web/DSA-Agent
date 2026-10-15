@@ -10,7 +10,6 @@ import type {
   SubmitLenderCasePayload,
   UpdateLenderCaseStatusPayload,
 } from './types';
-
 import { getStoredAuthToken } from '../../auth/token';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '';
@@ -46,7 +45,7 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = getStoredAuthToken();
+  const token = getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

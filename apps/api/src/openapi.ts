@@ -24,6 +24,7 @@ import * as rulesApi from './modules/rules/api/openapi';
 import * as verification from './modules/verification/openapi';
 import * as partnerApi from './modules/partner-api/openapi';
 import * as audit from './modules/audit/openapi';
+import * as security from './modules/security/openapi';
 
 const MODULES = [
   platform,
@@ -48,6 +49,7 @@ const MODULES = [
   verification,
   partnerApi,
   audit,
+  security,
 ];
 
 export function buildOpenApiDocument() {

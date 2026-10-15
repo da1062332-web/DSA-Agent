@@ -113,10 +113,27 @@ export function createMockRulesStore() {
       overridable: false,
       enabled: true,
     },
+    {
+      key: 'DK-application.eligibility',
+      registry_version: '1-mvp',
+      tier: 'T1',
+      input_schema: { type: 'object' },
+      output_schema: { type: 'object' },
+      allowed_hit_policies: ['FIRST', 'PRIORITY', 'UNIQUE'],
+      binding_mode: 'EVAL',
+      fallback_policy: 'DEFAULT_OUTPUT',
+      fallback_output: { result: 'REFER', maxEligibleAmount: null, reasons: [{ code: 'MANUAL_REVIEW', text: 'Application referred for underwriter review' }] },
+      unknown_policy: 'UNDETERMINED',
+      recording_level: 'ALWAYS',
+      scope_chain: ['PRODUCT_VERSION', 'TENANT_DEFAULT'],
+      overridable: true,
+      enabled: true,
+    },
   ];
 
   const decisionDependencies = [
     { decision_key: 'DK-application.completeness', depends_on_key: 'DK-document.requirements' },
+    { decision_key: 'DK-application.completeness', depends_on_key: 'DK-application.eligibility' },
   ];
 
   const ruleSets: RawRuleSetRow[] = [];

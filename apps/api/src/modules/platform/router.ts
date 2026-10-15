@@ -54,6 +54,15 @@ function requirePermission(ctx: RequestContext, code: PermissionCode): void {
   }
 }
 
+function requireAnyPermission(ctx: RequestContext, codes: PermissionCode[]): void {
+  const { principal } = ctx;
+  if (principal.kind === 'SERVICE') return;
+  const hasGrant = principal.grants.some((g) => codes.includes(g.code as PermissionCode));
+  if (!hasGrant) {
+    throw AppError.of('FORBIDDEN', `Permission denied: ${codes.join(' or ')} required.`);
+  }
+}
+
 interface RawUserRow {
   id: string;
   tenant_id: string;
@@ -821,7 +830,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/roles', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const roles = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
@@ -866,7 +875,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/permissions', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const permissions = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
@@ -896,7 +905,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const roleId = req.params.id;
       const role = await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -947,7 +956,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/roles', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const parsed = CreateRoleRequest.parse(req.body);
 
@@ -1016,7 +1025,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.patch('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const roleId = req.params.id;
       const parsed = UpdateRoleRequest.parse(req.body);
@@ -1135,7 +1144,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.delete('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const roleId = req.params.id;
 
@@ -1570,7 +1579,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/users/:id/roles', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const targetUserId = req.params.id;
 
@@ -1635,7 +1644,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.delete('/users/:id/roles/:roleId', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const targetUserId = req.params.id;
       const targetRoleId = req.params.roleId;
@@ -1667,9 +1676,9 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       const targetUserId = req.params.id;
 
-      // Allow self-view or require user.manage
+      // Allow self-view or require role.manage / user.manage
       if (ctx.principal.id !== targetUserId) {
-        requirePermission(ctx, 'user.manage');
+        requireAnyPermission(ctx, ['role.manage', 'user.manage']);
       }
 
       const assignments = await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -1723,9 +1732,9 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       const targetUserId = req.params.id;
 
-      // Allow self-view or require user.manage
+      // Allow self-view or require role.manage / user.manage
       if (ctx.principal.id !== targetUserId) {
-        requirePermission(ctx, 'user.manage');
+        requireAnyPermission(ctx, ['role.manage', 'user.manage']);
       }
 
       const effectiveGrants = await deps.txRunner.withTenantTx(ctx, async (tx) => {

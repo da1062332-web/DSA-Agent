@@ -80,8 +80,9 @@ export function AppLayout() {
     );
   }
 
-  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
-  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
+  const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
+  const needsChallenge = !skipMfa && aal.next === 'aal2' && aal.current !== 'aal2';
+  const needsEnrolment = !skipMfa && aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 

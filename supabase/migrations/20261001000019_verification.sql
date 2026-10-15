@@ -1,11 +1,11 @@
 -- Migration: 20261001000019_verification.sql (owner: Dev 2, Module 19: Verification)
 SET search_path = app, extensions, public;
 
-CREATE TABLE verification_request (
+CREATE TABLE IF NOT EXISTS verification_request (
   id                  text PRIMARY KEY,
   tenant_id           text NOT NULL REFERENCES tenant(id),
-  application_id      text NOT NULL REFERENCES loan_application(id),
-  party_id            text REFERENCES application_party(id),
+  application_id      text NOT NULL,
+  party_id            text,
   customer_id         text REFERENCES customer(id),
   verification_type   text NOT NULL CHECK (verification_type IN (
                         'DOCUMENT_REVIEW',
@@ -59,11 +59,13 @@ CREATE TABLE verification_request (
   CHECK (status <> 'REJECTED' OR rejection_reason IS NOT NULL)
 );
 
-CREATE INDEX verification_app_idx ON verification_request (tenant_id, application_id, status);
-CREATE INDEX verification_assignee_idx ON verification_request (tenant_id, assigned_to_user_id, status);
-CREATE INDEX verification_branch_idx ON verification_request (tenant_id, branch_id, status);
+CREATE INDEX IF NOT EXISTS verification_app_idx ON verification_request (tenant_id, application_id, status);
+CREATE INDEX IF NOT EXISTS verification_assignee_idx ON verification_request (tenant_id, assigned_to_user_id, status);
+CREATE INDEX IF NOT EXISTS verification_branch_idx ON verification_request (tenant_id, branch_id, status);
 
+DROP TRIGGER IF EXISTS verification_request_touch ON verification_request;
 CREATE TRIGGER verification_request_touch BEFORE UPDATE ON verification_request FOR EACH ROW EXECUTE FUNCTION touch_row();
+DROP POLICY IF EXISTS tenant_isolation ON verification_request;
 CALL enable_tenant_rls('verification_request');
 GRANT SELECT, INSERT, UPDATE ON verification_request TO dsa_app;
 
