@@ -19,6 +19,7 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'export.run',
   'payout.approve',
   'payout.record_payment',
+  'finance.period_close',
 ];
 
 export function requiresMfa(principal: Principal): boolean {
