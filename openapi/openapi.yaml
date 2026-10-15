@@ -2866,6 +2866,8 @@ paths:
                             - commission.plan.approve
                             - commission.calculate
                             - finance.view
+                            - finance.reconcile
+                            - finance.dispute
                             - adjustment.create
                             - adjustment.approve
                             - payout.request
@@ -8838,9 +8840,13 @@ paths:
                   adjustmentType:
                     type: string
                     enum:
+                      - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
+                      - TAX
                       - MANUAL
+                  type:
+                    type: string
                   calculationId:
                     type:
                       - string
@@ -8849,11 +8855,19 @@ paths:
                     type:
                       - string
                       - "null"
+                  exceptionId:
+                    type:
+                      - string
+                      - "null"
                   amount:
                     type: string
                   reason:
                     type: string
                   evidenceRef:
+                    type:
+                      - string
+                      - "null"
+                  journalId:
                     type:
                       - string
                       - "null"
@@ -9319,7 +9333,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T07:27:14.838Z
+                  default: 2026-10-15T08:53:44.457Z
               required:
                 - paymentRef
       responses:
