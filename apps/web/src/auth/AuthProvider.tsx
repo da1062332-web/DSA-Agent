@@ -25,40 +25,19 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const DEV_MOCK_SESSION: Session = {
-  access_token: 'dev-bypass-token',
-  token_type: 'bearer',
-  expires_in: 3600 * 24,
-  expires_at: Math.floor(Date.now() / 1000) + 3600 * 24,
-  refresh_token: 'dev-refresh-token',
-  user: {
-    id: 'usr_demo_01',
-    aud: 'authenticated',
-    role: 'authenticated',
-    email: 'admin@dsa.com',
-    email_confirmed_at: new Date().toISOString(),
-    phone: '',
-    confirmation_sent_at: '',
-    confirmed_at: new Date().toISOString(),
-    last_sign_in_at: new Date().toISOString(),
-    app_metadata: { provider: 'email', providers: ['email'] },
-    user_metadata: { displayName: 'Admin User' },
-    identities: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const lastUserId = useRef<string | undefined>(undefined);
-  const [session, setSession] = useState<Session | null | undefined>(DEV_MOCK_SESSION);
-  const [aal, setAal] = useState<Aal | undefined>({ current: 'aal2', next: 'aal2' });
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [aal, setAal] = useState<Aal | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
 
   const refreshAal = useCallback(async () => {
-    // Temporary dev bypass: always return aal2 so MFA challenge/enrolment is skipped
-    setAal({ current: 'aal2', next: 'aal2' });
+    const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+    // On error the guard treats the session as aal1 with no factor; the API still enforces step-up itself.
+    setAal(
+      error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },
+    );
   }, []);
 
   // Remove session copies left by older builds. Nothing reads them now, and a stale copy can show another user's name.
@@ -78,14 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The token is set here, not in an effect: child components mount in the same render as the new session, and
     // their effects run before any parent effect, so they would read the previous user's token.
     const applySession = (next: Session | null) => {
-      const effective = next ?? DEV_MOCK_SESSION;
       const previousUser = lastUserId.current;
-      lastUserId.current = effective.user.id;
-      setAuthToken(effective.access_token);
+      lastUserId.current = next?.user.id;
+      setAuthToken(next?.access_token);
       // A different user (or sign-out) must not see cached data from the previous session.
-      if (previousUser !== undefined && previousUser !== effective.user.id) queryClient.clear();
-      setSession(effective);
-      setAal({ current: 'aal2', next: 'aal2' });
+      if (previousUser !== undefined && previousUser !== next?.user.id) queryClient.clear();
+      setSession(next);
     };
     void supabase.auth.getSession().then(({ data }) => applySession(data.session));
     const { data } = supabase.auth.onAuthStateChange((event, next) => {

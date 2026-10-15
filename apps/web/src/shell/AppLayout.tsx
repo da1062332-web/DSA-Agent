@@ -81,9 +81,8 @@ export function AppLayout() {
     );
   }
 
-  // Temporary Dev Bypass: disabled MFA challenges for testing
-  const needsChallenge = false;
-  const needsEnrolment = false;
+  const needsChallenge = aal.next === 'aal2' && aal.current !== 'aal2';
+  const needsEnrolment = aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
