@@ -75,7 +75,7 @@ CREATE TRIGGER incident_record_no_delete
 -- ============================================================================
 -- Permissions: Seed security.incident and security.vuln (TASK-431)
 -- ============================================================================
-INSERT INTO app.permission (code, description, task_ref) VALUES
+INSERT INTO app.permission (code, description, introduced_in) VALUES
   ('security.incident', 'Manage, assess, and report security incidents and data breaches', 'TASK-431'),
   ('security.vuln', 'View and manage security vulnerabilities and scan triage', 'TASK-431')
 ON CONFLICT (code) DO NOTHING;
