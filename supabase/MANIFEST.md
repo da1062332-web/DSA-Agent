@@ -37,6 +37,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-044 | `20261001000044_payout_permissions_and_roles.sql`                | Dev 5        | TASK-418 / MOD-PAY      | payout.*, finance.view permissions, ROLE-COMMISSION-APPROVER role and role_permissions                                                  | M-001, M-040 |
 | M-045 | `20261001000045_messaging_role_grants.sql`                       | Dev 1        | TASK-415 / MOD-MSG      | message.send role grants to operational and admin roles (ROLE-ORG-OWNER, ROLE-TENANT-ADMIN, ROLE-BRANCH-MGR, ROLE-TEAM-MGR, ROLE-RM, ROLE-SALES-EXEC, ROLE-LOAN-OPS)   | M-006, M-044 |
 | M-046 | `20261001000046_platform_admin.sql`                              | Dev 1 / 5    | TASK-427 / MOD-ADM      | feature_flag, master_data_item, support_access_grant, data_correction_request; platform.* and data_correction.* permissions and role grants | M-001, M-045 |
+| M-047 | `20261001000047_verifier_role_and_grants.sql`                    | Dev 2        | TASK-434 / MOD-VER      | ROLE-DOC-VERIFIER, ROLE-VERIFIER roles; verification.* and document.review role grants; read-only verification grants to Compliance and RM | M-019, M-026 |
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 

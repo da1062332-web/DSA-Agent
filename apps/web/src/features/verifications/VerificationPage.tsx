@@ -1,6 +1,7 @@
 // apps/web/src/features/verifications/VerificationPage.tsx
 // Module 22: Verification (MOD-VER) — Verification Workbench
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -56,6 +57,7 @@ const CHECK_TYPE_ICONS: Record<string, string> = {
 };
 
 export function VerificationPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Filters
@@ -189,19 +191,29 @@ export function VerificationPage() {
             Module 22 (MOD-VER) • Identity, income, bureau & compliance check verification records (S3 / R-LOAN)
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => setIsCreateOpen(true)}
-          sx={{
-            fontWeight: 600,
-            bgcolor: '#2563eb',
-            '&:hover': { bgcolor: '#1d4ed8' },
-            boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
-          }}
-        >
-          + Perform Verification Check
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => navigate('/verifications')}
+            sx={{ fontWeight: 600 }}
+          >
+            Cases List View
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => setIsCreateOpen(true)}
+            sx={{
+              fontWeight: 600,
+              bgcolor: '#2563eb',
+              '&:hover': { bgcolor: '#1d4ed8' },
+              boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
+            }}
+          >
+            + Perform Verification Check
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Feedback Alert */}
