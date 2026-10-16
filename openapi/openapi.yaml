@@ -614,6 +614,10 @@ components:
           type:
             - string
             - "null"
+        failureReason:
+          type:
+            - string
+            - "null"
         executorIdentity:
           type: string
           default: SERVICE:data-correction-executor
@@ -669,6 +673,9 @@ components:
       properties:
         version:
           type: string
+        lockVersion:
+          type: integer
+          exclusiveMinimum: 0
         status:
           type: string
           enum:
@@ -716,6 +723,36 @@ components:
         - migrationVersion
         - gates
         - notesSummary
+    UpdateReleaseRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - CANDIDATE
+            - STAGING
+            - PUBLISHED
+            - ARCHIVED
+        gitTag:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 100
+        gates:
+          type: object
+          properties:
+            rel001:
+              type: boolean
+            rel002:
+              type: boolean
+            rel003:
+              type: boolean
+            rel004:
+              type: boolean
+        notesSummary:
+          type: string
+          maxLength: 2000
     IntegrationEnvironment:
       type: string
       enum: &a2
@@ -2384,7 +2421,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-15
+          default: 2026-10-16
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -10167,7 +10204,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-15T15:43:28.834Z
+                  default: 2026-10-16T08:52:39.955Z
               required:
                 - paymentRef
       responses:
