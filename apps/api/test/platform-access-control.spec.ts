@@ -16,13 +16,13 @@ describe('Module 5: Access Control (RBAC API)', () => {
   const adminPrincipal = testPrincipal({
     id: 'usr_01JTESTUSER0000000000000000',
     tenantId: 'ten_01JTESTTENANT00000000000000',
-    grants: [
-      {
-        code: 'user.manage',
-        scope: 'TENANT',
-        branchIds: [],
-      },
-    ],
+    authTime: new Date().toISOString(), // a role edit needs step-up (API-ACL-004)
+    // An editor can only give a role what they hold themselves, so the administrator also holds the permissions these tests grant.
+    grants: ['user.manage', 'role.manage', 'lead.read', 'lead.create', 'task.read', 'task.create'].map((code) => ({
+      code: code as never,
+      scope: 'TENANT' as const,
+      branchIds: [],
+    })),
   });
 
   const staffPrincipal = testPrincipal({
@@ -40,6 +40,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
   const otherTenantAdmin = testPrincipal({
     id: 'usr_other_admin',
     tenantId: 'ten_OTHER_000000000000000000',
+    authTime: new Date().toISOString(), // step-up is checked before the lookup, so isolation (404) is what this principal tests
     grants: [
       {
         code: 'user.manage',
@@ -589,13 +590,12 @@ describe('Module 5: Access Control (RBAC API)', () => {
     const roleManagerPrincipal = testPrincipal({
       id: 'usr_role_mgr_only',
       tenantId: 'ten_01JTESTTENANT00000000000000',
-      grants: [
-        {
-          code: 'role.manage',
-          scope: 'TENANT',
-          branchIds: [],
-        },
-      ],
+      // Holds what the test puts in a role: an editor cannot give away more than they hold.
+      grants: ['role.manage', 'lead.read', 'task.read'].map((code) => ({
+        code: code as never,
+        scope: 'TENANT' as const,
+        branchIds: [],
+      })),
     });
 
     it('allows user with role.manage to list permissions and roles', async () => {

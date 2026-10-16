@@ -1,3 +1,4 @@
+import { apiFetch } from '../../api/client';
 import { readConfig } from '../../config';
 import { getStoredAuthToken } from '../../auth/token';
 import type {
@@ -84,27 +85,19 @@ export async function createRole(input: CreateRoleInput): Promise<Role> {
   return handleResponse(res);
 }
 
+// Editing and deleting a role need step-up (API-ACL-004: an authenticator code within the last 15 minutes). apiFetch opens the step-up
+// dialog on 401 STEP_UP_REQUIRED and retries; the plain fetch used by the read calls above would just fail with "401".
 export async function updateRole(roleId: string, input: UpdateRoleInput, etag?: string): Promise<Role> {
-  const baseUrl = getApiBaseUrl();
-  const extraHeaders: Record<string, string> = {};
-  if (etag) {
-    extraHeaders['If-Match'] = etag;
-  }
-  const res = await fetch(`${baseUrl}/v1/roles/${roleId}`, {
+  const version = etag ? Number.parseInt(etag.replace(/"/g, ''), 10) : Number.NaN;
+  return apiFetch<Role>(`/v1/roles/${encodeURIComponent(roleId)}`, {
     method: 'PATCH',
-    headers: getAuthHeaders(extraHeaders),
-    body: JSON.stringify(input),
+    body: input,
+    ...(Number.isNaN(version) ? {} : { version }),
   });
-  return handleResponse(res);
 }
 
 export async function deleteRole(roleId: string): Promise<{ status: string }> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/roles/${roleId}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(res);
+  return apiFetch<{ status: string }>(`/v1/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE' });
 }
 
 export async function fetchUserRoles(userId: string): Promise<{ data: UserRoleAssignment[] }> {

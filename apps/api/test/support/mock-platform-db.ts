@@ -203,7 +203,7 @@ export function createMockPlatformStore() {
       tenant_id: 'ten_01JTESTTENANT00000000000000',
       code: 'ROLE-LOAN-OFFICER',
       name: 'Loan Officer',
-      is_template: true,
+      is_template: false, // a custom role: system templates are not editable, custom roles are
       version: 1,
       permissions: ['lead.read', 'lead.create'],
     },
