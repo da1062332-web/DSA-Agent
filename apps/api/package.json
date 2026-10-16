@@ -13,6 +13,7 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "typecheck": "node --max-old-space-size=4096 ../../node_modules/typescript/bin/tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:future-clock": "vitest run --config vitest.future-clock.config.ts",
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {

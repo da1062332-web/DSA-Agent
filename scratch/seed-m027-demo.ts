@@ -1,7 +1,11 @@
 import pg from 'pg';
 import crypto from 'node:crypto';
 
-const CONNECTION_STRING = 'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+const CONNECTION_STRING =
+  process.env.VERIFY_DATABASE_URL ??
+  (() => {
+    throw new Error('VERIFY_DATABASE_URL is not set. This script writes to the database it is pointed at.');
+  })();
 const TENANT_ID = 'ten_demo_01';
 const BRANCH_ID = 'br_demo_01';
 const USER_ID = 'usr_demo_01';

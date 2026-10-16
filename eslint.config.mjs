@@ -60,7 +60,7 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
   },
   {
-    files: ['apps/api/**/*.ts', 'tools/**/*.ts', 'packages/**/*.ts', 'tests/**/*.ts', '*.cjs', '*.mjs'],
+    files: ['apps/api/**/*.ts', 'tools/**/*.ts', 'packages/**/*.ts', 'tests/**/*.ts', '**/*.cjs', '**/*.mjs'],
     languageOptions: { globals: { ...globals.node } },
   },
   {

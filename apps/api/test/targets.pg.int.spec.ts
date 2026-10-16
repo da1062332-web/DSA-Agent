@@ -1,11 +1,11 @@
 // apps/api/test/targets.pg.int.spec.ts — owner: Dev 5 (MOD-PERF Targets Live PostgreSQL Integration Tests)
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 20 — Performance Targets PostgreSQL Integration (Real Database & Constraints)', () => {
   const connectionString =
-    process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -27,8 +27,7 @@ describe('Module 20 — Performance Targets PostgreSQL Integration (Real Databas
     await adminClient.connect();
 
     const apiDbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+      requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
 

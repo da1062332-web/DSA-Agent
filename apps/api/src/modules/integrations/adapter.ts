@@ -69,7 +69,7 @@ export function sanitizeProviderPayload(payload: unknown): unknown {
       // 10-char PAN
       .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1XXXX$2')
       // Bearer / Token
-      .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, 'Bearer [REDACTED]')
+      .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
       .replace(/(api[-_]?key|secret|password|auth[-_]?token)\s*[:=]\s*["']?[^"'\s,]+/gi, '$1=[REDACTED]');
   }
 

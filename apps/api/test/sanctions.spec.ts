@@ -5,6 +5,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemorySanctionRepository } from '../src/modules/origination/sanctions/repository';
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
+// Dates are relative to today, because the service checks validity against the real clock. Fixed calendar dates here
+// (sanctioned 2026-10-01, valid until 2027-01-01) made this spec fail from 2027 on.
+const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+const SANCTION_DATE = day(-30);
+const VALID_UNTIL = day(150);
+const EARLIER_THAN_SANCTION = day(-60);
+const DISBURSED_ON = day(-25);
+const DISBURSED_NEXT_DAY = day(-24);
+const DISBURSED_LATER = day(-15);
+
 const inMemoryTxRunner: TxRunner = {
   async withTenantTx<T>(ctx: RequestContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
     const tx = {} as any;
@@ -99,8 +109,8 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
     benchmarkText: 'Repo + 2.25%',
     feesText: '0.5% Processing Fee',
     conditions: ['Original property documents verification', 'CIBIL score check'],
-    sanctionDate: '2026-10-01',
-    validUntil: '2027-01-01',
+    sanctionDate: SANCTION_DATE,
+    validUntil: VALID_UNTIL,
     letterDocumentId: 'doc_sanction_letter_01',
     source: 'MANUAL',
   };
@@ -190,8 +200,8 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/lender-cases/${caseId}/sanctions`)
         .send({
           ...validSanctionPayload,
-          sanctionDate: '2026-10-01',
-          validUntil: '2026-09-01', // earlier!
+          sanctionDate: SANCTION_DATE,
+          validUntil: EARLIER_THAN_SANCTION, // earlier!
         });
 
       expect(res.status).toBe(422);
@@ -236,7 +246,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 1000000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
           utr: 'HDFCR5202610051234',
           loanAccountNumber: '987654321098',
           evidenceDocumentId: 'doc_ev_tranche_01',
@@ -269,7 +279,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 3000000, // Sanction is 2,500,000
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
         });
 
       expect(tRes.status).toBe(422);
@@ -289,7 +299,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
           evidenceDocumentId: 'doc_ev_01',
         });
       const trancheId = tRes.body.tranche.id;
@@ -314,7 +324,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
           evidenceDocumentId: 'doc_ev_01',
         });
       const trancheId = tRes.body.tranche.id;
@@ -345,7 +355,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
         });
       const trancheId = tRes.body.tranche.id;
 
@@ -369,7 +379,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
           evidenceDocumentId: 'doc_ev_01',
         });
       const trancheId = tRes.body.tranche.id;
@@ -404,7 +414,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
         });
       const trancheId = tRes.body.tranche.id;
 
@@ -438,7 +448,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-05',
+          disbursedOn: DISBURSED_ON,
         });
       const trancheId = tRes.body.tranche.id;
 
@@ -450,7 +460,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
           createReplacement: true,
           replacement: {
             amount: 500000,
-            disbursedOn: '2026-10-06',
+            disbursedOn: DISBURSED_NEXT_DAY,
             loanAccountNumber: 'CORRECT-ACC-1234',
           },
         });
@@ -481,7 +491,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sanctionId}/tranches`)
         .send({
           amount: 200000,
-          disbursedOn: '2026-10-15',
+          disbursedOn: DISBURSED_LATER,
           utr: 'HDFCCROSS001',
           loanAccountNumber: '987654321098',
           evidenceDocumentId: 'doc_ev_01',
@@ -515,7 +525,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .post(`/v1/sanctions/${sRes.body.id}/tranches`)
         .send({
           amount: 500000,
-          disbursedOn: '2026-10-15',
+          disbursedOn: DISBURSED_LATER,
           utr: 'UTR-ADMIN-001',
           loanAccountNumber: '987654321098',
           evidenceDocumentId: 'doc_ev_admin',

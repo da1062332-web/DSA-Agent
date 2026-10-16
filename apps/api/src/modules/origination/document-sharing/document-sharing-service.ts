@@ -835,7 +835,7 @@ export class DocumentSharingService {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const limit = query.limit;
 
-      let qb = sql<{
+      const qb = sql<{
         id: string;
         tenant_id: string;
         application_id: string;
@@ -906,7 +906,7 @@ export class DocumentSharingService {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const limit = query.limit;
 
-      let qb = sql<{
+      const qb = sql<{
         id: string;
         tenant_id: string;
         application_id: string;

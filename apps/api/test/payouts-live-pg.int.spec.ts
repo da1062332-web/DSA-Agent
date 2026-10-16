@@ -3,7 +3,6 @@
 import type { Database, RequestContext } from '@dsa/contracts';
 import { createAuditPort, createAuthz, createIdGenerator } from '@dsa/kernel';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb } from '../src/kernel-min/db';
@@ -12,17 +11,12 @@ import { decryptPaymentRef } from '../src/modules/finance/crypto';
 import { FinanceService } from '../src/modules/finance/finance-service';
 import { SqlFinanceRepository } from '../src/modules/finance/repository';
 import { InMemoryFinancialStorage } from '../src/modules/finance/storage';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
-const adminDbUrl = process.env.VERIFY_DATABASE_URL || process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
+const adminDbUrl = resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';

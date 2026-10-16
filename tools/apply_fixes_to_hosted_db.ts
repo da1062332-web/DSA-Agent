@@ -1,8 +1,12 @@
 import pg from 'pg';
 
-const connectionString =
-  process.env.VERIFY_DATABASE_URL ||
-  'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+const connectionString = (() => {
+  const value = process.env.VERIFY_DATABASE_URL;
+  if (!value) {
+    throw new Error('VERIFY_DATABASE_URL is not set. This tool writes to the database it is pointed at: set it explicitly (node --env-file=apps/api/.env), never rely on a built-in default.');
+  }
+  return value;
+})();
 
 async function main() {
   const client = new pg.Client({ connectionString });

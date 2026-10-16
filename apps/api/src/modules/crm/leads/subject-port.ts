@@ -5,7 +5,6 @@
 // Row-level security limits the lookup to the caller's tenant, so another tenant's lead reads as absent.
 import { AppError, type ComplaintSubjectPort, type ComplaintSubjectType, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
-import { createApplicationSubjectPort } from '../../origination/applications/subject-port';
 
 /**
  * Creates a ComplaintSubjectPort provider specifically for LEAD subjects.
@@ -28,13 +27,15 @@ export function createLeadSubjectPort(): ComplaintSubjectPort {
 
 /**
  * Creates a composite ComplaintSubjectPort that delegates to both LEAD and APPLICATION providers.
+ * The APPLICATION provider belongs to another module (origination), so the caller passes it in (src/server.ts does);
+ * this module may not import it (module boundary, NFR-MNT-001).
  */
-export function createCompositeComplaintSubjectPort(overrides?: {
-  application?: ComplaintSubjectPort;
+export function createCompositeComplaintSubjectPort(providers: {
+  application: ComplaintSubjectPort;
   lead?: ComplaintSubjectPort;
 }): ComplaintSubjectPort {
-  const applicationPort = overrides?.application ?? createApplicationSubjectPort();
-  const leadPort = overrides?.lead ?? createLeadSubjectPort();
+  const applicationPort = providers.application;
+  const leadPort = providers.lead ?? createLeadSubjectPort();
 
   return {
     async exists(tx: Tx, type: ComplaintSubjectType, id: string): Promise<boolean> {

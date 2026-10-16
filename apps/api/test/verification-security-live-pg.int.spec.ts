@@ -4,18 +4,12 @@
 // verifier role grants, and read-only permissions for Compliance and RM.
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_demo_01';
@@ -54,7 +48,7 @@ describeLivePg('Module 22 (MOD-VER): Live PostgreSQL Security & Isolation Verifi
 
     // The tests below attach verifications to this application and consent record, so they have to exist. They are created
     // here as synthetic data in the throwaway database (tests/guard refuses any non-local connection), not taken from hosted.
-    const admin = createDb(process.env.VERIFY_DATABASE_URL || dbUrl, { poolMax: 1 });
+    const admin = createDb(resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || dbUrl, { poolMax: 1 });
     try {
       await sql`
         INSERT INTO app.customer (id, tenant_id, party_type, full_name, home_branch_id, created_by, updated_by)

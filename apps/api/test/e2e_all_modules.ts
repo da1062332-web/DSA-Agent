@@ -1,9 +1,9 @@
 import { createDb } from '../src/kernel-min/db';
 import { sql } from 'kysely';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://mlpkwwhnagxzinaohdxg.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGt3d2huYWd4emluYW9oZHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MDc3OTYsImV4cCI6MjEwNzE4Mzc5Nn0.yDzb9PBSPedoRJi1CSJswNMSJw8rJHwBSAPlB90_hzI';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGt3d2huYWd4emluYW9oZHhnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTYwNzc5NiwiZXhwIjoyMTA3MTgzNzk2fQ.gM296up6Ns6J2n-8XyaH9PJdqZmVLCGHJli27JBPL0M';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? (() => { throw new Error('VITE_SUPABASE_URL is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? (() => { throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? (() => { throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
 const API_BASE = 'http://localhost:3000';
 
 async function getToken(email: string, password = 'admin@123'): Promise<string> {
