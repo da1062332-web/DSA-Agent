@@ -52,6 +52,7 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 | M-053 | `20261001000053_invoices_and_statements.sql`                      | Dev 5        | TASK-418 / MOD-INV      | invoice (ENT-092), ledger_entry (ENT-081), invoice.manage permission                                                                    | M-001, M-040, M-046 |
 | M-054 | `20261001000054_access_control_and_api_clients.sql`              | Dev 2 / Akash| MOD-ACL / MOD-BRE / MOD-API | role.manage permission, DK-application.eligibility registry, and app.api_client credentials table | M-001, M-011, M-037 |
 | M-055 | `20261001000055_approved_eligibility_rules.sql`                  | Dev 2 / Akash| MOD-BRE (Module 20/23)  | Approved eligibility rules, rule set version, and decision rules for DK-application.eligibility                                         | M-010, M-048, M-054 |
+| M-056 | `20261001000056_ledger_management.sql`                            | Dev 5        | TASK-418 / MOD-LED      | ledger_account (ENT-079), ledger_journal (ENT-080), ledger_entry (ENT-081), ledger_period, finance.period_close permission, deferred balancing trigger, append-only triggers | M-000, M-001, M-027, M-040, M-044 |
 
 **Gate 0 baseline (PRE-008).** Every file above, except M-011, holds the frozen DDL copied verbatim from the Migration Plan. M-011's rows are generated from the contracts, so Dev 2 adds that file in TASK-204. The baseline applies cleanly on PostgreSQL 16 and passes the §8 checks (`npm run db:verify`).
 
