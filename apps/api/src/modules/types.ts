@@ -48,6 +48,8 @@ export interface ApiDeps {
   sanctionRepository?: unknown;
   apiKeyStore?: unknown;
   partnerService?: unknown;
+  /** Where API clients are stored (ApiClientRepository). Without it the service keeps them in memory, for unit tests only. */
+  apiClientRepository?: unknown;
   webhookService?: unknown;
   targetRepository?: unknown;
   reportingRepository?: unknown;

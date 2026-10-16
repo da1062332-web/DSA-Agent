@@ -82,7 +82,7 @@ describe('TEST-SEC-001 security: tenants never cross', () => {
         severity: 'MEDIUM',
         detectedAt: new Date().toISOString(),
       });
-    expect(bCreate.status).toBe(201);
+    expect(bCreate.status, JSON.stringify(bCreate.body)).toBe(201);
     expect(bCreate.body.tenantId).toBe(env.B.tenantId);
   });
 

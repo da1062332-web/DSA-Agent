@@ -30,7 +30,6 @@ import { PgPlatformStore, type PlatformStore } from './platform-store';
 const nextUlid = monotonicFactory();
 
 export class PlatformAdminService {
-  private featureFlags: Map<string, FeatureFlag> = new Map();
   private masterData: Map<string, MasterDataItem[]> = new Map();
   private queues: Map<string, JobQueueInfo> = new Map();
   private deadLetters: Map<string, DeadLetterItem> = new Map();
@@ -45,69 +44,6 @@ export class PlatformAdminService {
   }
 
   private seedDefaults() {
-    // ----------------------------------------------------
-    // Seed Feature Flags (SUB-ADM.02)
-    // ----------------------------------------------------
-    const defaultFlags: FeatureFlag[] = [
-      {
-        key: 'bre.v2_engine',
-        scope: 'GLOBAL',
-        value: true,
-        owner: 'Platform Team',
-        removeBy: '2026-12-31',
-        description: 'Enable next-generation compiled-IR Business Rule Engine',
-        lockVersion: 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'SYSTEM:platform',
-      },
-      {
-        key: 'lender.instant_submission',
-        scope: 'GLOBAL',
-        value: true,
-        owner: 'Lender Integrations Squad',
-        removeBy: null,
-        description: 'Direct API dispatch for empanelled lenders',
-        lockVersion: 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'SYSTEM:platform',
-      },
-      {
-        key: 'mfa.enforce_all',
-        scope: 'GLOBAL',
-        value: true,
-        owner: 'Security Squad',
-        removeBy: null,
-        description: 'Require TOTP step-up on sensitive operations',
-        lockVersion: 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'SYSTEM:platform',
-      },
-      {
-        key: 'crm.lead_auto_qualify',
-        scope: 'TENANT',
-        value: false,
-        owner: 'CRM Squad',
-        removeBy: '2026-11-30',
-        description: 'Automatic qualification when BRE score is above 750',
-        lockVersion: 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'SYSTEM:platform',
-      },
-      {
-        key: 'whatsapp.notifications_enabled',
-        scope: 'GLOBAL',
-        value: true,
-        owner: 'Messaging Squad',
-        removeBy: null,
-        description: 'Real-time customer status notifications over WhatsApp',
-        lockVersion: 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'SYSTEM:platform',
-      },
-    ];
-    for (const flag of defaultFlags) {
-      this.featureFlags.set(`${flag.key}:${flag.scope}`, flag);
-    }
 
     // ----------------------------------------------------
     // Seed Master Data Items (SUB-ADM.03)
@@ -209,13 +145,13 @@ export class PlatformAdminService {
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================
 
-  async listFeatureFlags(): Promise<{ data: FeatureFlag[]; meta: { total: number } }> {
-    const list = Array.from(this.featureFlags.values());
+  async listFeatureFlags(ctx: RequestContext): Promise<{ data: FeatureFlag[]; meta: { total: number } }> {
+    const list = await this.store.listFlags(ctx);
     return { data: list, meta: { total: list.length } };
   }
 
-  async getFeatureFlag(key: string, scope: string = 'GLOBAL'): Promise<FeatureFlag> {
-    const flag = this.featureFlags.get(`${key}:${scope}`);
+  async getFeatureFlag(ctx: RequestContext, key: string, scope: string = 'GLOBAL'): Promise<FeatureFlag> {
+    const flag = await this.store.getFlag(ctx, key, scope);
     if (!flag) {
       throw AppError.of('NOT_FOUND', `Feature flag '${key}' in scope '${scope}' was not found.`);
     }
@@ -223,53 +159,12 @@ export class PlatformAdminService {
   }
 
   async putFeatureFlag(
+    ctx: RequestContext,
     key: string,
     input: UpdateFeatureFlagRequest,
     ifMatchHeader: string | undefined,
-    actorId: string,
   ): Promise<FeatureFlag> {
-    const scope = input.scope ?? 'GLOBAL';
-    const flagKey = `${key}:${scope}`;
-    const existing = this.featureFlags.get(flagKey);
-
-    if (existing) {
-      // Enforce If-Match optimistic concurrency
-      if (ifMatchHeader !== undefined) {
-        const expectedVersion = parseInt(ifMatchHeader.replace(/"/g, ''), 10);
-        if (!isNaN(expectedVersion) && existing.lockVersion !== expectedVersion) {
-          throw AppError.of('VERSION_CONFLICT', `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`);
-        }
-      }
-
-      const updated: FeatureFlag = {
-        key,
-        scope: input.scope,
-        value: input.value,
-        owner: input.owner ?? existing.owner,
-        removeBy: input.removeBy !== undefined ? input.removeBy : existing.removeBy,
-        description: input.description ?? existing.description,
-        lockVersion: existing.lockVersion + 1,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorId,
-      };
-
-      this.featureFlags.set(flagKey, updated);
-      return updated;
-    } else {
-      const created: FeatureFlag = {
-        key,
-        scope: input.scope,
-        value: input.value,
-        owner: input.owner ?? 'Platform Admin',
-        removeBy: input.removeBy ?? null,
-        description: input.description ?? '',
-        lockVersion: 0,
-        updatedAt: new Date().toISOString(),
-        updatedBy: actorId,
-      };
-      this.featureFlags.set(flagKey, created);
-      return created;
-    }
+    return this.store.putFlag(ctx, key, input, ifMatchHeader);
   }
 
   // ==========================================

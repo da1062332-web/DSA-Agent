@@ -1061,14 +1061,22 @@ export async function submitVersion(
         tenant_id, version_id, rule_uid, name, order_no, priority, enabled
       ) VALUES (
         ${ctx.principal.tenantId}, ${versionId}, ${r.uid}, ${r.name},
-        ${r.orderNo ?? (version.hitPolicy !== 'PRIORITY' ? i : null)},
-        ${r.priority ?? (version.hitPolicy === 'PRIORITY' ? 0 : null)},
+        ${ruleOrderNo(version.hitPolicy, r, i)},
+        ${rulePriority(version.hitPolicy, r)},
         ${r.enabled}
       ) ON CONFLICT (version_id, rule_uid) DO NOTHING
     `.execute(tx);
   }
 
   return formatRuleSetVersion(result.rows[0]!);
+}
+
+/** rule_set_rule holds exactly one of order_no / priority (CHECK in 0010): priority for PRIORITY, order_no otherwise. */
+export function ruleOrderNo(hitPolicy: string, r: { orderNo?: number | null }, index: number): number | null {
+  return hitPolicy === 'PRIORITY' ? null : (r.orderNo ?? index);
+}
+export function rulePriority(hitPolicy: string, r: { priority?: number | null }): number | null {
+  return hitPolicy === 'PRIORITY' ? (r.priority ?? 0) : null;
 }
 
 export async function reviewVersion(

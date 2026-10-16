@@ -261,7 +261,7 @@ export class SecurityService {
             await this.deps.audit.record(tx, ctx, {
               entityType: 'incident_record',
               entityId: incident.id,
-              action: 'CREATE',
+              action: 'incident.created', // audit_event.action must look like 'entity.verb' (lower case)
               after: incident as unknown as Record<string, unknown>,
             });
           }
@@ -402,7 +402,7 @@ export class SecurityService {
         await this.deps.audit.record(tx, ctx, {
           entityType: 'incident_record',
           entityId: updated.id,
-          action: 'UPDATE',
+          action: 'incident.updated',
           before: mapIncidentRow(current) as unknown as Record<string, unknown>,
           after: updated as unknown as Record<string, unknown>,
         });

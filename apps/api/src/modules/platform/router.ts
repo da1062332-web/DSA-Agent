@@ -1170,7 +1170,7 @@ export function createRouter(deps: ApiDeps): Router {
         // Check if role is assigned to any user
         const assigned = await sql<{ id: string }>`
           SELECT id FROM app.user_role_assignment
-          WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}
+          WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} AND effective_range @> now()
           LIMIT 1
         `.execute(tx);
 
@@ -1238,7 +1238,7 @@ export function createRouter(deps: ApiDeps): Router {
                    '{}'
                  ) as assigned_roles
           FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id
+          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
           LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
           WHERE u.tenant_id = ${ctx.principal.tenantId}
           GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
@@ -1318,7 +1318,7 @@ export function createRouter(deps: ApiDeps): Router {
                    '{}'
                  ) as assigned_roles
           FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id
+          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
           LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
           WHERE u.id = ${targetUserId} AND u.tenant_id = ${ctx.principal.tenantId}
           GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
@@ -1423,7 +1423,7 @@ export function createRouter(deps: ApiDeps): Router {
                    '{}'
                  ) as assigned_roles
           FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id
+          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
           LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
           WHERE u.id = ${newUserId} AND u.tenant_id = ${ctx.principal.tenantId}
           GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
@@ -1553,7 +1553,7 @@ export function createRouter(deps: ApiDeps): Router {
                    '{}'
                  ) as assigned_roles
           FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id
+          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
           LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
           WHERE u.id = ${targetUserId} AND u.tenant_id = ${ctx.principal.tenantId}
           GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
@@ -1614,6 +1614,7 @@ export function createRouter(deps: ApiDeps): Router {
         const existingAssign = await sql<{ id: string }>`
           SELECT id FROM app.user_role_assignment
           WHERE user_id = ${targetUserId} AND role_id = ${parsed.roleId} AND tenant_id = ${ctx.principal.tenantId}
+            AND effective_range @> now()
         `.execute(tx);
 
         const assignRow = existingAssign.rows[0];
@@ -1657,11 +1658,18 @@ export function createRouter(deps: ApiDeps): Router {
         );
       }
 
+      // Removing a role ENDS the assignment (the row stays as history); dsa_app cannot delete it, and should not.
       await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        await sql`
-          DELETE FROM app.user_role_assignment
-          WHERE user_id = ${targetUserId} AND role_id = ${targetRoleId} AND tenant_id = ${ctx.principal.tenantId}
+        const ended = await sql<{ id: string }>`
+          UPDATE app.user_role_assignment
+             SET effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)')
+           WHERE user_id = ${targetUserId} AND role_id = ${targetRoleId} AND tenant_id = ${ctx.principal.tenantId}
+             AND effective_range @> now()
+           RETURNING id
         `.execute(tx);
+        if (ended.rows.length === 0) {
+          throw AppError.of('NOT_FOUND', `User ${targetUserId} does not hold role ${targetRoleId}.`);
+        }
       });
 
       res.json({ status: 'ok' });
@@ -1705,6 +1713,7 @@ export function createRouter(deps: ApiDeps): Router {
           FROM app.user_role_assignment ura
           JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = ura.tenant_id
           WHERE ura.user_id = ${targetUserId} AND ura.tenant_id = ${ctx.principal.tenantId}
+            AND ura.effective_range @> now()
           ORDER BY r.name ASC
         `.execute(tx);
 
@@ -1755,6 +1764,7 @@ export function createRouter(deps: ApiDeps): Router {
           FROM app.user_role_assignment ura
           JOIN app.role_permission rp ON rp.role_id = ura.role_id AND rp.tenant_id = ura.tenant_id
           WHERE ura.user_id = ${targetUserId} AND ura.tenant_id = ${ctx.principal.tenantId}
+            AND ura.effective_range @> now()
         `.execute(tx);
 
         const scopeRank: Record<string, number> = {

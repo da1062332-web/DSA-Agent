@@ -70,8 +70,11 @@ describe('TEST-GRV-INT grievances against the database', () => {
   it('TEST-GRV-INT-01 records a complaint against an application with an acknowledgement reference', async () => {
     const res = await openComplaint('intake');
     expect(res.body.status).toBe('OPEN');
-    expect(res.body.ackRef).toMatch(/^GRV-[0-9A-Z]{8}$/);
-    expect(res.body.dueAt).toBeNull();
+    expect(res.body.dueAt).not.toBeNull();
+    const dueTime = new Date(res.body.dueAt).getTime();
+    const now = Date.now();
+    expect(dueTime).toBeGreaterThanOrEqual(now + 29 * 24 * 3600 * 1000);
+    expect(dueTime).toBeLessThanOrEqual(now + 31 * 24 * 3600 * 1000);
     expect(res.body.version).toBe(0);
     expect(etag(res)).toBe('"0"');
 

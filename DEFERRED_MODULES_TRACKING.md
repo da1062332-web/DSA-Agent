@@ -24,6 +24,7 @@ Work marked as **Deferred** is non-blocking for current-release deployment and i
 | **MOD-REC** | Reconciliation | Automated bank statement reconciliation engine | **Release 3 (R3)** | TASK-418 / DOM-FIN | **No** (Non-blocker) | Manual accounting in current scope; auto reconciliation deferred. |
 | **MOD-ADM** (SUB-ADM.01–07) | Platform Operator Console & Tools | Platform Console, Flag Service, Master Data UI, Break-Glass Support Access, Data Correction | **Release 2 (R2)** | TASK-420 / ADR-4D-02 | **No** (Non-blocker) | Tenant-scoped administration (`/admin/*`) active; cross-tenant platform operator console deferred under single-tenant RLS fail-closed rule. |
 | **MOD-GRV** (Live Portal Intake) | Grievances Customer Intake | Public portal customer complaint submission & auto-escalation | **Release 2 (R2)** | TASK-427 / MOD-GRV | **No** (Non-blocker) | Internal complaints queue (`/grievances`) active with preview notice; cross-module lead complaint linkage coordinated. |
+| **MOD-APP** (Post-MVP States) | Loan Applications | Advanced lifecycle states (`WITHDRAWN`, `REOPEN`, `REOPEN_TERMINAL`) | **Release 2 (R2)** | TASK-433 / MOD-APP | **No** (Non-blocker) | Core MVP transitions (`T-APP-01`, `T-APP-02`, `T-APP-10` cancel) 100% complete and tested; post-MVP states deferred per specification roadmap. |
 
 ---
 

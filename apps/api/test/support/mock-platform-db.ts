@@ -644,17 +644,18 @@ export function createMockPlatformStore() {
       return { rows: [] };
     }
 
-    // 7. DELETE user_role_assignment
-    if (sqlLower.includes('delete from app.user_role_assignment')) {
+    // 7. END user_role_assignment (removal closes effective_range; the mock drops the assignment, which is how it looks to readers)
+    if (sqlLower.includes('update app.user_role_assignment')) {
       const [userId, roleId, tid] = params;
       const idx = assignments.findIndex((a) => a.user_id === userId && a.role_id === roleId && a.tenant_id === tid);
-      if (idx >= 0) assignments.splice(idx, 1);
+      if (idx < 0) return { rows: [] };
+      const ended = assignments.splice(idx, 1)[0]!;
       const user = users.find((u) => u.id === userId && u.tenant_id === tid);
       const role = roles.find((r) => r.id === roleId);
       if (user && role) {
         user.assigned_roles = user.assigned_roles.filter((r) => r !== role.name);
       }
-      return { rows: [] };
+      return { rows: [{ id: ended.id }] };
     }
 
     // 8. Duplicate email check

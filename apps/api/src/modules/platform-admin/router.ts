@@ -127,7 +127,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     ['/v1/flags', '/platform/v1/flags'],
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.flags');
-      res.json(await service.listFeatureFlags());
+      res.json(await service.listFeatureFlags(ctx));
     }),
   );
 
@@ -136,7 +136,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.flags');
       const scope = (req.query.scope as string) || 'GLOBAL';
-      const flag = await service.getFeatureFlag(getParam(req, 'key'), scope);
+      const flag = await service.getFeatureFlag(ctx, getParam(req, 'key'), scope);
       res.set('ETag', `"${flag.lockVersion}"`);
       res.json(flag);
     }),
@@ -147,7 +147,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.flags');
       const input = UpdateFeatureFlagRequestSchema.parse(req.body);
-      const updated = await service.putFeatureFlag(getParam(req, 'key'), input, req.get('if-match'), ctx.principal.id);
+      const updated = await service.putFeatureFlag(ctx, getParam(req, 'key'), input, req.get('if-match'));
       await audit(ctx, {
         action: 'platform.flag_set',
         entityType: 'FEATURE_FLAG',

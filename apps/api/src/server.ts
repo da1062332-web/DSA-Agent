@@ -18,6 +18,7 @@ import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
+import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 
 let config: ApiConfig;
 try {
@@ -43,6 +44,7 @@ const app = createApp({
     complaintSubjectPort,
     productVersionPort: createProductVersionPort(),
     dataSharingPort: new PostgresDataSharingPort(),
+    apiClientRepository: new PgApiClientRepository(txRunner),
   },
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,
