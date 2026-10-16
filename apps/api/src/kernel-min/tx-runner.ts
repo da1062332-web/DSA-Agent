@@ -20,6 +20,7 @@ export function createTxRunner(db: Kysely<Database>): TxRunner {
         // set_config(name, value, true) is the parameter-safe form of SET LOCAL (RB-03.03, RB-03.17).
         // Session-level SET is forbidden: it would leak across pooled connections (Migration Plan §0).
         await sql`select set_config('app.tenant_id', ${tenantId}, true)`.execute(tx);
+        await sql`select set_config('search_path', 'app, extensions, public', true)`.execute(tx);
         return fn(tx);
       });
     },
