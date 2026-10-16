@@ -1,7 +1,7 @@
 -- supabase/migrations/20261001000056_ledger_management.sql
 -- Module: MOD-LED (TASK-418 Ledger Management)
 -- Author: Dev 5 (Bhushan) / Finance Squad
--- Entities: ledger_account (ENT-079), ledger_journal (ENT-080), ledger_entry (ENT-081), ledger_period
+-- Entities: ledger_account (ENT-079), ledger_journal (ENT-080), ledger_journal_line (ENT-081), ledger_period
 
 SET search_path = app, extensions, public;
 
@@ -77,8 +77,8 @@ CREATE TABLE IF NOT EXISTS ledger_journal (
 CREATE INDEX IF NOT EXISTS idx_ledger_journal_period ON ledger_journal (tenant_id, period);
 CREATE INDEX IF NOT EXISTS idx_ledger_journal_ref ON ledger_journal (tenant_id, reference_type, reference_id);
 
--- 5. ENT-081: ledger_entry
-CREATE TABLE IF NOT EXISTS ledger_entry (
+-- 5. ENT-081: journal lines. Named ledger_journal_line because migration 0053 already owns app.ledger_entry (connector statements, applied on hosted)
+CREATE TABLE IF NOT EXISTS ledger_journal_line (
   id           text PRIMARY KEY,
   tenant_id    text NOT NULL REFERENCES tenant(id),
   journal_id   text NOT NULL,
@@ -89,12 +89,12 @@ CREATE TABLE IF NOT EXISTS ledger_entry (
   narration    text,
   line_number  integer NOT NULL,
   created_at   timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT fk_ledger_entry_journal FOREIGN KEY (tenant_id, journal_id) REFERENCES ledger_journal(tenant_id, id) ON DELETE RESTRICT,
-  CONSTRAINT fk_ledger_entry_account FOREIGN KEY (tenant_id, account_id) REFERENCES ledger_account(tenant_id, id) ON DELETE RESTRICT
+  CONSTRAINT fk_ledger_journal_line_journal FOREIGN KEY (tenant_id, journal_id) REFERENCES ledger_journal(tenant_id, id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ledger_journal_line_account FOREIGN KEY (tenant_id, account_id) REFERENCES ledger_account(tenant_id, id) ON DELETE RESTRICT
 );
 
-CREATE INDEX IF NOT EXISTS idx_ledger_entry_journal ON ledger_entry (tenant_id, journal_id);
-CREATE INDEX IF NOT EXISTS idx_ledger_entry_account ON ledger_entry (tenant_id, account_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ledger_journal_line_journal ON ledger_journal_line (tenant_id, journal_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_journal_line_account ON ledger_journal_line (tenant_id, account_id, created_at);
 
 -- 6. Period tracking
 CREATE TABLE IF NOT EXISTS ledger_period (
@@ -120,7 +120,7 @@ BEGIN
     COALESCE(SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END), 0),
     COALESCE(SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END), 0)
   INTO v_debit, v_credit
-  FROM app.ledger_entry
+  FROM app.ledger_journal_line
   WHERE journal_id = NEW.journal_id AND tenant_id = NEW.tenant_id;
 
   v_balance := v_debit - v_credit;
@@ -132,21 +132,21 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_ledger_entry_balanced ON ledger_entry;
-CREATE CONSTRAINT TRIGGER trg_ledger_entry_balanced
-  AFTER INSERT OR UPDATE ON ledger_entry
+DROP TRIGGER IF EXISTS trg_ledger_journal_line_balanced ON ledger_journal_line;
+CREATE CONSTRAINT TRIGGER trg_ledger_journal_line_balanced
+  AFTER INSERT OR UPDATE ON ledger_journal_line
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW
   EXECUTE FUNCTION check_journal_balance();
 
 -- 8. Immutability Triggers
-CREATE TRIGGER ledger_entry_no_update
-  BEFORE UPDATE ON ledger_entry
+CREATE TRIGGER ledger_journal_line_no_update
+  BEFORE UPDATE ON ledger_journal_line
   FOR EACH ROW
   EXECUTE FUNCTION forbid_mutation();
 
-CREATE TRIGGER ledger_entry_no_delete
-  BEFORE DELETE ON ledger_entry
+CREATE TRIGGER ledger_journal_line_no_delete
+  BEFORE DELETE ON ledger_journal_line
   FOR EACH ROW
   EXECUTE FUNCTION forbid_mutation();
 
@@ -220,10 +220,10 @@ ON CONFLICT (tenant_id, code) DO NOTHING;
 -- 10. Enable Tenant RLS
 CALL enable_tenant_rls('ledger_account');
 CALL enable_tenant_rls('ledger_journal');
-CALL enable_tenant_rls('ledger_entry');
+CALL enable_tenant_rls('ledger_journal_line');
 CALL enable_tenant_rls('ledger_period');
 
 -- 11. Grant dsa_app Privileges
 GRANT SELECT, INSERT, UPDATE ON ledger_account, ledger_period TO dsa_app;
 GRANT SELECT, INSERT, UPDATE ON ledger_journal TO dsa_app;
-GRANT SELECT, INSERT ON ledger_entry TO dsa_app;
+GRANT SELECT, INSERT ON ledger_journal_line TO dsa_app;

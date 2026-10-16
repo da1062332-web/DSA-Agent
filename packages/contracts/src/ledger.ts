@@ -79,7 +79,7 @@ export const CreateLedgerAccountInputSchema = z.object({
 );
 export type CreateLedgerAccountInput = z.input<typeof CreateLedgerAccountInputSchema>;
 
-// --- ENT-081: ledger_entry ---
+// --- ENT-081: journal lines (table ledger_journal_line; ledger_entry is the connector statement table of migration 0053) ---
 export const LedgerEntrySchema = z.object({
   id: z.string(),
   tenantId: z.string(),

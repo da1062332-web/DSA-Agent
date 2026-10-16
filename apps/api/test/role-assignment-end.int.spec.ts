@@ -9,7 +9,7 @@ import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/h
 let env: IsolationEnv;
 let seq = 0;
 const key = () => `idem-role-end-${Date.now()}-${seq++}`;
-const ADMIN = ['user.manage', 'role.manage'] as PermissionCode[];
+const ADMIN = ['user.manage', 'role.manage', 'lead.read'] as PermissionCode[];
 
 beforeAll(async () => {
   env = await startIsolationEnv();

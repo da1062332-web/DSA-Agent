@@ -23,7 +23,10 @@ beforeAll(async () => {
   container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
-  for (const f of readdirSync(DIR).filter((x) => x.endsWith('.sql') && x !== SECURITY).sort()) await db.query(read(f));
+  for (const f of readdirSync(DIR)
+    .filter((x) => x.endsWith('.sql') && x !== SECURITY)
+    .sort())
+    await db.query(read(f));
 }, 240_000);
 
 afterAll(async () => {
@@ -51,13 +54,19 @@ describe('migration 0063 (security events and incidents), formerly the second 00
   });
 
   it('TEST-MIG63-03 security events stay append-only', async () => {
-    await db.query(`INSERT INTO app.tenant (id, slug, name) VALUES ('ten_mig63', 'mig63', 'Mig 63') ON CONFLICT DO NOTHING`).catch(() => undefined);
+    await db
+      .query(
+        `INSERT INTO app.tenant (id, slug, name) VALUES ('ten_mig63', 'mig63', 'Mig 63') ON CONFLICT DO NOTHING`,
+      )
+      .catch(() => undefined);
     const tenant = (await db.query(`SELECT id FROM app.tenant LIMIT 1`)).rows[0]?.id as string | undefined;
     expect(tenant).toBeTruthy();
     await db.query(
       `INSERT INTO app.security_event (id, tenant_id, type, principal, ip, severity) VALUES ('sec_mig63', $1, 'LOGIN', 'p', '127.0.0.1', 'LOW')`,
       [tenant],
     );
-    await expect(db.query(`UPDATE app.security_event SET severity = 'HIGH' WHERE id = 'sec_mig63'`)).rejects.toThrow();
+    await expect(
+      db.query(`UPDATE app.security_event SET severity = 'HIGH' WHERE id = 'sec_mig63'`),
+    ).rejects.toThrow();
   });
 });
