@@ -42,8 +42,8 @@ describe('MOD-PAY: Automated Direct Net-Banking / Payment Gateway Integration', 
     expect(res.batchId).toBe('batch_test_01');
     expect(res.totalDisbursed).toBe(37500);
     expect(res.results).toHaveLength(2);
-    expect(res.results[0].utrNumber).toMatch(/^CMS\d{8}NEFT/);
-    expect(res.results[1].utrNumber).toMatch(/^CMS\d{8}NEFT/);
+    expect(res.results[0]?.utrNumber).toMatch(/^CMS\d{8}NEFT/);
+    expect(res.results[1]?.utrNumber).toMatch(/^CMS\d{8}NEFT/);
   });
 });
 
@@ -67,7 +67,12 @@ describe('MOD-REC: Automated Bank Statement Ingestion Engine (MT940 / CSV)', () 
     expect(res.accountNumber).toBe('50200012345678');
     expect(res.lines).toHaveLength(2);
 
-    expect(res.lines[0]).toEqual({
+    const line0 = res.lines[0];
+    const line1 = res.lines[1];
+    expect(line0).toBeDefined();
+    expect(line1).toBeDefined();
+
+    expect(line0).toEqual({
       loanAccount: 'LN902148',
       customerName: 'Rajesh Kumar',
       disbursedAmount: 1500000,
@@ -77,7 +82,7 @@ describe('MOD-REC: Automated Bank Statement Ingestion Engine (MT940 / CSV)', () 
       rawRowRef: expect.any(String),
     });
 
-    expect(res.lines[1]).toEqual({
+    expect(line1).toEqual({
       loanAccount: 'LN902149',
       customerName: 'Sunita Patel',
       disbursedAmount: 2500000,
@@ -102,11 +107,14 @@ LN1002,Deepa Rao,1000000,15000,1500,2026-09-21
     const res = parseCsvFeed(csvFeed);
     expect(res.format).toBe('CSV');
     expect(res.lines).toHaveLength(2);
-    expect(res.lines[0].loanAccount).toBe('LN1001');
-    expect(res.lines[0].customerName).toBe('Amit Sharma');
-    expect(res.lines[0].disbursedAmount).toBe(2000000);
-    expect(res.lines[0].commissionAmount).toBe(30000);
-    expect(res.lines[0].taxDeducted).toBe(3000);
+
+    const firstLine = res.lines[0];
+    expect(firstLine).toBeDefined();
+    expect(firstLine?.loanAccount).toBe('LN1001');
+    expect(firstLine?.customerName).toBe('Amit Sharma');
+    expect(firstLine?.disbursedAmount).toBe(2000000);
+    expect(firstLine?.commissionAmount).toBe(30000);
+    expect(firstLine?.taxDeducted).toBe(3000);
     expect(res.totalCommission).toBe(45000);
     expect(res.netCommission).toBe(40500);
   });
