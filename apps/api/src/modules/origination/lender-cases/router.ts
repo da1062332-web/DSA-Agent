@@ -114,6 +114,26 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   /**
+   * List All Lender Cases (Tenant Scope)
+   * GET /lender-cases
+   */
+  router.get('/lender-cases', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const { status, lenderId, applicationId, limit } = req.query;
+
+    const cases = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      return service.listAllCases(tx, ctx, {
+        status: typeof status === 'string' ? status : undefined,
+        lenderId: typeof lenderId === 'string' ? lenderId : undefined,
+        applicationId: typeof applicationId === 'string' ? applicationId : undefined,
+        limit: limit ? Number(limit) : undefined,
+      });
+    });
+
+    res.status(200).json({ data: cases });
+  });
+
+  /**
    * API-LCS-002: Retrieve Lender Case
    * GET /lender-cases/:id
    */

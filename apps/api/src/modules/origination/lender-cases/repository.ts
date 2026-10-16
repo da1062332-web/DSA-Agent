@@ -20,6 +20,11 @@ export interface LenderCaseRepository {
   findActiveCaseForLender(tx: Tx, tenantId: string, applicationId: string, lenderId: string): Promise<LenderCaseRow | null>;
   findActiveCasesForApplication(tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]>;
   listCasesByApplication(tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]>;
+  listAllCases(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]>;
   getNextAttemptNo(tx: Tx, tenantId: string, applicationId: string): Promise<number>;
   updateCase(
     tx: Tx,
@@ -168,6 +173,28 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
       SELECT * FROM lender_case
       WHERE tenant_id = ${tenantId} AND application_id = ${applicationId}
       ORDER BY attempt_no ASC
+    `.execute(tx);
+    return res.rows;
+  }
+
+  async listAllCases(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]> {
+    const limit = Math.min(filter?.limit ?? 100, 200);
+    const status = filter?.status ?? null;
+    const lenderId = filter?.lenderId ?? null;
+    const applicationId = filter?.applicationId ?? null;
+
+    const res = await sql<LenderCaseRow>`
+      SELECT * FROM lender_case
+      WHERE tenant_id = ${tenantId}
+        AND (${status}::text IS NULL OR status = ${status})
+        AND (${lenderId}::text IS NULL OR lender_id = ${lenderId})
+        AND (${applicationId}::text IS NULL OR application_id = ${applicationId})
+      ORDER BY created_at DESC
+      LIMIT ${limit}
     `.execute(tx);
     return res.rows;
   }
@@ -501,6 +528,26 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
       }
     }
     return result.sort((a, b) => a.attempt_no - b.attempt_no);
+  }
+
+  async listAllCases(
+    _tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]> {
+    if (!tenantId) return [];
+    const limit = Math.min(filter?.limit ?? 100, 200);
+    const result: LenderCaseRow[] = [];
+    for (const c of this.cases.values()) {
+      if (c.tenant_id !== tenantId) continue;
+      if (filter?.status && c.status !== filter.status) continue;
+      if (filter?.lenderId && c.lender_id !== filter.lenderId) continue;
+      if (filter?.applicationId && c.application_id !== filter.applicationId) continue;
+      result.push({ ...c, tags: [...c.tags] });
+    }
+    return result
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
   }
 
   async getNextAttemptNo(_tx: Tx, tenantId: string, applicationId: string): Promise<number> {

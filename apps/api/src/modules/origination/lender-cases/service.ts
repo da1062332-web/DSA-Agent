@@ -340,6 +340,20 @@ export class LenderCaseService {
   }
 
   /**
+   * List All Lender Cases (Tenant Scope)
+   */
+  async listAllCases(
+    tx: Tx,
+    ctx: RequestContext,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseResource[]> {
+    const tenantId = ctx.principal.tenantId;
+    this.requirePermission(ctx, 'application.read');
+    const rows = await this.deps.repository.listAllCases(tx, tenantId, filter);
+    return rows.map((r) => this.toResource(r));
+  }
+
+  /**
    * API-LCS-003: Build or Preview Package
    */
   async buildPackage(

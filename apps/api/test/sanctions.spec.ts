@@ -163,6 +163,17 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       const listRes = await request(app).get(`/v1/lender-cases/${caseId}/sanctions`);
       expect(listRes.status).toBe(200);
       expect(listRes.body.data).toHaveLength(2);
+
+      // List all tenant sanctions
+      const allSanctionsRes = await request(app).get('/v1/sanctions');
+      expect(allSanctionsRes.status).toBe(200);
+      expect(allSanctionsRes.body.data).toHaveLength(2);
+
+      // Filter by status
+      const activeSanctionsRes = await request(app).get('/v1/sanctions?status=ACTIVE');
+      expect(activeSanctionsRes.status).toBe(200);
+      expect(activeSanctionsRes.body.data).toHaveLength(1);
+      expect(activeSanctionsRes.body.data[0].status).toBe('ACTIVE');
     });
 
     it('rejects sanction recording when lender case is in ineligible status (e.g. DRAFT)', async () => {
@@ -256,6 +267,12 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
 
       // Outbox event
       expect(repository.outboxEvents.some((e) => e.eventName === 'disbursement.recorded')).toBe(true);
+
+      // List all tenant disbursements
+      const allDisbRes = await request(app).get('/v1/disbursements');
+      expect(allDisbRes.status).toBe(200);
+      expect(allDisbRes.body.data).toHaveLength(1);
+      expect(allDisbRes.body.data[0].status).toBe('RECORDED');
     });
 
     it('rejects tranche exceeding remaining sanctioned limit with 422 EXCEEDS_SANCTION', async () => {

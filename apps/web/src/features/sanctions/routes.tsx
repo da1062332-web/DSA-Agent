@@ -1,14 +1,14 @@
 import React from 'react';
-import { Navigate, useParams, type RouteObject } from 'react-router-dom';
+import { useParams, type RouteObject } from 'react-router-dom';
 import { SanctionsPanel } from './SanctionsPanel';
+import { SanctionsListPage } from './SanctionsListPage';
 
-/** A sanction belongs to a lender case, so the case comes from the URL. Opened without one, go to the applications list. */
 function SanctionsForCase() {
   const { lenderCaseId } = useParams<{ lenderCaseId: string }>();
-  return lenderCaseId ? <SanctionsPanel lenderCaseId={lenderCaseId} /> : <Navigate to="/applications" replace />;
+  return lenderCaseId ? <SanctionsPanel lenderCaseId={lenderCaseId} /> : <SanctionsListPage />;
 }
 
 export const routes: RouteObject[] = [
-  { path: '/sanctions', element: <SanctionsForCase /> },
+  { path: '/sanctions', element: <SanctionsListPage /> },
   { path: '/sanctions/:lenderCaseId', element: <SanctionsForCase /> },
 ];
