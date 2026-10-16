@@ -1,6 +1,7 @@
 // Persistence for the cross-tenant and tenant-governed parts of platform administration (owner: Dev 1; DSA Notion MODULE 1
 // and MODULE 40). Tenant metadata, support-access requests and data corrections live in the database; feature
-// flags too (app.feature_flag). Master data, queues and releases are still in memory in the service.
+// flags (app.feature_flag), master data (app.master_data_item) and the release register (app.platform_release) too. Queues and dead letters are
+// still sample data in the service: they belong to Release 2 (SUB-ADM.04) and need a design decision, see docs/COMPLETION_TRACKER.md.
 // PgPlatformStore runs everything through withTenantTx, so the policies in migration 0050 decide what a session sees:
 //   - tenant metadata and active-user counts are readable in the platform realm only;
 //   - a platform session can file and read support-access requests, but cannot approve, deny or revoke them;
@@ -14,10 +15,14 @@ import {
   type CreateSupportAccessRequest,
   type DataCorrectionRequest,
   type FeatureFlag,
+  type MasterDataImportRequest,
+  type MasterDataItem,
   type PlatformTenantSummary,
+  type ReleaseRegisterItem,
   type RequestContext,
   type SupportAccessGrant,
   type UpdateFeatureFlagRequest,
+  type UpdateReleaseRequest,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiDeps } from '../types';
@@ -39,6 +44,14 @@ export interface PlatformStore {
   getFlag(ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null>;
   /** Creates or updates a flag. A stale If-Match is a VERSION_CONFLICT. Only on/off flags are stored. */
   putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag>;
+
+  /** Master data lists, readable by every session; written by the platform realm only. Dataset names are stored lower case, list codes are upper case. */
+  listMasterData(ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>>;
+  importMasterData(ctx: RequestContext, req: MasterDataImportRequest): Promise<MasterDataImportResult>;
+
+  /** The release register: platform realm only, for reading and writing. */
+  listReleases(ctx: RequestContext): Promise<ReleaseRegisterItem[]>;
+  updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem>;
 
   /** The caller's own tenant only. */
   listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]>;
@@ -87,6 +100,7 @@ const toCorrection = (r: Row): DataCorrectionRequest => ({
   approvedBy: (r.approved_by as string | null) ?? null,
   status: r.status as DataCorrectionRequest['status'],
   executedAt: r.executed_at ? iso(r.executed_at) : null,
+  failureReason: (r.failure_reason as string | null) ?? null,
   executorIdentity: String(r.executor_identity ?? 'SERVICE:data-correction-executor'),
   createdAt: iso(r.created_at),
 });
@@ -120,6 +134,58 @@ const toFlag = (r: FlagRow): FeatureFlag => ({
   updatedAt: new Date(r.updated_at).toISOString(),
   updatedBy: r.updated_by,
 });
+
+export interface MasterDataImportResult {
+  dryRun: boolean;
+  listCode: string;
+  totalSubmitted: number;
+  newItemsCount: number;
+  updatedItemsCount: number;
+  preview: MasterDataItem[];
+}
+
+type MasterRow = { dataset: string; code: string; label: string; is_active: boolean; metadata: Record<string, unknown> | null; lock_version: number | string; created_at: string | Date };
+
+const toMasterItem = (r: MasterRow): MasterDataItem => ({
+  id: `md_${r.dataset}_${r.code}`,
+  listCode: r.dataset.toUpperCase(),
+  code: r.code,
+  label: r.label,
+  attributes: r.metadata ?? {},
+  version: Number(r.lock_version),
+  active: r.is_active,
+  createdAt: new Date(r.created_at).toISOString(),
+});
+
+type ReleaseRow = {
+  version: string;
+  status: ReleaseRegisterItem['status'];
+  target_date: string | Date;
+  git_tag: string | null;
+  release_notes_ref: string;
+  rule_pack_version: string;
+  migration_version: string;
+  gates: ReleaseRegisterItem['gates'];
+  notes_summary: string;
+  lock_version: number | string;
+};
+
+const toRelease = (r: ReleaseRow): ReleaseRegisterItem => ({
+  version: r.version,
+  lockVersion: Number(r.lock_version),
+  status: r.status,
+  targetDate: dateOnly(r.target_date) ?? '',
+  gitTag: r.git_tag,
+  releaseNotesRef: r.release_notes_ref,
+  rulePackVersion: r.rule_pack_version,
+  migrationVersion: r.migration_version,
+  gates: r.gates,
+  notesSummary: r.notes_summary,
+});
+
+const RELEASE_COLUMNS = sql.raw(
+  'version, status, target_date, git_tag, release_notes_ref, rule_pack_version, migration_version, gates, notes_summary, lock_version',
+);
 
 export class PgPlatformStore implements PlatformStore {
   constructor(private readonly deps: Pick<ApiDeps, 'txRunner' | 'audit' | 'ids'>) {}
@@ -327,6 +393,97 @@ export class PgPlatformStore implements PlatformStore {
     });
   }
 
+  async listMasterData(ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const dataset = listCode?.toLowerCase();
+      const r = await sql<MasterRow>`
+        SELECT dataset, code, label, is_active, metadata, lock_version, created_at FROM master_data_item
+         WHERE ${dataset === undefined ? sql`true` : sql`dataset = ${dataset}`} ORDER BY dataset, code`.execute(tx);
+      const out: Record<string, MasterDataItem[]> = dataset === undefined ? {} : { [dataset.toUpperCase()]: [] };
+      for (const row of r.rows) (out[row.dataset.toUpperCase()] ??= []).push(toMasterItem(row));
+      return out;
+    });
+  }
+
+  async importMasterData(ctx: RequestContext, req: MasterDataImportRequest): Promise<MasterDataImportResult> {
+    const dataset = req.listCode.toLowerCase();
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const existing = new Map(
+        (await sql<MasterRow>`SELECT dataset, code, label, is_active, metadata, lock_version, created_at FROM master_data_item WHERE dataset = ${dataset} FOR UPDATE`.execute(tx)).rows.map(
+          (r) => [r.code, r],
+        ),
+      );
+      let newCount = 0;
+      let updateCount = 0;
+      const preview: MasterDataItem[] = [];
+      for (const item of req.items) {
+        const current = existing.get(item.code);
+        if (current) updateCount += 1;
+        else newCount += 1;
+        const version = current ? Number(current.lock_version) + 1 : 1;
+        if (!req.dryRun) {
+          const written = await sql<MasterRow>`
+            INSERT INTO master_data_item (dataset, code, label, is_active, metadata, lock_version, created_by)
+            VALUES (${dataset}, ${item.code}, ${item.label}, true, ${JSON.stringify(item.attributes ?? {})}::jsonb, 1, ${ctx.principal.id})
+            ON CONFLICT (dataset, code) DO UPDATE
+               SET label = EXCLUDED.label, metadata = EXCLUDED.metadata, is_active = true, lock_version = master_data_item.lock_version + 1
+            RETURNING dataset, code, label, is_active, metadata, lock_version, created_at`.execute(tx);
+          // Row-level security lets only the platform realm write master data: no row back means this session may not.
+          if (!written.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change master data.');
+          preview.push(toMasterItem(written.rows[0]));
+        } else {
+          preview.push({
+            id: `md_${dataset}_${item.code}`,
+            listCode: dataset.toUpperCase(),
+            code: item.code,
+            label: item.label,
+            attributes: item.attributes ?? {},
+            version,
+            active: true,
+            createdAt: ctx.now.toISOString(),
+          });
+        }
+      }
+      return { dryRun: !!req.dryRun, listCode: dataset.toUpperCase(), totalSubmitted: req.items.length, newItemsCount: newCount, updatedItemsCount: updateCount, preview };
+    });
+  }
+
+  async listReleases(ctx: RequestContext): Promise<ReleaseRegisterItem[]> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const r = await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release ORDER BY target_date DESC, version DESC`.execute(tx);
+      return r.rows.map(toRelease);
+    });
+  }
+
+  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const found = await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release WHERE version = ${version} FOR UPDATE`.execute(tx);
+      const current = found.rows[0];
+      if (!current) throw AppError.of('NOT_FOUND', `Release ${version} was not found.`);
+      const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
+      if (!Number.isNaN(expected) && Number(current.lock_version) !== expected) {
+        throw AppError.of('VERSION_CONFLICT', `Release ${version} was changed by someone else. Current version: ${current.lock_version}.`);
+      }
+      const gates = { ...current.gates, ...(patch.gates ?? {}) };
+      const updated = await sql<ReleaseRow>`
+        UPDATE platform_release SET status = ${patch.status ?? current.status},
+               git_tag = ${patch.gitTag === undefined ? current.git_tag : patch.gitTag},
+               gates = ${JSON.stringify(gates)}::jsonb, notes_summary = ${patch.notesSummary ?? current.notes_summary},
+               lock_version = lock_version + 1, updated_at = now(), updated_by = ${ctx.principal.id}
+         WHERE version = ${version} RETURNING ${RELEASE_COLUMNS}`.execute(tx);
+      if (!updated.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change the release register.');
+      await this.deps.audit.record(tx, ctx, {
+        action: 'release.updated',
+        entityType: 'RELEASE',
+        entityId: version,
+        before: { status: current.status, gitTag: current.git_tag, gates: current.gates },
+        after: { status: updated.rows[0].status, gitTag: updated.rows[0].git_tag, gates: updated.rows[0].gates },
+        permissionUsed: 'platform.release',
+      });
+      return toRelease(updated.rows[0]);
+    });
+  }
+
   async listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const r = await sql<Row>`SELECT * FROM data_correction_request ORDER BY created_at DESC, id`.execute(tx);
@@ -414,7 +571,6 @@ export class PgPlatformStore implements PlatformStore {
   }
 }
 
-/** Unit-test double with the same rules as the database policies. Not used by the running API. */
 /** The flags a unit-test store starts with (the database gets the same ones from migrations 0046 and 0058). */
 const DEFAULT_FLAGS: FeatureFlag[] = [
     {
@@ -474,11 +630,58 @@ const DEFAULT_FLAGS: FeatureFlag[] = [
     },
   ];
 
+/** The master data a unit-test store starts with (the database gets the same lists from migration 0061). */
+const DEFAULT_MASTER_DATA: Array<[string, string, string, Record<string, unknown>]> = [
+  ["PINCODES", "400008", "Mumbai Central", {"state": "Maharashtra", "tier": 1}],
+  ["PINCODES", "411001", "Pune Camp", {"state": "Maharashtra", "tier": 2}],
+  ["PINCODES", "560001", "Bangalore GPO", {"state": "Karnataka", "tier": 1}],
+  ["PINCODES", "110001", "New Delhi Connaught Place", {"state": "Delhi", "tier": 1}],
+  ["STATES", "MH", "Maharashtra", {"gstCode": "27", "region": "WEST"}],
+  ["STATES", "KA", "Karnataka", {"gstCode": "29", "region": "SOUTH"}],
+  ["STATES", "DL", "Delhi", {"gstCode": "07", "region": "NORTH"}],
+  ["STATES", "TN", "Tamil Nadu", {"gstCode": "33", "region": "SOUTH"}],
+  ["OCCUPATIONS", "SALARIED_PVT", "Salaried Private Sector", {"category": "SALARIED", "riskWeight": 1.0}],
+  ["OCCUPATIONS", "SALARIED_GOVT", "Salaried Government / PSU", {"category": "SALARIED", "riskWeight": 0.8}],
+  ["OCCUPATIONS", "SELF_EMP_PROF", "Self Employed Professional", {"category": "SEP", "riskWeight": 1.2}],
+  ["OCCUPATIONS", "SELF_EMP_BIZ", "Self Employed Business Owner", {"category": "SENP", "riskWeight": 1.4}],
+  ["REASON_CODES", "INSUFFICIENT_INCOME", "Monthly income below policy threshold", {"category": "FINANCIAL"}],
+  ["REASON_CODES", "LOW_CREDIT_SCORE", "CIBIL score below lender requirement", {"category": "CREDIT"}],
+  ["REASON_CODES", "INCOMPLETE_DOCUMENTS", "Mandatory KYC or income proof missing", {"category": "DOCUMENT"}],
+  ["REASON_CODES", "CUSTOMER_OPT_OUT", "Customer declined loan terms or withdrawn", {"category": "BUSINESS"}],
+];
+
+/** Unit-test double with the same rules as the database policies. Not used by the running API. */
 export class InMemoryPlatformStore implements PlatformStore {
   readonly tenants: PlatformTenantSummary[] = [];
   /** Every audit action the store would have written, in order. */
   readonly audit: string[] = [];
   private flags = new Map<string, FeatureFlag>(DEFAULT_FLAGS.map((f) => [`${f.key}:${f.scope}`, { ...f }]));
+  private masterData = new Map<string, MasterDataItem[]>();
+  private releases = new Map<string, ReleaseRegisterItem>([
+    [
+      'v0.1.0-rc.1',
+      {
+        version: 'v0.1.0-rc.1',
+        lockVersion: 1,
+        status: 'CANDIDATE',
+        targetDate: '2026-10-14',
+        gitTag: null,
+        releaseNotesRef: 'RELEASE_NOTES_v0.1.0-rc.1.md',
+        rulePackVersion: 'M-010 (20261001000010_rules_core.sql)',
+        migrationVersion: 'M-061 (20261001000061_master_data_and_release_register.sql)',
+        gates: { rel001: false, rel002: false, rel003: false, rel004: false },
+        notesSummary: 'Workflow A walking-skeleton MVP internal pilot candidate on synthetic data only.',
+      },
+    ],
+  ]);
+
+  constructor() {
+    for (const [list, code, label, attributes] of DEFAULT_MASTER_DATA) {
+      const items = this.masterData.get(list) ?? [];
+      items.push({ id: `md_${list.toLowerCase()}_${code}`, listCode: list, code, label, attributes, version: 1, active: true, createdAt: '2026-10-01T00:00:00.000Z' });
+      this.masterData.set(list, items);
+    }
+  }
   private grants = new Map<string, SupportAccessGrant>();
   private corrections = new Map<string, DataCorrectionRequest>();
   private seq = 0;
@@ -527,6 +730,51 @@ export class InMemoryPlatformStore implements PlatformStore {
     };
     this.flags.set(flagKey, created);
     return created;
+  }
+
+  async listMasterData(_ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>> {
+    if (listCode) return { [listCode.toUpperCase()]: [...(this.masterData.get(listCode.toUpperCase()) ?? [])] };
+    return Object.fromEntries([...this.masterData.entries()].map(([k, v]) => [k, [...v]]));
+  }
+
+  async importMasterData(ctx: RequestContext, req: MasterDataImportRequest): Promise<MasterDataImportResult> {
+    const listCode = req.listCode.toUpperCase();
+    const existing = this.masterData.get(listCode) ?? [];
+    const byCode = new Map(existing.map((i) => [i.code, i]));
+    let newCount = 0;
+    let updateCount = 0;
+    const processed: MasterDataItem[] = req.items.map((item) => {
+      const current = byCode.get(item.code);
+      if (current) updateCount += 1;
+      else newCount += 1;
+      return { id: `md_${listCode.toLowerCase()}_${item.code}`, listCode, code: item.code, label: item.label, attributes: item.attributes ?? {}, version: current ? current.version + 1 : 1, active: true, createdAt: ctx.now.toISOString() };
+    });
+    if (!req.dryRun) this.masterData.set(listCode, [...existing.filter((e) => !req.items.some((i) => i.code === e.code)), ...processed]);
+    return { dryRun: !!req.dryRun, listCode, totalSubmitted: req.items.length, newItemsCount: newCount, updatedItemsCount: updateCount, preview: processed };
+  }
+
+  async listReleases(): Promise<ReleaseRegisterItem[]> {
+    return [...this.releases.values()];
+  }
+
+  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+    const current = this.releases.get(version);
+    if (!current) throw AppError.of('NOT_FOUND', `Release ${version} was not found.`);
+    const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
+    if (!Number.isNaN(expected) && current.lockVersion !== expected) {
+      throw AppError.of('VERSION_CONFLICT', `Release ${version} was changed by someone else. Current version: ${current.lockVersion}.`);
+    }
+    const updated: ReleaseRegisterItem = {
+      ...current,
+      status: patch.status ?? current.status,
+      gitTag: patch.gitTag === undefined ? current.gitTag : patch.gitTag,
+      gates: { ...current.gates, ...(patch.gates ?? {}) },
+      notesSummary: patch.notesSummary ?? current.notesSummary,
+      lockVersion: (current.lockVersion ?? 1) + 1,
+    };
+    this.audit.push('release.updated');
+    this.releases.set(version, updated);
+    return updated;
   }
 
   async listTenants(): Promise<PlatformTenantSummary[]> {

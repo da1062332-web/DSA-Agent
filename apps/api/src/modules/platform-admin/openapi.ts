@@ -20,6 +20,7 @@ import {
   SupportAccessGrantSchema,
   SystemHealthReportSchema,
   UpdateFeatureFlagRequestSchema,
+  UpdateReleaseRequestSchema,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 
@@ -43,4 +44,5 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('CreateDataCorrectionRequest', CreateDataCorrectionRequestSchema);
   registry.register('ApproveDataCorrectionRequest', ApproveDataCorrectionRequestSchema);
   registry.register('ReleaseRegisterItem', ReleaseRegisterItemSchema);
+  registry.register('UpdateReleaseRequest', UpdateReleaseRequestSchema);
 }

@@ -19,6 +19,7 @@ import {
   PauseQueueRequestSchema,
   ResumeQueueRequestSchema,
   UpdateFeatureFlagRequestSchema,
+  UpdateReleaseRequestSchema,
   isPlatformRealm,
   type AuditEventInput,
   type PermissionCode,
@@ -167,7 +168,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     ['/v1/master-data', '/platform/v1/master-data'],
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.master_data');
-      res.json(await service.getMasterData(req.query.listCode as string | undefined));
+      res.json(await service.getMasterData(ctx, req.query.listCode as string | undefined));
     }),
   );
 
@@ -176,7 +177,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.master_data');
       const body = MasterDataImportRequestSchema.parse(req.body);
-      const result = await service.importMasterData(body, ctx.principal.id);
+      const result = await service.importMasterData(ctx, body);
       if (!body.dryRun) {
         await audit(ctx, {
           action: 'platform.master_data_imported',
@@ -371,7 +372,20 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     ['/v1/releases', '/platform/v1/releases'],
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.release');
-      res.json(await service.getReleases());
+      res.json(await service.getReleases(ctx));
+    }),
+  );
+
+  router.put(
+    ['/v1/releases/:version', '/platform/v1/releases/:version'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.release');
+      // Recording that a release passed its gates, or was published, is a decision of record: it needs a recent authenticator check.
+      deps.authz.requireStepUp(ctx);
+      const patch = UpdateReleaseRequestSchema.parse(req.body);
+      const updated = await service.updateRelease(ctx, getParam(req, 'version'), patch, req.get('if-match'));
+      res.set('ETag', `"${updated.lockVersion}"`);
+      res.json(updated);
     }),
   );
 

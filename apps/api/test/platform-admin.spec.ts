@@ -1,8 +1,9 @@
 // apps/api/test/platform-admin.spec.ts — Module 30: Administration and Platform Operations (MOD-ADM) Test Suite
 import { PLATFORM_TENANT_ID, type AuditEventInput, type RequestContext, type Tx, type TxRunner } from '@dsa/contracts';
 import express from 'express';
+import { Kysely, PostgresAdapter, type DatabaseConnection, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../src/http/error-handler';
 import { PlatformAdminService } from '../src/modules/platform-admin/platform-admin-service';
 import { InMemoryPlatformStore } from '../src/modules/platform-admin/platform-store';
@@ -302,6 +303,14 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
   describe('SUB-ADM.04 — Background Jobs and Queues (API-ADM-004 / API-ADM-005)', () => {
+    it('TEST-ADM-JOBS-01 the queue figures and dead letters say they are sample data, so nobody mistakes them for a live queue', async () => {
+      const res = await request(createTestApp(platformAdmin)).get('/platform/v1/jobs');
+      expect(res.status).toBe(200);
+      expect(res.body.sampleData).toBe(true);
+      expect(res.body.notice).toMatch(/Sample data/);
+      expect(res.body.notice).toMatch(/Release 2/);
+    });
+
     it('enforces mandatory reason when pausing or resuming a queue', async () => {
       const app = createTestApp(platformAdmin);
 
@@ -344,13 +353,78 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
   // SUB-ADM.05: System Health (CMP-ADM.05.1)
   // ==========================================
   describe('SUB-ADM.05 — System Health', () => {
-    it('returns system health and dependencies status', async () => {
-      const app = createTestApp(platformAdmin);
-      const res = await request(app).get('/platform/v1/health');
+    /** A transaction runner whose database answers the health probe like Postgres would (50 of 200 connection slots in use). */
+    const answeringRunner = (): TxRunner => {
+      const connection: DatabaseConnection = {
+        async executeQuery<R>() {
+          return { rows: [{ in_use: 50, max_connections: 200 }] as R[] };
+        },
+        // eslint-disable-next-line require-yield
+        async *streamQuery() {
+          throw new Error('not used');
+        },
+      };
+      const db = new Kysely<Record<string, never>>({
+        dialect: {
+          createAdapter: () => new PostgresAdapter(),
+          createDriver: () => ({
+            async init() {},
+            async acquireConnection() {
+              return connection;
+            },
+            async beginTransaction() {},
+            async commitTransaction() {},
+            async rollbackTransaction() {},
+            async releaseConnection() {},
+            async destroy() {},
+          }),
+          createIntrospector: (kdb) => new PostgresIntrospector(kdb),
+          createQueryCompiler: () => new PostgresQueryCompiler(),
+        },
+      });
+      return { withTenantTx: async (_ctx, fn) => fn(db as unknown as Tx) };
+    };
+    const healthApp = (txRunner: TxRunner) => {
+      const app = express();
+      app.use(express.json());
+      app.use(fakeAuth(platformAdmin));
+      app.use(createRouter(createTestDeps({ txRunner, audit: recordingAudit }), new PlatformAdminService(createTestDeps({ txRunner, audit: recordingAudit }), store)));
+      app.use(errorHandler());
+      return app;
+    };
+
+    it('TEST-ADM-HEALTH-01 a database that answers is UP, and pool utilisation is the real share of connection slots in use', async () => {
+      const res = await request(healthApp(answeringRunner())).get('/platform/v1/health');
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('HEALTHY');
       expect(res.body.dependencies.database.status).toBe('UP');
-      expect(res.body.dependencies.redisQueue.status).toBe('SIMULATED');
+      expect(res.body.dependencies.database.poolUtilization).toBe(25);
+      expect(res.body.dependencies.redisQueue.status).toBe('SIMULATED'); // the accepted ADR-4D-02 pipeline is reported as what it is
+    });
+
+    it('TEST-ADM-HEALTH-02 a database that cannot be reached is DOWN and the report says so (it used to say UP with an invented latency)', async () => {
+      const broken: TxRunner = {
+        async withTenantTx() {
+          throw new Error('connection refused');
+        },
+      };
+      const res = await request(healthApp(broken)).get('/platform/v1/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('DOWN');
+      expect(res.body.dependencies.database.status).toBe('DOWN');
+      expect(res.body.dependencies.database.latencyMs).not.toBe(4.2);
+    });
+
+    it('TEST-ADM-HEALTH-03 a database that answers slowly is DEGRADED', async () => {
+      const spy = vi.spyOn(performance, 'now').mockReturnValueOnce(0).mockReturnValue(900);
+      try {
+        const res = await request(healthApp(answeringRunner())).get('/platform/v1/health');
+        expect(res.body.dependencies.database.status).toBe('DEGRADED');
+        expect(res.body.status).toBe('DEGRADED');
+        expect(res.body.dependencies.database.latencyMs).toBeGreaterThanOrEqual(500);
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 
@@ -515,13 +589,45 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
   // SUB-ADM.08: Release Management (Release Register)
   // ==========================================
   describe('SUB-ADM.08 — Release Management Register', () => {
-    it('returns release register with candidate v0.1.0-rc.1 and gate tracking', async () => {
-      const app = createTestApp(platformAdmin);
-      const res = await request(app).get('/platform/v1/releases');
+    const freshOperator = { ...platformAdmin, authTime: new Date().toISOString() }; // passed an authenticator check just now
+
+    it('returns the release register with the candidate, and no gate is shown as passed until an operator records it', async () => {
+      const res = await request(createTestApp(platformAdmin)).get('/platform/v1/releases');
       expect(res.status).toBe(200);
       expect(res.body.candidate).toBe('v0.1.0-rc.1');
       expect(res.body.releases.length).toBeGreaterThan(0);
-      expect(res.body.releases[0].gates.rel001).toBe(true);
+      expect(res.body.releases[0].gates).toEqual({ rel001: false, rel002: false, rel003: false, rel004: false });
+    });
+
+    it('TEST-ADM-REL-01 an operator records a gate as passed (step-up, ETag), and the register shows it afterwards', async () => {
+      const app = createTestApp(freshOperator);
+      const put = await request(app).put('/platform/v1/releases/v0.1.0-rc.1').send({ gates: { rel001: true } });
+      expect(put.status, JSON.stringify(put.body)).toBe(200);
+      expect(put.body.gates).toEqual({ rel001: true, rel002: false, rel003: false, rel004: false });
+      expect(put.headers.etag).toBe(`"${put.body.lockVersion}"`);
+      const after = await request(app).get('/platform/v1/releases');
+      expect(after.body.releases[0].gates.rel001).toBe(true);
+      expect(store.audit).toContain('release.updated');
+    });
+
+    it('TEST-ADM-REL-02 without a recent authenticator check the change is refused and nothing changes', async () => {
+      const before = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body.releases[0];
+      const res = await request(createTestApp(platformAdmin)).put('/platform/v1/releases/v0.1.0-rc.1').send({ status: 'PUBLISHED' });
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('STEP_UP_REQUIRED');
+      const after = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body.releases[0];
+      expect(after.status).toBe(before.status);
+    });
+
+    it('TEST-ADM-REL-03 a stale If-Match, an unknown version, an empty change and a tenant administrator are each refused', async () => {
+      const app = createTestApp(freshOperator);
+      const stale = await request(app).put('/platform/v1/releases/v0.1.0-rc.1').set('If-Match', '"999"').send({ gitTag: 'v0.1.0-rc.1' });
+      expect(stale.status).toBe(409);
+      expect(stale.body.error.code).toBe('VERSION_CONFLICT');
+      expect((await request(app).put('/platform/v1/releases/v9.9.9').send({ status: 'ARCHIVED' })).status).toBe(404);
+      expect((await request(app).put('/platform/v1/releases/v0.1.0-rc.1').send({})).status).toBe(422);
+      const tenant = await request(createTestApp({ ...tenantAdmin, authTime: new Date().toISOString() })).put('/platform/v1/releases/v0.1.0-rc.1').send({ status: 'PUBLISHED' });
+      expect(tenant.status).toBe(403);
     });
   });
 });
