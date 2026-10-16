@@ -78,6 +78,6 @@ Needs from others before it does real work:
 All blockers for fresh database setup (`supabase db reset` and `tests/isolation/harness.ts`) have been resolved:
 1. `20261001000019_verification.sql`: Removed inline foreign keys to `loan_application` and `application_party` that do not exist at file order 0019. The foreign keys are safely applied in `20261001000021_origination_application.sql` via an idempotent `DO $$ ...` block once those tables exist.
 2. `20261001000037_api_development.sql`: Corrected column name from `task_ref` to `introduced_in` on `app.permission`, and ensured RLS policy creation is idempotent (`DROP POLICY IF EXISTS`).
-3. `20261001000042_audit_tamper_evidence.sql` and `20261001000043_security_monitoring_incidents.sql`: Corrected column name from `task_ref` to `introduced_in`, and ensured RLS policy creation is idempotent.
+3. `20261001000042_audit_tamper_evidence.sql` and the security migration (renamed to `20261001000063_security_monitoring_incidents.sql` on 2026-10-16 to end a duplicate 0043; content unchanged): Corrected column name from `task_ref` to `introduced_in`, and ensured RLS policy creation is idempotent.
 4. Clean database migrations run in alphabetical sequence with zero errors.
 

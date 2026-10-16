@@ -1,4 +1,4 @@
--- Migration: 20261001000043_security_monitoring_incidents.sql
+-- Migration: 20261001000063_security_monitoring_incidents.sql (renumbered from a second 0043; the SQL below is unchanged)
 -- Module 39: Security (MOD-SEC) — Security Events & Incident Management (ENT-096, ENT-102, TASK-431)
 -- Owner: Dev 1 / InfoSec Lead (Platform squad)
 

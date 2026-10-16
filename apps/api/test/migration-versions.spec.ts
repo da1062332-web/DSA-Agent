@@ -10,7 +10,8 @@ const manifest = readFileSync(path.join(ROOT, 'MANIFEST.md'), 'utf8');
 const rows = [...manifest.matchAll(/^\| (M-\d+) \| `([^`]+\.sql)`/gm)].map((m) => ({ id: m[1]!, file: m[2]! }));
 
 // Known duplicates that still have to be renumbered by their owners. Remove an entry when it is fixed (TEST-MIG-04 insists).
-const KNOWN_DUPLICATES = ['20261001000043'];
+// Empty since the security migration moved from 0043 to 0063 (its content is byte-identical).
+const KNOWN_DUPLICATES: string[] = [];
 
 const duplicateVersions = () => {
   const byVersion = new Map<string, string[]>();
