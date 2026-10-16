@@ -212,7 +212,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
 
       // Verify audit trail recorded
       expect(store.auditEvents.length).toBeGreaterThan(0);
-      expect(store.auditEvents[0]?.action).toBe('CREATE');
+      expect(store.auditEvents[0]?.action).toBe('incident.created');
     });
 
     it('API-SEC-001: replays stored response when identical Idempotency-Key is reused', async () => {
@@ -302,7 +302,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       expect(updateRes.body.notifications.authority.notified).toBe(true); // preserved merged
 
       // Verify audit update event
-      const updateAuditEvent = store.auditEvents.find((e) => e.action === 'UPDATE');
+      const updateAuditEvent = store.auditEvents.find((e) => e.action === 'incident.updated');
       expect(updateAuditEvent).toBeDefined();
     });
 

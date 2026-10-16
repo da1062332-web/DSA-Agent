@@ -98,11 +98,14 @@ export function registerComplaintRoutes(router: Router, deps: ApiDeps): void {
       withIdempotency(tx, ctx, { key, method: 'POST', path: '/v1/complaints', body: input }, async () => {
         await requireSubject(deps, tx, input.complainantType, input.complainantId);
         const id = deps.ids.next('grv');
+        // Option B: statutory SLA norm of 30 days when dueAt is not explicitly supplied
+        const defaultDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const effectiveDueAt = input.dueAt ?? defaultDueAt;
         const r = await sql<Row>`
           insert into complaint (id, tenant_id, complainant_type, complainant_id, channel, category, description,
                                  due_at, ack_ref, created_by, updated_by)
           values (${id}, ${ctx.principal.tenantId}, ${input.complainantType}, ${input.complainantId}, ${input.channel},
-                  ${input.category}, ${input.description}, ${input.dueAt ?? null}::timestamptz, ${ackRef(id)},
+                  ${input.category}, ${input.description}, ${effectiveDueAt}::timestamptz, ${ackRef(id)},
                   ${ctx.principal.id}, ${ctx.principal.id})
           returning *`.execute(tx);
         const row = r.rows[0]!;

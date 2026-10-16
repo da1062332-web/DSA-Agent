@@ -34,6 +34,20 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     if (!dbUrl) return;
     db = createDb(dbUrl, { poolMax: 5 });
     txRunner = createTxRunner(db);
+
+    // The HTTP tests below log activities against this lead, so it has to exist. It is created here, as synthetic data, in the
+    // throwaway database (the guard in tests/guard refuses any non-local connection), instead of relying on a row from hosted.
+    const admin = createDb(process.env.VERIFY_DATABASE_URL || dbUrl, { poolMax: 1 });
+    try {
+      await sql`
+        INSERT INTO app.lead (id, tenant_id, branch_id, full_name, mobile_e164, mobile_hash, product_category, source, owner_user_id, created_by, updated_by)
+        VALUES ('lead_test_live_http', ${TENANT_A}, ${BRANCH_A}, 'Synthetic Live Lead', '+919876500001',
+                decode('00000000000000000000000000000001', 'hex'), 'PL', 'PHONE', ${USER_A}, ${USER_A}, ${USER_A})
+        ON CONFLICT (id) DO NOTHING
+      `.execute(admin);
+    } finally {
+      await admin.destroy();
+    }
   });
 
   afterAll(async () => {

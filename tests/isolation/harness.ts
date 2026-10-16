@@ -11,9 +11,11 @@ import { createAuditPort, createAuthz, createIdGenerator, createUserDirectory } 
 import type { Kysely } from 'kysely';
 import pg from 'pg';
 import { parse } from 'yaml';
+import { assertThrowawayDatabase } from '../guard/verify-local-db';
 import { createApp } from '../../apps/api/src/app';
 import { createDb } from '../../apps/api/src/kernel-min/db';
 import { createTxRunner } from '../../apps/api/src/kernel-min/tx-runner';
+import { PgApiClientRepository } from '../../apps/api/src/modules/partner-api/api-client-repository';
 import { createApplicationSubjectPort } from '../../apps/api/src/modules/origination/applications/subject-port';
 import { createLenderPort } from '../../apps/api/src/modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from '../../apps/api/src/modules/origination/catalogue/product-version-port';
@@ -69,6 +71,8 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
   const url = new URL(container.getConnectionUri());
   url.username = 'dsa_api';
   url.password = 'isolation';
+  // The tests are about to write to this database: it must be the container started above, on this machine.
+  await assertThrowawayDatabase(container, admin, [url.toString()]);
   const db = createDb(url.toString(), { poolMax: 4 });
   const ids = createIdGenerator();
   const deps = {
@@ -80,6 +84,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
     lenderPort: createLenderPort(),
+    apiClientRepository: new PgApiClientRepository(createTxRunner(db)),
   };
 
   const principalOf = (t: TenantFixture, codes: PermissionCode[], userIndex: 0 | 1): Principal =>

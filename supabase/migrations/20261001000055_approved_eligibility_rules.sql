@@ -130,8 +130,10 @@ SELECT
   rsv.id,
   r->>'uid',
   r->>'name',
-  (r->>'orderNo')::integer,
-  (r->>'priority')::integer,
+  -- rule_set_rule holds exactly one of order_no / priority (CHECK in 0010): order_no for FIRST, UNIQUE, COLLECT and
+  -- RULE_ORDER, priority for PRIORITY. The definition itself keeps both fields untouched.
+  CASE WHEN rsv.hit_policy = 'PRIORITY' THEN NULL ELSE (r->>'orderNo')::integer END,
+  CASE WHEN rsv.hit_policy = 'PRIORITY' THEN (r->>'priority')::integer ELSE NULL END,
   (r->>'enabled')::boolean
 FROM app.rule_set_version rsv,
      jsonb_array_elements(rsv.definition->'rules') AS r

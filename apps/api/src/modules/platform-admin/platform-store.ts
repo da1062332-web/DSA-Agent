@@ -1,6 +1,6 @@
 // Persistence for the cross-tenant and tenant-governed parts of platform administration (owner: Dev 1; DSA Notion MODULE 1
-// and MODULE 40). Tenant metadata, support-access requests and data corrections live in the database; the rest of the
-// console (flags, master data, queues, releases) is still in memory in the service.
+// and MODULE 40). Tenant metadata, support-access requests and data corrections live in the database; feature
+// flags too (app.feature_flag). Master data, queues and releases are still in memory in the service.
 // PgPlatformStore runs everything through withTenantTx, so the policies in migration 0050 decide what a session sees:
 //   - tenant metadata and active-user counts are readable in the platform realm only;
 //   - a platform session can file and read support-access requests, but cannot approve, deny or revoke them;
@@ -13,9 +13,11 @@ import {
   type CreateDataCorrectionRequest,
   type CreateSupportAccessRequest,
   type DataCorrectionRequest,
+  type FeatureFlag,
   type PlatformTenantSummary,
   type RequestContext,
   type SupportAccessGrant,
+  type UpdateFeatureFlagRequest,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiDeps } from '../types';
@@ -31,6 +33,12 @@ export interface PlatformStore {
   decideSupportGrant(ctx: RequestContext, id: string, decision: 'APPROVED' | 'DENIED'): Promise<SupportAccessGrant>;
   /** The target tenant ends an approved access early. */
   revokeSupportGrant(ctx: RequestContext, id: string): Promise<SupportAccessGrant>;
+
+  /** Feature flags are readable by every session; only the platform realm can set them (policies in migration 0050). */
+  listFlags(ctx: RequestContext): Promise<FeatureFlag[]>;
+  getFlag(ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null>;
+  /** Creates or updates a flag. A stale If-Match is a VERSION_CONFLICT. Only on/off flags are stored. */
+  putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag>;
 
   /** The caller's own tenant only. */
   listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]>;
@@ -85,6 +93,33 @@ const toCorrection = (r: Row): DataCorrectionRequest => ({
 
 const GRANT_COLUMNS = sql`g.id, g.tenant_id, t.legal_name AS tenant_name, g.support_user_id, g.reason, g.scope, g.incident_ref,
   g.starts_at, g.expires_at, g.status, g.approved_by, g.approved_at, g.revoked_at, g.created_at`;
+
+type FlagRow = {
+  key: string;
+  scope: FeatureFlag['scope'];
+  value: boolean;
+  owner: string;
+  remove_by: string | Date | null;
+  description: string | null;
+  lock_version: number | string;
+  updated_at: string | Date;
+  updated_by: string;
+};
+
+const dateOnly = (v: string | Date | null): string | null =>
+  v === null ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
+
+const toFlag = (r: FlagRow): FeatureFlag => ({
+  key: r.key,
+  scope: r.scope,
+  value: r.value,
+  owner: r.owner,
+  removeBy: dateOnly(r.remove_by),
+  description: r.description ?? '',
+  lockVersion: Number(r.lock_version),
+  updatedAt: new Date(r.updated_at).toISOString(),
+  updatedBy: r.updated_by,
+});
 
 export class PgPlatformStore implements PlatformStore {
   constructor(private readonly deps: Pick<ApiDeps, 'txRunner' | 'audit' | 'ids'>) {}
@@ -239,6 +274,59 @@ export class PgPlatformStore implements PlatformStore {
   }
 
   // ---- data corrections (tenant realm) ----------------------------------------------------------------------------
+  async listFlags(ctx: RequestContext): Promise<FeatureFlag[]> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const r = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+                                     FROM feature_flag ORDER BY key, scope`.execute(tx);
+      return r.rows.map(toFlag);
+    });
+  }
+
+  async getFlag(ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const r = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+                                     FROM feature_flag WHERE key = ${key} AND scope = ${scope}`.execute(tx);
+      return r.rows[0] ? toFlag(r.rows[0]) : null;
+    });
+  }
+
+  async putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag> {
+    if (typeof input.value !== 'boolean') {
+      throw AppError.of('VALIDATION_ERROR', 'Only on/off feature flags are supported.', [{ field: 'value', issue: 'MUST_BE_BOOLEAN' }]);
+    }
+    const scope = input.scope ?? 'GLOBAL';
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const found = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+                                         FROM feature_flag WHERE key = ${key} AND scope = ${scope} FOR UPDATE`.execute(tx);
+      const existing = found.rows[0];
+      if (existing) {
+        const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
+        if (!Number.isNaN(expected) && Number(existing.lock_version) !== expected) {
+          throw AppError.of(
+            'VERSION_CONFLICT',
+            `Feature flag '${key}' has been modified by another process. Current version: ${existing.lock_version}.`,
+          );
+        }
+        const removeBy = input.removeBy !== undefined ? input.removeBy : dateOnly(existing.remove_by);
+        const updated = await sql<FlagRow>`
+          UPDATE feature_flag SET value = ${input.value}, owner = ${input.owner ?? existing.owner}, remove_by = ${removeBy}::date,
+                 description = ${input.description ?? existing.description}, lock_version = lock_version + 1, updated_at = now(),
+                 updated_by = ${ctx.principal.id}
+           WHERE key = ${key} AND scope = ${scope}
+           RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(tx);
+        // Row-level security lets only the platform realm update a flag: no row back means this session may not.
+        if (!updated.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change feature flags.');
+        return toFlag(updated.rows[0]);
+      }
+      const created = await sql<FlagRow>`
+        INSERT INTO feature_flag (key, scope, value, owner, remove_by, description, lock_version, updated_by)
+        VALUES (${key}, ${scope}, ${input.value}, ${input.owner ?? 'Platform Admin'}, ${input.removeBy ?? null}::date,
+                ${input.description ?? ''}, 1, ${ctx.principal.id})
+        RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(tx);
+      return toFlag(created.rows[0]!);
+    });
+  }
+
   async listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const r = await sql<Row>`SELECT * FROM data_correction_request ORDER BY created_at DESC, id`.execute(tx);
@@ -327,13 +415,119 @@ export class PgPlatformStore implements PlatformStore {
 }
 
 /** Unit-test double with the same rules as the database policies. Not used by the running API. */
+/** The flags a unit-test store starts with (the database gets the same ones from migrations 0046 and 0058). */
+const DEFAULT_FLAGS: FeatureFlag[] = [
+    {
+      key: 'bre.v2_engine',
+      scope: 'GLOBAL',
+      value: true,
+      owner: 'Platform Team',
+      removeBy: '2026-12-31',
+      description: 'Enable next-generation compiled-IR Business Rule Engine',
+      lockVersion: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'SYSTEM:platform',
+    },
+    {
+      key: 'lender.instant_submission',
+      scope: 'GLOBAL',
+      value: true,
+      owner: 'Lender Integrations Squad',
+      removeBy: null,
+      description: 'Direct API dispatch for empanelled lenders',
+      lockVersion: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'SYSTEM:platform',
+    },
+    {
+      key: 'mfa.enforce_all',
+      scope: 'GLOBAL',
+      value: true,
+      owner: 'Security Squad',
+      removeBy: null,
+      description: 'Require TOTP step-up on sensitive operations',
+      lockVersion: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'SYSTEM:platform',
+    },
+    {
+      key: 'crm.lead_auto_qualify',
+      scope: 'TENANT',
+      value: false,
+      owner: 'CRM Squad',
+      removeBy: '2026-11-30',
+      description: 'Automatic qualification when BRE score is above 750',
+      lockVersion: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'SYSTEM:platform',
+    },
+    {
+      key: 'whatsapp.notifications_enabled',
+      scope: 'GLOBAL',
+      value: true,
+      owner: 'Messaging Squad',
+      removeBy: null,
+      description: 'Real-time customer status notifications over WhatsApp',
+      lockVersion: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'SYSTEM:platform',
+    },
+  ];
+
 export class InMemoryPlatformStore implements PlatformStore {
   readonly tenants: PlatformTenantSummary[] = [];
   /** Every audit action the store would have written, in order. */
   readonly audit: string[] = [];
+  private flags = new Map<string, FeatureFlag>(DEFAULT_FLAGS.map((f) => [`${f.key}:${f.scope}`, { ...f }]));
   private grants = new Map<string, SupportAccessGrant>();
   private corrections = new Map<string, DataCorrectionRequest>();
   private seq = 0;
+
+  async listFlags(): Promise<FeatureFlag[]> {
+    return [...this.flags.values()];
+  }
+
+  async getFlag(_ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null> {
+    return this.flags.get(`${key}:${scope}`) ?? null;
+  }
+
+  async putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag> {
+    const scope = input.scope ?? 'GLOBAL';
+    const flagKey = `${key}:${scope}`;
+    const existing = this.flags.get(flagKey);
+    if (existing) {
+      const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
+      if (!Number.isNaN(expected) && existing.lockVersion !== expected) {
+        throw AppError.of('VERSION_CONFLICT', `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`);
+      }
+      const updated: FeatureFlag = {
+        key,
+        scope,
+        value: input.value,
+        owner: input.owner ?? existing.owner,
+        removeBy: input.removeBy !== undefined ? input.removeBy : existing.removeBy,
+        description: input.description ?? existing.description,
+        lockVersion: existing.lockVersion + 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: ctx.principal.id,
+      };
+      this.flags.set(flagKey, updated);
+      return updated;
+    }
+    const created: FeatureFlag = {
+      key,
+      scope,
+      value: input.value,
+      owner: input.owner ?? 'Platform Admin',
+      removeBy: input.removeBy ?? null,
+      description: input.description ?? '',
+      lockVersion: 0,
+      updatedAt: new Date().toISOString(),
+      updatedBy: ctx.principal.id,
+    };
+    this.flags.set(flagKey, created);
+    return created;
+  }
 
   async listTenants(): Promise<PlatformTenantSummary[]> {
     this.audit.push('platform.tenants_listed');

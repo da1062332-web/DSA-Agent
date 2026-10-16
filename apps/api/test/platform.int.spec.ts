@@ -132,8 +132,10 @@ describe('platform (integration)', () => {
     expect(reused.body.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
 
     const dup = await request(app).post('/v1/branches').set('Idempotency-Key', 'create-pun01-b').send(body);
-    expect(dup.status).toBe(409);
-    expect(dup.body.error.code).toBe('INVALID_STATE');
+    // A taken branch code is a field-level validation error (Configuration module, TEST-CFG-005), not a state conflict.
+    expect(dup.status, JSON.stringify(dup.body)).toBe(422);
+    expect(dup.body.error.code).toBe('VALIDATION_ERROR');
+    expect(dup.body.error.details[0].field).toBe('code');
   });
 
   it('TEST-ORG-INT-02 tenants are isolated: same branch code, other tenant sees 404', async () => {
