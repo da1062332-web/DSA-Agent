@@ -85,5 +85,6 @@ const MFA_REQUIRED = [
   'platform.support_access',
   'platform.release',
   'data_correction.approve',
+  'finance.period_close',
 ];
 export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));
