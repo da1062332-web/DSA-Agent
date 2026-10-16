@@ -175,7 +175,7 @@ export class SqlLedgerRepository implements LedgerRepository {
   async insertEntries(tx: Tx, rows: LedgerEntryRow[]): Promise<void> {
     for (const r of rows) {
       await sql`
-        INSERT INTO app.ledger_entry (
+        INSERT INTO app.ledger_journal_line (
           id, tenant_id, journal_id, account_id, entry_type,
           amount, currency, narration, line_number, created_at
         ) VALUES (
@@ -188,7 +188,7 @@ export class SqlLedgerRepository implements LedgerRepository {
 
   async listEntriesForJournal(tx: Tx, tenantId: string, journalId: string): Promise<LedgerEntryRow[]> {
     const res = await sql<LedgerEntryRow>`
-      SELECT * FROM app.ledger_entry
+      SELECT * FROM app.ledger_journal_line
       WHERE tenant_id = ${tenantId} AND journal_id = ${journalId}
       ORDER BY line_number ASC
     `.execute(tx);
@@ -197,7 +197,7 @@ export class SqlLedgerRepository implements LedgerRepository {
 
   async listEntriesForAccount(tx: Tx, tenantId: string, accountId: string, asOfDate?: Date): Promise<LedgerEntryRow[]> {
     let query = sql<LedgerEntryRow>`
-      SELECT * FROM app.ledger_entry
+      SELECT * FROM app.ledger_journal_line
       WHERE tenant_id = ${tenantId} AND account_id = ${accountId}
     `;
     if (asOfDate) {
@@ -218,7 +218,7 @@ export class SqlLedgerRepository implements LedgerRepository {
   ): Promise<Array<LedgerEntryRow & { journal_number: string; reference_type: string; reference_id: string; period: string }>> {
     let query = sql<any>`
       SELECT e.*, j.journal_number, j.reference_type, j.reference_id, j.period
-      FROM app.ledger_entry e
+      FROM app.ledger_journal_line e
       JOIN app.ledger_account a ON a.tenant_id = e.tenant_id AND a.id = e.account_id
       JOIN app.ledger_journal j ON j.tenant_id = e.tenant_id AND j.id = e.journal_id
       WHERE e.tenant_id = ${tenantId}
@@ -277,7 +277,7 @@ export class SqlLedgerRepository implements LedgerRepository {
       SELECT 
         COALESCE(SUM(CASE WHEN e.entry_type = 'DEBIT' THEN e.amount ELSE 0 END), 0) as debit,
         COALESCE(SUM(CASE WHEN e.entry_type = 'CREDIT' THEN e.amount ELSE 0 END), 0) as credit
-      FROM app.ledger_entry e
+      FROM app.ledger_journal_line e
       JOIN app.ledger_journal j ON j.tenant_id = e.tenant_id AND j.id = e.journal_id
       WHERE e.tenant_id = ${tenantId}
     `;

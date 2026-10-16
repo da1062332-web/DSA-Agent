@@ -26,7 +26,9 @@ describe('startup configuration guards', () => {
 
   it('TEST-CFGG-02 the API refuses to connect as an RLS-bypassing database login', () => {
     for (const user of ['postgres', 'postgres.mlpkwwhnagxzinaohdxg', 'service_role', 'supabase_admin']) {
-      expect(message({ DATABASE_URL: `postgresql://${user}:s3cretvalue@localhost:5432/postgres` })).toMatch(/DATABASE_URL/);
+      expect(message({ DATABASE_URL: `postgresql://${user}:s3cretvalue@localhost:5432/postgres` })).toMatch(
+        /DATABASE_URL/,
+      );
     }
   });
 
@@ -37,12 +39,17 @@ describe('startup configuration guards', () => {
 
   it('TEST-CFGG-04 turning MFA off is refused against the hosted project, in production, and allowed only locally', () => {
     expect(message({ DISABLE_MFA: 'true' })).toMatch(/DISABLE_MFA/);
-    expect(message({ DISABLE_MFA: 'true', SUPABASE_URL: LOCAL, NODE_ENV: 'production' })).toMatch(/DISABLE_MFA/);
+    expect(message({ DISABLE_MFA: 'true', SUPABASE_URL: LOCAL, NODE_ENV: 'production' })).toMatch(
+      /DISABLE_MFA/,
+    );
     expect(message({ DISABLE_MFA: 'true', SUPABASE_URL: LOCAL })).toBe('');
   });
 
   it('TEST-CFGG-05 a refusal never prints the password or the URL it refused', () => {
-    const text = message({ DATABASE_URL: 'postgresql://postgres:s3cretvalue@localhost:5432/postgres', TEST_TOKENS: 'true' });
+    const text = message({
+      DATABASE_URL: 'postgresql://postgres:s3cretvalue@localhost:5432/postgres',
+      TEST_TOKENS: 'true',
+    });
     expect(text).not.toContain('s3cretvalue');
     expect(text).not.toContain('mlpkwwhnagxzinaohdxg');
   });
