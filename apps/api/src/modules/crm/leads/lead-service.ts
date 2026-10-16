@@ -978,6 +978,32 @@ export class LeadService {
           created_by: ctx.principal.id,
         });
       }
+
+      // Clone active lead consents to customer (DPDP compliance)
+      const leadConsents = await this.deps.repository.listConsentsBySubject(tx, tenantId, 'LEAD', lead.id);
+      for (const lc of leadConsents) {
+        if (lc.status === 'ACTIVE') {
+          await this.deps.repository.insertConsentRecord(tx, {
+            id: this.nextId('cnst'),
+            tenant_id: tenantId,
+            subject_type: 'CUSTOMER',
+            subject_id: customerId,
+            purpose: lc.purpose,
+            purpose_target: lc.purpose_target,
+            notice_version: lc.notice_version,
+            channel: lc.channel,
+            evidence_ref: lc.evidence_ref,
+            captured_by: lc.captured_by,
+            captured_at: lc.captured_at,
+            status: 'ACTIVE',
+            withdrawn_at: null,
+            withdrawn_by: null,
+            withdrawal_reason: null,
+            expires_at: lc.expires_at,
+            created_at: now,
+          });
+        }
+      }
     }
 
     // 2. Application creation

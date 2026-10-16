@@ -235,6 +235,12 @@ export interface LeadRepository {
     updates: Partial<LeadRow>,
   ): Promise<LeadRow | null>;
   insertConsentRecord(tx: Tx, consent: ConsentRecordRow): Promise<void>;
+  listConsentsBySubject(
+    tx: Tx,
+    tenantId: string,
+    subjectType: 'CUSTOMER' | 'LEAD',
+    subjectId: string,
+  ): Promise<ConsentRecordRow[]>;
   insertLeadStatusHistory(tx: Tx, history: LeadStatusHistoryRow): Promise<void>;
   insertLeadAssignment(tx: Tx, assignment: LeadAssignmentRow): Promise<void>;
   insertCustomer(tx: Tx, customer: CustomerRow): Promise<void>;
@@ -418,6 +424,22 @@ export class SqlLeadRepository implements LeadRepository {
         ${consent.captured_at}, ${consent.status}, ${consent.created_at ?? new Date()}
       )
     `.execute(tx);
+  }
+
+  async listConsentsBySubject(
+    tx: Tx,
+    tenantId: string,
+    subjectType: 'CUSTOMER' | 'LEAD',
+    subjectId: string,
+  ): Promise<ConsentRecordRow[]> {
+    const result = await sql<ConsentRecordRow>`
+      SELECT * FROM consent_record
+      WHERE tenant_id = ${tenantId}
+        AND subject_type = ${subjectType}
+        AND subject_id = ${subjectId}
+      ORDER BY created_at DESC, id DESC
+    `.execute(tx);
+    return result.rows;
   }
 
   async insertLeadStatusHistory(tx: Tx, history: LeadStatusHistoryRow): Promise<void> {
@@ -702,6 +724,22 @@ export class InMemoryLeadRepository implements LeadRepository {
 
   async insertConsentRecord(_tx: Tx, consent: ConsentRecordRow): Promise<void> {
     this.consents.set(consent.id, { ...consent });
+  }
+
+  async listConsentsBySubject(
+    _tx: Tx,
+    tenantId: string,
+    subjectType: 'CUSTOMER' | 'LEAD',
+    subjectId: string,
+  ): Promise<ConsentRecordRow[]> {
+    return Array.from(this.consents.values())
+      .filter(
+        (c) =>
+          c.tenant_id === tenantId &&
+          c.subject_type === subjectType &&
+          c.subject_id === subjectId,
+      )
+      .sort((a, b) => b.captured_at.getTime() - a.captured_at.getTime());
   }
 
   async insertLeadStatusHistory(_tx: Tx, history: LeadStatusHistoryRow): Promise<void> {

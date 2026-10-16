@@ -1,5 +1,5 @@
-// apps/web/src/features/lender-cases/LenderCasePanel.tsx — owner: Dev 4 (MOD-LCS Frontend Panel)
 import React, { useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -45,7 +45,7 @@ import type {
 } from './types';
 
 interface LenderCasePanelProps {
-  applicationId: string;
+  applicationId?: string;
 }
 
 const statusColors: Record<LenderCaseStatus, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
@@ -65,7 +65,14 @@ const statusColors: Record<LenderCaseStatus, 'default' | 'primary' | 'secondary'
   CLOSED: 'default',
 };
 
-export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.ReactElement {
+export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelProps = {}): React.ReactElement {
+  const { applicationId: paramAppId } = useParams<{ applicationId?: string }>();
+  const [searchParams] = useSearchParams();
+  const queryAppId = searchParams.get('applicationId');
+  const [inputAppId, setInputAppId] = useState('');
+
+  const applicationId = propAppId || paramAppId || queryAppId || inputAppId;
+
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -100,12 +107,14 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
 
   const createMutation = useMutation({
     meta: { successMessage: 'Lender case created.' },
-    mutationFn: () =>
-      createLenderCase(applicationId, {
+    mutationFn: () => {
+      if (!applicationId) throw new Error('Application ID is required to create a lender attempt.');
+      return createLenderCase(applicationId, {
         lenderId: newLenderId,
         productVersionId: newProductVersionId,
         empanelmentId: newEmpanelmentId,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
       setCreateDialogOpen(false);
@@ -234,11 +243,13 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Sequential and parallel lender submissions, frozen package manifests, and status roll-up.
+              {applicationId ? ` · Application: ${applicationId}` : ''}
             </Typography>
           </Box>
           <Button
             variant="contained"
             color="primary"
+            disabled={!applicationId}
             onClick={() => setCreateDialogOpen(true)}
           >
             + New Lender Attempt
@@ -257,7 +268,25 @@ export function LenderCasePanel({ applicationId }: LenderCasePanelProps): React.
           </Alert>
         )}
 
-        {isLoading ? (
+        {!applicationId ? (
+          <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
+              No Application Selected
+            </Typography>
+            <Typography color="text.secondary" mb={2}>
+              Please provide an Application ID in the route URL (e.g. /applications/:applicationId/lender-cases) or enter one below:
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Enter Application ID (e.g. app_demo_001)"
+                value={inputAppId}
+                onChange={(e) => setInputAppId(e.target.value)}
+              />
+            </Stack>
+          </Paper>
+        ) : isLoading ? (
           <Box display="flex" justifyContent="center" p={4}>
             <CircularProgress />
           </Box>
