@@ -319,7 +319,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
     const entryDate = entry.entryDate ? sql`${entry.entryDate}::date` : sql`CURRENT_DATE`;
 
     const res = await sql<LedgerEntryRow>`
-      INSERT INTO ledger_entry (
+      INSERT INTO connector_statement_entry (
         id, tenant_id, connector_id, entry_type, amount,
         currency, reference_id, description, entry_date, balance_after,
         lock_version, created_at, created_by, updated_at, updated_by
@@ -348,7 +348,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
     limit = 100,
   ): Promise<LedgerEntryRecord[]> {
     const res = await sql<LedgerEntryRow>`
-      SELECT * FROM ledger_entry
+      SELECT * FROM connector_statement_entry
       WHERE tenant_id = ${tenantId}
         AND connector_id = ${connectorId}
         AND (${fromDate ?? null}::date IS NULL OR entry_date >= ${fromDate}::date)
@@ -381,7 +381,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
           ELSE 0
         END
       ), 0) as balance
-      FROM ledger_entry
+      FROM connector_statement_entry
       WHERE tenant_id = ${tenantId}
         AND connector_id = ${connectorId}
         AND entry_date < ${beforeDate}::date

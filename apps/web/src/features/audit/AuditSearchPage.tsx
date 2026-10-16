@@ -96,8 +96,8 @@ export function AuditSearchPage() {
         dateTo: dateTo || undefined,
         limit: 50,
       });
-      setEvents(result.data);
-      setTotalCount(result.meta.total ?? result.data.length);
+      setEvents(result?.data ?? []);
+      setTotalCount(result?.meta?.total ?? result?.data?.length ?? 0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to search audit events');
     } finally {

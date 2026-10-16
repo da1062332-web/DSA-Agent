@@ -200,6 +200,7 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       // ?q= searches the branch code and name. It was accepted before but never applied.
       const search = typeof req.query.q === 'string' && req.query.q.trim() ? req.query.q.trim() : undefined;
+      const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
       const branches = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
           id: string;
@@ -215,6 +216,7 @@ export function createRouter(deps: ApiDeps): Router {
           FROM app.branch
           WHERE tenant_id = ${ctx.principal.tenantId}
             AND (${search === undefined} OR code ILIKE ${'%' + (search ?? '') + '%'} OR name ILIKE ${'%' + (search ?? '') + '%'})
+            AND (${statusFilter === undefined} OR status = ${statusFilter})
           ORDER BY name ASC
         `.execute(tx);
         return result.rows.map((r) => ({
@@ -226,10 +228,11 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: r.timezone ?? 'Asia/Kolkata',
           status: r.status,
           lockVersion: r.lock_version ?? 0,
+          version: r.lock_version ?? 0,
         }));
       });
 
-      res.json({ data: branches });
+      res.json({ data: branches, meta: { nextCursor: null, limit: branches.length } });
     } catch (err) {
       next(err);
     }
@@ -270,6 +273,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: row.timezone ?? 'Asia/Kolkata',
           status: row.status,
           lockVersion: row.lock_version ?? 0,
+          version: row.lock_version ?? 0,
         };
       });
 
@@ -376,6 +380,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: body.timezone,
           status: 'ACTIVE' as const,
           lockVersion: 0,
+          version: 0,
         };
       };
       if (idemKey) {
@@ -483,6 +488,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: current.timezone,
           status: 'INACTIVE' as const,
           lockVersion: Number(upd.rows[0]?.lock_version),
+          version: Number(upd.rows[0]?.lock_version),
         };
       });
 
@@ -592,6 +598,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: newTimezone,
           status: newStatus,
           lockVersion: newLockVersion,
+          version: newLockVersion,
         };
       });
 
@@ -865,7 +872,7 @@ export function createRouter(deps: ApiDeps): Router {
         }));
       });
 
-      res.json({ data: roles });
+      res.json({ data: roles, meta: { nextCursor: null, limit: roles.length } });
     } catch (err) {
       next(err);
     }
@@ -895,7 +902,7 @@ export function createRouter(deps: ApiDeps): Router {
         }));
       });
 
-      res.json({ data: permissions });
+      res.json({ data: permissions, meta: { nextCursor: null, limit: permissions.length } });
     } catch (err) {
       next(err);
     }

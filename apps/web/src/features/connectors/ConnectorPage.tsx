@@ -589,6 +589,24 @@ export function ConnectorPage() {
                                   Approve (SOD)
                                 </Button>
                               )}
+                              {acc.status === 'ACTIVE' && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                  <Chip
+                                    label="✓ Approved (Dual-Control Verified)"
+                                    color="success"
+                                    size="small"
+                                    sx={{ fontWeight: 600, bgcolor: 'rgba(46, 125, 50, 0.12)', color: 'success.main' }}
+                                  />
+                                  {acc.approvedBy && (
+                                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}>
+                                      Approver: {acc.approvedBy}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              )}
+                              {acc.status === 'DISABLED' && (
+                                <Chip label="Disabled" size="small" variant="outlined" color="default" />
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

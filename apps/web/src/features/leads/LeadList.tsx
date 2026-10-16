@@ -68,7 +68,7 @@ export function LeadList() {
   };
 
   const handleNextPage = () => {
-    if (data?.meta.nextCursor) {
+    if (data?.meta?.nextCursor) {
       setCursorHistory((prev) => [...prev, cursor || '']);
       setCursor(data.meta.nextCursor);
     }
@@ -273,7 +273,7 @@ export function LeadList() {
             </Button>
             <Button
               size="small"
-              disabled={!data?.meta.nextCursor}
+              disabled={!data?.meta?.nextCursor}
               onClick={handleNextPage}
               data-testid="leads.pagination.next"
             >
