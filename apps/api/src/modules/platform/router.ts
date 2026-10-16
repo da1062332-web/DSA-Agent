@@ -35,6 +35,12 @@ import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
+import {
+  assertAdministratorRemains,
+  assertCanGrantPermissions,
+  assertNoPlatformPermissionsForTenant,
+  countActiveAdministrators,
+} from './role-guards';
 
 const nextUlid = monotonicFactory();
 
@@ -959,6 +965,7 @@ export function createRouter(deps: ApiDeps): Router {
       requireAnyPermission(ctx, ['role.manage', 'user.manage']);
 
       const parsed = CreateRoleRequest.parse(req.body);
+      assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
 
       // Validate permission codes against known catalog
       const validCodes = new Set<string>(PERMISSION_CODES);
@@ -969,6 +976,7 @@ export function createRouter(deps: ApiDeps): Router {
           ]);
         }
       }
+      assertCanGrantPermissions(ctx.principal, parsed.permissions);
 
       const newRoleId = `rol_${nextUlid()}`;
       const createdRole = await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -1003,6 +1011,14 @@ export function createRouter(deps: ApiDeps): Router {
           `.execute(tx);
         }
 
+        await deps.audit.record(tx, ctx, {
+          action: 'role.created',
+          entityType: 'ROLE',
+          entityId: newRoleId,
+          after: { code: parsed.code, name: parsed.name, permissions: parsed.permissions },
+          permissionUsed: 'role.manage',
+        });
+
         return {
           id: newRoleId,
           tenantId: ctx.principal.tenantId,
@@ -1026,9 +1042,12 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getContext(req);
       requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+      // API-ACL-004: editing a role needs step-up (an authenticator check within the last 15 minutes).
+      deps.authz.requireStepUp(ctx);
 
       const roleId = req.params.id;
       const parsed = UpdateRoleRequest.parse(req.body);
+      if (parsed.permissions !== undefined) assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
 
       if (parsed.permissions !== undefined) {
         const validCodes = new Set<string>(PERMISSION_CODES);
@@ -1059,6 +1078,24 @@ export function createRouter(deps: ApiDeps): Router {
         const current = existing.rows[0];
         if (!current) {
           throw AppError.of('NOT_FOUND', `Role ${roleId} not found.`);
+        }
+
+        // System roles are the baseline every tenant starts from: they are never edited (the database refuses it too).
+        if (current.is_template) {
+          throw AppError.of('VALIDATION_ERROR', 'System roles cannot be changed. Create a custom role instead.', [
+            { field: 'roleId', issue: 'SYSTEM_ROLE' },
+          ]);
+        }
+        const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
+        const permissionsBefore = (
+          await sql<{ permission_code: string }>`
+            SELECT permission_code FROM app.role_permission WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} ORDER BY 1`.execute(tx)
+        ).rows.map((r) => r.permission_code);
+        if (parsed.permissions !== undefined) {
+          assertCanGrantPermissions(
+            ctx.principal,
+            parsed.permissions.filter((p) => !permissionsBefore.includes(p)),
+          );
         }
 
         // Concurrency check via If-Match header
@@ -1098,6 +1135,9 @@ export function createRouter(deps: ApiDeps): Router {
           }
         }
 
+        // A role edit must not remove the last way anyone in the tenant can administer it.
+        await assertAdministratorRemains(tx, ctx.principal.tenantId, administratorsBefore);
+
         const refreshed = await sql<{
           id: string;
           tenant_id: string;
@@ -1117,6 +1157,15 @@ export function createRouter(deps: ApiDeps): Router {
           WHERE r.id = ${roleId} AND r.tenant_id = ${ctx.principal.tenantId}
           GROUP BY r.id, r.tenant_id, r.code, r.name, r.is_template, r.version
         `.execute(tx);
+
+        await deps.audit.record(tx, ctx, {
+          action: 'role.updated',
+          entityType: 'ROLE',
+          entityId: String(roleId),
+          before: { name: current.name, permissions: permissionsBefore },
+          after: { name: newName, permissions: refreshed.rows[0]?.permissions ?? [] },
+          permissionUsed: 'role.manage',
+        });
 
         const row = refreshed.rows[0];
         if (!row) {
@@ -1166,6 +1215,9 @@ export function createRouter(deps: ApiDeps): Router {
         if (current.is_template) {
           throw AppError.of('VALIDATION_ERROR', 'Template system roles cannot be deleted.');
         }
+        const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
+        const before = await sql<{ code: string; name: string }>`
+          SELECT code, name FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
 
         // Check if role is assigned to any user
         const assigned = await sql<{ id: string }>`
@@ -1177,6 +1229,14 @@ export function createRouter(deps: ApiDeps): Router {
         if (assigned.rows.length > 0) {
           throw AppError.of('VALIDATION_ERROR', 'Cannot delete role that is currently assigned to users.');
         }
+        // An assignment that has ended is history. A role that has one is kept, so that history keeps its meaning.
+        const history = await sql<{ id: string }>`
+          SELECT id FROM app.user_role_assignment WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} LIMIT 1`.execute(tx);
+        if (history.rows.length > 0) {
+          throw AppError.of('VALIDATION_ERROR', 'This role has assignment history and cannot be deleted.', [
+            { field: 'roleId', issue: 'HAS_ASSIGNMENT_HISTORY' },
+          ]);
+        }
 
         await sql`
           DELETE FROM app.role_permission
@@ -1187,6 +1247,15 @@ export function createRouter(deps: ApiDeps): Router {
           DELETE FROM app.role
           WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}
         `.execute(tx);
+
+        await assertAdministratorRemains(tx, ctx.principal.tenantId, administratorsBefore);
+        await deps.audit.record(tx, ctx, {
+          action: 'role.deleted',
+          entityType: 'ROLE',
+          entityId: String(roleId),
+          before: { code: before.rows[0]?.code, name: before.rows[0]?.name },
+          permissionUsed: 'role.manage',
+        });
       });
 
       res.json({ status: 'ok' });
@@ -1509,11 +1578,26 @@ export function createRouter(deps: ApiDeps): Router {
         }
 
         if (parsed.status !== undefined) {
+          const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
+          const previous = await sql<{ status: string }>`
+            SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
           await sql`
             UPDATE app.app_user
             SET status = ${parsed.status}, updated_by = ${ctx.principal.id}
             WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}
           `.execute(tx);
+          // Suspending or deactivating the only administrator would lock the tenant out.
+          await assertAdministratorRemains(tx, ctx.principal.tenantId, administratorsBefore);
+          if (previous.rows[0]?.status !== parsed.status) {
+            await deps.audit.record(tx, ctx, {
+              action: 'user.status_changed',
+              entityType: 'USER',
+              entityId: String(targetUserId),
+              before: { status: previous.rows[0]?.status },
+              after: { status: parsed.status },
+              permissionUsed: 'user.manage',
+            });
+          }
         }
 
         if (parsed.availability !== undefined) {
@@ -1632,6 +1716,13 @@ export function createRouter(deps: ApiDeps): Router {
           )
         `.execute(tx);
 
+        await deps.audit.record(tx, ctx, {
+          action: 'role.assigned',
+          entityType: 'USER_ROLE_ASSIGNMENT',
+          entityId: assignmentId,
+          after: { userId: targetUserId, roleId: parsed.roleId, scopeType: parsed.scopeType },
+          permissionUsed: 'user.manage',
+        });
         return { id: assignmentId, alreadyAssigned: false };
       });
 
@@ -1660,6 +1751,7 @@ export function createRouter(deps: ApiDeps): Router {
 
       // Removing a role ENDS the assignment (the row stays as history); dsa_app cannot delete it, and should not.
       await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
         const ended = await sql<{ id: string }>`
           UPDATE app.user_role_assignment
              SET effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)')
@@ -1670,6 +1762,14 @@ export function createRouter(deps: ApiDeps): Router {
         if (ended.rows.length === 0) {
           throw AppError.of('NOT_FOUND', `User ${targetUserId} does not hold role ${targetRoleId}.`);
         }
+        await assertAdministratorRemains(tx, ctx.principal.tenantId, administratorsBefore);
+        await deps.audit.record(tx, ctx, {
+          action: 'role.assignment_ended',
+          entityType: 'USER_ROLE_ASSIGNMENT',
+          entityId: ended.rows[0]!.id,
+          before: { userId: targetUserId, roleId: targetRoleId },
+          permissionUsed: 'user.manage',
+        });
       });
 
       res.json({ status: 'ok' });

@@ -2,6 +2,7 @@
 // exists when it runs (as on hosted), because role_permission.permission_code references permission(code). Static check, no database.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { PERMISSION_CODES } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 
 const DIR = path.resolve(__dirname, '../../../supabase/migrations');
@@ -33,6 +34,17 @@ describe('permission catalogue', () => {
       if (by > firstGrant) problems.push(`${code} is granted in ${firstGrant} before it is defined in ${by}`);
     }
     expect(problems).toEqual([]);
+  });
+
+  it('TEST-PERM-03 every permission in the contracts (the 100-code catalogue) is defined by some migration, so a role can actually hold it', () => {
+    const missing = PERMISSION_CODES.filter((code) => !defined.has(code));
+    expect(missing).toEqual([]);
+  });
+
+  it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions and granted none (commission is Release 3, lead.reopen falls back)', () => {
+    const NINE = ['commission.plan.edit', 'commission.plan.approve', 'commission.calculate', 'customer.reveal_sensitive', 'lead.reopen', 'lender.read', 'lender.manage', 'product.read', 'product.manage'];
+    for (const code of NINE) expect(defined.get(code), code).toBe('20261001000060_permission_catalogue_completion.sql');
+    for (const code of NINE) expect([...(granted.get(code) ?? [])], `${code} must not be granted by any migration`).toEqual([]);
   });
 
   it('TEST-PERM-02 customer.create and customer.update are defined by a migration, as M-001 permissions', () => {
