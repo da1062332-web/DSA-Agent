@@ -4,7 +4,8 @@ import { LenderCaseDetailPage } from './LenderCaseDetailPage';
 import { LenderCasePanel } from './LenderCasePanel';
 
 export const routes: RouteObject[] = [
-  { path: '/lender-cases', element: <LenderCasePanel applicationId="app_demo_001" /> },
+  { path: '/lender-cases', element: <LenderCasePanel /> },
   { path: '/lender-cases/:id', element: <LenderCaseDetailPage /> },
+  { path: '/applications/:applicationId/lender-cases', element: <LenderCasePanel /> },
 ];
 

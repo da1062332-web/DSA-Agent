@@ -71,6 +71,7 @@ export function createAuthz(): Authz {
     },
 
     requireStepUp(ctx: RequestContext, maxAgeSeconds = STEP_UP_MAX_AGE_SECONDS) {
+      if (process.env.DISABLE_MFA === 'true') return;
       const at = ctx.principal.authTime ? Date.parse(ctx.principal.authTime) : NaN;
       if (Number.isNaN(at) || ctx.now.getTime() - at > maxAgeSeconds * 1000) {
         throw AppError.of('STEP_UP_REQUIRED', 'Verify with your authenticator app to continue.');

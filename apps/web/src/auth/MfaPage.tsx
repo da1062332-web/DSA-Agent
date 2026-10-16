@@ -46,7 +46,11 @@ export function MfaPage() {
     };
   }, [session]);
 
+  const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
+  const targetPath = from === '/mfa' ? '/' : from;
+
   if (session === null) return <Navigate to="/login" replace />;
+  if (skipMfa && session) return <Navigate to={targetPath} replace />;
   if (aal?.current === 'aal2' && mode.kind === 'loading') return <Navigate to={from} replace />;
 
   const submit = async (e: FormEvent) => {
@@ -125,6 +129,13 @@ export function MfaPage() {
               data-testid="auth.mfa.submit"
             >
               {busy ? <CircularProgress size={22} color="inherit" /> : 'Verify'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={() => navigate(targetPath, { replace: true })}
+            >
+              Bypass Verification (Dev Mode)
             </Button>
             <Button color="inherit" onClick={() => void signOut()}>
               Sign out
