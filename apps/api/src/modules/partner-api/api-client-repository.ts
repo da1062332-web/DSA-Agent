@@ -1,8 +1,9 @@
 // Persistence for API clients (owner: Dev 1; Module 36 API management). The routes used to keep clients in a Map inside the service,
 // so a restart lost every client and its credentials. PgApiClientRepository stores them in app.api_client through withTenantTx,
-// so row-level security keeps each tenant to its own rows; only the SHA-256 hash of the secret is stored. InMemoryApiClientRepository
+// so row-level security keeps each tenant to its own rows; only the SHA-256 hash of the secret is stored. Every change records an audit
+// event in the same transaction (ids, names and scopes only, never a secret or a hash). InMemoryApiClientRepository
 // backs unit tests only and is the default when no repository is passed in.
-import type { RequestContext, TxRunner } from '@dsa/contracts';
+import type { AuditPort, RequestContext, TxRunner } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiClientRecord } from './service';
 
@@ -66,7 +67,14 @@ const toRecord = (r: Row): ApiClientRecord => ({
 const textArray = (values: string[] | null | undefined) => (values == null ? null : values);
 
 export class PgApiClientRepository implements ApiClientRepository {
-  constructor(private readonly txRunner: TxRunner) {}
+  constructor(
+    private readonly txRunner: TxRunner,
+    private readonly auditPort: AuditPort,
+  ) {}
+
+  private audit(tx: Parameters<AuditPort['record']>[0], ctx: RequestContext, action: string, id: string, extra: { before?: Record<string, unknown>; after?: Record<string, unknown> } = {}) {
+    return this.auditPort.record(tx, ctx, { action, entityType: 'API_CLIENT', entityId: id, permissionUsed: 'api.manage', ...extra });
+  }
 
   list(ctx: RequestContext): Promise<ApiClientRecord[]> {
     return this.txRunner.withTenantTx(ctx, async (tx) => {
@@ -92,6 +100,9 @@ export class PgApiClientRepository implements ApiClientRepository {
         VALUES (${r.id}, ${r.tenantId}, ${r.clientId}, ${r.clientSecretHash}, ${r.name}, ${r.partnerName}, ${r.status},
                 ${textArray(r.scopes)}, ${r.rateLimitRpm}, ${textArray(r.allowedIps)}, NULL, ${r.lockVersion},
                 ${r.createdAt}::timestamptz, ${r.updatedAt}::timestamptz, ${r.createdBy}, ${r.updatedBy})`.execute(tx);
+      await this.audit(tx, ctx, 'api_client.created', r.id, {
+        after: { clientId: r.clientId, name: r.name, partnerName: r.partnerName, scopes: r.scopes, rateLimitRpm: r.rateLimitRpm },
+      });
     });
   }
 
@@ -118,7 +129,12 @@ export class PgApiClientRepository implements ApiClientRepository {
                scopes = ${textArray(next.scopes)}, rate_limit_rpm = ${next.rate_limit_rpm}, allowed_ips = ${textArray(next.allowed_ips)},
                lock_version = lock_version + 1, updated_at = ${ctx.now.toISOString()}::timestamptz, updated_by = ${ctx.principal.id}
          WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} RETURNING *`.execute(tx);
-      return updated.rows[0] ? toRecord(updated.rows[0]) : null;
+      if (!updated.rows[0]) return null;
+      await this.audit(tx, ctx, 'api_client.updated', id, {
+        before: { name: row.name, partnerName: row.partner_name, status: row.status, scopes: row.scopes ?? [], rateLimitRpm: Number(row.rate_limit_rpm) },
+        after: { name: next.name, partnerName: next.partner_name, status: next.status, scopes: next.scopes, rateLimitRpm: next.rate_limit_rpm },
+      });
+      return toRecord(updated.rows[0]);
     });
   }
 
@@ -128,7 +144,9 @@ export class PgApiClientRepository implements ApiClientRepository {
         UPDATE app.api_client SET client_secret_hash = ${clientSecretHash}, lock_version = lock_version + 1,
                updated_at = ${ctx.now.toISOString()}::timestamptz, updated_by = ${ctx.principal.id}
          WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING *`.execute(tx);
-      return res.rows[0] ? toRecord(res.rows[0]) : null;
+      if (!res.rows[0]) return null;
+      await this.audit(tx, ctx, 'api_client.secret_rotated', id, { after: { clientId: res.rows[0].client_id } }); // never the secret or its hash
+      return toRecord(res.rows[0]);
     });
   }
 
@@ -138,7 +156,9 @@ export class PgApiClientRepository implements ApiClientRepository {
         UPDATE app.api_client SET status = 'REVOKED', lock_version = lock_version + 1,
                updated_at = ${ctx.now.toISOString()}::timestamptz, updated_by = ${ctx.principal.id}
          WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING id`.execute(tx);
-      return res.rows.length > 0;
+      if (res.rows.length === 0) return false;
+      await this.audit(tx, ctx, 'api_client.revoked', id);
+      return true;
     });
   }
 }

@@ -71,8 +71,16 @@ export async function importMasterData(
 }
 
 // SUB-ADM.04: Background Jobs & Queues
-export async function fetchJobsAndQueues(): Promise<{ queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }> {
-  return apiFetch<{ queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }>('/platform/v1/jobs');
+export interface JobsAndQueues {
+  /** True while the figures are sample data, not read from a real queue. */
+  sampleData?: boolean;
+  notice?: string;
+  queues: JobQueueInfo[];
+  deadLetters: DeadLetterItem[];
+}
+
+export async function fetchJobsAndQueues(): Promise<JobsAndQueues> {
+  return apiFetch<JobsAndQueues>('/platform/v1/jobs');
 }
 
 export async function pauseQueue(queueName: string, reason: string): Promise<JobQueueInfo> {

@@ -21,16 +21,20 @@ import {
   type SupportAccessGrant,
   type SystemHealthReport,
   type UpdateFeatureFlagRequest,
+  type UpdateReleaseRequest,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
-import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../types';
-import { PgPlatformStore, type PlatformStore } from './platform-store';
+import { PgPlatformStore, type MasterDataImportResult, type PlatformStore } from './platform-store';
 
-const nextUlid = monotonicFactory();
+/** Shown with the queue figures, which are sample data until the Release 2 job console is built on real queues. */
+const SAMPLE_JOBS_NOTICE =
+  'Sample data. These queue figures and dead letters are not read from a real queue; pausing or replaying here changes nothing that processes work. The job console is planned for Release 2.';
+
+/** A probe slower than this makes the database DEGRADED in the health report. */
+const DB_DEGRADED_LATENCY_MS = 500;
 
 export class PlatformAdminService {
-  private masterData: Map<string, MasterDataItem[]> = new Map();
   private queues: Map<string, JobQueueInfo> = new Map();
   private deadLetters: Map<string, DeadLetterItem> = new Map();
   private startTimestamp: number = Date.now();
@@ -48,37 +52,6 @@ export class PlatformAdminService {
     // ----------------------------------------------------
     // Seed Master Data Items (SUB-ADM.03)
     // ----------------------------------------------------
-    const now = new Date().toISOString();
-    const pincodes: MasterDataItem[] = [
-      { id: 'md_pin_01', listCode: 'PINCODES', code: '400008', label: 'Mumbai Central', attributes: { state: 'Maharashtra', tier: 1 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_02', listCode: 'PINCODES', code: '411001', label: 'Pune Camp', attributes: { state: 'Maharashtra', tier: 2 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_03', listCode: 'PINCODES', code: '560001', label: 'Bangalore GPO', attributes: { state: 'Karnataka', tier: 1 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_04', listCode: 'PINCODES', code: '110001', label: 'New Delhi Connaught Place', attributes: { state: 'Delhi', tier: 1 }, version: 1, active: true, createdAt: now },
-    ];
-    const states: MasterDataItem[] = [
-      { id: 'md_st_01', listCode: 'STATES', code: 'MH', label: 'Maharashtra', attributes: { gstCode: '27', region: 'WEST' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_02', listCode: 'STATES', code: 'KA', label: 'Karnataka', attributes: { gstCode: '29', region: 'SOUTH' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_03', listCode: 'STATES', code: 'DL', label: 'Delhi', attributes: { gstCode: '07', region: 'NORTH' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_04', listCode: 'STATES', code: 'TN', label: 'Tamil Nadu', attributes: { gstCode: '33', region: 'SOUTH' }, version: 1, active: true, createdAt: now },
-    ];
-    const occupations: MasterDataItem[] = [
-      { id: 'md_occ_01', listCode: 'OCCUPATIONS', code: 'SALARIED_PVT', label: 'Salaried Private Sector', attributes: { category: 'SALARIED', riskWeight: 1.0 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_02', listCode: 'OCCUPATIONS', code: 'SALARIED_GOVT', label: 'Salaried Government / PSU', attributes: { category: 'SALARIED', riskWeight: 0.8 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_03', listCode: 'OCCUPATIONS', code: 'SELF_EMP_PROF', label: 'Self Employed Professional', attributes: { category: 'SEP', riskWeight: 1.2 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_04', listCode: 'OCCUPATIONS', code: 'SELF_EMP_BIZ', label: 'Self Employed Business Owner', attributes: { category: 'SENP', riskWeight: 1.4 }, version: 1, active: true, createdAt: now },
-    ];
-    const reasonCodes: MasterDataItem[] = [
-      { id: 'md_rsn_01', listCode: 'REASON_CODES', code: 'INSUFFICIENT_INCOME', label: 'Monthly income below policy threshold', attributes: { category: 'FINANCIAL' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_02', listCode: 'REASON_CODES', code: 'LOW_CREDIT_SCORE', label: 'CIBIL score below lender requirement', attributes: { category: 'CREDIT' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_03', listCode: 'REASON_CODES', code: 'INCOMPLETE_DOCUMENTS', label: 'Mandatory KYC or income proof missing', attributes: { category: 'DOCUMENT' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_04', listCode: 'REASON_CODES', code: 'CUSTOMER_OPT_OUT', label: 'Customer declined loan terms or withdrawn', attributes: { category: 'BUSINESS' }, version: 1, active: true, createdAt: now },
-    ];
-
-    this.masterData.set('PINCODES', pincodes);
-    this.masterData.set('STATES', states);
-    this.masterData.set('OCCUPATIONS', occupations);
-    this.masterData.set('REASON_CODES', reasonCodes);
-
     // ----------------------------------------------------
     // Seed Queues and Dead Letters (SUB-ADM.04)
     // ----------------------------------------------------
@@ -171,81 +144,24 @@ export class PlatformAdminService {
   // SUB-ADM.03: Master Data (API-ADM-003)
   // ==========================================
 
-  async getMasterData(listCode?: string): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
-    const result: Record<string, MasterDataItem[]> = {};
-    if (listCode) {
-      const items = this.masterData.get(listCode.toUpperCase()) ?? [];
-      result[listCode.toUpperCase()] = items;
-    } else {
-      for (const [code, items] of this.masterData.entries()) {
-        result[code] = items;
-      }
-    }
+  async getMasterData(ctx: RequestContext, listCode?: string): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
+    const result = await this.store.listMasterData(ctx, listCode);
     return { data: result, meta: { listsCount: Object.keys(result).length } };
   }
 
-  async importMasterData(
-    req: MasterDataImportRequest,
-    actorId: string,
-  ): Promise<{
-    dryRun: boolean;
-    listCode: string;
-    totalSubmitted: number;
-    newItemsCount: number;
-    updatedItemsCount: number;
-    preview: MasterDataItem[];
-  }> {
-    const listCode = req.listCode.toUpperCase();
-    const existing = this.masterData.get(listCode) ?? [];
-    const existingCodeMap = new Map(existing.map((item) => [item.code, item]));
-
-    let newCount = 0;
-    let updateCount = 0;
-    const firstItem = existing[0];
-    const computedVersion = req.version ?? (firstItem ? firstItem.version + 1 : 1);
-    const now = new Date().toISOString();
-
-    const processed: MasterDataItem[] = [];
-    for (const item of req.items) {
-      if (existingCodeMap.has(item.code)) {
-        updateCount++;
-      } else {
-        newCount++;
-      }
-      processed.push({
-        id: `md_${listCode.toLowerCase()}_${nextUlid()}`,
-        listCode,
-        code: item.code,
-        label: item.label,
-        attributes: item.attributes ?? {},
-        version: computedVersion,
-        active: true,
-        createdAt: now,
-      });
-    }
-
-    if (!req.dryRun) {
-      // Save permanently
-      const updatedList = [...existing.filter((e) => !req.items.some((i) => i.code === e.code)), ...processed];
-      this.masterData.set(listCode, updatedList);
-    }
-
-    return {
-      dryRun: !!req.dryRun,
-      listCode,
-      totalSubmitted: req.items.length,
-      newItemsCount: newCount,
-      updatedItemsCount: updateCount,
-      preview: processed,
-    };
+  async importMasterData(ctx: RequestContext, req: MasterDataImportRequest): Promise<MasterDataImportResult> {
+    return this.store.importMasterData(ctx, req);
   }
 
   // ==========================================
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
 
-  async getJobsAndQueues(): Promise<{ queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }> {
+  async getJobsAndQueues(): Promise<{ sampleData: true; notice: string; queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }> {
     return {
+      // Honest labelling: these figures are not read from any real queue. The console for background jobs is Release 2 (SUB-ADM.04).
+      sampleData: true,
+      notice: SAMPLE_JOBS_NOTICE,
       queues: Array.from(this.queues.values()),
       deadLetters: Array.from(this.deadLetters.values()),
     };
@@ -267,7 +183,7 @@ export class PlatformAdminService {
     return q;
   }
 
-  async resumeQueue(queueName: string, req: ResumeQueueRequest, actorId: string): Promise<JobQueueInfo> {
+  async resumeQueue(queueName: string, req: ResumeQueueRequest, _actorId: string): Promise<JobQueueInfo> {
     const q = this.queues.get(queueName);
     if (!q) {
       throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
@@ -306,33 +222,40 @@ export class PlatformAdminService {
   // ==========================================
 
   async getSystemHealth(): Promise<SystemHealthReport> {
+    // The database is probed for real: a failed probe is DOWN (it used to be reported as UP with a made-up latency), a slow one is
+    // DEGRADED, and pool utilisation is the share of the server's connection slots in use. The overall status follows the database.
     const start = performance.now();
     let dbStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
-    let latencyMs = 2.4;
+    let poolUtilization = 0;
 
     try {
-      // Probe active database connectivity
-      await this.deps.txRunner.withTenantTx(
+      const probe = await this.deps.txRunner.withTenantTx(
         {
           principal: { kind: 'SERVICE', id: 'SYSTEM:health', tenantId: 'ten_health_probe', primaryBranchId: null, managedTeamMemberIds: [], queueIds: [], grants: [], authTime: null },
           correlationId: 'probe',
           now: new Date(),
         },
         async (tx) => {
-          await sql`SELECT 1`.execute(tx);
+          const r = await sql<{ in_use: number | string; max_connections: number | string }>`
+            SELECT (SELECT count(*) FROM pg_stat_activity) AS in_use, current_setting('max_connections')::int AS max_connections`.execute(tx);
+          return r.rows[0];
         },
       );
-      latencyMs = Math.round((performance.now() - start) * 10) / 10;
+      if (probe && Number(probe.max_connections) > 0) {
+        poolUtilization = Math.min(100, Math.round((Number(probe.in_use) / Number(probe.max_connections)) * 1000) / 10);
+      }
     } catch {
-      // In standalone test or when pool is saturated
-      latencyMs = 4.2;
+      dbStatus = 'DOWN';
     }
+    const latencyMs = Math.round((performance.now() - start) * 10) / 10;
+    if (dbStatus === 'UP' && latencyMs > DB_DEGRADED_LATENCY_MS) dbStatus = 'DEGRADED';
+    const overall: SystemHealthReport['status'] = dbStatus === 'DOWN' ? 'DOWN' : dbStatus === 'DEGRADED' ? 'DEGRADED' : 'HEALTHY';
 
     const mem = process.memoryUsage();
     const uptime = Math.floor((Date.now() - this.startTimestamp) / 1000);
 
     return {
-      status: 'HEALTHY',
+      status: overall,
       timestamp: new Date().toISOString(),
       uptimeSeconds: uptime,
       version: 'v0.1.0-rc.1',
@@ -340,7 +263,7 @@ export class PlatformAdminService {
         database: {
           status: dbStatus,
           latencyMs,
-          poolUtilization: 14.5,
+          poolUtilization,
         },
         redisQueue: {
           status: 'SIMULATED',
@@ -424,27 +347,13 @@ export class PlatformAdminService {
   // SUB-ADM.08: Release Management (Release Register)
   // ==========================================
 
-  async getReleases(): Promise<{ candidate: string; releases: ReleaseRegisterItem[] }> {
-    return {
-      candidate: 'v0.1.0-rc.1',
-      releases: [
-        {
-          version: 'v0.1.0-rc.1',
-          status: 'CANDIDATE',
-          targetDate: '2026-10-14',
-          gitTag: null,
-          releaseNotesRef: 'RELEASE_NOTES_v0.1.0-rc.1.md',
-          rulePackVersion: 'M-010 (20261001000010_rules_core.sql)',
-          migrationVersion: 'M-030 (20261001000030_tasks.sql)',
-          gates: {
-            rel001: true,
-            rel002: true,
-            rel003: true,
-            rel004: false,
-          },
-          notesSummary: 'Workflow A walking-skeleton MVP internal pilot candidate on synthetic data only.',
-        },
-      ],
-    };
+  async getReleases(ctx: RequestContext): Promise<{ candidate: string | null; releases: ReleaseRegisterItem[] }> {
+    const releases = await this.store.listReleases(ctx);
+    const candidate = releases.find((r) => r.status === 'CANDIDATE') ?? null;
+    return { candidate: candidate?.version ?? null, releases };
+  }
+
+  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+    return this.store.updateRelease(ctx, version, patch, ifMatch);
   }
 }

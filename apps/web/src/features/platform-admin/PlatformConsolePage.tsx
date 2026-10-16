@@ -529,6 +529,11 @@ export function PlatformConsolePage() {
           <Typography variant="h6" fontWeight={600} gutterBottom>
             Job Console & Queue State (CMP-ADM.04.1)
           </Typography>
+          {jobsQuery.data?.sampleData && (
+            <Alert severity="warning" sx={{ mb: 2 }} data-testid="platform.jobs.sample-notice">
+              {jobsQuery.data.notice ?? 'Sample data: these figures are not read from a real queue.'}
+            </Alert>
+          )}
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             {jobsQuery.data?.queues.map((q) => (

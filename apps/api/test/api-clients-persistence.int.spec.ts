@@ -64,6 +64,7 @@ describe('API clients survive a restart of the real server', () => {
     const a = await startApi(dbUrl);
     let id: string;
     let firstHash: string;
+    let rotatedSecret = '';
     try {
       const created = await call(a, token, 'POST', '/v1/api-clients', { name: 'Lifecycle client', partnerName: 'Lifecycle partner' });
       expect(created.status, a.log()).toBe(201);
@@ -79,6 +80,7 @@ describe('API clients survive a restart of the real server', () => {
       const rotated = await call(b, token, 'POST', `/v1/api-clients/${id}/rotate-secret`);
       expect(rotated.status, b.log()).toBe(200);
       expect(rotated.body.clientSecret).toMatch(/^sec_/);
+      rotatedSecret = rotated.body.clientSecret;
     } finally {
       await b.stop();
     }
@@ -105,5 +107,15 @@ describe('API clients survive a restart of the real server', () => {
     }
     const row = await env.admin.query(`SELECT status FROM app.api_client WHERE id = $1`, [id]);
     expect(row.rows[0].status).toBe('REVOKED'); // kept for the record, no longer usable
+
+    // Every step is in the audit trail, in order, and the trail never holds a secret or a hash.
+    const trail = await env.admin.query(`SELECT action, actor_id, before, after FROM app.audit_event WHERE entity_id = $1 ORDER BY seq`, [id]);
+    expect(trail.rows.map((r) => r.action)).toEqual(['api_client.created', 'api_client.updated', 'api_client.secret_rotated', 'api_client.revoked']);
+    expect(new Set(trail.rows.map((r) => r.actor_id))).toEqual(new Set([env.A.userIds[0]]));
+    const dump = JSON.stringify(trail.rows);
+    const currentHash = (await env.admin.query(`SELECT client_secret_hash h FROM app.api_client WHERE id = $1`, [id])).rows[0].h as string;
+    for (const secretLike of [rotatedSecret, firstHash, currentHash]) expect(dump).not.toContain(secretLike);
+    expect(trail.rows[1].before).toMatchObject({ name: 'Lifecycle client' });
+    expect(trail.rows[1].after).toMatchObject({ name: 'Renamed client', rateLimitRpm: 500 });
   }, 360_000);
 });

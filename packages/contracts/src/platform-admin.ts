@@ -256,6 +256,8 @@ export const DataCorrectionRequestSchema = z.object({
   approvedBy: z.string().nullable().optional(),
   status: DataCorrectionStatusSchema,
   executedAt: z.string().nullable().optional(),
+  /** Why the executor could not carry the correction out; set only when status is FAILED. */
+  failureReason: z.string().nullable().optional(),
   executorIdentity: z.string().default('SERVICE:data-correction-executor'),
   createdAt: z.string(),
 });
@@ -295,6 +297,8 @@ export type ReleaseGateStatus = z.infer<typeof ReleaseGateStatusSchema>;
 
 export const ReleaseRegisterItemSchema = z.object({
   version: z.string(),
+  /** Optimistic-concurrency version (ETag). Absent on items from older servers. */
+  lockVersion: z.number().int().positive().optional(),
   status: z.enum(['CANDIDATE', 'STAGING', 'PUBLISHED', 'ARCHIVED']),
   targetDate: z.string(),
   gitTag: z.string().nullable(),
@@ -306,3 +310,15 @@ export const ReleaseRegisterItemSchema = z.object({
 });
 
 export type ReleaseRegisterItem = z.infer<typeof ReleaseRegisterItemSchema>;
+
+/** PUT /platform/v1/releases/{version}: an operator records what was verified or published. Only what is sent changes. */
+export const UpdateReleaseRequestSchema = z
+  .object({
+    status: z.enum(['CANDIDATE', 'STAGING', 'PUBLISHED', 'ARCHIVED']).optional(),
+    gitTag: z.string().min(1).max(100).nullable().optional(),
+    gates: ReleaseGateStatusSchema.partial().optional(),
+    notesSummary: z.string().max(2000).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Send at least one field to change.' });
+
+export type UpdateReleaseRequest = z.infer<typeof UpdateReleaseRequestSchema>;
