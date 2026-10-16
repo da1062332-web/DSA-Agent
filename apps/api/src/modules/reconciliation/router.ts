@@ -3,6 +3,7 @@ import {
   AdjustmentApprovalInputSchema,
   AdjustmentProposalInputSchema,
   AppError,
+  AutoIngestBankFeedInputSchema,
   BankReconcilePayoutInputSchema,
   CreateDisputeInputSchema,
   ImportLenderStatementInputSchema,
@@ -100,6 +101,23 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ReconciliationServ
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.importLenderStatement(tx, ctx, parsed.data);
+      });
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // AUTOMATED BANK STATEMENT INGESTION (MT940 / CSV FEEDS) (MOD-REC / TASK-418)
+  // POST /v1/reconciliation/auto-ingest & POST /v1/lender-statements/auto-ingest
+  router.post(['/reconciliation/auto-ingest', '/lender-statements/auto-ingest'], async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const parsed = AutoIngestBankFeedInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.autoIngestBankFeed(tx, ctx, parsed.data);
       });
       res.status(201).json(result);
     } catch (err) {

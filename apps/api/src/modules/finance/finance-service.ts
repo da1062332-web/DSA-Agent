@@ -15,6 +15,8 @@ import {
   type CreatePayoutBatchInput,
   type CreatePayoutRequestInput,
   type CreateRecalculationProposalInput,
+  type DisbursePayoutGatewayInput,
+  type DisbursePayoutGatewayResponse,
   type PayoutApprovalInput,
   type PayoutApprovalResponse,
   type PayoutBatchResponse,
@@ -32,6 +34,7 @@ import {
 import { createHash } from 'crypto';
 import { ulid } from 'ulid';
 import { encryptPaymentRef, maskPaymentRef } from './crypto';
+import { paymentGatewayService } from './payment-gateway';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
@@ -1037,6 +1040,85 @@ export class FinanceService {
     });
 
     return this.toPayoutResponse(updated!);
+  }
+
+  // --- AUTOMATED DIRECT NET-BANKING / PAYMENT GATEWAY INTEGRATION (MOD-PAY / TASK-418) ---
+  async disbursePayoutViaGateway(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+    input: DisbursePayoutGatewayInput,
+  ): Promise<DisbursePayoutGatewayResponse> {
+    this.assertPermission(ctx, 'payout.record_payment');
+
+    const tenantId = ctx.principal.tenantId;
+    const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, id);
+    if (!payout) {
+      throw AppError.of('NOT_FOUND', `Payout request ${id} not found.`);
+    }
+    if (payout.status !== 'APPROVED') {
+      throw AppError.of('INVALID_STATE', `Payout ${id} is not APPROVED for gateway disbursement (status: ${payout.status}).`);
+    }
+
+    const gatewayResult = await paymentGatewayService.disburse({
+      payoutId: id,
+      amount: payout.total,
+      currency: payout.currency,
+      mode: input.mode ?? 'IMPS',
+    });
+
+    // Record the payment with the gateway generated UTR
+    await this.recordPayoutPayment(tx, ctx, id, {
+      paymentRef: gatewayResult.utrNumber,
+      paidOn: gatewayResult.disbursedAt,
+    });
+
+    return {
+      payoutId: id as any,
+      status: 'PAYMENT_RECORDED',
+      transferId: gatewayResult.transferId,
+      utrNumber: gatewayResult.utrNumber,
+      gatewayMode: gatewayResult.gatewayMode,
+      amount: gatewayResult.amount,
+      currency: gatewayResult.currency,
+      disbursedAt: gatewayResult.disbursedAt,
+    };
+  }
+
+  async dispatchPayoutBatchToGateway(
+    tx: Tx,
+    ctx: RequestContext,
+    batchId: string,
+    mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+  ): Promise<{ batchId: string; totalDisbursed: number; results: DisbursePayoutGatewayResponse[] }> {
+    this.assertPermission(ctx, 'payout.record_payment');
+    const tenantId = ctx.principal.tenantId;
+    const batch = await this.deps.repository.findPayoutBatchById(tx, tenantId, batchId);
+    if (!batch) {
+      throw AppError.of('NOT_FOUND', `Payout batch ${batchId} not found.`);
+    }
+
+    const results: DisbursePayoutGatewayResponse[] = [];
+    let total = 0;
+
+    for (const pid of batch.payout_ids) {
+      const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, pid);
+      if (payout && payout.status === 'APPROVED') {
+        const res = await this.disbursePayoutViaGateway(tx, ctx, pid, { mode });
+        results.push(res);
+        total += Number(res.amount);
+      }
+    }
+
+    if (this.deps.repository.updatePayoutBatchStatus) {
+      await this.deps.repository.updatePayoutBatchStatus(tx, tenantId, batchId, 'PROCESSED');
+    }
+
+    return {
+      batchId,
+      totalDisbursed: Math.round(total * 100) / 100,
+      results,
+    };
   }
 
   // --- PAYOUT BATCHES ---

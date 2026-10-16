@@ -114,3 +114,25 @@ export async function downloadBankFile(batchId: string): Promise<void> {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(blobUrl);
 }
+
+// Automated Direct Net-Banking / Payment Gateway Integration (MOD-PAY / TASK-418)
+export async function disbursePayoutGateway(
+  id: string,
+  mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+): Promise<{ payoutId: string; status: string; transferId: string; utrNumber: string; disbursedAt: string }> {
+  return apiFetch(`/v1/payout-requests/${id}/disburse-gateway`, {
+    method: 'POST',
+    body: { mode },
+  });
+}
+
+export async function dispatchPayoutBatchGateway(
+  batchId: string,
+  mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+): Promise<{ batchId: string; totalDisbursed: number; results: any[] }> {
+  return apiFetch(`/v1/payout-batches/${batchId}/dispatch-gateway`, {
+    method: 'POST',
+    body: { mode },
+  });
+}
+
