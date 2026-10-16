@@ -41,6 +41,8 @@ import {
   cancelPayoutRequest,
   createPayoutBatch,
   createPayoutRequest,
+  disbursePayoutGateway,
+  dispatchPayoutBatchGateway,
   downloadBankFile,
   fetchPayoutRequestById,
   fetchPayoutRequests,
@@ -297,6 +299,45 @@ export function PayoutsDashboardPage() {
       setError(errorText(err));
     }
   };
+
+  const [disbursingId, setDisbursingId] = useState<string | null>(null);
+
+  const handleGatewayDisburse = async (req: PayoutRequest) => {
+    try {
+      setDisbursingId(req.id);
+      setError(null);
+      const res = await disbursePayoutGateway(req.id, 'IMPS');
+      setSuccessMsg(
+        `Instant Net-Banking API Disbursed! Total ₹${Number(req.total).toLocaleString(
+          'en-IN',
+        )} settled via IMPS. Bank UTR: ${res.utrNumber}`,
+      );
+      await loadRequests();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setDisbursingId(null);
+    }
+  };
+
+  const handleBatchGatewayDispatch = async (batchId: string) => {
+    try {
+      setBatching(true);
+      setError(null);
+      const res = await dispatchPayoutBatchGateway(batchId, 'IMPS');
+      setSuccessMsg(
+        `Automated Net-Banking Gateway Batch Disbursed! Total ₹${Number(res.totalDisbursed).toLocaleString(
+          'en-IN',
+        )} paid across ${res.results?.length ?? 0} payout(s).`,
+      );
+      await loadRequests();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBatching(false);
+    }
+  };
+
 
   const getStatusColor = (status: PayoutRequestStatus) => {
     switch (status) {
@@ -563,6 +604,15 @@ export function PayoutsDashboardPage() {
                                 <Button
                                   size="small"
                                   variant="contained"
+                                  color="primary"
+                                  disabled={disbursingId === p.id}
+                                  onClick={() => handleGatewayDisburse(p)}
+                                >
+                                  {disbursingId === p.id ? <CircularProgress size={16} /> : 'Net-Banking API'}
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
                                   color="success"
                                   onClick={() => handleOpenPaymentDialog(p)}
                                 >
@@ -599,7 +649,7 @@ export function PayoutsDashboardPage() {
                           <TableCell><strong>Batch ID</strong></TableCell>
                           <TableCell><strong>Payouts Count</strong></TableCell>
                           <TableCell><strong>SHA-256 Integrity Hash</strong></TableCell>
-                          <TableCell align="right"><strong>Download</strong></TableCell>
+                          <TableCell align="right"><strong>Disbursement Actions</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -609,13 +659,24 @@ export function PayoutsDashboardPage() {
                             <TableCell>{b.payoutIds.length}</TableCell>
                             <TableCell><code>{b.fileSha256.slice(0, 24)}...</code></TableCell>
                             <TableCell align="right">
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => handleDownloadBankFile(b.id)}
-                              >
-                                Download CSV
-                              </Button>
+                              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  disabled={batching}
+                                  onClick={() => handleBatchGatewayDispatch(b.id)}
+                                >
+                                  Gateway Dispatch
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => handleDownloadBankFile(b.id)}
+                                >
+                                  Download CSV
+                                </Button>
+                              </Stack>
                             </TableCell>
                           </TableRow>
                         ))}

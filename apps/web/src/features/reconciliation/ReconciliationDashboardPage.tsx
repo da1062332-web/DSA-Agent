@@ -38,6 +38,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import {
   approveAdjustment,
+  autoIngestBankFeed,
   createDispute,
   fetchAdjustments,
   fetchDisputes,
@@ -84,12 +85,17 @@ export function ReconciliationDashboardPage() {
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
 
   // Import Statement Form
+  const [importFormat, setImportFormat] = useState<'MT940' | 'CSV'>('MT940');
   const [importLenderId, setImportLenderId] = useState('lnd_hdfc_bank');
   const [importPeriod, setImportPeriod] = useState('2026-09');
   const [importBatchId, setImportBatchId] = useState(`batch_${Date.now()}`);
   const [importCsvText, setImportCsvText] = useState(
     'LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15\nLN902149,Sunita Patel,2500000,37500,3750,2026-09-16\nLN902150,Amitabh Bachchan,5000000,75000,7500,2026-09-18',
   );
+  const [importMt940Text, setImportMt940Text] = useState(
+    `:20:STMT2026093001\n:25:50200012345678\n:28C:1/1\n:60F:C260901INR5000000,00\n:61:2609150915CR22500,00NTRFNONREF//LN902148\n:86:/COMM/Rajesh Kumar/LN902148/DISB/1500000/TDS/2250\n:61:2609160916CR37500,00NTRFNONREF//LN902149\n:86:/COMM/Sunita Patel/LN902149/DISB/2500000/TDS/3750\n:61:2609180918CR75000,00NTRFNONREF//LN902150\n:86:/COMM/Amitabh Bachchan/LN902150/DISB/5000000/TDS/7500\n:62F:C260930INR5135000,00`,
+  );
+
 
   // Resolve Exception Form
   const [resolveStatus, setResolveStatus] = useState<'RESOLVED' | 'WRITTEN_OFF' | 'INVESTIGATING'>('RESOLVED');
@@ -189,6 +195,31 @@ export function ReconciliationDashboardPage() {
       setFeedback({
         type: 'success',
         message: `Statement imported successfully! ID: ${res.id} (${lines.length} lines parsed, S2 masked & hashed).`,
+      });
+      setImportDialogOpen(false);
+      loadData();
+    } catch (err) {
+      setFeedback({ type: 'error', message: errorText(err) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAutoIngestSubmit = async () => {
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const feedContent = importFormat === 'MT940' ? importMt940Text : importCsvText;
+      const res = await autoIngestBankFeed({
+        lenderId: importLenderId,
+        period: importPeriod,
+        format: importFormat,
+        rawFeedContent: feedContent,
+        filename: `${importLenderId}_${importPeriod}.${importFormat.toLowerCase()}`,
+      });
+      setFeedback({
+        type: 'success',
+        message: `${res.message} (Net Commission: ₹${res.netCommission.toLocaleString('en-IN')}, Hash: ${res.fileSha256.slice(0, 16)}...)`,
       });
       setImportDialogOpen(false);
       loadData();
@@ -1006,16 +1037,32 @@ export function ReconciliationDashboardPage() {
 
       {/* MODAL 1: Ingest Lender Statement */}
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>Ingest Lender Commission Statement (SUB-REC.01)</DialogTitle>
+        <DialogTitle fontWeight={700}>
+          Automated Bank Statement Ingestion Engine (SUB-REC.01 / TASK-418)
+        </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Alert severity="info">
-              Imported statement lines will undergo S2 encryption and hashing. Customer names will be masked, and loan
-              accounts hashed with SHA-256 HMAC for privacy compliance.
+              Automated Bank Feed Parser: Supports standard SWIFT MT940 electronic statements and automated CSV feeds.
+              Statement lines undergo privacy protection: loan accounts are HMAC SHA-256 hashed and customer names are masked.
             </Alert>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Feed Format</InputLabel>
+                  <Select
+                    value={importFormat}
+                    label="Feed Format"
+                    onChange={(e) => setImportFormat(e.target.value as 'MT940' | 'CSV')}
+                  >
+                    <MenuItem value="MT940">SWIFT MT940 Feed</MenuItem>
+                    <MenuItem value="CSV">Bank CSV Feed</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={3}>
                 <TextField
+                  size="small"
                   label="Lender ID"
                   value={importLenderId}
                   onChange={(e) => setImportLenderId(e.target.value)}
@@ -1023,18 +1070,20 @@ export function ReconciliationDashboardPage() {
                   required
                 />
               </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
                 <TextField
-                  label="Reporting Period (YYYY-MM)"
+                  size="small"
+                  label="Period (YYYY-MM)"
                   value={importPeriod}
                   onChange={(e) => setImportPeriod(e.target.value)}
                   fullWidth
                   required
                 />
               </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
                 <TextField
-                  label="Import Batch ID"
+                  size="small"
+                  label="Batch ID"
                   value={importBatchId}
                   onChange={(e) => setImportBatchId(e.target.value)}
                   fullWidth
@@ -1042,18 +1091,39 @@ export function ReconciliationDashboardPage() {
                 />
               </Grid>
             </Grid>
-            <Typography variant="subtitle2" fontWeight={600}>
-              Statement Lines (CSV Format: LoanAccount, CustomerName, DisbursedAmount, CommissionAmount, TaxDeducted, PaidOn)
-            </Typography>
-            <TextField
-              multiline
-              rows={6}
-              value={importCsvText}
-              onChange={(e) => setImportCsvText(e.target.value)}
-              fullWidth
-              placeholder="LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15"
-              data-testid="rec.input.csv"
-            />
+
+            {importFormat === 'MT940' ? (
+              <>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  SWIFT MT940 Raw Electronic Feed Content (:20:, :25:, :61: statement line, :86: narration)
+                </Typography>
+                <TextField
+                  multiline
+                  rows={8}
+                  value={importMt940Text}
+                  onChange={(e) => setImportMt940Text(e.target.value)}
+                  fullWidth
+                  data-testid="rec.input.mt940"
+                  sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                />
+              </>
+            ) : (
+              <>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Bank CSV Statement Feed (LoanAccount, CustomerName, DisbursedAmount, CommissionAmount, TaxDeducted, PaidOn)
+                </Typography>
+                <TextField
+                  multiline
+                  rows={8}
+                  value={importCsvText}
+                  onChange={(e) => setImportCsvText(e.target.value)}
+                  fullWidth
+                  placeholder="LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15"
+                  data-testid="rec.input.csv"
+                  sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
@@ -1061,11 +1131,11 @@ export function ReconciliationDashboardPage() {
           <Button
             variant="contained"
             color="primary"
-            onClick={handleImportSubmit}
+            onClick={handleAutoIngestSubmit}
             disabled={loading || !canReconcile}
-            data-testid="rec.btn.import-submit"
+            data-testid="rec.btn.auto-ingest"
           >
-            {loading ? <CircularProgress size={24} /> : 'Process & Ingest Statement'}
+            {loading ? <CircularProgress size={24} /> : `Run Automated ${importFormat} Ingestion`}
           </Button>
         </DialogActions>
       </Dialog>

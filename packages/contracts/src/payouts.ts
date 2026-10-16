@@ -109,3 +109,23 @@ export const PayoutBatchResponseSchema = z.object({
   generatedAt: z.string(),
 });
 export type PayoutBatchResponse = z.infer<typeof PayoutBatchResponseSchema>;
+
+// Automated Direct Net-Banking / Payment Gateway Integration (MOD-PAY / TASK-418)
+export const DisbursePayoutGatewayInputSchema = z.object({
+  mode: z.enum(['IMPS', 'NEFT', 'RTGS']).default('IMPS'),
+  idempotencyKey: z.string().optional(),
+});
+export type DisbursePayoutGatewayInput = z.infer<typeof DisbursePayoutGatewayInputSchema>;
+
+export const DisbursePayoutGatewayResponseSchema = z.object({
+  payoutId: IdSchema('prq'),
+  status: z.enum(PAYOUT_STATUSES),
+  transferId: z.string(),
+  utrNumber: z.string(),
+  gatewayMode: z.enum(['IMPS', 'NEFT', 'RTGS']),
+  amount: z.string(),
+  currency: z.string(),
+  disbursedAt: z.string(),
+});
+export type DisbursePayoutGatewayResponse = z.infer<typeof DisbursePayoutGatewayResponseSchema>;
+

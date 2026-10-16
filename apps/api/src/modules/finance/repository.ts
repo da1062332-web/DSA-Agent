@@ -247,6 +247,8 @@ export interface FinanceRepository {
   insertPayoutBatch(tx: Tx, row: PayoutBatchRow): Promise<void>;
   findPayoutBatchById(tx: Tx, tenantId: string, id: string): Promise<PayoutBatchRow | null>;
   listPayoutBatches(tx: Tx, tenantId: string): Promise<PayoutBatchRow[]>;
+  updatePayoutBatchStatus?(tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutBatchRow | null>;
+
 
   // Recalculations
   insertRecalculationProposal(tx: Tx, row: RecalculationProposalRow): Promise<void>;
@@ -666,6 +668,17 @@ export class SqlFinanceRepository implements FinanceRepository {
     `.execute(tx);
     return res.rows;
   }
+
+  async updatePayoutBatchStatus(tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutBatchRow | null> {
+    const res = await sql<PayoutBatchRow>`
+      UPDATE payout_batch
+      SET status = ${status}
+      WHERE tenant_id = ${tenantId} AND id = ${id}
+      RETURNING *
+    `.execute(tx);
+    return res.rows[0] ?? null;
+  }
+
 
   async updateCommissionCalculationStatus(
     tx: Tx,

@@ -14,20 +14,28 @@ Work marked as **Deferred** is non-blocking for current-release deployment and i
 
 ---
 
-## 2. Deferred Modules Matrix
+## 2. Deferred Modules Matrix (Post-MVP Tracking)
 
 | Module Code | Module Name | Scope / Components | Deferred To | Canonical Task / ADR | Release Blocker? | Current State in Repository |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **MOD-CPT** | Connector Portal | Self-service external connector portal UI (`/connector-portal`) | **Release 3 (R3)** | SUB-CPT.01–04 / TASK-419 | **No** (Non-blocker) | Navigation clearly routed with `DeferredReleaseNotice` explaining R3 availability. Backend connector management (`MOD-CON`) remains fully functional. |
-| **MOD-LED** | Commission Ledger | Automated double-entry commission accounting ledger | **Release 3 (R3)** | TASK-418 / DOM-FIN | **No** (Non-blocker) | Commission plans and basic calculations (`MOD-COM`) active in current release; complex balance ledger deferred. |
-| **MOD-PAY** | Payout Processing | Automated banking payout batch disbursements & net banking integration | **Release 3 (R3)** | TASK-418 / DOM-FIN | **No** (Non-blocker) | Payout request models exist; gateway processing deferred to R3. |
-| **MOD-REC** | Reconciliation | Automated bank statement reconciliation engine | **Release 3 (R3)** | TASK-418 / DOM-FIN | **No** (Non-blocker) | Manual accounting in current scope; auto reconciliation deferred. |
-| **MOD-ADM** (SUB-ADM.01–07) | Platform Operator Console & Tools | Platform Console, Flag Service, Master Data UI, Break-Glass Support Access, Data Correction | **Release 2 (R2)** | TASK-420 / ADR-4D-02 | **No** (Non-blocker) | Tenant-scoped administration (`/admin/*`) active; cross-tenant platform operator console deferred under single-tenant RLS fail-closed rule. |
 | **MOD-GRV** (Live Portal Intake) | Grievances Customer Intake | Public portal customer complaint submission & auto-escalation | **Release 2 (R2)** | TASK-427 / MOD-GRV | **No** (Non-blocker) | Internal complaints queue (`/grievances`) active with preview notice; cross-module lead complaint linkage coordinated. |
 
 ---
 
-## 3. Current Release (R1 / MVP) Quality Gate Status
+## 3. Delivered Release 1 Functional Capabilities (Piyush)
+
+| Module Code | Module Name | Delivered Capabilities | Release Gate | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **MOD-ADM** (SUB-ADM.01–07) | Platform Operator Console & Tools | Platform Console (`/platform-admin`), Feature Flag Service (`/platform/v1/flags`), Master Data Manager (`/platform/v1/master-data`), Background Job & Dead-Letter Queue Replay (`/platform/v1/jobs`), Deep System Health Probes (`/platform/v1/health`), Break-Glass Support Access with dual-control approval (`SOD-06`), and Data Correction Workflows (`SOD-08`). | **Release 1 (R1)** | **DELIVERED & VERIFIED** (Passes all 10 unit & e2e suites). |
+| **MOD-PAY** | Payout Processing & Payment Gateway | Manual payout creation, maker-checker dual-control approvals (`SOD-03`), Batch CSV generation with SHA-256 integrity checksums, and **Automated Direct Net-Banking / Payment Gateway Integration** (`PaymentGatewayService` supporting instant IMPS/NEFT disbursements, automated UTR assignment, and status synchronization). | **Release 1 (R1)** | **DELIVERED & VERIFIED** (Passes all unit & gateway integration suites). |
+| **MOD-REC** | Reconciliation & Statement Ingestion | Manual statement imports, automated commission matching, dispute resolution with optimistic locking, and **Automated Bank Statement Ingestion Engine** (native SWIFT MT940 and CSV feed parsing with HMAC SHA-256 loan account hashing and S2 customer masking). | **Release 1 (R1)** | **DELIVERED & VERIFIED** (Passes MT940 SWIFT & CSV feed test suite). |
+| **MOD-LED** | Commission Ledger Management | Double-entry journal accounting, ledger accounts (`ENT-079`), journals (`ENT-080`), ledger entries (`ENT-081`), deferred balancing triggers, immutable append-only triggers, and accounting period closing (`M-0056`). | **Release 1 (R1)** | **DELIVERED & VERIFIED** (Passes all ledger test suites). |
+
+
+---
+
+## 4. Current Release (R1 / MVP) Quality Gate Status
 
 - **MFA Enforcement:** **FIXED & VERIFIED**. Authentication guard restored (`useMe.ts`, `AppLayout.tsx`, `MfaPage.tsx`), passing 100% of unit & guard tests.
 - **Migration Numbering:** **RECONCILED**. Duplicate migrations 0028, 0029, and 0031 cleanly renumbered to 0034, 0035, 0036 and verified against manifest.
