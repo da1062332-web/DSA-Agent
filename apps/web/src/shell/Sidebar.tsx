@@ -117,7 +117,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Commission, payouts and reconciliation (DOM-K)',
     items: [
       { label: 'Commission', to: '/commission' },
-      { label: 'Ledger', task: 'MOD-LED' },
+      { label: 'Ledger', to: '/ledger', anyOf: ['finance.view'] },
       { label: 'Payouts', to: '/payouts' },
       { label: 'Reconciliation', to: '/reconciliation' },
       { label: 'Invoices', to: '/invoices' },
