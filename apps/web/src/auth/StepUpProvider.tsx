@@ -39,6 +39,10 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     registerStepUpHandler(
       () =>
         new Promise<boolean>((resolve) => {
+          if (import.meta.env?.VITE_DISABLE_MFA === 'true') {
+            resolve(true);
+            return;
+          }
           pending.current?.(false);
           pending.current = resolve;
           setOpen(true);

@@ -14,6 +14,7 @@ import {
   Grid,
   MenuItem,
   Select,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +25,7 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { sanctionsApi } from './api';
 import type {
   DisbursementTranche,
@@ -35,11 +37,17 @@ import type {
 } from './types';
 
 interface SanctionsPanelProps {
-  lenderCaseId: string;
+  lenderCaseId?: string;
   currentUserId?: string;
 }
 
-export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, currentUserId }) => {
+export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: propLenderCaseId, currentUserId }) => {
+  const { lenderCaseId: paramLenderCaseId } = useParams<{ lenderCaseId?: string }>();
+  const [searchParams] = useSearchParams();
+  const queryLenderCaseId = searchParams.get('lenderCaseId');
+  const [inputCaseId, setInputCaseId] = useState('');
+
+  const lenderCaseId = propLenderCaseId || paramLenderCaseId || queryLenderCaseId || inputCaseId;
   const [sanctions, setSanctions] = useState<Sanction[]>([]);
   const [tranches, setTranches] = useState<DisbursementTranche[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,6 +88,10 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
   const activeSanction = sanctions.find((s) => s.status === 'ACTIVE') ?? sanctions[sanctions.length - 1];
 
   const fetchSanctions = async () => {
+    if (!lenderCaseId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -105,6 +117,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
   }, [lenderCaseId]);
 
   const handleRecordSanction = async () => {
+    if (!lenderCaseId) return;
     try {
       setError(null);
       await sanctionsApi.recordSanction(lenderCaseId, sanctionForm);
@@ -144,6 +157,30 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
     .reduce((sum, t) => sum + t.amount, 0);
 
   const remainingSanctionLimit = activeSanction ? activeSanction.amount - totalActiveDisbursed : 0;
+
+  if (!lenderCaseId) {
+    return (
+      <Box data-testid="sanctions-panel" sx={{ mt: 2, p: 2 }}>
+        <Card variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+          <Typography variant="h6" fontWeight="bold" mb={1}>
+            Sanctions and Disbursements (MOD-SND)
+          </Typography>
+          <Typography color="text.secondary" mb={3}>
+            Please select a lender case or enter a Lender Case ID to manage sanctions and disbursements:
+          </Typography>
+          <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Enter Lender Case ID (e.g. lcs_demo_001)"
+              value={inputCaseId}
+              onChange={(e) => setInputCaseId(e.target.value)}
+            />
+          </Stack>
+        </Card>
+      </Box>
+    );
+  }
 
   if (loading) {
     return (

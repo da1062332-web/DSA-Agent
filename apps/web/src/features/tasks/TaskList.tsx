@@ -71,15 +71,6 @@ function getInitialUserId(): string {
   if (payload?.sub) return payload.sub;
   if (payload?.user_id) return payload.user_id;
   if (payload?.id) return payload.id;
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.user?.id) return parsed.user.id;
-    }
-  } catch {
-    // Ignore parse error and fallback to default
-  }
   return 'usr_demo_01';
 }
 
@@ -89,15 +80,6 @@ function getInitialBranchId(): string {
   if (payload?.primaryBranchId) return payload.primaryBranchId;
   if (payload?.branch_id) return payload.branch_id;
   if (payload?.app_metadata?.primaryBranchId) return payload.app_metadata.primaryBranchId;
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem('dsa_auth_session') : null;
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.user?.primaryBranchId) return parsed.user.primaryBranchId;
-    }
-  } catch {
-    // Ignore parse error and fallback to default
-  }
   return 'br_demo_01';
 }
 
