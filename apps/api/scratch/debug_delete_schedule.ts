@@ -1,8 +1,7 @@
-import { createDb } from '../src/kernel-min/db';
 
 const API_BASE = 'http://localhost:3000';
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://mlpkwwhnagxzinaohdxg.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1scGt3d2huYWd4emluYW9oZHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2MDc3OTYsImV4cCI6MjEwNzE4Mzc5Nn0.yDzb9PBSPedoRJi1CSJswNMSJw8rJHwBSAPlB90_hzI';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? (() => { throw new Error('VITE_SUPABASE_URL is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? (() => { throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
 
 async function main() {
   const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {

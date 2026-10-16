@@ -4,21 +4,15 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
 import request from 'supertest';
-import path from 'node:path';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import { createApp } from '../src/app';
 import { fakeAuth, testPrincipal, createTestDeps } from './support/fake-auth';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 // Load .env from root if not already loaded
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already set in environment
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -37,7 +31,7 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
 
     // The HTTP tests below log activities against this lead, so it has to exist. It is created here, as synthetic data, in the
     // throwaway database (the guard in tests/guard refuses any non-local connection), instead of relying on a row from hosted.
-    const admin = createDb(process.env.VERIFY_DATABASE_URL || dbUrl, { poolMax: 1 });
+    const admin = createDb(resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || dbUrl, { poolMax: 1 });
     try {
       await sql`
         INSERT INTO app.lead (id, tenant_id, branch_id, full_name, mobile_e164, mobile_hash, product_category, source, owner_user_id, created_by, updated_by)

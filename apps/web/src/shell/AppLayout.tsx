@@ -81,7 +81,8 @@ export function AppLayout() {
     );
   }
 
-  const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
+  // Development builds only: a production build ignores it. The API enforces MFA whatever the screen does.
+  const skipMfa = import.meta.env?.DEV === true && import.meta.env?.VITE_DISABLE_MFA === 'true';
   const needsChallenge = !skipMfa && aal.next === 'aal2' && aal.current !== 'aal2';
   const needsEnrolment = !skipMfa && aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)

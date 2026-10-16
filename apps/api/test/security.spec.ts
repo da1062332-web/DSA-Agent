@@ -1,5 +1,6 @@
 // apps/api/test/security.spec.ts — Module 39: Security (MOD-SEC, DOM-N) Integration & Route Tests
 import crypto from 'node:crypto';
+import type { RequestContext } from '@dsa/contracts';
 import { describe, expect, it, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createTestApp, fakeAuth, testPrincipal, testDeps } from './support/fake-auth';
@@ -599,7 +600,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         requestId: 'req-siem-01',
       };
 
-      const event = await secService.recordSecurityEvent(ctx as any, {
+      const event = await secService.recordSecurityEvent(ctx as unknown as RequestContext, {
         type: 'SUSPICIOUS_ACCESS',
         principal: 'usr_target_01',
         ip: '198.51.100.42',

@@ -4,7 +4,7 @@ import {
   type RequestContext,
   type TxRunner,
 } from '@dsa/contracts';
-import { AutomationEngine } from './engine';
+import type { AutomationEngine } from './engine';
 import { AutomationRepository, type ScheduledTrigger } from './repository';
 
 export interface SchedulerServiceDependencies {

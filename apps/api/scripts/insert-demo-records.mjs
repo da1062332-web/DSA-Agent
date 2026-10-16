@@ -2,7 +2,7 @@ import pg from 'pg';
 
 async function main() {
   const client = new pg.Client({
-    connectionString: 'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres',
+    connectionString: process.env.VERIFY_DATABASE_URL ?? (() => { throw new Error('VERIFY_DATABASE_URL is not set. This script writes to the database it is pointed at.'); })(),
   });
   await client.connect();
 

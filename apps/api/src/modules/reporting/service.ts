@@ -27,6 +27,7 @@ import {
 } from '@dsa/contracts';
 import type { RequestContext } from '@dsa/contracts';
 import { ulid } from 'ulid';
+import { mfaDisabled } from '../../http/mfa-switch';
 import { globalStorage } from '../../storage/object-storage';
 import { serializeCsv } from '../platform/imports/csv-parser';
 
@@ -970,7 +971,7 @@ export class ReportingService {
     dto: CreateExportDto,
   ): Promise<ExportJobDto> {
     this.requireExportRun(ctx);
-    if (this.authz && process.env.DISABLE_MFA !== 'true') {
+    if (this.authz && !mfaDisabled()) {
       this.authz.requireStepUp(ctx, 900);
     }
     const scope = this.resolveCallerScope(ctx);

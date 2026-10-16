@@ -3,21 +3,15 @@
 // Connects as dsa_api (NOBYPASSRLS) and validates real PostgreSQL migrations, RLS policies, triggers, and audit transactions.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -470,7 +464,7 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
   });
 
   it('PG-MSG-011 verifies message.send permission grants across tenant operational and admin roles', async () => {
-    const adminDbUrl = process.env.VERIFY_DATABASE_URL || process.env.DATABASE_URL;
+    const adminDbUrl = resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
     const adminDb = createDb(adminDbUrl!, { poolMax: 2 });
     try {
       const grantRows = await sql<{ role_code: string; permission_code: string }>`

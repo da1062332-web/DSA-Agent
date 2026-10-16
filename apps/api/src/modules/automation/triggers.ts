@@ -6,7 +6,7 @@ import {
   type TriggerFilter,
   type TxRunner,
 } from '@dsa/contracts';
-import { AutomationEngine } from './engine';
+import type { AutomationEngine } from './engine';
 import { AutomationRepository } from './repository';
 import { evaluateCondition } from './step-handlers';
 

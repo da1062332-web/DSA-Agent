@@ -120,7 +120,7 @@ export function InvoicesPage() {
 
   // KPI Metrics calculation
   const metrics = useMemo(() => {
-    let totalCount = invoices.length;
+    const totalCount = invoices.length;
     let totalAmount = 0;
     let toLenderAmount = 0;
     let fromConnectorAmount = 0;

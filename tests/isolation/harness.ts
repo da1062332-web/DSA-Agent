@@ -84,7 +84,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
     lenderPort: createLenderPort(),
-    apiClientRepository: new PgApiClientRepository(createTxRunner(db)),
+    apiClientRepository: new PgApiClientRepository(createTxRunner(db), createAuditPort(ids)),
   };
 
   const principalOf = (t: TenantFixture, codes: PermissionCode[], userIndex: 0 | 1): Principal =>
@@ -92,6 +92,9 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
       id: t.userIds[userIndex],
       tenantId: t.tenantId,
       primaryBranchId: t.branchId,
+      // A session that has passed the authenticator check recently, so step-up routes (role edits, rule approval) are reached and the
+      // case under test is isolation (404), not "needs step-up" (401).
+      authTime: new Date().toISOString(),
       grants: codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
     });
 
