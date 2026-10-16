@@ -41,7 +41,7 @@ export class PlatformAdminService {
 
   private readonly store: PlatformStore;
 
-  /** Tenant metadata, support access and data corrections are stored in the database (platform-store.ts). Flags, master data, queues and releases are still in memory. */
+  /** Tenant metadata, support access, data corrections, flags, master data and the release register are stored through the platform store (platform-store.ts). Queues and dead letters are still sample data held in memory (Release 2). */
   constructor(private readonly deps: ApiDeps, store?: PlatformStore) {
     this.store = store ?? new PgPlatformStore(deps);
     this.seedDefaults();

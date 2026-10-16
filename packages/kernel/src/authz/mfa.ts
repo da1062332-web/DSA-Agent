@@ -28,6 +28,7 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'platform.support_access',
   'platform.release',
   'data_correction.approve',
+  'finance.period_close',
 ];
 
 export function requiresMfa(principal: Principal): boolean {
