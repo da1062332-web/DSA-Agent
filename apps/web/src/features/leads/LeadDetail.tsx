@@ -344,6 +344,15 @@ export function LeadDetail() {
               >
                 Manage Customer DPDP Consents →
               </Button>
+              <Button
+                component={RouterLink}
+                to={`/applications`}
+                variant="outlined"
+                color="primary"
+                size="small"
+              >
+                View Loan Applications →
+              </Button>
             </Stack>
           </CardContent>
         </Card>

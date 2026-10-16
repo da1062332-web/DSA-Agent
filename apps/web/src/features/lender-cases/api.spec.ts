@@ -19,7 +19,7 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
   let mockStorage: Record<string, string> = {};
 
   beforeEach(() => {
-    mockStorage = { dsa_token: 'test-token-123' };
+    mockStorage = { dsa_auth_token: 'test-token-123' };
     (global as any).localStorage = {
       getItem: (k: string) => mockStorage[k] ?? null,
       setItem: (k: string, v: string) => {

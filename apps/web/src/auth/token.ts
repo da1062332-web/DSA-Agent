@@ -20,11 +20,6 @@ export function getStoredAuthToken(): string | undefined {
     // Storage access restricted or unavailable
   }
   try {
-    const raw = typeof window.localStorage !== 'undefined' ? window.localStorage.getItem('dsa_auth_session') : null;
-    if (raw) {
-      const parsed = JSON.parse(raw) as { access_token?: string };
-      if (parsed?.access_token) return parsed.access_token;
-    }
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
