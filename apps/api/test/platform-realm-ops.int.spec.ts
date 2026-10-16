@@ -23,11 +23,12 @@ let container: StartedPostgreSqlContainer;
 let db: pg.Client;
 const work = mkdtempSync(path.join(os.tmpdir(), 'dsa-0050-'));
 
+// 0061 needs the platform realm that this rehearsal is about to apply, so it is not part of the pre-0050 state.
 beforeAll(async () => {
   container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
-  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql') && !f.includes('0050_platform_realm')).sort()) {
+  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql') && !f.includes('0050_platform_realm') && !f.includes('0061_master_data')).sort()) {
     await db.query(readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'));
   }
   await db.query(`CREATE ROLE dsa_api LOGIN PASSWORD 'rehearsal' NOBYPASSRLS IN ROLE dsa_app; ALTER ROLE dsa_api SET search_path = app, extensions;`);
