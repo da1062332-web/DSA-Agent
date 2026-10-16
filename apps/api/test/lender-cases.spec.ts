@@ -333,6 +333,20 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       expect(listRes.body.data[0].attemptNo).toBe(1);
       expect(listRes.body.data[1].attemptNo).toBe(2);
     });
+
+    it('lists all lender cases in tenant scope with optional status filter', async () => {
+      const app = getApp();
+      await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
+
+      const allRes = await request(app).get('/v1/lender-cases');
+      expect(allRes.status).toBe(200);
+      expect(Array.isArray(allRes.body.data)).toBe(true);
+      expect(allRes.body.data.length).toBeGreaterThanOrEqual(1);
+
+      const filteredRes = await request(app).get('/v1/lender-cases?status=DRAFT');
+      expect(filteredRes.status).toBe(200);
+      expect(filteredRes.body.data.every((c: any) => c.status === 'DRAFT')).toBe(true);
+    });
   });
 
   describe('API-LCS-003: Build Submission Package', () => {
