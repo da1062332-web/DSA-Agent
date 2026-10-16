@@ -1,5 +1,5 @@
 // apps/api/src/modules/security/siem.ts — Module 39: Security (MOD-SEC)
-// SIEM Integration Port & Client (TASK-431 Boundary)
+// SIEM Integration Port, Transports & Client (TASK-431 Implementation)
 import type { SecurityEvent } from '@dsa/contracts';
 
 export interface SiemEvent {
@@ -22,7 +22,7 @@ export interface SiemDeliveryResult {
 
 /**
  * Port interface for SIEM event forwarding (TASK-431).
- * Implementations wrap enterprise SIEM sinks (Splunk HEC, Datadog Logs, Elasticsearch).
+ * Implementations wrap enterprise SIEM sinks (Splunk HEC, Datadog Logs, Elasticsearch, or HTTP Webhooks).
  */
 export interface SiemPort {
   forwardEvent(event: SiemEvent): Promise<SiemDeliveryResult>;
@@ -99,4 +99,151 @@ export class BufferedSiemClient implements SiemPort {
       retriable: true,
     };
   }
+}
+
+/**
+ * Splunk HTTP Event Collector (HEC) Transport for Enterprise SIEM (TASK-431)
+ */
+export function createSplunkHecTransport(opts: {
+  endpoint: string;
+  token: string;
+  index?: string;
+  source?: string;
+}): (event: SiemEvent) => Promise<{ id: string }> {
+  return async (event: SiemEvent) => {
+    const url = `${opts.endpoint.replace(/\/+$/, '')}/services/collector/event`;
+    const payload = {
+      time: Math.floor(new Date(event.timestamp).getTime() / 1000),
+      host: 'dsa-crm-api',
+      source: opts.source ?? 'dsa-crm-security',
+      sourcetype: '_json',
+      index: opts.index ?? 'security_events',
+      event,
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Splunk ${opts.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Splunk HEC delivery failed (HTTP ${res.status}): ${errText}`);
+    }
+
+    return { id: `splunk-${event.eventId}` };
+  };
+}
+
+/**
+ * Datadog Logs API Transport for Enterprise SIEM (TASK-431)
+ */
+export function createDatadogLogsTransport(opts: {
+  apiKey: string;
+  site?: string;
+  service?: string;
+}): (event: SiemEvent) => Promise<{ id: string }> {
+  const site = opts.site ?? 'datadoghq.com';
+  const url = `https://http-intake.logs.${site}/api/v2/logs`;
+
+  return async (event: SiemEvent) => {
+    const payload = [
+      {
+        ddsource: 'dsa-crm',
+        ddtags: `env:production,tenant:${event.tenantId},severity:${event.severity}`,
+        hostname: 'dsa-crm-api',
+        message: JSON.stringify(event),
+        service: opts.service ?? 'dsa-security',
+      },
+    ];
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'DD-API-KEY': opts.apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Datadog Logs delivery failed (HTTP ${res.status}): ${errText}`);
+    }
+
+    return { id: `datadog-${event.eventId}` };
+  };
+}
+
+/**
+ * Generic Secure Webhook Transport for Elastic / Graylog / Custom SIEM Receivers (TASK-431)
+ */
+export function createWebhookSiemTransport(opts: {
+  url: string;
+  authToken?: string;
+  headers?: Record<string, string>;
+}): (event: SiemEvent) => Promise<{ id: string }> {
+  return async (event: SiemEvent) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(opts.authToken ? { 'Authorization': `Bearer ${opts.authToken}` } : {}),
+      ...(opts.headers ?? {}),
+    };
+
+    const res = await fetch(opts.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(event),
+    });
+
+    if (!res.ok) {
+      throw new Error(`SIEM Webhook delivery failed with status ${res.status}`);
+    }
+
+    return { id: `webhook-${event.eventId}` };
+  };
+}
+
+/**
+ * Auto-wires the active SiemPort from environment / Vault credentials.
+ */
+export function createSiemPortFromEnv(env: Record<string, string | undefined> = process.env): SiemPort {
+  const provider = env.SIEM_PROVIDER?.toLowerCase();
+  const endpoint = env.SIEM_ENDPOINT;
+  const token = env.SIEM_AUTH_TOKEN;
+
+  if (provider === 'splunk' && endpoint && token) {
+    return new BufferedSiemClient({
+      transport: createSplunkHecTransport({
+        endpoint,
+        token,
+        index: env.SIEM_INDEX,
+      }),
+    });
+  }
+
+  if (provider === 'datadog' && token) {
+    return new BufferedSiemClient({
+      transport: createDatadogLogsTransport({
+        apiKey: token,
+        site: env.SIEM_DATADOG_SITE,
+      }),
+    });
+  }
+
+  if (provider === 'webhook' && endpoint) {
+    return new BufferedSiemClient({
+      transport: createWebhookSiemTransport({
+        url: endpoint,
+        authToken: token,
+      }),
+    });
+  }
+
+  // Default: Return standard buffered client that fails safe to primary database when unprovisioned
+  return new BufferedSiemClient();
 }
