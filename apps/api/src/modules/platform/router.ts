@@ -126,20 +126,53 @@ export function createRouter(deps: ApiDeps): Router {
       let email = (p as { email?: string }).email || '';
       let displayName = (p as { displayName?: string }).displayName || '';
       let lockVersion = 0;
+      let notificationPreferences: unknown = null;
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
-          const r = await sql<{ email: string; display_name: string; lock_version: number }>`
-            SELECT email, display_name, lock_version FROM app.app_user WHERE id = ${p.id}
+          const r = await sql<{
+            email: string;
+            display_name: string;
+            lock_version: number;
+            notification_preferences?: unknown;
+          }>`
+            SELECT email, display_name, lock_version, notification_preferences FROM app.app_user WHERE id = ${p.id}
           `.execute(tx);
           if (r.rows[0]) {
             email = r.rows[0].email;
             displayName = r.rows[0].display_name;
-            lockVersion = r.rows[0].lock_version;
+            lockVersion = Number(r.rows[0].lock_version ?? 0);
+            notificationPreferences = r.rows[0].notification_preferences;
           }
         });
       } catch {
         // tx fallback
       }
+
+      const defaultNotificationPreferences = {
+        channels: {
+          inApp: true,
+          email: false,
+          sms: false,
+          whatsapp: false,
+        },
+        digestFrequency: 'IMMEDIATE',
+        mutedCategories: [] as string[],
+      };
+
+      const rawPrefs = notificationPreferences as any;
+      const resolvedNotificationPreferences =
+        rawPrefs && typeof rawPrefs === 'object'
+          ? {
+              channels: {
+                inApp: rawPrefs.channels?.inApp ?? true,
+                email: rawPrefs.channels?.email ?? false,
+                sms: rawPrefs.channels?.sms ?? false,
+                whatsapp: rawPrefs.channels?.whatsapp ?? false,
+              },
+              digestFrequency: rawPrefs.digestFrequency ?? 'IMMEDIATE',
+              mutedCategories: Array.isArray(rawPrefs.mutedCategories) ? rawPrefs.mutedCategories : [],
+            }
+          : defaultNotificationPreferences;
 
       const body = {
         id: p.id,
@@ -152,6 +185,8 @@ export function createRouter(deps: ApiDeps): Router {
         grants: p.grants || [],
         authTime: p.authTime,
         mfaVerifiedAt: p.authTime,
+        lockVersion,
+        notificationPreferences: resolvedNotificationPreferences,
       };
 
       res.set('ETag', `"${lockVersion}"`).json({
