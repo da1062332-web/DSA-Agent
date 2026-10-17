@@ -38,3 +38,10 @@ Do these in order. Each step breaks anything still using the old value, so tell 
 ## 4. Why this is not done yet
 
 Rotating a shared hosted project's credentials changes shared state and interrupts the whole team, so it is left to you. Everything that can be done safely without it is done and covered by the scan test above.
+
+## 5. Update 2026-10-17
+
+- **New exposure found and fixed in code:** five scratch scripts that arrived with a teammate merge (`apps/api/scratch/check_app.cjs`, `check_app.js`, `check_consents.cjs`, `fix_customer_consent.cjs`, `seed_pl_product.cjs`) embedded the database administrator connection string. They are on `origin/beta` and in git history. They now read `VERIFY_DATABASE_URL`; the secret scan (`no-embedded-secrets.spec`) caught them, which is the reason it exists.
+- **History scan (counts only):** 11 commits added or removed a database URL with a password, 2 contain a Supabase key token. No tracked file in the current tree holds a real credential (the few matches are dummy values in tests).
+- **Rotation was not attempted.** It would change the database passwords and Supabase keys that every teammate's `.env`, the CI secrets and any deployment depend on, and those dependencies cannot be listed from this machine. It also stops the stray test writers described in `docs/HOSTED_TEST_RESIDUE.md`, which is a reason to do it soon. Do it in the order of section 3, and tell the team first.
+- **Verification after rotation:** the old passwords must fail to connect and the new ones must work (`npx supabase db query --linked "select 1"`), then run the Module 1 checks.
