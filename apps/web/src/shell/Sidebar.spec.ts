@@ -21,6 +21,19 @@ describe('sidebar visibility by permission', () => {
     expect(shown).not.toContain('Rule sets');
   });
 
+  it('shows security events and incidents only to someone holding security.incident, and never to a platform operator', () => {
+    expect(labels((c) => c === 'security.incident')).toContain('Security events and incidents');
+    expect(labels((c) => c === 'lead.read')).not.toContain('Security events and incidents');
+    const platform = visibleGroups(false, () => true, true).flatMap((g) => g.items.map((i) => i.label));
+    expect(platform).not.toContain('Security events and incidents');
+  });
+
+  it('offers Documents as a real screen to anyone who can read applications', () => {
+    const group = visibleGroups(false, (c) => c === 'application.read').flatMap((g) => g.items).find((i) => i.label === 'Documents');
+    expect(group?.to).toBe('/documents');
+    expect(group?.task).toBeUndefined();
+  });
+
   it('shows a screen when any one of its permissions is held', () => {
     expect(labels((c) => c === 'complaint.create')).toContain('Grievances');
     expect(labels((c) => c === 'config.manage')).toContain('Messaging');
