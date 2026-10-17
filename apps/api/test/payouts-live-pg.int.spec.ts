@@ -16,7 +16,8 @@ import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 const nextUlid = monotonicFactory();
 
 const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
-const adminDbUrl = resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
+const adminDbUrl =
+  resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';

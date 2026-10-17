@@ -4,8 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', () => {
-  const connectionString =
-    requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -20,8 +19,7 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
     await adminClient.connect();
 
     // App client connecting as dsa_api via DATABASE_URL
-    const apiDbUrl =
-      requireLocalTestDatabaseUrl('DATABASE_URL');
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });

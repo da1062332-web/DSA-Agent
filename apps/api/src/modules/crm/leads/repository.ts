@@ -734,12 +734,7 @@ export class InMemoryLeadRepository implements LeadRepository {
     subjectId: string,
   ): Promise<ConsentRecordRow[]> {
     return Array.from(this.consents.values())
-      .filter(
-        (c) =>
-          c.tenant_id === tenantId &&
-          c.subject_type === subjectType &&
-          c.subject_id === subjectId,
-      )
+      .filter((c) => c.tenant_id === tenantId && c.subject_type === subjectType && c.subject_id === subjectId)
       .sort((a, b) => b.captured_at.getTime() - a.captured_at.getTime());
   }
 

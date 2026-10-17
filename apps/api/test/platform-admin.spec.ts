@@ -1,7 +1,19 @@
 // apps/api/test/platform-admin.spec.ts — Module 30: Administration and Platform Operations (MOD-ADM) Test Suite
-import { PLATFORM_TENANT_ID, type AuditEventInput, type RequestContext, type Tx, type TxRunner } from '@dsa/contracts';
+import {
+  PLATFORM_TENANT_ID,
+  type AuditEventInput,
+  type RequestContext,
+  type Tx,
+  type TxRunner,
+} from '@dsa/contracts';
 import express from 'express';
-import { Kysely, PostgresAdapter, type DatabaseConnection, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
+import {
+  Kysely,
+  PostgresAdapter,
+  type DatabaseConnection,
+  PostgresIntrospector,
+  PostgresQueryCompiler,
+} from 'kysely';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../src/http/error-handler';
@@ -182,7 +194,9 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
         ['post', '/platform/v1/support-access-requests'],
       ];
       for (const [method, path] of routes) {
-        const res = await (request(app) as unknown as Record<string, (p: string) => request.Test>)[method]!(path).send({});
+        const res = await (request(app) as unknown as Record<string, (p: string) => request.Test>)[method]!(
+          path,
+        ).send({});
         expect(res.status, `${method} ${path}`).toBe(403);
       }
     });
@@ -192,11 +206,20 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const res = await request(createTestApp(tenantAdminWithPlatformCodes)).get('/platform/v1/flags');
       expect(res.status).toBe(403);
       expect(auditLog).toHaveLength(1);
-      expect(auditLog[0]).toMatchObject({ action: 'platform.access_denied', permissionUsed: 'platform.flags', after: { realm: 'platform', principalKind: 'USER' } });
+      expect(auditLog[0]).toMatchObject({
+        action: 'platform.access_denied',
+        permissionUsed: 'platform.flags',
+        after: { realm: 'platform', principalKind: 'USER' },
+      });
     });
 
     it('TEST-REALM-002 a service identity gets no shortcut: it is refused on platform and tenant routes', async () => {
-      const service = testPrincipal({ kind: 'SERVICE', id: 'SYSTEM:test', tenantId: PLATFORM_TENANT_ID, grants: [] });
+      const service = testPrincipal({
+        kind: 'SERVICE',
+        id: 'SYSTEM:test',
+        tenantId: PLATFORM_TENANT_ID,
+        grants: [],
+      });
       const app = createTestApp(service);
       expect((await request(app).get('/platform/v1/tenants')).status).toBe(403);
       expect((await request(app).get('/v1/data-corrections')).status).toBe(403);
@@ -388,7 +411,12 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const app = express();
       app.use(express.json());
       app.use(fakeAuth(platformAdmin));
-      app.use(createRouter(createTestDeps({ txRunner, audit: recordingAudit }), new PlatformAdminService(createTestDeps({ txRunner, audit: recordingAudit }), store)));
+      app.use(
+        createRouter(
+          createTestDeps({ txRunner, audit: recordingAudit }),
+          new PlatformAdminService(createTestDeps({ txRunner, audit: recordingAudit }), store),
+        ),
+      );
       app.use(errorHandler());
       return app;
     };
@@ -436,20 +464,21 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const app = createTestApp(platformAdmin);
 
       // 1. Duration > 4.0 hours rejected
-      const invalidDuration = await request(app)
-        .post('/platform/v1/support-access-requests')
-        .send({ tenantId: 'ten_demo_01', reason: 'Diagnose critical bug', incidentRef: 'INC-9999', durationHours: 6.0 });
+      const invalidDuration = await request(app).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Diagnose critical bug',
+        incidentRef: 'INC-9999',
+        durationHours: 6.0,
+      });
       expect(invalidDuration.status).toBe(422);
 
       // 2. Valid request created by a platform operator
-      const validReq = await request(app)
-        .post('/platform/v1/support-access-requests')
-        .send({
-          tenantId: 'ten_demo_01',
-          reason: 'Investigate duplicate lead sync exception in Mumbai branch',
-          incidentRef: 'INC-2026-4401',
-          durationHours: 2.5,
-        });
+      const validReq = await request(app).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Investigate duplicate lead sync exception in Mumbai branch',
+        incidentRef: 'INC-2026-4401',
+        durationHours: 2.5,
+      });
       expect(validReq.status).toBe(201);
       expect(validReq.body.status).toBe('PENDING');
       const grantId = validReq.body.id;
@@ -484,25 +513,42 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
 
     it('TEST-REALM-008 the target tenant can revoke an approved access; others cannot, and a pending one cannot be revoked', async () => {
       const operator = createTestApp(platformAdmin);
-      const made = await request(operator)
-        .post('/platform/v1/support-access-requests')
-        .send({ tenantId: 'ten_demo_01', reason: 'Investigate stuck queue after the outage', incidentRef: 'INC-2026-7777', durationHours: 1 });
+      const made = await request(operator).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Investigate stuck queue after the outage',
+        incidentRef: 'INC-2026-7777',
+        durationHours: 1,
+      });
       const id = made.body.id;
       const admin = createTestApp(tenantAdmin);
 
-      expect((await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(409); // still pending
+      expect(
+        (await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status,
+      ).toBe(409); // still pending
       await request(admin).post(`/v1/support-access-requests/${id}/approval`).send({ decision: 'APPROVED' });
 
-      expect((await request(operator).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(403);
-      expect((await request(createTestApp(otherTenantAdmin)).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(404);
+      expect(
+        (await request(operator).post(`/v1/support-access-requests/${id}/revocation`).send({})).status,
+      ).toBe(403);
+      expect(
+        (
+          await request(createTestApp(otherTenantAdmin))
+            .post(`/v1/support-access-requests/${id}/revocation`)
+            .send({})
+        ).status,
+      ).toBe(404);
       const revoked = await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({});
       expect(revoked.status).toBe(200);
       expect(revoked.body.status).toBe('REVOKED');
-      expect((await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status).toBe(409);
+      expect(
+        (await request(admin).post(`/v1/support-access-requests/${id}/revocation`).send({})).status,
+      ).toBe(409);
     });
 
     it('TEST-REALM-004 a tenant administrator cannot list another tenant by passing tenantId', async () => {
-      const res = await request(createTestApp(tenantAdmin)).get('/v1/support-access-requests?tenantId=ten_other_01');
+      const res = await request(createTestApp(tenantAdmin)).get(
+        '/v1/support-access-requests?tenantId=ten_other_01',
+      );
       expect(res.status).toBe(403);
     });
   });
@@ -521,7 +567,9 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     it('enforces dry-run diff preview and SOD-08 separation of duties inside one tenant', async () => {
       const requesterApp = createTestApp(tenantRequester);
 
-      const createRes = await request(requesterApp).post('/v1/data-corrections').send({ ...body, tenantId: 'ten_demo_01' });
+      const createRes = await request(requesterApp)
+        .post('/v1/data-corrections')
+        .send({ ...body, tenantId: 'ten_demo_01' });
       expect(createRes.status).toBe(201);
       expect(createRes.body.status).toBe('PENDING');
       expect(createRes.body.tenantId).toBe('ten_demo_01');
@@ -531,26 +579,44 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const corrId = createRes.body.id;
 
       // The requester cannot approve (no approve permission at all)
-      expect((await request(requesterApp).post(`/v1/data-corrections/${corrId}/approval`).send({ decision: 'APPROVED' })).status).toBe(403);
+      expect(
+        (
+          await request(requesterApp)
+            .post(`/v1/data-corrections/${corrId}/approval`)
+            .send({ decision: 'APPROVED' })
+        ).status,
+      ).toBe(403);
 
       // SOD-08: an administrator who also requested cannot approve their own correction
       const adminApp = createTestApp(tenantAdmin);
       const own = await request(adminApp).post('/v1/data-corrections').send(body);
-      const selfApproval = await request(adminApp).post(`/v1/data-corrections/${own.body.id}/approval`).send({ decision: 'APPROVED' });
+      const selfApproval = await request(adminApp)
+        .post(`/v1/data-corrections/${own.body.id}/approval`)
+        .send({ decision: 'APPROVED' });
       expect(selfApproval.status).toBe(403);
       expect(selfApproval.body.error.code).toBe('SOD_VIOLATION');
 
       // A different administrator of the same tenant approves, then it executes
-      const approveRes = await request(adminApp).post(`/v1/data-corrections/${corrId}/approval`).send({ decision: 'APPROVED' });
+      const approveRes = await request(adminApp)
+        .post(`/v1/data-corrections/${corrId}/approval`)
+        .send({ decision: 'APPROVED' });
       expect(approveRes.status).toBe(200);
       expect(approveRes.body.status).toBe('APPROVED');
       // A person cannot mark it executed; only the executor service identity of that tenant can.
       expect((await request(adminApp).post(`/v1/data-corrections/${corrId}/execute`)).status).toBe(403);
-      const execRes = await request(createTestApp(executorFor('ten_demo_01'))).post(`/v1/data-corrections/${corrId}/execute`);
+      const execRes = await request(createTestApp(executorFor('ten_demo_01'))).post(
+        `/v1/data-corrections/${corrId}/execute`,
+      );
       expect(execRes.status).toBe(200);
       expect(execRes.body.status).toBe('EXECUTED');
       // and not twice
-      expect((await request(createTestApp(executorFor('ten_demo_01'))).post(`/v1/data-corrections/${corrId}/execute`)).status).toBe(409);
+      expect(
+        (
+          await request(createTestApp(executorFor('ten_demo_01'))).post(
+            `/v1/data-corrections/${corrId}/execute`,
+          )
+        ).status,
+      ).toBe(409);
     });
 
     it('TEST-REALM-005 the tenant comes from the signed-in user: another tenant is refused and cannot see or act on the record', async () => {
@@ -558,17 +624,31 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       expect(mine.status).toBe(201);
 
       // Asking for a correction in someone else's tenant is refused
-      const forOther = await request(createTestApp(tenantRequester)).post('/v1/data-corrections').send({ ...body, tenantId: 'ten_other_01' });
+      const forOther = await request(createTestApp(tenantRequester))
+        .post('/v1/data-corrections')
+        .send({ ...body, tenantId: 'ten_other_01' });
       expect(forOther.status).toBe(422);
 
       // Another tenant's administrator sees nothing and cannot approve or execute it (404, not 403)
       const otherApp = createTestApp(otherTenantAdmin);
       const list = await request(otherApp).get('/v1/data-corrections');
       expect(list.body.data.map((c: { id: string }) => c.id)).not.toContain(mine.body.id);
-      expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/approval`).send({ decision: 'APPROVED' })).status).toBe(404);
+      expect(
+        (
+          await request(otherApp)
+            .post(`/v1/data-corrections/${mine.body.id}/approval`)
+            .send({ decision: 'APPROVED' })
+        ).status,
+      ).toBe(404);
       expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(403);
       // another tenant's executor cannot see it either
-      expect((await request(createTestApp(executorFor('ten_other_01'))).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(404);
+      expect(
+        (
+          await request(createTestApp(executorFor('ten_other_01'))).post(
+            `/v1/data-corrections/${mine.body.id}/execute`,
+          )
+        ).status,
+      ).toBe(404);
     });
 
     it('TEST-REALM-006 a platform operator cannot request, approve or list data corrections', async () => {
@@ -580,7 +660,9 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     it('TEST-REALM-007 requests and approvals are audited by the store, in the same transaction as the change', async () => {
       store.audit.length = 0;
       const created = await request(createTestApp(tenantRequester)).post('/v1/data-corrections').send(body);
-      await request(createTestApp(tenantAdmin)).post(`/v1/data-corrections/${created.body.id}/approval`).send({ decision: 'APPROVED' });
+      await request(createTestApp(tenantAdmin))
+        .post(`/v1/data-corrections/${created.body.id}/approval`)
+        .send({ decision: 'APPROVED' });
       expect(store.audit).toEqual(['data_correction.requested', 'data_correction.approved']);
     });
   });
@@ -596,12 +678,19 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       expect(res.status).toBe(200);
       expect(res.body.candidate).toBe('v0.1.0-rc.1');
       expect(res.body.releases.length).toBeGreaterThan(0);
-      expect(res.body.releases[0].gates).toEqual({ rel001: false, rel002: false, rel003: false, rel004: false });
+      expect(res.body.releases[0].gates).toEqual({
+        rel001: false,
+        rel002: false,
+        rel003: false,
+        rel004: false,
+      });
     });
 
     it('TEST-ADM-REL-01 an operator records a gate as passed (step-up, ETag), and the register shows it afterwards', async () => {
       const app = createTestApp(freshOperator);
-      const put = await request(app).put('/platform/v1/releases/v0.1.0-rc.1').send({ gates: { rel001: true } });
+      const put = await request(app)
+        .put('/platform/v1/releases/v0.1.0-rc.1')
+        .send({ gates: { rel001: true } });
       expect(put.status, JSON.stringify(put.body)).toBe(200);
       expect(put.body.gates).toEqual({ rel001: true, rel002: false, rel003: false, rel004: false });
       expect(put.headers.etag).toBe(`"${put.body.lockVersion}"`);
@@ -611,22 +700,33 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     });
 
     it('TEST-ADM-REL-02 without a recent authenticator check the change is refused and nothing changes', async () => {
-      const before = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body.releases[0];
-      const res = await request(createTestApp(platformAdmin)).put('/platform/v1/releases/v0.1.0-rc.1').send({ status: 'PUBLISHED' });
+      const before = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body
+        .releases[0];
+      const res = await request(createTestApp(platformAdmin))
+        .put('/platform/v1/releases/v0.1.0-rc.1')
+        .send({ status: 'PUBLISHED' });
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('STEP_UP_REQUIRED');
-      const after = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body.releases[0];
+      const after = (await request(createTestApp(freshOperator)).get('/platform/v1/releases')).body
+        .releases[0];
       expect(after.status).toBe(before.status);
     });
 
     it('TEST-ADM-REL-03 a stale If-Match, an unknown version, an empty change and a tenant administrator are each refused', async () => {
       const app = createTestApp(freshOperator);
-      const stale = await request(app).put('/platform/v1/releases/v0.1.0-rc.1').set('If-Match', '"999"').send({ gitTag: 'v0.1.0-rc.1' });
+      const stale = await request(app)
+        .put('/platform/v1/releases/v0.1.0-rc.1')
+        .set('If-Match', '"999"')
+        .send({ gitTag: 'v0.1.0-rc.1' });
       expect(stale.status).toBe(409);
       expect(stale.body.error.code).toBe('VERSION_CONFLICT');
-      expect((await request(app).put('/platform/v1/releases/v9.9.9').send({ status: 'ARCHIVED' })).status).toBe(404);
+      expect(
+        (await request(app).put('/platform/v1/releases/v9.9.9').send({ status: 'ARCHIVED' })).status,
+      ).toBe(404);
       expect((await request(app).put('/platform/v1/releases/v0.1.0-rc.1').send({})).status).toBe(422);
-      const tenant = await request(createTestApp({ ...tenantAdmin, authTime: new Date().toISOString() })).put('/platform/v1/releases/v0.1.0-rc.1').send({ status: 'PUBLISHED' });
+      const tenant = await request(createTestApp({ ...tenantAdmin, authTime: new Date().toISOString() }))
+        .put('/platform/v1/releases/v0.1.0-rc.1')
+        .send({ status: 'PUBLISHED' });
       expect(tenant.status).toBe(403);
     });
   });

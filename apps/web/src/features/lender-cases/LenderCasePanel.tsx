@@ -271,7 +271,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               No Application Selected
             </Typography>
             <Typography color="text.secondary" mb={2}>
-              Please provide an Application ID in the route URL (e.g. /applications/:applicationId/lender-cases) or enter one below:
+              Please provide an Application ID in the route URL (e.g.
+              /applications/:applicationId/lender-cases) or enter one below:
             </Typography>
             <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
               <TextField

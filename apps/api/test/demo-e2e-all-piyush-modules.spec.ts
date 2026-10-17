@@ -1163,7 +1163,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
   // =========================================================================
   describe('8. Module 33: Platform Administration (MOD-ADM)', () => {
     it('DEMO-ADM-01: Inspects platform flags and verifies 4-eyes data correction request workflow', async () => {
-      const adminService = new PlatformAdminService(createTestDeps({ txRunner: dummyTxRunner }), new InMemoryPlatformStore());
+      const adminService = new PlatformAdminService(
+        createTestDeps({ txRunner: dummyTxRunner }),
+        new InMemoryPlatformStore(),
+      );
       const adminApp = express();
       adminApp.use(express.json());
       const superAdminPrincipal = testPrincipal({

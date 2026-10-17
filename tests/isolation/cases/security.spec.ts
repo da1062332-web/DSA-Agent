@@ -73,14 +73,11 @@ describe('TEST-SEC-001 security: tenants never cross', () => {
       .send({ status: 'CONTAINED' });
     expect(bPatch.status).toBe(404);
 
-    const bCreate = await request(b)
-      .post('/v1/incidents')
-      .set('Idempotency-Key', 'idem-iso-inc-b01')
-      .send({
-        type: 'UNAUTHORIZED_ACCESS',
-        severity: 'MEDIUM',
-        detectedAt: new Date().toISOString(),
-      });
+    const bCreate = await request(b).post('/v1/incidents').set('Idempotency-Key', 'idem-iso-inc-b01').send({
+      type: 'UNAUTHORIZED_ACCESS',
+      severity: 'MEDIUM',
+      detectedAt: new Date().toISOString(),
+    });
     expect(bCreate.status, JSON.stringify(bCreate.body)).toBe(201);
     expect(bCreate.body.tenantId).toBe(env.B.tenantId);
   });

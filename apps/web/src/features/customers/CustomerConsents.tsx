@@ -75,10 +75,7 @@ export function CustomerConsents(): React.ReactElement {
     enabled: Boolean(customerId),
   });
 
-  const {
-    data: consents = [],
-    isLoading: isConsentsLoading,
-  } = useQuery({
+  const { data: consents = [], isLoading: isConsentsLoading } = useQuery({
     queryKey: ['customer-consents', customerId],
     queryFn: () => getCustomerConsents(customerId),
     enabled: Boolean(customerId),
@@ -86,8 +83,7 @@ export function CustomerConsents(): React.ReactElement {
 
   const recordMutation = useMutation({
     meta: { successMessage: 'Consent recorded.' },
-    mutationFn: (payload: RecordConsentPayload) =>
-      recordCustomerConsent(customerId, payload),
+    mutationFn: (payload: RecordConsentPayload) => recordCustomerConsent(customerId, payload),
     onSuccess: () => {
       setOpenDialog(false);
       setActionError(null);
@@ -123,9 +119,7 @@ export function CustomerConsents(): React.ReactElement {
   if (loadError) {
     return (
       <Container sx={{ py: 4 }}>
-        <Alert severity="error">
-          Failed to load customer profile: {(loadError as Error).message}
-        </Alert>
+        <Alert severity="error">Failed to load customer profile: {(loadError as Error).message}</Alert>
         <Button component={Link} to="/customers" sx={{ mt: 2 }} variant="outlined">
           ← Back to Customers
         </Button>
@@ -139,31 +133,20 @@ export function CustomerConsents(): React.ReactElement {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
         {/* Navigation & Header */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ sm: 'center' }}
+          spacing={2}
+        >
           <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Button
-              component={Link}
-              to="/leads"
-              variant="outlined"
-              size="small"
-            >
+            <Button component={Link} to="/leads" variant="outlined" size="small">
               ← Back to Leads
             </Button>
-            <Button
-              component={Link}
-              to={`/customers/${customerId}`}
-              variant="outlined"
-              size="small"
-            >
+            <Button component={Link} to={`/customers/${customerId}`} variant="outlined" size="small">
               Customer Profile
             </Button>
-            <Button
-              component={Link}
-              to="/applications"
-              variant="outlined"
-              color="primary"
-              size="small"
-            >
+            <Button component={Link} to="/applications" variant="outlined" color="primary" size="small">
               Applications
             </Button>
           </Stack>
@@ -177,7 +160,8 @@ export function CustomerConsents(): React.ReactElement {
             Customer Consent Management
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Audit-grade record of explicit consents captured, inherited from lead conversion, and revocable on demand.
+            Audit-grade record of explicit consents captured, inherited from lead conversion, and revocable on
+            demand.
           </Typography>
         </Box>
 
@@ -205,12 +189,7 @@ export function CustomerConsents(): React.ReactElement {
                     size="small"
                     sx={{ fontWeight: 600 }}
                   />
-                  <Chip
-                    label={customer.partyType}
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                  />
+                  <Chip label={customer.partyType} variant="outlined" color="primary" size="small" />
                 </Stack>
                 <Button
                   variant="contained"
@@ -226,8 +205,20 @@ export function CustomerConsents(): React.ReactElement {
               {/* Clean structured key-value grid */}
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ p: 1.5, bgcolor: 'background.default', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'background.default',
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}
+                    >
                       Customer ID
                     </Typography>
                     <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
@@ -237,8 +228,20 @@ export function CustomerConsents(): React.ReactElement {
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ p: 1.5, bgcolor: 'background.default', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'background.default',
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}
+                    >
                       Home Branch
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -248,8 +251,20 @@ export function CustomerConsents(): React.ReactElement {
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ p: 1.5, bgcolor: 'background.default', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'background.default',
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}
+                    >
                       Registered Mobile
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -259,8 +274,20 @@ export function CustomerConsents(): React.ReactElement {
                 </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ p: 1.5, bgcolor: 'background.default', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'background.default',
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}
+                    >
                       Registered Email
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -305,7 +332,9 @@ export function CustomerConsents(): React.ReactElement {
                     <TableCell sx={{ fontWeight: 600 }}>Target / Scope</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Captured Date</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      Action
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -468,8 +497,8 @@ export function CustomerConsents(): React.ReactElement {
             onClick={() => {
               const target =
                 purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
-                  ? (purposeTarget.trim() || 'LENDER_HDFC_01')
-                  : (purposeTarget.trim() || undefined);
+                  ? purposeTarget.trim() || 'LENDER_HDFC_01'
+                  : purposeTarget.trim() || undefined;
               recordMutation.mutate({
                 purpose,
                 purposeTarget: target,

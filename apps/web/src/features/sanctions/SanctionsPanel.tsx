@@ -41,7 +41,10 @@ interface SanctionsPanelProps {
   currentUserId?: string;
 }
 
-export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: propLenderCaseId, currentUserId }) => {
+export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
+  lenderCaseId: propLenderCaseId,
+  currentUserId,
+}) => {
   const { lenderCaseId: paramLenderCaseId } = useParams<{ lenderCaseId?: string }>();
   const [searchParams] = useSearchParams();
   const queryLenderCaseId = searchParams.get('lenderCaseId');

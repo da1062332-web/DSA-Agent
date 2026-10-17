@@ -17,24 +17,24 @@ Following initial discovery, all five confirmed defects (DEF-001 through DEF-005
 
 ### Headline Audit Metrics
 
-| Metric                                 | Measured Value                                                                                    | Audit & Remediation Finding                                              |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Discovered Modules**                 | 42 canonical modules across 15 domains (`DOM-A` to `DOM-O`)                                       | Complete inventory established from repository inspection                |
-| **Monorepo Workspaces**                | 6 (`apps/api`, `apps/web`, `packages/contracts`, `packages/kernel`, `packages/bre-core`, `tools`) | Validated structure and workspace linking                                |
-| **Schema `app` Database Tables**       | 107 tables verified via `information_schema`                                                      | 100% migrated and active in hosted Supabase PostgreSQL                   |
-| **Active Supabase Migrations**         | 47 migration files (`20261001000000` to `20261001000057`)                                         | Sequential numbering verified against `supabase/MANIFEST.md`             |
-| **Unit, Component & Route Suites**     | 126 test files / 1,183 test cases                                                                 | **1,183 PASSED / 0 FAILED** (100% pass rate)                             |
-| **Live PostgreSQL Integration Suites** | 17 test files / 97 test cases                                                                     | **97 PASSED / 0 FAILED** against hosted PostgreSQL                       |
-| **Total Test Cases Executed**          | 1,280 test cases                                                                                  | **1,280 PASSED / 0 FAILED** (100.0% execution pass rate)                 |
-| **Docker-Blocked Test Suites**         | 13 integration test files + 7 isolation test files                                                | **BLOCKED LOCALLY** (Requires container-enabled CI runner)               |
-| **TypeScript Typecheck**               | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-001)** — 0 errors across all 6 workspaces                |
-| **ESLint Static Code Analysis**        | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-002)** — 0 errors, 0 boundary violations                  |
-| **Prettier Code Formatting**           | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-005)** — All files adhere to Prettier style              |
-| **Endpoint Isolation Inventory**       | 3 / 3 PASS (Exit Code 0)                                                                          | **RESOLVED (DEF-003)** — 100% of OpenAPI operations mapped                |
-| **Database Security Verification**     | 5 / 5 PASS (Exit Code 0)                                                                          | RLS fail-closed, zero DELETE grants, zero Data API exposure              |
-| **OpenAPI Contract Synchronization**   | 100% in sync (`npm run gen:openapi`)                                                              | 0 schema discrepancies with committed contract registry                  |
-| **Production Bundle Builds**           | API: PASS (72ms) / Web: PASS (1.91s)                                                              | Both production bundles compile cleanly                                  |
-| **Defect Resolution**                 | 5 of 5 defects resolved (DEF-001 to DEF-005)                                                      | 100% remediated and regression-verified                                  |
+| Metric                                 | Measured Value                                                                                    | Audit & Remediation Finding                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Discovered Modules**                 | 42 canonical modules across 15 domains (`DOM-A` to `DOM-O`)                                       | Complete inventory established from repository inspection    |
+| **Monorepo Workspaces**                | 6 (`apps/api`, `apps/web`, `packages/contracts`, `packages/kernel`, `packages/bre-core`, `tools`) | Validated structure and workspace linking                    |
+| **Schema `app` Database Tables**       | 107 tables verified via `information_schema`                                                      | 100% migrated and active in hosted Supabase PostgreSQL       |
+| **Active Supabase Migrations**         | 47 migration files (`20261001000000` to `20261001000057`)                                         | Sequential numbering verified against `supabase/MANIFEST.md` |
+| **Unit, Component & Route Suites**     | 126 test files / 1,183 test cases                                                                 | **1,183 PASSED / 0 FAILED** (100% pass rate)                 |
+| **Live PostgreSQL Integration Suites** | 17 test files / 97 test cases                                                                     | **97 PASSED / 0 FAILED** against hosted PostgreSQL           |
+| **Total Test Cases Executed**          | 1,280 test cases                                                                                  | **1,280 PASSED / 0 FAILED** (100.0% execution pass rate)     |
+| **Docker-Blocked Test Suites**         | 13 integration test files + 7 isolation test files                                                | **BLOCKED LOCALLY** (Requires container-enabled CI runner)   |
+| **TypeScript Typecheck**               | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-001)** — 0 errors across all 6 workspaces    |
+| **ESLint Static Code Analysis**        | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-002)** — 0 errors, 0 boundary violations     |
+| **Prettier Code Formatting**           | Exit Code 0 (PASS)                                                                                | **RESOLVED (DEF-005)** — All files adhere to Prettier style  |
+| **Endpoint Isolation Inventory**       | 3 / 3 PASS (Exit Code 0)                                                                          | **RESOLVED (DEF-003)** — 100% of OpenAPI operations mapped   |
+| **Database Security Verification**     | 5 / 5 PASS (Exit Code 0)                                                                          | RLS fail-closed, zero DELETE grants, zero Data API exposure  |
+| **OpenAPI Contract Synchronization**   | 100% in sync (`npm run gen:openapi`)                                                              | 0 schema discrepancies with committed contract registry      |
+| **Production Bundle Builds**           | API: PASS (72ms) / Web: PASS (1.91s)                                                              | Both production bundles compile cleanly                      |
+| **Defect Resolution**                  | 5 of 5 defects resolved (DEF-001 to DEF-005)                                                      | 100% remediated and regression-verified                      |
 
 ---
 

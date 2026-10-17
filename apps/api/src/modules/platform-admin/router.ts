@@ -56,7 +56,12 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     });
 
   /** A refusal on a sensitive route is itself recorded. The 403 stands even if the audit write fails. */
-  const refuse = async (ctx: RequestContext, required: string, realm: 'platform' | 'tenant', message: string): Promise<never> => {
+  const refuse = async (
+    ctx: RequestContext,
+    required: string,
+    realm: 'platform' | 'tenant',
+    message: string,
+  ): Promise<never> => {
     try {
       await audit(ctx, {
         action: 'platform.access_denied',
@@ -294,7 +299,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
       }
       await requireTenant(ctx, 'config.manage');
       if (tenantId !== undefined && tenantId !== ctx.principal.tenantId) {
-        throw AppError.of('FORBIDDEN', 'You can only list your own tenant\'s requests.');
+        throw AppError.of('FORBIDDEN', "You can only list your own tenant's requests.");
       }
       res.json(await service.listSupportAccessRequests(ctx));
     }),

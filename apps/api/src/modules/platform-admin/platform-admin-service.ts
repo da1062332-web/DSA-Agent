@@ -42,13 +42,15 @@ export class PlatformAdminService {
   private readonly store: PlatformStore;
 
   /** Tenant metadata, support access, data corrections, flags, master data and the release register are stored through the platform store (platform-store.ts). Queues and dead letters are still sample data held in memory (Release 2). */
-  constructor(private readonly deps: ApiDeps, store?: PlatformStore) {
+  constructor(
+    private readonly deps: ApiDeps,
+    store?: PlatformStore,
+  ) {
     this.store = store ?? new PgPlatformStore(deps);
     this.seedDefaults();
   }
 
   private seedDefaults() {
-
     // ----------------------------------------------------
     // Seed Master Data Items (SUB-ADM.03)
     // ----------------------------------------------------
@@ -56,11 +58,46 @@ export class PlatformAdminService {
     // Seed Queues and Dead Letters (SUB-ADM.04)
     // ----------------------------------------------------
     const defaultQueues: JobQueueInfo[] = [
-      { queue: 'outbox-relay', activeJobs: 0, failedJobs: 0, delayedJobs: 0, completedJobs: 1420, paused: false },
-      { queue: 'bre-evaluations', activeJobs: 2, failedJobs: 1, delayedJobs: 0, completedJobs: 8940, paused: false },
-      { queue: 'notifications-dispatch', activeJobs: 0, failedJobs: 0, delayedJobs: 3, completedJobs: 5120, paused: false },
-      { queue: 'document-processing', activeJobs: 1, failedJobs: 2, delayedJobs: 1, completedJobs: 3200, paused: false },
-      { queue: 'webhook-delivery', activeJobs: 0, failedJobs: 0, delayedJobs: 0, completedJobs: 1105, paused: false },
+      {
+        queue: 'outbox-relay',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 0,
+        completedJobs: 1420,
+        paused: false,
+      },
+      {
+        queue: 'bre-evaluations',
+        activeJobs: 2,
+        failedJobs: 1,
+        delayedJobs: 0,
+        completedJobs: 8940,
+        paused: false,
+      },
+      {
+        queue: 'notifications-dispatch',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 3,
+        completedJobs: 5120,
+        paused: false,
+      },
+      {
+        queue: 'document-processing',
+        activeJobs: 1,
+        failedJobs: 2,
+        delayedJobs: 1,
+        completedJobs: 3200,
+        paused: false,
+      },
+      {
+        queue: 'webhook-delivery',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 0,
+        completedJobs: 1105,
+        paused: false,
+      },
     ];
     for (const q of defaultQueues) {
       this.queues.set(q.queue, q);
@@ -100,7 +137,10 @@ export class PlatformAdminService {
   // SUB-ADM.01: Platform Console (API-TEN-002)
   // ==========================================
 
-  async listTenants(ctx: RequestContext, query: ListPlatformTenantsQuery): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
+  async listTenants(
+    ctx: RequestContext,
+    query: ListPlatformTenantsQuery,
+  ): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
     // Platform console restriction: tenant metadata only, no business data. The database allows this read in the platform
     // realm only. A failure is reported, never replaced by sample tenants.
     let filtered = await this.store.listTenants(ctx);
@@ -109,7 +149,9 @@ export class PlatformAdminService {
     }
     if (query.search) {
       const q = query.search.toLowerCase();
-      filtered = filtered.filter((t) => t.legalName.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q));
+      filtered = filtered.filter(
+        (t) => t.legalName.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q),
+      );
     }
     return { data: filtered, meta: { total: filtered.length } };
   }
@@ -144,7 +186,10 @@ export class PlatformAdminService {
   // SUB-ADM.03: Master Data (API-ADM-003)
   // ==========================================
 
-  async getMasterData(ctx: RequestContext, listCode?: string): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
+  async getMasterData(
+    ctx: RequestContext,
+    listCode?: string,
+  ): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
     const result = await this.store.listMasterData(ctx, listCode);
     return { data: result, meta: { listsCount: Object.keys(result).length } };
   }
@@ -157,7 +202,12 @@ export class PlatformAdminService {
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
 
-  async getJobsAndQueues(): Promise<{ sampleData: true; notice: string; queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }> {
+  async getJobsAndQueues(): Promise<{
+    sampleData: true;
+    notice: string;
+    queues: JobQueueInfo[];
+    deadLetters: DeadLetterItem[];
+  }> {
     return {
       // Honest labelling: these figures are not read from any real queue. The console for background jobs is Release 2 (SUB-ADM.04).
       sampleData: true,
@@ -173,7 +223,10 @@ export class PlatformAdminService {
       throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
     }
     if (!req.reason || req.reason.trim().length < 5) {
-      throw AppError.of('VALIDATION_ERROR', 'A reason is required when pausing a queue (minimum 5 characters).');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'A reason is required when pausing a queue (minimum 5 characters).',
+      );
     }
 
     q.paused = true;
@@ -189,7 +242,10 @@ export class PlatformAdminService {
       throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
     }
     if (!req.reason || req.reason.trim().length < 5) {
-      throw AppError.of('VALIDATION_ERROR', 'A reason is required when resuming a queue (minimum 5 characters).');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'A reason is required when resuming a queue (minimum 5 characters).',
+      );
     }
 
     q.paused = false;
@@ -231,25 +287,40 @@ export class PlatformAdminService {
     try {
       const probe = await this.deps.txRunner.withTenantTx(
         {
-          principal: { kind: 'SERVICE', id: 'SYSTEM:health', tenantId: 'ten_health_probe', primaryBranchId: null, managedTeamMemberIds: [], queueIds: [], grants: [], authTime: null },
+          principal: {
+            kind: 'SERVICE',
+            id: 'SYSTEM:health',
+            tenantId: 'ten_health_probe',
+            primaryBranchId: null,
+            managedTeamMemberIds: [],
+            queueIds: [],
+            grants: [],
+            authTime: null,
+          },
           correlationId: 'probe',
           now: new Date(),
         },
         async (tx) => {
           const r = await sql<{ in_use: number | string; max_connections: number | string }>`
-            SELECT (SELECT count(*) FROM pg_stat_activity) AS in_use, current_setting('max_connections')::int AS max_connections`.execute(tx);
+            SELECT (SELECT count(*) FROM pg_stat_activity) AS in_use, current_setting('max_connections')::int AS max_connections`.execute(
+            tx,
+          );
           return r.rows[0];
         },
       );
       if (probe && Number(probe.max_connections) > 0) {
-        poolUtilization = Math.min(100, Math.round((Number(probe.in_use) / Number(probe.max_connections)) * 1000) / 10);
+        poolUtilization = Math.min(
+          100,
+          Math.round((Number(probe.in_use) / Number(probe.max_connections)) * 1000) / 10,
+        );
       }
     } catch {
       dbStatus = 'DOWN';
     }
     const latencyMs = Math.round((performance.now() - start) * 10) / 10;
     if (dbStatus === 'UP' && latencyMs > DB_DEGRADED_LATENCY_MS) dbStatus = 'DEGRADED';
-    const overall: SystemHealthReport['status'] = dbStatus === 'DOWN' ? 'DOWN' : dbStatus === 'DEGRADED' ? 'DEGRADED' : 'HEALTHY';
+    const overall: SystemHealthReport['status'] =
+      dbStatus === 'DOWN' ? 'DOWN' : dbStatus === 'DEGRADED' ? 'DEGRADED' : 'HEALTHY';
 
     const mem = process.memoryUsage();
     const uptime = Math.floor((Date.now() - this.startTimestamp) / 1000);
@@ -286,15 +357,24 @@ export class PlatformAdminService {
   // SUB-ADM.06: Support Access (API-ADM-006 / API-ADM-007)
   // ==========================================
 
-  async listSupportAccessRequests(ctx: RequestContext, tenantId?: string): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
+  async listSupportAccessRequests(
+    ctx: RequestContext,
+    tenantId?: string,
+  ): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
     const list = await this.store.listSupportGrants(ctx, tenantId);
     return { data: list, meta: { total: list.length } };
   }
 
-  async createSupportAccessRequest(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant> {
+  async createSupportAccessRequest(
+    ctx: RequestContext,
+    req: CreateSupportAccessRequest,
+  ): Promise<SupportAccessGrant> {
     // Constraint: ends_at must be no more than four hours after starts_at
     if (req.durationHours > 4.0 || req.durationHours <= 0) {
-      throw AppError.of('VALIDATION_ERROR', 'Access duration must be greater than zero and cannot exceed 4.0 hours.');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Access duration must be greater than zero and cannot exceed 4.0 hours.',
+      );
     }
     return this.store.createSupportGrant(ctx, req);
   }
@@ -311,13 +391,18 @@ export class PlatformAdminService {
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
   // ==========================================
 
-  async listDataCorrections(ctx: RequestContext): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
+  async listDataCorrections(
+    ctx: RequestContext,
+  ): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
     const list = await this.store.listDataCorrections(ctx);
     return { data: list, meta: { total: list.length } };
   }
 
   /** A correction belongs to one tenant, taken from the signed-in user. A tenantId in the body is accepted only if it matches. */
-  async createDataCorrectionRequest(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
+  async createDataCorrectionRequest(
+    ctx: RequestContext,
+    req: CreateDataCorrectionRequest,
+  ): Promise<DataCorrectionRequest> {
     if (req.tenantId !== undefined && req.tenantId !== ctx.principal.tenantId) {
       throw AppError.of('VALIDATION_ERROR', 'A data correction can only be requested for your own tenant.', [
         { field: 'tenantId', issue: 'NOT_YOUR_TENANT' },
@@ -347,13 +432,20 @@ export class PlatformAdminService {
   // SUB-ADM.08: Release Management (Release Register)
   // ==========================================
 
-  async getReleases(ctx: RequestContext): Promise<{ candidate: string | null; releases: ReleaseRegisterItem[] }> {
+  async getReleases(
+    ctx: RequestContext,
+  ): Promise<{ candidate: string | null; releases: ReleaseRegisterItem[] }> {
     const releases = await this.store.listReleases(ctx);
     const candidate = releases.find((r) => r.status === 'CANDIDATE') ?? null;
     return { candidate: candidate?.version ?? null, releases };
   }
 
-  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+  async updateRelease(
+    ctx: RequestContext,
+    version: string,
+    patch: UpdateReleaseRequest,
+    ifMatch: string | undefined,
+  ): Promise<ReleaseRegisterItem> {
     return this.store.updateRelease(ctx, version, patch, ifMatch);
   }
 }

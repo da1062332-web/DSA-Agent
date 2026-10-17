@@ -15,7 +15,13 @@ let roleAId: string;
 let clientAId: string;
 let userAId: string;
 
-const ADMIN: PermissionCode[] = ['user.manage', 'role.manage', 'config.manage', 'api.manage', 'api.read'] as PermissionCode[];
+const ADMIN: PermissionCode[] = [
+  'user.manage',
+  'role.manage',
+  'config.manage',
+  'api.manage',
+  'api.read',
+] as PermissionCode[];
 let seq = 0;
 const key = () => `idem-iso-usr-${Date.now()}-${seq++}`;
 
@@ -58,7 +64,10 @@ describe('TEST-SEC-001 users: tenants never cross', () => {
 
   it('API-USR-UPDATE: tenant B cannot change tenant A user', async () => {
     const b = env.appAs(env.B, ADMIN);
-    const res = await request(b).patch(`/v1/users/${userAId}`).set('If-Match', '"0"').send({ displayName: 'Hijacked' });
+    const res = await request(b)
+      .patch(`/v1/users/${userAId}`)
+      .set('If-Match', '"0"')
+      .send({ displayName: 'Hijacked' });
     expect(res.status).toBe(404);
     const row = await env.admin.query(`SELECT display_name FROM app.app_user WHERE id = $1`, [userAId]);
     expect(row.rows[0]?.display_name).not.toBe('Hijacked');
@@ -71,10 +80,10 @@ describe('TEST-SEC-001 users: tenants never cross', () => {
       .set('Idempotency-Key', key())
       .send({ roleId: roleAId, scopeType: 'TENANT' });
     expect(assign.status, JSON.stringify(assign.body)).toBe(404);
-    const none = await env.admin.query(`SELECT 1 FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`, [
-      userAId,
-      roleAId,
-    ]);
+    const none = await env.admin.query(
+      `SELECT 1 FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`,
+      [userAId, roleAId],
+    );
     expect(none.rows).toHaveLength(0);
 
     // Give tenant A's user the role, then let tenant B try to take it away: 404, and the assignment stays open.
@@ -85,15 +94,15 @@ describe('TEST-SEC-001 users: tenants never cross', () => {
     );
     const remove = await request(b).delete(`/v1/users/${userAId}/roles/${roleAId}`);
     expect(remove.status).toBe(404);
-    const kept = await env.admin.query(`SELECT 1 FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`, [
-      userAId,
-      roleAId,
-    ]);
+    const kept = await env.admin.query(
+      `SELECT 1 FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`,
+      [userAId, roleAId],
+    );
     expect(kept.rows).toHaveLength(1);
-    const open = await env.admin.query(`SELECT upper_inf(effective_range) AS open FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`, [
-      userAId,
-      roleAId,
-    ]);
+    const open = await env.admin.query(
+      `SELECT upper_inf(effective_range) AS open FROM app.user_role_assignment WHERE user_id = $1 AND role_id = $2`,
+      [userAId, roleAId],
+    );
     expect(open.rows[0].open).toBe(true);
   });
 
@@ -130,7 +139,10 @@ describe('TEST-SEC-001 roles and permissions: tenants never cross', () => {
 
   it('API-ACL-ROLES-UPDATE API-ACL-ROLES-DELETE: tenant B cannot change or delete tenant A role', async () => {
     const b = env.appAs(env.B, ADMIN);
-    const patch = await request(b).patch(`/v1/roles/${roleAId}`).set('If-Match', '"0"').send({ name: 'Hijacked' });
+    const patch = await request(b)
+      .patch(`/v1/roles/${roleAId}`)
+      .set('If-Match', '"0"')
+      .send({ name: 'Hijacked' });
     expect(patch.status).toBe(404);
     const del = await request(b).delete(`/v1/roles/${roleAId}`);
     expect(del.status).toBe(404);
@@ -171,10 +183,13 @@ describe('TEST-SEC-001 API clients: tenants never cross', () => {
 
   it('patch /v1/api-clients/{id}, post /v1/api-clients/{id}/rotate-secret, delete /v1/api-clients/{id}: tenant B cannot change tenant A client', async () => {
     const b = env.appAs(env.B, ADMIN);
-    expect((await request(b).patch(`/v1/api-clients/${clientAId}`).send({ name: 'Hijacked' })).status).toBe(404);
-    expect((await request(b).post(`/v1/api-clients/${clientAId}/rotate-secret`).set('Idempotency-Key', key())).status).toBe(
+    expect((await request(b).patch(`/v1/api-clients/${clientAId}`).send({ name: 'Hijacked' })).status).toBe(
       404,
     );
+    expect(
+      (await request(b).post(`/v1/api-clients/${clientAId}/rotate-secret`).set('Idempotency-Key', key()))
+        .status,
+    ).toBe(404);
     expect((await request(b).delete(`/v1/api-clients/${clientAId}`)).status).toBe(404);
     // Still there, still unchanged, for its own tenant.
     const still = await request(env.appAs(env.A, ADMIN)).get(`/v1/api-clients/${clientAId}`);
@@ -190,6 +205,8 @@ describe('TEST-SEC-001 API clients: tenants never cross', () => {
       .send({ name: 'Isolation client B', partnerName: 'Isolation partner B' });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     expect(created.body.tenantId).toBe(env.B.tenantId);
-    expect((await request(env.appAs(env.A, ADMIN)).get(`/v1/api-clients/${created.body.id}`)).status).toBe(404);
+    expect((await request(env.appAs(env.A, ADMIN)).get(`/v1/api-clients/${created.body.id}`)).status).toBe(
+      404,
+    );
   });
 });

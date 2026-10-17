@@ -108,15 +108,17 @@ export function sanitizeProviderPayload(payload: unknown): unknown {
   if (payload === null || payload === undefined) return payload;
 
   if (typeof payload === 'string') {
-    return payload
-      // 12-digit Aadhaar
-      .replace(/\b(\d{4})\d{4}(\d{4})\b/g, '$1-XXXX-$2')
-      .replace(/\b\d{12}\b/g, 'XXXXXXXXXXXX')
-      // 10-char PAN
-      .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1XXXX$2')
-      // Bearer / Token
-      .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
-      .replace(/(api[-_]?key|secret|password|auth[-_]?token)\s*[:=]\s*["']?[^"'\s,]+/gi, '$1=[REDACTED]');
+    return (
+      payload
+        // 12-digit Aadhaar
+        .replace(/\b(\d{4})\d{4}(\d{4})\b/g, '$1-XXXX-$2')
+        .replace(/\b\d{12}\b/g, 'XXXXXXXXXXXX')
+        // 10-char PAN
+        .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1XXXX$2')
+        // Bearer / Token
+        .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
+        .replace(/(api[-_]?key|secret|password|auth[-_]?token)\s*[:=]\s*["']?[^"'\s,]+/gi, '$1=[REDACTED]')
+    );
   }
 
   if (Array.isArray(payload)) {
