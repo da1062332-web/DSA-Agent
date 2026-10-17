@@ -132,6 +132,26 @@ describe('hosted batch: verify and rollback scripts', () => {
     });
   }
 
+  it('TEST-BATCH-55c eligibility.override (decision D1) goes to exactly the four approver roles, in every tenant, and to no other role', async () => {
+    const db = await fresh(['55']);
+    const holders = await db.query(
+      `SELECT DISTINCT r.code FROM app.role_permission rp JOIN app.role r ON r.id = rp.role_id AND r.tenant_id = rp.tenant_id
+        WHERE rp.permission_code = 'eligibility.override' ORDER BY 1`,
+    );
+    expect(holders.rows.map((r) => r.code)).toEqual([
+      'ROLE-BRANCH-MGR',
+      'ROLE-LOAN-OPS',
+      'ROLE-ORG-OWNER',
+      'ROLE-TENANT-ADMIN',
+    ]);
+    const missing = await db.query(
+      `SELECT count(*)::int AS n FROM app.role r WHERE r.code IN ('ROLE-ORG-OWNER','ROLE-BRANCH-MGR','ROLE-LOAN-OPS','ROLE-TENANT-ADMIN')
+          AND NOT EXISTS (SELECT 1 FROM app.role_permission rp WHERE rp.tenant_id = r.tenant_id AND rp.role_id = r.id AND rp.permission_code = 'eligibility.override')`,
+    );
+    expect(missing.rows[0].n).toBe(0);
+    await db.end();
+  });
+
   it('TEST-BATCH-55b the optional revoke script removes only the override grants and keeps the rules', async () => {
     const db = await fresh(['55']);
     await db.query(script('55.revoke-override-grants.sql'));
