@@ -53,7 +53,12 @@ export const IntegrationConnectionSchema = z.object({
   provider: z.string().min(1),
   capability: z.string().min(1),
   environment: IntegrationEnvironmentSchema,
-  credentialRef: z.string().regex(/^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$/, 'credentialRef must be a valid tenant vault URI (e.g., vault://tenants/{tenant_id}/{env}/{provider}/credentials)'),
+  credentialRef: z
+    .string()
+    .regex(
+      /^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$/,
+      'credentialRef must be a valid tenant vault URI (e.g., vault://tenants/{tenant_id}/{env}/{provider}/credentials)',
+    ),
   config: z.record(z.unknown()),
   status: IntegrationStatusSchema,
   health: HealthCheckResultSchema.nullable().optional(),
@@ -87,7 +92,12 @@ const FORBIDDEN_SECRET_KEY_REGEX = /(password|secret|apikey|token|privatekey|bea
 export const ConfigureIntegrationRequestSchema = z.object({
   capability: z.string().min(1),
   environment: IntegrationEnvironmentSchema,
-  credentialRef: z.string().regex(/^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$/, 'credentialRef must be a valid tenant vault URI'),
+  credentialRef: z
+    .string()
+    .regex(
+      /^vault:\/\/tenants\/[a-zA-Z0-9_-]+\/(sandbox|production)\/[a-zA-Z0-9_-]+\/credentials$/,
+      'credentialRef must be a valid tenant vault URI',
+    ),
   config: z.record(z.unknown()).refine(
     (obj) => {
       for (const key of Object.keys(obj)) {
@@ -97,7 +107,10 @@ export const ConfigureIntegrationRequestSchema = z.object({
       }
       return true;
     },
-    { message: 'Configuration must not contain secret or credential keys. Use credentialRef to reference secrets in vault.' },
+    {
+      message:
+        'Configuration must not contain secret or credential keys. Use credentialRef to reference secrets in vault.',
+    },
   ),
   status: IntegrationStatusSchema.default('ACTIVE'),
 });

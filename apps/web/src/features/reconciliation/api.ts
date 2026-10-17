@@ -162,7 +162,6 @@ export async function fetchDisputes(params?: {
   });
 }
 
-// SUB-REC.05: Bank Payout Settlement Reconciliation
 export async function reconcilePayoutWithBank(
   payoutId: string,
   input: {
@@ -172,6 +171,33 @@ export async function reconcilePayoutWithBank(
   },
 ): Promise<{ payoutId: string; status: string; bankReference: string }> {
   return apiFetch(`/v1/reconciliation/payouts/${payoutId}/bank-reconcile`, {
+    method: 'POST',
+    body: input,
+  });
+}
+
+// Automated Bank Statement Ingestion Engine (MT940 / CSV Feeds) (MOD-REC / TASK-418)
+export async function autoIngestBankFeed(input: {
+  lenderId: string;
+  period: string;
+  format: 'MT940' | 'CSV';
+  rawFeedContent: string;
+  filename?: string;
+}): Promise<{
+  statementId: string;
+  lenderId: string;
+  period: string;
+  format: string;
+  parsedLinesCount: number;
+  totalDisbursed: number;
+  totalCommission: number;
+  totalTaxDeducted: number;
+  netCommission: number;
+  fileSha256: string;
+  status: string;
+  message: string;
+}> {
+  return apiFetch('/v1/reconciliation/auto-ingest', {
     method: 'POST',
     body: input,
   });

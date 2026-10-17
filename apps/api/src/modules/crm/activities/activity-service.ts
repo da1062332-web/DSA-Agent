@@ -48,7 +48,10 @@ function mapDbRowToActivity(row: any): StoredActivity {
     links: [{ type: row.subject_type, id: row.subject_id }],
     kind: row.kind,
     outcomeCode: row.outcome_code ?? null,
-    occurredAt: row.occurred_at instanceof Date ? row.occurred_at.toISOString() : new Date(row.occurred_at).toISOString(),
+    occurredAt:
+      row.occurred_at instanceof Date
+        ? row.occurred_at.toISOString()
+        : new Date(row.occurred_at).toISOString(),
     durationSeconds: row.duration_s !== null && row.duration_s !== undefined ? Number(row.duration_s) : null,
     note: row.note ?? null,
     actorId: row.actor_id,
@@ -56,9 +59,14 @@ function mapDbRowToActivity(row: any): StoredActivity {
     actorTeamId: row.actor_team_id ?? null,
     lockVersion: Number(row.lock_version ?? 0),
     isHidden: Boolean(row.is_hidden),
-    hiddenAt: row.hidden_at ? (row.hidden_at instanceof Date ? row.hidden_at.toISOString() : new Date(row.hidden_at).toISOString()) : undefined,
+    hiddenAt: row.hidden_at
+      ? row.hidden_at instanceof Date
+        ? row.hidden_at.toISOString()
+        : new Date(row.hidden_at).toISOString()
+      : undefined,
     hiddenBy: row.hidden_by ?? undefined,
-    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+    createdAt:
+      row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
     updatedAt: row.updated_at
       ? row.updated_at instanceof Date
         ? row.updated_at.toISOString()
@@ -147,7 +155,9 @@ export class ActivityService {
               tenant_id: string;
               branch_id: string;
               owner_user_id?: string;
-            }>`SELECT id, tenant_id, branch_id, owner_user_id FROM app.lead WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(tx);
+            }>`SELECT id, tenant_id, branch_id, owner_user_id FROM app.lead WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(
+              tx,
+            );
             const row = res.rows[0];
             if (!row) return null;
             return {
@@ -161,7 +171,9 @@ export class ActivityService {
               id: string;
               tenant_id: string;
               home_branch_id: string;
-            }>`SELECT id, tenant_id, home_branch_id FROM app.customer WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(tx);
+            }>`SELECT id, tenant_id, home_branch_id FROM app.customer WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(
+              tx,
+            );
             const row = res.rows[0];
             if (!row) return null;
             return {
@@ -175,7 +187,9 @@ export class ActivityService {
               tenant_id: string;
               branch_id: string;
               sales_owner_user_id?: string;
-            }>`SELECT id, tenant_id, branch_id, sales_owner_user_id FROM app.loan_application WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(tx);
+            }>`SELECT id, tenant_id, branch_id, sales_owner_user_id FROM app.loan_application WHERE tenant_id = ${tenantId} AND id = ${subjectId}`.execute(
+              tx,
+            );
             const row = res.rows[0];
             if (!row) return null;
             return {
@@ -289,7 +303,10 @@ export class ActivityService {
         if (cached.status === 'COMPLETED') {
           return { activity: cached.responseBody, isReplayed: true };
         }
-        throw AppError.of('IDEMPOTENCY_IN_PROGRESS', 'A request with this idempotency key is currently processing');
+        throw AppError.of(
+          'IDEMPOTENCY_IN_PROGRESS',
+          'A request with this idempotency key is currently processing',
+        );
       }
     }
 
@@ -310,7 +327,8 @@ export class ActivityService {
     await this.resolveSubject(ctx, subjectType, subjectId);
 
     // Build subject links array
-    const links = input.links && input.links.length > 0 ? input.links : [{ type: subjectType, id: subjectId }];
+    const links =
+      input.links && input.links.length > 0 ? input.links : [{ type: subjectType, id: subjectId }];
 
     // Server-controlled actor attribution
     const actorId = ctx.principal.id;

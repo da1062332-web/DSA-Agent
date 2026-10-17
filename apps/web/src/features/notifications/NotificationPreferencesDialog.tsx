@@ -121,7 +121,9 @@ export function NotificationPreferencesDialog({
       });
 
       if (res.status === 412) {
-        setError('Preferences were modified concurrently in another tab or session. Reloading latest preferences...');
+        setError(
+          'Preferences were modified concurrently in another tab or session. Reloading latest preferences...',
+        );
         await fetchProfile();
         return;
       }
@@ -178,7 +180,8 @@ export function NotificationPreferencesDialog({
                 Delivery Channels
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Configure where you would like to receive notifications and alerts. External channels remain subject to consent and quiet hours.
+                Configure where you would like to receive notifications and alerts. External channels remain
+                subject to consent and quiet hours.
               </Typography>
               <FormGroup>
                 <FormControlLabel
@@ -258,9 +261,21 @@ export function NotificationPreferencesDialog({
                     }))
                   }
                 >
-                  <FormControlLabel value="IMMEDIATE" control={<Radio />} label="Immediate (Real-time as events occur)" />
-                  <FormControlLabel value="DAILY_DIGEST" control={<Radio />} label="Daily Digest (Summary once per day)" />
-                  <FormControlLabel value="MUTED" control={<Radio />} label="Muted (Do not send email/external notifications)" />
+                  <FormControlLabel
+                    value="IMMEDIATE"
+                    control={<Radio />}
+                    label="Immediate (Real-time as events occur)"
+                  />
+                  <FormControlLabel
+                    value="DAILY_DIGEST"
+                    control={<Radio />}
+                    label="Daily Digest (Summary once per day)"
+                  />
+                  <FormControlLabel
+                    value="MUTED"
+                    control={<Radio />}
+                    label="Muted (Do not send email/external notifications)"
+                  />
                 </RadioGroup>
               </FormControl>
             </Box>

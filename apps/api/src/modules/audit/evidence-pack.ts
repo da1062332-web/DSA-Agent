@@ -60,12 +60,9 @@ export async function processEvidencePackAsync(
     }
 
     // 4. Verify chain integrity status for the exported tenant
-    const chainVerification: AuditChainVerificationResponse = await runner.withTenantTx(
-      ctx,
-      async (tx) => {
-        return verifyTenantAuditChain(tx, tenantId);
-      },
-    );
+    const chainVerification: AuditChainVerificationResponse = await runner.withTenantTx(ctx, async (tx) => {
+      return verifyTenantAuditChain(tx, tenantId);
+    });
 
     // 5. Assemble evidence bundle
     const bundle = {

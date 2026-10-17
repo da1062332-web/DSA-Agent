@@ -28,10 +28,7 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { createProductVersion, fetchProductById } from './api';
-import type {
-  CreateProductVersionInput,
-  LoanProduct,
-} from './types';
+import type { CreateProductVersionInput, LoanProduct } from './types';
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -249,14 +246,30 @@ export function ProductDetailPage() {
           <Table>
             <TableHead sx={{ bgcolor: 'grey.50' }}>
               <TableRow>
-                <TableCell><strong>Version</strong></TableCell>
-                <TableCell><strong>Effective From</strong></TableCell>
-                <TableCell><strong>Amount Range (₹)</strong></TableCell>
-                <TableCell><strong>Tenure Range</strong></TableCell>
-                <TableCell><strong>Rate Terms</strong></TableCell>
-                <TableCell><strong>Fee Terms</strong></TableCell>
-                <TableCell><strong>Document Profile</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
+                <TableCell>
+                  <strong>Version</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Effective From</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Amount Range (₹)</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Tenure Range</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Rate Terms</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Fee Terms</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Document Profile</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Status</strong>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -269,11 +282,10 @@ export function ProductDetailPage() {
                       color={ver.versionNo === product.activeVersionNo ? 'primary' : 'default'}
                     />
                   </TableCell>
+                  <TableCell>{new Date(ver.effectiveFrom).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {new Date(ver.effectiveFrom).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    ₹{Number(ver.amountMin).toLocaleString('en-IN')} – ₹{Number(ver.amountMax).toLocaleString('en-IN')}
+                    ₹{Number(ver.amountMin).toLocaleString('en-IN')} – ₹
+                    {Number(ver.amountMax).toLocaleString('en-IN')}
                   </TableCell>
                   <TableCell>
                     {ver.tenureMin} – {ver.tenureMax} mos
@@ -307,7 +319,8 @@ export function ProductDetailPage() {
               </Alert>
             )}
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
-              Product versions are append-only and cannot be altered once created. Applications currently referencing previous versions will remain pinned to their historical version.
+              Product versions are append-only and cannot be altered once created. Applications currently
+              referencing previous versions will remain pinned to their historical version.
             </Typography>
 
             <Grid container spacing={2}>

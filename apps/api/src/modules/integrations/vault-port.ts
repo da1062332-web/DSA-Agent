@@ -42,14 +42,22 @@ export class DevelopmentVaultAdapter implements IVaultPort {
   }
 
   async resolveSecret(tenantId: string, credentialRef: string): Promise<ResolvedCredentials> {
-    const match = credentialRef.match(/^vault:\/\/tenants\/([a-zA-Z0-9_-]+)\/(sandbox|production)\/([a-zA-Z0-9_-]+)\/credentials$/);
+    const match = credentialRef.match(
+      /^vault:\/\/tenants\/([a-zA-Z0-9_-]+)\/(sandbox|production)\/([a-zA-Z0-9_-]+)\/credentials$/,
+    );
     if (!match) {
-      throw AppError.of('MALFORMED_REQUEST', `Invalid credential reference format: ${credentialRef}. Must follow vault://tenants/{tenant_id}/{env}/{provider}/credentials`);
+      throw AppError.of(
+        'MALFORMED_REQUEST',
+        `Invalid credential reference format: ${credentialRef}. Must follow vault://tenants/{tenant_id}/{env}/{provider}/credentials`,
+      );
     }
 
     const refTenant = match[1];
     if (refTenant !== tenantId) {
-      throw AppError.of('FORBIDDEN', `Tenant mismatch: credentialRef belongs to ${refTenant}, but context tenant is ${tenantId}`);
+      throw AppError.of(
+        'FORBIDDEN',
+        `Tenant mismatch: credentialRef belongs to ${refTenant}, but context tenant is ${tenantId}`,
+      );
     }
 
     const found = this.inMemorySecrets.get(credentialRef);

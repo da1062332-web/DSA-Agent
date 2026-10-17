@@ -119,7 +119,9 @@ export function RoleDetailPage() {
   }
 
   // Group permissions by prefix/domain
-  const domains: string[] = Array.from(new Set(permissions.map((p) => p.code.split('.')[0]))).filter((d): d is string => Boolean(d)).sort();
+  const domains: string[] = Array.from(new Set(permissions.map((p) => p.code.split('.')[0])))
+    .filter((d): d is string => Boolean(d))
+    .sort();
 
   if (loading) {
     return (
@@ -142,7 +144,14 @@ export function RoleDetailPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }} flexWrap="wrap" gap={2}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 3 }}
+        flexWrap="wrap"
+        gap={2}
+      >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Typography variant="h4" fontWeight={700}>
@@ -217,7 +226,8 @@ export function RoleDetailPage() {
                 />
                 <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1.5 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Permissions Assigned: <strong>{selectedPermissions.length}</strong> of {permissions.length}
+                    Permissions Assigned: <strong>{selectedPermissions.length}</strong> of{' '}
+                    {permissions.length}
                   </Typography>
                 </Box>
               </Stack>
@@ -232,10 +242,7 @@ export function RoleDetailPage() {
               title="Permissions Matrix"
               subheader="Toggle platform capabilities granted by this role"
               action={
-                <Button
-                  size="small"
-                  onClick={() => setSelectedPermissions(permissions.map((p) => p.code))}
-                >
+                <Button size="small" onClick={() => setSelectedPermissions(permissions.map((p) => p.code))}>
                   Select All
                 </Button>
               }
@@ -247,10 +254,22 @@ export function RoleDetailPage() {
                   const domPerms = permissions.filter((p) => p.code.startsWith(dom + '.'));
                   const countSelected = domPerms.filter((p) => selectedPermissions.includes(p.code)).length;
                   return (
-                    <Box key={dom} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                    <Box
+                      key={dom}
+                      sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ mb: 1.5 }}
+                      >
                         <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ textTransform: 'capitalize' }}>
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={700}
+                            sx={{ textTransform: 'capitalize' }}
+                          >
                             {dom} Module
                           </Typography>
                           <Chip
@@ -277,7 +296,11 @@ export function RoleDetailPage() {
                               }
                               label={
                                 <Box>
-                                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    sx={{ fontFamily: 'monospace' }}
+                                  >
                                     {p.code}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">

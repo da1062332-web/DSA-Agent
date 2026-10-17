@@ -37,11 +37,7 @@ import {
   HourglassEmptyIcon,
 } from '../../shell/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import type {
-  AutomationDefinition,
-  AutomationVersion,
-  StepDefinition,
-} from '@dsa/contracts';
+import type { AutomationDefinition, AutomationVersion, StepDefinition } from '@dsa/contracts';
 import {
   getAutomation,
   listAutomationVersions,
@@ -76,10 +72,7 @@ export function AutomationDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [detailRes, versionsRes] = await Promise.all([
-        getAutomation(id),
-        listAutomationVersions(id),
-      ]);
+      const [detailRes, versionsRes] = await Promise.all([getAutomation(id), listAutomationVersions(id)]);
       setDefinition(detailRes.definition);
       setVersions(versionsRes);
       setSelectedVersion(versionsRes[0] ?? null);
@@ -167,17 +160,21 @@ export function AutomationDetailPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Top Navigation */}
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/automations')}
-        sx={{ mb: 2 }}
-      >
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/automations')} sx={{ mb: 2 }}>
         Back to Automation Rules
       </Button>
 
       {/* Header Card */}
       <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
               <Typography variant="h5" fontWeight={700}>
@@ -189,8 +186,8 @@ export function AutomationDetailPage() {
                   definition.status === 'ACTIVE'
                     ? 'success'
                     : definition.status === 'DRAFT'
-                    ? 'warning'
-                    : 'default'
+                      ? 'warning'
+                      : 'default'
                 }
                 size="small"
               />
@@ -214,10 +211,7 @@ export function AutomationDetailPage() {
             >
               {definition.status === 'ACTIVE' ? 'Disable Rule' : 'Activate Rule'}
             </Button>
-            <Button
-              variant="contained"
-              onClick={() => setNewVersionDialogOpen(true)}
-            >
+            <Button variant="contained" onClick={() => setNewVersionDialogOpen(true)}>
               Draft New Version
             </Button>
           </Box>
@@ -248,11 +242,7 @@ export function AutomationDetailPage() {
               {versions.map((ver) => {
                 const isSelected = selectedVersion?.id === ver.id;
                 return (
-                  <ListItem
-                    key={ver.id}
-                    disablePadding
-                    sx={{ mb: 1 }}
-                  >
+                  <ListItem key={ver.id} disablePadding sx={{ mb: 1 }}>
                     <ListItemButton
                       selected={isSelected}
                       onClick={() => setSelectedVersion(ver)}
@@ -273,7 +263,9 @@ export function AutomationDetailPage() {
                       </ListItemIcon>
                       <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box
+                            sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                          >
                             <Typography variant="body2" fontWeight={600}>
                               Version {ver.versionNo}
                             </Typography>
@@ -306,17 +298,14 @@ export function AutomationDetailPage() {
                       Version {selectedVersion.versionNo} Pipeline
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Content Hash: {selectedVersion.contentHash.slice(0, 16)}... | Steps: {selectedVersion.steps.length}
+                      Content Hash: {selectedVersion.contentHash.slice(0, 16)}... | Steps:{' '}
+                      {selectedVersion.steps.length}
                     </Typography>
                   </Box>
 
                   {/* Maker-Checker Actions */}
                   {(selectedVersion.status === 'DRAFT' || selectedVersion.status === 'PENDING_APPROVAL') && (
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => setReviewDialogOpen(true)}
-                    >
+                    <Button variant="contained" color="primary" onClick={() => setReviewDialogOpen(true)}>
                       Review & Approve (Checker)
                     </Button>
                   )}
@@ -331,13 +320,23 @@ export function AutomationDetailPage() {
                       Trigger Configuration
                     </Typography>
                     <Typography variant="body2">
-                      Event Source: <strong>{selectedVersion.triggerConfig.eventType ?? 'Scheduled / Manual'}</strong>
+                      Event Source:{' '}
+                      <strong>{selectedVersion.triggerConfig.eventType ?? 'Scheduled / Manual'}</strong>
                     </Typography>
-                    {selectedVersion.triggerConfig.filters && selectedVersion.triggerConfig.filters.length > 0 && (
-                      <Typography variant="caption" fontFamily="monospace" color="text.secondary" display="block">
-                        Filters: {selectedVersion.triggerConfig.filters.map((f) => `${f.field} ${f.op} ${JSON.stringify(f.value)}`).join(', ')}
-                      </Typography>
-                    )}
+                    {selectedVersion.triggerConfig.filters &&
+                      selectedVersion.triggerConfig.filters.length > 0 && (
+                        <Typography
+                          variant="caption"
+                          fontFamily="monospace"
+                          color="text.secondary"
+                          display="block"
+                        >
+                          Filters:{' '}
+                          {selectedVersion.triggerConfig.filters
+                            .map((f) => `${f.field} ${f.op} ${JSON.stringify(f.value)}`)
+                            .join(', ')}
+                        </Typography>
+                      )}
                   </CardContent>
                 </Card>
 
@@ -350,11 +349,7 @@ export function AutomationDetailPage() {
                     <Card key={step.id || idx} variant="outlined" sx={{ p: 2 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Chip
-                            size="small"
-                            label={`Step ${idx + 1}`}
-                            color="primary"
-                          />
+                          <Chip size="small" label={`Step ${idx + 1}`} color="primary" />
                           <Typography variant="body1" fontWeight={600}>
                             {step.name}
                           </Typography>
@@ -374,7 +369,9 @@ export function AutomationDetailPage() {
                 </Box>
               </Box>
             ) : (
-              <Typography color="text.secondary">Select a version to inspect its execution pipeline.</Typography>
+              <Typography color="text.secondary">
+                Select a version to inspect its execution pipeline.
+              </Typography>
             )}
           </Paper>
         </Grid>
@@ -421,7 +418,12 @@ export function AutomationDetailPage() {
       </Dialog>
 
       {/* Draft New Version Dialog */}
-      <Dialog open={newVersionDialogOpen} onClose={() => setNewVersionDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={newVersionDialogOpen}
+        onClose={() => setNewVersionDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>Create New Draft Version</DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <Typography variant="body2" color="text.secondary">

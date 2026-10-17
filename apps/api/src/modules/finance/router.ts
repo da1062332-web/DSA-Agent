@@ -10,6 +10,7 @@ import {
   CreatePayoutBatchInputSchema,
   CreatePayoutRequestInputSchema,
   CreateRecalculationProposalInputSchema,
+  DisbursePayoutGatewayInputSchema,
   PayoutApprovalInputSchema,
   RecordPaymentFailureInputSchema,
   RecordPaymentInputSchema,
@@ -366,7 +367,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-requests', body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || '/v1/payout-requests',
+              body: parsed.data,
+            },
             async () => {
               const result = await service.createPayoutRequest(tx, ctx, parsed.data);
               return { status: 201, body: result };
@@ -439,7 +445,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/approval`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/approval`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.approvePayoutRequest(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -474,7 +485,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/cancel`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/cancel`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.cancelPayoutRequest(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -510,7 +526,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/payment`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.recordPayoutPayment(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -547,7 +568,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment-failure`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/payment-failure`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.recordPayoutFailure(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -585,7 +611,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-batches', body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || '/v1/payout-batches',
+              body: parsed.data,
+            },
             async () => {
               const result = await service.createPayoutBatch(tx, ctx, parsed.data);
               return { status: 201, body: result };
@@ -620,6 +651,67 @@ export function createRouter(deps: ApiDeps): Router {
       res.setHeader('Content-Disposition', `attachment; filename="${fileData.filename}"`);
       res.setHeader('X-Checksum-SHA256', fileData.sha256);
       res.send(fileData.buffer);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- AUTOMATED DIRECT NET-BANKING / PAYMENT GATEWAY INTEGRATION (MOD-PAY / TASK-418) ---
+
+  // POST /v1/payout-requests/:id/disburse-gateway
+  router.post('/payout-requests/:id/disburse-gateway', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      deps.authz.requireStepUp(ctx);
+      const id = extractParam(req.params.id, 'id');
+      const parsed = DisbursePayoutGatewayInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const idemKey = req.header('idempotency-key');
+      if (idemKey) {
+        const cmd = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+          return withIdempotency(
+            tx,
+            ctx,
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/disburse-gateway`,
+              body: parsed.data,
+            },
+            async () => {
+              const result = await service.disbursePayoutViaGateway(tx, ctx, id, parsed.data);
+              return { status: 200, body: result };
+            },
+          );
+        });
+        if (cmd.replayed) res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(cmd.status).json(cmd.body);
+      }
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.disbursePayoutViaGateway(tx, ctx, id, parsed.data);
+      });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/payout-batches/:id/dispatch-gateway
+  router.post('/payout-batches/:id/dispatch-gateway', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      deps.authz.requireStepUp(ctx);
+      const id = extractParam(req.params.id, 'id');
+      const mode = (req.body?.mode as 'IMPS' | 'NEFT' | 'RTGS') || 'IMPS';
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.dispatchPayoutBatchToGateway(tx, ctx, id, mode);
+      });
+      res.json(result);
     } catch (err) {
       next(err);
     }

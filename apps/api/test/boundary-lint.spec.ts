@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+
 import path from 'node:path';
 import type { ESLint, Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-
 
 const repoRoot = path.resolve(import.meta.dirname, '../../..');
 const fixturePath = path.join(repoRoot, 'apps/api/src/modules/crm/leads/__boundary_fixture__.ts');

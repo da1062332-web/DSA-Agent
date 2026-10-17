@@ -64,7 +64,10 @@ export function createRouter(
   repoOverride?: CustomerRepository,
 ): Router {
   const router = Router();
-  const repository = repoOverride ?? (deps.customerRepository as CustomerRepository | undefined) ?? new SqlCustomerRepository();
+  const repository =
+    repoOverride ??
+    (deps.customerRepository as CustomerRepository | undefined) ??
+    new SqlCustomerRepository();
   const service = new CustomerService({
     repository,
     idGenerator: deps.idGenerator,

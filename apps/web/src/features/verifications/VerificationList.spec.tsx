@@ -9,7 +9,7 @@ function renderVerificationList(initialPath = '/verifications') {
   return renderToString(
     <MemoryRouter initialEntries={[initialPath]}>
       <VerificationListPage />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 

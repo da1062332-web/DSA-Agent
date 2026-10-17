@@ -84,7 +84,9 @@ export function VerificationPage() {
   const [formDiscrepancies, setFormDiscrepancies] = useState('');
   const [formEvidenceRef, setFormEvidenceRef] = useState('upl_pan_card_copy_01.pdf');
   const [formValidityDays, setFormValidityDays] = useState<number>(365);
-  const [formNotes, setFormNotes] = useState('Verified document signature, watermark, and clear visual photo match.');
+  const [formNotes, setFormNotes] = useState(
+    'Verified document signature, watermark, and clear visual photo match.',
+  );
 
   // Fetch Verifications (API-VER-002)
   const queryParams = new URLSearchParams();
@@ -94,7 +96,11 @@ export function VerificationPage() {
   if (filterMethod) queryParams.set('method', filterMethod);
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
-  const { data: listData, isLoading, error: fetchError } = useQuery<ListVerificationsResponse>({
+  const {
+    data: listData,
+    isLoading,
+    error: fetchError,
+  } = useQuery<ListVerificationsResponse>({
     queryKey: ['verifications', queryString],
     queryFn: () => apiFetch<ListVerificationsResponse>(`/v1/verifications${queryString}`),
   });
@@ -144,7 +150,10 @@ export function VerificationPage() {
         matchScore: formMatchScore,
         nameMatchScore: formMatchScore,
         discrepancies: formDiscrepancies
-          ? formDiscrepancies.split(',').map((s) => s.trim()).filter(Boolean)
+          ? formDiscrepancies
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
           : [],
       },
       evidenceRef: formEvidenceRef.trim(),
@@ -172,7 +181,8 @@ export function VerificationPage() {
 
   const totalCount = listData?.data.length ?? 0;
   const verifiedCount = listData?.data.filter((r) => r.result === 'VERIFIED').length ?? 0;
-  const flaggedCount = listData?.data.filter((r) => r.result === 'FLAGGED' || r.result === 'REJECTED').length ?? 0;
+  const flaggedCount =
+    listData?.data.filter((r) => r.result === 'FLAGGED' || r.result === 'REJECTED').length ?? 0;
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1400, mx: 'auto' }}>
@@ -189,7 +199,8 @@ export function VerificationPage() {
             Verification Workbench
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 22 (MOD-VER) • Identity, income, bureau & compliance check verification records (S3 / R-LOAN)
+            Module 22 (MOD-VER) • Identity, income, bureau & compliance check verification records (S3 /
+            R-LOAN)
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -304,11 +315,7 @@ export function VerificationPage() {
 
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Result</InputLabel>
-              <Select
-                value={filterResult}
-                label="Result"
-                onChange={(e) => setFilterResult(e.target.value)}
-              >
+              <Select value={filterResult} label="Result" onChange={(e) => setFilterResult(e.target.value)}>
                 <MenuItem value="">All Results</MenuItem>
                 <MenuItem value="VERIFIED">Verified</MenuItem>
                 <MenuItem value="REJECTED">Rejected</MenuItem>
@@ -319,11 +326,7 @@ export function VerificationPage() {
 
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Method</InputLabel>
-              <Select
-                value={filterMethod}
-                label="Method"
-                onChange={(e) => setFilterMethod(e.target.value)}
-              >
+              <Select value={filterMethod} label="Method" onChange={(e) => setFilterMethod(e.target.value)}>
                 <MenuItem value="">All Methods</MenuItem>
                 <MenuItem value="MANUAL">Manual Review</MenuItem>
                 <MenuItem value="PROVIDER_AUTOMATED">Automated Provider</MenuItem>
@@ -381,22 +384,36 @@ export function VerificationPage() {
               <Table>
                 <TableHead sx={{ bgcolor: '#f8fafc' }}>
                   <TableRow>
-                    <TableCell><strong>Check ID</strong></TableCell>
-                    <TableCell><strong>Check Type</strong></TableCell>
-                    <TableCell><strong>Subject & ID</strong></TableCell>
-                    <TableCell><strong>Method / Purpose</strong></TableCell>
-                    <TableCell><strong>Result</strong></TableCell>
-                    <TableCell><strong>Masked Details</strong></TableCell>
-                    <TableCell><strong>Evidence Ref</strong></TableCell>
-                    <TableCell><strong>Performed At</strong></TableCell>
+                    <TableCell>
+                      <strong>Check ID</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Check Type</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Subject & ID</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Method / Purpose</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Result</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Masked Details</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Evidence Ref</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Performed At</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {listData.data.map((row) => (
                     <TableRow key={row.id} hover>
-                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                        {row.id}
-                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{row.id}</TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1} alignItems="center">
                           <span>{CHECK_TYPE_ICONS[row.checkType] || '📄'}</span>
@@ -437,7 +454,11 @@ export function VerificationPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', display: 'block' }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontFamily: 'monospace', display: 'block' }}
+                        >
                           {row.evidenceRef}
                         </Typography>
                       </TableCell>
@@ -446,7 +467,10 @@ export function VerificationPage() {
                           {new Date(row.performedAt).toLocaleDateString()}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {new Date(row.performedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(row.performedAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -473,7 +497,9 @@ export function VerificationPage() {
             <Stack spacing={3}>
               {/* Statutory Notice */}
               <Alert severity="info" sx={{ bgcolor: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                <strong>Legal Guard (ADR-4D-04 & Aadhaar Act):</strong> Raw 12-digit Aadhaar numbers are strictly prohibited. Only masked identifier format (e.g. XXXXXXXX1234) and verified consent records are permitted.
+                <strong>Legal Guard (ADR-4D-04 & Aadhaar Act):</strong> Raw 12-digit Aadhaar numbers are
+                strictly prohibited. Only masked identifier format (e.g. XXXXXXXX1234) and verified consent
+                records are permitted.
               </Alert>
 
               {/* Section 1: Subject & Target */}
@@ -685,7 +711,11 @@ export function VerificationPage() {
             disabled={createMutation.isPending}
             sx={{ bgcolor: '#2563eb', fontWeight: 600, px: 3 }}
           >
-            {createMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Record Verification Check'}
+            {createMutation.isPending ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              'Record Verification Check'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

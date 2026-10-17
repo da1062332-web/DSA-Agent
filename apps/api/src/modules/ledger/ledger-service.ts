@@ -1,11 +1,5 @@
 // apps/api/src/modules/ledger/ledger-service.ts — MOD-LED Ledger Management
-import {
-  AppError,
-  type AuditPort,
-  type OutboxPort,
-  type RequestContext,
-  type Tx,
-} from '@dsa/contracts';
+import { AppError, type AuditPort, type OutboxPort, type RequestContext, type Tx } from '@dsa/contracts';
 import { requiresMfa } from '@dsa/kernel';
 import type {
   AccountBalanceResponse,
@@ -136,7 +130,11 @@ export class LedgerService {
 
     // 2. Check Idempotency Key
     if (input.idempotencyKey) {
-      const existing = await this.deps.repository.findJournalByIdempotencyKey(tx, tenantId, input.idempotencyKey);
+      const existing = await this.deps.repository.findJournalByIdempotencyKey(
+        tx,
+        tenantId,
+        input.idempotencyKey,
+      );
       if (existing) {
         const entries = await this.deps.repository.listEntriesForJournal(tx, tenantId, existing.id);
         return {
@@ -376,7 +374,11 @@ export class LedgerService {
     period: string,
     input: CloseLedgerPeriodInput,
   ): Promise<PeriodCloseResponse> {
-    this.assertPermission(ctx, 'finance.period_close', 'finance.period_close required to close ledger period');
+    this.assertPermission(
+      ctx,
+      'finance.period_close',
+      'finance.period_close required to close ledger period',
+    );
     const tenantId = ctx.principal.tenantId;
 
     if (requiresMfa(ctx.principal)) {
@@ -453,7 +455,12 @@ export class LedgerService {
     }
 
     let balance = 0;
-    if (account.type === 'ASSET' || account.type === 'EXPENSE' || account.type === 'SUSPENSE' || account.type === 'TAX_RECEIVABLE') {
+    if (
+      account.type === 'ASSET' ||
+      account.type === 'EXPENSE' ||
+      account.type === 'SUSPENSE' ||
+      account.type === 'TAX_RECEIVABLE'
+    ) {
       balance = debitTotal - creditTotal;
     } else {
       balance = creditTotal - debitTotal;
@@ -482,7 +489,11 @@ export class LedgerService {
     this.assertPermission(ctx, 'finance.view', 'finance.view required to view statements');
     const tenantId = ctx.principal.tenantId;
 
-    if (ctx.principal.kind === 'USER' && (ctx.principal as any).connectorId && (ctx.principal as any).connectorId !== connectorId) {
+    if (
+      ctx.principal.kind === 'USER' &&
+      (ctx.principal as any).connectorId &&
+      (ctx.principal as any).connectorId !== connectorId
+    ) {
       throw AppError.of('FORBIDDEN', 'Access denied: connectors may view only their own ledger lines');
     }
 
@@ -504,7 +515,7 @@ export class LedgerService {
       const c = r.entry_type === 'CREDIT' ? parseFloat(r.amount) : 0;
       totalDebits += d;
       totalCredits += c;
-      running += (c - d);
+      running += c - d;
       return {
         date: r.created_at.toISOString().split('T')[0]!,
         journalNumber: r.journal_number,
@@ -531,7 +542,11 @@ export class LedgerService {
     };
   }
 
-  async createExport(tx: Tx, ctx: RequestContext, input: CreateLedgerExportInput): Promise<LedgerExportResponse> {
+  async createExport(
+    tx: Tx,
+    ctx: RequestContext,
+    input: CreateLedgerExportInput,
+  ): Promise<LedgerExportResponse> {
     this.assertPermission(ctx, 'finance.view', 'finance.view required');
     this.assertPermission(ctx, 'export.run', 'export.run required to run ledger exports');
     const tenantId = ctx.principal.tenantId;
@@ -566,7 +581,13 @@ export class LedgerService {
     tx: Tx,
     ctx: RequestContext,
     period?: string,
-  ): Promise<{ period?: string; totalDebit: string; totalCredit: string; variance: string; isBalanced: boolean }> {
+  ): Promise<{
+    period?: string;
+    totalDebit: string;
+    totalCredit: string;
+    variance: string;
+    isBalanced: boolean;
+  }> {
     this.assertPermission(ctx, 'finance.view', 'finance.view required to view trial balance');
     const tenantId = ctx.principal.tenantId;
     const res = await this.deps.repository.calculateTrialBalance(tx, tenantId, period);

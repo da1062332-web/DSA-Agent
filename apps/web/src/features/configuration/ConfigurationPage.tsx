@@ -31,13 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import {
-  createBranch,
-  fetchBranches,
-  fetchTenantConfig,
-  updateBranch,
-  updateTenantConfig,
-} from './api';
+import { createBranch, fetchBranches, fetchTenantConfig, updateBranch, updateTenantConfig } from './api';
 import type {
   BranchConfig,
   CreateBranchInput,
@@ -88,10 +82,7 @@ export function ConfigurationPage() {
       setLoading(true);
       setError(null);
 
-      const [cfgRes, branchRes] = await Promise.all([
-        fetchTenantConfig(),
-        fetchBranches(),
-      ]);
+      const [cfgRes, branchRes] = await Promise.all([fetchTenantConfig(), fetchBranches()]);
 
       setConfig(cfgRes.data);
       setConfigEtag(cfgRes.etag);
@@ -176,7 +167,9 @@ export function ConfigurationPage() {
       // Validate inputs
       if (!editingBranch) {
         if (!/^[A-Z0-9_-]{2,20}$/.test(branchFormCode.trim())) {
-          setBranchModalError('Branch code must be 2-20 uppercase letters, numbers, hyphens, or underscores (e.g. MUM01).');
+          setBranchModalError(
+            'Branch code must be 2-20 uppercase letters, numbers, hyphens, or underscores (e.g. MUM01).',
+          );
           setSavingBranch(false);
           return;
         }
@@ -279,10 +272,7 @@ export function ConfigurationPage() {
         <Grid container spacing={3}>
           <Grid item xs={12} md={5}>
             <Card sx={{ height: '100%', borderRadius: 2 }}>
-              <CardHeader
-                title="Tenant Profile"
-                subheader="Multi-tenant registration & identity"
-              />
+              <CardHeader title="Tenant Profile" subheader="Multi-tenant registration & identity" />
               <Divider />
               <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
@@ -495,9 +485,7 @@ export function ConfigurationPage() {
                 ) : (
                   branches.map((b) => (
                     <TableRow key={b.id} hover>
-                      <TableCell sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
-                        {b.code}
-                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{b.code}</TableCell>
                       <TableCell>{b.name}</TableCell>
                       <TableCell>{b.pincode || '—'}</TableCell>
                       <TableCell>{b.timezone}</TableCell>
@@ -509,11 +497,7 @@ export function ConfigurationPage() {
                         />
                       </TableCell>
                       <TableCell align="right">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleOpenEditBranch(b)}
-                        >
+                        <Button variant="outlined" size="small" onClick={() => handleOpenEditBranch(b)}>
                           Edit
                         </Button>
                       </TableCell>
@@ -538,13 +522,16 @@ export function ConfigurationPage() {
               <Divider />
               <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="body2">
-                  <strong>Tenant Partitioning:</strong> All tables enforce PostgreSQL Row-Level Security (RLS) with fail-closed tenant scoping (<code>app_tenant()</code>).
+                  <strong>Tenant Partitioning:</strong> All tables enforce PostgreSQL Row-Level Security (RLS)
+                  with fail-closed tenant scoping (<code>app_tenant()</code>).
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Data Residency:</strong> Tenant data is strictly stored in Region <code>IN</code> (India), compliant with RBI Digital Lending guidelines.
+                  <strong>Data Residency:</strong> Tenant data is strictly stored in Region <code>IN</code>{' '}
+                  (India), compliant with RBI Digital Lending guidelines.
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Cryptographic Tokens:</strong> Sensitive credentials, IDP secrets, and bearer tokens are never returned across API interfaces or stored on browser clients.
+                  <strong>Cryptographic Tokens:</strong> Sensitive credentials, IDP secrets, and bearer tokens
+                  are never returned across API interfaces or stored on browser clients.
                 </Typography>
               </CardContent>
             </Card>
@@ -558,13 +545,17 @@ export function ConfigurationPage() {
               <Divider />
               <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="body2">
-                  <strong>Optimistic Concurrency:</strong> Changes use version locks (<code>lock_version</code> with <code>If-Match</code> headers) to prevent concurrent write collisions.
+                  <strong>Optimistic Concurrency:</strong> Changes use version locks (
+                  <code>lock_version</code> with <code>If-Match</code> headers) to prevent concurrent write
+                  collisions.
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Access Segregation:</strong> Configuration modifications are strictly guarded by the <code>config.manage</code> role grant.
+                  <strong>Access Segregation:</strong> Configuration modifications are strictly guarded by the{' '}
+                  <code>config.manage</code> role grant.
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Audit Log:</strong> Every profile update records <code>updated_by</code> and <code>updated_at</code> timestamps in the immutable schema.
+                  <strong>Audit Log:</strong> Every profile update records <code>updated_by</code> and{' '}
+                  <code>updated_at</code> timestamps in the immutable schema.
                 </Typography>
               </CardContent>
             </Card>
@@ -574,9 +565,7 @@ export function ConfigurationPage() {
 
       {/* Branch Modal (Add / Edit) */}
       <Dialog open={branchModalOpen} onClose={() => setBranchModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingBranch ? `Edit Branch (${editingBranch.code})` : 'Add New Branch'}
-        </DialogTitle>
+        <DialogTitle>{editingBranch ? `Edit Branch (${editingBranch.code})` : 'Add New Branch'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           {branchModalError && (
             <Alert severity="error" onClose={() => setBranchModalError(null)}>
@@ -637,12 +626,7 @@ export function ConfigurationPage() {
           <Button onClick={() => setBranchModalOpen(false)} disabled={savingBranch}>
             Cancel
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSaveBranch}
-            disabled={savingBranch}
-          >
+          <Button variant="contained" color="primary" onClick={handleSaveBranch} disabled={savingBranch}>
             {savingBranch ? 'Saving...' : editingBranch ? 'Save Changes' : 'Create Branch'}
           </Button>
         </DialogActions>

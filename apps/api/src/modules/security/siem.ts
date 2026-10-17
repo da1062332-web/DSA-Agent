@@ -76,7 +76,10 @@ export class BufferedSiemClient implements SiemPort {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`SIEM request timed out after ${this.timeoutMs}ms`)), this.timeoutMs),
+          setTimeout(
+            () => reject(new Error(`SIEM request timed out after ${this.timeoutMs}ms`)),
+            this.timeoutMs,
+          ),
         );
         const result = await Promise.race([this.transport(event), timeoutPromise]);
         return {

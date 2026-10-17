@@ -27,11 +27,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
-import type {
-  PublicUploadLinkStatus,
-  VerifyUploadOtpResponse,
-  UploadFileResponse,
-} from '@dsa/contracts';
+import type { PublicUploadLinkStatus, VerifyUploadOtpResponse, UploadFileResponse } from '@dsa/contracts';
 
 export function PublicUploadPage() {
   const { token } = useParams<{ token: string }>();
@@ -67,7 +63,12 @@ export function PublicUploadPage() {
     }
     return [
       { checklistItemId: 'chk_pan_card', documentTypeCode: 'PAN_CARD', ordinal: 1, mandatory: true },
-      { checklistItemId: 'chk_bank_statement', documentTypeCode: 'BANK_STATEMENT', ordinal: 2, mandatory: true },
+      {
+        checklistItemId: 'chk_bank_statement',
+        documentTypeCode: 'BANK_STATEMENT',
+        ordinal: 2,
+        mandatory: true,
+      },
       { checklistItemId: 'chk_salary_slip', documentTypeCode: 'SALARY_SLIP', ordinal: 3, mandatory: false },
     ];
   }, [linkStatus?.requestedItems]);
@@ -75,7 +76,10 @@ export function PublicUploadPage() {
   // Set default selected checklist item when link status loads
   React.useEffect(() => {
     if (effectiveRequestedItems.length > 0) {
-      if (!selectedChecklistItemId || !effectiveRequestedItems.some((i) => i.checklistItemId === selectedChecklistItemId)) {
+      if (
+        !selectedChecklistItemId ||
+        !effectiveRequestedItems.some((i) => i.checklistItemId === selectedChecklistItemId)
+      ) {
         const first = effectiveRequestedItems[0];
         if (first) {
           setSelectedChecklistItemId(first.checklistItemId);
@@ -109,13 +113,7 @@ export function PublicUploadPage() {
   // 3. Upload File Mutation
   const uploadFileMutation = useMutation({
     meta: { successMessage: 'File uploaded.' },
-    mutationFn: async ({
-      file,
-      checklistItemId,
-    }: {
-      file: File;
-      checklistItemId: string;
-    }) => {
+    mutationFn: async ({ file, checklistItemId }: { file: File; checklistItemId: string }) => {
       // Read file to Base64
       const contentBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -248,8 +246,7 @@ export function PublicUploadPage() {
               Upload Link Expired
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              This document upload link expired on{' '}
-              {new Date(linkStatus.expiresAt).toLocaleString()}.
+              This document upload link expired on {new Date(linkStatus.expiresAt).toLocaleString()}.
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Please request a fresh upload link from your loan advisor.
@@ -270,7 +267,8 @@ export function PublicUploadPage() {
               Link Temporarily Locked
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              For your security, this upload link has been locked after multiple unsuccessful verification attempts.
+              For your security, this upload link has been locked after multiple unsuccessful verification
+              attempts.
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Please contact your loan advisor to unlock or reissue your upload link.
@@ -358,7 +356,8 @@ export function PublicUploadPage() {
               Two-Step Identity Verification
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              To safeguard your private financial documents, please enter the one-time verification code (OTP) sent to your registered contact:
+              To safeguard your private financial documents, please enter the one-time verification code (OTP)
+              sent to your registered contact:
             </Typography>
 
             <Box
@@ -389,7 +388,10 @@ export function PublicUploadPage() {
                 placeholder="123456"
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputProps={{ maxLength: 6, style: { fontSize: '1.25rem', letterSpacing: '0.25rem', textAlign: 'center' } }}
+                inputProps={{
+                  maxLength: 6,
+                  style: { fontSize: '1.25rem', letterSpacing: '0.25rem', textAlign: 'center' },
+                }}
                 autoFocus
                 sx={{ mb: 3 }}
               />
@@ -407,7 +409,11 @@ export function PublicUploadPage() {
                   '&:hover': { bgcolor: '#1d4ed8' },
                 }}
               >
-                {verifyOtpMutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Verify Code & Access'}
+                {verifyOtpMutation.isPending ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Verify Code & Access'
+                )}
               </Button>
             </Box>
 
@@ -425,7 +431,16 @@ export function PublicUploadPage() {
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden' }}>
-        <Box sx={{ bgcolor: '#0f172a', color: 'white', p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box
+          sx={{
+            bgcolor: '#0f172a',
+            color: 'white',
+            p: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Box>
             <Typography variant="h5" fontWeight={700}>
               Document Upload Portal
@@ -488,15 +503,36 @@ export function PublicUploadPage() {
                             {item.documentTypeCode.replace(/_/g, ' ')}
                           </Typography>
                           {item.mandatory ? (
-                            <Chip label="Required" size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                            <Chip
+                              label="Required"
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: 11 }}
+                            />
                           ) : (
-                            <Chip label="Optional" size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                            <Chip
+                              label="Optional"
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: 11 }}
+                            />
                           )}
                           {isUploaded && (
-                            <Chip label="Uploaded" size="small" color="success" sx={{ height: 20, fontSize: 11 }} />
+                            <Chip
+                              label="Uploaded"
+                              size="small"
+                              color="success"
+                              sx={{ height: 20, fontSize: 11 }}
+                            />
                           )}
                           {isSelected && (
-                            <Chip label="Selected for Upload" size="small" color="primary" sx={{ height: 20, fontSize: 11, fontWeight: 700 }} />
+                            <Chip
+                              label="Selected for Upload"
+                              size="small"
+                              color="primary"
+                              sx={{ height: 20, fontSize: 11, fontWeight: 700 }}
+                            />
                           )}
                         </Stack>
                       }
@@ -537,7 +573,8 @@ export function PublicUploadPage() {
                   >
                     {effectiveRequestedItems.map((item, idx) => (
                       <MenuItem key={idx} value={item.checklistItemId}>
-                        {item.documentTypeCode.replace(/_/g, ' ')} {item.mandatory ? '(Required)' : '(Optional)'}
+                        {item.documentTypeCode.replace(/_/g, ' ')}{' '}
+                        {item.mandatory ? '(Required)' : '(Optional)'}
                       </MenuItem>
                     ))}
                   </Select>

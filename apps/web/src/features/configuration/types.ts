@@ -1,11 +1,5 @@
 export type OrganisationConstitution =
-  | 'PROPRIETORSHIP'
-  | 'PARTNERSHIP'
-  | 'LLP'
-  | 'PVT_LTD'
-  | 'PUBLIC_LTD'
-  | 'TRUST'
-  | 'OTHER';
+  'PROPRIETORSHIP' | 'PARTNERSHIP' | 'LLP' | 'PVT_LTD' | 'PUBLIC_LTD' | 'TRUST' | 'OTHER';
 
 export type TenantType = 'DSA_ORG' | 'NBFC_DISTRIBUTION';
 export type RoutingMode = 'ROUND_ROBIN' | 'MANUAL';

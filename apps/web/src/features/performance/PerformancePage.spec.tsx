@@ -197,4 +197,3 @@ describe('CMP-PERF.03.1 — Performance Leaderboard (SUB-PERF.03)', () => {
     expect(html).toContain('INSUFFICIENT_DATA');
   });
 });
-

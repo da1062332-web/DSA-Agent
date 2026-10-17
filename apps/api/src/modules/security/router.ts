@@ -92,12 +92,7 @@ export function createRouter(deps: ApiDeps): Router {
       }
 
       const result = await service.createIncident(ctx, parsed.data, idemKey);
-      sendResource(
-        res,
-        result.status,
-        { ...result.body, version: result.body.lockVersion },
-        result.replayed,
-      );
+      sendResource(res, result.status, { ...result.body, version: result.body.lockVersion }, result.replayed);
     } catch (err) {
       next(err);
     }

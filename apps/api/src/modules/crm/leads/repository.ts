@@ -302,10 +302,7 @@ export class SqlLeadRepository implements LeadRepository {
     return result.rows;
   }
 
-  async listLeads(
-    tx: Tx,
-    params: ListLeadsParams,
-  ): Promise<{ leads: LeadRow[]; nextCursor: string | null }> {
+  async listLeads(tx: Tx, params: ListLeadsParams): Promise<{ leads: LeadRow[]; nextCursor: string | null }> {
     // Decoding cursor
     let cursorCreatedAt: string | null = null;
     let cursorId: string | null = null;
@@ -658,7 +655,11 @@ export class InMemoryLeadRepository implements LeadRepository {
     if (!params.isTenantWide) {
       all = all.filter((l) => {
         if (params.allowedBranchIds && params.allowedBranchIds.includes(l.branch_id)) return true;
-        if (params.allowedTeamUserIds && l.owner_user_id && params.allowedTeamUserIds.includes(l.owner_user_id))
+        if (
+          params.allowedTeamUserIds &&
+          l.owner_user_id &&
+          params.allowedTeamUserIds.includes(l.owner_user_id)
+        )
           return true;
         if (params.allowedOwnUserId && l.owner_user_id === params.allowedOwnUserId) return true;
         if (params.allowedQueueIds && l.owner_queue_id && params.allowedQueueIds.includes(l.owner_queue_id))
@@ -693,9 +694,9 @@ export class InMemoryLeadRepository implements LeadRepository {
     let nextCursor: string | null = null;
     if (hasMore && leads.length > 0) {
       const last = leads[leads.length - 1]!;
-      nextCursor = Buffer.from(
-        JSON.stringify({ k: last.created_at.toISOString(), id: last.id }),
-      ).toString('base64url');
+      nextCursor = Buffer.from(JSON.stringify({ k: last.created_at.toISOString(), id: last.id })).toString(
+        'base64url',
+      );
     }
 
     return { leads, nextCursor };

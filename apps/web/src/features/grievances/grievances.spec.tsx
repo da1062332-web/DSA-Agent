@@ -14,9 +14,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/') {
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -36,6 +34,4 @@ describe('Grievances Frontend Components Rendering', () => {
     expect(html).toContain('TASK-427');
     expect(html).toContain('Generate Acknowledgement Reference (Preview)');
   });
-
 });
-

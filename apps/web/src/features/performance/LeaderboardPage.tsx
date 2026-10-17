@@ -63,8 +63,7 @@ export function LeaderboardPage() {
     period: '2026-10',
   });
 
-  const { data: leaderboard, isLoading, isError, error } =
-    useLeaderboardDashboard(filters);
+  const { data: leaderboard, isLoading, isError, error } = useLeaderboardDashboard(filters);
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
@@ -103,20 +102,15 @@ export function LeaderboardPage() {
       </Box>
 
       {/* Governance & Business-Rule Blocker Banner */}
-      <Alert
-        severity="warning"
-        icon={<WarningAmberIcon fontSize="large" />}
-        sx={{ mb: 4, borderRadius: 2 }}
-      >
+      <Alert severity="warning" icon={<WarningAmberIcon fontSize="large" />} sx={{ mb: 4, borderRadius: 2 }}>
         <AlertTitle sx={{ fontWeight: 'bold', fontSize: '1.05rem' }}>
           Competitive Ranking Calculation Blocked Pending Business-Rule Sign-Off
         </AlertTitle>
         <Typography variant="body2" sx={{ mb: 1 }}>
-          In accordance with the Master Implementation Prompt and NBFC domain governance,
-          leaderboard scoring formulas, weights, and quality guardrails must not be invented.
-          Participant operational volumes are tracked below, but competitive scores and ordinal
-          ranks remain blocked until product leadership approves the following 9 governance
-          decisions:
+          In accordance with the Master Implementation Prompt and NBFC domain governance, leaderboard scoring
+          formulas, weights, and quality guardrails must not be invented. Participant operational volumes are
+          tracked below, but competitive scores and ordinal ranks remain blocked until product leadership
+          approves the following 9 governance decisions:
         </Typography>
 
         <List dense sx={{ pl: 1 }}>
@@ -126,19 +120,13 @@ export function LeaderboardPage() {
                 <ListItemIcon sx={{ minWidth: 28 }}>
                   <ErrorOutlineIcon color="warning" fontSize="small" />
                 </ListItemIcon>
-                <ListItemText
-                  primary={<Typography variant="caption">{decision}</Typography>}
-                />
+                <ListItemText primary={<Typography variant="caption">{decision}</Typography>} />
               </ListItem>
             ))
           ) : (
             <ListItem disableGutters>
               <ListItemText
-                primary={
-                  <Typography variant="caption">
-                    Loading unresolved business decisions...
-                  </Typography>
-                }
+                primary={<Typography variant="caption">Loading unresolved business decisions...</Typography>}
               />
             </ListItem>
           )}
@@ -169,12 +157,7 @@ export function LeaderboardPage() {
                 Operational records for eligible loan officers during period {leaderboard.period}.
               </Typography>
             </Box>
-            <Chip
-              label="Ranking Status: Blocked"
-              color="warning"
-              variant="outlined"
-              size="small"
-            />
+            <Chip label="Ranking Status: Blocked" color="warning" variant="outlined" size="small" />
           </Box>
 
           <TableContainer>
@@ -225,9 +208,7 @@ export function LeaderboardPage() {
                         />
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{entry.entityName}</TableCell>
-                      <TableCell color="text.secondary">
-                        {entry.branchName || 'Unassigned'}
-                      </TableCell>
+                      <TableCell color="text.secondary">{entry.branchName || 'Unassigned'}</TableCell>
                       <TableCell align="right">{entry.volume}</TableCell>
                       <TableCell align="right">{entry.sanctionCount}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 600 }}>
@@ -235,11 +216,7 @@ export function LeaderboardPage() {
                       </TableCell>
                       <TableCell align="right">{entry.conversionRate}%</TableCell>
                       <TableCell align="center">
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontStyle: 'italic' }}
-                        >
+                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
                           — (Pending Formula)
                         </Typography>
                       </TableCell>

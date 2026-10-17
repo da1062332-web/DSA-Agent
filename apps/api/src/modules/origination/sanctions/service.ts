@@ -167,6 +167,28 @@ export class SanctionService {
     });
   }
 
+  async listAllSanctions(
+    ctx: RequestContext,
+    filter?: { status?: string; limit?: number },
+  ): Promise<SanctionDto[]> {
+    const tenantId = ctx.principal.tenantId;
+    return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+      const list = await this.repo.listAllSanctions(tx, tenantId, filter);
+      return list.map(toSanctionDto);
+    });
+  }
+
+  async listAllTranches(
+    ctx: RequestContext,
+    filter?: { status?: string; limit?: number },
+  ): Promise<DisbursementTrancheDto[]> {
+    const tenantId = ctx.principal.tenantId;
+    return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+      const list = await this.repo.listAllTranches(tx, tenantId, filter);
+      return list.map(toTrancheDto);
+    });
+  }
+
   async cancelSanction(
     ctx: RequestContext,
     sanctionId: string,

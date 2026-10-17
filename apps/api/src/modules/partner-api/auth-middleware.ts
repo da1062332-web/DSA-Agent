@@ -1,10 +1,6 @@
 // apps/api/src/modules/partner-api/auth-middleware.ts — owner: Akash (Module 37: API Development)
 import crypto from 'node:crypto';
-import {
-  AppError,
-  type PermissionCode,
-  type Principal,
-} from '@dsa/contracts';
+import { AppError, type PermissionCode, type Principal } from '@dsa/contracts';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { ApiDeps } from '../types';
 
@@ -48,14 +44,22 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
 interface KyselyDbLike {
   selectFrom(table: string): {
     select(fields: string[]): {
-      where(col: string, op: string, val: string): {
+      where(
+        col: string,
+        op: string,
+        val: string,
+      ): {
         executeTakeFirst(): Promise<Record<string, unknown> | undefined>;
       };
     };
   };
   updateTable(table: string): {
     set(values: Record<string, unknown>): {
-      where(col: string, op: string, val: string): {
+      where(
+        col: string,
+        op: string,
+        val: string,
+      ): {
         execute(): Promise<unknown>;
       };
     };
@@ -101,11 +105,7 @@ export class DatabaseApiKeyStore implements ApiKeyStore {
     try {
       const db = (this.deps as unknown as { db?: KyselyDbLike }).db;
       if (!db) return;
-      await db
-        .updateTable('app.api_key')
-        .set({ last_used_at: new Date() })
-        .where('id', '=', id)
-        .execute();
+      await db.updateTable('app.api_key').set({ last_used_at: new Date() }).where('id', '=', id).execute();
     } catch {
       // Non-critical audit touch error, safely ignored
     }
@@ -135,7 +135,10 @@ export function createPartnerAuthMiddleware(apiKeyStore: ApiKeyStore): RequestHa
       }
 
       if (!rawKey) {
-        throw AppError.of('UNAUTHENTICATED', 'Missing API Key. Provide via X-API-Key header or Bearer token.');
+        throw AppError.of(
+          'UNAUTHENTICATED',
+          'Missing API Key. Provide via X-API-Key header or Bearer token.',
+        );
       }
 
       // 3. Compute hash and lookup

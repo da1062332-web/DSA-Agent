@@ -55,6 +55,20 @@ export const sanctionsApi = {
     return request<{ data: Sanction[] }>(`/v1/lender-cases/${lenderCaseId}/sanctions`);
   },
 
+  async listAllSanctions(params?: { status?: string }): Promise<{ data: Sanction[] }> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    const qStr = query.toString();
+    return request<{ data: Sanction[] }>(`/v1/sanctions${qStr ? `?${qStr}` : ''}`);
+  },
+
+  async listAllTranches(params?: { status?: string }): Promise<{ data: DisbursementTranche[] }> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    const qStr = query.toString();
+    return request<{ data: DisbursementTranche[] }>(`/v1/disbursements${qStr ? `?${qStr}` : ''}`);
+  },
+
   async getSanction(id: string): Promise<Sanction> {
     return request<Sanction>(`/v1/sanctions/${id}`);
   },

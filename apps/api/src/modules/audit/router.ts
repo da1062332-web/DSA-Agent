@@ -130,13 +130,7 @@ export function createRouter(deps: ApiDeps): Router {
     const packId = deps.ids.next('evp');
 
     const pack = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const row = await createEvidencePackRow(
-        tx,
-        packId,
-        ctx.principal.tenantId,
-        ctx.principal.id,
-        body,
-      );
+      const row = await createEvidencePackRow(tx, packId, ctx.principal.tenantId, ctx.principal.id, body);
 
       // Record audit event for evidence export request in the same transaction
       await deps.audit.record(tx, ctx, {
@@ -235,10 +229,7 @@ export function createRouter(deps: ApiDeps): Router {
         throw AppError.of('NOT_FOUND', 'Evidence pack not found.');
       }
       if (p.status !== 'COMPLETED') {
-        throw AppError.of(
-          'INVALID_STATE',
-          `Evidence pack is not ready for download (status: ${p.status}).`,
-        );
+        throw AppError.of('INVALID_STATE', `Evidence pack is not ready for download (status: ${p.status}).`);
       }
       if (p.expires_at && new Date(p.expires_at).getTime() < Date.now()) {
         throw AppError.of('INVALID_STATE', 'Evidence pack download link has expired.');

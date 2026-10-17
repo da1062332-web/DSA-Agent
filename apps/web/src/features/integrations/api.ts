@@ -10,7 +10,10 @@ import type {
 } from '@dsa/contracts';
 import { apiFetch } from '../../api/client';
 
-export async function fetchCapabilities(): Promise<{ data: CapabilityDescriptor[]; meta: { total: number } }> {
+export async function fetchCapabilities(): Promise<{
+  data: CapabilityDescriptor[];
+  meta: { total: number };
+}> {
   return apiFetch<{ data: CapabilityDescriptor[]; meta: { total: number } }>('/v1/integrations/capabilities');
 }
 
@@ -22,10 +25,7 @@ export async function fetchIntegrations(
   });
 }
 
-export async function fetchIntegration(
-  provider: string,
-  capability: string,
-): Promise<IntegrationConnection> {
+export async function fetchIntegration(provider: string, capability: string): Promise<IntegrationConnection> {
   return apiFetch<IntegrationConnection>(`/v1/integrations/${encodeURIComponent(provider)}`, {
     query: { capability },
   });
@@ -46,10 +46,7 @@ export async function configureIntegration(
   });
 }
 
-export async function pingIntegration(
-  provider: string,
-  capability: string,
-): Promise<HealthCheckResult> {
+export async function pingIntegration(provider: string, capability: string): Promise<HealthCheckResult> {
   return apiFetch<HealthCheckResult>(`/v1/integrations/${encodeURIComponent(provider)}/ping`, {
     method: 'POST',
     body: { capability },

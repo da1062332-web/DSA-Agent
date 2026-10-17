@@ -144,7 +144,14 @@ export function RolesListPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }} flexWrap="wrap" gap={2}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 3 }}
+        flexWrap="wrap"
+        gap={2}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Access Control & Roles
@@ -236,9 +243,7 @@ export function RolesListPage() {
                     <TableCell>
                       <Tooltip
                         title={
-                          role.permissions.length > 0
-                            ? role.permissions.join(', ')
-                            : 'No permissions granted'
+                          role.permissions.length > 0 ? role.permissions.join(', ') : 'No permissions granted'
                         }
                       >
                         <Chip
@@ -250,7 +255,12 @@ export function RolesListPage() {
                       </Tooltip>
                     </TableCell>
                     <TableCell>
-                      <Chip label={`v${role.version}`} size="small" variant="filled" sx={{ fontSize: '0.75rem' }} />
+                      <Chip
+                        label={`v${role.version}`}
+                        size="small"
+                        variant="filled"
+                        sx={{ fontSize: '0.75rem' }}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -361,8 +371,8 @@ export function RolesListPage() {
         <DialogTitle>Delete Role</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to permanently delete custom role{' '}
-            <strong>{deleteRoleTarget?.name}</strong> ({deleteRoleTarget?.code})?
+            Are you sure you want to permanently delete custom role <strong>{deleteRoleTarget?.name}</strong>{' '}
+            ({deleteRoleTarget?.code})?
             <br />
             <br />
             Note: Roles currently assigned to any active user cannot be deleted.

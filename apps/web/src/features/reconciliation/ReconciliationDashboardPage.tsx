@@ -38,6 +38,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import {
   approveAdjustment,
+  autoIngestBankFeed,
   createDispute,
   fetchAdjustments,
   fetchDisputes,
@@ -63,7 +64,9 @@ export function ReconciliationDashboardPage() {
   const { data: me, isLoading: meLoading } = useMe();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(
+    null,
+  );
 
   // Data states
   const [statements, setStatements] = useState<LenderStatement[]>([]);
@@ -84,15 +87,21 @@ export function ReconciliationDashboardPage() {
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
 
   // Import Statement Form
+  const [importFormat, setImportFormat] = useState<'MT940' | 'CSV'>('MT940');
   const [importLenderId, setImportLenderId] = useState('lnd_hdfc_bank');
   const [importPeriod, setImportPeriod] = useState('2026-09');
   const [importBatchId, setImportBatchId] = useState(`batch_${Date.now()}`);
   const [importCsvText, setImportCsvText] = useState(
     'LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15\nLN902149,Sunita Patel,2500000,37500,3750,2026-09-16\nLN902150,Amitabh Bachchan,5000000,75000,7500,2026-09-18',
   );
+  const [importMt940Text, setImportMt940Text] = useState(
+    `:20:STMT2026093001\n:25:50200012345678\n:28C:1/1\n:60F:C260901INR5000000,00\n:61:2609150915CR22500,00NTRFNONREF//LN902148\n:86:/COMM/Rajesh Kumar/LN902148/DISB/1500000/TDS/2250\n:61:2609160916CR37500,00NTRFNONREF//LN902149\n:86:/COMM/Sunita Patel/LN902149/DISB/2500000/TDS/3750\n:61:2609180918CR75000,00NTRFNONREF//LN902150\n:86:/COMM/Amitabh Bachchan/LN902150/DISB/5000000/TDS/7500\n:62F:C260930INR5135000,00`,
+  );
 
   // Resolve Exception Form
-  const [resolveStatus, setResolveStatus] = useState<'RESOLVED' | 'WRITTEN_OFF' | 'INVESTIGATING'>('RESOLVED');
+  const [resolveStatus, setResolveStatus] = useState<'RESOLVED' | 'WRITTEN_OFF' | 'INVESTIGATING'>(
+    'RESOLVED',
+  );
   const [resolveNote, setResolveNote] = useState('');
   const [resolveEvidence, setResolveEvidence] = useState('');
 
@@ -106,14 +115,18 @@ export function ReconciliationDashboardPage() {
   // Dispute Form
   const [dispPartyType, setDispPartyType] = useState<'LENDER' | 'CONNECTOR'>('LENDER');
   const [dispPartyId, setDispPartyId] = useState('lnd_hdfc_bank');
-  const [dispSubjectType, setDispSubjectType] = useState<'STATEMENT_LINE' | 'PAYOUT' | 'CALCULATION'>('STATEMENT_LINE');
+  const [dispSubjectType, setDispSubjectType] = useState<'STATEMENT_LINE' | 'PAYOUT' | 'CALCULATION'>(
+    'STATEMENT_LINE',
+  );
   const [dispSubjectId, setDispSubjectId] = useState('stl_example_01');
   const [dispReason, setDispReason] = useState('Lender commission statement short by ₹5,000 on tranche #2');
   const [dispHoldPayables, setDispHoldPayables] = useState('');
 
   // Update Dispute Form
   const [updateDispStatus, setUpdateDispStatus] = useState('RESOLVED');
-  const [updateDispResolution, setUpdateDispResolution] = useState('Dispute verified against lender confirmation email');
+  const [updateDispResolution, setUpdateDispResolution] = useState(
+    'Dispute verified against lender confirmation email',
+  );
   const [updateDispReleaseHolds, setUpdateDispReleaseHolds] = useState(true);
 
   // Bank Settlement Form
@@ -199,6 +212,31 @@ export function ReconciliationDashboardPage() {
     }
   };
 
+  const handleAutoIngestSubmit = async () => {
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const feedContent = importFormat === 'MT940' ? importMt940Text : importCsvText;
+      const res = await autoIngestBankFeed({
+        lenderId: importLenderId,
+        period: importPeriod,
+        format: importFormat,
+        rawFeedContent: feedContent,
+        filename: `${importLenderId}_${importPeriod}.${importFormat.toLowerCase()}`,
+      });
+      setFeedback({
+        type: 'success',
+        message: `${res.message} (Net Commission: ₹${res.netCommission.toLocaleString('en-IN')}, Hash: ${res.fileSha256.slice(0, 16)}...)`,
+      });
+      setImportDialogOpen(false);
+      loadData();
+    } catch (err) {
+      setFeedback({ type: 'error', message: errorText(err) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRunMatching = async (statementId: string) => {
     setLoading(true);
     setFeedback(null);
@@ -248,7 +286,10 @@ export function ReconciliationDashboardPage() {
         calculationId: adjCalcId || undefined,
         payableId: adjPayableId || undefined,
       });
-      setFeedback({ type: 'success', message: `Adjustment proposed! ID: ${res.id}. Awaiting SOD-07 approval.` });
+      setFeedback({
+        type: 'success',
+        message: `Adjustment proposed! ID: ${res.id}. Awaiting SOD-07 approval.`,
+      });
       setAdjustmentDialogOpen(false);
       loadData();
     } catch (err) {
@@ -314,7 +355,10 @@ export function ReconciliationDashboardPage() {
         resolution: updateDispResolution,
         releaseHolds: updateDispReleaseHolds,
       });
-      setFeedback({ type: 'success', message: `Dispute ${selectedDispute.id} updated with optimistic lock!` });
+      setFeedback({
+        type: 'success',
+        message: `Dispute ${selectedDispute.id} updated with optimistic lock!`,
+      });
       setUpdateDisputeDialogOpen(false);
       loadData();
     } catch (err) {
@@ -326,7 +370,10 @@ export function ReconciliationDashboardPage() {
 
   const handleBankReconcile = async () => {
     if (!bankPayoutId) {
-      setFeedback({ type: 'error', message: 'Payout Request ID required for bank settlement reconciliation.' });
+      setFeedback({
+        type: 'error',
+        message: 'Payout Request ID required for bank settlement reconciliation.',
+      });
       return;
     }
     setLoading(true);
@@ -365,7 +412,8 @@ export function ReconciliationDashboardPage() {
               Reconciliation Management
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Domain DOM-K Finance Squad · Statement Ingestion, Commission Matching, Variance Resolution & Settlement
+              Domain DOM-K Finance Squad · Statement Ingestion, Commission Matching, Variance Resolution &
+              Settlement
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
@@ -415,7 +463,9 @@ export function ReconciliationDashboardPage() {
       {/* KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
+          >
             <CardContent>
               <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
                 Lender Statements
@@ -430,7 +480,9 @@ export function ReconciliationDashboardPage() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
+          >
             <CardContent>
               <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
                 Open Exceptions
@@ -445,7 +497,9 @@ export function ReconciliationDashboardPage() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
+          >
             <CardContent>
               <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
                 Active Disputes
@@ -460,7 +514,9 @@ export function ReconciliationDashboardPage() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
+          >
             <CardContent>
               <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
                 Pending Adjustments
@@ -502,7 +558,12 @@ export function ReconciliationDashboardPage() {
               <Typography variant="h6" fontWeight={600}>
                 Imported Lender Commission Statements
               </Typography>
-              <Button size="small" onClick={loadData} disabled={loading} data-testid="rec.btn.refresh-statements">
+              <Button
+                size="small"
+                onClick={loadData}
+                disabled={loading}
+                data-testid="rec.btn.refresh-statements"
+              >
                 Refresh
               </Button>
             </Stack>
@@ -524,7 +585,8 @@ export function ReconciliationDashboardPage() {
                   {statements.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No lender commission statements imported yet. Click "+ Ingest Lender Statement" to import.
+                        No lender commission statements imported yet. Click "+ Ingest Lender Statement" to
+                        import.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -548,8 +610,8 @@ export function ReconciliationDashboardPage() {
                               stmt.status === 'MATCHED'
                                 ? 'success'
                                 : stmt.status === 'PARTIALLY_MATCHED'
-                                ? 'warning'
-                                : 'default'
+                                  ? 'warning'
+                                  : 'default'
                             }
                           />
                         </TableCell>
@@ -590,8 +652,9 @@ export function ReconciliationDashboardPage() {
         {activeTab === 1 && (
           <Box sx={{ p: 3 }}>
             <Alert severity="info" sx={{ mb: 3 }}>
-              <strong>SUB-REC.02 Active Match Protection:</strong> Only one active match is permitted per statement line.
-              Deterministic reconciliation matching runs through rules evaluation with audit trails.
+              <strong>SUB-REC.02 Active Match Protection:</strong> Only one active match is permitted per
+              statement line. Deterministic reconciliation matching runs through rules evaluation with audit
+              trails.
             </Alert>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Reconciliation Matches ({matches.length})
@@ -613,7 +676,8 @@ export function ReconciliationDashboardPage() {
                   {matches.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No matches generated in current session. Select a statement and click "Run Match" to trigger.
+                        No matches generated in current session. Select a statement and click "Run Match" to
+                        trigger.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -683,8 +747,8 @@ export function ReconciliationDashboardPage() {
                               exc.classification === 'SHORT_REMITTANCE'
                                 ? 'error'
                                 : exc.classification === 'OVER_REMITTANCE'
-                                ? 'info'
-                                : 'warning'
+                                  ? 'info'
+                                  : 'warning'
                             }
                           />
                         </TableCell>
@@ -733,8 +797,9 @@ export function ReconciliationDashboardPage() {
         {activeTab === 3 && (
           <Box sx={{ p: 3 }}>
             <Alert severity="warning" sx={{ mb: 3 }}>
-              <strong>SOD-07 Maker-Checker Enforcement:</strong> The creator of an adjustment proposal cannot approve it.
-              Approval requires <code>adjustment.approve</code> held by Commission Approver or DSA Owner.
+              <strong>SOD-07 Maker-Checker Enforcement:</strong> The creator of an adjustment proposal cannot
+              approve it. Approval requires <code>adjustment.approve</code> held by Commission Approver or DSA
+              Owner.
             </Alert>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Financial Adjustments ({adjustments.length})
@@ -774,12 +839,14 @@ export function ReconciliationDashboardPage() {
                                 adj.type === 'CLAWBACK'
                                   ? 'error'
                                   : adj.type === 'WRITE_OFF'
-                                  ? 'warning'
-                                  : 'primary'
+                                    ? 'warning'
+                                    : 'primary'
                               }
                             />
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>₹{Number(adj.amount).toLocaleString()}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>
+                            ₹{Number(adj.amount).toLocaleString()}
+                          </TableCell>
                           <TableCell sx={{ fontSize: 13 }}>{adj.reason}</TableCell>
                           <TableCell>
                             <Chip
@@ -789,12 +856,14 @@ export function ReconciliationDashboardPage() {
                                 adj.status === 'APPROVED'
                                   ? 'success'
                                   : adj.status === 'REJECTED'
-                                  ? 'error'
-                                  : 'default'
+                                    ? 'error'
+                                    : 'default'
                               }
                             />
                           </TableCell>
-                          <TableCell sx={{ fontSize: 12, fontFamily: 'monospace' }}>{adj.createdBy}</TableCell>
+                          <TableCell sx={{ fontSize: 12, fontFamily: 'monospace' }}>
+                            {adj.createdBy}
+                          </TableCell>
                           <TableCell sx={{ fontSize: 12, fontFamily: 'monospace' }}>
                             {adj.approvedBy || 'Pending'}
                           </TableCell>
@@ -848,8 +917,8 @@ export function ReconciliationDashboardPage() {
         {activeTab === 4 && (
           <Box sx={{ p: 3 }}>
             <Alert severity="info" sx={{ mb: 3 }}>
-              <strong>SUB-REC.04 Dispute Invariant:</strong> An open dispute places associated commission payables
-              atomically on <code>ON_HOLD</code> to prevent premature payment processing.
+              <strong>SUB-REC.04 Dispute Invariant:</strong> An open dispute places associated commission
+              payables atomically on <code>ON_HOLD</code> to prevent premature payment processing.
             </Alert>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Lender & Connector Disputes ({disputes.length})
@@ -899,8 +968,8 @@ export function ReconciliationDashboardPage() {
                               disp.status === 'RESOLVED'
                                 ? 'success'
                                 : disp.status === 'OPEN'
-                                ? 'warning'
-                                : 'default'
+                                  ? 'warning'
+                                  : 'default'
                             }
                           />
                         </TableCell>
@@ -940,7 +1009,8 @@ export function ReconciliationDashboardPage() {
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Reconciles recorded connector payout requests against imported bank settlement records.
-                    Verifies bank UTR references and settlement amounts, transitioning payout status to RECONCILED.
+                    Verifies bank UTR references and settlement amounts, transitioning payout status to
+                    RECONCILED.
                   </Typography>
                   <Stack spacing={3}>
                     <TextField
@@ -1006,16 +1076,33 @@ export function ReconciliationDashboardPage() {
 
       {/* MODAL 1: Ingest Lender Statement */}
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>Ingest Lender Commission Statement (SUB-REC.01)</DialogTitle>
+        <DialogTitle fontWeight={700}>
+          Automated Bank Statement Ingestion Engine (SUB-REC.01 / TASK-418)
+        </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Alert severity="info">
-              Imported statement lines will undergo S2 encryption and hashing. Customer names will be masked, and loan
-              accounts hashed with SHA-256 HMAC for privacy compliance.
+              Automated Bank Feed Parser: Supports standard SWIFT MT940 electronic statements and automated
+              CSV feeds. Statement lines undergo privacy protection: loan accounts are HMAC SHA-256 hashed and
+              customer names are masked.
             </Alert>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Feed Format</InputLabel>
+                  <Select
+                    value={importFormat}
+                    label="Feed Format"
+                    onChange={(e) => setImportFormat(e.target.value as 'MT940' | 'CSV')}
+                  >
+                    <MenuItem value="MT940">SWIFT MT940 Feed</MenuItem>
+                    <MenuItem value="CSV">Bank CSV Feed</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={3}>
                 <TextField
+                  size="small"
                   label="Lender ID"
                   value={importLenderId}
                   onChange={(e) => setImportLenderId(e.target.value)}
@@ -1023,18 +1110,20 @@ export function ReconciliationDashboardPage() {
                   required
                 />
               </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
                 <TextField
-                  label="Reporting Period (YYYY-MM)"
+                  size="small"
+                  label="Period (YYYY-MM)"
                   value={importPeriod}
                   onChange={(e) => setImportPeriod(e.target.value)}
                   fullWidth
                   required
                 />
               </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={3}>
                 <TextField
-                  label="Import Batch ID"
+                  size="small"
+                  label="Batch ID"
                   value={importBatchId}
                   onChange={(e) => setImportBatchId(e.target.value)}
                   fullWidth
@@ -1042,18 +1131,40 @@ export function ReconciliationDashboardPage() {
                 />
               </Grid>
             </Grid>
-            <Typography variant="subtitle2" fontWeight={600}>
-              Statement Lines (CSV Format: LoanAccount, CustomerName, DisbursedAmount, CommissionAmount, TaxDeducted, PaidOn)
-            </Typography>
-            <TextField
-              multiline
-              rows={6}
-              value={importCsvText}
-              onChange={(e) => setImportCsvText(e.target.value)}
-              fullWidth
-              placeholder="LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15"
-              data-testid="rec.input.csv"
-            />
+
+            {importFormat === 'MT940' ? (
+              <>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  SWIFT MT940 Raw Electronic Feed Content (:20:, :25:, :61: statement line, :86: narration)
+                </Typography>
+                <TextField
+                  multiline
+                  rows={8}
+                  value={importMt940Text}
+                  onChange={(e) => setImportMt940Text(e.target.value)}
+                  fullWidth
+                  data-testid="rec.input.mt940"
+                  sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                />
+              </>
+            ) : (
+              <>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Bank CSV Statement Feed (LoanAccount, CustomerName, DisbursedAmount, CommissionAmount,
+                  TaxDeducted, PaidOn)
+                </Typography>
+                <TextField
+                  multiline
+                  rows={8}
+                  value={importCsvText}
+                  onChange={(e) => setImportCsvText(e.target.value)}
+                  fullWidth
+                  placeholder="LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15"
+                  data-testid="rec.input.csv"
+                  sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
@@ -1061,11 +1172,11 @@ export function ReconciliationDashboardPage() {
           <Button
             variant="contained"
             color="primary"
-            onClick={handleImportSubmit}
+            onClick={handleAutoIngestSubmit}
             disabled={loading || !canReconcile}
-            data-testid="rec.btn.import-submit"
+            data-testid="rec.btn.auto-ingest"
           >
-            {loading ? <CircularProgress size={24} /> : 'Process & Ingest Statement'}
+            {loading ? <CircularProgress size={24} /> : `Run Automated ${importFormat} Ingestion`}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1125,7 +1236,12 @@ export function ReconciliationDashboardPage() {
       </Dialog>
 
       {/* MODAL 3: Propose Adjustment */}
-      <Dialog open={adjustmentDialogOpen} onClose={() => setAdjustmentDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={adjustmentDialogOpen}
+        onClose={() => setAdjustmentDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle fontWeight={700}>Propose Financial Adjustment (SUB-REC.03)</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
@@ -1277,12 +1393,18 @@ export function ReconciliationDashboardPage() {
       </Dialog>
 
       {/* MODAL 5: Update / Resolve Dispute */}
-      <Dialog open={updateDisputeDialogOpen} onClose={() => setUpdateDisputeDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={updateDisputeDialogOpen}
+        onClose={() => setUpdateDisputeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle fontWeight={700}>Resolve Dispute (Optimistic Concurrency)</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Typography variant="body2" color="text.secondary">
-              Dispute: <strong>{selectedDispute?.id}</strong> | Concurrency Lock Version: {selectedDispute?.lockVersion}
+              Dispute: <strong>{selectedDispute?.id}</strong> | Concurrency Lock Version:{' '}
+              {selectedDispute?.lockVersion}
             </Typography>
             <FormControl fullWidth>
               <InputLabel>New Status</InputLabel>

@@ -41,17 +41,8 @@ import {
   CheckCircleIcon,
   ShieldIcon as SecurityIcon,
 } from '../../shell/icons';
-import type {
-  ApiClientResponse,
-  CreateApiClientInput,
-} from '@dsa/contracts';
-import {
-  listApiClients,
-  createApiClient,
-  rotateClientSecret,
-  updateApiClient,
-  deleteApiClient,
-} from './api';
+import type { ApiClientResponse, CreateApiClientInput } from '@dsa/contracts';
+import { listApiClients, createApiClient, rotateClientSecret, updateApiClient, deleteApiClient } from './api';
 
 const AVAILABLE_SCOPES = [
   'partner.lead_ingest',
@@ -206,23 +197,15 @@ export function ApiManagementPage() {
             API Management & Credentials
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 36 (MOD-API): Manage partner API credentials, configure per-client rate limits, assign granular scopes, and rotate client secrets.
+            Module 36 (MOD-API): Manage partner API credentials, configure per-client rate limits, assign
+            granular scopes, and rotate client secrets.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={loadData}
-            disabled={loading}
-          >
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
             Refresh
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
             Register API Client
           </Button>
         </Box>
@@ -351,9 +334,7 @@ export function ApiManagementPage() {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {client.rateLimitRpm} RPM
-                      </Typography>
+                      <Typography variant="body2">{client.rateLimitRpm} RPM</Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -363,8 +344,8 @@ export function ApiManagementPage() {
                           client.status === 'ACTIVE'
                             ? 'success'
                             : client.status === 'SUSPENDED'
-                            ? 'warning'
-                            : 'error'
+                              ? 'warning'
+                              : 'error'
                         }
                       />
                     </TableCell>
@@ -432,7 +413,9 @@ export function ApiManagementPage() {
             <Select
               multiple
               value={scopes}
-              onChange={(e) => setScopes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              onChange={(e) =>
+                setScopes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)
+              }
               input={<OutlinedInput label="Authorized Scopes" />}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -491,18 +474,23 @@ export function ApiManagementPage() {
         </DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <Alert severity="warning">
-            <strong>Important:</strong> Copy the client secret now. For security reasons, this secret is hashed with SHA-256 and will <strong>never be shown again</strong>.
+            <strong>Important:</strong> Copy the client secret now. For security reasons, this secret is
+            hashed with SHA-256 and will <strong>never be shown again</strong>.
           </Alert>
 
           <Box>
-            <Typography variant="caption" color="text.secondary">Client ID</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Client ID
+            </Typography>
             <Typography variant="body1" fontFamily="monospace" fontWeight={700}>
               {revealedClientId}
             </Typography>
           </Box>
 
           <Box>
-            <Typography variant="caption" color="text.secondary">Client Secret (Unmasked)</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Client Secret (Unmasked)
+            </Typography>
             <Paper
               variant="outlined"
               sx={{

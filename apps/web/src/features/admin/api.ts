@@ -13,7 +13,7 @@ import { useToast } from '../../shell/toast';
 
 export interface ListPage<T> {
   data: T[];
-  meta: { nextCursor: string | null; limit: number };
+  meta?: { nextCursor: string | null; limit: number };
 }
 
 export interface Organisation {
@@ -108,10 +108,15 @@ export function useList<T>(path: string, filters: Filters = {}, limit = 50, enab
   return useInfiniteQuery({
     enabled,
     queryKey: [path, filters],
-    queryFn: ({ pageParam }) =>
-      apiFetch<ListPage<T>>(path, { query: { ...filters, limit, cursor: pageParam ?? undefined } }),
+    queryFn: async ({ pageParam }) => {
+      const res = await apiFetch<any>(path, { query: { ...filters, limit, cursor: pageParam ?? undefined } });
+      if (Array.isArray(res)) {
+        return { data: res, meta: { nextCursor: null, limit } } as ListPage<T>;
+      }
+      return (res ?? { data: [], meta: { nextCursor: null, limit } }) as ListPage<T>;
+    },
     initialPageParam: null as string | null,
-    getNextPageParam: (last) => last.meta.nextCursor,
+    getNextPageParam: (last) => last?.meta?.nextCursor ?? null,
   });
 }
 
@@ -119,7 +124,11 @@ export function useList<T>(path: string, filters: Filters = {}, limit = 50, enab
 export function useLookup<T>(path: string, filters: Filters = {}, enabled = true) {
   return useQuery({
     queryKey: [path, 'lookup', filters],
-    queryFn: () => apiFetch<ListPage<T>>(path, { query: { ...filters, limit: 200 } }).then((p) => p.data),
+    queryFn: () =>
+      apiFetch<ListPage<T> | T[]>(path, { query: { ...filters, limit: 200 } }).then((p) => {
+        if (Array.isArray(p)) return p;
+        return p?.data ?? [];
+      }),
     staleTime: 30_000,
     enabled,
   });

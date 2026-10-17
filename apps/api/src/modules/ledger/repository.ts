@@ -1,12 +1,7 @@
 // apps/api/src/modules/ledger/repository.ts — MOD-LED Ledger Management
 import type { Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
-import type {
-  LedgerAccountRow,
-  LedgerEntryRow,
-  LedgerJournalRow,
-  LedgerPeriodRow,
-} from './types';
+import type { LedgerAccountRow, LedgerEntryRow, LedgerJournalRow, LedgerPeriodRow } from './types';
 
 export interface LedgerRepository {
   // Accounts (SUB-LED.01)
@@ -26,14 +21,25 @@ export interface LedgerRepository {
   listJournals(
     tx: Tx,
     tenantId: string,
-    filters: { cursor?: string; limit: number; period?: string; referenceType?: string; referenceId?: string },
+    filters: {
+      cursor?: string;
+      limit: number;
+      period?: string;
+      referenceType?: string;
+      referenceId?: string;
+    },
   ): Promise<{ rows: LedgerJournalRow[]; nextCursor: string | null }>;
   countJournals(tx: Tx, tenantId: string, period?: string): Promise<number>;
 
   // Entries (SUB-LED.02 / SUB-LED.03)
   insertEntries(tx: Tx, rows: LedgerEntryRow[]): Promise<void>;
   listEntriesForJournal(tx: Tx, tenantId: string, journalId: string): Promise<LedgerEntryRow[]>;
-  listEntriesForAccount(tx: Tx, tenantId: string, accountId: string, asOfDate?: Date): Promise<LedgerEntryRow[]>;
+  listEntriesForAccount(
+    tx: Tx,
+    tenantId: string,
+    accountId: string,
+    asOfDate?: Date,
+  ): Promise<LedgerEntryRow[]>;
   listEntriesForConnector(
     tx: Tx,
     tenantId: string,
@@ -41,14 +47,33 @@ export interface LedgerRepository {
     fromPeriod?: string,
     toPeriod?: string,
     limit?: number,
-  ): Promise<Array<LedgerEntryRow & { journal_number: string; reference_type: string; reference_id: string; period: string }>>;
+  ): Promise<
+    Array<
+      LedgerEntryRow & {
+        journal_number: string;
+        reference_type: string;
+        reference_id: string;
+        period: string;
+      }
+    >
+  >;
 
   // Periods (SUB-LED.02)
   getPeriodStatus(tx: Tx, tenantId: string, period: string): Promise<LedgerPeriodRow | null>;
-  closePeriod(tx: Tx, tenantId: string, period: string, closedBy: string, note?: string): Promise<LedgerPeriodRow>;
+  closePeriod(
+    tx: Tx,
+    tenantId: string,
+    period: string,
+    closedBy: string,
+    note?: string,
+  ): Promise<LedgerPeriodRow>;
 
   // Trial Balance (SUB-LED.03)
-  calculateTrialBalance(tx: Tx, tenantId: string, period?: string): Promise<{ totalDebit: number; totalCredit: number; variance: number }>;
+  calculateTrialBalance(
+    tx: Tx,
+    tenantId: string,
+    period?: string,
+  ): Promise<{ totalDebit: number; totalCredit: number; variance: number }>;
 }
 
 export class SqlLedgerRepository implements LedgerRepository {
@@ -137,7 +162,13 @@ export class SqlLedgerRepository implements LedgerRepository {
   async listJournals(
     tx: Tx,
     tenantId: string,
-    filters: { cursor?: string; limit: number; period?: string; referenceType?: string; referenceId?: string },
+    filters: {
+      cursor?: string;
+      limit: number;
+      period?: string;
+      referenceType?: string;
+      referenceId?: string;
+    },
   ): Promise<{ rows: LedgerJournalRow[]; nextCursor: string | null }> {
     let query = sql<LedgerJournalRow>`SELECT * FROM app.ledger_journal WHERE tenant_id = ${tenantId}`;
     if (filters.period) {
@@ -164,7 +195,9 @@ export class SqlLedgerRepository implements LedgerRepository {
   }
 
   async countJournals(tx: Tx, tenantId: string, period?: string): Promise<number> {
-    let query = sql<{ count: string }>`SELECT count(*) as count FROM app.ledger_journal WHERE tenant_id = ${tenantId}`;
+    let query = sql<{
+      count: string;
+    }>`SELECT count(*) as count FROM app.ledger_journal WHERE tenant_id = ${tenantId}`;
     if (period) {
       query = sql<{ count: string }>`${query} AND period = ${period}`;
     }
@@ -195,7 +228,12 @@ export class SqlLedgerRepository implements LedgerRepository {
     return res.rows as LedgerEntryRow[];
   }
 
-  async listEntriesForAccount(tx: Tx, tenantId: string, accountId: string, asOfDate?: Date): Promise<LedgerEntryRow[]> {
+  async listEntriesForAccount(
+    tx: Tx,
+    tenantId: string,
+    accountId: string,
+    asOfDate?: Date,
+  ): Promise<LedgerEntryRow[]> {
     let query = sql<LedgerEntryRow>`
       SELECT * FROM app.ledger_journal_line
       WHERE tenant_id = ${tenantId} AND account_id = ${accountId}
@@ -215,7 +253,16 @@ export class SqlLedgerRepository implements LedgerRepository {
     fromPeriod?: string,
     toPeriod?: string,
     limit = 50,
-  ): Promise<Array<LedgerEntryRow & { journal_number: string; reference_type: string; reference_id: string; period: string }>> {
+  ): Promise<
+    Array<
+      LedgerEntryRow & {
+        journal_number: string;
+        reference_type: string;
+        reference_id: string;
+        period: string;
+      }
+    >
+  > {
     let query = sql<any>`
       SELECT e.*, j.journal_number, j.reference_type, j.reference_id, j.period
       FROM app.ledger_journal_line e
@@ -244,7 +291,13 @@ export class SqlLedgerRepository implements LedgerRepository {
     return res.rows[0] ?? null;
   }
 
-  async closePeriod(tx: Tx, tenantId: string, period: string, closedBy: string, note?: string): Promise<LedgerPeriodRow> {
+  async closePeriod(
+    tx: Tx,
+    tenantId: string,
+    period: string,
+    closedBy: string,
+    note?: string,
+  ): Promise<LedgerPeriodRow> {
     const existing = await this.getPeriodStatus(tx, tenantId, period);
     const now = new Date();
     if (existing) {
@@ -253,7 +306,13 @@ export class SqlLedgerRepository implements LedgerRepository {
         SET status = 'CLOSED', closed_at = ${now}, closed_by = ${closedBy}, closing_note = ${note ?? null}
         WHERE tenant_id = ${tenantId} AND period = ${period}
       `.execute(tx);
-      return { ...existing, status: 'CLOSED', closed_at: now, closed_by: closedBy, closing_note: note ?? null };
+      return {
+        ...existing,
+        status: 'CLOSED',
+        closed_at: now,
+        closed_by: closedBy,
+        closing_note: note ?? null,
+      };
     }
     const id = `prd_${Date.now()}`;
     await sql`
@@ -272,7 +331,11 @@ export class SqlLedgerRepository implements LedgerRepository {
     };
   }
 
-  async calculateTrialBalance(tx: Tx, tenantId: string, period?: string): Promise<{ totalDebit: number; totalCredit: number; variance: number }> {
+  async calculateTrialBalance(
+    tx: Tx,
+    tenantId: string,
+    period?: string,
+  ): Promise<{ totalDebit: number; totalCredit: number; variance: number }> {
     let query = sql<{ debit: string; credit: string }>`
       SELECT 
         COALESCE(SUM(CASE WHEN e.entry_type = 'DEBIT' THEN e.amount ELSE 0 END), 0) as debit,
@@ -305,13 +368,55 @@ export class InMemoryLedgerRepository implements LedgerRepository {
 
   seedDefaultAccounts(tenantId: string) {
     const defaults: Partial<LedgerAccountRow>[] = [
-      { id: `acc_bank_${tenantId}`, code: '1010-SETTLEMENT-BANK', name: 'Settlement Bank Account', type: 'ASSET', is_active: true },
-      { id: `acc_pay_${tenantId}`, code: '2100-COMMISSION-PAYABLE', name: 'Commission Payable', type: 'LIABILITY', is_active: true },
-      { id: `acc_inc_${tenantId}`, code: '4100-COMMISSION-INCOME', name: 'Commission Income', type: 'INCOME', is_active: true },
-      { id: `acc_exp_${tenantId}`, code: '5100-COMMISSION-EXPENSE', name: 'Commission Expense', type: 'EXPENSE', is_active: true },
-      { id: `acc_susp_${tenantId}`, code: '9999-SUSPENSE', name: 'Suspense Clearing Account', type: 'SUSPENSE', is_active: true },
-      { id: `acc_tax_pay_${tenantId}`, code: '2200-TAX-PAYABLE', name: 'Tax Payable', type: 'TAX_PAYABLE', is_active: false },
-      { id: `acc_tax_rec_${tenantId}`, code: '1200-TAX-RECEIVABLE', name: 'Tax Receivable', type: 'TAX_RECEIVABLE', is_active: false },
+      {
+        id: `acc_bank_${tenantId}`,
+        code: '1010-SETTLEMENT-BANK',
+        name: 'Settlement Bank Account',
+        type: 'ASSET',
+        is_active: true,
+      },
+      {
+        id: `acc_pay_${tenantId}`,
+        code: '2100-COMMISSION-PAYABLE',
+        name: 'Commission Payable',
+        type: 'LIABILITY',
+        is_active: true,
+      },
+      {
+        id: `acc_inc_${tenantId}`,
+        code: '4100-COMMISSION-INCOME',
+        name: 'Commission Income',
+        type: 'INCOME',
+        is_active: true,
+      },
+      {
+        id: `acc_exp_${tenantId}`,
+        code: '5100-COMMISSION-EXPENSE',
+        name: 'Commission Expense',
+        type: 'EXPENSE',
+        is_active: true,
+      },
+      {
+        id: `acc_susp_${tenantId}`,
+        code: '9999-SUSPENSE',
+        name: 'Suspense Clearing Account',
+        type: 'SUSPENSE',
+        is_active: true,
+      },
+      {
+        id: `acc_tax_pay_${tenantId}`,
+        code: '2200-TAX-PAYABLE',
+        name: 'Tax Payable',
+        type: 'TAX_PAYABLE',
+        is_active: false,
+      },
+      {
+        id: `acc_tax_rec_${tenantId}`,
+        code: '1200-TAX-RECEIVABLE',
+        name: 'Tax Receivable',
+        type: 'TAX_RECEIVABLE',
+        is_active: false,
+      },
     ];
     for (const d of defaults) {
       if (!this.accounts.some((a) => a.tenant_id === tenantId && a.code === d.code)) {
@@ -370,7 +475,10 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     if (this.journals.some((j) => j.tenant_id === row.tenant_id && j.journal_number === row.journal_number)) {
       throw new Error(`UNIQUE_CONSTRAINT_VIOLATION: Journal number ${row.journal_number} already exists`);
     }
-    if (row.idempotency_key && this.journals.some((j) => j.tenant_id === row.tenant_id && j.idempotency_key === row.idempotency_key)) {
+    if (
+      row.idempotency_key &&
+      this.journals.some((j) => j.tenant_id === row.tenant_id && j.idempotency_key === row.idempotency_key)
+    ) {
       throw new Error(`UNIQUE_CONSTRAINT_VIOLATION: Idempotency key ${row.idempotency_key} already used`);
     }
     this.journals.push({ ...row });
@@ -380,14 +488,24 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     return this.journals.find((j) => j.tenant_id === tenantId && j.id === id) ?? null;
   }
 
-  async findJournalByIdempotencyKey(_tx: Tx, tenantId: string, key: string): Promise<LedgerJournalRow | null> {
+  async findJournalByIdempotencyKey(
+    _tx: Tx,
+    tenantId: string,
+    key: string,
+  ): Promise<LedgerJournalRow | null> {
     return this.journals.find((j) => j.tenant_id === tenantId && j.idempotency_key === key) ?? null;
   }
 
   async listJournals(
     _tx: Tx,
     tenantId: string,
-    filters: { cursor?: string; limit: number; period?: string; referenceType?: string; referenceId?: string },
+    filters: {
+      cursor?: string;
+      limit: number;
+      period?: string;
+      referenceType?: string;
+      referenceId?: string;
+    },
   ): Promise<{ rows: LedgerJournalRow[]; nextCursor: string | null }> {
     let list = this.journals.filter((j) => {
       if (j.tenant_id !== tenantId) return false;
@@ -402,7 +520,7 @@ export class InMemoryLedgerRepository implements LedgerRepository {
       if (idx !== -1) list = list.slice(idx + 1);
     }
     const rows = list.slice(0, filters.limit);
-    const nextCursor = list.length > filters.limit ? rows[rows.length - 1]?.id ?? null : null;
+    const nextCursor = list.length > filters.limit ? (rows[rows.length - 1]?.id ?? null) : null;
     return { rows, nextCursor };
   }
 
@@ -428,7 +546,9 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     }
     for (const [jId, balance] of Object.entries(byJournal)) {
       if (balance.debits !== balance.credits) {
-        throw new Error(`LEDGER_UNBALANCED: Journal ${jId} entries must balance. Debits: ${balance.debits}, Credits: ${balance.credits}`);
+        throw new Error(
+          `LEDGER_UNBALANCED: Journal ${jId} entries must balance. Debits: ${balance.debits}, Credits: ${balance.credits}`,
+        );
       }
     }
     this.entries.push(...rows.map((r) => ({ ...r })));
@@ -440,7 +560,12 @@ export class InMemoryLedgerRepository implements LedgerRepository {
       .sort((a, b) => a.line_number - b.line_number);
   }
 
-  async listEntriesForAccount(_tx: Tx, tenantId: string, accountId: string, asOfDate?: Date): Promise<LedgerEntryRow[]> {
+  async listEntriesForAccount(
+    _tx: Tx,
+    tenantId: string,
+    accountId: string,
+    asOfDate?: Date,
+  ): Promise<LedgerEntryRow[]> {
     return this.entries
       .filter((e) => {
         if (e.tenant_id !== tenantId || e.account_id !== accountId) return false;
@@ -457,9 +582,19 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     fromPeriod?: string,
     toPeriod?: string,
     limit = 50,
-  ): Promise<Array<LedgerEntryRow & { journal_number: string; reference_type: string; reference_id: string; period: string }>> {
+  ): Promise<
+    Array<
+      LedgerEntryRow & {
+        journal_number: string;
+        reference_type: string;
+        reference_id: string;
+        period: string;
+      }
+    >
+  > {
     const connAccounts = this.accounts.filter(
-      (a) => a.tenant_id === tenantId && a.counterparty_type === 'CONNECTOR' && a.counterparty_id === connectorId,
+      (a) =>
+        a.tenant_id === tenantId && a.counterparty_type === 'CONNECTOR' && a.counterparty_id === connectorId,
     );
     const connAccountIds = new Set(connAccounts.map((a) => a.id));
     const results: any[] = [];
@@ -485,7 +620,13 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     return this.periods.find((p) => p.tenant_id === tenantId && p.period === period) ?? null;
   }
 
-  async closePeriod(_tx: Tx, tenantId: string, period: string, closedBy: string, note?: string): Promise<LedgerPeriodRow> {
+  async closePeriod(
+    _tx: Tx,
+    tenantId: string,
+    period: string,
+    closedBy: string,
+    note?: string,
+  ): Promise<LedgerPeriodRow> {
     let p = this.periods.find((x) => x.tenant_id === tenantId && x.period === period);
     const now = new Date();
     if (p) {
@@ -509,10 +650,16 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     return { ...p };
   }
 
-  async calculateTrialBalance(_tx: Tx, tenantId: string, period?: string): Promise<{ totalDebit: number; totalCredit: number; variance: number }> {
+  async calculateTrialBalance(
+    _tx: Tx,
+    tenantId: string,
+    period?: string,
+  ): Promise<{ totalDebit: number; totalCredit: number; variance: number }> {
     let entries = this.entries.filter((e) => e.tenant_id === tenantId);
     if (period) {
-      const journalIds = new Set(this.journals.filter((j) => j.tenant_id === tenantId && j.period === period).map((j) => j.id));
+      const journalIds = new Set(
+        this.journals.filter((j) => j.tenant_id === tenantId && j.period === period).map((j) => j.id),
+      );
       entries = entries.filter((e) => journalIds.has(e.journal_id));
     }
     let totalDebit = 0;

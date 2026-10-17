@@ -1,10 +1,5 @@
 // apps/api/src/modules/crm/targets/service.ts — owner: Dev 5 (MOD-PERF Targets)
-import {
-  AppError,
-  type PermissionCode,
-  type RequestContext,
-  type Tx,
-} from '@dsa/contracts';
+import { AppError, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
 import type {
   ApproveTargetRequest,
   CreateTargetRequest,
@@ -215,13 +210,7 @@ export class TargetService {
     }
 
     // Authorize approver's scope over the target's dimension
-    await this.authorizeDimensionScope(
-      tx,
-      ctx,
-      scope,
-      target.dimension_type,
-      target.dimension_id,
-    );
+    await this.authorizeDimensionScope(tx, ctx, scope, target.dimension_type, target.dimension_id);
 
     const now = new Date();
     const slice: TargetSlice = {
@@ -293,19 +282,12 @@ export class TargetService {
     }
 
     if (!scope.isTenantWide) {
-      if (
-        target.dimension_type === 'BRANCH' &&
-        !scope.allowedBranchIds.includes(target.dimension_id)
-      ) {
+      if (target.dimension_type === 'BRANCH' && !scope.allowedBranchIds.includes(target.dimension_id)) {
         throw AppError.of('NOT_FOUND', `Target '${targetId}' not found.`);
       }
       if (target.dimension_type === 'USER') {
         const isOwn = scope.allowedOwnUserId === target.dimension_id;
-        const primaryBranch = await this.repo.getUserPrimaryBranch(
-          tx,
-          tenantId,
-          target.dimension_id,
-        );
+        const primaryBranch = await this.repo.getUserPrimaryBranch(tx, tenantId, target.dimension_id);
         const inBranch = primaryBranch && scope.allowedBranchIds.includes(primaryBranch);
         if (!isOwn && !inBranch) {
           throw AppError.of('NOT_FOUND', `Target '${targetId}' not found.`);
@@ -316,11 +298,7 @@ export class TargetService {
     return toTargetDto(target);
   }
 
-  async listTargets(
-    tx: Tx,
-    ctx: RequestContext,
-    query: TargetListQuery,
-  ): Promise<TargetListResponse> {
+  async listTargets(tx: Tx, ctx: RequestContext, query: TargetListQuery): Promise<TargetListResponse> {
     const scope = this.resolveScope(ctx, 'report.read');
     const tenantId = ctx.principal.tenantId;
 
@@ -344,11 +322,7 @@ export class TargetService {
     };
   }
 
-  async getTargetHistory(
-    tx: Tx,
-    ctx: RequestContext,
-    targetId: string,
-  ): Promise<TargetListResponse> {
+  async getTargetHistory(tx: Tx, ctx: RequestContext, targetId: string): Promise<TargetListResponse> {
     const scope = this.resolveScope(ctx, 'report.read');
     const tenantId = ctx.principal.tenantId;
 
@@ -359,19 +333,12 @@ export class TargetService {
 
     // Verify record scope
     if (!scope.isTenantWide) {
-      if (
-        target.dimension_type === 'BRANCH' &&
-        !scope.allowedBranchIds.includes(target.dimension_id)
-      ) {
+      if (target.dimension_type === 'BRANCH' && !scope.allowedBranchIds.includes(target.dimension_id)) {
         throw AppError.of('NOT_FOUND', `Target '${targetId}' not found.`);
       }
       if (target.dimension_type === 'USER') {
         const isOwn = scope.allowedOwnUserId === target.dimension_id;
-        const primaryBranch = await this.repo.getUserPrimaryBranch(
-          tx,
-          tenantId,
-          target.dimension_id,
-        );
+        const primaryBranch = await this.repo.getUserPrimaryBranch(tx, tenantId, target.dimension_id);
         const inBranch = primaryBranch && scope.allowedBranchIds.includes(primaryBranch);
         if (!isOwn && !inBranch) {
           throw AppError.of('NOT_FOUND', `Target '${targetId}' not found.`);

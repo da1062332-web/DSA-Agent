@@ -10,7 +10,10 @@ const fakeTxRunner: TxRunner = {
   withTenantTx: async (_ctx, fn) => fn({} as any),
 };
 
-const makeCtx = (tenantId = 'ten_01JTESTTENANT00000000000000', ...grants: PermissionCode[]): RequestContext => ({
+const makeCtx = (
+  tenantId = 'ten_01JTESTTENANT00000000000000',
+  ...grants: PermissionCode[]
+): RequestContext => ({
   principal: testPrincipal({
     tenantId,
     grants: grants.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })),
@@ -29,9 +32,7 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const service = new LedgerService({ repository: repo });
       const unauthCtx = makeCtx('ten_01', 'payout.request'); // lacking finance.view
 
-      await expect(service.listAccounts({} as Tx, unauthCtx, {})).rejects.toThrow(
-        /finance.view required/,
-      );
+      await expect(service.listAccounts({} as Tx, unauthCtx, {})).rejects.toThrow(/finance.view required/);
     });
 
     it('TC-LED-002: Successfully lists default chart of accounts with type filter', async () => {
@@ -125,9 +126,7 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const service = new LedgerService({ repository: repo });
       const unauthCtx = makeCtx('ten_01', 'commission.calculate');
 
-      await expect(service.listJournals({} as Tx, unauthCtx, {})).rejects.toThrow(
-        /finance.view required/,
-      );
+      await expect(service.listJournals({} as Tx, unauthCtx, {})).rejects.toThrow(/finance.view required/);
     });
 
     it('TC-LED-007: Atomic balanced journal posting (DEBIT = CREDIT)', async () => {
@@ -272,8 +271,12 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const ctx = makeCtx('ten_01', 'finance.view');
 
       repo.seedDefaultAccounts('ten_01');
-      const bankAcc = repo.accounts.find((a) => a.tenant_id === 'ten_01' && a.code === '1010-SETTLEMENT-BANK')!;
-      const payAcc = repo.accounts.find((a) => a.tenant_id === 'ten_01' && a.code === '2100-COMMISSION-PAYABLE')!;
+      const bankAcc = repo.accounts.find(
+        (a) => a.tenant_id === 'ten_01' && a.code === '1010-SETTLEMENT-BANK',
+      )!;
+      const payAcc = repo.accounts.find(
+        (a) => a.tenant_id === 'ten_01' && a.code === '2100-COMMISSION-PAYABLE',
+      )!;
 
       // Post 1: Credit Bank 30,000, Debit Payable 30,000
       await service.postJournal({} as Tx, ctx, {
@@ -344,9 +347,9 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const service = new LedgerService({ repository: repo });
       const unauthCtx = makeCtx('ten_01', 'finance.view'); // missing export.run
 
-      await expect(
-        service.createExport({} as Tx, unauthCtx, { format: 'CSV' }),
-      ).rejects.toThrow(/export.run required/);
+      await expect(service.createExport({} as Tx, unauthCtx, { format: 'CSV' })).rejects.toThrow(
+        /export.run required/,
+      );
 
       const authCtx = makeCtx('ten_01', 'finance.view', 'export.run');
       const exp = await service.createExport({} as Tx, authCtx, { format: 'CSV', period: '2026-10' });

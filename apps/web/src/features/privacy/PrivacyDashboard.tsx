@@ -33,11 +33,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import type {
-  ConsentPurposeCode,
-  DataSharingRecord,
-  VerifyConsentResult,
-} from '@dsa/contracts';
+import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 
 export function PrivacyDashboard(): React.ReactElement {
@@ -63,7 +59,9 @@ export function PrivacyDashboard(): React.ReactElement {
   const [sandboxPhone, setSandboxPhone] = useState<string>('+91 98765 43210');
   const [sandboxEmail, setSandboxEmail] = useState<string>('customer.name@example.com');
   const [sandboxPan, setSandboxPan] = useState<string>('ABCDE1234F');
-  const [sandboxNotes, setSandboxNotes] = useState<string>('Customer Aadhaar 1234 5678 9012 mentioned verbally');
+  const [sandboxNotes, setSandboxNotes] = useState<string>(
+    'Customer Aadhaar 1234 5678 9012 mentioned verbally',
+  );
 
   // Queries
   const {
@@ -170,7 +168,8 @@ export function PrivacyDashboard(): React.ReactElement {
             />
           </Stack>
           <Typography variant="body1" color="text.secondary">
-            DPDP Act 2023 &amp; RBI Digital Lending Regulatory Governance • Data Classification, Consent Registry, and Sharing Audit
+            DPDP Act 2023 &amp; RBI Digital Lending Regulatory Governance • Data Classification, Consent
+            Registry, and Sharing Audit
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
@@ -206,10 +205,16 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
                 ACTIVE CONSENTS
               </Typography>
-              <Chip label="Trigger Guarded" size="small" color="success" variant="outlined" sx={{ height: 22, fontSize: 11 }} />
+              <Chip
+                label="Trigger Guarded"
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{ height: 22, fontSize: 11 }}
+              />
             </Stack>
             <Typography variant="h3" fontWeight={700} color="success.main" sx={{ mb: 0.5 }}>
-              {statsLoading ? <CircularProgress size={28} /> : stats?.activeConsentsCount ?? 0}
+              {statsLoading ? <CircularProgress size={28} /> : (stats?.activeConsentsCount ?? 0)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ENT-028 • Valid consents across leads &amp; customers
@@ -233,10 +238,16 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
                 WITHDRAWN CONSENTS
               </Typography>
-              <Chip label="Revocation Active" size="small" color="warning" variant="outlined" sx={{ height: 22, fontSize: 11 }} />
+              <Chip
+                label="Revocation Active"
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={{ height: 22, fontSize: 11 }}
+              />
             </Stack>
             <Typography variant="h3" fontWeight={700} color="warning.main" sx={{ mb: 0.5 }}>
-              {statsLoading ? <CircularProgress size={28} /> : stats?.withdrawnConsentsCount ?? 0}
+              {statsLoading ? <CircularProgress size={28} /> : (stats?.withdrawnConsentsCount ?? 0)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Gated with HTTP 422 CONSENT_REQUIRED
@@ -260,10 +271,16 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
                 DATA SHARING EVENTS
               </Typography>
-              <Chip label="Append-Only" size="small" color="primary" variant="outlined" sx={{ height: 22, fontSize: 11 }} />
+              <Chip
+                label="Append-Only"
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{ height: 22, fontSize: 11 }}
+              />
             </Stack>
             <Typography variant="h3" fontWeight={700} color="primary.main" sx={{ mb: 0.5 }}>
-              {statsLoading ? <CircularProgress size={28} /> : stats?.totalSharingRecordsCount ?? 0}
+              {statsLoading ? <CircularProgress size={28} /> : (stats?.totalSharingRecordsCount ?? 0)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ENT-100 • Audited lender &amp; partner transmissions
@@ -287,7 +304,11 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
                 DATA CLASSIFICATION
               </Typography>
-              <Chip label="S0 - S4 Active" size="small" sx={{ height: 22, fontSize: 11, bgcolor: 'secondary.main', color: '#fff' }} />
+              <Chip
+                label="S0 - S4 Active"
+                size="small"
+                sx={{ height: 22, fontSize: 11, bgcolor: 'secondary.main', color: '#fff' }}
+              />
             </Stack>
             <Typography variant="h3" fontWeight={700} color="secondary.main" sx={{ mb: 0.5 }}>
               5 Tiers
@@ -327,7 +348,8 @@ export function PrivacyDashboard(): React.ReactElement {
                 External Data Sharing Audit Ledger (ENT-100)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Immutable, trigger-enforced record of personal data, documents, and credit fields transmitted to external lenders and partners.
+                Immutable, trigger-enforced record of personal data, documents, and credit fields transmitted
+                to external lenders and partners.
               </Typography>
             </Box>
 
@@ -388,7 +410,11 @@ export function PrivacyDashboard(): React.ReactElement {
                 No data sharing events match the current filter criteria.
               </Alert>
             ) : (
-              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+              >
                 <Table size="small">
                   <TableHead sx={{ bgcolor: 'action.hover' }}>
                     <TableRow>
@@ -407,12 +433,15 @@ export function PrivacyDashboard(): React.ReactElement {
                         <TableCell sx={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 500 }}>
                           {r.id}
                         </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>
-                          {r.subjectId}
-                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>{r.subjectId}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip label={r.recipientType} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                            <Chip
+                              label={r.recipientType}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: 11 }}
+                            />
                             <Typography variant="body2">{r.recipientId}</Typography>
                           </Stack>
                         </TableCell>
@@ -454,7 +483,8 @@ export function PrivacyDashboard(): React.ReactElement {
                 Consent Verification &amp; Gating Auditor
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Audit active legal bases before loan processing or external data sharing. Validates consent on customers and pre-conversion leads.
+                Audit active legal bases before loan processing or external data sharing. Validates consent on
+                customers and pre-conversion leads.
               </Typography>
             </Box>
 
@@ -563,7 +593,8 @@ export function PrivacyDashboard(): React.ReactElement {
                     }}
                   >
                     <Typography variant="body2" color="text.secondary">
-                      Enter a Customer ID or Lead ID and click <strong>Verify Active Consent</strong> to audit consent status.
+                      Enter a Customer ID or Lead ID and click <strong>Verify Active Consent</strong> to audit
+                      consent status.
                     </Typography>
                   </Paper>
                 ) : verifyResult ? (
@@ -577,8 +608,8 @@ export function PrivacyDashboard(): React.ReactElement {
                         verifyResult.status === 'ACTIVE'
                           ? 'success.main'
                           : verifyResult.status === 'WITHDRAWN'
-                          ? 'warning.main'
-                          : 'error.main',
+                            ? 'warning.main'
+                            : 'error.main',
                       bgcolor: 'background.paper',
                     }}
                   >
@@ -589,8 +620,8 @@ export function PrivacyDashboard(): React.ReactElement {
                           verifyResult.status === 'ACTIVE'
                             ? 'success'
                             : verifyResult.status === 'WITHDRAWN'
-                            ? 'warning'
-                            : 'error'
+                              ? 'warning'
+                              : 'error'
                         }
                         sx={{ fontWeight: 700 }}
                       />
@@ -598,8 +629,8 @@ export function PrivacyDashboard(): React.ReactElement {
                         {verifyResult.hasConsent
                           ? 'Active Valid Consent Verified'
                           : verifyResult.status === 'WITHDRAWN'
-                          ? 'Consent Has Been Revoked / Withdrawn'
-                          : 'No Consent Record Found'}
+                            ? 'Consent Has Been Revoked / Withdrawn'
+                            : 'No Consent Record Found'}
                       </Typography>
                     </Stack>
 
@@ -633,7 +664,8 @@ export function PrivacyDashboard(): React.ReactElement {
                           PURPOSE &amp; TARGET
                         </Typography>
                         <Typography variant="body2" fontWeight={600}>
-                          {verifyResult.purpose} {verifyResult.purposeTarget ? `(${verifyResult.purposeTarget})` : ''}
+                          {verifyResult.purpose}{' '}
+                          {verifyResult.purposeTarget ? `(${verifyResult.purposeTarget})` : ''}
                         </Typography>
                       </Grid>
 
@@ -667,7 +699,8 @@ export function PrivacyDashboard(): React.ReactElement {
 
                     {!verifyResult.hasConsent && (
                       <Alert severity="warning" sx={{ mt: 3, borderRadius: 2 }}>
-                        Processing for purpose <strong>{verifyResult.purpose}</strong> is prohibited and will throw HTTP 422 <code>CONSENT_REQUIRED</code>.
+                        Processing for purpose <strong>{verifyResult.purpose}</strong> is prohibited and will
+                        throw HTTP 422 <code>CONSENT_REQUIRED</code>.
                       </Alert>
                     )}
                   </Card>
@@ -685,12 +718,17 @@ export function PrivacyDashboard(): React.ReactElement {
                 Field-Level Sensitivity Classification &amp; Masking Framework (S0–S4)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Compliance with DPDP Act 2023, RBI Guidelines, and ISO 27701. Personal and sensitive financial data is masked by default in all view layers.
+                Compliance with DPDP Act 2023, RBI Guidelines, and ISO 27701. Personal and sensitive financial
+                data is masked by default in all view layers.
               </Typography>
             </Box>
 
             {/* Policy Tiers Table */}
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4 }}>
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4 }}
+            >
               <Table size="small">
                 <TableHead sx={{ bgcolor: 'action.hover' }}>
                   <TableRow>
@@ -711,12 +749,12 @@ export function PrivacyDashboard(): React.ReactElement {
                             p.tier === 'S4'
                               ? 'error'
                               : p.tier === 'S3'
-                              ? 'warning'
-                              : p.tier === 'S2'
-                              ? 'info'
-                              : p.tier === 'S1'
-                              ? 'primary'
-                              : 'default'
+                                ? 'warning'
+                                : p.tier === 'S2'
+                                  ? 'info'
+                                  : p.tier === 'S1'
+                                    ? 'primary'
+                                    : 'default'
                           }
                           sx={{ fontWeight: 700, height: 22 }}
                         />
@@ -725,11 +763,14 @@ export function PrivacyDashboard(): React.ReactElement {
                         {p.field}
                       </TableCell>
                       <TableCell>
-                        <Chip label={p.strategy} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                        <Chip
+                          label={p.strategy}
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 20, fontSize: 11 }}
+                        />
                       </TableCell>
-                      <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>
-                        {p.description}
-                      </TableCell>
+                      <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>{p.description}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -737,12 +778,22 @@ export function PrivacyDashboard(): React.ReactElement {
             </TableContainer>
 
             {/* Interactive Masking Sandbox */}
-            <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2.5, bgcolor: 'background.default' }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'background.default',
+              }}
+            >
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                 Live Deterministic Masking Simulator
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Test how customer inputs are normalized, masked, and guarded against leaks in the system serializers:
+                Test how customer inputs are normalized, masked, and guarded against leaks in the system
+                serializers:
               </Typography>
 
               <Grid container spacing={3}>
@@ -807,7 +858,8 @@ export function PrivacyDashboard(): React.ReactElement {
                 Retention Schedules &amp; Legal Hold Governance (OD-008)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Compliance with statutory record-keeping periods under RBI, PMLA, and Limitation Act guidelines.
+                Compliance with statutory record-keeping periods under RBI, PMLA, and Limitation Act
+                guidelines.
               </Typography>
             </Box>
 
@@ -815,12 +867,24 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" fontWeight={700}>
                 GOVERNANCE NOTICE: SUB-PRV.03 DEFERRED PENDING OD-008
               </Typography>
-              Retention schedules below are proposed baselines. Formal hard-deletion and database entity creation (ENT-097 <code>retention_policy</code> and ENT-098 <code>legal_hold</code>) remain deferred under <strong>TASK-426</strong> pending formal legal opinion under <strong>OD-008</strong>.
+              Retention schedules below are proposed baselines. Formal hard-deletion and database entity
+              creation (ENT-097 <code>retention_policy</code> and ENT-098 <code>legal_hold</code>) remain
+              deferred under <strong>TASK-426</strong> pending formal legal opinion under{' '}
+              <strong>OD-008</strong>.
             </Alert>
 
             <Grid container spacing={3}>
               <Grid item xs={12} md={4}>
-                <Card elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2.5, height: '100%' }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2.5,
+                    height: '100%',
+                  }}
+                >
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     KYC &amp; Identity Records
                   </Typography>
@@ -828,14 +892,24 @@ export function PrivacyDashboard(): React.ReactElement {
                     5 Years
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Mandatory retention under Prevention of Money Laundering Act (PMLA Rule 9) from the date of cessation of customer relationship.
+                    Mandatory retention under Prevention of Money Laundering Act (PMLA Rule 9) from the date
+                    of cessation of customer relationship.
                   </Typography>
                   <Chip label="PMLA Mandated" size="small" variant="outlined" />
                 </Card>
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <Card elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2.5, height: '100%' }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2.5,
+                    height: '100%',
+                  }}
+                >
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     Loan Agreements &amp; Files
                   </Typography>
@@ -843,14 +917,24 @@ export function PrivacyDashboard(): React.ReactElement {
                     8 Years
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Retention post full loan repayment / closure to protect against disputes under the Indian Limitation Act (1963).
+                    Retention post full loan repayment / closure to protect against disputes under the Indian
+                    Limitation Act (1963).
                   </Typography>
                   <Chip label="Limitation Act" size="small" variant="outlined" />
                 </Card>
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <Card elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2.5, height: '100%' }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2.5,
+                    height: '100%',
+                  }}
+                >
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                     Rejected / Unconverted Leads
                   </Typography>
@@ -858,7 +942,8 @@ export function PrivacyDashboard(): React.ReactElement {
                     1 Year
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    DPDP Act data minimization principle: Lead contact records with no active conversion are scheduled for automated purge.
+                    DPDP Act data minimization principle: Lead contact records with no active conversion are
+                    scheduled for automated purge.
                   </Typography>
                   <Chip label="DPDP Minimization" size="small" variant="outlined" />
                 </Card>
@@ -883,50 +968,67 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" fontWeight={700}>
                 SUB-PRV.04 DEFERRED (TASK-426) • DEPENDENT ON MOD-GRV
               </Typography>
-              Data-Principal Request ticketing (ENT-099 <code>data_subject_request</code>) is architecturally managed through the Grievance and Ticketing Engine (<strong>MOD-GRV</strong>).
+              Data-Principal Request ticketing (ENT-099 <code>data_subject_request</code>) is architecturally
+              managed through the Grievance and Ticketing Engine (<strong>MOD-GRV</strong>).
             </Alert>
 
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
-                <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                >
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                     1. Right to Access
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Principal can request a summary of personal data being processed and third parties with whom data has been shared.
+                    Principal can request a summary of personal data being processed and third parties with
+                    whom data has been shared.
                   </Typography>
                 </Paper>
               </Grid>
 
               <Grid item xs={12} sm={6} md={3}>
-                <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                >
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                     2. Right to Correction
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Principal can request rectification of inaccurate contact points, address changes, or incomplete profile details.
+                    Principal can request rectification of inaccurate contact points, address changes, or
+                    incomplete profile details.
                   </Typography>
                 </Paper>
               </Grid>
 
               <Grid item xs={12} sm={6} md={3}>
-                <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                >
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                     3. Right to Erasure
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Principal can request erasure of personal data that is no longer necessary for the purpose it was collected (subject to PMLA statutory retention).
+                    Principal can request erasure of personal data that is no longer necessary for the purpose
+                    it was collected (subject to PMLA statutory retention).
                   </Typography>
                 </Paper>
               </Grid>
 
               <Grid item xs={12} sm={6} md={3}>
-                <Paper elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                >
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                     4. Grievance Redressal
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    SLA-bound complaint resolution workflow integrated into the Data Protection Officer (DPO) ticketing queue.
+                    SLA-bound complaint resolution workflow integrated into the Data Protection Officer (DPO)
+                    ticketing queue.
                   </Typography>
                 </Paper>
               </Grid>
@@ -943,9 +1045,7 @@ export function PrivacyDashboard(): React.ReactElement {
         fullWidth
         data-testid="dialog-sharing-manifest"
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Data Sharing Manifest Inspection
-        </DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Data Sharing Manifest Inspection</DialogTitle>
         <DialogContent dividers>
           {selectedRecord && (
             <Stack spacing={2}>
@@ -1011,7 +1111,16 @@ export function PrivacyDashboard(): React.ReactElement {
                 <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                   SHARED ITEMS MANIFEST
                 </Typography>
-                <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    bgcolor: 'background.default',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1.5,
+                  }}
+                >
                   <pre style={{ margin: 0, fontSize: 12, overflow: 'auto' }}>
                     {JSON.stringify(selectedRecord.items, null, 2)}
                   </pre>

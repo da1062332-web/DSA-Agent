@@ -14,7 +14,7 @@ describe('Module 23 — Business Rule Engine (BRE) Frontend Component Tests', ()
     const html = renderToString(
       <MemoryRouter initialEntries={['/rules']}>
         <RulesListPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toContain('Business Rule Engine');
@@ -30,7 +30,7 @@ describe('Module 23 — Business Rule Engine (BRE) Frontend Component Tests', ()
         <Routes>
           <Route path="/rules/:ruleSetId" element={<RuleSetDetailPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Initial loading or container renders
@@ -43,7 +43,7 @@ describe('Module 23 — Business Rule Engine (BRE) Frontend Component Tests', ()
         <Routes>
           <Route path="/rules/versions/:versionId" element={<RuleVersionDetailPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toBeDefined();
@@ -53,7 +53,7 @@ describe('Module 23 — Business Rule Engine (BRE) Frontend Component Tests', ()
     const html = renderToString(
       <MemoryRouter initialEntries={['/decisions']}>
         <DecisionRecordsListPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toContain('Decision Execution Audit Records');
@@ -68,7 +68,7 @@ describe('Module 23 — Business Rule Engine (BRE) Frontend Component Tests', ()
         <Routes>
           <Route path="/decisions/:id" element={<DecisionRecordDetailPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toBeDefined();

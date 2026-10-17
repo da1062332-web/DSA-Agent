@@ -100,9 +100,9 @@ describe('Lead State Machine (SUB-LEAD.06)', () => {
 
   it('T-LEAD-04 throws VALIDATION_ERROR when qualification details are missing', () => {
     const lead = mockLead({ state: 'IN_PROGRESS' });
-    expect(() =>
-      validateLeadTransition(lead, { transitionCode: 'T-LEAD-04' }),
-    ).toThrowError(/qualification details/i);
+    expect(() => validateLeadTransition(lead, { transitionCode: 'T-LEAD-04' })).toThrowError(
+      /qualification details/i,
+    );
   });
 
   it('T-LEAD-05 moves open lead to DISQUALIFIED with reason', () => {
@@ -119,9 +119,9 @@ describe('Lead State Machine (SUB-LEAD.06)', () => {
 
   it('T-LEAD-05 throws VALIDATION_ERROR when disqualification reason is absent', () => {
     const lead = mockLead({ state: 'IN_PROGRESS' });
-    expect(() =>
-      validateLeadTransition(lead, { transitionCode: 'T-LEAD-05' }),
-    ).toThrowError(/requires disqualificationReason/i);
+    expect(() => validateLeadTransition(lead, { transitionCode: 'T-LEAD-05' })).toThrowError(
+      /requires disqualificationReason/i,
+    );
   });
 
   it('T-LEAD-01 sets next_follow_up_at when provided', () => {
@@ -158,16 +158,16 @@ describe('Lead State Machine (SUB-LEAD.06)', () => {
 
   it('T-LEAD-06 throws VALIDATION_ERROR when reasonCode is absent', () => {
     const leadDisq = mockLead({ state: 'DISQUALIFIED' });
-    expect(() =>
-      validateLeadTransition(leadDisq, { transitionCode: 'T-LEAD-06' }),
-    ).toThrowError(/requires a reopening reasonCode/i);
+    expect(() => validateLeadTransition(leadDisq, { transitionCode: 'T-LEAD-06' })).toThrowError(
+      /requires a reopening reasonCode/i,
+    );
   });
 
   it('rejects invalid transitions with 409 INVALID_TRANSITION', () => {
     const leadConverted = mockLead({ state: 'CONVERTED' });
-    expect(() =>
-      validateLeadTransition(leadConverted, { transitionCode: 'T-LEAD-01' }),
-    ).toThrowError(/Cannot execute T-LEAD-01 from state 'CONVERTED'/i);
+    expect(() => validateLeadTransition(leadConverted, { transitionCode: 'T-LEAD-01' })).toThrowError(
+      /Cannot execute T-LEAD-01 from state 'CONVERTED'/i,
+    );
 
     const leadNew = mockLead({ state: 'NEW' });
     expect(() =>

@@ -133,7 +133,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Integrations and API (DOM-M)',
     items: [
-      { label: 'Integrations', to: '/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },
+      {
+        label: 'Integrations',
+        to: '/integrations',
+        anyOf: ['integration.read', 'integration.manage', 'config.manage'],
+      },
       { label: 'API management', to: '/api-management', anyOf: ['api.read', 'api.manage', 'config.manage'] },
     ],
   },

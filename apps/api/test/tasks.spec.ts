@@ -329,9 +329,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
 
     it('rejects task creation without Idempotency-Key header', async () => {
       const app = getApp();
-      const res = await request(app)
-        .post('/v1/tasks')
-        .send(validTaskPayload);
+      const res = await request(app).post('/v1/tasks').send(validTaskPayload);
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -415,7 +413,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const mineRes = await request(app).get('/v1/tasks?view=MINE');
       expect(mineRes.status).toBe(200);
       expect(mineRes.body.data.length).toBe(3);
-      expect(mineRes.body.data.every((t: { ownerUserId: string | null }) => t.ownerUserId === branchUser.id)).toBe(true);
+      expect(
+        mineRes.body.data.every((t: { ownerUserId: string | null }) => t.ownerUserId === branchUser.id),
+      ).toBe(true);
 
       // 2. Pagination test
       const page1 = await request(app).get('/v1/tasks?view=MINE&limit=2');
@@ -424,7 +424,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(page1.body.pagination.hasMore).toBe(true);
       expect(page1.body.pagination.nextCursor).toBeDefined();
 
-      const page2 = await request(app).get(`/v1/tasks?view=MINE&limit=2&cursor=${page1.body.pagination.nextCursor}`);
+      const page2 = await request(app).get(
+        `/v1/tasks?view=MINE&limit=2&cursor=${page1.body.pagination.nextCursor}`,
+      );
       expect(page2.status).toBe(200);
       expect(page2.body.data.length).toBe(1);
       expect(page2.body.pagination.hasMore).toBe(false);
@@ -492,13 +494,10 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const taskId = createRes.body.id;
       const etag = createRes.headers.etag!;
 
-      const updateRes = await request(app)
-        .patch(`/v1/tasks/${taskId}`)
-        .set('If-Match', etag)
-        .send({
-          priority: 'LOW',
-          status: 'IN_PROGRESS',
-        });
+      const updateRes = await request(app).patch(`/v1/tasks/${taskId}`).set('If-Match', etag).send({
+        priority: 'LOW',
+        status: 'IN_PROGRESS',
+      });
 
       expect(updateRes.status).toBe(200);
       expect(updateRes.body.priority).toBe('LOW');
@@ -516,12 +515,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const taskId = createRes.body.id;
       const etag = createRes.headers.etag!;
 
-      const updateRes = await request(app)
-        .patch(`/v1/tasks/${taskId}`)
-        .set('If-Match', etag)
-        .send({
-          ownerQueueId: 'queue_ops_02',
-        });
+      const updateRes = await request(app).patch(`/v1/tasks/${taskId}`).set('If-Match', etag).send({
+        ownerQueueId: 'queue_ops_02',
+      });
 
       expect(updateRes.status).toBe(200);
       expect(updateRes.body.ownerQueueId).toBe('queue_ops_02');
@@ -541,12 +537,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const taskId = createRes.body.id;
       const etag = createRes.headers.etag!;
 
-      const updateRes = await request(app)
-        .patch(`/v1/tasks/${taskId}`)
-        .set('If-Match', etag)
-        .send({
-          ownerUserId: 'usr_agent_02',
-        });
+      const updateRes = await request(app).patch(`/v1/tasks/${taskId}`).set('If-Match', etag).send({
+        ownerUserId: 'usr_agent_02',
+      });
 
       expect(updateRes.status).toBe(200);
       expect(updateRes.body.ownerUserId).toBe('usr_agent_02');
@@ -561,9 +554,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
         .send(validTaskPayload);
       const taskId = createRes.body.id;
 
-      const res = await request(app)
-        .patch(`/v1/tasks/${taskId}`)
-        .send({ priority: 'LOW' });
+      const res = await request(app).patch(`/v1/tasks/${taskId}`).send({ priority: 'LOW' });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -683,12 +674,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const taskId = createRes.body.id;
       const etag = createRes.headers.etag!;
 
-      const failRes = await request(app)
-        .post(`/v1/tasks/${taskId}/completion`)
-        .set('If-Match', etag)
-        .send({
-          completionNote: 'Completed without outcome',
-        });
+      const failRes = await request(app).post(`/v1/tasks/${taskId}/completion`).set('If-Match', etag).send({
+        completionNote: 'Completed without outcome',
+      });
 
       expect(failRes.status).toBe(422);
       expect(failRes.body.error.code).toBe('VALIDATION_ERROR');
@@ -708,12 +696,9 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       const taskId = createRes.body.id;
       const etag = createRes.headers.etag!;
 
-      const compRes = await request(app)
-        .post(`/v1/tasks/${taskId}/completion`)
-        .set('If-Match', etag)
-        .send({
-          completionNote: 'Document review passed without comments',
-        });
+      const compRes = await request(app).post(`/v1/tasks/${taskId}/completion`).set('If-Match', etag).send({
+        completionNote: 'Document review passed without comments',
+      });
 
       expect(compRes.status).toBe(200);
       expect(compRes.body.task.status).toBe('COMPLETED');

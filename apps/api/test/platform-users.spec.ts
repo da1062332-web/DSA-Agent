@@ -150,11 +150,13 @@ describe('Module 4: Users (User Management API)', () => {
     expect(dupRes.body.error.details[0].issue).toBe('DUPLICATE_EMAIL');
 
     // Verify invalid branch is rejected
-    const badBranchRes = await request(app).post('/v1/users').send({
-      ...createPayload,
-      email: 'another@dsa.com',
-      primaryBranchId: 'br_invalid',
-    });
+    const badBranchRes = await request(app)
+      .post('/v1/users')
+      .send({
+        ...createPayload,
+        email: 'another@dsa.com',
+        primaryBranchId: 'br_invalid',
+      });
     expect(badBranchRes.status).toBe(422);
     expect(badBranchRes.body.error.details[0].issue).toBe('INVALID_BRANCH');
   });
@@ -194,9 +196,7 @@ describe('Module 4: Users (User Management API)', () => {
     });
 
     // Deactivate another user
-    const deactRes = await request(app)
-      .patch('/v1/users/usr_staff_02')
-      .send({ status: 'DEACTIVATED' });
+    const deactRes = await request(app).patch('/v1/users/usr_staff_02').send({ status: 'DEACTIVATED' });
     expect(deactRes.status).toBe(200);
     expect(deactRes.body.status).toBe('DEACTIVATED');
 
@@ -223,9 +223,7 @@ describe('Module 4: Users (User Management API)', () => {
     expect(selfAssign.body.error.code).toBe('SOD_VIOLATION');
 
     // Admin cannot remove roles from self (SOD-05)
-    const selfRemove = await request(app).delete(
-      `/v1/users/${adminPrincipal.id}/roles/rol_admin`,
-    );
+    const selfRemove = await request(app).delete(`/v1/users/${adminPrincipal.id}/roles/rol_admin`);
     expect(selfRemove.status).toBe(403);
     expect(selfRemove.body.error.code).toBe('SOD_VIOLATION');
 
@@ -237,9 +235,7 @@ describe('Module 4: Users (User Management API)', () => {
     expect(assignRes.body.id).toMatch(/^ura_/);
 
     // Remove role from staff user
-    const removeRes = await request(app).delete(
-      '/v1/users/usr_staff_02/roles/rol_loan_officer',
-    );
+    const removeRes = await request(app).delete('/v1/users/usr_staff_02/roles/rol_loan_officer');
     expect(removeRes.status).toBe(200);
     expect(removeRes.body.status).toBe('ok');
   });
