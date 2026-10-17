@@ -168,7 +168,7 @@ export class SqlWorkforceRepository implements WorkforceRepository {
           FROM lead l 
           WHERE l.tenant_id = u.tenant_id 
             AND l.owner_user_id = u.id 
-            AND l.status NOT IN ('CONVERTED', 'LOST')
+            AND l.state NOT IN ('CONVERTED', 'DISQUALIFIED', 'ARCHIVED')
         ) as active_lead_count,
         d.id as active_delegation_id,
         d.delegate_id as active_delegate_id,
@@ -194,6 +194,7 @@ export class SqlWorkforceRepository implements WorkforceRepository {
       availability: r.availability as any,
       capacity: Number(r.capacity),
       activeLeadCount: Number(r.active_lead_count),
+      activeApplicationCount: 0,
       activeDelegation: r.active_delegation_id
         ? {
             id: r.active_delegation_id,
