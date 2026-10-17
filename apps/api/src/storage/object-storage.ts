@@ -21,7 +21,10 @@ export interface ObjectStoragePort {
   ): Promise<StoredObject>;
   get(tenantId: string, storageKey: string): Promise<Buffer | null>;
   delete(tenantId: string, storageKey: string): Promise<boolean>;
-  cleanupExpired(category: 'quarantine' | 'source' | 'reports' | 'exports', maxAgeHours: number): Promise<number>;
+  cleanupExpired(
+    category: 'quarantine' | 'source' | 'reports' | 'exports',
+    maxAgeHours: number,
+  ): Promise<number>;
 }
 
 /**

@@ -156,10 +156,10 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
       await apiClient.query('SET LOCAL search_path = app, public');
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantA]);
 
-      const selectA = await apiClient.query(
-        `SELECT id, tenant_id FROM app.task WHERE id IN ($1, $2)`,
-        [taskA, taskB],
-      );
+      const selectA = await apiClient.query(`SELECT id, tenant_id FROM app.task WHERE id IN ($1, $2)`, [
+        taskA,
+        taskB,
+      ]);
 
       // Only Tenant A's task visible
       expect(selectA.rows.length).toBe(1);
@@ -174,10 +174,7 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
       // 2. Querying without app.tenant_id (fail-closed)
       await apiClient.query('BEGIN');
       await apiClient.query('SET LOCAL search_path = app, public');
-      const noTenant = await apiClient.query(
-        `SELECT id FROM app.task WHERE id IN ($1, $2)`,
-        [taskA, taskB],
-      );
+      const noTenant = await apiClient.query(`SELECT id FROM app.task WHERE id IN ($1, $2)`, [taskA, taskB]);
       expect(noTenant.rows.length).toBe(0);
       await apiClient.query('ROLLBACK');
     } finally {

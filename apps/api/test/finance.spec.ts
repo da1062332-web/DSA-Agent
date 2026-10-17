@@ -54,8 +54,15 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return this.plans.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
 
-  async findActiveCommissionPlan(_tx: Tx, tenantId: string, lenderId: string): Promise<CommissionPlanRow | null> {
-    return this.plans.find((p) => p.tenant_id === tenantId && p.lender_id === lenderId && p.status === 'ACTIVE') ?? null;
+  async findActiveCommissionPlan(
+    _tx: Tx,
+    tenantId: string,
+    lenderId: string,
+  ): Promise<CommissionPlanRow | null> {
+    return (
+      this.plans.find((p) => p.tenant_id === tenantId && p.lender_id === lenderId && p.status === 'ACTIVE') ??
+      null
+    );
   }
 
   async listCommissionPlans(_tx: Tx, tenantId: string, lenderId?: string): Promise<CommissionPlanRow[]> {
@@ -120,12 +127,24 @@ class InMemoryFinanceRepository implements FinanceRepository {
     this.calculations.push(row);
   }
 
-  async findCommissionCalculationById(_tx: Tx, tenantId: string, id: string): Promise<CommissionCalculationRow | null> {
+  async findCommissionCalculationById(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionCalculationRow | null> {
     return this.calculations.find((c) => c.tenant_id === tenantId && c.id === id) ?? null;
   }
 
-  async findEarnedCalculationByTranche(_tx: Tx, tenantId: string, trancheId: string): Promise<CommissionCalculationRow | null> {
-    return this.calculations.find((c) => c.tenant_id === tenantId && c.tranche_id === trancheId && c.calc_kind === 'EARNED') ?? null;
+  async findEarnedCalculationByTranche(
+    _tx: Tx,
+    tenantId: string,
+    trancheId: string,
+  ): Promise<CommissionCalculationRow | null> {
+    return (
+      this.calculations.find(
+        (c) => c.tenant_id === tenantId && c.tranche_id === trancheId && c.calc_kind === 'EARNED',
+      ) ?? null
+    );
   }
 
   async listCommissionCalculations(
@@ -143,7 +162,11 @@ class InMemoryFinanceRepository implements FinanceRepository {
     this.payables.push(row);
   }
 
-  async findCommissionPayableById(_tx: Tx, tenantId: string, id: string): Promise<CommissionPayableRow | null> {
+  async findCommissionPayableById(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionPayableRow | null> {
     return this.payables.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
 
@@ -182,7 +205,12 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return this.adjustments.filter((a) => a.tenant_id === tenantId);
   }
 
-  async approveAdjustment(_tx: Tx, tenantId: string, id: string, approverId: string): Promise<AdjustmentRow | null> {
+  async approveAdjustment(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    approverId: string,
+  ): Promise<AdjustmentRow | null> {
     const a = this.adjustments.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!a) return null;
     a.status = 'APPROVED';
@@ -212,7 +240,11 @@ class InMemoryFinanceRepository implements FinanceRepository {
 
   async insertPayoutLine(_tx: Tx, row: PayoutLineRow): Promise<void> {
     const existing = this.payoutLines.find(
-      (l) => l.tenant_id === row.tenant_id && l.payable_id === row.payable_id && l.status !== 'REMOVED' && l.status !== 'PAYMENT_FAILED',
+      (l) =>
+        l.tenant_id === row.tenant_id &&
+        l.payable_id === row.payable_id &&
+        l.status !== 'REMOVED' &&
+        l.status !== 'PAYMENT_FAILED',
     );
     if (existing) {
       const err: any = new Error('duplicate key value violates unique constraint "uq_payout_line_once"');
@@ -261,7 +293,12 @@ class InMemoryFinanceRepository implements FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
+    updates?: {
+      paidOn?: Date;
+      paymentRefMasked?: string;
+      paymentRefCiphertext?: string;
+      failureReason?: string;
+    },
   ): Promise<PayoutRequestRow | null> {
     const p = this.payouts.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!p) return null;
@@ -300,7 +337,12 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return c;
   }
 
-  async rejectAdjustment(_tx: Tx, tenantId: string, id: string, rejecterId: string): Promise<AdjustmentRow | null> {
+  async rejectAdjustment(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    rejecterId: string,
+  ): Promise<AdjustmentRow | null> {
     const a = this.adjustments.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!a) return null;
     a.status = 'REJECTED';
@@ -309,10 +351,18 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return a;
   }
 
-  async findActivePayoutLineForPayable(_tx: Tx, tenantId: string, payableId: string): Promise<PayoutLineRow | null> {
+  async findActivePayoutLineForPayable(
+    _tx: Tx,
+    tenantId: string,
+    payableId: string,
+  ): Promise<PayoutLineRow | null> {
     return (
       this.payoutLines.find(
-        (l) => l.tenant_id === tenantId && l.payable_id === payableId && l.status !== 'REMOVED' && l.status !== 'PAYMENT_FAILED',
+        (l) =>
+          l.tenant_id === tenantId &&
+          l.payable_id === payableId &&
+          l.status !== 'REMOVED' &&
+          l.status !== 'PAYMENT_FAILED',
       ) ?? null
     );
   }
@@ -323,7 +373,11 @@ class InMemoryFinanceRepository implements FinanceRepository {
     this.recalculationProposals.push(row);
   }
 
-  async findRecalculationProposalById(_tx: Tx, tenantId: string, id: string): Promise<RecalculationProposalRow | null> {
+  async findRecalculationProposalById(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<RecalculationProposalRow | null> {
     return this.recalculationProposals.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
 
@@ -376,24 +430,20 @@ class InMemoryFinanceRepository implements FinanceRepository {
 describe('Module 30 Part A: Commission (MOD-COM)', () => {
   it('TC-COM-001 POST /v1/commission-plans enforces permission commission.plan.edit', async () => {
     const app = appWith('lead.read');
-    const res = await request(app)
-      .post('/v1/commission-plans')
-      .send({
-        lenderId: 'lnd_01J00000000000000000000000',
-        qualifyingEvent: 'DISBURSEMENT',
-        basis: 'DISBURSED_AMOUNT',
-      });
+    const res = await request(app).post('/v1/commission-plans').send({
+      lenderId: 'lnd_01J00000000000000000000000',
+      qualifyingEvent: 'DISBURSEMENT',
+      basis: 'DISBURSED_AMOUNT',
+    });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('TC-COM-002 PATCH /v1/commission-plans/:id requires If-Match header', async () => {
     const app = appWith('commission.plan.edit');
-    const res = await request(app)
-      .patch('/v1/commission-plans/cpl_01J00000000000000000000000')
-      .send({
-        basis: 'NET_LOAN',
-      });
+    const res = await request(app).patch('/v1/commission-plans/cpl_01J00000000000000000000000').send({
+      basis: 'NET_LOAN',
+    });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
     expect(res.body.error.message).toContain('If-Match');
@@ -413,12 +463,10 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
 
   it('TC-COM-004 POST /v1/clawbacks requires adjustment.create permission', async () => {
     const app = appWith('lead.read');
-    const res = await request(app)
-      .post('/v1/clawbacks')
-      .send({
-        amount: '15000.00',
-        reason: 'Early foreclosure within 60 days',
-      });
+    const res = await request(app).post('/v1/clawbacks').send({
+      amount: '15000.00',
+      reason: 'Early foreclosure within 60 days',
+    });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
@@ -506,7 +554,11 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
     expect(clawback.status).toBe('PENDING');
 
     // Payable should be put ON_HOLD
-    const heldPayable = await repo.findCommissionPayableById(tx, editorCtx.principal.tenantId, calcResult.payable!.id);
+    const heldPayable = await repo.findCommissionPayableById(
+      tx,
+      editorCtx.principal.tenantId,
+      calcResult.payable!.id,
+    );
     expect(heldPayable?.state).toBe('ON_HOLD');
 
     // SOD-07 Check: Editor cannot approve their own clawback
@@ -517,11 +569,15 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
     expect(approvedClawback.status).toBe('APPROVED');
 
     // Payable should now be REVERSED
-    const reversedPayable = await repo.findCommissionPayableById(tx, editorCtx.principal.tenantId, calcResult.payable!.id);
+    const reversedPayable = await repo.findCommissionPayableById(
+      tx,
+      editorCtx.principal.tenantId,
+      calcResult.payable!.id,
+    );
     expect(reversedPayable?.state).toBe('REVERSED');
   });
 
-  it('TC-COM-008 Commission plan tenant isolation: Tenant B cannot access Tenant A\'s plan', async () => {
+  it("TC-COM-008 Commission plan tenant isolation: Tenant B cannot access Tenant A's plan", async () => {
     const repo = new InMemoryFinanceRepository();
     const service = new FinanceService({ repository: repo });
     const ctxA: RequestContext = {
@@ -695,34 +751,28 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
 
   it('TC-PAY-002 POST /v1/payout-requests validates payableIds array is non-empty', async () => {
     const app = appWith('payout.request');
-    const res = await request(app)
-      .post('/v1/payout-requests')
-      .send({
-        connectorId: 'con_01J00000000000000000000000',
-        payableIds: [],
-      });
+    const res = await request(app).post('/v1/payout-requests').send({
+      connectorId: 'con_01J00000000000000000000000',
+      payableIds: [],
+    });
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('TC-PAY-003 POST /v1/payout-requests/:id/approval requires payout.approve', async () => {
     const app = appWith('payout.request');
-    const res = await request(app)
-      .post('/v1/payout-requests/prq_01J00000000000000000000000/approval')
-      .send({
-        decision: 'APPROVED',
-      });
+    const res = await request(app).post('/v1/payout-requests/prq_01J00000000000000000000000/approval').send({
+      decision: 'APPROVED',
+    });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('TC-PAY-004 POST /v1/payout-requests/:id/payment requires payout.record_payment', async () => {
     const app = appWith('payout.approve');
-    const res = await request(app)
-      .post('/v1/payout-requests/prq_01J00000000000000000000000/payment')
-      .send({
-        paymentRef: 'UTR987654321',
-      });
+    const res = await request(app).post('/v1/payout-requests/prq_01J00000000000000000000000/payment').send({
+      paymentRef: 'UTR987654321',
+    });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
@@ -924,7 +974,9 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
 
     // 2. SOD-07 Enforcement: Proposer cannot approve their own proposal!
     await expect(
-      service.approveRecalculationProposal(tx, proposerCtx, proposal.id, { comment: 'Self approval attempt' }),
+      service.approveRecalculationProposal(tx, proposerCtx, proposal.id, {
+        comment: 'Self approval attempt',
+      }),
     ).rejects.toThrowError(/SOD-07/);
 
     // 3. Checker approves proposal
@@ -1157,7 +1209,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     expect(pEligible?.state).toBe('ELIGIBLE');
   });
 
-  it('TC-PAY-009 Payout request and payable tenant isolation: Tenant B cannot access Tenant A\'s payout', async () => {
+  it("TC-PAY-009 Payout request and payable tenant isolation: Tenant B cannot access Tenant A's payout", async () => {
     const repo = new InMemoryFinanceRepository();
     const service = new FinanceService({ repository: repo });
     const ctxA: RequestContext = {
@@ -1273,7 +1325,10 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
 
     // 1. Payment recording on SUBMITTED (unapproved) payout MUST fail with INVALID_STATE
     await expect(
-      service.recordPayoutPayment(tx, makerCtx, payout.id, { paymentRef: 'UTR12345', paidOn: new Date().toISOString() }),
+      service.recordPayoutPayment(tx, makerCtx, payout.id, {
+        paymentRef: 'UTR12345',
+        paidOn: new Date().toISOString(),
+      }),
     ).rejects.toThrowError(/not APPROVED/);
 
     // Cancel the payout
@@ -1362,9 +1417,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
       qualifyingEvent: 'DISBURSEMENT',
       basis: 'DISBURSED_AMOUNT',
     });
-    await expect(
-      service.approveCommissionPlan(tx, userCtx, plan.id, 0, {}),
-    ).rejects.toThrowError(/SOD-02/);
+    await expect(service.approveCommissionPlan(tx, userCtx, plan.id, 0, {})).rejects.toThrowError(/SOD-02/);
 
     // 2. SOD-03: User creates payout request, tries to approve own payout -> throws SOD_VIOLATION
     const pId = 'cpay_01J00000000000000000000022';
@@ -1400,9 +1453,9 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
       affectedCalculationIds: ['ccal_01J00000000000000000000022' as any],
       preview: {},
     });
-    await expect(
-      service.approveRecalculationProposal(tx, userCtx, proposal.id, {}),
-    ).rejects.toThrowError(/SOD-07/);
+    await expect(service.approveRecalculationProposal(tx, userCtx, proposal.id, {})).rejects.toThrowError(
+      /SOD-07/,
+    );
   });
 
   it('TC-COM-012 Large amount calculations and boundary conditions (100 Crore)', async () => {
@@ -1444,7 +1497,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
       customRate: 0.02,
       currency: 'INR',
       connectorId: 'con_large_01',
-      connectorShareRate: 0.70,
+      connectorShareRate: 0.7,
     });
 
     expect(result.calculation.grossAmount).toBe('20000000.00'); // 2 Crore
@@ -1553,7 +1606,9 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
     const rejReason = (rejected[0] as PromiseRejectedResult).reason;
-    expect(rejReason.message).toMatch(/already included in live payout request|not in ELIGIBLE state|already included in an active payout line|uq_payout_line_once/i);
+    expect(rejReason.message).toMatch(
+      /already included in live payout request|not in ELIGIBLE state|already included in an active payout line|uq_payout_line_once/i,
+    );
   });
 
   it('TC-PAY-014 Complete lifecycle state tracking: rejection path and payment failure path verify consistent states', async () => {
@@ -1794,8 +1849,15 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     expect(realSha).toBe(batch.fileSha256);
 
     // Tampering with stored file causes INTEGRITY_ERROR
-    await storage.save(makerCtx.principal.tenantId, batch.fileObjectKey!, Buffer.from('TAMPERED_CSV', 'utf8'), 'text/csv');
-    await expect(service.getPayoutBatchBankFile(tx, makerCtx, batch.id)).rejects.toThrowError(/checksum verification failed/);
+    await storage.save(
+      makerCtx.principal.tenantId,
+      batch.fileObjectKey!,
+      Buffer.from('TAMPERED_CSV', 'utf8'),
+      'text/csv',
+    );
+    await expect(service.getPayoutBatchBankFile(tx, makerCtx, batch.id)).rejects.toThrowError(
+      /checksum verification failed/,
+    );
   });
 
   it('TC-PAY-017 Maker-checker Step-Up MFA assurance requirement on approval, payment, and file export', async () => {
@@ -1834,8 +1896,9 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     expect(resPay.body.error.code).toBe('STEP_UP_REQUIRED');
 
     // 3. Bank file export requires Step-Up MFA
-    const resFile = await request(appPayWithoutMfa)
-      .get('/v1/payout-batches/pbt_01J00000000000000000000001/bank-file');
+    const resFile = await request(appPayWithoutMfa).get(
+      '/v1/payout-batches/pbt_01J00000000000000000000001/bank-file',
+    );
     expect(resFile.status).toBe(401);
     expect(resFile.body.error.code).toBe('STEP_UP_REQUIRED');
   });

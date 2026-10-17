@@ -4,7 +4,7 @@
 **Classification:** Confidential — Financial Systems Architecture, Security & Implementation Audit  
 **Status:** **IMPLEMENTED & ACTIVE (Authorized by Explicit User Request)**  
 **Author:** Senior Full-Stack Engineer, Financial Systems Architect & Security Engineer  
-**Scope:** Architectural Blueprint, Migration Audit, Implemented Subsystems & Test Verification  
+**Scope:** Architectural Blueprint, Migration Audit, Implemented Subsystems & Test Verification
 
 ---
 
@@ -13,12 +13,14 @@
 Module 27 (**Connector Management — MOD-CON**) defines the third-party loan agent, direct selling agent (DSA), broker, and connector management subsystem for the DSA CRM platform. It governs the end-to-end lifecycle of connectors: their legal entity onboarding, PAN/GSTIN deduplication, document verification, bank account management with strict Separation of Duties (SOD), commission agreement linkages, lead attribution and reattribution approval workflows, duplicate referral disputes via the Business Rules Engine (BRE), and lifecycle state transitions impacting portal access and payout eligibility.
 
 ### Operational Status: Implementation Complete & Verified
+
 Following explicit instruction to proceed with implementation:
-* **Database Migration Applied:** [`supabase/migrations/20261001000027_connectors.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000027_connectors.sql) executed against live Supabase PostgreSQL. Tables `app.connector` (ENT-071), `app.connector_bank_account` (ENT-073), `app.connector_agreement` (ENT-072), `app.attribution_change_request` (ENT-075), and `app.attribution_dispute` (ENT-074) are active with tenant RLS isolation, partial unique constraints, and security definer procedures.
-* **Shared Contracts (`@dsa/contracts`):** Extended with ID prefixes (`con`, `cag`, `cba`, `cdp`, `car`), permissions (`connector.manage`, `connector.read`, `connector.bank_change_approve`, `connector.attribution_change`, `connector.dispute_resolve`), and complete Zod validation schemas in [`packages/contracts/src/connector.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/connector.ts).
-* **Backend Subsystem (`apps/api`):** Implemented in [`apps/api/src/modules/origination/connectors/connector-service.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/origination/connectors/connector-service.ts) and mounted in [`apps/api/src/modules/origination/connectors/router.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/origination/connectors/router.ts) via `apiModules`.
-* **Frontend Workbench (`apps/web`):** Built interactive 5-tab workbench in [`apps/web/src/features/connectors/ConnectorPage.tsx`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/web/src/features/connectors/ConnectorPage.tsx) with route registered at `/connectors` and top navigation link.
-* **Automated Test Suites:** Unit tests in [`apps/api/test/connectors.spec.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/test/connectors.spec.ts) and live PostgreSQL integration tests in [`apps/api/test/connectors-live-pg.int.spec.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/test/connectors-live-pg.int.spec.ts) executed and passing (15/15 tests passed).
+
+- **Database Migration Applied:** [`supabase/migrations/20261001000027_connectors.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000027_connectors.sql) executed against live Supabase PostgreSQL. Tables `app.connector` (ENT-071), `app.connector_bank_account` (ENT-073), `app.connector_agreement` (ENT-072), `app.attribution_change_request` (ENT-075), and `app.attribution_dispute` (ENT-074) are active with tenant RLS isolation, partial unique constraints, and security definer procedures.
+- **Shared Contracts (`@dsa/contracts`):** Extended with ID prefixes (`con`, `cag`, `cba`, `cdp`, `car`), permissions (`connector.manage`, `connector.read`, `connector.bank_change_approve`, `connector.attribution_change`, `connector.dispute_resolve`), and complete Zod validation schemas in [`packages/contracts/src/connector.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/connector.ts).
+- **Backend Subsystem (`apps/api`):** Implemented in [`apps/api/src/modules/origination/connectors/connector-service.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/origination/connectors/connector-service.ts) and mounted in [`apps/api/src/modules/origination/connectors/router.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/origination/connectors/router.ts) via `apiModules`.
+- **Frontend Workbench (`apps/web`):** Built interactive 5-tab workbench in [`apps/web/src/features/connectors/ConnectorPage.tsx`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/web/src/features/connectors/ConnectorPage.tsx) with route registered at `/connectors` and top navigation link.
+- **Automated Test Suites:** Unit tests in [`apps/api/test/connectors.spec.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/test/connectors.spec.ts) and live PostgreSQL integration tests in [`apps/api/test/connectors-live-pg.int.spec.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/test/connectors-live-pg.int.spec.ts) executed and passing (15/15 tests passed).
 
 ---
 
@@ -26,12 +28,12 @@ Following explicit instruction to proceed with implementation:
 
 Throughout this document, every architectural component, dependency, entity, endpoint, and control is explicitly classified using the following standardized statuses:
 
-| Status | Definition |
-| :--- | :--- |
-| **Existing and verified in code** | Implemented, tested, and active in the current codebase migrations/source files. |
-| **Partially implemented** | Foundation or schema stub exists, but missing business logic, constraints, or routes. |
-| **Missing** | Does not exist in the repository; must be created from scratch during implementation. |
-| **Proposed only** | Architectural design, schema, or contract documented here for future implementation. |
+| Status                             | Definition                                                                                          |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| **Existing and verified in code**  | Implemented, tested, and active in the current codebase migrations/source files.                    |
+| **Partially implemented**          | Foundation or schema stub exists, but missing business logic, constraints, or routes.               |
+| **Missing**                        | Does not exist in the repository; must be created from scratch during implementation.               |
+| **Proposed only**                  | Architectural design, schema, or contract documented here for future implementation.                |
 | **Blocked by dependency/approval** | Cannot be safely implemented until an external module, migration, or business decision is resolved. |
 
 ---
@@ -40,27 +42,27 @@ Throughout this document, every architectural component, dependency, entity, end
 
 A forensic inspection of the repository (`apps/api`, `apps/web`, `packages/contracts`, `packages/kernel`, and `supabase/migrations`) was executed. The table below details the foundation reuse map and current baseline:
 
-| Subsystem / Layer | Source File Path | Status | Capabilities & Findings |
-| :--- | :--- | :--- | :--- |
-| **PostgreSQL Tenancy & RLS** | [`supabase/migrations/20261001000000_roles_and_helpers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000000_roles_and_helpers.sql) | **Existing and verified in code** | `app_tenant()`, `enable_tenant_rls()`, `touch_row()`, and immutable table helper `forbid_mutation()`. |
-| **Transaction Execution** | [`apps/api/src/kernel-min/tx-runner.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/kernel-min/tx-runner.ts) | **Existing and verified in code** | `TxRunner.withTenantTx(ctx, fn)` sets session-local `app.tenant_id = ctx.principal.tenantId`. |
-| **Authorization & RBAC** | [`packages/kernel/src/authz/authz.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/authz/authz.ts) | **Existing and verified in code** | `requirePermission(ctx, code)`, `requireOnRecord(ctx, code, rec)`, `scopeFilter(ctx, code, qb, cols)`. |
-| **Audit Logging Engine** | [`packages/kernel/src/audit/audit.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/audit/audit.ts) | **Existing and verified in code** | `AuditPort.emit()` writing transactionally to `app.audit_event`. |
-| **Idempotency Engine** | [`packages/kernel/src/idempotency/idempotency.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/idempotency/idempotency.ts) | **Existing and verified in code** | `withIdempotency()` enforcing replay headers and payload hash validation. |
-| **Optimistic Concurrency** | [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts) | **Existing and verified in code** | `ifMatchVersion(req)` parsing `If-Match` ETags against `lock_version`. |
-| **Cursor Pagination** | [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts) | **Existing and verified in code** | `encodeCursor()` and `decodeCursor()` using base64url keyset encoding. |
-| **Sensitive Data Scanner** | [`packages/contracts/src/activity.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/activity.ts#L26-L35) | **Existing and verified in code** | `containsS2SensitiveData()` detects plaintext PAN, Aadhaar, and 9–18 digit bank account patterns. |
-| **Cryptographic Hashing** | [`apps/api/src/modules/crm/leads/normalizer.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/crm/leads/normalizer.ts#L41-L47) | **Existing and verified in code** | HMAC-SHA256 blind indexing pattern (`crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`)`). |
-| **Lead Attribution Columns** | [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L91-L92) | **Partially implemented** | `lead.connector_id` and `lead.referred_at` exist, but constrained by `CHECK (connector_id IS NULL)`. |
-| **Lead Attribution Guard** | [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L132-L140) | **Partially implemented** | Trigger `lead_attribution_guard` throws SQL error `42501` if `connector_id` is mutated! |
-| **Duplicate Lead Detection** | [`packages/contracts/src/ports/decision-keys.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ports/decision-keys.ts#L94-L98) | **Existing and verified in code** | `DK-lead.duplicate` supports `classification: 'ATTRIBUTION_CONFLICT'`. |
-| **User Types (MOD-USR)** | [`supabase/migrations/20261001000001_platform_core.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000001_platform_core.sql#L59) | **Partially implemented** | `user_type text CHECK (user_type IN ('STAFF'))` has explicit comment `-- CONNECTOR added by TASK-417`. |
-| **Verification Records (MOD-VER)**| [`supabase/migrations/20261001000026_verifications.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000026_verifications.sql) | **Existing and verified in code** | `app.verification` (ENT-064) supports verification types `PAN`, `GST`, `BANK_STATEMENT`. |
-| **Document Sharing (MOD-DSH)**| [`supabase/migrations/20261001000025_document_sharing.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000025_document_sharing.sql) | **Existing and verified in code** | Provides upload links (`upl_...`) and shares (`shr_...`), but canonical `MOD-DOC` (`app.document`) is deferred. |
-| **Commission Engine (MOD-COM)**| None | **Missing** | No commission calculation engine or split rule tables exist in the codebase. |
-| **Connector Entities (ENT-071–075)**| None | **Missing** | Tables `connector`, `connector_agreement`, `connector_bank_account`, `attribution_dispute`, and `attribution_change_request` do not exist. |
-| **Connector Permissions** | [`packages/contracts/src/permissions.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/permissions.ts) | **Missing** | Missing `connector.manage`, `connector.read`, `connector.bank_change_approve`, `connector.attribution_change`, `connector.dispute_resolve`. |
-| **Connector ID Prefixes** | [`packages/contracts/src/ids.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ids.ts) | **Missing** | Missing prefixes `con`, `cag`, `cba`, `cdp`, and `car`. |
+| Subsystem / Layer                    | Source File Path                                                                                                                                                                                               | Status                            | Capabilities & Findings                                                                                                                     |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| **PostgreSQL Tenancy & RLS**         | [`supabase/migrations/20261001000000_roles_and_helpers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000000_roles_and_helpers.sql)               | **Existing and verified in code** | `app_tenant()`, `enable_tenant_rls()`, `touch_row()`, and immutable table helper `forbid_mutation()`.                                       |
+| **Transaction Execution**            | [`apps/api/src/kernel-min/tx-runner.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/kernel-min/tx-runner.ts)                                                       | **Existing and verified in code** | `TxRunner.withTenantTx(ctx, fn)` sets session-local `app.tenant_id = ctx.principal.tenantId`.                                               |
+| **Authorization & RBAC**             | [`packages/kernel/src/authz/authz.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/authz/authz.ts)                                                           | **Existing and verified in code** | `requirePermission(ctx, code)`, `requireOnRecord(ctx, code, rec)`, `scopeFilter(ctx, code, qb, cols)`.                                      |
+| **Audit Logging Engine**             | [`packages/kernel/src/audit/audit.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/audit/audit.ts)                                                           | **Existing and verified in code** | `AuditPort.emit()` writing transactionally to `app.audit_event`.                                                                            |
+| **Idempotency Engine**               | [`packages/kernel/src/idempotency/idempotency.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/idempotency/idempotency.ts)                                   | **Existing and verified in code** | `withIdempotency()` enforcing replay headers and payload hash validation.                                                                   |
+| **Optimistic Concurrency**           | [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts)                                                                       | **Existing and verified in code** | `ifMatchVersion(req)` parsing `If-Match` ETags against `lock_version`.                                                                      |
+| **Cursor Pagination**                | [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts)                                                                       | **Existing and verified in code** | `encodeCursor()` and `decodeCursor()` using base64url keyset encoding.                                                                      |
+| **Sensitive Data Scanner**           | [`packages/contracts/src/activity.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/activity.ts#L26-L35)                                                   | **Existing and verified in code** | `containsS2SensitiveData()` detects plaintext PAN, Aadhaar, and 9–18 digit bank account patterns.                                           |
+| **Cryptographic Hashing**            | [`apps/api/src/modules/crm/leads/normalizer.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/crm/leads/normalizer.ts#L41-L47)                               | **Existing and verified in code** | HMAC-SHA256 blind indexing pattern (`crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`)`).                                           |
+| **Lead Attribution Columns**         | [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L91-L92)   | **Partially implemented**         | `lead.connector_id` and `lead.referred_at` exist, but constrained by `CHECK (connector_id IS NULL)`.                                        |
+| **Lead Attribution Guard**           | [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L132-L140) | **Partially implemented**         | Trigger `lead_attribution_guard` throws SQL error `42501` if `connector_id` is mutated!                                                     |
+| **Duplicate Lead Detection**         | [`packages/contracts/src/ports/decision-keys.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ports/decision-keys.ts#L94-L98)                             | **Existing and verified in code** | `DK-lead.duplicate` supports `classification: 'ATTRIBUTION_CONFLICT'`.                                                                      |
+| **User Types (MOD-USR)**             | [`supabase/migrations/20261001000001_platform_core.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000001_platform_core.sql#L59)                   | **Partially implemented**         | `user_type text CHECK (user_type IN ('STAFF'))` has explicit comment `-- CONNECTOR added by TASK-417`.                                      |
+| **Verification Records (MOD-VER)**   | [`supabase/migrations/20261001000026_verifications.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000026_verifications.sql)                       | **Existing and verified in code** | `app.verification` (ENT-064) supports verification types `PAN`, `GST`, `BANK_STATEMENT`.                                                    |
+| **Document Sharing (MOD-DSH)**       | [`supabase/migrations/20261001000025_document_sharing.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000025_document_sharing.sql)                 | **Existing and verified in code** | Provides upload links (`upl_...`) and shares (`shr_...`), but canonical `MOD-DOC` (`app.document`) is deferred.                             |
+| **Commission Engine (MOD-COM)**      | None                                                                                                                                                                                                           | **Missing**                       | No commission calculation engine or split rule tables exist in the codebase.                                                                |
+| **Connector Entities (ENT-071–075)** | None                                                                                                                                                                                                           | **Missing**                       | Tables `connector`, `connector_agreement`, `connector_bank_account`, `attribution_dispute`, and `attribution_change_request` do not exist.  |
+| **Connector Permissions**            | [`packages/contracts/src/permissions.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/permissions.ts)                                                     | **Missing**                       | Missing `connector.manage`, `connector.read`, `connector.bank_change_approve`, `connector.attribution_change`, `connector.dispute_resolve`. |
+| **Connector ID Prefixes**            | [`packages/contracts/src/ids.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ids.ts)                                                                     | **Missing**                       | Missing prefixes `con`, `cag`, `cba`, `cdp`, and `car`.                                                                                     |
 
 ---
 
@@ -88,43 +90,48 @@ The connector management subsystem intersects six other CRM modules. Their curre
 ```
 
 ### 2.1 MOD-LEAD (Lead Management) — Status: SCHEMA BLOCKER
-* **Current State:** 
+
+- **Current State:**
   - `lead.connector_id` and `lead.referred_at` exist in [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L91).
   - Column constraint: `connector_id text CHECK (connector_id IS NULL)`. Any non-null value currently violates database integrity!
   - Immutability trigger: `lead_attribution_guard` calls `lead_attribution_immutable()` which raises exception `42501` on any update altering `(tenant_id, branch_id, source, sub_source, campaign, utm, connector_id, referred_at)`.
-* **Blocker Analysis:** 
+- **Blocker Analysis:**
   - Direct attribution assignment during lead creation fails if `connector_id` is provided.
   - Attribution reassignments via `POST /v1/attribution-change-requests/{id}/approval` (API-CON-010) fail due to `lead_attribution_guard`.
-* **Required Resolution:** An additive database migration must drop `CHECK (connector_id IS NULL)`, establish a foreign key to `app.connector(tenant_id, id)`, and add a controlled session bypass or Security Definer function `app.apply_attribution_change(...)` to modify attribution only through audited approval workflows.
+- **Required Resolution:** An additive database migration must drop `CHECK (connector_id IS NULL)`, establish a foreign key to `app.connector(tenant_id, id)`, and add a controlled session bypass or Security Definer function `app.apply_attribution_change(...)` to modify attribution only through audited approval workflows.
 
 ### 2.2 MOD-BRE (Business Rules Engine) — Status: READY & VERIFIED
-* **Current State:** 
+
+- **Current State:**
   - In [`packages/contracts/src/ports/decision-keys.ts#L94-L98`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ports/decision-keys.ts#L94-L98), `DK-lead.duplicate` explicitly defines the output classification:
     ```typescript
-    classification: 'NONE' | 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT'
+    classification: 'NONE' | 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT';
     ```
   - In `lead-service.ts`, `decisionPort.decide('DK-lead.duplicate')` evaluates candidate matches and sets `duplicate_flag`.
   - In `crm_leads_customers.sql#L104`, table `app.lead` has constraint `CHECK (duplicate_flag IN ('NONE','POSSIBLE','EXACT','ATTRIBUTION_CONFLICT'))`.
-* **Assessment:** No schema changes required for BRE duplicate detection. Connector disputes will naturally hook into the existing `ATTRIBUTION_CONFLICT` classification.
+- **Assessment:** No schema changes required for BRE duplicate detection. Connector disputes will naturally hook into the existing `ATTRIBUTION_CONFLICT` classification.
 
 ### 2.3 MOD-VER (Verification Subsystem) — Status: READY & VERIFIED
-* **Current State:** 
+
+- **Current State:**
   - Implemented in `20261001000026_verifications.sql`. Table `app.verification` (ENT-064) exists with tenant RLS, consent validation, and outcome immutability.
   - Supports verification types: `PAN`, `GST`, `BANK_STATEMENT`.
-* **Integration Strategy:** Connector activation (`POST /v1/connectors/{id}/activation` — API-CON-005) and bank account verification (`POST /v1/connectors/{id}/bank-accounts` — API-CON-007) will directly reference `verification_id text REFERENCES app.verification(id)`. Activation must assert that the linked verification record has `status = 'PASSED'`.
+- **Integration Strategy:** Connector activation (`POST /v1/connectors/{id}/activation` — API-CON-005) and bank account verification (`POST /v1/connectors/{id}/bank-accounts` — API-CON-007) will directly reference `verification_id text REFERENCES app.verification(id)`. Activation must assert that the linked verification record has `status = 'PASSED'`.
 
 ### 2.4 MOD-DOC (Document Management) — Status: DEFERRED (Decoupled via MOD-DSH)
-* **Current State:** 
+
+- **Current State:**
   - Canonical `app.document` (ENT-058) is deferred.
   - Module 25: Document Sharing (`MOD-DSH`) is implemented (`20261001000025_document_sharing.sql`), providing secure upload links (`upl_...`) and storage references.
-* **Integration Strategy:** As established in `MOD_VER_IMPLEMENTATION_READINESS.md`, connector agreements and disputes must store evidence using a string column `evidence_ref text NOT NULL` (referencing an upload identifier or object storage key). A foreign key `REFERENCES app.document(id)` will not be added until `MOD-DOC` ships.
+- **Integration Strategy:** As established in `MOD_VER_IMPLEMENTATION_READINESS.md`, connector agreements and disputes must store evidence using a string column `evidence_ref text NOT NULL` (referencing an upload identifier or object storage key). A foreign key `REFERENCES app.document(id)` will not be added until `MOD-DOC` ships.
 
 ### 2.5 MOD-USR (User Management) — Status: PARTIALLY IMPLEMENTED (Blocked by CHECK Constraint)
-* **Current State:** 
+
+- **Current State:**
   - `app.app_user.user_type` has constraint `CHECK (user_type IN ('STAFF'))` with the inline comment `-- CONNECTOR added by TASK-417 (AG-19)`.
   - In [`apps/api/src/modules/platform/router.ts#L1139`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/platform/router.ts#L1139), `POST /v1/users` hardcodes `'STAFF'`.
-* **Blocker Analysis:** `POST /v1/connectors/{id}/users` (API-CON-011) cannot create portal users without expanding the `user_type` check constraint to include `'CONNECTOR'`.
-* **Required Resolution:** Additive migration updating the check constraint:
+- **Blocker Analysis:** `POST /v1/connectors/{id}/users` (API-CON-011) cannot create portal users without expanding the `user_type` check constraint to include `'CONNECTOR'`.
+- **Required Resolution:** Additive migration updating the check constraint:
   ```sql
   ALTER TABLE app.app_user DROP CONSTRAINT app_user_user_type_check;
   ALTER TABLE app.app_user ADD CONSTRAINT app_user_user_type_check CHECK (user_type IN ('STAFF', 'CONNECTOR'));
@@ -132,8 +139,9 @@ The connector management subsystem intersects six other CRM modules. Their curre
   ```
 
 ### 2.6 MOD-COM (Commission Management) — Status: MISSING (Decoupled Architecture)
-* **Current State:** Commission calculations and split rules do not exist in the codebase.
-* **Architectural Strategy:** 
+
+- **Current State:** Commission calculations and split rules do not exist in the codebase.
+- **Architectural Strategy:**
   - **Do NOT implement a separate commission engine under MOD-CON.**
   - `connector_agreement` (ENT-072) will define product scopes, rate cards, and rule set references (`rule_set_id text`).
   - When commission calculations eventually exist, SOD-09 will enforce that attribution change requests cannot be approved by anyone involved in the original lead referral or the commission calculation.
@@ -165,6 +173,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ### 3.1 SUB-CON.01: Onboarding, Verification, and Bank Accounts
 
 #### Workflows & Capabilities:
+
 1. **Connector Creation (`POST /v1/connectors` — API-CON-001):**
    - Permission: `connector.manage`. Requires `Idempotency-Key`.
    - Validates Indian PAN format (`^[A-Z]{5}[0-9]{4}[A-Z]$`) and GSTIN format.
@@ -195,8 +204,8 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
    - **Separation of Duties (SOD):** The creator of the bank account change cannot approve it (`created_by <> approved_by`).
    - **Partial Uniqueness:** Enforces exactly one `ACTIVE` bank account per connector via PostgreSQL partial unique index:
      ```sql
-     CREATE UNIQUE INDEX connector_bank_account_active_uq 
-     ON app.connector_bank_account (tenant_id, connector_id) 
+     CREATE UNIQUE INDEX connector_bank_account_active_uq
+     ON app.connector_bank_account (tenant_id, connector_id)
      WHERE status = 'ACTIVE';
      ```
    - Imposes a mandatory **cooling period** (e.g., 24 hours) after activation before payouts can be routed to the new account.
@@ -211,6 +220,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ### 3.2 SUB-CON.02: Agreements and Rate Cards
 
 #### Workflows & Capabilities:
+
 1. **Agreement Creation (`POST /v1/connectors/{id}/agreements` — API-CON-004):**
    - Permission: `connector.manage`. Requires `Idempotency-Key`.
    - Entity `connector_agreement` (ENT-072) binds:
@@ -224,8 +234,8 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 2. **Preventing Overlapping Active Agreements:**
    - Database-level exclusion constraint ensures no connector has overlapping active agreement validity ranges:
      ```sql
-     ALTER TABLE app.connector_agreement 
-     ADD CONSTRAINT connector_agreement_no_overlap 
+     ALTER TABLE app.connector_agreement
+     ADD CONSTRAINT connector_agreement_no_overlap
      EXCLUDE USING gist (
        tenant_id WITH =,
        connector_id WITH =,
@@ -241,6 +251,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ### 3.3 SUB-CON.03: Lead Attribution and Reattribution
 
 #### Workflows & Capabilities:
+
 1. **Initial Lead Referral Attribution:**
    - Handled during lead ingestion (`POST /v1/leads`).
    - If lead includes `connectorId`, the system validates that the connector exists, is in `ACTIVE` status, and has an active agreement covering the lead's product.
@@ -258,7 +269,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
      - `requester_id`: User initiating the request.
 3. **Attribution Approval (`POST /v1/attribution-change-requests/{id}/approval` — API-CON-010):**
    - Permission: `connector.attribution_change`. Requires `If-Match`.
-   - **Separation of Duties (SOD-09):** 
+   - **Separation of Duties (SOD-09):**
      - The requester cannot approve their own request (`requester_id <> approver_id`).
      - If commission calculations or disbursement records already exist for the lead in `MOD-COM`, the request cannot be approved by standard branch operators. It strictly requires a designated `COMMISSION_APPROVER` seat.
    - **Immutability Bypass via Secure Stored Function:**
@@ -271,6 +282,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ### 3.4 SUB-CON.04: Duplicate Referrals and Disputes
 
 #### Workflows & Capabilities:
+
 1. **Duplicate Referral Detection (`DK-lead.duplicate`):**
    - When a new lead is ingested with a connector attribution, `lead-service.ts` queries existing leads by `mobile_hash`.
    - If an existing lead is found with a different connector or originated organically within the conflict window (e.g., 90 days), the BRE returns:
@@ -304,6 +316,7 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ### 3.5 SUB-CON.05: Connector Status Lifecycle
 
 #### Workflows & Capabilities:
+
 1. **Status Transition Engine (`POST /v1/connectors/{id}/status` — API-CON-006):**
    - Permission: `connector.manage`. Requires `Idempotency-Key` and `If-Match`.
    - Formal State Machine:
@@ -341,13 +354,13 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
    - `ACTIVE / SUSPENDED -> TERMINATED`: Offboarding or permanent debarment. Terminal state; cannot be reopened.
 3. **Downstream Cross-Module Impact Matrix:**
 
-| Status State | Payout Eligibility (`MOD-COM`) | Portal Access (`MOD-USR`) | Lead Attribution (`MOD-LEAD`) |
-| :--- | :--- | :--- | :--- |
-| **DRAFT** | Ineligible | Disabled | Blocked |
-| **PENDING_VERIFICATION** | Ineligible | Disabled | Blocked |
-| **ACTIVE** | Eligible (Subject to bank cooling period) | Enabled | Allowed |
-| **SUSPENDED** | **Suspended** (Accrued held, zero disbursements) | **Disabled** (Sessions immediately revoked) | **Blocked** (New leads cannot attribute) |
-| **TERMINATED** | **Forfeited / Closed** | **Permanently Revoked** | **Blocked** |
+| Status State             | Payout Eligibility (`MOD-COM`)                   | Portal Access (`MOD-USR`)                   | Lead Attribution (`MOD-LEAD`)            |
+| :----------------------- | :----------------------------------------------- | :------------------------------------------ | :--------------------------------------- |
+| **DRAFT**                | Ineligible                                       | Disabled                                    | Blocked                                  |
+| **PENDING_VERIFICATION** | Ineligible                                       | Disabled                                    | Blocked                                  |
+| **ACTIVE**               | Eligible (Subject to bank cooling period)        | Enabled                                     | Allowed                                  |
+| **SUSPENDED**            | **Suspended** (Accrued held, zero disbursements) | **Disabled** (Sessions immediately revoked) | **Blocked** (New leads cannot attribute) |
+| **TERMINATED**           | **Forfeited / Closed**                           | **Permanently Revoked**                     | **Blocked**                              |
 
 ---
 
@@ -358,11 +371,11 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
 ```typescript
 // Proposed additions to ID_PREFIXES in packages/contracts/src/ids.ts
 export const CONNECTOR_ID_PREFIXES = [
-  'con',  // ENT-071 connector
-  'cag',  // ENT-072 connector_agreement
-  'cba',  // ENT-073 connector_bank_account
-  'cdp',  // ENT-074 attribution_dispute
-  'car',  // ENT-075 attribution_change_request
+  'con', // ENT-071 connector
+  'cag', // ENT-072 connector_agreement
+  'cba', // ENT-073 connector_bank_account
+  'cdp', // ENT-074 attribution_dispute
+  'car', // ENT-075 attribution_change_request
 ] as const;
 ```
 
@@ -371,11 +384,11 @@ export const CONNECTOR_ID_PREFIXES = [
 ```typescript
 // Proposed additions to PERMISSION_CODES in packages/contracts/src/permissions.ts
 export const CONNECTOR_PERMISSION_CODES = [
-  'connector.manage',              // Create, update, activate connectors & agreements
-  'connector.read',                // View connector directory and details
+  'connector.manage', // Create, update, activate connectors & agreements
+  'connector.read', // View connector directory and details
   'connector.bank_change_approve', // Separate SOD approver for bank account updates
-  'connector.attribution_change',  // Request and approve lead reattribution
-  'connector.dispute_resolve',     // Adjudicate and resolve attribution disputes
+  'connector.attribution_change', // Request and approve lead reattribution
+  'connector.dispute_resolve', // Adjudicate and resolve attribution disputes
 ] as const;
 ```
 
@@ -387,10 +400,23 @@ import { IdSchema } from './ids';
 import { containsS2SensitiveData } from './activity';
 
 // Enums
-export const CONNECTOR_TYPES = ['INDIVIDUAL', 'PROPRIETORSHIP', 'PARTNERSHIP', 'PVT_LTD', 'PUBLIC_LTD', 'LLP'] as const;
+export const CONNECTOR_TYPES = [
+  'INDIVIDUAL',
+  'PROPRIETORSHIP',
+  'PARTNERSHIP',
+  'PVT_LTD',
+  'PUBLIC_LTD',
+  'LLP',
+] as const;
 export type ConnectorType = (typeof CONNECTOR_TYPES)[number];
 
-export const CONNECTOR_STATUSES = ['DRAFT', 'PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'TERMINATED'] as const;
+export const CONNECTOR_STATUSES = [
+  'DRAFT',
+  'PENDING_VERIFICATION',
+  'ACTIVE',
+  'SUSPENDED',
+  'TERMINATED',
+] as const;
 export type ConnectorStatus = (typeof CONNECTOR_STATUSES)[number];
 
 export const BANK_ACCOUNT_STATUSES = ['PENDING_APPROVAL', 'ACTIVE', 'REJECTED', 'DISABLED'] as const;
@@ -399,14 +425,22 @@ export type BankAccountStatus = (typeof BANK_ACCOUNT_STATUSES)[number];
 // API-CON-001: POST /v1/connectors
 export const CreateConnectorSchema = z.object({
   connectorType: z.enum(CONNECTOR_TYPES),
-  legalName: z.string().min(3).max(255).refine((s) => !containsS2SensitiveData(s), {
-    message: 'Legal name must not contain sensitive account or PAN patterns.',
-  }),
+  legalName: z
+    .string()
+    .min(3)
+    .max(255)
+    .refine((s) => !containsS2SensitiveData(s), {
+      message: 'Legal name must not contain sensitive account or PAN patterns.',
+    }),
   contactPerson: z.string().min(2).max(100),
   mobileE164: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Must be a valid E.164 mobile number'),
   email: z.string().email(),
   pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, 'Invalid Indian PAN format'),
-  gstin: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format').optional().nullable(),
+  gstin: z
+    .string()
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format')
+    .optional()
+    .nullable(),
   primaryBranchId: IdSchema('br'),
   relationshipOwnerUserId: IdSchema('usr'),
 });
@@ -416,9 +450,16 @@ export type CreateConnectorInput = z.infer<typeof CreateConnectorSchema>;
 export const UpdateConnectorSchema = z.object({
   legalName: z.string().min(3).max(255).optional(),
   contactPerson: z.string().min(2).max(100).optional(),
-  mobileE164: z.string().regex(/^\+[1-9]\d{6,14}$/).optional(),
+  mobileE164: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional(),
   email: z.string().email().optional(),
-  gstin: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/).optional().nullable(),
+  gstin: z
+    .string()
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/)
+    .optional()
+    .nullable(),
   relationshipOwnerUserId: IdSchema('usr').optional(),
 });
 export type UpdateConnectorInput = z.infer<typeof UpdateConnectorSchema>;
@@ -453,9 +494,13 @@ export type CreateConnectorAgreementInput = z.infer<typeof CreateConnectorAgreem
 export const CreateAttributionChangeRequestSchema = z.object({
   leadId: IdSchema('lead'),
   proposedConnectorId: IdSchema('con'),
-  reason: z.string().min(10).max(1000).refine((s) => !containsS2SensitiveData(s), {
-    message: 'Reason must not contain plaintext financial or PAN patterns.',
-  }),
+  reason: z
+    .string()
+    .min(10)
+    .max(1000)
+    .refine((s) => !containsS2SensitiveData(s), {
+      message: 'Reason must not contain plaintext financial or PAN patterns.',
+    }),
   evidenceRef: z.string().min(5),
   recalculationProposal: z.string().max(500).optional(),
 });
@@ -463,11 +508,20 @@ export type CreateAttributionChangeRequestInput = z.infer<typeof CreateAttributi
 
 // API-CON-008: POST /v1/attribution-disputes/{id}/resolution
 export const ResolveAttributionDisputeSchema = z.object({
-  resolution: z.enum(['ATTRIBUTED_TO_FIRST', 'ATTRIBUTED_TO_CLAIMANT', 'SPLIT_COMMISSION', 'DISMISSED_ORGANIC']),
+  resolution: z.enum([
+    'ATTRIBUTED_TO_FIRST',
+    'ATTRIBUTED_TO_CLAIMANT',
+    'SPLIT_COMMISSION',
+    'DISMISSED_ORGANIC',
+  ]),
   resolvedConnectorId: IdSchema('con').optional().nullable(),
-  resolutionNotes: z.string().min(10).max(1000).refine((s) => !containsS2SensitiveData(s), {
-    message: 'Resolution notes must not contain sensitive plaintext data.',
-  }),
+  resolutionNotes: z
+    .string()
+    .min(10)
+    .max(1000)
+    .refine((s) => !containsS2SensitiveData(s), {
+      message: 'Resolution notes must not contain sensitive plaintext data.',
+    }),
 });
 export type ResolveAttributionDisputeInput = z.infer<typeof ResolveAttributionDisputeSchema>;
 ```
@@ -478,14 +532,14 @@ export type ResolveAttributionDisputeInput = z.infer<typeof ResolveAttributionDi
 
 ### 5.1 RBAC Matrix
 
-| Role Code | Role Name | `connector.read` | `connector.manage` | `connector.bank_change_approve` | `connector.attribution_change` | `connector.dispute_resolve` |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| `ROLE-ADMIN` | Platform Administrator | Yes (All) | Yes (All) | **No** (SOD-05 / Admin isolate) | Yes | Yes |
-| `ROLE-BRANCH-MANAGER` | Branch Manager | Yes (Branch) | Yes (Branch) | No | Yes (Request only) | No |
-| `ROLE-CONNECTOR-OPS` | Connector Operations | Yes (All) | Yes (All) | No | Yes (Request only) | Yes |
-| `ROLE-FINANCE-APPROVER`| Finance Operations | Yes (All) | No | **Yes** | No | No |
-| `ROLE-DISPUTE-HEAD` | Dispute Adjudicator | Yes (All) | No | No | Yes (Approve) | **Yes** |
-| `ROLE-CONNECTOR-PORTAL`| Connector External User| Yes (Own) | No | No | No | No |
+| Role Code               | Role Name               | `connector.read` | `connector.manage` | `connector.bank_change_approve` | `connector.attribution_change` | `connector.dispute_resolve` |
+| :---------------------- | :---------------------- | :--------------: | :----------------: | :-----------------------------: | :----------------------------: | :-------------------------: |
+| `ROLE-ADMIN`            | Platform Administrator  |    Yes (All)     |     Yes (All)      | **No** (SOD-05 / Admin isolate) |              Yes               |             Yes             |
+| `ROLE-BRANCH-MANAGER`   | Branch Manager          |   Yes (Branch)   |    Yes (Branch)    |               No                |       Yes (Request only)       |             No              |
+| `ROLE-CONNECTOR-OPS`    | Connector Operations    |    Yes (All)     |     Yes (All)      |               No                |       Yes (Request only)       |             Yes             |
+| `ROLE-FINANCE-APPROVER` | Finance Operations      |    Yes (All)     |         No         |             **Yes**             |               No               |             No              |
+| `ROLE-DISPUTE-HEAD`     | Dispute Adjudicator     |    Yes (All)     |         No         |               No                |         Yes (Approve)          |           **Yes**           |
+| `ROLE-CONNECTOR-PORTAL` | Connector External User |    Yes (Own)     |         No         |               No                |               No               |             No              |
 
 ### 5.2 Row Level Security (RLS) Policy Design
 
@@ -503,7 +557,9 @@ CREATE POLICY tenant_isolation ON app.connector
 ```
 
 ### 5.3 Branch Scope Filtering
+
 When querying connectors via `GET /v1/connectors`, the service layer utilizes `deps.authz.scopeFilter(ctx, 'connector.read', qb, { branchCol: 'primary_branch_id' })`:
+
 - Users with `ALL` scope view all tenant connectors.
 - Users with `BRANCH` scope view only connectors whose `primary_branch_id` matches the user's assigned branch.
 - External portal users (`ROLE-CONNECTOR-PORTAL`) are restricted strictly to records matching `id = ctx.principal.connectorId`.
@@ -549,7 +605,7 @@ Bank account updates are the highest financial vulnerability in partner manageme
 ALTER TABLE app.connector_bank_account
   ADD CONSTRAINT bank_account_sod_check
   CHECK (
-    status <> 'ACTIVE' OR 
+    status <> 'ACTIVE' OR
     (approved_by IS NOT NULL AND approved_by <> created_by)
   );
 ```
@@ -561,6 +617,7 @@ ALTER TABLE app.connector_bank_account
 ### 7.1 Addressing the `lead_attribution_guard` Database Blocker
 
 The trigger `lead_attribution_guard` on `app.lead` prohibits any modification to attribution fields:
+
 ```sql
 IF (NEW.tenant_id, NEW.branch_id, NEW.source, NEW.sub_source, NEW.campaign, NEW.utm, NEW.connector_id, NEW.referred_at)
    IS DISTINCT FROM (OLD.tenant_id, OLD.branch_id, ...) THEN
@@ -569,6 +626,7 @@ END IF;
 ```
 
 #### Proposed Solution: Secure Stored Function with Controlled Session Override
+
 1. Modify trigger function `lead_attribution_immutable()` to check for an authorized session flag:
    ```sql
    IF current_setting('app.allow_attribution_override', true) = 'on' THEN
@@ -589,7 +647,7 @@ END IF;
      SELECT * INTO v_req FROM app.attribution_change_request
      WHERE tenant_id = p_tenant_id AND id = p_change_request_id AND status = 'PENDING'
      FOR UPDATE;
-     
+
      IF NOT FOUND THEN
        RAISE EXCEPTION 'Change request % not found or not pending', p_change_request_id;
      END IF;
@@ -623,6 +681,7 @@ END IF;
    ```
 
 ### 7.2 Separation of Duties Rule SOD-09
+
 - When an attribution change request is evaluated:
   - If a lead has zero commission calculations in `MOD-COM`, branch management can approve.
   - If a lead has an active commission calculation or disbursement pending, approval requires the specific seat `COMMISSION_APPROVER` (`rules_core.sql#L145`).
@@ -632,14 +691,14 @@ END IF;
 
 ## 8. Security Risks & Mitigations
 
-| Threat Vector | Risk Classification | Architectural Mitigation |
-| :--- | :--- | :--- |
-| **Plaintext PAN Exposure** | S2/S3 Data Breach | 1. Raw PAN never logged or stored in database.<br>2. Tenant-scoped HMAC-SHA256 blind indexing for uniqueness searches.<br>3. AES-256-GCM envelope encryption for stored ciphertext.<br>4. Display masked format only (`ABCDE****F`). |
-| **Bank Account Redirection Fraud** | Financial Theft | 1. Step-up authentication (`aal2` TOTP ≤ 900s) required to submit changes.<br>2. Mandatory Separation of Duties (`created_by <> approved_by`).<br>3. Partial uniqueness constraint permits only 1 active account.<br>4. 24-hour mandatory cooling period before payouts can route to new accounts. |
-| **Silent Attribution Hijacking** | Commission Embezzlement | 1. Database trigger `lead_attribution_guard` blocks direct updates.<br>2. Reattribution requires formal `attribution_change_request` with evidence.<br>3. SOD-09 requires independent approver.<br>4. Transactional audit log emitted to `app.audit_event`. |
-| **Duplicate Referral Collusion** | Partner Dispute / Overpayment | 1. Automated collision flag via `DK-lead.duplicate` returning `ATTRIBUTION_CONFLICT`.<br>2. Payouts locked while lead is in `ATTRIBUTION_CONFLICT`.<br>3. Formal dispute adjudication entity with evidence retention. |
-| **Suspended Connector Infiltration** | Unauthorized System Access | 1. Transitioning connector to `SUSPENDED` or `TERMINATED` automatically revokes portal user sessions.<br>2. Ingestion pipeline rejects leads referencing non-`ACTIVE` connectors. |
-| **Concurrency Lost Updates** | Data Inconsistency | Mandatory `If-Match` ETags on all PATCH and state transition endpoints against `lock_version`. |
+| Threat Vector                        | Risk Classification           | Architectural Mitigation                                                                                                                                                                                                                                                                           |
+| :----------------------------------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Plaintext PAN Exposure**           | S2/S3 Data Breach             | 1. Raw PAN never logged or stored in database.<br>2. Tenant-scoped HMAC-SHA256 blind indexing for uniqueness searches.<br>3. AES-256-GCM envelope encryption for stored ciphertext.<br>4. Display masked format only (`ABCDE****F`).                                                               |
+| **Bank Account Redirection Fraud**   | Financial Theft               | 1. Step-up authentication (`aal2` TOTP ≤ 900s) required to submit changes.<br>2. Mandatory Separation of Duties (`created_by <> approved_by`).<br>3. Partial uniqueness constraint permits only 1 active account.<br>4. 24-hour mandatory cooling period before payouts can route to new accounts. |
+| **Silent Attribution Hijacking**     | Commission Embezzlement       | 1. Database trigger `lead_attribution_guard` blocks direct updates.<br>2. Reattribution requires formal `attribution_change_request` with evidence.<br>3. SOD-09 requires independent approver.<br>4. Transactional audit log emitted to `app.audit_event`.                                        |
+| **Duplicate Referral Collusion**     | Partner Dispute / Overpayment | 1. Automated collision flag via `DK-lead.duplicate` returning `ATTRIBUTION_CONFLICT`.<br>2. Payouts locked while lead is in `ATTRIBUTION_CONFLICT`.<br>3. Formal dispute adjudication entity with evidence retention.                                                                              |
+| **Suspended Connector Infiltration** | Unauthorized System Access    | 1. Transitioning connector to `SUSPENDED` or `TERMINATED` automatically revokes portal user sessions.<br>2. Ingestion pipeline rejects leads referencing non-`ACTIVE` connectors.                                                                                                                  |
+| **Concurrency Lost Updates**         | Data Inconsistency            | Mandatory `If-Match` ETags on all PATCH and state transition endpoints against `lock_version`.                                                                                                                                                                                                     |
 
 ---
 
@@ -659,7 +718,7 @@ ALTER TABLE app.lead DROP CONSTRAINT IF EXISTS lead_connector_id_check;
 
 -- 2. Expand app.app_user user_type to include CONNECTOR
 ALTER TABLE app.app_user DROP CONSTRAINT IF EXISTS app_user_user_type_check;
-ALTER TABLE app.app_user ADD CONSTRAINT app_user_user_type_check 
+ALTER TABLE app.app_user ADD CONSTRAINT app_user_user_type_check
   CHECK (user_type IN ('STAFF', 'CONNECTOR'));
 
 -- 3. ENT-071: Connector Entity
@@ -696,8 +755,8 @@ CREATE TRIGGER connector_touch BEFORE UPDATE ON app.connector FOR EACH ROW EXECU
 SELECT enable_tenant_rls('app.connector');
 
 -- 4. Connect app.lead foreign key
-ALTER TABLE app.lead 
-  ADD CONSTRAINT lead_connector_fk 
+ALTER TABLE app.lead
+  ADD CONSTRAINT lead_connector_fk
   FOREIGN KEY (tenant_id, connector_id) REFERENCES app.connector (tenant_id, id);
 
 -- 5. ENT-073: Connector Bank Account
@@ -727,8 +786,8 @@ CREATE TABLE app.connector_bank_account (
   )
 );
 -- Partial unique index: Only one ACTIVE bank account per connector
-CREATE UNIQUE INDEX connector_bank_account_active_uq 
-  ON app.connector_bank_account (tenant_id, connector_id) 
+CREATE UNIQUE INDEX connector_bank_account_active_uq
+  ON app.connector_bank_account (tenant_id, connector_id)
   WHERE status = 'ACTIVE';
 CREATE TRIGGER connector_bank_account_touch BEFORE UPDATE ON app.connector_bank_account FOR EACH ROW EXECUTE FUNCTION touch_row();
 SELECT enable_tenant_rls('app.connector_bank_account');
@@ -815,12 +874,14 @@ SELECT enable_tenant_rls('app.attribution_dispute');
 When unblocked for implementation, the test suite must execute against synthetic fixtures only:
 
 ### 10.1 Unit Tests (`apps/api/test/unit/connector/`)
+
 - `TEST-CON-UNIT-001`: Zod schema validation (rejection of malformed PAN, GSTIN, IFSC, account numbers).
 - `TEST-CON-UNIT-002`: S2/S3 scanner enforcement (`containsS2SensitiveData` triggers on plaintext PAN/accounts in notes and reasons).
 - `TEST-CON-UNIT-003`: HMAC-SHA256 blind indexing produces identical hashes for identical inputs in the same tenant, and distinct hashes across tenants.
 - `TEST-CON-UNIT-004`: State machine validator rejects illegal status transitions (e.g., `DRAFT -> ACTIVE` without verification).
 
 ### 10.2 Integration & Database Tests (`apps/api/test/integration/connector/`)
+
 - `TEST-CON-INT-001`: `POST /v1/connectors` creates connector in `DRAFT` status with encrypted PAN and masked PAN; asserts plaintext PAN is absent from raw database select.
 - `TEST-CON-INT-002`: Duplicate PAN registration within same tenant returns `409 CONFLICT`; identical PAN in separate tenant succeeds (tenant isolation).
 - `TEST-CON-INT-003`: `POST /v1/connectors/{id}/activation` fails with `422` if linked verification is missing or status is `FAILED`.
@@ -828,10 +889,12 @@ When unblocked for implementation, the test suite must execute against synthetic
 - `TEST-CON-INT-005`: Adding a second `ACTIVE` bank account fails via partial unique index `connector_bank_account_active_uq`.
 
 ### 10.3 Concurrency & Idempotency Tests
+
 - `TEST-CON-CNC-001`: Concurrent PATCH requests with identical `If-Match` ETags: exactly one succeeds with `200`, second fails with `412 PRECONDITION_FAILED` / `409 CONFLICT`.
 - `TEST-CON-CNC-002`: Replaying `POST /v1/connectors` with identical `Idempotency-Key` returns original resource with header `Idempotent-Replayed: true`.
 
 ### 10.4 Security & RLS Tests
+
 - `TEST-CON-SEC-001`: Cross-tenant read access: Tenant B user cannot read Tenant A connector by ID (returns `404 NOT_FOUND`).
 - `TEST-CON-SEC-002`: Branch isolation: Branch user with `BRANCH` scope cannot query connectors belonging to another branch.
 - `TEST-CON-SEC-003`: Direct SQL update on `lead.connector_id` fails with exception `42501` unless invoked via `app.apply_attribution_change`.
@@ -843,17 +906,17 @@ When unblocked for implementation, the test suite must execute against synthetic
 The following policy decisions are open and require sign-off from Product and Compliance leadership prior to activating TASK-417:
 
 1. **`DEC-CON-001`: Bank Account Cooling Duration:**
-   - *Question:* Should the payout cooling period following a bank account change be strictly 24 hours, 48 hours, or 7 business days?
-   - *Impact:* Balance between partner payout satisfaction and anti-fraud diversion safeguards.
+   - _Question:_ Should the payout cooling period following a bank account change be strictly 24 hours, 48 hours, or 7 business days?
+   - _Impact:_ Balance between partner payout satisfaction and anti-fraud diversion safeguards.
 2. **`DEC-CON-002`: Retroactive Commission Recalculation on Reattribution:**
-   - *Question:* If an attribution change request is approved for a lead after loan disbursement, should previously credited commission to the original connector be clawed back automatically or settled manually?
-   - *Impact:* Ledger complexity in `MOD-COM` and potential negative connector account balances.
+   - _Question:_ If an attribution change request is approved for a lead after loan disbursement, should previously credited commission to the original connector be clawed back automatically or settled manually?
+   - _Impact:_ Ledger complexity in `MOD-COM` and potential negative connector account balances.
 3. **`DEC-CON-003`: Multi-Branch Connector Servicing:**
-   - *Question:* Can a connector refer leads across multiple branches, or is lead origination strictly restricted to the connector's `primary_branch_id`?
-   - *Impact:* Scope filter enforcement in lead intake and routing.
+   - _Question:_ Can a connector refer leads across multiple branches, or is lead origination strictly restricted to the connector's `primary_branch_id`?
+   - _Impact:_ Scope filter enforcement in lead intake and routing.
 4. **`DEC-CON-004`: Self-Onboarding Portal:**
-   - *Question:* Will connectors self-onboard via a public web portal with Aadhaar/PAN e-KYC, or is onboarding exclusively performed by internal branch managers?
-   - *Impact:* Need for public OTP-verified onboarding endpoints similar to `MOD-DSH`.
+   - _Question:_ Will connectors self-onboard via a public web portal with Aadhaar/PAN e-KYC, or is onboarding exclusively performed by internal branch managers?
+   - _Impact:_ Need for public OTP-verified onboarding endpoints similar to `MOD-DSH`.
 
 ---
 
@@ -891,9 +954,11 @@ The following policy decisions are open and require sign-off from Product and Co
 ```
 
 ### Critical Blockers Summary:
+
 1. **TASK-417 Deferral:** Current sprint milestone deferred MOD-CON to Release R3. Formal sign-off required to begin Phase 1.
 2. **Schema Invariant:** `lead.connector_id text CHECK (connector_id IS NULL)` strictly prevents any connector attribution in `app.lead` until migration `20261001000027_connectors.sql` is authorized and applied.
 3. **MOD-COM Dependency:** Automated commission recalculation is blocked until the Commission Management module is designed. Attribution changes must decouple recalculation into manual financial task flags.
 
 ---
-*Report concluded. No application code or database migrations were modified during this inspection.*
+
+_Report concluded. No application code or database migrations were modified during this inspection._

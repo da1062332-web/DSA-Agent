@@ -248,9 +248,9 @@ export class ConnectorService {
       let nextCursor: string | undefined;
       if (hasMore && sliced.length > 0) {
         const last = sliced[sliced.length - 1]!;
-        nextCursor = Buffer.from(
-          JSON.stringify({ k: last.created_at.toISOString(), id: last.id }),
-        ).toString('base64url');
+        nextCursor = Buffer.from(JSON.stringify({ k: last.created_at.toISOString(), id: last.id })).toString(
+          'base64url',
+        );
       }
 
       const items: ConnectorResource[] = sliced.map((r) => ({
@@ -996,9 +996,11 @@ export class ConnectorService {
       `.execute(tx);
 
       if (existing.rows.length > 0) {
-        throw AppError.of('VALIDATION_ERROR', 'A user with this email address already exists in this tenant.', [
-          { field: 'email', issue: 'DUPLICATE_EMAIL' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'A user with this email address already exists in this tenant.',
+          [{ field: 'email', issue: 'DUPLICATE_EMAIL' }],
+        );
       }
 
       const newUserId = `usr_${nextUlid()}`;

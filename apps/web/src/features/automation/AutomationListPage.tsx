@@ -175,7 +175,9 @@ export function AutomationListPage() {
   });
 
   const activeCount = definitions.filter((d) => d.status === 'ACTIVE').length;
-  const runningExecutionsCount = executions.filter((e) => e.status === 'RUNNING' || e.status === 'WAITING').length;
+  const runningExecutionsCount = executions.filter(
+    (e) => e.status === 'RUNNING' || e.status === 'WAITING',
+  ).length;
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
@@ -186,23 +188,15 @@ export function AutomationListPage() {
             Workflow Automation Engine
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 24 (MOD-WFA): Design multi-step workflows, configure event triggers, and supervise execution pipelines.
+            Module 24 (MOD-WFA): Design multi-step workflows, configure event triggers, and supervise
+            execution pipelines.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={loadData}
-            disabled={loading}
-          >
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
             Refresh
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
             New Automation Rule
           </Button>
         </Box>
@@ -320,11 +314,7 @@ export function AutomationListPage() {
               </FormControl>
               <FormControl size="small" sx={{ minWidth: 140 }}>
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="ALL">All Statuses</MenuItem>
                   <MenuItem value="ACTIVE">ACTIVE</MenuItem>
                   <MenuItem value="DRAFT">DRAFT</MenuItem>
@@ -390,11 +380,7 @@ export function AutomationListPage() {
                             size="small"
                             label={d.status}
                             color={
-                              d.status === 'ACTIVE'
-                                ? 'success'
-                                : d.status === 'DRAFT'
-                                ? 'warning'
-                                : 'default'
+                              d.status === 'ACTIVE' ? 'success' : d.status === 'DRAFT' ? 'warning' : 'default'
                             }
                           />
                         </TableCell>
@@ -412,10 +398,7 @@ export function AutomationListPage() {
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="View Details & Versions">
-                            <IconButton
-                              size="small"
-                              onClick={() => navigate(`/automations/${d.id}`)}
-                            >
+                            <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
                               <VisibilityIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -477,10 +460,10 @@ export function AutomationListPage() {
                               e.status === 'SUCCEEDED'
                                 ? 'success'
                                 : e.status === 'FAILED'
-                                ? 'error'
-                                : e.status === 'RUNNING'
-                                ? 'info'
-                                : 'warning'
+                                  ? 'error'
+                                  : e.status === 'RUNNING'
+                                    ? 'info'
+                                    : 'warning'
                             }
                           />
                         </TableCell>

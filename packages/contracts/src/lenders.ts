@@ -91,7 +91,11 @@ export const LenderContactInputSchema = z.object({
   name: z.string().min(2).max(100),
   role: z.string().min(2).max(50),
   email: z.string().email().optional().nullable(),
-  phone: z.string().regex(/^\+?[1-9]\d{7,14}$/).optional().nullable(),
+  phone: z
+    .string()
+    .regex(/^\+?[1-9]\d{7,14}$/)
+    .optional()
+    .nullable(),
   channel: z.enum(LENDER_CHANNELS).default('EMAIL'),
   escalationLevel: z.number().int().min(1).max(5).default(1),
 });

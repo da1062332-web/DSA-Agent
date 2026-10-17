@@ -318,7 +318,9 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     // Confirm neither row exists
     await txRunner.withTenantTx(ctxA, async (tx) => {
       const act = await sql<{ id: string }>`SELECT id FROM app.activity WHERE id = ${failActId}`.execute(tx);
-      const aud = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${failAudId}`.execute(tx);
+      const aud = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${failAudId}`.execute(
+        tx,
+      );
       expect(act.rows).toHaveLength(0);
       expect(aud.rows).toHaveLength(0);
     });
@@ -436,13 +438,10 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     expect(createRes.headers.etag).toBe('"0"');
 
     // 2. PATCH with valid If-Match "0"
-    const patchRes = await request(app)
-      .patch(`/v1/activities/${actId}`)
-      .set('If-Match', '"0"')
-      .send({
-        outcomeCode: 'CONNECTED',
-        note: 'Live PG test after update',
-      });
+    const patchRes = await request(app).patch(`/v1/activities/${actId}`).set('If-Match', '"0"').send({
+      outcomeCode: 'CONNECTED',
+      note: 'Live PG test after update',
+    });
 
     expect(patchRes.status).toBe(200);
     expect(patchRes.headers.etag).toBe('"1"');
@@ -497,4 +496,3 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     expect(getRes.status).toBe(404);
   });
 });
-

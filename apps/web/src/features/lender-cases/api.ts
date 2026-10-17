@@ -82,9 +82,27 @@ async function request<T>(
 }
 
 export async function fetchLenderCases(applicationId: string): Promise<LenderCaseResource[]> {
-  const res = await request<{ data: LenderCaseResource[] }>(`/v1/applications/${applicationId}/lender-cases`, {
-    method: 'GET',
-  });
+  const res = await request<{ data: LenderCaseResource[] }>(
+    `/v1/applications/${applicationId}/lender-cases`,
+    {
+      method: 'GET',
+    },
+  );
+  return res.data.data;
+}
+
+export async function fetchAllLenderCases(params?: {
+  status?: string;
+  lenderId?: string;
+  applicationId?: string;
+}): Promise<LenderCaseResource[]> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.lenderId) query.set('lenderId', params.lenderId);
+  if (params?.applicationId) query.set('applicationId', params.applicationId);
+  const qStr = query.toString();
+  const url = `/v1/lender-cases${qStr ? `?${qStr}` : ''}`;
+  const res = await request<{ data: LenderCaseResource[] }>(url, { method: 'GET' });
   return res.data.data;
 }
 

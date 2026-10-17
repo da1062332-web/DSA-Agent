@@ -30,9 +30,7 @@ describe('Module 19 — Verification Contracts (Zod Schemas)', () => {
       findingsSummary: 'Field verification failed due to missing applicant',
       markStatus: 'REJECTED',
     };
-    expect(() => CompleteVerificationRequestSchema.parse(input)).toThrow(
-      /Rejection reason is required/
-    );
+    expect(() => CompleteVerificationRequestSchema.parse(input)).toThrow(/Rejection reason is required/);
   });
 
   it('validates CompleteVerificationRequest with valid rejectionReason', () => {

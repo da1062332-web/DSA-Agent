@@ -33,12 +33,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRuleSet, fetchDecisionDefinitions, fetchRuleSets } from './api';
-import type {
-  DecisionDefinitionResponse,
-  DecisionKey,
-  RuleSetResponse,
-  ScopeType,
-} from './types';
+import type { DecisionDefinitionResponse, DecisionKey, RuleSetResponse, ScopeType } from './types';
 
 const MVP_DECISION_KEYS: DecisionKey[] = [
   'DK-lead.duplicate',
@@ -284,7 +279,12 @@ export function RulesListPage() {
                 </TableHead>
                 <TableBody>
                   {ruleSets.map((rs) => (
-                    <TableRow key={rs.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/rules/${rs.id}`)}>
+                    <TableRow
+                      key={rs.id}
+                      hover
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/rules/${rs.id}`)}
+                    >
                       <TableCell>
                         <Typography variant="subtitle2" fontWeight={600}>
                           {rs.name}
@@ -311,7 +311,12 @@ export function RulesListPage() {
                       </TableCell>
                       <TableCell>
                         {rs.activeVersionId ? (
-                          <Chip size="small" label={rs.activeVersionId.slice(0, 12) + '...'} color="success" variant="outlined" />
+                          <Chip
+                            size="small"
+                            label={rs.activeVersionId.slice(0, 12) + '...'}
+                            color="success"
+                            variant="outlined"
+                          />
                         ) : (
                           <Typography variant="caption" color="text.secondary">
                             None
@@ -353,7 +358,8 @@ export function RulesListPage() {
             Registered Decision Definitions (Read-Only Global MVP)
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={3}>
-            These definitions are platform-managed specifications defining input/output contracts, tier risk, hit policies, and fallback policies.
+            These definitions are platform-managed specifications defining input/output contracts, tier risk,
+            hit policies, and fallback policies.
           </Typography>
 
           {loadingDefs ? (
@@ -370,7 +376,11 @@ export function RulesListPage() {
                         <Typography variant="subtitle1" fontWeight={700} color="primary">
                           {def.key}
                         </Typography>
-                        <Chip size="small" label={`Tier ${def.tier}`} color={def.tier === 'T1' ? 'error' : def.tier === 'T2' ? 'warning' : 'info'} />
+                        <Chip
+                          size="small"
+                          label={`Tier ${def.tier}`}
+                          color={def.tier === 'T1' ? 'error' : def.tier === 'T2' ? 'warning' : 'info'}
+                        />
                       </Stack>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Registry Version: <strong>{def.registryVersion}</strong>
@@ -404,7 +414,12 @@ export function RulesListPage() {
       )}
 
       {/* Create Rule Set Dialog */}
-      <Dialog open={createOpen} onClose={() => !createSubmitting && setCreateOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={createOpen}
+        onClose={() => !createSubmitting && setCreateOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Create New Rule Set</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={3} pt={1}>

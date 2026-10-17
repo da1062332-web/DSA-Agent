@@ -78,10 +78,7 @@ export class SecurityService {
   /**
    * ENT-096: Record a security event with automatic credential/secret redaction.
    */
-  async recordSecurityEvent(
-    ctx: RequestContext,
-    input: CreateSecurityEventRequest,
-  ): Promise<SecurityEvent> {
+  async recordSecurityEvent(ctx: RequestContext, input: CreateSecurityEventRequest): Promise<SecurityEvent> {
     const id = this.deps.ids.next('sec');
     const tenantId = ctx.principal.tenantId;
 
@@ -185,10 +182,7 @@ export class SecurityService {
 
       const data = dataRows.map(mapSecurityEventRow);
       const last = data[data.length - 1];
-      const nextCursor =
-        hasMore && last
-          ? encodeCursor(last.createdAt, last.id)
-          : null;
+      const nextCursor = hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
 
       return {
         data,
@@ -368,8 +362,7 @@ export class SecurityService {
         ? { ...parseJsonField(current.notifications, {}), ...input.notifications }
         : parseJsonField(current.notifications, {});
       const newStatus = input.status ?? current.status;
-      const newPostMortem =
-        input.postMortemRef !== undefined ? input.postMortemRef : current.post_mortem_ref;
+      const newPostMortem = input.postMortemRef !== undefined ? input.postMortemRef : current.post_mortem_ref;
       const newVersion = expectedVersion + 1;
 
       // 5. Update
@@ -415,10 +408,7 @@ export class SecurityService {
   /**
    * List incidents in the acting tenant with filtering and cursor pagination.
    */
-  async listIncidents(
-    ctx: RequestContext,
-    query: IncidentListQuery,
-  ): Promise<IncidentListResponse> {
+  async listIncidents(ctx: RequestContext, query: IncidentListQuery): Promise<IncidentListResponse> {
     const tenantId = ctx.principal.tenantId;
     const limit = query.limit ?? 50;
     const cursor = decodeCursor(query.cursor);
@@ -460,10 +450,7 @@ export class SecurityService {
 
       const data = dataRows.map(mapIncidentRow);
       const last = data[data.length - 1];
-      const nextCursor =
-        hasMore && last
-          ? encodeCursor(last.detectedAt, last.id)
-          : null;
+      const nextCursor = hasMore && last ? encodeCursor(last.detectedAt, last.id) : null;
 
       return {
         data,

@@ -31,9 +31,7 @@ export async function fetchPayoutRequestById(id: string): Promise<PayoutRequest>
   return apiFetch<PayoutRequest>(`/v1/payout-requests/${id}`);
 }
 
-export async function createPayoutRequest(
-  input: CreatePayoutRequestInput,
-): Promise<PayoutRequest> {
+export async function createPayoutRequest(input: CreatePayoutRequestInput): Promise<PayoutRequest> {
   return apiFetch<PayoutRequest>('/v1/payout-requests', {
     method: 'POST',
     body: input,
@@ -80,9 +78,7 @@ export async function recordPayoutFailure(
   });
 }
 
-export async function createPayoutBatch(
-  input: CreatePayoutBatchInput,
-): Promise<PayoutBatch> {
+export async function createPayoutBatch(input: CreatePayoutBatchInput): Promise<PayoutBatch> {
   return apiFetch<PayoutBatch>('/v1/payout-batches', {
     method: 'POST',
     body: input,
@@ -113,4 +109,25 @@ export async function downloadBankFile(batchId: string): Promise<void> {
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(blobUrl);
+}
+
+// Automated Direct Net-Banking / Payment Gateway Integration (MOD-PAY / TASK-418)
+export async function disbursePayoutGateway(
+  id: string,
+  mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+): Promise<{ payoutId: string; status: string; transferId: string; utrNumber: string; disbursedAt: string }> {
+  return apiFetch(`/v1/payout-requests/${id}/disburse-gateway`, {
+    method: 'POST',
+    body: { mode },
+  });
+}
+
+export async function dispatchPayoutBatchGateway(
+  batchId: string,
+  mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+): Promise<{ batchId: string; totalDisbursed: number; results: any[] }> {
+  return apiFetch(`/v1/payout-batches/${batchId}/dispatch-gateway`, {
+    method: 'POST',
+    body: { mode },
+  });
 }

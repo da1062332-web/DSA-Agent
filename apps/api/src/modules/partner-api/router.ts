@@ -63,8 +63,14 @@ export function createRouter(
     overrides?.apiKeyStore ??
     (deps.apiKeyStore as ApiKeyStore) ??
     ((deps as unknown as { db?: unknown }).db ? new DatabaseApiKeyStore(deps) : new InMemoryApiKeyStore());
-  const partnerService = overrides?.partnerService ?? (deps.partnerService as PartnerApiService) ?? new PartnerApiService(deps, apiKeyStore);
-  const webhookService = overrides?.webhookService ?? (deps.webhookService as WebhookDeliveryService) ?? new WebhookDeliveryService(deps);
+  const partnerService =
+    overrides?.partnerService ??
+    (deps.partnerService as PartnerApiService) ??
+    new PartnerApiService(deps, apiKeyStore);
+  const webhookService =
+    overrides?.webhookService ??
+    (deps.webhookService as WebhookDeliveryService) ??
+    new WebhookDeliveryService(deps);
 
   // Apply Partner API key auth middleware
   router.use('/partner', createPartnerAuthMiddleware(apiKeyStore));
@@ -167,21 +173,24 @@ export function createRouter(
   // API-DEV-007: Document Upload Session
   // ==========================================================================
 
-  router.post('/partner/applications/:id/documents/upload-session', async (req: Request, res: Response, next) => {
-    try {
-      const ctx = requireContext(req);
-      const idemKey = requireIdempotencyKey(req);
-      const input = PartnerUploadSessionRequestSchema.parse({
-        ...req.body,
-        applicationId: paramStr(req.params.id),
-      });
+  router.post(
+    '/partner/applications/:id/documents/upload-session',
+    async (req: Request, res: Response, next) => {
+      try {
+        const ctx = requireContext(req);
+        const idemKey = requireIdempotencyKey(req);
+        const input = PartnerUploadSessionRequestSchema.parse({
+          ...req.body,
+          applicationId: paramStr(req.params.id),
+        });
 
-      const session = await partnerService.createUploadSession(ctx, input, idemKey);
-      res.status(201).json(session);
-    } catch (err) {
-      next(err);
-    }
-  });
+        const session = await partnerService.createUploadSession(ctx, input, idemKey);
+        res.status(201).json(session);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // ==========================================================================
   // API-DEV-008 - API-DEV-010: Webhook Subscriptions

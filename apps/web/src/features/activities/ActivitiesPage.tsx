@@ -110,11 +110,7 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
           <Button variant="outlined" onClick={fetchActivities}>
             Refresh
           </Button>
-          <Button
-            variant="contained"
-            onClick={() => setFormOpen(true)}
-            data-testid="activity.log-button"
-          >
+          <Button variant="contained" onClick={() => setFormOpen(true)} data-testid="activity.log-button">
             + Log Activity
           </Button>
         </Box>
@@ -175,9 +171,7 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
                       <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                         <Typography variant="body2">{a.note || '&mdash;'}</Typography>
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                        {a.actorId}
-                      </TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{a.actorId}</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                         {new Date(a.occurredAt).toLocaleString()}
                       </TableCell>
@@ -196,7 +190,8 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
                   {activities.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
-                        No activities logged yet. Click &quot;Log Activity&quot; above to record your first interaction.
+                        No activities logged yet. Click &quot;Log Activity&quot; above to record your first
+                        interaction.
                       </TableCell>
                     </TableRow>
                   )}

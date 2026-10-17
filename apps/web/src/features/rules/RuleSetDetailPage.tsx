@@ -47,7 +47,9 @@ import type {
   VersionStatus,
 } from './types';
 
-function getStatusColor(status: VersionStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
+function getStatusColor(
+  status: VersionStatus,
+): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -203,7 +205,11 @@ export function RuleSetDetailPage() {
             <Chip size="small" label={ruleSet.decisionKey} color="primary" variant="outlined" />
             <Chip size="small" label={ruleSet.scopeType} />
             {ruleSet.scopeRef && <Chip size="small" label={`Ref: ${ruleSet.scopeRef}`} variant="outlined" />}
-            <Chip size="small" label={ruleSet.status} color={ruleSet.status === 'ACTIVE' ? 'success' : 'default'} />
+            <Chip
+              size="small"
+              label={ruleSet.status}
+              color={ruleSet.status === 'ACTIVE' ? 'success' : 'default'}
+            />
           </Stack>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -314,9 +320,7 @@ export function RuleSetDetailPage() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {ver.definition?.rules?.length ?? 0}
-                    </Typography>
+                    <Typography variant="body2">{ver.definition?.rules?.length ?? 0}</Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
@@ -325,7 +329,9 @@ export function RuleSetDetailPage() {
                   </TableCell>
                   <TableCell>
                     <Typography variant="caption">
-                      {ver.effectiveFrom ? `${ver.effectiveFrom.slice(0, 10)} → ${ver.effectiveTo ? ver.effectiveTo.slice(0, 10) : 'active'}` : '—'}
+                      {ver.effectiveFrom
+                        ? `${ver.effectiveFrom.slice(0, 10)} → ${ver.effectiveTo ? ver.effectiveTo.slice(0, 10) : 'active'}`
+                        : '—'}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
@@ -396,7 +402,11 @@ export function RuleSetDetailPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip size="small" label={tc.active ? 'YES' : 'NO'} color={tc.active ? 'success' : 'default'} />
+                        <Chip
+                          size="small"
+                          label={tc.active ? 'YES' : 'NO'}
+                          color={tc.active ? 'success' : 'default'}
+                        />
                       </TableCell>
                       <TableCell>
                         <Typography variant="caption">
@@ -413,7 +423,12 @@ export function RuleSetDetailPage() {
       )}
 
       {/* New Draft Version Dialog */}
-      <Dialog open={draftOpen} onClose={() => !draftSubmitting && setDraftOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={draftOpen}
+        onClose={() => !draftSubmitting && setDraftOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Create New Draft Version</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={3} pt={1}>

@@ -6,6 +6,7 @@
 import { AppError, type ComplaintSubjectPort, type ComplaintSubjectType, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
 
+
 /**
  * Creates a ComplaintSubjectPort provider specifically for LEAD subjects.
  * Returns true if the lead exists in the caller's tenant, false otherwise.
@@ -15,9 +16,11 @@ export function createLeadSubjectPort(): ComplaintSubjectPort {
   return {
     async exists(tx: Tx, type: ComplaintSubjectType, id: string): Promise<boolean> {
       if (type !== 'LEAD') {
-        throw AppError.of('VALIDATION_ERROR', `Complaints about ${type} are not supported by the lead provider.`, [
-          { field: 'complainantType', issue: 'SUBJECT_UNSUPPORTED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Complaints about ${type} are not supported by the lead provider.`,
+          [{ field: 'complainantType', issue: 'SUBJECT_UNSUPPORTED' }],
+        );
       }
       const r = await sql<{ id: string }>`select id from lead where id = ${id}`.execute(tx);
       return r.rows.length > 0;

@@ -78,13 +78,7 @@ export function DecisionRecordDetailPage() {
             <Chip
               size="medium"
               label={record.status}
-              color={
-                record.status === 'OK'
-                  ? 'success'
-                  : record.status === 'NO_MATCH'
-                  ? 'warning'
-                  : 'error'
-              }
+              color={record.status === 'OK' ? 'success' : record.status === 'NO_MATCH' ? 'warning' : 'error'}
             />
             <Chip size="medium" label={record.decisionKey} color="primary" variant="outlined" />
           </Stack>

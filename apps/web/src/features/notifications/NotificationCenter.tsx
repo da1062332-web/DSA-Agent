@@ -52,7 +52,10 @@ function CheckIcon(props: React.ComponentProps<typeof SvgIcon>) {
   );
 }
 
-const CATEGORY_COLORS: Record<NotificationCategory, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const CATEGORY_COLORS: Record<
+  NotificationCategory,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   TASK: 'info',
   LEAD: 'primary',
   APPLICATION: 'secondary',
@@ -69,7 +72,9 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [preferencesOpen, setPreferencesOpen] = useState<boolean>(false);
-  const [streamStatus, setStreamStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
+  const [streamStatus, setStreamStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>(
+    'disconnected',
+  );
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -373,7 +378,13 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
                   >
                     <ListItemButton
                       onClick={() => handleNotificationClick(notif)}
-                      sx={{ py: 1.25, px: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+                      sx={{
+                        py: 1.25,
+                        px: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                      }}
                       data-testid={`notification-item-${notif.id}`}
                     >
                       <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
@@ -384,7 +395,10 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
                           sx={{ height: 18, fontSize: '0.65rem' }}
                         />
                         <Typography variant="caption" color="text.secondary">
-                          {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(notif.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </Typography>
                       </Box>
                       <Typography

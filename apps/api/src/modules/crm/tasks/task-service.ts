@@ -201,7 +201,10 @@ export class TaskService {
     if (input.ownerQueueId && this.deps.userDirectoryPort) {
       const queue = await this.deps.userDirectoryPort.getQueue(tx, input.ownerQueueId);
       if (queue && (!queue.active || !queue.recordTypes.includes('TASK'))) {
-        throw AppError.of('VALIDATION_ERROR', `Queue '${input.ownerQueueId}' is inactive or does not accept tasks.`);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Queue '${input.ownerQueueId}' is inactive or does not accept tasks.`,
+        );
       }
     }
 
@@ -294,11 +297,7 @@ export class TaskService {
   /**
    * TaskPort Implementation (Contracts §4.3)
    */
-  async createTaskPort(
-    tx: Tx,
-    ctx: RequestContext,
-    cmd: CreateTaskCommand,
-  ): Promise<CreatedTask> {
+  async createTaskPort(tx: Tx, ctx: RequestContext, cmd: CreateTaskCommand): Promise<CreatedTask> {
     const ownerUserId = 'userId' in cmd.owner ? cmd.owner.userId : undefined;
     const ownerQueueId = 'queueId' in cmd.owner ? cmd.owner.queueId : undefined;
 
@@ -369,20 +368,14 @@ export class TaskService {
       throw AppError.of('VALIDATION_ERROR', 'A task must have either an owner user or an owner queue.');
     }
 
-    const updated = await this.deps.repository.updateTask(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        owner_user_id: ownerUserId,
-        owner_queue_id: ownerQueueId,
-        priority: input.priority,
-        status: input.status,
-        due_at: input.dueAt ? new Date(input.dueAt) : undefined,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updated = await this.deps.repository.updateTask(tx, tenantId, id, expectedLockVersion, {
+      owner_user_id: ownerUserId,
+      owner_queue_id: ownerQueueId,
+      priority: input.priority,
+      status: input.status,
+      due_at: input.dueAt ? new Date(input.dueAt) : undefined,
+      updated_by: ctx.principal.id,
+    });
 
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', 'Task update conflicted with another change (ETag mismatch).');
@@ -475,24 +468,21 @@ export class TaskService {
       followUpResource = followUp.resource;
     }
 
-    const updated = await this.deps.repository.updateTask(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        status: 'COMPLETED',
-        outcome_code: input.outcomeCode,
-        completion_note: input.completionNote,
-        completed_at: now,
-        completed_by: ctx.principal.id,
-        follow_up_task_id: followUpTaskId,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updated = await this.deps.repository.updateTask(tx, tenantId, id, expectedLockVersion, {
+      status: 'COMPLETED',
+      outcome_code: input.outcomeCode,
+      completion_note: input.completionNote,
+      completed_at: now,
+      completed_by: ctx.principal.id,
+      follow_up_task_id: followUpTaskId,
+      updated_by: ctx.principal.id,
+    });
 
     if (!updated) {
-      throw AppError.of('VERSION_CONFLICT', 'Task completion conflicted with another change (ETag mismatch).');
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        'Task completion conflicted with another change (ETag mismatch).',
+      );
     }
 
     // Emit task.completed domain event

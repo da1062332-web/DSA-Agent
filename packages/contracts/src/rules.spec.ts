@@ -78,7 +78,7 @@ describe('Module 23 — Rules & Business Rule Engine Contracts', () => {
       name: 'Mumbai Branch Rules',
     };
     expect(() => CreateRuleSetRequestSchema.parse(input)).toThrow(
-      /scopeRef must be null if and only if scopeType is TENANT_DEFAULT/
+      /scopeRef must be null if and only if scopeType is TENANT_DEFAULT/,
     );
   });
 
@@ -101,7 +101,7 @@ describe('Module 23 — Rules & Business Rule Engine Contracts', () => {
       reviewedContentHash: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     };
     expect(() => ReviewVersionRequestSchema.parse(input)).toThrow(
-      /Comment must be between 3 and 2000 characters/
+      /Comment must be between 3 and 2000 characters/,
     );
   });
 

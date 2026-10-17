@@ -16,11 +16,7 @@ import {
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
-import {
-  type ChannelAdapter,
-  ConfiguredTestAdapter,
-  UnconfiguredAdapter,
-} from './channel-adapter';
+import { type ChannelAdapter, ConfiguredTestAdapter, UnconfiguredAdapter } from './channel-adapter';
 import { SendEligibilityGuard } from './send-guard';
 
 const nextUlid = monotonicFactory();
@@ -112,7 +108,10 @@ export class MessagingService {
   }
 
   static seedTemplate(template: MessageTemplate): void {
-    MessagingService.memoryTemplates.set(`${template.tenantId}:${template.code}:${template.version}`, template);
+    MessagingService.memoryTemplates.set(
+      `${template.tenantId}:${template.code}:${template.version}`,
+      template,
+    );
   }
 
   /**
@@ -146,10 +145,14 @@ export class MessagingService {
       if (existing.rows.length > 0) {
         const row = existing.rows[0];
         if (row && row.status === 'COMPLETED' && row.response_body) {
-          const body = typeof row.response_body === 'string' ? JSON.parse(row.response_body) : row.response_body;
+          const body =
+            typeof row.response_body === 'string' ? JSON.parse(row.response_body) : row.response_body;
           return { isReplayed: true, responseBody: body, responseStatus: row.response_status ?? 200 };
         }
-        throw AppError.of('IDEMPOTENCY_IN_PROGRESS', 'Concurrent request with the same Idempotency-Key is in progress');
+        throw AppError.of(
+          'IDEMPOTENCY_IN_PROGRESS',
+          'Concurrent request with the same Idempotency-Key is in progress',
+        );
       }
 
       const reqHash = crypto
@@ -174,7 +177,10 @@ export class MessagingService {
       if (mem.status === 'COMPLETED') {
         return { isReplayed: true, responseBody: mem.responseBody, responseStatus: mem.responseStatus };
       }
-      throw AppError.of('IDEMPOTENCY_IN_PROGRESS', 'Concurrent request with the same Idempotency-Key is in progress');
+      throw AppError.of(
+        'IDEMPOTENCY_IN_PROGRESS',
+        'Concurrent request with the same Idempotency-Key is in progress',
+      );
     }
 
     MessagingService.memoryIdempotency.set(memoryKey, {
@@ -703,7 +709,10 @@ export class MessagingService {
       ctx.principal.grants.some((g) => g.code === 'message.send') ||
       ctx.principal.grants.some((g) => g.code === 'config.manage');
     if (!hasPermission) {
-      throw AppError.of('FORBIDDEN', 'Principal requires message.send or config.manage to list message history');
+      throw AppError.of(
+        'FORBIDDEN',
+        'Principal requires message.send or config.manage to list message history',
+      );
     }
 
     if (this.txRunner) {
@@ -812,10 +821,7 @@ export class MessagingService {
    * Resolves a public webhook connection path to its configured tenant and provider (ENT-115).
    * Does NOT trust caller-supplied tenant identifiers.
    */
-  async resolvePublicEntry(
-    connectionPathId: string,
-    provider: string,
-  ): Promise<PublicEntryRecord | null> {
+  async resolvePublicEntry(connectionPathId: string, provider: string): Promise<PublicEntryRecord | null> {
     if (this.txRunner) {
       try {
         const dummyCtx: RequestContext = {
@@ -973,7 +979,8 @@ export class MessagingService {
 
         const row = updateRes.rows[0];
         if (row) {
-          const history = typeof row.status_history === 'string' ? JSON.parse(row.status_history) : row.status_history;
+          const history =
+            typeof row.status_history === 'string' ? JSON.parse(row.status_history) : row.status_history;
           history.push({
             status: newStatus,
             timestamp,

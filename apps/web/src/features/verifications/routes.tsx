@@ -9,4 +9,3 @@ export const routes: RouteObject[] = [
   { path: '/verifications/workbench', element: <VerificationPage /> },
   { path: '/verifications/:id', element: <VerificationDetailPage /> },
 ];
-

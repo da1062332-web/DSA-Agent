@@ -119,7 +119,10 @@ export function createMockVerificationStore() {
   let activeTenantId = 'ten_01JTESTTENANT00000000000000';
 
   const connection: DatabaseConnection = {
-    async executeQuery<R>(compiledQuery: { sql: string; parameters: readonly unknown[] }): Promise<QueryResult<R>> {
+    async executeQuery<R>(compiledQuery: {
+      sql: string;
+      parameters: readonly unknown[];
+    }): Promise<QueryResult<R>> {
       const sqlLower = compiledQuery.sql.toLowerCase();
       const params = compiledQuery.parameters;
 
@@ -142,7 +145,9 @@ export function createMockVerificationStore() {
 
         if (sqlLower.includes('status =')) {
           const statusParam = params.find((p) =>
-            ['INITIATED', 'ASSIGNED', 'IN_PROGRESS', 'VERIFIED', 'REJECTED', 'WAIVED', 'CANCELLED'].includes(String(p))
+            ['INITIATED', 'ASSIGNED', 'IN_PROGRESS', 'VERIFIED', 'REJECTED', 'WAIVED', 'CANCELLED'].includes(
+              String(p),
+            ),
           );
           if (statusParam) filtered = filtered.filter((v) => v.status === statusParam);
         }
@@ -154,7 +159,14 @@ export function createMockVerificationStore() {
 
         if (sqlLower.includes('verification_type =')) {
           const typeParam = params.find((p) =>
-            ['DOCUMENT_REVIEW', 'IDENTITY_KYC', 'RESIDENCE_FI', 'OFFICE_FI', 'EMPLOYMENT', 'BANK_STATEMENT'].includes(String(p))
+            [
+              'DOCUMENT_REVIEW',
+              'IDENTITY_KYC',
+              'RESIDENCE_FI',
+              'OFFICE_FI',
+              'EMPLOYMENT',
+              'BANK_STATEMENT',
+            ].includes(String(p)),
           );
           if (typeParam) filtered = filtered.filter((v) => v.verification_type === typeParam);
         }
@@ -235,7 +247,15 @@ export function createMockVerificationStore() {
           // generic update
           if (sqlLower.includes('status =')) {
             const statusParam = params.find((p) =>
-              ['INITIATED', 'ASSIGNED', 'IN_PROGRESS', 'VERIFIED', 'REJECTED', 'WAIVED', 'CANCELLED'].includes(String(p))
+              [
+                'INITIATED',
+                'ASSIGNED',
+                'IN_PROGRESS',
+                'VERIFIED',
+                'REJECTED',
+                'WAIVED',
+                'CANCELLED',
+              ].includes(String(p)),
             );
             if (statusParam) found.status = String(statusParam);
           }
@@ -248,9 +268,20 @@ export function createMockVerificationStore() {
               (p) =>
                 typeof p === 'string' &&
                 p.length > 3 &&
-                !['HIGH', 'MEDIUM', 'LOW', 'INITIATED', 'ASSIGNED', 'IN_PROGRESS', 'VERIFIED', 'REJECTED', 'WAIVED', 'CANCELLED'].includes(p) &&
+                ![
+                  'HIGH',
+                  'MEDIUM',
+                  'LOW',
+                  'INITIATED',
+                  'ASSIGNED',
+                  'IN_PROGRESS',
+                  'VERIFIED',
+                  'REJECTED',
+                  'WAIVED',
+                  'CANCELLED',
+                ].includes(p) &&
                 !p.startsWith('vrf_') &&
-                !p.startsWith('usr_')
+                !p.startsWith('usr_'),
             );
             if (fParam) found.findings_summary = String(fParam);
           }

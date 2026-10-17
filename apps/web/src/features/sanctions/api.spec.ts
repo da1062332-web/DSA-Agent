@@ -14,9 +14,7 @@ describe('Module 19 — Sanctions Frontend API Client', () => {
   });
 
   it('listSanctions fetches sanctions for lender case', async () => {
-    const mockSanctions = [
-      { id: 'snc_01', version: 1, amount: 1500000, status: 'ACTIVE' },
-    ];
+    const mockSanctions = [{ id: 'snc_01', version: 1, amount: 1500000, status: 'ACTIVE' }];
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,

@@ -70,7 +70,10 @@ export function ImportExportPage() {
   const createExportMutation = useCreateExportJob();
 
   // Notifications
-  const [notification, setNotification] = useState<{ severity: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [notification, setNotification] = useState<{
+    severity: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -108,13 +111,20 @@ export function ImportExportPage() {
           else if (lower.includes('phone') || lower.includes('mobile')) initialMapping[h] = 'mobile';
           else if (lower.includes('email')) initialMapping[h] = 'email';
           else if (lower.includes('amount')) initialMapping[h] = 'indicativeAmount';
-          else if (lower.includes('product') || lower.includes('category')) initialMapping[h] = 'productCategory';
+          else if (lower.includes('product') || lower.includes('category'))
+            initialMapping[h] = 'productCategory';
         }
       }
       setColumnMapping(initialMapping);
-      setNotification({ severity: 'success', message: `File "${fileName}" parsed successfully! Please configure column mappings.` });
+      setNotification({
+        severity: 'success',
+        message: `File "${fileName}" parsed successfully! Please configure column mappings.`,
+      });
     } catch (err: any) {
-      setNotification({ severity: 'error', message: err?.message || 'Failed to upload and parse import file.' });
+      setNotification({
+        severity: 'error',
+        message: err?.message || 'Failed to upload and parse import file.',
+      });
     }
   };
 
@@ -157,7 +167,10 @@ export function ImportExportPage() {
       });
       setRollbackDialogOpen(false);
       setSelectedBatch(null);
-      setNotification({ severity: 'success', message: 'Import batch successfully rolled back. Records archived.' });
+      setNotification({
+        severity: 'success',
+        message: 'Import batch successfully rolled back. Records archived.',
+      });
     } catch (err: any) {
       setNotification({ severity: 'error', message: err?.message || 'Failed to roll back batch.' });
     }
@@ -171,7 +184,10 @@ export function ImportExportPage() {
         scopeType,
         filters: {},
       });
-      setNotification({ severity: 'success', message: `${exportType} export job queued. Download will be available shortly.` });
+      setNotification({
+        severity: 'success',
+        message: `${exportType} export job queued. Download will be available shortly.`,
+      });
     } catch (err: any) {
       setNotification({ severity: 'error', message: err?.message || 'Failed to initiate data export.' });
     }
@@ -231,7 +247,8 @@ export function ImportExportPage() {
                 </Grid>
 
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Maximum file size: 50 MB. Source files are securely stored in private quarantine and retained for 7 days.
+                  Maximum file size: 50 MB. Source files are securely stored in private quarantine and
+                  retained for 7 days.
                 </Alert>
 
                 <Button
@@ -256,7 +273,8 @@ export function ImportExportPage() {
                   </Box>
 
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Map CSV header columns to target {selectedBatch.targetEntity} fields. Required fields: Full Name, Mobile.
+                    Map CSV header columns to target {selectedBatch.targetEntity} fields. Required fields:
+                    Full Name, Mobile.
                   </Typography>
 
                   {selectedBatch.previewData && selectedBatch.previewData.length > 0 && (
@@ -313,7 +331,11 @@ export function ImportExportPage() {
                       onClick={handleCommit}
                       disabled={commitImportMutation.isPending || selectedBatch.status === 'COMPLETED'}
                     >
-                      {commitImportMutation.isPending ? <CircularProgress size={20} /> : 'Commit Import Batch'}
+                      {commitImportMutation.isPending ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        'Commit Import Batch'
+                      )}
                     </Button>
                   </Box>
                 </CardContent>
@@ -329,19 +351,31 @@ export function ImportExportPage() {
                   </Typography>
                   <Grid container spacing={2} sx={{ mb: 2 }}>
                     <Grid item xs={3}>
-                      <Typography variant="caption" color="text.secondary">Total Rows</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Total Rows
+                      </Typography>
                       <Typography variant="h6">{selectedBatch.totalRows}</Typography>
                     </Grid>
                     <Grid item xs={3}>
-                      <Typography variant="caption" color="text.secondary">Imported</Typography>
-                      <Typography variant="h6" color="success.main">{selectedBatch.importedRows}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Imported
+                      </Typography>
+                      <Typography variant="h6" color="success.main">
+                        {selectedBatch.importedRows}
+                      </Typography>
                     </Grid>
                     <Grid item xs={3}>
-                      <Typography variant="caption" color="text.secondary">Errors</Typography>
-                      <Typography variant="h6" color="error.main">{selectedBatch.invalidRows}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Errors
+                      </Typography>
+                      <Typography variant="h6" color="error.main">
+                        {selectedBatch.invalidRows}
+                      </Typography>
                     </Grid>
                     <Grid item xs={3}>
-                      <Typography variant="caption" color="text.secondary">Status</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Status
+                      </Typography>
                       <Box sx={{ mt: 0.5 }}>
                         <Chip label={selectedBatch.status} color="success" size="small" />
                       </Box>
@@ -355,17 +389,16 @@ export function ImportExportPage() {
                       <Button
                         variant="outlined"
                         onClick={() => {
-                          void apiDownload(`/v1/imports/${selectedBatch.id}/report`, `import_${selectedBatch.id}_validation_report.csv`);
+                          void apiDownload(
+                            `/v1/imports/${selectedBatch.id}/report`,
+                            `import_${selectedBatch.id}_validation_report.csv`,
+                          );
                         }}
                       >
                         Download Error Report
                       </Button>
                     )}
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={() => setRollbackDialogOpen(true)}
-                    >
+                    <Button variant="outlined" color="error" onClick={() => setRollbackDialogOpen(true)}>
                       Roll Back Batch (24h Window)
                     </Button>
                   </Box>
@@ -408,7 +441,13 @@ export function ImportExportPage() {
                               <Chip
                                 label={b.status}
                                 size="small"
-                                color={b.status === 'COMPLETED' ? 'success' : b.status === 'ROLLED_BACK' ? 'default' : 'primary'}
+                                color={
+                                  b.status === 'COMPLETED'
+                                    ? 'success'
+                                    : b.status === 'ROLLED_BACK'
+                                      ? 'default'
+                                      : 'primary'
+                                }
                                 sx={{ height: 20, fontSize: 10 }}
                               />
                             </TableCell>
@@ -438,7 +477,8 @@ export function ImportExportPage() {
                 </Typography>
 
                 <Alert severity="warning" sx={{ mb: 2 }}>
-                  Record-level exports require elevated step-up authentication (AAL2 TOTP ≤ 900s). Sensitive attributes (Aadhaar, PAN, Phone, Email) are masked.
+                  Record-level exports require elevated step-up authentication (AAL2 TOTP ≤ 900s). Sensitive
+                  attributes (Aadhaar, PAN, Phone, Email) are masked.
                 </Alert>
 
                 <FormControl fullWidth size="small" sx={{ mb: 2 }}>
@@ -520,7 +560,9 @@ export function ImportExportPage() {
                             <TableCell sx={{ fontSize: 12 }}>{job.id}</TableCell>
                             <TableCell sx={{ fontSize: 12 }}>{job.exportType}</TableCell>
                             <TableCell sx={{ fontSize: 12 }}>{job.scopeType}</TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12 }}>{job.rowCount}</TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12 }}>
+                              {job.rowCount}
+                            </TableCell>
                             <TableCell>
                               <Chip
                                 label={job.status}
@@ -535,7 +577,10 @@ export function ImportExportPage() {
                                   size="small"
                                   variant="outlined"
                                   onClick={() => {
-                                    void apiDownload(`/v1/exports/${job.id}/download`, `export_${job.id}.${job.fileFormat.toLowerCase()}`);
+                                    void apiDownload(
+                                      `/v1/exports/${job.id}/download`,
+                                      `export_${job.id}.${job.fileFormat.toLowerCase()}`,
+                                    );
                                   }}
                                   sx={{ fontSize: 11, py: 0.2 }}
                                 >
@@ -560,7 +605,8 @@ export function ImportExportPage() {
         <DialogTitle>Confirm 24-Hour Batch Rollback</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            This action will archive all records created by this batch. Records that have already converted or have attached applications will be preserved to prevent data loss.
+            This action will archive all records created by this batch. Records that have already converted or
+            have attached applications will be preserved to prevent data loss.
           </Typography>
           <TextField
             fullWidth

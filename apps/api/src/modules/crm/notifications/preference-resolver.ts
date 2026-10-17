@@ -1,9 +1,6 @@
 // apps/api/src/modules/crm/notifications/preference-resolver.ts — owner: Dev 1 / Dev 5
 // CMP-NTF.02.1: Notification Preference Resolver (MOD-NTF / SUB-NTF.02)
-import type {
-  NotificationCategory,
-  NotificationPreferences,
-} from '@dsa/contracts';
+import type { NotificationCategory, NotificationPreferences } from '@dsa/contracts';
 
 export class PreferenceResolver {
   static readonly DEFAULT_PREFERENCES: NotificationPreferences = {

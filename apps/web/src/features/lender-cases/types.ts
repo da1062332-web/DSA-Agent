@@ -20,13 +20,7 @@ export type SubmissionChannel = 'PORTAL' | 'EMAIL' | 'API' | 'PHYSICAL';
 export type StatusSource = 'MANUAL' | 'LENDER_API' | 'LENDER_FILE' | 'EMAIL_PARSED' | 'SYSTEM';
 
 export type DeclineReasonCode =
-  | 'POLICY'
-  | 'INCOME'
-  | 'CREDIT_HISTORY'
-  | 'DOCUMENTATION'
-  | 'LOCATION'
-  | 'CUSTOMER_DECLINED'
-  | 'OTHER';
+  'POLICY' | 'INCOME' | 'CREDIT_HISTORY' | 'DOCUMENTATION' | 'LOCATION' | 'CUSTOMER_DECLINED' | 'OTHER';
 
 export type PackageKind = 'SUBMISSION' | 'QUERY_RESPONSE';
 

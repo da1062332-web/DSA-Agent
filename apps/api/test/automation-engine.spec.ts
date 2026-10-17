@@ -265,10 +265,16 @@ describe('Module 24: Workflow Automation (MOD-WFA) Execution Runtime', () => {
     // Stale worker tries to update non-terminal progress: should fail with WORKER_LEASE_LOST
     await expect(
       store.runner.withTenantTx(standardCtx, async (tx) => {
-        return repo.updateExecutionProgress(tx, standardCtx.principal.tenantId, 'wfe_stale_test_01', 'worker_stale', {
-          status: 'RUNNING',
-          currentStepIndex: 2,
-        });
+        return repo.updateExecutionProgress(
+          tx,
+          standardCtx.principal.tenantId,
+          'wfe_stale_test_01',
+          'worker_stale',
+          {
+            status: 'RUNNING',
+            currentStepIndex: 2,
+          },
+        );
       }),
     ).rejects.toThrow(/lost lease on execution/);
   });
@@ -367,7 +373,9 @@ describe('Module 24: Workflow Automation (MOD-WFA) Execution Runtime', () => {
 
     // Each step execution has an idempotency key format: <execId>:step_<index>:<stepId>
     for (const stepExec of store.stepExecutions) {
-      expect(stepExec.idempotency_key).toBe(`${execution.id}:step_${stepExec.step_index}:${stepExec.step_id}`);
+      expect(stepExec.idempotency_key).toBe(
+        `${execution.id}:step_${stepExec.step_index}:${stepExec.step_id}`,
+      );
     }
   });
 
@@ -548,14 +556,10 @@ describe('Module 24: Workflow Automation (MOD-WFA) Execution Runtime', () => {
     });
 
     // Foreign tenant cannot claim or mutate execution
-    await expect(
-      engine.claimAndRun(foreignTenantCtx, execution.id),
-    ).resolves.toBeNull();
+    await expect(engine.claimAndRun(foreignTenantCtx, execution.id)).resolves.toBeNull();
 
     // Foreign tenant cannot cancel execution
-    await expect(
-      engine.cancelExecution(foreignTenantCtx, execution.id),
-    ).rejects.toThrow(/not found/i);
+    await expect(engine.cancelExecution(foreignTenantCtx, execution.id)).rejects.toThrow(/not found/i);
   });
 
   // 16. Concurrent workers and transaction safety

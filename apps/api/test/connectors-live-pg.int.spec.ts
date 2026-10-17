@@ -120,7 +120,9 @@ describeLivePg('Module 27 (MOD-CON): Live PostgreSQL Verification', () => {
     expect(resB.rows.length).toBe(0);
 
     // 4. Fail-closed: unauthenticated / direct without tenant context returns 0 rows
-    const resDirect = await sql<{ id: string }>`SELECT id FROM app.connector WHERE id = ${connectorId}`.execute(db);
+    const resDirect = await sql<{
+      id: string;
+    }>`SELECT id FROM app.connector WHERE id = ${connectorId}`.execute(db);
     expect(resDirect.rows.length).toBe(0);
   });
 
@@ -185,7 +187,9 @@ describeLivePg('Module 27 (MOD-CON): Live PostgreSQL Verification', () => {
     });
 
     const resB = await txRunner.withTenantTx(ctxB, async (tx) => {
-      return sql<{ id: string }>`SELECT id FROM app.connector_bank_account WHERE id = ${bankAccId}`.execute(tx);
+      return sql<{ id: string }>`SELECT id FROM app.connector_bank_account WHERE id = ${bankAccId}`.execute(
+        tx,
+      );
     });
     expect(resB.rows.length).toBe(0);
   });

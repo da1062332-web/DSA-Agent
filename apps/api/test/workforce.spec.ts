@@ -120,9 +120,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows signed-in user to toggle their own availability via PATCH /v1/me/availability', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app)
-        .patch('/v1/me/availability')
-        .send({ availability: 'BUSY' });
+      const res = await request(app).patch('/v1/me/availability').send({ availability: 'BUSY' });
 
       expect(res.status).toBe(200);
       expect(res.body.availability).toBe('BUSY');
@@ -138,9 +136,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows signed-in user to toggle their own availability via PATCH /v1/me', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app)
-        .patch('/v1/me')
-        .send({ availability: 'ON_LEAVE' });
+      const res = await request(app).patch('/v1/me').send({ availability: 'ON_LEAVE' });
 
       expect(res.status).toBe(200);
       expect(res.body.availability).toBe('ON_LEAVE');
@@ -149,9 +145,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('rejects invalid availability status with 422 validation error', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app)
-        .patch('/v1/me/availability')
-        .send({ availability: 'SLEEPING' });
+      const res = await request(app).patch('/v1/me/availability').send({ availability: 'SLEEPING' });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -223,15 +217,13 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
       const startsAt = '2026-11-01T00:00:00.000Z';
       const endsAt = '2026-11-07T23:59:59.000Z';
 
-      const res = await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt,
-          endsAt,
-          reason: 'Annual Leave Coverage',
-        });
+      const res = await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt,
+        endsAt,
+        reason: 'Annual Leave Coverage',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body.id).toMatch(/^dlg_/);
@@ -244,26 +236,22 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
       const app = getApp(userManagerA);
 
       // Create initial delegation
-      await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-11-01T00:00:00.000Z',
-          endsAt: '2026-11-07T23:59:59.000Z',
-          reason: 'Initial leave',
-        });
+      await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-11-01T00:00:00.000Z',
+        endsAt: '2026-11-07T23:59:59.000Z',
+        reason: 'Initial leave',
+      });
 
       // Attempt overlapping delegation
-      const resOverlap = await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-11-05T00:00:00.000Z',
-          endsAt: '2026-11-10T23:59:59.000Z',
-          reason: 'Overlapping request',
-        });
+      const resOverlap = await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-11-05T00:00:00.000Z',
+        endsAt: '2026-11-10T23:59:59.000Z',
+        reason: 'Overlapping request',
+      });
 
       expect(resOverlap.status).toBe(409);
       expect(resOverlap.body.error.code).toBe('EFFECTIVE_OVERLAP');
@@ -272,15 +260,13 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows self to delegate own work', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-12-01T00:00:00.000Z',
-          endsAt: '2026-12-05T23:59:59.000Z',
-          reason: 'Sick leave coverage',
-        });
+      const res = await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-12-01T00:00:00.000Z',
+        endsAt: '2026-12-05T23:59:59.000Z',
+        reason: 'Sick leave coverage',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body.delegatorId).toBe(userAgentA1.id);
@@ -289,14 +275,12 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows delegator or manager to end delegation via POST /v1/delegations/:id/end', async () => {
       const app = getApp(userManagerA);
 
-      const createRes = await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-12-10T00:00:00.000Z',
-          endsAt: '2026-12-15T23:59:59.000Z',
-        });
+      const createRes = await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-12-10T00:00:00.000Z',
+        endsAt: '2026-12-15T23:59:59.000Z',
+      });
 
       const delegationId = createRes.body.id;
 
@@ -305,28 +289,24 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
       expect(endRes.body.status).toBe('ENDED');
 
       // Now a new delegation in that range should succeed because old one is ENDED
-      const newRes = await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-12-10T00:00:00.000Z',
-          endsAt: '2026-12-15T23:59:59.000Z',
-        });
+      const newRes = await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-12-10T00:00:00.000Z',
+        endsAt: '2026-12-15T23:59:59.000Z',
+      });
       expect(newRes.status).toBe(201);
     });
 
     it('lists delegations via GET /v1/delegations', async () => {
       const app = getApp(userManagerA);
 
-      await request(app)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-10-01T00:00:00.000Z',
-          endsAt: '2026-10-05T23:59:59.000Z',
-        });
+      await request(app).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-10-01T00:00:00.000Z',
+        endsAt: '2026-10-05T23:59:59.000Z',
+      });
 
       const listRes = await request(app).get('/v1/delegations');
       expect(listRes.status).toBe(200);
@@ -361,9 +341,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
       await request(app).post('/v1/attendance/check-in');
 
       // Check out
-      const resOut = await request(app)
-        .post('/v1/attendance/check-out')
-        .send({ notes: 'Day complete' });
+      const resOut = await request(app).post('/v1/attendance/check-out').send({ notes: 'Day complete' });
 
       expect(resOut.status).toBe(200);
       expect(resOut.body.checkOut).toBeDefined();
@@ -417,14 +395,12 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
       const appTenantB = getApp(userTenantB);
 
       // Create delegation in Tenant A
-      await request(appTenantA)
-        .post('/v1/delegations')
-        .send({
-          delegatorId: userAgentA1.id,
-          delegateId: userAgentA2.id,
-          startsAt: '2026-11-15T00:00:00.000Z',
-          endsAt: '2026-11-20T23:59:59.000Z',
-        });
+      await request(appTenantA).post('/v1/delegations').send({
+        delegatorId: userAgentA1.id,
+        delegateId: userAgentA2.id,
+        startsAt: '2026-11-15T00:00:00.000Z',
+        endsAt: '2026-11-20T23:59:59.000Z',
+      });
 
       // Check-in in Tenant A
       await request(appTenantA).post('/v1/attendance/check-in');

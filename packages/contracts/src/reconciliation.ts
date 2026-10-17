@@ -1,7 +1,7 @@
 // packages/contracts/src/reconciliation.ts — MOD-REC Reconciliation Management
 import { z } from 'zod';
 import { IdSchema } from './ids';
-import { ADJUSTMENT_TYPES, type AdjustmentType } from './commission';
+import { ADJUSTMENT_TYPES } from './commission';
 
 export const MATCH_TYPES = ['EXACT', 'PARTIAL', 'VARIANCE', 'UNMATCHED', 'DUPLICATE'] as const;
 export type MatchType = (typeof MATCH_TYPES)[number];
@@ -28,7 +28,13 @@ export type FinancialDisputePartyType = (typeof FINANCIAL_DISPUTE_PARTY_TYPES)[n
 export const FINANCIAL_DISPUTE_SUBJECT_TYPES = ['STATEMENT_LINE', 'PAYOUT', 'CALCULATION'] as const;
 export type FinancialDisputeSubjectType = (typeof FINANCIAL_DISPUTE_SUBJECT_TYPES)[number];
 
-export const FINANCIAL_DISPUTE_STATUSES = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED', 'WITHDRAWN'] as const;
+export const FINANCIAL_DISPUTE_STATUSES = [
+  'OPEN',
+  'UNDER_REVIEW',
+  'RESOLVED',
+  'REJECTED',
+  'WITHDRAWN',
+] as const;
 export type FinancialDisputeStatus = (typeof FINANCIAL_DISPUTE_STATUSES)[number];
 
 // SUB-REC.01: Statement Ingestion
@@ -207,3 +213,29 @@ export const BankReconcilePayoutInputSchema = z.object({
   settlementDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'settlementDate must be YYYY-MM-DD'),
 });
 export type BankReconcilePayoutInput = z.infer<typeof BankReconcilePayoutInputSchema>;
+
+// Automated Bank Statement Ingestion Engine (MT940 / CSV Feeds) (MOD-REC / TASK-418)
+export const AutoIngestBankFeedInputSchema = z.object({
+  lenderId: z.string().min(1, 'lenderId required'),
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'period must be YYYY-MM format'),
+  format: z.enum(['MT940', 'CSV']).default('MT940'),
+  rawFeedContent: z.string().min(10, 'rawFeedContent is required'),
+  filename: z.string().optional().default('bank_feed.txt'),
+});
+export type AutoIngestBankFeedInput = z.infer<typeof AutoIngestBankFeedInputSchema>;
+
+export const AutoIngestBankFeedResponseSchema = z.object({
+  statementId: IdSchema('stm'),
+  lenderId: z.string(),
+  period: z.string(),
+  format: z.enum(['MT940', 'CSV']),
+  parsedLinesCount: z.number().int(),
+  totalDisbursed: z.number(),
+  totalCommission: z.number(),
+  totalTaxDeducted: z.number(),
+  netCommission: z.number(),
+  fileSha256: z.string(),
+  status: z.enum(['IMPORTED', 'MATCHED', 'PARTIALLY_MATCHED']),
+  message: z.string(),
+});
+export type AutoIngestBankFeedResponse = z.infer<typeof AutoIngestBankFeedResponseSchema>;

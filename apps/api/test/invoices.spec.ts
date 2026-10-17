@@ -287,11 +287,7 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
       expect(payRes.body.lockVersion).toBe(2);
 
       // Verify that ledger entry was generated
-      const ledgerEntries = await repository.listLedgerEntries(
-        {} as Tx,
-        tenantA,
-        connectorUserA.id,
-      );
+      const ledgerEntries = await repository.listLedgerEntries({} as Tx, tenantA, connectorUserA.id);
       expect(ledgerEntries).toHaveLength(1);
       expect(ledgerEntries[0]!.entryType).toBe('PAYOUT_DISBURSED');
       expect(ledgerEntries[0]!.amount).toBe(45000);
@@ -304,9 +300,7 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
         deps: { txRunner: inMemoryTxRunner, invoiceRepository: repository, audit: inMemoryAudit as any },
       });
 
-      const res = await request(app)
-        .post(`/v1/invoices/${createdInvoiceId}/status`)
-        .send({ status: 'PAID' });
+      const res = await request(app).post(`/v1/invoices/${createdInvoiceId}/status`).send({ status: 'PAID' });
 
       expect(res.status).toBe(409);
       expect(res.body.error?.code).toBe('INVALID_TRANSITION');

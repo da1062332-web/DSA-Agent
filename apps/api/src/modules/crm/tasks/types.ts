@@ -81,7 +81,10 @@ export interface TaskRow {
 export const CreateTaskInputSchema = z
   .object({
     type: TaskTypeEnum,
-    title: z.string().min(3, 'Title must be at least 3 characters').max(200, 'Title cannot exceed 200 characters'),
+    title: z
+      .string()
+      .min(3, 'Title must be at least 3 characters')
+      .max(200, 'Title cannot exceed 200 characters'),
     ownerUserId: z.string().min(1).optional(),
     ownerQueueId: z.string().min(1).optional(),
     linkedType: TaskLinkedTypeEnum,
@@ -92,20 +95,14 @@ export const CreateTaskInputSchema = z
     slaClass: SlaClassEnum.optional(),
     tags: z.array(z.string()).default([]),
   })
-  .refine(
-    (data) => (data.ownerUserId !== undefined) !== (data.ownerQueueId !== undefined),
-    {
-      message: 'Exactly one of ownerUserId or ownerQueueId must be provided',
-      path: ['ownerUserId'],
-    },
-  )
-  .refine(
-    (data) => data.slaClass !== undefined || data.dueAt !== undefined,
-    {
-      message: 'Either slaClass or dueAt must be provided',
-      path: ['dueAt'],
-    },
-  );
+  .refine((data) => (data.ownerUserId !== undefined) !== (data.ownerQueueId !== undefined), {
+    message: 'Exactly one of ownerUserId or ownerQueueId must be provided',
+    path: ['ownerUserId'],
+  })
+  .refine((data) => data.slaClass !== undefined || data.dueAt !== undefined, {
+    message: 'Either slaClass or dueAt must be provided',
+    path: ['dueAt'],
+  });
 
 export type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>;
 

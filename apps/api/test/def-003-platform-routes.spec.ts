@@ -42,7 +42,9 @@ describe('DEF-003: Platform Sub-Routers Authorization & Boundary Verification', 
       expect(getOrg.status).toBe(401);
       expect(code(getOrg)).toBe('UNAUTHENTICATED');
 
-      const patchOrg = await request(unauthedApp).patch('/v1/organisations/org_1').send({ legalName: 'New Org' });
+      const patchOrg = await request(unauthedApp)
+        .patch('/v1/organisations/org_1')
+        .send({ legalName: 'New Org' });
       expect(patchOrg.status).toBe(401);
       expect(code(patchOrg)).toBe('UNAUTHENTICATED');
     });
@@ -169,12 +171,14 @@ describe('DEF-003: Platform Sub-Routers Authorization & Boundary Verification', 
 
     it('requires Idempotency-Key on work queue creation (400 MALFORMED_REQUEST)', async () => {
       const app = as('config.manage');
-      const res = await request(app).post('/v1/work-queues').send({
-        code: 'Q1',
-        name: 'Valid Queue',
-        kind: 'INTAKE',
-        recordTypes: ['LEAD'],
-      });
+      const res = await request(app)
+        .post('/v1/work-queues')
+        .send({
+          code: 'Q1',
+          name: 'Valid Queue',
+          kind: 'INTAKE',
+          recordTypes: ['LEAD'],
+        });
       expect(res.status).toBe(400);
       expect(code(res)).toBe('MALFORMED_REQUEST');
     });
@@ -218,20 +222,14 @@ describe('DEF-003: Platform Sub-Routers Authorization & Boundary Verification', 
   describe('4. Input Validation Boundaries (422 VALIDATION_ERROR)', () => {
     it('rejects empty or invalid team update bodies (422 VALIDATION_ERROR)', async () => {
       const app = as('config.manage');
-      const res = await request(app)
-        .patch('/v1/teams/team_1')
-        .set('If-Match', '"0"')
-        .send({}); // empty body violates atLeastOne refine
+      const res = await request(app).patch('/v1/teams/team_1').set('If-Match', '"0"').send({}); // empty body violates atLeastOne refine
       expect(res.status).toBe(422);
       expect(code(res)).toBe('VALIDATION_ERROR');
     });
 
     it('rejects empty or invalid organisation update bodies (422 VALIDATION_ERROR)', async () => {
       const app = as('config.manage');
-      const res = await request(app)
-        .patch('/v1/organisations/org_1')
-        .set('If-Match', '"0"')
-        .send({}); // empty body violates atLeastOne refine
+      const res = await request(app).patch('/v1/organisations/org_1').set('If-Match', '"0"').send({}); // empty body violates atLeastOne refine
       expect(res.status).toBe(422);
       expect(code(res)).toBe('VALIDATION_ERROR');
     });

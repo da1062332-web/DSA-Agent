@@ -7,14 +7,17 @@ import { visibleGroups } from './Sidebar';
 const labels = (can: (c: string) => boolean, admin = false) =>
   visibleGroups(admin, can).flatMap((g) => g.items.map((i) => i.label));
 
-const grants = (...codes: string[]): Me['grants'] => codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] }));
+const grants = (...codes: string[]): Me['grants'] =>
+  codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] }));
 
 describe('sidebar visibility by permission', () => {
   it('hides screens whose API the user cannot call', () => {
     // ROLE-RM on the Beta tenant: no message.send, no complaint.*, no sanction.*.
     const rm = new Set(['lead.read', 'task.read', 'application.read', 'verification.read']);
     const shown = labels((c) => rm.has(c));
-    expect(shown).toEqual(expect.arrayContaining(['Leads', 'Tasks', 'Applications', 'Lender cases', 'Verification']));
+    expect(shown).toEqual(
+      expect.arrayContaining(['Leads', 'Tasks', 'Applications', 'Lender cases', 'Verification']),
+    );
     expect(shown).not.toContain('Messaging');
     expect(shown).not.toContain('Grievances');
     expect(shown).not.toContain('Sanction and disbursement');

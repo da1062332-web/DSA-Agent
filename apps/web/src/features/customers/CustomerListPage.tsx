@@ -70,7 +70,13 @@ export function CustomerListPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ sm: 'center' }}
+        spacing={2}
+        sx={{ mb: 4 }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Customers
@@ -228,7 +234,9 @@ export function CustomerListPage() {
                 <TableCell sx={{ fontWeight: 600 }}>Home Branch</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

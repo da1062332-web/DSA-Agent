@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   // Check RLS policies on report_schedule
   const policies = await sql<{ policyname: string; cmd: string; qual: string; with_check: string }>`
     SELECT policyname, cmd, qual, with_check
