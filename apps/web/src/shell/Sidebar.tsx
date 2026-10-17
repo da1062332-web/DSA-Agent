@@ -31,8 +31,9 @@ export interface NavGroup {
 }
 
 // Permissions the API checks for each screen (DSA Notion module pages MSG, GRV, LCS and SND; the routers for the rest).
-// Items without anyOf (Home, Activity, Notifications, Lenders, Products, Security and the Soon items) are shown to
-// everyone: the spec says any staff may read them, so there is no permission to check.
+// Items without anyOf (Home, Notifications, Lenders, Products, Workforce, the account Security page and the Soon items) are shown
+// to everyone: the spec says any staff may use them, so there is no permission to check. Every other screen is filtered by the
+// permission its list endpoint enforces, so a role never sees a screen that would answer 403.
 const RULE_PERMISSIONS = ['rule.author', 'rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'];
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -43,15 +44,19 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Leads and customers (DOM-B)',
     items: [
-      { label: 'Leads', to: '/leads' },
-      { label: 'Customers', to: '/customers' },
+      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
+      { label: 'Customers', to: '/customers', anyOf: ['customer.read'] },
     ],
   },
   {
     title: 'Follow-ups and communication (DOM-C)',
     items: [
       { label: 'Tasks', to: '/tasks', anyOf: ['task.read'] },
-      { label: 'Activity', to: '/activities' },
+      {
+        label: 'Activity',
+        to: '/activities',
+        anyOf: ['lead.read', 'customer.read', 'application.read', 'activity.create'],
+      },
       { label: 'Messaging', to: '/messaging', anyOf: ['message.send', 'config.manage'] },
       { label: 'Notifications', to: '/notifications' },
       { label: 'Grievances', to: '/complaints', anyOf: ['complaint.create', 'complaint.manage'] },
@@ -83,7 +88,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Documents', to: '/documents', anyOf: ['application.read'] },
       { label: 'Document sharing', to: '/document-sharing', anyOf: ['document.upload', 'share.create'] },
       { label: 'Verification', to: '/verifications', anyOf: ['verification.read', 'verification.perform'] },
-      { label: 'Verification workbench', to: '/verifications/workbench' },
+      {
+        label: 'Verification workbench',
+        to: '/verifications/workbench',
+        anyOf: ['verification.read', 'verification.perform'],
+      },
     ],
   },
   {
@@ -95,7 +104,19 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Workflow automation (DOM-H)',
-    items: [{ label: 'Automation rules', to: '/automations' }],
+    items: [
+      {
+        label: 'Automation rules',
+        to: '/automations',
+        anyOf: [
+          'automation.read',
+          'automation.author',
+          'automation.approve',
+          'automation.execute',
+          'automation.operator',
+        ],
+      },
+    ],
   },
   {
     title: 'Team and performance (DOM-I)',
@@ -116,11 +137,19 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Commission, payouts and reconciliation (DOM-K)',
     items: [
-      { label: 'Commission', to: '/commission' },
+      {
+        label: 'Commission',
+        to: '/commission',
+        anyOf: ['finance.view', 'commission.plan.edit', 'commission.plan.approve'],
+      },
       { label: 'Ledger', to: '/ledger', anyOf: ['finance.view'] },
-      { label: 'Payouts', to: '/payouts' },
-      { label: 'Reconciliation', to: '/reconciliation' },
-      { label: 'Invoices', to: '/invoices' },
+      {
+        label: 'Payouts',
+        to: '/payouts',
+        anyOf: ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
+      },
+      { label: 'Reconciliation', to: '/reconciliation', anyOf: ['finance.view', 'finance.reconcile'] },
+      { label: 'Invoices', to: '/invoices', anyOf: ['finance.view', 'invoice.manage'] },
     ],
   },
   {
@@ -133,7 +162,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Integrations and API (DOM-M)',
     items: [
-      { label: 'Integrations', to: '/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },
+      {
+        label: 'Integrations',
+        to: '/integrations',
+        anyOf: ['integration.read', 'integration.manage', 'config.manage'],
+      },
       { label: 'API management', to: '/api-management', anyOf: ['api.read', 'api.manage', 'config.manage'] },
     ],
   },
@@ -142,7 +175,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
-      { label: 'Approvals', to: '/approvals', anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'] },
+      {
+        label: 'Approvals',
+        to: '/approvals',
+        anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'],
+      },
       { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
       { label: 'Security', to: '/account/security' },
     ],
@@ -178,7 +215,8 @@ export function visibleGroups(
     .map((g) => ({
       ...g,
       items: g.items.filter(
-        (i) => (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
+        (i) =>
+          (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
       ),
     }))
     .filter((g) => g.items.length > 0);

@@ -15,7 +15,7 @@ const files = readdirSync(DIR)
   .sort();
 const migration = (n: string) => files.find((f) => f.startsWith(`202610010000${n}_`))!;
 const script = (name: string) => readFileSync(path.join(SQL, name), 'utf8');
-const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63'];
+const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64'];
 
 let container: StartedPostgreSqlContainer;
 let admin: pg.Client;
@@ -91,13 +91,13 @@ describe('hosted batch: verify and rollback scripts', () => {
       Array(6).fill('PASS'),
     );
     expect(rows.filter((r) => r.item.includes('already applied')).map((r) => r.result)).toEqual(
-      Array(9).fill('NO'),
+      Array(10).fill('NO'),
     );
     expect(await fingerprint(db)).toBe(before);
     await db.end();
   });
 
-  for (const n of ['57', '58', '59', '60', '61', '62', '63', '55']) {
+  for (const n of ['57', '58', '59', '60', '61', '62', '63', '55', '64']) {
     it(`TEST-BATCH-${n} migration 00${n}: verify passes after apply, rollback restores the database exactly, verify then shows the removal`, async () => {
       const db = await fresh();
       const before = await fingerprint(db);
@@ -112,7 +112,14 @@ describe('hosted batch: verify and rollback scripts', () => {
       ).toEqual([]);
 
       await db.query(script(`${n}.rollback.sql`));
-      if (n === '55') {
+      if (n === '64') {
+        // Owner and tenant admin keep their grants (indistinguishable from hosted's own); only branch manager and loan operations lose them.
+        const left = await db.query(
+          `SELECT count(*)::int AS n FROM app.role_permission rp JOIN app.role r ON r.id = rp.role_id AND r.tenant_id = rp.tenant_id
+            WHERE r.code IN ('ROLE-BRANCH-MGR','ROLE-LOAN-OPS') AND rp.permission_code IN ('sanction.record','disbursement.record','disbursement.verify','disbursement.exception_approve')`,
+        );
+        expect(left.rows[0].n).toBe(0);
+      } else if (n === '55') {
         // Rule versions are append-only, so rollback retires them instead of deleting: the state differs only by those statuses.
         const active = await db.query(
           `SELECT count(*)::int AS n FROM app.rule_set_version WHERE id LIKE 'rsv_elg_%' AND status = 'ACTIVE'`,

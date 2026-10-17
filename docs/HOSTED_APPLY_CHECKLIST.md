@@ -12,7 +12,7 @@ Target, positively identified: Supabase project `DSA-Agent`, ref `mlpkwwhnagxzin
 
 ## 1. Migrations (decision D1 is taken: `eligibility.override` goes to the four approver roles, as 0055 is written)
 
-For each of 0054, 0057, 0059, 0060, 0061, 0058, 0055, 0063 in that order (a risk order; the rehearsal shows no technical dependency). 0062 is not in this batch.
+For each of 0054, 0057, 0059, 0060, 0061, 0058, 0055, 0063, 0064 in that order (a risk order; the rehearsal shows no technical dependency). 0062 is not in this batch.
 
 ```
 # once more, read-only: all prerequisites PASS, all "already applied" NO
