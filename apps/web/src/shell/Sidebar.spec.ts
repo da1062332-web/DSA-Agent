@@ -32,7 +32,9 @@ describe('sidebar visibility by permission', () => {
   });
 
   it('offers Documents as a real screen to anyone who can read applications', () => {
-    const group = visibleGroups(false, (c) => c === 'application.read').flatMap((g) => g.items).find((i) => i.label === 'Documents');
+    const group = visibleGroups(false, (c) => c === 'application.read')
+      .flatMap((g) => g.items)
+      .find((i) => i.label === 'Documents');
     expect(group?.to).toBe('/documents');
     expect(group?.task).toBeUndefined();
   });

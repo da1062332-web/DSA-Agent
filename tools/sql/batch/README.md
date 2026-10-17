@@ -49,17 +49,17 @@ npx supabase db query --linked -f tools/sql/batch/NN.rollback.sql
 
 ## What each rollback does (and does not)
 
-| Migration | Rollback | Kept on purpose |
-|---|---|---|
-| 0054 | see `tools/sql/0054` | |
-| 0055 | removes the override grants; **retires** the seeded rule versions and archives their rule sets | Rule versions, rules and decision records are append-only by design (audit), so they are never deleted. With no active version the decision answers REFER, as before 0055. |
-| 0057 | drops the close-only trigger and the column grant | |
-| 0058 | removes the two flags if nobody has changed them | A flag an operator touched stays. |
-| 0059 | drops the guards and the grants | |
-| 0060 | removes the nine permissions nobody holds | A permission granted since stays. |
-| 0061 | drops `platform_release` if it holds only the unchanged seed row | The baseline master data rows stay (they cannot be told apart from rows that already existed). |
-| 0062 | drops the function and constraint; drops the column if no failure reason is recorded | |
-| 0063 | drops the two tables if empty and removes the permissions | Refused if a security event or incident exists: that is an audit trail. |
+| Migration | Rollback                                                                                       | Kept on purpose                                                                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0054      | see `tools/sql/0054`                                                                           |                                                                                                                                                                            |
+| 0055      | removes the override grants; **retires** the seeded rule versions and archives their rule sets | Rule versions, rules and decision records are append-only by design (audit), so they are never deleted. With no active version the decision answers REFER, as before 0055. |
+| 0057      | drops the close-only trigger and the column grant                                              |                                                                                                                                                                            |
+| 0058      | removes the two flags if nobody has changed them                                               | A flag an operator touched stays.                                                                                                                                          |
+| 0059      | drops the guards and the grants                                                                |                                                                                                                                                                            |
+| 0060      | removes the nine permissions nobody holds                                                      | A permission granted since stays.                                                                                                                                          |
+| 0061      | drops `platform_release` if it holds only the unchanged seed row                               | The baseline master data rows stay (they cannot be told apart from rows that already existed).                                                                             |
+| 0062      | drops the function and constraint; drops the column if no failure reason is recorded           |                                                                                                                                                                            |
+| 0063      | drops the two tables if empty and removes the permissions                                      | Refused if a security event or incident exists: that is an audit trail.                                                                                                    |
 
 Anything else (a bad apply that the rollback cannot fix) is recovered with the hosted project's point-in-time recovery; ask for it before, not after.
 
