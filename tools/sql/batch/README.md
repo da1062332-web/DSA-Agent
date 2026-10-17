@@ -73,3 +73,10 @@ Run the Module 1 checks again (`verify.sql`, `verify-behaviour.sql`, `enforcemen
 ## One command for the whole batch
 
 `bash tools/sql/batch/run-batch.sh` (WRITES to the linked project) runs the order above one migration at a time: wrapper with hashes, apply, verify, and it stops at the first FAIL row or error and prints that migration's rollback command. It refuses unless the linked project is the shared development project (`mlpkwwhnagxzinaohdxg`). Take the state backup first (`docs/HOSTED_APPLY_CHECKLIST.md`) or point `DSA_BACKUPS` at the folder that holds `state.sql`.
+
+### What the runner checks for you
+
+- It stops unless the linked project is the development project, the preflight prerequisites pass and the state backup exists.
+- It is **resumable**: it asks the preflight which migrations are still pending and applies only those, each in a new `run-HHMMSS` folder (so a wrapper is never reused or overwritten).
+- It stops before 0054 if that migration's data steps would change anyone: 0054 gives ROLE-RM to active users who have no role (in tenants that have that role) and deactivates role-less test accounts, and its rollback cannot undo that. On 2026-10-17 both counts were 0. If they are not, look at who is affected and re-run with `DSA_ALLOW_0054_DATA_STEPS=1`.
+- Full rehearsal evidence, the six PostgreSQL 17 failures and the limits of the rollbacks: `docs/MIGRATION_BATCH_REHEARSAL_REPORT.md`.

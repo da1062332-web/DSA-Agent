@@ -5,9 +5,10 @@
 // Never touches hosted.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const DIR = process.env.DSA_MIGRATIONS_DIR ?? path.join(ROOT, 'supabase/migrations');
@@ -27,7 +28,7 @@ const connectTo = async (database: string) => {
 };
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   admin = await connectTo('postgres');
   await admin.query('CREATE DATABASE cleanup_base');
   const base = await connectTo('cleanup_base');

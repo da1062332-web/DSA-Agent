@@ -4,8 +4,9 @@
 // in apps/api/.env or inside a spec are never used. Pair it with no-hosted-db.ts, which refuses any non-local host.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
+import { startPostgres } from './start-postgres';
 import { assertThrowawayDatabase } from './verify-local-db';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
@@ -17,7 +18,7 @@ const EARLY_FIXTURES_AFTER = '20261001000001_';
 let container: StartedPostgreSqlContainer | undefined;
 
 export async function setup(): Promise<void> {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
   const fixture = (name: string) => readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');

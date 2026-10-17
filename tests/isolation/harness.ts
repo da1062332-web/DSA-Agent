@@ -5,7 +5,7 @@
 // tenant A's rows. Module owners add tests/isolation/cases/<module>.spec.ts using these helpers.
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { Database, PermissionCode, Principal } from '@dsa/contracts';
 import { createAuditPort, createAuthz, createIdGenerator, createUserDirectory } from '@dsa/kernel';
 import type { Kysely } from 'kysely';
@@ -20,6 +20,7 @@ import { createApplicationSubjectPort } from '../../apps/api/src/modules/origina
 import { createLenderPort } from '../../apps/api/src/modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from '../../apps/api/src/modules/origination/catalogue/product-version-port';
 import { fakeAuth, testPrincipal } from '../../apps/api/test/support/fake-auth';
+import { startPostgres } from '../guard/start-postgres';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 // DSA_MIGRATIONS_DIR points the harness at another folder of migrations, to test a corrected copy without editing the real files.
@@ -53,9 +54,7 @@ export interface IsolationEnv {
 export const ALL_ADMIN: PermissionCode[] = ['config.manage', 'user.manage'];
 
 export async function startIsolationEnv(): Promise<IsolationEnv> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
-    process.env.DSA_PG_IMAGE ?? 'postgres:16',
-  ).start();
+  const container: StartedPostgreSqlContainer = await startPostgres();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
 
