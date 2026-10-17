@@ -24,6 +24,9 @@ export function MfaPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const query = new URLSearchParams(location.search);
+  const forceEnrol = query.get('enrol') === 'true';
+
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
@@ -31,7 +34,7 @@ export function MfaPage() {
       try {
         const factors = await verifiedTotpFactors();
         if (cancelled) return;
-        if (factors[0]) setMode({ kind: 'challenge', factorId: factors[0].id });
+        if (factors[0] && !forceEnrol) setMode({ kind: 'challenge', factorId: factors[0].id });
         else
           setMode({
             kind: 'enrol',
@@ -44,14 +47,14 @@ export function MfaPage() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, forceEnrol]);
 
   const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
   const targetPath = from === '/mfa' ? '/' : from;
 
   if (session === null) return <Navigate to="/login" replace />;
-  if (skipMfa && session) return <Navigate to={targetPath} replace />;
-  if (aal?.current === 'aal2' && mode.kind === 'loading') return <Navigate to={from} replace />;
+  if (skipMfa && !forceEnrol && session) return <Navigate to={targetPath} replace />;
+  if (!forceEnrol && aal?.current === 'aal2' && mode.kind === 'loading') return <Navigate to={from} replace />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -74,12 +77,21 @@ export function MfaPage() {
     }
   };
 
+  const qrCodeSrc =
+    mode.kind === 'enrol'
+      ? mode.qrCode.startsWith('data:')
+        ? mode.qrCode
+        : mode.qrCode.startsWith('<svg')
+        ? `data:image/svg+xml;utf-8,${encodeURIComponent(mode.qrCode)}`
+        : mode.qrCode
+      : '';
+
   return (
     <AuthCard
       title={mode.kind === 'enrol' ? 'Set up two-step verification' : 'Two-step verification'}
       subtitle={
         mode.kind === 'enrol'
-          ? 'Your role requires an authenticator app. Scan the code, then enter the 6 digits it shows.'
+          ? 'Your role requires an authenticator app. Scan the barcode, then enter the 6 digits it shows.'
           : 'Enter the 6-digit code from your authenticator app.'
       }
     >
@@ -94,15 +106,23 @@ export function MfaPage() {
         </Box>
       )}
       {mode.kind === 'enrol' && (
-        <Stack alignItems="center" spacing={1} sx={{ mb: 2 }}>
+        <Stack alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
           <Box
             component="img"
-            src={mode.qrCode}
-            alt="QR code for your authenticator app"
-            sx={{ width: 180, height: 180 }}
+            src={qrCodeSrc}
+            alt="Barcode for your authenticator app"
+            sx={{
+              width: 200,
+              height: 200,
+              bgcolor: '#ffffff',
+              p: 1.5,
+              borderRadius: 2,
+              border: '1px solid #e0e0e0',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            }}
           />
           <Typography variant="caption" color="text.secondary">
-            Can’t scan? Enter this key: <code data-testid="auth.mfa.secret">{mode.secret}</code>
+            Can’t scan the barcode? Enter this secret key: <code data-testid="auth.mfa.secret">{mode.secret}</code>
           </Typography>
         </Stack>
       )}
@@ -130,6 +150,29 @@ export function MfaPage() {
             >
               {busy ? <CircularProgress size={22} color="inherit" /> : 'Verify'}
             </Button>
+            {mode.kind === 'challenge' && (
+              <Button
+                variant="outlined"
+                color="primary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const res = await startTotpEnrolment(
+                      `Authenticator ${new Date().toISOString().slice(0, 10)}`,
+                    );
+                    setMode({ kind: 'enrol', ...res });
+                  } catch (err) {
+                    setError((err as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Scan New Barcode / Re-enroll
+              </Button>
+            )}
             <Button
               variant="outlined"
               color="warning"

@@ -224,9 +224,7 @@ describe('Module 28 — Integration Management (MOD-INT: SUB-INT.01 Adapter Fram
   it('POST /v1/integrations/:provider/ping triggers live health probe and updates status', async () => {
     const app = createTestApp(tenantAdmin);
 
-    const res = await request(app)
-      .post('/v1/integrations/TWILIO/ping')
-      .send({ capability: 'MESSAGING.SMS' });
+    const res = await request(app).post('/v1/integrations/TWILIO/ping').send({ capability: 'MESSAGING.SMS' });
 
     expect(res.status).toBe(200);
     expect(res.body.healthy).toBe(true);

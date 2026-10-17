@@ -190,17 +190,14 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
     it('rejects unit mismatch with metric code', async () => {
       const app = getApp(creatorAdmin);
 
-      const res = await request(app)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_target_bad_unit')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'DISBURSEMENT_AMOUNT',
-          targetValue: 100000,
-          unit: 'COUNT', // Should be INR
-        });
+      const res = await request(app).post('/v1/targets').set('Idempotency-Key', 'idem_target_bad_unit').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'DISBURSEMENT_AMOUNT',
+        targetValue: 100000,
+        unit: 'COUNT', // Should be INR
+      });
 
       expect(res.status).toBe(422);
     });
@@ -245,17 +242,14 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
     it('rejects second pending target for same slice with 409 INVALID_STATE', async () => {
       const app = getApp(creatorAdmin);
 
-      await request(app)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_target_slice_first')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'LEAD_COUNT',
-          targetValue: 50,
-          unit: 'COUNT',
-        });
+      await request(app).post('/v1/targets').set('Idempotency-Key', 'idem_target_slice_first').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'LEAD_COUNT',
+        targetValue: 50,
+        unit: 'COUNT',
+      });
 
       const res = await request(app)
         .post('/v1/targets')
@@ -367,9 +361,7 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('REJECTED');
-      expect(res.body.rejectionReason).toBe(
-        'Disbursement target is unrealistically high for Q4',
-      );
+      expect(res.body.rejectionReason).toBe('Disbursement target is unrealistically high for Q4');
     });
 
     it('rejects approval when If-Match version mismatches (optimistic concurrency)', async () => {
@@ -392,17 +384,14 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
       // 1. Creator creates target v1
       const creatorApp = getApp(creatorAdmin);
 
-      const res1 = await request(creatorApp)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_rev_v1')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'LEAD_COUNT',
-          targetValue: 100,
-          unit: 'COUNT',
-        });
+      const res1 = await request(creatorApp).post('/v1/targets').set('Idempotency-Key', 'idem_rev_v1').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'LEAD_COUNT',
+        targetValue: 100,
+        unit: 'COUNT',
+      });
 
       expect(res1.status).toBe(201);
       const idV1 = res1.body.id;
@@ -417,17 +406,14 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
         .send({ decision: 'APPROVE' });
 
       // 3. Creator creates revision (v2) for the same slice
-      const res2 = await request(creatorApp)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_rev_v2')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'LEAD_COUNT',
-          targetValue: 120, // Revised target
-          unit: 'COUNT',
-        });
+      const res2 = await request(creatorApp).post('/v1/targets').set('Idempotency-Key', 'idem_rev_v2').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'LEAD_COUNT',
+        targetValue: 120, // Revised target
+        unit: 'COUNT',
+      });
 
       expect(res2.status).toBe(201);
       const idV2 = res2.body.id;
@@ -463,17 +449,14 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
       // Create target in Tenant A
       const appA = getApp(creatorAdmin);
 
-      const resA = await request(appA)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_tenant_iso_01')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'SANCTION_COUNT',
-          targetValue: 40,
-          unit: 'COUNT',
-        });
+      const resA = await request(appA).post('/v1/targets').set('Idempotency-Key', 'idem_tenant_iso_01').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'SANCTION_COUNT',
+        targetValue: 40,
+        unit: 'COUNT',
+      });
 
       const targetId = resA.body.id;
 
@@ -527,30 +510,24 @@ describe('Module 20 — Performance Targets (MOD-PERF SUB-PERF.01)', () => {
       const adminApp = getApp(creatorAdmin);
 
       // Create target for Branch 1
-      await request(adminApp)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_list_b1')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch1,
-          metricCode: 'LEAD_COUNT',
-          targetValue: 10,
-          unit: 'COUNT',
-        });
+      await request(adminApp).post('/v1/targets').set('Idempotency-Key', 'idem_list_b1').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch1,
+        metricCode: 'LEAD_COUNT',
+        targetValue: 10,
+        unit: 'COUNT',
+      });
 
       // Create target for Branch 2
-      await request(adminApp)
-        .post('/v1/targets')
-        .set('Idempotency-Key', 'idem_list_b2')
-        .send({
-          period: '2026-10',
-          dimensionType: 'BRANCH',
-          dimensionId: branch2,
-          metricCode: 'LEAD_COUNT',
-          targetValue: 20,
-          unit: 'COUNT',
-        });
+      await request(adminApp).post('/v1/targets').set('Idempotency-Key', 'idem_list_b2').send({
+        period: '2026-10',
+        dimensionType: 'BRANCH',
+        dimensionId: branch2,
+        metricCode: 'LEAD_COUNT',
+        targetValue: 20,
+        unit: 'COUNT',
+      });
 
       // Branch User (authorized for branch1 only) queries list
       const branchApp = getApp(branchUser);

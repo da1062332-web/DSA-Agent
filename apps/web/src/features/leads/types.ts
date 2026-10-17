@@ -12,7 +12,16 @@ export interface LeadResource {
   utm: Record<string, unknown> | null;
   connectorId: string | null;
   referredAt: string | null;
-  state: 'NEW' | 'CONTACT_ATTEMPTED' | 'IN_PROGRESS' | 'QUALIFIED' | 'CONVERTED' | 'DISQUALIFIED' | 'NOT_CONTACTABLE' | 'MERGED' | 'ARCHIVED';
+  state:
+    | 'NEW'
+    | 'CONTACT_ATTEMPTED'
+    | 'IN_PROGRESS'
+    | 'QUALIFIED'
+    | 'CONVERTED'
+    | 'DISQUALIFIED'
+    | 'NOT_CONTACTABLE'
+    | 'MERGED'
+    | 'ARCHIVED';
   subStageId: string | null;
   ownerUserId: string | null;
   ownerQueueId: string | null;

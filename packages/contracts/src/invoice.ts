@@ -81,8 +81,14 @@ export type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
 
 // API-LED-004 / API-CPT-004: GET /v1/connectors/:id/statements
 export const StatementQuerySchema = z.object({
-  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD').optional(),
-  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'toDate must be YYYY-MM-DD').optional(),
+  fromDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'fromDate must be YYYY-MM-DD')
+    .optional(),
+  toDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'toDate must be YYYY-MM-DD')
+    .optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 export type StatementQuery = z.infer<typeof StatementQuerySchema>;

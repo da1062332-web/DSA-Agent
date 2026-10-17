@@ -2,10 +2,14 @@
 import crypto from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const DEFAULT_KEY_SOURCE = process.env.FINANCE_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || 'dsa-crm-default-finance-key-32b!';
+const DEFAULT_KEY_SOURCE =
+  process.env.FINANCE_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || 'dsa-crm-default-finance-key-32b!';
 
 function resolveKey(keySource?: string): Buffer {
-  return crypto.createHash('sha256').update(keySource || DEFAULT_KEY_SOURCE).digest();
+  return crypto
+    .createHash('sha256')
+    .update(keySource || DEFAULT_KEY_SOURCE)
+    .digest();
 }
 
 /**
@@ -16,7 +20,7 @@ export function encryptPaymentRef(plaintext: string, secretKey?: string): string
   const key = resolveKey(secretKey);
   const iv = crypto.randomBytes(12); // 96-bit IV recommended for GCM
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  
+
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
 

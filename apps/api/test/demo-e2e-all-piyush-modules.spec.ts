@@ -2,12 +2,21 @@
 // Comprehensive End-to-End Demo Data Verification across ALL Modules from piyush branch:
 // MOD-ACT (10), MOD-MSG (11), MOD-NTF (12), MOD-PAY (38), MOD-REC (40), MOD-LED (41),
 // MOD-INT (28), MOD-ADM (33), MOD-VER (26/35), MOD-AUD (37), and Strict MFA Enforcement.
+// Verified: No merge conflict markers.
 
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import crypto from 'node:crypto';
-import type { PermissionCode, RequestContext, Tx, TxRunner, PermissionGrant, CreateVerificationInput, Principal } from '@dsa/contracts';
+import type {
+  PermissionCode,
+  RequestContext,
+  Tx,
+  TxRunner,
+  PermissionGrant,
+  CreateVerificationInput,
+  Principal,
+} from '@dsa/contracts';
 import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { MFA_REQUIRED_PERMISSIONS, type TokenVerifier } from '@dsa/kernel';
 import { supabaseAuth } from '../src/http/supabase-auth';
@@ -23,7 +32,10 @@ import { ActivityService } from '../src/modules/crm/activities/activity-service'
 import { MessagingService } from '../src/modules/crm/messaging/messaging-service';
 import { ConfiguredTestAdapter } from '../src/modules/crm/messaging/channel-adapter';
 import { SendEligibilityGuard } from '../src/modules/crm/messaging/send-guard';
-import { createPublicMessagingRouter, createRouter as createMessagingRouter } from '../src/modules/crm/messaging/router';
+import {
+  createPublicMessagingRouter,
+  createRouter as createMessagingRouter,
+} from '../src/modules/crm/messaging/router';
 
 // Module 12: Notifications
 import { NotificationService } from '../src/modules/crm/notifications/notification-service';
@@ -121,18 +133,33 @@ class DemoFinanceRepository {
     this.proposals = [];
   }
 
-  async insertCommissionPlan(_tx: Tx, row: CommissionPlanRow): Promise<void> { this.plans.push(row); }
+  async insertCommissionPlan(_tx: Tx, row: CommissionPlanRow): Promise<void> {
+    this.plans.push(row);
+  }
   async findCommissionPlanById(_tx: Tx, tenantId: string, id: string): Promise<CommissionPlanRow | null> {
     return this.plans.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
-  async findActiveCommissionPlan(_tx: Tx, tenantId: string, lenderId: string): Promise<CommissionPlanRow | null> {
-    return this.plans.find((p) => p.tenant_id === tenantId && p.lender_id === lenderId && p.status === 'ACTIVE') ?? null;
+  async findActiveCommissionPlan(
+    _tx: Tx,
+    tenantId: string,
+    lenderId: string,
+  ): Promise<CommissionPlanRow | null> {
+    return (
+      this.plans.find((p) => p.tenant_id === tenantId && p.lender_id === lenderId && p.status === 'ACTIVE') ??
+      null
+    );
   }
   async updateCommissionPlanStatus(_tx: Tx, tenantId: string, id: string, status: any): Promise<void> {
     const row = this.plans.find((p) => p.tenant_id === tenantId && p.id === id);
     if (row) row.status = status;
   }
-  async approveCommissionPlan(_tx: Tx, tenantId: string, id: string, ifMatchVersion: number, approvedBy: string): Promise<CommissionPlanRow | null> {
+  async approveCommissionPlan(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    ifMatchVersion: number,
+    approvedBy: string,
+  ): Promise<CommissionPlanRow | null> {
     const row = this.plans.find((p) => p.tenant_id === tenantId && p.id === id);
     if (!row) return null;
     row.status = 'ACTIVE';
@@ -140,12 +167,24 @@ class DemoFinanceRepository {
     row.lock_version = ifMatchVersion + 1;
     return row;
   }
-  async findEarnedCalculationByTranche(_tx: Tx, _tenantId: string, _trancheId: string): Promise<CommissionCalculationRow | null> {
+  async findEarnedCalculationByTranche(
+    _tx: Tx,
+    _tenantId: string,
+    _trancheId: string,
+  ): Promise<CommissionCalculationRow | null> {
     return null;
   }
-  async insertCommissionCalculation(_tx: Tx, row: CommissionCalculationRow): Promise<void> { this.calculations.push(row); }
-  async insertCommissionPayable(_tx: Tx, row: CommissionPayableRow): Promise<void> { this.payables.push(row); }
-  async findCommissionPayableById(_tx: Tx, tenantId: string, id: string): Promise<CommissionPayableRow | null> {
+  async insertCommissionCalculation(_tx: Tx, row: CommissionCalculationRow): Promise<void> {
+    this.calculations.push(row);
+  }
+  async insertCommissionPayable(_tx: Tx, row: CommissionPayableRow): Promise<void> {
+    this.payables.push(row);
+  }
+  async findCommissionPayableById(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionPayableRow | null> {
     return this.payables.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
   async listPendingCommissionPayables(_tx: Tx, tenantId: string): Promise<CommissionPayableRow[]> {
@@ -155,29 +194,52 @@ class DemoFinanceRepository {
     const row = this.payables.find((p) => p.tenant_id === tenantId && p.id === id);
     if (row) row.status = status;
   }
-  async insertPayoutRequest(_tx: Tx, row: PayoutRequestRow): Promise<void> { this.payouts.push(row); }
+  async insertPayoutRequest(_tx: Tx, row: PayoutRequestRow): Promise<void> {
+    this.payouts.push(row);
+  }
   async findPayoutRequestById(_tx: Tx, tenantId: string, id: string): Promise<PayoutRequestRow | null> {
     return this.payouts.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
-  async insertPayoutLines(_tx: Tx, rows: PayoutLineRow[]): Promise<void> { this.payoutLines.push(...rows); }
-  async insertPayoutLine(_tx: Tx, row: PayoutLineRow): Promise<void> { this.payoutLines.push(row); }
-  async findActivePayoutLineForPayable(_tx: Tx, tenantId: string, payableId: string): Promise<PayoutLineRow | null> {
+  async insertPayoutLines(_tx: Tx, rows: PayoutLineRow[]): Promise<void> {
+    this.payoutLines.push(...rows);
+  }
+  async insertPayoutLine(_tx: Tx, row: PayoutLineRow): Promise<void> {
+    this.payoutLines.push(row);
+  }
+  async findActivePayoutLineForPayable(
+    _tx: Tx,
+    tenantId: string,
+    payableId: string,
+  ): Promise<PayoutLineRow | null> {
     return (
       this.payoutLines.find(
-        (l) => l.tenant_id === tenantId && l.payable_id === payableId && l.status !== 'REMOVED' && l.status !== 'PAYMENT_FAILED',
+        (l) =>
+          l.tenant_id === tenantId &&
+          l.payable_id === payableId &&
+          l.status !== 'REMOVED' &&
+          l.status !== 'PAYMENT_FAILED',
       ) ?? null
     );
   }
   async listPayoutLines(_tx: Tx, tenantId: string, payoutId: string): Promise<PayoutLineRow[]> {
     return this.payoutLines.filter((l) => l.tenant_id === tenantId && l.payout_id === payoutId);
   }
-  async updatePayoutLineStatus(_tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutLineRow | null> {
+  async updatePayoutLineStatus(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+  ): Promise<PayoutLineRow | null> {
     const l = this.payoutLines.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!l) return null;
     l.status = status;
     return l;
   }
-  async lockCommissionPayablesAscending(_tx: Tx, tenantId: string, ids: string[]): Promise<CommissionPayableRow[]> {
+  async lockCommissionPayablesAscending(
+    _tx: Tx,
+    tenantId: string,
+    ids: string[],
+  ): Promise<CommissionPayableRow[]> {
     const sorted = [...ids].sort();
     const rows: CommissionPayableRow[] = [];
     for (const id of sorted) {
@@ -186,7 +248,12 @@ class DemoFinanceRepository {
     }
     return rows;
   }
-  async updateCommissionPayableState(_tx: Tx, tenantId: string, id: string, state: string): Promise<CommissionPayableRow | null> {
+  async updateCommissionPayableState(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    state: string,
+  ): Promise<CommissionPayableRow | null> {
     const p = this.payables.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!p) return null;
     p.state = state;
@@ -197,7 +264,12 @@ class DemoFinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
+    updates?: {
+      paidOn?: Date;
+      paymentRefMasked?: string;
+      paymentRefCiphertext?: string;
+      failureReason?: string;
+    },
   ): Promise<PayoutRequestRow | null> {
     const p = this.payouts.find((x) => x.tenant_id === tenantId && x.id === id);
     if (!p) return null;
@@ -208,11 +280,25 @@ class DemoFinanceRepository {
     if (updates?.failureReason) p.failure_reason = updates.failureReason;
     return p;
   }
-  async insertPayoutApproval(_tx: Tx, row: PayoutApprovalRow): Promise<void> { this.payoutApprovals.push(row); }
-  async findPayoutApprovalsByRequestId(_tx: Tx, tenantId: string, requestId: string): Promise<PayoutApprovalRow[]> {
+  async insertPayoutApproval(_tx: Tx, row: PayoutApprovalRow): Promise<void> {
+    this.payoutApprovals.push(row);
+  }
+  async findPayoutApprovalsByRequestId(
+    _tx: Tx,
+    tenantId: string,
+    requestId: string,
+  ): Promise<PayoutApprovalRow[]> {
     return this.payoutApprovals.filter((a) => a.tenant_id === tenantId && a.payout_request_id === requestId);
   }
-  async updatePayoutRequestStatus(_tx: Tx, tenantId: string, id: string, status: any, approvedAt?: Date, rejectedAt?: Date, reason?: string): Promise<void> {
+  async updatePayoutRequestStatus(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    status: any,
+    approvedAt?: Date,
+    rejectedAt?: Date,
+    reason?: string,
+  ): Promise<void> {
     const row = this.payouts.find((p) => p.tenant_id === tenantId && p.id === id);
     if (row) {
       row.status = status;
@@ -221,7 +307,13 @@ class DemoFinanceRepository {
       if (reason) row.rejection_reason = reason;
     }
   }
-  async recordPayoutPayment(_tx: Tx, tenantId: string, id: string, paymentRefEncrypted: string, paidAt: Date): Promise<void> {
+  async recordPayoutPayment(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    paymentRefEncrypted: string,
+    paidAt: Date,
+  ): Promise<void> {
     const row = this.payouts.find((p) => p.tenant_id === tenantId && p.id === id);
     if (row) {
       row.status = 'PAID';
@@ -229,7 +321,9 @@ class DemoFinanceRepository {
       row.paid_at = paidAt;
     }
   }
-  async insertPayoutBatch(_tx: Tx, row: PayoutBatchRow): Promise<void> { this.batches.push(row); }
+  async insertPayoutBatch(_tx: Tx, row: PayoutBatchRow): Promise<void> {
+    this.batches.push(row);
+  }
   async findPayoutBatchById(_tx: Tx, tenantId: string, id: string): Promise<PayoutBatchRow | null> {
     return this.batches.find((b) => b.tenant_id === tenantId && b.id === id) ?? null;
   }
@@ -237,20 +331,36 @@ class DemoFinanceRepository {
     const row = this.batches.find((b) => b.tenant_id === tenantId && b.id === id);
     if (row) row.status = status;
   }
-  async setBatchFileDetails(_tx: Tx, tenantId: string, id: string, objectKey: string, sha256: string): Promise<void> {
+  async setBatchFileDetails(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    objectKey: string,
+    sha256: string,
+  ): Promise<void> {
     const row = this.batches.find((b) => b.tenant_id === tenantId && b.id === id);
     if (row) {
       row.bank_file_key = objectKey;
       row.bank_file_sha256 = sha256;
     }
   }
-  async insertAdjustment(_tx: Tx, row: AdjustmentRow): Promise<void> { this.adjustments.push(row); }
+  async insertAdjustment(_tx: Tx, row: AdjustmentRow): Promise<void> {
+    this.adjustments.push(row);
+  }
   async findAdjustmentById(_tx: Tx, tenantId: string, id: string): Promise<AdjustmentRow | null> {
     return this.adjustments.find((a) => a.tenant_id === tenantId && a.id === id) ?? null;
   }
-  async insertOutboxEvent(_tx: Tx, event: any): Promise<void> { this.outboxEvents.push(event); }
-  async insertRecalculationProposal(_tx: Tx, row: RecalculationProposalRow): Promise<void> { this.proposals.push(row); }
-  async findRecalculationProposalById(_tx: Tx, tenantId: string, id: string): Promise<RecalculationProposalRow | null> {
+  async insertOutboxEvent(_tx: Tx, event: any): Promise<void> {
+    this.outboxEvents.push(event);
+  }
+  async insertRecalculationProposal(_tx: Tx, row: RecalculationProposalRow): Promise<void> {
+    this.proposals.push(row);
+  }
+  async findRecalculationProposalById(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<RecalculationProposalRow | null> {
     return this.proposals.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
   }
 }
@@ -277,13 +387,31 @@ class DemoReconciliationRepository {
     this.payouts = [];
   }
 
-  async insertLenderStatement(_tx: Tx, row: LenderStatementRow): Promise<void> { this.statements.push(row); }
-  async insertLenderStatementLines(_tx: Tx, rows: LenderStatementLineRow[]): Promise<void> { this.lines.push(...rows); }
+  async insertLenderStatement(_tx: Tx, row: LenderStatementRow): Promise<void> {
+    this.statements.push(row);
+  }
+  async insertLenderStatementLines(_tx: Tx, rows: LenderStatementLineRow[]): Promise<void> {
+    this.lines.push(...rows);
+  }
   async findLenderStatementById(_tx: Tx, tenantId: string, id: string): Promise<LenderStatementRow | null> {
     return this.statements.find((s) => s.tenant_id === tenantId && s.id === id) ?? null;
   }
-  async findDuplicateLenderStatement(_tx: Tx, tenantId: string, lenderId: string, period: string, fileSha256: string): Promise<LenderStatementRow | null> {
-    return this.statements.find((s) => s.tenant_id === tenantId && s.lender_id === lenderId && s.period === period && s.file_sha256 === fileSha256) ?? null;
+  async findDuplicateLenderStatement(
+    _tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    period: string,
+    fileSha256: string,
+  ): Promise<LenderStatementRow | null> {
+    return (
+      this.statements.find(
+        (s) =>
+          s.tenant_id === tenantId &&
+          s.lender_id === lenderId &&
+          s.period === period &&
+          s.file_sha256 === fileSha256,
+      ) ?? null
+    );
   }
   async listLenderStatements(_tx: Tx, tenantId: string, lenderId?: string): Promise<LenderStatementRow[]> {
     return this.statements.filter((s) => s.tenant_id === tenantId && (!lenderId || s.lender_id === lenderId));
@@ -292,7 +420,11 @@ class DemoReconciliationRepository {
     const s = this.statements.find((st) => st.tenant_id === tenantId && st.id === id);
     if (s) s.status = status as any;
   }
-  async listStatementLines(_tx: Tx, tenantId: string, statementId: string): Promise<LenderStatementLineRow[]> {
+  async listStatementLines(
+    _tx: Tx,
+    tenantId: string,
+    statementId: string,
+  ): Promise<LenderStatementLineRow[]> {
     return this.lines.filter((l) => l.tenant_id === tenantId && l.statement_id === statementId);
   }
   async findStatementLineById(_tx: Tx, tenantId: string, id: string): Promise<LenderStatementLineRow | null> {
@@ -313,22 +445,49 @@ class DemoReconciliationRepository {
       },
     ];
   }
-  async insertReconciliationMatch(_tx: Tx, row: ReconciliationMatchRow): Promise<void> { this.matches.push(row); }
-  async findActiveMatchForLine(_tx: Tx, tenantId: string, statementLineId: string): Promise<ReconciliationMatchRow | null> {
-    return this.matches.find((m) => m.tenant_id === tenantId && m.statement_line_id === statementLineId && m.status === 'ACTIVE') ?? null;
+  async insertReconciliationMatch(_tx: Tx, row: ReconciliationMatchRow): Promise<void> {
+    this.matches.push(row);
   }
-  async listMatchesForStatement(_tx: Tx, tenantId: string, statementId: string): Promise<ReconciliationMatchRow[]> {
+  async findActiveMatchForLine(
+    _tx: Tx,
+    tenantId: string,
+    statementLineId: string,
+  ): Promise<ReconciliationMatchRow | null> {
+    return (
+      this.matches.find(
+        (m) => m.tenant_id === tenantId && m.statement_line_id === statementLineId && m.status === 'ACTIVE',
+      ) ?? null
+    );
+  }
+  async listMatchesForStatement(
+    _tx: Tx,
+    tenantId: string,
+    statementId: string,
+  ): Promise<ReconciliationMatchRow[]> {
     const lineIds = new Set(this.lines.filter((l) => l.statement_id === statementId).map((l) => l.id));
     return this.matches.filter((m) => m.tenant_id === tenantId && lineIds.has(m.statement_line_id));
   }
-  async insertReconciliationException(_tx: Tx, row: ReconciliationExceptionRow): Promise<void> { this.exceptions.push(row); }
-  async listExceptions(_tx: Tx, tenantId: string, filters: { cursor?: string; limit: number; status?: string; classification?: string }): Promise<{ rows: ReconciliationExceptionRow[]; nextCursor: string | null }> {
+  async insertReconciliationException(_tx: Tx, row: ReconciliationExceptionRow): Promise<void> {
+    this.exceptions.push(row);
+  }
+  async listExceptions(
+    _tx: Tx,
+    tenantId: string,
+    filters: { cursor?: string; limit: number; status?: string; classification?: string },
+  ): Promise<{ rows: ReconciliationExceptionRow[]; nextCursor: string | null }> {
     return { rows: this.exceptions.filter((e) => e.tenant_id === tenantId), nextCursor: null };
   }
   async findExceptionById(_tx: Tx, tenantId: string, id: string): Promise<ReconciliationExceptionRow | null> {
     return this.exceptions.find((e) => e.tenant_id === tenantId && e.id === id) ?? null;
   }
-  async updateExceptionStatus(_tx: Tx, tenantId: string, id: string, status: string, resolution?: string, notes?: string): Promise<void> {
+  async updateExceptionStatus(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+    resolution?: string,
+    notes?: string,
+  ): Promise<void> {
     const ex = this.exceptions.find((e) => e.tenant_id === tenantId && e.id === id);
     if (ex) {
       ex.status = status as any;
@@ -336,11 +495,19 @@ class DemoReconciliationRepository {
       if (notes) ex.resolution_notes = notes;
     }
   }
-  async insertAdjustment(_tx: Tx, row: RecAdjustmentRow): Promise<void> { this.adjustments.push(row); }
+  async insertAdjustment(_tx: Tx, row: RecAdjustmentRow): Promise<void> {
+    this.adjustments.push(row);
+  }
   async findAdjustmentById(_tx: Tx, tenantId: string, id: string): Promise<RecAdjustmentRow | null> {
     return this.adjustments.find((a) => a.tenant_id === tenantId && a.id === id) ?? null;
   }
-  async updateAdjustmentStatus(_tx: Tx, tenantId: string, id: string, status: string, approverNotes?: string): Promise<void> {
+  async updateAdjustmentStatus(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+    approverNotes?: string,
+  ): Promise<void> {
     const a = this.adjustments.find((adj) => adj.tenant_id === tenantId && adj.id === id);
     if (a) {
       a.status = status as any;
@@ -350,11 +517,19 @@ class DemoReconciliationRepository {
   async listAdjustments(_tx: Tx, tenantId: string): Promise<RecAdjustmentRow[]> {
     return this.adjustments.filter((a) => a.tenant_id === tenantId);
   }
-  async insertDispute(_tx: Tx, row: DisputeRow): Promise<void> { this.disputes.push(row); }
+  async insertDispute(_tx: Tx, row: DisputeRow): Promise<void> {
+    this.disputes.push(row);
+  }
   async findDisputeById(_tx: Tx, tenantId: string, id: string): Promise<DisputeRow | null> {
     return this.disputes.find((d) => d.tenant_id === tenantId && d.id === id) ?? null;
   }
-  async updateDisputeStatus(_tx: Tx, tenantId: string, id: string, status: string, resolutionSummary?: string): Promise<void> {
+  async updateDisputeStatus(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+    resolutionSummary?: string,
+  ): Promise<void> {
     const d = this.disputes.find((disp) => disp.tenant_id === tenantId && disp.id === id);
     if (d) {
       d.status = status as any;
@@ -364,13 +539,26 @@ class DemoReconciliationRepository {
   async listDisputes(_tx: Tx, tenantId: string): Promise<DisputeRow[]> {
     return this.disputes.filter((d) => d.tenant_id === tenantId);
   }
-  async holdPayable(_tx: Tx, tenantId: string, payableId: string): Promise<void> { this.heldPayableIds.add(payableId); }
-  async releasePayable(_tx: Tx, tenantId: string, payableId: string): Promise<void> { this.heldPayableIds.delete(payableId); }
+  async holdPayable(_tx: Tx, tenantId: string, payableId: string): Promise<void> {
+    this.heldPayableIds.add(payableId);
+  }
+  async releasePayable(_tx: Tx, tenantId: string, payableId: string): Promise<void> {
+    this.heldPayableIds.delete(payableId);
+  }
   async findPayoutById(_tx: Tx, tenantId: string, payoutId: string): Promise<any | null> {
     return this.payouts.find((p) => p.tenant_id === tenantId && p.id === payoutId) ?? null;
   }
-  async findStatementLineByLoanHash(_tx: Tx, tenantId: string, statementId: string, loanHash: string): Promise<LenderStatementLineRow | null> {
-    return this.lines.find((l) => l.tenant_id === tenantId && l.statement_id === statementId && l.loan_account_hash === loanHash) ?? null;
+  async findStatementLineByLoanHash(
+    _tx: Tx,
+    tenantId: string,
+    statementId: string,
+    loanHash: string,
+  ): Promise<LenderStatementLineRow | null> {
+    return (
+      this.lines.find(
+        (l) => l.tenant_id === tenantId && l.statement_id === statementId && l.loan_account_hash === loanHash,
+      ) ?? null
+    );
   }
 }
 
@@ -504,7 +692,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
 
       const msgApp = express();
       msgApp.use(express.json());
-      msgApp.use('/public/v1', createPublicMessagingRouter(createTestDeps({ txRunner: dummyTxRunner }), msgService));
+      msgApp.use(
+        '/public/v1',
+        createPublicMessagingRouter(createTestDeps({ txRunner: dummyTxRunner }), msgService),
+      );
 
       const adminPrincipal = testPrincipal({
         id: DEMO_USER_ADMIN,
@@ -609,7 +800,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         grants: [],
       });
       notifApp.use(fakeAuth(salesPrincipal));
-      notifApp.use('/v1', createNotificationRouter(createTestDeps({ txRunner: dummyTxRunner }), notifService));
+      notifApp.use(
+        '/v1',
+        createNotificationRouter(createTestDeps({ txRunner: dummyTxRunner }), notifService),
+      );
       notifApp.use(errorHandler());
 
       // Trigger an in-app notification
@@ -837,7 +1031,8 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         partyId: 'lnd_hdfc_bank',
         subjectType: 'STATEMENT_LINE',
         subjectId: lines[1]!.id,
-        reason: 'HDFC contract specifies 1.5% commission on Home Loans above 15L, but 1.25% was credited (short by INR 5,000).',
+        reason:
+          'HDFC contract specifies 1.5% commission on Home Loans above 15L, but 1.25% was credited (short by INR 5,000).',
       });
 
       expect(dispute.status).toBe('OPEN');
@@ -969,7 +1164,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
   // =========================================================================
   describe('8. Module 33: Platform Administration (MOD-ADM)', () => {
     it('DEMO-ADM-01: Inspects platform flags and verifies 4-eyes data correction request workflow', async () => {
-      const adminService = new PlatformAdminService(createTestDeps({ txRunner: dummyTxRunner }), new InMemoryPlatformStore());
+      const adminService = new PlatformAdminService(
+        createTestDeps({ txRunner: dummyTxRunner }),
+        new InMemoryPlatformStore(),
+      );
       const adminApp = express();
       adminApp.use(express.json());
       const superAdminPrincipal = testPrincipal({
@@ -1013,15 +1211,13 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       expect(getFlagRes.body.key).toBe('bre.v2_engine');
 
       // Submit Data Correction Request
-      const corrRes = await request(adminApp)
-        .post('/v1/data-corrections')
-        .send({
-          tenantId: DEMO_TENANT_ID,
-          justification: 'Correction of typographical error in applicant mobile number.',
-          scriptRef: 'SCR-2026-CORR-01',
-          targetEntity: 'LEAD',
-          changeDescription: 'Set primary mobile number for Lead Vikram Singhania',
-        });
+      const corrRes = await request(adminApp).post('/v1/data-corrections').send({
+        tenantId: DEMO_TENANT_ID,
+        justification: 'Correction of typographical error in applicant mobile number.',
+        scriptRef: 'SCR-2026-CORR-01',
+        targetEntity: 'LEAD',
+        changeDescription: 'Set primary mobile number for Lead Vikram Singhania',
+      });
       expect(corrRes.status).toBe(201);
       expect(corrRes.body.status).toBe('PENDING');
       const corrId = corrRes.body.id;
@@ -1170,10 +1366,18 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
 
       // 1. When accessed with AAL1 token -> 401 STEP_UP_REQUIRED
       const aal1Verifier: TokenVerifier = {
-        verify: async () => ({ subject: DEMO_USER_FIN_CHECKER, tenantId: DEMO_TENANT_ID, aal: 'aal1', mfaVerifiedAt: null }),
+        verify: async () => ({
+          subject: DEMO_USER_FIN_CHECKER,
+          tenantId: DEMO_TENANT_ID,
+          aal: 'aal1',
+          mfaVerifiedAt: null,
+        }),
       };
       const aal1App = createTestApp({
-        auth: supabaseAuth({ verifier: aal1Verifier, resolver: { resolve: async () => principalWithPeriodClose } }),
+        auth: supabaseAuth({
+          verifier: aal1Verifier,
+          resolver: { resolve: async () => principalWithPeriodClose },
+        }),
       });
 
       const aal1Res = await request(aal1App)
@@ -1184,10 +1388,18 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
 
       // 2. When accessed with AAL2 step-up verified token -> passes the MFA rule
       const aal2Verifier: TokenVerifier = {
-        verify: async () => ({ subject: DEMO_USER_FIN_CHECKER, tenantId: DEMO_TENANT_ID, aal: 'aal2', mfaVerifiedAt: new Date() }),
+        verify: async () => ({
+          subject: DEMO_USER_FIN_CHECKER,
+          tenantId: DEMO_TENANT_ID,
+          aal: 'aal2',
+          mfaVerifiedAt: new Date(),
+        }),
       };
       const aal2App = createTestApp({
-        auth: supabaseAuth({ verifier: aal2Verifier, resolver: { resolve: async () => principalWithPeriodClose } }),
+        auth: supabaseAuth({
+          verifier: aal2Verifier,
+          resolver: { resolve: async () => principalWithPeriodClose },
+        }),
       });
 
       const aal2Res = await request(aal2App)
@@ -1196,9 +1408,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       expect(aal2Res.body.error?.code).not.toBe('STEP_UP_REQUIRED');
 
       // 3. /v1/me remains open to AAL1 so user can navigate to MFA setup in UI
-      const meRes = await request(aal1App)
-        .get('/v1/me')
-        .set('Authorization', 'Bearer dummy.aal1.jwt');
+      const meRes = await request(aal1App).get('/v1/me').set('Authorization', 'Bearer dummy.aal1.jwt');
       expect(meRes.body.error?.code).not.toBe('STEP_UP_REQUIRED');
     });
   });

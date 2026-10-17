@@ -38,14 +38,7 @@ describe('Role-Based Navigation Configuration', () => {
 
   it('defines expected administrative modules', () => {
     const paths = ADMINISTRATIVE_NAV.map((item) => item.to);
-    expect(paths).toEqual([
-      '/users',
-      '/roles',
-      '/config',
-      '/rules',
-      '/decisions',
-      '/admin',
-    ]);
+    expect(paths).toEqual(['/users', '/roles', '/config', '/rules', '/decisions', '/admin']);
   });
 
   describe('isNavActive', () => {
@@ -182,7 +175,12 @@ describe('Role-Based Navigation Configuration', () => {
     });
 
     it('ROLE-RULE-APPROVER sees Rules and Decisions under Administration only', () => {
-      const ruleApprover = mockMeWithPermissions(['rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend']);
+      const ruleApprover = mockMeWithPermissions([
+        'rule.simulate',
+        'rule.approve',
+        'rule.publish',
+        'rule.suspend',
+      ]);
 
       const operational = getOperationalNav(ruleApprover).map((i) => i.label);
       const administrative = getAdministrativeNav(ruleApprover).map((i) => i.label);

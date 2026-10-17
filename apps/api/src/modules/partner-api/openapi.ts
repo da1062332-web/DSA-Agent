@@ -153,7 +153,11 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     tags: ['Partner API - Documents'],
     request: {
       params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: PartnerUploadSessionRequestSchema.omit({ applicationId: true }) } } },
+      body: {
+        content: {
+          'application/json': { schema: PartnerUploadSessionRequestSchema.omit({ applicationId: true }) },
+        },
+      },
     },
     responses: {
       201: {

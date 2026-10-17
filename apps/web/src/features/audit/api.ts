@@ -1,9 +1,5 @@
 // apps/web/src/features/audit/api.ts — owner: Akash (Module 37: Audit MOD-AUD)
-import type {
-  AuditEvent,
-  AuditChainVerificationResponse,
-  EvidencePackResponse,
-} from '@dsa/contracts';
+import type { AuditEvent, AuditChainVerificationResponse, EvidencePackResponse } from '@dsa/contracts';
 import { apiFetch } from '../../api/client';
 
 export interface AuditSearchResult {
@@ -15,7 +11,9 @@ export interface AuditSearchResult {
   };
 }
 
-export async function searchAuditEvents(query?: Record<string, string | number | undefined>): Promise<AuditSearchResult> {
+export async function searchAuditEvents(
+  query?: Record<string, string | number | undefined>,
+): Promise<AuditSearchResult> {
   const cleanQuery: Record<string, string | number> = {};
   if (query) {
     for (const [k, v] of Object.entries(query)) {

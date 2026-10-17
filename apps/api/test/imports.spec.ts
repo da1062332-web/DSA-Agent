@@ -75,26 +75,23 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
 
   const sampleCsvContent = Buffer.from(
     'Full Name,Phone Number,Email Address,Product,Amount\n' +
-    'Aarav Sharma,9876543210,aarav@example.com,PL,500000\n' +
-    'Diya Patel,9123456780,diya@example.com,HL,2500000\n'
+      'Aarav Sharma,9876543210,aarav@example.com,PL,500000\n' +
+      'Diya Patel,9123456780,diya@example.com,HL,2500000\n',
   ).toString('base64');
 
   const formulaCsvContent = Buffer.from(
-    'Full Name,Phone Number,Email Address\n' +
-    '=cmd|\' /C calc\'!A0,9876543210,bad@example.com\n'
+    'Full Name,Phone Number,Email Address\n' + "=cmd|' /C calc'!A0,9876543210,bad@example.com\n",
   ).toString('base64');
 
   it('TC-IMP-001 rejects import creation when file content is empty or missing with 422 VALIDATION_ERROR', async () => {
     const app = getApp(importerUserA);
 
-    const res = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'empty.csv',
-        contentBase64: '',
-      });
+    const res = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'empty.csv',
+      contentBase64: '',
+    });
 
     expect(res.status).toBe(422);
     expect(res.body.error?.code).toBe('VALIDATION_ERROR');
@@ -118,14 +115,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-003 rejects formula injection risks in CSV data', async () => {
     const app = getApp(importerUserA);
 
-    const res = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'formula_test.csv',
-        contentBase64: formulaCsvContent,
-      });
+    const res = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'formula_test.csv',
+      contentBase64: formulaCsvContent,
+    });
 
     expect(res.status).toBe(422);
     expect(res.body.error?.code).toBe('VALIDATION_ERROR');
@@ -135,14 +130,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-004 rejects unauthorized caller lacking target entity permission with 403 FORBIDDEN', async () => {
     const app = getApp(unauthorizedUser);
 
-    const res = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const res = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.error?.code).toBe('FORBIDDEN');
@@ -151,14 +144,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-005 successfully creates import batch with parsed preview data and total rows', async () => {
     const app = getApp(importerUserA);
 
-    const res = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_valid.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const res = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_valid.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.id).toMatch(/^imp_/);
@@ -171,14 +162,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-006 rejects mapping configuration when required fields are missing', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_for_map.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_for_map.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -199,14 +188,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-007 successfully configures column mapping and transitions batch to MAPPED', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_map_ok.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_map_ok.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -217,8 +204,8 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
           'Full Name': 'fullName',
           'Phone Number': 'mobile',
           'Email Address': 'email',
-          'Product': 'productCategory',
-          'Amount': 'indicativeAmount',
+          Product: 'productCategory',
+          Amount: 'indicativeAmount',
         },
       });
 
@@ -230,21 +217,17 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-008 rejects commit when batch is not in MAPPED status', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_unmapped.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_unmapped.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
     // Direct commit without mapping
-    const commitRes = await request(app)
-      .post(`/v1/imports/${batchId}/commit`)
-      .send({});
+    const commitRes = await request(app).post(`/v1/imports/${batchId}/commit`).send({});
 
     expect(commitRes.status).toBe(422);
     expect(commitRes.body.error?.code).toBe('VALIDATION_ERROR');
@@ -253,14 +236,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-009 commits MAPPED batch idempotently and transitions to COMPLETED', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_commit.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_commit.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -271,8 +252,8 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
           'Full Name': 'fullName',
           'Phone Number': 'mobile',
           'Email Address': 'email',
-          'Product': 'productCategory',
-          'Amount': 'indicativeAmount',
+          Product: 'productCategory',
+          Amount: 'indicativeAmount',
         },
       });
 
@@ -302,18 +283,16 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     // 1 valid row, 1 row with invalid phone number
     const mixedCsv = Buffer.from(
       'Full Name,Phone Number,Email Address\n' +
-      'Valid Person,9876543210,valid@example.com\n' +
-      'Invalid Phone,123,badphone@example.com\n'
+        'Valid Person,9876543210,valid@example.com\n' +
+        'Invalid Phone,123,badphone@example.com\n',
     ).toString('base64');
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'mixed.csv',
-        contentBase64: mixedCsv,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'mixed.csv',
+      contentBase64: mixedCsv,
+    });
 
     const batchId = createRes.body.id;
 
@@ -327,9 +306,7 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
         },
       });
 
-    const commitRes = await request(app)
-      .post(`/v1/imports/${batchId}/commit`)
-      .send({});
+    const commitRes = await request(app).post(`/v1/imports/${batchId}/commit`).send({});
 
     expect(commitRes.status).toBe(200);
     expect(commitRes.body.status).toBe('COMPLETED');
@@ -347,14 +324,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-011 allows rollback within 24-hour window with audit reason', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_rollback.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_rollback.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -381,14 +356,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-012 rejects rollback when 24-hour rollback window has expired', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_expired_rollback.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_expired_rollback.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -422,14 +395,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     const appA = getApp(importerUserA);
     const appB = getApp(tenantBUser);
 
-    const createRes = await request(appA)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'tenant_a_data.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(appA).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'tenant_a_data.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -471,14 +442,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     const appTenantB = getApp(tenantBUser);
 
     // 1. Missing permission -> 403 FORBIDDEN
-    const forbiddenRes = await request(appUnauth)
-      .post('/v1/exports')
-      .send({
-        exportType: 'METRICS',
-        fileFormat: 'CSV',
-        filters: {},
-        scopeType: 'TENANT',
-      });
+    const forbiddenRes = await request(appUnauth).post('/v1/exports').send({
+      exportType: 'METRICS',
+      fileFormat: 'CSV',
+      filters: {},
+      scopeType: 'TENANT',
+    });
     expect(forbiddenRes.status).toBe(403);
 
     // 2. Missing/stale MFA authTime -> 401 STEP_UP_REQUIRED
@@ -490,26 +459,22 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
       grants: [{ code: 'export.run', scope: 'TENANT', branchIds: [] }],
     });
     const appStale = getApp(staleUser);
-    const stepUpRes = await request(appStale)
-      .post('/v1/exports')
-      .send({
-        exportType: 'METRICS',
-        fileFormat: 'CSV',
-        filters: {},
-        scopeType: 'TENANT',
-      });
+    const stepUpRes = await request(appStale).post('/v1/exports').send({
+      exportType: 'METRICS',
+      fileFormat: 'CSV',
+      filters: {},
+      scopeType: 'TENANT',
+    });
     expect(stepUpRes.status).toBe(401);
     expect(stepUpRes.body.error?.code).toBe('STEP_UP_REQUIRED');
 
     // 3. Authorized caller with fresh MFA -> 201 CREATED
-    const successRes = await request(appAuthorized)
-      .post('/v1/exports')
-      .send({
-        exportType: 'METRICS',
-        fileFormat: 'CSV',
-        filters: {},
-        scopeType: 'TENANT',
-      });
+    const successRes = await request(appAuthorized).post('/v1/exports').send({
+      exportType: 'METRICS',
+      fileFormat: 'CSV',
+      filters: {},
+      scopeType: 'TENANT',
+    });
     expect(successRes.status).toBe(201);
     const exportId = successRes.body.id;
 
@@ -524,14 +489,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
   it('TC-IMP-015 verifies end-to-end 24-hour rollback lifecycle', async () => {
     const app = getApp(importerUserA);
 
-    const createRes = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'leads_lifecycle_rollback.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const createRes = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'leads_lifecycle_rollback.csv',
+      contentBase64: sampleCsvContent,
+    });
 
     const batchId = createRes.body.id;
 
@@ -563,14 +526,12 @@ describe('Module MOD-IMP — Generic Bulk Import Framework', () => {
     expect(repeatRes.body.status).toBe('ROLLED_BACK');
 
     // Attempting to rollback an uncommitted/mapped batch fails with 422 VALIDATION_ERROR
-    const uncommittedBatch = await request(app)
-      .post('/v1/imports')
-      .send({
-        targetEntity: 'LEAD',
-        fileFormat: 'CSV',
-        filename: 'uncommitted.csv',
-        contentBase64: sampleCsvContent,
-      });
+    const uncommittedBatch = await request(app).post('/v1/imports').send({
+      targetEntity: 'LEAD',
+      fileFormat: 'CSV',
+      filename: 'uncommitted.csv',
+      contentBase64: sampleCsvContent,
+    });
     const uncommittedId = uncommittedBatch.body.id;
 
     const invalidRollback = await request(app)

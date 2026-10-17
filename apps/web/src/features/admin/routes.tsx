@@ -9,7 +9,6 @@ import { TeamDetailPage, TeamsPage } from './TeamsPage';
 
 export const routes: RouteObject[] = [
   {
-
     path: '/admin',
     element: <AdminLayout />,
     children: [

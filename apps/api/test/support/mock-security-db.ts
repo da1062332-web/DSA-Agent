@@ -81,7 +81,9 @@ export function createMockSecurityStore() {
         return { rows: [{ key }] as unknown as R[] };
       }
 
-      if (sqlLower.includes('select request_hash, status, response_status, response_body from idempotency_key')) {
+      if (
+        sqlLower.includes('select request_hash, status, response_status, response_body from idempotency_key')
+      ) {
         const tenantId = params[0] as string;
         const principalId = params[1] as string;
         const key = params[2] as string;

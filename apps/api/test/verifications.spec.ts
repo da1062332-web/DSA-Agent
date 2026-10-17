@@ -1,11 +1,7 @@
 // apps/api/test/verifications.spec.ts
 // Unit and security tests for Module 22: Verification (MOD-VER).
 import { describe, expect, it, vi } from 'vitest';
-import {
-  AppError,
-  type CreateVerificationInput,
-  type RequestContext,
-} from '@dsa/contracts';
+import { AppError, type CreateVerificationInput, type RequestContext } from '@dsa/contracts';
 import { VerificationService } from '../src/modules/origination/verifications/verification-service';
 
 describe('Module 22 — Verification (MOD-VER)', () => {
@@ -82,9 +78,9 @@ describe('Module 22 — Verification (MOD-VER)', () => {
         evidenceRef: 'aadhaar_scan.pdf',
       };
 
-      await expect(
-        service.createVerification(mockCtx, payloadWithAadhaar, 'idem_key_01'),
-      ).rejects.toThrow('Storage of full 12-digit Aadhaar numbers is strictly prohibited');
+      await expect(service.createVerification(mockCtx, payloadWithAadhaar, 'idem_key_01')).rejects.toThrow(
+        'Storage of full 12-digit Aadhaar numbers is strictly prohibited',
+      );
     });
 
     it('TEST-VER-SEC-002: rejects raw 12-digit numbers inside notes field', async () => {
@@ -141,9 +137,9 @@ describe('Module 22 — Verification (MOD-VER)', () => {
         evidenceRef: 'doc_pan.pdf',
       };
 
-      await expect(
-        service.createVerification(unprivilegedCtx, validPayload, 'idem_key_03'),
-      ).rejects.toThrow('Missing permission verification.perform');
+      await expect(service.createVerification(unprivilegedCtx, validPayload, 'idem_key_03')).rejects.toThrow(
+        'Missing permission verification.perform',
+      );
     });
 
     it('TEST-VER-AUTH-002: rejects listVerifications if principal lacks verification.read', async () => {
@@ -158,9 +154,9 @@ describe('Module 22 — Verification (MOD-VER)', () => {
         },
       };
 
-      await expect(
-        service.listVerifications(unprivilegedCtx, { limit: 10 }),
-      ).rejects.toThrow('Missing permission verification.read');
+      await expect(service.listVerifications(unprivilegedCtx, { limit: 10 })).rejects.toThrow(
+        'Missing permission verification.read',
+      );
     });
   });
 });

@@ -43,12 +43,7 @@ import type {
   IntegrationEnvironment,
   IntegrationStatus,
 } from '@dsa/contracts';
-import {
-  configureIntegration,
-  fetchCapabilities,
-  fetchIntegrations,
-  pingIntegration,
-} from './api';
+import { configureIntegration, fetchCapabilities, fetchIntegrations, pingIntegration } from './api';
 
 function RefreshIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
@@ -101,8 +96,7 @@ export function IntegrationsPage() {
   // Queries
   const integrationsQuery = useQuery({
     queryKey: ['integrations', envFilter],
-    queryFn: () =>
-      fetchIntegrations(envFilter === 'ALL' ? undefined : { environment: envFilter }),
+    queryFn: () => fetchIntegrations(envFilter === 'ALL' ? undefined : { environment: envFilter }),
   });
 
   const capabilitiesQuery = useQuery({
@@ -211,14 +205,11 @@ export function IntegrationsPage() {
               size="small"
               sx={{ fontWeight: 600, fontSize: '0.75rem' }}
             />
-            <Chip
-              label="SUB-INT.01"
-              size="small"
-              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-            />
+            <Chip label="SUB-INT.01" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Centralized third-party provider adapters, capability descriptors, sandbox boundaries &amp; zero plaintext credential management.
+            Centralized third-party provider adapters, capability descriptors, sandbox boundaries &amp; zero
+            plaintext credential management.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -245,7 +236,9 @@ export function IntegrationsPage() {
 
       {/* Security Callout */}
       <Alert severity="info" sx={{ mb: 3 }} icon={<SecurityIcon />}>
-        <strong>Classification S4 Protection:</strong> Stored configurations strictly contain opaque vault references (<code>credential_ref</code>). Zero passwords, API keys, or secret tokens are ever exposed or entered here. Live secrets resolve strictly through the platform vault port.
+        <strong>Classification S4 Protection:</strong> Stored configurations strictly contain opaque vault
+        references (<code>credential_ref</code>). Zero passwords, API keys, or secret tokens are ever exposed
+        or entered here. Live secrets resolve strictly through the platform vault port.
       </Alert>
 
       {/* KPI Stats */}
@@ -286,7 +279,11 @@ export function IntegrationsPage() {
               <Typography variant="caption" color="text.secondary" fontWeight={600}>
                 OPERATIONAL HEALTH
               </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ mt: 0.5, color: healthyCount === totalCount ? 'success.main' : 'warning.main' }}>
+              <Typography
+                variant="h4"
+                fontWeight={700}
+                sx={{ mt: 0.5, color: healthyCount === totalCount ? 'success.main' : 'warning.main' }}
+              >
                 {healthyCount} / {totalCount}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -353,11 +350,7 @@ export function IntegrationsPage() {
               <Typography variant="body1" color="text.secondary">
                 No integration connections match the selected environment or category filters.
               </Typography>
-              <Button
-                variant="outlined"
-                sx={{ mt: 2, textTransform: 'none' }}
-                onClick={handleOpenNewDialog}
-              >
+              <Button variant="outlined" sx={{ mt: 2, textTransform: 'none' }} onClick={handleOpenNewDialog}>
                 Configure a New Provider Connection
               </Button>
             </Box>
@@ -366,13 +359,27 @@ export function IntegrationsPage() {
               <Table sx={{ minWidth: 920 }}>
                 <TableHead sx={{ bgcolor: 'grey.50' }}>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 160 }}><strong>Provider &amp; Connection ID</strong></TableCell>
-                    <TableCell sx={{ minWidth: 150 }}><strong>Standard Capability</strong></TableCell>
-                    <TableCell sx={{ minWidth: 110 }}><strong>Environment</strong></TableCell>
-                    <TableCell sx={{ maxWidth: 220 }}><strong>Vault Credential Reference</strong></TableCell>
-                    <TableCell sx={{ minWidth: 130 }}><strong>Health &amp; Latency</strong></TableCell>
-                    <TableCell sx={{ minWidth: 100 }}><strong>Status</strong></TableCell>
-                    <TableCell align="right" sx={{ minWidth: 140 }}><strong>Actions</strong></TableCell>
+                    <TableCell sx={{ minWidth: 160 }}>
+                      <strong>Provider &amp; Connection ID</strong>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>
+                      <strong>Standard Capability</strong>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 110 }}>
+                      <strong>Environment</strong>
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 220 }}>
+                      <strong>Vault Credential Reference</strong>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 130 }}>
+                      <strong>Health &amp; Latency</strong>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>
+                      <strong>Status</strong>
+                    </TableCell>
+                    <TableCell align="right" sx={{ minWidth: 140 }}>
+                      <strong>Actions</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -446,8 +453,8 @@ export function IntegrationsPage() {
                             conn.status === 'ACTIVE'
                               ? 'success'
                               : conn.status === 'DEGRADED'
-                              ? 'warning'
-                              : 'default'
+                                ? 'warning'
+                                : 'default'
                           }
                           variant="outlined"
                           sx={{ fontWeight: 600 }}
@@ -495,7 +502,8 @@ export function IntegrationsPage() {
           Declared Platform Capability Descriptors
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Standardized capabilities supported by the DSA CRM Adapter Framework. Every adapter explicitly implements one or more capabilities.
+          Standardized capabilities supported by the DSA CRM Adapter Framework. Every adapter explicitly
+          implements one or more capabilities.
         </Typography>
 
         <Grid container spacing={2}>
@@ -560,7 +568,9 @@ export function IntegrationsPage() {
                   onChange={(e) => {
                     const p = e.target.value;
                     setFormProvider(p);
-                    setFormCredRef(`vault://tenants/ten_demo_01/${formEnv.toLowerCase()}/${p.toLowerCase()}/credentials`);
+                    setFormCredRef(
+                      `vault://tenants/ten_demo_01/${formEnv.toLowerCase()}/${p.toLowerCase()}/credentials`,
+                    );
                   }}
                 >
                   <MenuItem value="TWILIO">Twilio (SMS / WhatsApp)</MenuItem>
@@ -600,7 +610,9 @@ export function IntegrationsPage() {
                   onChange={(e) => {
                     const env = e.target.value as IntegrationEnvironment;
                     setFormEnv(env);
-                    setFormCredRef(`vault://tenants/ten_demo_01/${env.toLowerCase()}/${formProvider.toLowerCase()}/credentials`);
+                    setFormCredRef(
+                      `vault://tenants/ten_demo_01/${env.toLowerCase()}/${formProvider.toLowerCase()}/credentials`,
+                    );
                   }}
                 >
                   <MenuItem value="SANDBOX">SANDBOX (Isolated Non-Production)</MenuItem>

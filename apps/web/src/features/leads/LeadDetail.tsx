@@ -25,13 +25,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import {
-  fetchLeadById,
-  transitionLead,
-  assignLead,
-  convertLead,
-  ApiError,
-} from './api';
+import { fetchLeadById, transitionLead, assignLead, convertLead, ApiError } from './api';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
@@ -56,13 +50,7 @@ export function LeadDetail() {
 
   const [conversionResult, setConversionResult] = useState<ConversionResponse | null>(null);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['lead', id],
     queryFn: () => (id ? fetchLeadById(id) : Promise.reject(new Error('Missing lead id'))),
     enabled: !!id,
@@ -157,7 +145,8 @@ export function LeadDetail() {
     );
   }
 
-  const isTransitionPending = transitionMutation.isPending || convertMutation.isPending || assignMutation.isPending;
+  const isTransitionPending =
+    transitionMutation.isPending || convertMutation.isPending || assignMutation.isPending;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -168,13 +157,23 @@ export function LeadDetail() {
             ← Back to Leads
           </Button>
         </Stack>
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ md: 'center' }}
+          spacing={2}
+        >
           <Box>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Typography variant="h4" component="h1" fontWeight="bold">
                 {lead.fullName}
               </Typography>
-              <Chip label={lead.state} color={lead.state === 'QUALIFIED' ? 'success' : lead.state === 'CONVERTED' ? 'primary' : 'info'} />
+              <Chip
+                label={lead.state}
+                color={
+                  lead.state === 'QUALIFIED' ? 'success' : lead.state === 'CONVERTED' ? 'primary' : 'info'
+                }
+              />
               {lead.duplicateFlag !== 'NONE' && (
                 <Chip label={`Duplicate: ${lead.duplicateFlag}`} color="warning" variant="outlined" />
               )}
@@ -302,7 +301,9 @@ export function LeadDetail() {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <Typography variant="body2" color="text.secondary">Customer Created / Linked:</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Customer Created / Linked:
+                </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {conversionResult.customerId}
                 </Typography>
@@ -318,7 +319,9 @@ export function LeadDetail() {
                 </Button>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography variant="body2" color="text.secondary">Loan Application Created:</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Loan Application Created:
+                </Typography>
                 <Typography variant="body1" fontWeight="medium">
                   {conversionResult.applicationId}
                 </Typography>
@@ -373,19 +376,29 @@ export function LeadDetail() {
               <Divider sx={{ mb: 2 }} />
               <Stack spacing={1.5}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Full Name</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Full Name
+                  </Typography>
                   <Typography variant="body1">{lead.fullName}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Masked Mobile</Typography>
-                  <Typography variant="body1" fontWeight="medium">{lead.mobileMasked}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Masked Mobile
+                  </Typography>
+                  <Typography variant="body1" fontWeight="medium">
+                    {lead.mobileMasked}
+                  </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Masked Email</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Masked Email
+                  </Typography>
                   <Typography variant="body1">{lead.emailMasked || '—'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Pincode</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Pincode
+                  </Typography>
                   <Typography variant="body1">{lead.pincode || '—'}</Typography>
                 </Box>
               </Stack>
@@ -403,35 +416,51 @@ export function LeadDetail() {
               <Divider sx={{ mb: 2 }} />
               <Stack spacing={1.5}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Product Category</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Product Category
+                  </Typography>
                   <Typography variant="body1">{lead.productCategory}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Indicative Amount</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Indicative Amount
+                  </Typography>
                   <Typography variant="body1">
-                    {lead.indicativeAmount ? `${lead.indicativeAmount.currency} ${lead.indicativeAmount.amount}` : '—'}
+                    {lead.indicativeAmount
+                      ? `${lead.indicativeAmount.currency} ${lead.indicativeAmount.amount}`
+                      : '—'}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Priority</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Priority
+                  </Typography>
                   <Typography variant="body1">{lead.priority}</Typography>
                 </Box>
                 {lead.qualApplicantType && (
                   <Box>
-                    <Typography variant="caption" color="text.secondary">Applicant Type (Qualified)</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Applicant Type (Qualified)
+                    </Typography>
                     <Typography variant="body1">{lead.qualApplicantType}</Typography>
                   </Box>
                 )}
                 {lead.qualMonthlyIncome && (
                   <Box>
-                    <Typography variant="caption" color="text.secondary">Monthly Income (Qualified)</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Monthly Income (Qualified)
+                    </Typography>
                     <Typography variant="body1">INR {lead.qualMonthlyIncome}</Typography>
                   </Box>
                 )}
                 {lead.disqualificationReason && (
                   <Box>
-                    <Typography variant="caption" color="text.secondary">Disqualification Reason</Typography>
-                    <Typography variant="body1" color="error">{lead.disqualificationReason}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Disqualification Reason
+                    </Typography>
+                    <Typography variant="body1" color="error">
+                      {lead.disqualificationReason}
+                    </Typography>
                   </Box>
                 )}
               </Stack>
@@ -449,19 +478,27 @@ export function LeadDetail() {
               <Divider sx={{ mb: 2 }} />
               <Stack spacing={1.5}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Source</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Source
+                  </Typography>
                   <Typography variant="body1">{lead.source}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Campaign</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Campaign
+                  </Typography>
                   <Typography variant="body1">{lead.campaign || '—'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Connector ID</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Connector ID
+                  </Typography>
                   <Typography variant="body1">{lead.connectorId || '—'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Referred At</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Referred At
+                  </Typography>
                   <Typography variant="body1">
                     {lead.referredAt ? new Date(lead.referredAt).toLocaleString() : '—'}
                   </Typography>
@@ -481,19 +518,27 @@ export function LeadDetail() {
               <Divider sx={{ mb: 2 }} />
               <Stack spacing={1.5}>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Owner User ID</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Owner User ID
+                  </Typography>
                   <Typography variant="body1">{lead.ownerUserId || '—'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Owner Queue ID</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Owner Queue ID
+                  </Typography>
                   <Typography variant="body1">{lead.ownerQueueId || '—'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Contact Attempts</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Contact Attempts
+                  </Typography>
                   <Typography variant="body1">{lead.contactAttempts}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Created At</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Created At
+                  </Typography>
                   <Typography variant="body1">{new Date(lead.createdAt).toLocaleString()}</Typography>
                 </Box>
               </Stack>
@@ -505,7 +550,12 @@ export function LeadDetail() {
         <Grid item xs={12}>
           <Card sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
             <CardContent>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between"
+                alignItems={{ sm: 'center' }}
+                spacing={2}
+              >
                 <Box>
                   <Typography variant="h6" fontWeight="semibold">
                     Grievances & Customer Complaints
@@ -575,13 +625,14 @@ export function LeadDetail() {
             variant="contained"
             color="success"
             onClick={() => {
-              const formattedAmt = qualAmount && qualAmount.trim()
-                ? (/^\d+$/.test(qualAmount.trim())
+              const formattedAmt =
+                qualAmount && qualAmount.trim()
+                  ? /^\d+$/.test(qualAmount.trim())
                     ? `${qualAmount.trim()}.00`
                     : /^\d+\.\d$/.test(qualAmount.trim())
                       ? `${qualAmount.trim()}0`
-                      : qualAmount.trim())
-                : '500000.00';
+                      : qualAmount.trim()
+                  : '500000.00';
               transitionMutation.mutate({
                 transitionCode: 'T-LEAD-04',
                 qualification: {
@@ -610,9 +661,7 @@ export function LeadDetail() {
       <Dialog open={disqualifyOpen} onClose={() => setDisqualifyOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Disqualify Lead (T-LEAD-05)</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Select reason for disqualifying this lead.
-          </DialogContentText>
+          <DialogContentText sx={{ mb: 2 }}>Select reason for disqualifying this lead.</DialogContentText>
           <FormControl fullWidth sx={{ mt: 1 }}>
             <InputLabel id="disqual-reason-label">Disqualification Reason</InputLabel>
             <Select

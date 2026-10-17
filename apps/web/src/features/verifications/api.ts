@@ -90,7 +90,7 @@ export async function createVerification(input: CreateVerificationInput): Promis
 export async function updateVerification(
   id: string,
   lockVersion: number,
-  input: UpdateVerificationInput
+  input: UpdateVerificationInput,
 ): Promise<VerificationRequest> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/verifications/${id}`, {
@@ -104,7 +104,7 @@ export async function updateVerification(
 export async function completeVerification(
   id: string,
   lockVersion: number,
-  input: CompleteVerificationInput
+  input: CompleteVerificationInput,
 ): Promise<VerificationRequest> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/verifications/${id}/complete`, {
@@ -117,7 +117,7 @@ export async function completeVerification(
 
 export async function attestChecklistItem(
   verificationId: string,
-  input: ChecklistAttestationInput
+  input: ChecklistAttestationInput,
 ): Promise<{ checklistItemId: string; status: string; reviewedBy: string; reviewedAt: string }> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/verifications/${verificationId}/checklist-review`, {

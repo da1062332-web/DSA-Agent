@@ -60,13 +60,17 @@ describe('removing a role ends the assignment', () => {
     const { a, roleId, user, assignmentId } = await newRoleAssignedToUser2();
     const before = await request(a).get(`/v1/users/${user}/roles`);
     expect(JSON.stringify(before.body)).toContain(roleId);
-    expect(JSON.stringify((await request(a).get(`/v1/users/${user}/permissions`)).body)).toContain('lead.read');
+    expect(JSON.stringify((await request(a).get(`/v1/users/${user}/permissions`)).body)).toContain(
+      'lead.read',
+    );
 
     const removed = await request(a).delete(`/v1/users/${user}/roles/${roleId}`);
     expect(removed.status, JSON.stringify(removed.body)).toBe(200);
 
     expect(JSON.stringify((await request(a).get(`/v1/users/${user}/roles`)).body)).not.toContain(roleId);
-    expect(JSON.stringify((await request(a).get(`/v1/users/${user}/permissions`)).body)).not.toContain('lead.read');
+    expect(JSON.stringify((await request(a).get(`/v1/users/${user}/permissions`)).body)).not.toContain(
+      'lead.read',
+    );
 
     const row = await env.admin.query(
       `SELECT upper_inf(effective_range) AS open, upper(effective_range) <= now() AS closed_now FROM app.user_role_assignment WHERE id = $1`,
@@ -106,7 +110,10 @@ describe('removing a role ends the assignment', () => {
     const { roleId, user, assignmentId } = await newRoleAssignedToUser2();
     const b = env.appAs(env.B, ADMIN);
     expect((await request(b).delete(`/v1/users/${user}/roles/${roleId}`)).status).toBe(404);
-    const row = await env.admin.query(`SELECT upper_inf(effective_range) AS open FROM app.user_role_assignment WHERE id = $1`, [assignmentId]);
+    const row = await env.admin.query(
+      `SELECT upper_inf(effective_range) AS open FROM app.user_role_assignment WHERE id = $1`,
+      [assignmentId],
+    );
     expect(row.rows[0].open).toBe(true);
   });
 });
@@ -117,14 +124,20 @@ describe('what the database lets dsa_api do to an assignment', () => {
     await asApiRole(env.A.tenantId, async (c) => {
       // DELETE is still refused.
       await c.query('SAVEPOINT s1');
-      await expect(c.query(`DELETE FROM app.user_role_assignment WHERE id = $1`, [assignmentId])).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        c.query(`DELETE FROM app.user_role_assignment WHERE id = $1`, [assignmentId]),
+      ).rejects.toMatchObject({ code: '42501' });
       await c.query('ROLLBACK TO s1');
       // Any other column is refused.
       await c.query('SAVEPOINT s2');
-      await expect(c.query(`UPDATE app.user_role_assignment SET scope_type = 'OWN' WHERE id = $1`, [assignmentId])).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        c.query(`UPDATE app.user_role_assignment SET scope_type = 'OWN' WHERE id = $1`, [assignmentId]),
+      ).rejects.toMatchObject({ code: '42501' });
       await c.query('ROLLBACK TO s2');
       await c.query('SAVEPOINT s3');
-      await expect(c.query(`UPDATE app.user_role_assignment SET role_id = 'other' WHERE id = $1`, [assignmentId])).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        c.query(`UPDATE app.user_role_assignment SET role_id = 'other' WHERE id = $1`, [assignmentId]),
+      ).rejects.toMatchObject({ code: '42501' });
       await c.query('ROLLBACK TO s3');
       // Closing it is allowed.
       const closed = await c.query(
@@ -144,11 +157,26 @@ describe('what the database lets dsa_api do to an assignment', () => {
         await c.query(`ROLLBACK TO ${name}`);
       };
       // An open assignment may not be closed in the future, or moved to start later.
-      await attempt('future', `UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), now() + interval '1 day', '[)') WHERE id = $1`, /can only be ended/);
-      await attempt('moved', `UPDATE app.user_role_assignment SET effective_range = tstzrange(now() + interval '1 hour', NULL, '[)') WHERE id = $1`, /can only be ended/);
+      await attempt(
+        'future',
+        `UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), now() + interval '1 day', '[)') WHERE id = $1`,
+        /can only be ended/,
+      );
+      await attempt(
+        'moved',
+        `UPDATE app.user_role_assignment SET effective_range = tstzrange(now() + interval '1 hour', NULL, '[)') WHERE id = $1`,
+        /can only be ended/,
+      );
       // Close it, then try to change an ended one.
-      await c.query(`UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)') WHERE id = $1`, [assignmentId]);
-      await attempt('reopen', `UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), NULL, '[)') WHERE id = $1`, /has ended/);
+      await c.query(
+        `UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)') WHERE id = $1`,
+        [assignmentId],
+      );
+      await attempt(
+        'reopen',
+        `UPDATE app.user_role_assignment SET effective_range = tstzrange(lower(effective_range), NULL, '[)') WHERE id = $1`,
+        /has ended/,
+      );
     });
   });
 

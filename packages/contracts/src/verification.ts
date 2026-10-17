@@ -29,12 +29,7 @@ export const VERIFICATION_STATUSES = [
 ] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
-export const VERIFICATION_OUTCOMES = [
-  'POSITIVE',
-  'NEGATIVE',
-  'REFER_TO_CREDIT',
-  'WAIVED',
-] as const;
+export const VERIFICATION_OUTCOMES = ['POSITIVE', 'NEGATIVE', 'REFER_TO_CREDIT', 'WAIVED'] as const;
 export type VerificationOutcome = (typeof VERIFICATION_OUTCOMES)[number];
 
 export const VERIFICATION_PRIORITIES = ['HIGH', 'MEDIUM', 'LOW'] as const;
@@ -92,32 +87,30 @@ export const UpdateVerificationRequestSchema = z.object({
 });
 export type UpdateVerificationRequest = z.infer<typeof UpdateVerificationRequestSchema>;
 
-export const CompleteVerificationRequestSchema = z.object({
-  outcome: z.enum(VERIFICATION_OUTCOMES),
-  findingsSummary: z.string().max(2000).min(5, 'Findings summary must be at least 5 characters'),
-  rejectionReason: z.enum(REJECTION_REASONS).optional(),
-  markStatus: z.enum(['VERIFIED', 'REJECTED', 'WAIVED']).default('VERIFIED'),
-}).refine(
-  (data) => data.markStatus !== 'REJECTED' || !!data.rejectionReason,
-  {
+export const CompleteVerificationRequestSchema = z
+  .object({
+    outcome: z.enum(VERIFICATION_OUTCOMES),
+    findingsSummary: z.string().max(2000).min(5, 'Findings summary must be at least 5 characters'),
+    rejectionReason: z.enum(REJECTION_REASONS).optional(),
+    markStatus: z.enum(['VERIFIED', 'REJECTED', 'WAIVED']).default('VERIFIED'),
+  })
+  .refine((data) => data.markStatus !== 'REJECTED' || !!data.rejectionReason, {
     message: 'Rejection reason is required when verification status is marked as REJECTED',
     path: ['rejectionReason'],
-  }
-);
+  });
 export type CompleteVerificationRequest = z.infer<typeof CompleteVerificationRequestSchema>;
 
-export const ChecklistAttestationRequestSchema = z.object({
-  checklistItemId: z.string().min(1, 'Checklist item ID is required'),
-  status: z.enum(CHECKLIST_REVIEW_STATUSES),
-  attestationNote: z.string().max(500).optional(),
-  rejectReason: z.enum(CHECKLIST_REJECT_REASONS).optional(),
-}).refine(
-  (data) => data.status !== 'REJECTED' || !!data.rejectReason,
-  {
+export const ChecklistAttestationRequestSchema = z
+  .object({
+    checklistItemId: z.string().min(1, 'Checklist item ID is required'),
+    status: z.enum(CHECKLIST_REVIEW_STATUSES),
+    attestationNote: z.string().max(500).optional(),
+    rejectReason: z.enum(CHECKLIST_REJECT_REASONS).optional(),
+  })
+  .refine((data) => data.status !== 'REJECTED' || !!data.rejectReason, {
     message: 'Reject reason is required when status is REJECTED',
     path: ['rejectReason'],
-  }
-);
+  });
 export type ChecklistAttestationRequest = z.infer<typeof ChecklistAttestationRequestSchema>;
 
 export const VerificationListQuerySchema = z.object({
@@ -199,19 +192,10 @@ export const VERIFICATION_PURPOSES = [
 ] as const;
 export type VerificationPurpose = (typeof VERIFICATION_PURPOSES)[number];
 
-export const VERIFICATION_RESULTS = [
-  'VERIFIED',
-  'REJECTED',
-  'FLAGGED',
-  'INCONCLUSIVE',
-] as const;
+export const VERIFICATION_RESULTS = ['VERIFIED', 'REJECTED', 'FLAGGED', 'INCONCLUSIVE'] as const;
 export type VerificationResult = (typeof VERIFICATION_RESULTS)[number];
 
-export const VERIFICATION_SUBJECT_TYPES = [
-  'CUSTOMER',
-  'LOAN_APPLICATION',
-  'LEAD',
-] as const;
+export const VERIFICATION_SUBJECT_TYPES = ['CUSTOMER', 'LOAN_APPLICATION', 'LEAD'] as const;
 export type VerificationSubjectType = (typeof VERIFICATION_SUBJECT_TYPES)[number];
 
 /**
@@ -225,7 +209,10 @@ export const MinimalResultSchema = z.object({
   maskedIdentifier: z.string().max(32).optional(),
   discrepancies: z.array(z.string()).optional().default([]),
   providerReference: z.string().max(128).optional(),
-  rawPayloadHash: z.string().regex(/^[a-f0-9]{64}$/, 'Must be a 64-char SHA-256 hexadecimal hash').optional(),
+  rawPayloadHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/, 'Must be a 64-char SHA-256 hexadecimal hash')
+    .optional(),
 });
 export type MinimalResult = z.infer<typeof MinimalResultSchema>;
 

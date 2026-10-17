@@ -4,8 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () => {
-  const connectionString =
-    requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -18,8 +17,7 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
     adminClient = new pg.Client({ connectionString });
     await adminClient.connect();
 
-    const apiDbUrl =
-      requireLocalTestDatabaseUrl('DATABASE_URL');
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });
@@ -156,10 +154,10 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
       await apiClient.query('SET LOCAL search_path = app, public');
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantA]);
 
-      const selectA = await apiClient.query(
-        `SELECT id, tenant_id FROM app.task WHERE id IN ($1, $2)`,
-        [taskA, taskB],
-      );
+      const selectA = await apiClient.query(`SELECT id, tenant_id FROM app.task WHERE id IN ($1, $2)`, [
+        taskA,
+        taskB,
+      ]);
 
       // Only Tenant A's task visible
       expect(selectA.rows.length).toBe(1);
@@ -174,10 +172,7 @@ describe('Module 9 — Tasks PostgreSQL Integration (Real Database & RLS)', () =
       // 2. Querying without app.tenant_id (fail-closed)
       await apiClient.query('BEGIN');
       await apiClient.query('SET LOCAL search_path = app, public');
-      const noTenant = await apiClient.query(
-        `SELECT id FROM app.task WHERE id IN ($1, $2)`,
-        [taskA, taskB],
-      );
+      const noTenant = await apiClient.query(`SELECT id FROM app.task WHERE id IN ($1, $2)`, [taskA, taskB]);
       expect(noTenant.rows.length).toBe(0);
       await apiClient.query('ROLLBACK');
     } finally {

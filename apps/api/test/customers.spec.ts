@@ -287,9 +287,7 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
       const otherBranchUser = testPrincipal({
         tenantId: tenantA,
         primaryBranchId: 'br_OTHER_BRANCH',
-        grants: [
-          { code: 'customer.read', scope: 'BRANCH', branchIds: ['br_OTHER_BRANCH'] },
-        ],
+        grants: [{ code: 'customer.read', scope: 'BRANCH', branchIds: ['br_OTHER_BRANCH'] }],
       });
       const app = getApp(otherBranchUser);
       const res = await request(app).get(`/v1/customers/${customerIdA}`);
@@ -301,14 +299,11 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
     it('lists customers with cursor pagination and metadata', async () => {
       const app = getApp();
       // Create second customer
-      await request(app)
-        .post('/v1/customers')
-        .set('Idempotency-Key', 'idem_cust_list_002')
-        .send({
-          partyType: 'ENTITY',
-          fullName: 'Global Finance Corp',
-          homeBranchId: 'br_01JTESTBRANCH00000000000001',
-        });
+      await request(app).post('/v1/customers').set('Idempotency-Key', 'idem_cust_list_002').send({
+        partyType: 'ENTITY',
+        fullName: 'Global Finance Corp',
+        homeBranchId: 'br_01JTESTBRANCH00000000000001',
+      });
 
       const res = await request(app).get('/v1/customers?limit=1');
       expect(res.status).toBe(200);
@@ -320,9 +315,7 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
       const app = getApp();
       const res = await request(app).get('/v1/customers?filter[partyType]=INDIVIDUAL');
       expect(res.status).toBe(200);
-      expect(res.body.data.every((c: { partyType: string }) => c.partyType === 'INDIVIDUAL')).toBe(
-        true,
-      );
+      expect(res.body.data.every((c: { partyType: string }) => c.partyType === 'INDIVIDUAL')).toBe(true);
     });
   });
 

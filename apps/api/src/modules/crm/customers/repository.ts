@@ -147,12 +147,7 @@ export interface CustomerRepository {
     reason?: string | null,
   ): Promise<ConsentRecordRow | null>;
 
-  getIdempotency(
-    tx: Tx,
-    tenantId: string,
-    principalId: string,
-    key: string,
-  ): Promise<IdempotencyRow | null>;
+  getIdempotency(tx: Tx, tenantId: string, principalId: string, key: string): Promise<IdempotencyRow | null>;
   saveIdempotency(tx: Tx, row: IdempotencyRow): Promise<void>;
 
   insertOutboxEvent(tx: Tx, event: OutboxEventRow): Promise<void>;
@@ -262,11 +257,7 @@ export class SqlCustomerRepository implements CustomerRepository {
               )`
             : sql``
         }
-        ${
-          cursorDate && cursorId
-            ? sql`AND (created_at, id) < (${cursorDate}, ${cursorId})`
-            : sql``
-        }
+        ${cursorDate && cursorId ? sql`AND (created_at, id) < (${cursorDate}, ${cursorId})` : sql``}
       ORDER BY created_at DESC, id DESC
       LIMIT ${fetchLimit}
     `.execute(tx);
@@ -277,9 +268,7 @@ export class SqlCustomerRepository implements CustomerRepository {
     if (rows.length > limit) {
       const nextItem = rows[limit - 1];
       if (nextItem) {
-        nextCursor = Buffer.from(
-          `${nextItem.created_at.toISOString()}|${nextItem.id}`,
-        ).toString('base64url');
+        nextCursor = Buffer.from(`${nextItem.created_at.toISOString()}|${nextItem.id}`).toString('base64url');
       }
       rows.pop();
     }
@@ -619,9 +608,7 @@ export class InMemoryCustomerRepository implements CustomerRepository {
     if (list.length > params.limit) {
       const nextItem = list[params.limit - 1];
       if (nextItem) {
-        nextCursor = Buffer.from(
-          `${nextItem.created_at.toISOString()}|${nextItem.id}`,
-        ).toString('base64url');
+        nextCursor = Buffer.from(`${nextItem.created_at.toISOString()}|${nextItem.id}`).toString('base64url');
       }
       list = list.slice(0, params.limit);
     }
@@ -726,12 +713,7 @@ export class InMemoryCustomerRepository implements CustomerRepository {
       return [];
     }
     return Array.from(this.consentRecords.values())
-      .filter(
-        (c) =>
-          c.tenant_id === tenantId &&
-          c.subject_type === subjectType &&
-          c.subject_id === subjectId,
-      )
+      .filter((c) => c.tenant_id === tenantId && c.subject_type === subjectType && c.subject_id === subjectId)
       .sort((a, b) => b.captured_at.getTime() - a.captured_at.getTime());
   }
 

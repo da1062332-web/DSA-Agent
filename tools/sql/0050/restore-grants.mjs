@@ -21,18 +21,22 @@ if (start < 0 || end < start) {
 }
 const parsed = JSON.parse(text.slice(start, end + 1));
 // The CLI wraps results as { rows: [ { backup: {...} } ] }; the bare backup object is also accepted.
-const backup = parsed.rows ? parsed.rows[0]?.backup : parsed.backup ?? parsed;
+const backup = parsed.rows ? parsed.rows[0]?.backup : (parsed.backup ?? parsed);
 if (!backup || backup.format !== 'dsa-0050-backup-v1' || !Array.isArray(backup.role_permission)) {
   console.error('This is not a dsa-0050-backup-v1 file.');
   process.exit(2);
 }
 if (backup.counts && backup.counts.role_permission !== backup.role_permission.length) {
-  console.error(`The backup is inconsistent: counts say ${backup.counts.role_permission} role_permission rows, the file has ${backup.role_permission.length}.`);
+  console.error(
+    `The backup is inconsistent: counts say ${backup.counts.role_permission} role_permission rows, the file has ${backup.role_permission.length}.`,
+  );
   process.exit(2);
 }
 
 const lit = (v) => `'${String(v).replace(/'/g, "''")}'`;
-const rows = backup.role_permission.map((r) => `  (${lit(r.tenant_id)}, ${lit(r.role_id)}, ${lit(r.permission_code)})`);
+const rows = backup.role_permission.map(
+  (r) => `  (${lit(r.tenant_id)}, ${lit(r.role_id)}, ${lit(r.permission_code)})`,
+);
 console.log(`-- Restores ${rows.length} role_permission rows from the backup taken ${backup.taken_at}.`);
 if (rows.length > 0) {
   console.log('INSERT INTO app.role_permission (tenant_id, role_id, permission_code) VALUES');

@@ -528,9 +528,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
 
     expect(skipRes.status).toBe(200);
     expect(skipRes.body.data.stepExecution.status).toBe('SKIPPED');
-    expect(skipRes.body.data.stepExecution.skipReason).toBe(
-      'Task already completed out-of-band by manager',
-    );
+    expect(skipRes.body.data.stepExecution.skipReason).toBe('Task already completed out-of-band by manager');
     expect(skipRes.body.data.execution.currentStepIndex).toBe(3);
   });
 

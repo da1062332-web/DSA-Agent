@@ -24,26 +24,23 @@ export function sanitizeFormulaInjection(value: string): string {
  * RFC 4180 compliant lightweight streaming CSV parser without external dependencies.
  * Enforces a strict maximum row limit of 10,000 rows.
  */
-export function parseCsvBuffer(
-  buffer: Buffer,
-  maxRows = 10000,
-): ParsedCsvResult {
+export function parseCsvBuffer(buffer: Buffer, maxRows = 10000): ParsedCsvResult {
   // Check for binary/null bytes to reject non-text files masquerading as CSV
   if (buffer.includes(0x00)) {
-    throw AppError.of('VALIDATION_ERROR', 'File contains binary null characters and is not a valid CSV text file.', [
-      { field: 'file', issue: 'INVALID_ENCODING' },
-    ]);
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'File contains binary null characters and is not a valid CSV text file.',
+      [{ field: 'file', issue: 'INVALID_ENCODING' }],
+    );
   }
 
   const text = buffer.toString('utf8');
 
   // Reject active formula injection attacks (DDE commands, shell launches, external pipes)
   if (/(?:^|[,;\r\n"])\s*[=+\-@]\s*(cmd|powershell|mshta|cscript|wscript|calc|dde)/im.test(text)) {
-    throw AppError.of(
-      'VALIDATION_ERROR',
-      'Formula injection risk detected in file content.',
-      [{ field: 'file', issue: 'FORMULA_INJECTION_RISK' }],
-    );
+    throw AppError.of('VALIDATION_ERROR', 'Formula injection risk detected in file content.', [
+      { field: 'file', issue: 'FORMULA_INJECTION_RISK' },
+    ]);
   }
   const lines: string[][] = [];
   let currentLine: string[] = [];
@@ -139,10 +136,7 @@ export function parseCsvBuffer(
 /**
  * Serializes records into a CSV buffer with quote-escaping and formula injection protection.
  */
-export function serializeCsv(
-  headers: string[],
-  rows: Record<string, unknown>[],
-): Buffer {
+export function serializeCsv(headers: string[], rows: Record<string, unknown>[]): Buffer {
   const headerLine = headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(',');
   const lines = [headerLine];
 

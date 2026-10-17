@@ -29,9 +29,7 @@ function appFor(t: TenantFixture, grants: PermissionGrant[], userId = t.userIds[
       userDirectory: createUserDirectory(),
     },
     corsAllowedOrigins: [],
-    auth: fakeAuth(
-      testPrincipal({ tenantId: t.tenantId, id: userId, primaryBranchId: t.branchId, grants }),
-    ),
+    auth: fakeAuth(testPrincipal({ tenantId: t.tenantId, id: userId, primaryBranchId: t.branchId, grants })),
   });
 }
 const tenantGrants = (...codes: PermissionCode[]): PermissionGrant[] =>
@@ -41,7 +39,10 @@ let seq = 0;
 const key = () => ({ 'Idempotency-Key': `elg-int-${Date.now()}-${(seq += 1)}` });
 
 /** An application, optionally with a product version, owned by the given sales user. */
-async function seedApp(t: TenantFixture, opts: { withProduct: boolean; sales?: string }): Promise<{ id: string; version: string | null }> {
+async function seedApp(
+  t: TenantFixture,
+  opts: { withProduct: boolean; sales?: string },
+): Promise<{ id: string; version: string | null }> {
   seq += 1;
   const id = `app_elg_int_${seq}`;
   const customer = `cust_elg_int_${seq}`;
@@ -75,7 +76,16 @@ async function seedApp(t: TenantFixture, opts: { withProduct: boolean; sales?: s
     `insert into app.loan_application (id, tenant_id, branch_id, customer_id, product_category, product_version_id,
         requested_amount, applicant_type, status, sales_owner_id, created_by, updated_by)
      values ($1, $2, $3, $4, 'PL', $5, 300000.00, 'SALARIED', $6, $7, $8, $8)`,
-    [id, t.tenantId, t.branchId, customer, version, version ? 'DOCUMENTS_PENDING' : 'DRAFT', opts.sales ?? t.userIds[0], t.userIds[0]],
+    [
+      id,
+      t.tenantId,
+      t.branchId,
+      customer,
+      version,
+      version ? 'DOCUMENTS_PENDING' : 'DRAFT',
+      opts.sales ?? t.userIds[0],
+      t.userIds[0],
+    ],
   );
   return { id, version };
 }
@@ -115,7 +125,9 @@ describe('TEST-ELG-INT eligibility against the database', () => {
 
     const history = await request(a).get(`/v1/applications/${app.id}/eligibility-assessments`);
     expect(history.status).toBe(200);
-    expect(history.body.data.map((x: { id: string }) => x.id)).toEqual([first.body.id, second.body.id].sort());
+    expect(history.body.data.map((x: { id: string }) => x.id)).toEqual(
+      [first.body.id, second.body.id].sort(),
+    );
   });
 
   it('TEST-ELG-INT-03 running an assessment is audited', async () => {
@@ -158,9 +170,15 @@ describe('TEST-ELG-INT eligibility against the database', () => {
       `update app.eligibility_assessment set results = jsonb_set(results, '{0,result}', '"FAIL"') where id = $1`,
       [assessed.body.id],
     );
-    const short = await request(approver).post(url).set(key()).send({ ...body, reason: 'too short' });
+    const short = await request(approver)
+      .post(url)
+      .set(key())
+      .send({ ...body, reason: 'too short' });
     expect(short.status).toBe(422);
-    const wrongVersion = await request(approver).post(url).set(key()).send({ ...body, productVersionId: 'prv_not_in_assessment' });
+    const wrongVersion = await request(approver)
+      .post(url)
+      .set(key())
+      .send({ ...body, productVersionId: 'prv_not_in_assessment' });
     expect(wrongVersion.status).toBe(422);
 
     const ok = await request(approver).post(url).set(key()).send(body);

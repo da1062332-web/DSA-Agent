@@ -9,8 +9,16 @@ import {
   type ProductResult,
 } from './eligibility';
 
-const result = (r: ProductResult['result'], id = 'prv_a_1'): ProductResult => ({ productVersionId: id, result: r, criteria: [] });
-const assessment = (id: string, results: ProductResult[], overrides: EligibilityAssessment['overrides'] = []): EligibilityAssessment => ({
+const result = (r: ProductResult['result'], id = 'prv_a_1'): ProductResult => ({
+  productVersionId: id,
+  result: r,
+  criteria: [],
+});
+const assessment = (
+  id: string,
+  results: ProductResult[],
+  overrides: EligibilityAssessment['overrides'] = [],
+): EligibilityAssessment => ({
   id,
   applicationId: 'app_1',
   assessedAt: '2026-10-15T00:00:00.000Z',
@@ -38,7 +46,14 @@ describe('eligibility rules (MOD-ELG)', () => {
     expect(canOverride(assessment('e', [result('UNKNOWN')]), result('UNKNOWN'))).toBe(false);
     expect(canOverride(assessment('e', [result('PASS')]), result('PASS'))).toBe(false);
     expect(canOverride(assessment('e', [result('FAIL')]), result('FAIL'))).toBe(true);
-    const done = [{ productVersionId: 'prv_a_1', reason: 'r'.repeat(12), overriddenBy: 'u', overriddenAt: '2026-10-15T00:00:00.000Z' }];
+    const done = [
+      {
+        productVersionId: 'prv_a_1',
+        reason: 'r'.repeat(12),
+        overriddenBy: 'u',
+        overriddenAt: '2026-10-15T00:00:00.000Z',
+      },
+    ];
     expect(canOverride(assessment('e', [result('FAIL')], done), result('FAIL'))).toBe(false);
   });
 

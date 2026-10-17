@@ -15,7 +15,7 @@ const files = readdirSync(DIR)
   .sort();
 const migration = (n: string) => files.find((f) => f.startsWith(`202610010000${n}_`))!;
 const script = (name: string) => readFileSync(path.join(SQL, name), 'utf8');
-const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64'];
+const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65'];
 
 let container: StartedPostgreSqlContainer;
 let admin: pg.Client;

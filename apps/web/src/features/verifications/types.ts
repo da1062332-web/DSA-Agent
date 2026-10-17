@@ -1,27 +1,12 @@
 // apps/web/src/features/verification/types.ts — owner: Developer 2 (Module 19: Verification)
 
 export type VerificationType =
-  | 'DOCUMENT_REVIEW'
-  | 'IDENTITY_KYC'
-  | 'RESIDENCE_FI'
-  | 'OFFICE_FI'
-  | 'EMPLOYMENT'
-  | 'BANK_STATEMENT';
+  'DOCUMENT_REVIEW' | 'IDENTITY_KYC' | 'RESIDENCE_FI' | 'OFFICE_FI' | 'EMPLOYMENT' | 'BANK_STATEMENT';
 
 export type VerificationStatus =
-  | 'INITIATED'
-  | 'ASSIGNED'
-  | 'IN_PROGRESS'
-  | 'VERIFIED'
-  | 'REJECTED'
-  | 'WAIVED'
-  | 'CANCELLED';
+  'INITIATED' | 'ASSIGNED' | 'IN_PROGRESS' | 'VERIFIED' | 'REJECTED' | 'WAIVED' | 'CANCELLED';
 
-export type VerificationOutcome =
-  | 'POSITIVE'
-  | 'NEGATIVE'
-  | 'REFER_TO_CREDIT'
-  | 'WAIVED';
+export type VerificationOutcome = 'POSITIVE' | 'NEGATIVE' | 'REFER_TO_CREDIT' | 'WAIVED';
 
 export type VerificationPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 

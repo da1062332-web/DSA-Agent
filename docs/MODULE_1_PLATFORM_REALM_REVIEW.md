@@ -4,14 +4,14 @@ Date: 2026-10-15. Project: DSA CRM, shared hosted Supabase development project `
 
 ## Status at a glance
 
-| Item | State |
-|---|---|
-| Code, tests, tools, screens, documentation | Done and committed locally. **Not pushed.** |
-| Migration `20261001000050_platform_realm.sql` | Final. **Not applied to hosted.** Waiting for the owner's explicit confirmation of the exact write. |
-| Hosted read-only preflight | Run 2026-10-15: 15 of 15 required checks pass. |
-| Hosted backup | Taken and verified (section 11). |
-| First platform superadmin | Not created. Needs the migration first (section 9). |
-| Hosted post-apply verification | **Not run yet**, because nothing has been applied. The scripts exist and were rehearsed (section 7). |
+| Item                                          | State                                                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Code, tests, tools, screens, documentation    | Done and committed locally. **Not pushed.**                                                          |
+| Migration `20261001000050_platform_realm.sql` | Final. **Not applied to hosted.** Waiting for the owner's explicit confirmation of the exact write.  |
+| Hosted read-only preflight                    | Run 2026-10-15: 15 of 15 required checks pass.                                                       |
+| Hosted backup                                 | Taken and verified (section 11).                                                                     |
+| First platform superadmin                     | Not created. Needs the migration first (section 9).                                                  |
+| Hosted post-apply verification                | **Not run yet**, because nothing has been applied. The scripts exist and were rehearsed (section 7). |
 
 Migration file: 172 lines, `sha256 d8029ef53af46a99fa71bd5fa3a485910bd0909b9fe83c167d791f114e35eb2a`. If the file changes, rebuild the apply file and take the checksum again.
 
@@ -21,58 +21,58 @@ Migration file: 172 lines, `sha256 d8029ef53af46a99fa71bd5fa3a485910bd0909b9fe83
 
 **Other findings, all fixed in this change unless marked.**
 
-| # | Finding | Where |
-|---|---|---|
-| 1 | `feature_flag` and `master_data_item` had no row-level security although the API database role can write them. | database |
-| 2 | The router skipped every permission check for a `SERVICE` principal. | API |
-| 3 | Support-access and data-correction requests lived in memory, took `tenantId` from the request body, and approval was not tied to the request's tenant: any tenant admin could approve any tenant's request. | API |
-| 4 | A tenant admin holding `platform.support_access` could list every tenant's support requests with `?tenantId=`. | API |
-| 5 | "Execute correction" let a person mark a correction executed without anything being executed; the dry-run diff was invented text. | API |
-| 6 | The console tenant list swallowed database errors and returned made-up tenants, counts and entitlements; sample "APPROVED" records were seeded. | API |
-| 7 | The health route had no permission check. | API |
-| 8 | The support-access dialog offered two hard-coded tenant ids, one of which does not exist on hosted. | web |
-| 9 | The platform tenant had no organisation or branch, so no platform user could ever be created (`app_user.primary_branch_id` is required). | database |
-| 10 | **Found by the rehearsal, fixed:** `is_platform_realm()` returned NULL (not false) when no tenant was set, so `IF NOT is_platform_realm()` did not raise and a database session with no tenant could call the user-count function. | migration |
-| 11 | New functions can be auto-granted to Supabase's `anon`, `authenticated` and `service_role` by default privileges (confirmed in the hosted preflight). | migration |
-| 12 | Drift, **not changed**: hosted `app_user` has a `password_hash` column that no migration creates (3 of 62 rows populated). The provisioning tool never writes it. | hosted schema |
-| 13 | Drift, **not changed**: hosted has no migration-history table, so there is nothing to repair; migrations were applied as direct SQL. | hosted |
+| #   | Finding                                                                                                                                                                                                                            | Where         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | `feature_flag` and `master_data_item` had no row-level security although the API database role can write them.                                                                                                                     | database      |
+| 2   | The router skipped every permission check for a `SERVICE` principal.                                                                                                                                                               | API           |
+| 3   | Support-access and data-correction requests lived in memory, took `tenantId` from the request body, and approval was not tied to the request's tenant: any tenant admin could approve any tenant's request.                        | API           |
+| 4   | A tenant admin holding `platform.support_access` could list every tenant's support requests with `?tenantId=`.                                                                                                                     | API           |
+| 5   | "Execute correction" let a person mark a correction executed without anything being executed; the dry-run diff was invented text.                                                                                                  | API           |
+| 6   | The console tenant list swallowed database errors and returned made-up tenants, counts and entitlements; sample "APPROVED" records were seeded.                                                                                    | API           |
+| 7   | The health route had no permission check.                                                                                                                                                                                          | API           |
+| 8   | The support-access dialog offered two hard-coded tenant ids, one of which does not exist on hosted.                                                                                                                                | web           |
+| 9   | The platform tenant had no organisation or branch, so no platform user could ever be created (`app_user.primary_branch_id` is required).                                                                                           | database      |
+| 10  | **Found by the rehearsal, fixed:** `is_platform_realm()` returned NULL (not false) when no tenant was set, so `IF NOT is_platform_realm()` did not raise and a database session with no tenant could call the user-count function. | migration     |
+| 11  | New functions can be auto-granted to Supabase's `anon`, `authenticated` and `service_role` by default privileges (confirmed in the hosted preflight).                                                                              | migration     |
+| 12  | Drift, **not changed**: hosted `app_user` has a `password_hash` column that no migration creates (3 of 62 rows populated). The provisioning tool never writes it.                                                                  | hosted schema |
+| 13  | Drift, **not changed**: hosted has no migration-history table, so there is nothing to repair; migrations were applied as direct SQL.                                                                                               | hosted        |
 
 ## 2. What changed, and where
 
-| Layer | Files | Why |
-|---|---|---|
-| Migration | `supabase/migrations/20261001000050_platform_realm.sql`, `supabase/MANIFEST.md` (M-050) | Platform tenant, organisation, branch, roles, grant move, realm function, RLS, support and correction table changes |
-| Contracts | `packages/contracts/src/platform-realm.ts` (new), `platform-admin.ts`, `ids.ts`, `index.ts` | Platform tenant id, realm test, nullable dry-run, revoke schema, `sag` and `dcr` id prefixes |
-| Kernel | `packages/kernel/src/authz/mfa.ts` | Mandatory MFA for all six `platform.*` codes and `data_correction.approve` |
-| API | `modules/platform-admin/router.ts`, `platform-admin-service.ts`, `platform-store.ts` (new), `openapi.ts` | Realm guards, audited refusals, revocation, database-backed support access and corrections |
-| Web | `features/approvals/*` (new), `features/platform-admin/PlatformConsolePage.tsx`, `shell/Sidebar.tsx`, `api/useMe.ts` | Tenant-side approvals screen; the console no longer offers tenant actions |
-| Tools | `tools/provision-platform-admin.ts`, `tools/package.json`, `tools/sql/0050/*` | First-user provisioning; preflight, backup, verify, rollback scripts |
-| Tests | `apps/api/test/platform-admin.spec.ts` (updated), `platform-realm.int.spec.ts`, `provision-platform-admin.int.spec.ts`, `platform-realm-ops.int.spec.ts`; web specs for approvals, sidebar, routes, console | Evidence |
-| Test harness | `tests/isolation/harness.ts` | `DSA_MIGRATIONS_DIR` and `DSA_PG_IMAGE` options |
+| Layer        | Files                                                                                                                                                                                                       | Why                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Migration    | `supabase/migrations/20261001000050_platform_realm.sql`, `supabase/MANIFEST.md` (M-050)                                                                                                                     | Platform tenant, organisation, branch, roles, grant move, realm function, RLS, support and correction table changes |
+| Contracts    | `packages/contracts/src/platform-realm.ts` (new), `platform-admin.ts`, `ids.ts`, `index.ts`                                                                                                                 | Platform tenant id, realm test, nullable dry-run, revoke schema, `sag` and `dcr` id prefixes                        |
+| Kernel       | `packages/kernel/src/authz/mfa.ts`                                                                                                                                                                          | Mandatory MFA for all six `platform.*` codes and `data_correction.approve`                                          |
+| API          | `modules/platform-admin/router.ts`, `platform-admin-service.ts`, `platform-store.ts` (new), `openapi.ts`                                                                                                    | Realm guards, audited refusals, revocation, database-backed support access and corrections                          |
+| Web          | `features/approvals/*` (new), `features/platform-admin/PlatformConsolePage.tsx`, `shell/Sidebar.tsx`, `api/useMe.ts`                                                                                        | Tenant-side approvals screen; the console no longer offers tenant actions                                           |
+| Tools        | `tools/provision-platform-admin.ts`, `tools/package.json`, `tools/sql/0050/*`                                                                                                                               | First-user provisioning; preflight, backup, verify, rollback scripts                                                |
+| Tests        | `apps/api/test/platform-admin.spec.ts` (updated), `platform-realm.int.spec.ts`, `provision-platform-admin.int.spec.ts`, `platform-realm-ops.int.spec.ts`; web specs for approvals, sidebar, routes, console | Evidence                                                                                                            |
+| Test harness | `tests/isolation/harness.ts`                                                                                                                                                                                | `DSA_MIGRATIONS_DIR` and `DSA_PG_IMAGE` options                                                                     |
 
 ## 3. Final architecture and role-wise permissions
 
 One dedicated tenant, `ten_01M4ZG67WTS51Q0XN7F1Y9CCYG` ("Platform Operations", type `PLATFORM`), with its own organisation and branch, holds platform operators. A platform permission works only for a signed-in **user** of that tenant (API) and only in a session whose tenant is that one (database, `app.is_platform_realm()`). Tenant routes need a user of a customer tenant. Service identities have no shortcut.
 
-| Role | Realm | Holds |
-|---|---|---|
-| `ROLE-PLATFORM-SUPERADMIN` | platform | `platform.console`, `.flags`, `.master_data`, `.jobs`, `.support_access`, `.release`, `audit.read` |
-| `ROLE-PLATFORM-SUPPORT` | platform | `platform.console`, `platform.support_access` (metadata only) |
-| `ROLE-TENANT-ADMIN`, `ROLE-ORG-OWNER` | customer tenant | `config.manage` (approve, deny, revoke support access), `data_correction.request`, `data_correction.approve`. **No `platform.*`.** |
-| `ROLE-BRANCH-MGR`, `ROLE-LOAN-OPS` | customer tenant | `data_correction.request` |
-| Correction executor | service identity `SYSTEM:data-correction-executor`, bound to one tenant | marks an APPROVED correction EXECUTED |
+| Role                                  | Realm                                                                   | Holds                                                                                                                              |
+| ------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `ROLE-PLATFORM-SUPERADMIN`            | platform                                                                | `platform.console`, `.flags`, `.master_data`, `.jobs`, `.support_access`, `.release`, `audit.read`                                 |
+| `ROLE-PLATFORM-SUPPORT`               | platform                                                                | `platform.console`, `platform.support_access` (metadata only)                                                                      |
+| `ROLE-TENANT-ADMIN`, `ROLE-ORG-OWNER` | customer tenant                                                         | `config.manage` (approve, deny, revoke support access), `data_correction.request`, `data_correction.approve`. **No `platform.*`.** |
+| `ROLE-BRANCH-MGR`, `ROLE-LOAN-OPS`    | customer tenant                                                         | `data_correction.request`                                                                                                          |
+| Correction executor                   | service identity `SYSTEM:data-correction-executor`, bound to one tenant | marks an APPROVED correction EXECUTED                                                                                              |
 
-| Action | Platform superadmin | Platform support | Tenant admin / owner | Branch mgr / loan ops | Anyone else | Unauthenticated |
-|---|---|---|---|---|---|---|
-| Console, flags, master data, jobs, health, releases | yes | console only | 403 (audited) | 403 | 403 | 401 |
-| List customer tenants (metadata, active-user count) | yes | yes | 403 (audited) | 403 | 403 | 401 |
-| File a support-access request for a tenant | yes | yes | 403 (audited) | 403 | 403 | 401 |
-| See support requests | all | all | own tenant only | no | no | 401 |
-| Approve, deny, revoke support access | no (403) | no (403) | own tenant only | no | no | 401 |
-| Request a data correction | no (403) | no | yes, own tenant | yes, own tenant | no | 401 |
-| Approve a data correction | no | no | yes, not their own request | no | no | 401 |
-| Mark a correction executed | no | no | no (403) | no | no | executor only |
-| Read business data of any tenant | **no** | **no** | own tenant | own scope | own scope | no |
+| Action                                              | Platform superadmin | Platform support | Tenant admin / owner       | Branch mgr / loan ops | Anyone else | Unauthenticated |
+| --------------------------------------------------- | ------------------- | ---------------- | -------------------------- | --------------------- | ----------- | --------------- |
+| Console, flags, master data, jobs, health, releases | yes                 | console only     | 403 (audited)              | 403                   | 403         | 401             |
+| List customer tenants (metadata, active-user count) | yes                 | yes              | 403 (audited)              | 403                   | 403         | 401             |
+| File a support-access request for a tenant          | yes                 | yes              | 403 (audited)              | 403                   | 403         | 401             |
+| See support requests                                | all                 | all              | own tenant only            | no                    | no          | 401             |
+| Approve, deny, revoke support access                | no (403)            | no (403)         | own tenant only            | no                    | no          | 401             |
+| Request a data correction                           | no (403)            | no               | yes, own tenant            | yes, own tenant       | no          | 401             |
+| Approve a data correction                           | no                  | no               | yes, not their own request | no                    | no          | 401             |
+| Mark a correction executed                          | no                  | no               | no (403)                   | no                    | no          | executor only   |
+| Read business data of any tenant                    | **no**              | **no**           | own tenant                 | own scope             | own scope   | no              |
 
 Database policies: `tenant` readable by the platform session (all rows) and by each tenant (own row); `feature_flag` and `master_data_item` readable by all, writable only in the platform realm; `support_access_grant` readable by the target tenant and the platform realm, insertable only by the platform realm as PENDING, updatable only by the target tenant; `data_correction_request` visible only to its own tenant (the platform realm cannot read it); `platform_tenant_user_counts()` is the one cross-tenant aggregate, counts only, refused outside the platform realm.
 
@@ -80,18 +80,18 @@ Audit: every platform action and cross-tenant read, every support-access and cor
 
 ## 4. Migration effects, statement group by statement group
 
-| # | Effect on hosted | Rows |
-|---|---|---|
-| 1 | Create `is_platform_realm()` (stable, invoker, false when no tenant) | function |
-| 2 | Widen `tenant_tenant_type_check` to allow `PLATFORM`; insert the platform tenant | +1 tenant |
-| 3 | Insert the platform organisation and branch (code `PLATFORM`) | +1, +1 |
-| 4 | Insert the two platform roles and 9 grants | +2, +9 |
-| 5 | **Delete** operator permissions from every customer-tenant role | **-30** |
-| 6 | Policy `platform_read` on `tenant` | policy |
-| 7 | Enable and force RLS on `feature_flag` and `master_data_item`; 3 policies each | 6 policies |
-| 8 | `support_access_grant`: add `scope`, `incident_ref`, `starts_at`; five-state status check; four-hour window check **NOT VALID**; replace `tenant_isolation` with 3 policies | schema |
-| 9 | Create `platform_tenant_user_counts()` (security definer, fixed search_path); revoke execute from PUBLIC, `anon`, `authenticated`, `service_role`; grant to `dsa_app` | function |
-| 10 | `data_correction_request`: add 9 API columns; make 6 legacy columns optional; five-state status check; SOD-08 check (approver differs from requester); row-shape check | schema |
+| #   | Effect on hosted                                                                                                                                                            | Rows       |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Create `is_platform_realm()` (stable, invoker, false when no tenant)                                                                                                        | function   |
+| 2   | Widen `tenant_tenant_type_check` to allow `PLATFORM`; insert the platform tenant                                                                                            | +1 tenant  |
+| 3   | Insert the platform organisation and branch (code `PLATFORM`)                                                                                                               | +1, +1     |
+| 4   | Insert the two platform roles and 9 grants                                                                                                                                  | +2, +9     |
+| 5   | **Delete** operator permissions from every customer-tenant role                                                                                                             | **-30**    |
+| 6   | Policy `platform_read` on `tenant`                                                                                                                                          | policy     |
+| 7   | Enable and force RLS on `feature_flag` and `master_data_item`; 3 policies each                                                                                              | 6 policies |
+| 8   | `support_access_grant`: add `scope`, `incident_ref`, `starts_at`; five-state status check; four-hour window check **NOT VALID**; replace `tenant_isolation` with 3 policies | schema     |
+| 9   | Create `platform_tenant_user_counts()` (security definer, fixed search_path); revoke execute from PUBLIC, `anon`, `authenticated`, `service_role`; grant to `dsa_app`       | function   |
+| 10  | `data_correction_request`: add 9 API columns; make 6 legacy columns optional; five-state status check; SOD-08 check (approver differs from requester); row-shape check      | schema     |
 
 Not touched: any user, any business table, any other role, `data_correction.approve` and `data_correction.request` grants (5 and 9 rows stay), the existing leftover rows (they are kept).
 
@@ -117,31 +117,31 @@ Not touched: any user, any business table, any other role, `data_correction.appr
 
 All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 
-| Suite | Result |
-|---|---|
-| Typecheck: contracts, kernel, api, web, tools | 0 errors each |
-| Kernel unit | 21 passed |
-| API unit | 737 passed, **1 failed** (not mine, below) |
-| Web unit and production build | 210 passed, build succeeds |
-| `platform-admin.spec.ts` (unit, updated) | 19 passed |
-| `platform-realm.int.spec.ts` (real PostgreSQL, RLS applies) | 13 passed on 16 and on 17 |
-| `provision-platform-admin.int.spec.ts` | 10 passed |
-| `platform-realm-ops.int.spec.ts` (runbook rehearsal) | 9 passed |
-| `platform-realm-enforcement.int.spec.ts` (both verification scripts, six deliberate breaks) | 13 passed |
-| Realm, provisioning, runbook and verification suites together | 45 of 45 on PostgreSQL 16 and 45 of 45 on 17 |
-| `eligibility.int.spec.ts` | 6 passed |
-| Live regression on corrected migrations (platform, provision, ops, eligibility, applications, grievances, catalogue, platform.int, mfa.int) | 99 of 100; the one failure is below |
-| Isolation suite | 31 of 32; the failure is the inventory check below |
-| Lint on changed files | clean, except 3 errors in `platform-admin-service.ts` that exist unchanged in the committed original |
+| Suite                                                                                                                                       | Result                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Typecheck: contracts, kernel, api, web, tools                                                                                               | 0 errors each                                                                                        |
+| Kernel unit                                                                                                                                 | 21 passed                                                                                            |
+| API unit                                                                                                                                    | 737 passed, **1 failed** (not mine, below)                                                           |
+| Web unit and production build                                                                                                               | 210 passed, build succeeds                                                                           |
+| `platform-admin.spec.ts` (unit, updated)                                                                                                    | 19 passed                                                                                            |
+| `platform-realm.int.spec.ts` (real PostgreSQL, RLS applies)                                                                                 | 13 passed on 16 and on 17                                                                            |
+| `provision-platform-admin.int.spec.ts`                                                                                                      | 10 passed                                                                                            |
+| `platform-realm-ops.int.spec.ts` (runbook rehearsal)                                                                                        | 9 passed                                                                                             |
+| `platform-realm-enforcement.int.spec.ts` (both verification scripts, six deliberate breaks)                                                 | 13 passed                                                                                            |
+| Realm, provisioning, runbook and verification suites together                                                                               | 45 of 45 on PostgreSQL 16 and 45 of 45 on 17                                                         |
+| `eligibility.int.spec.ts`                                                                                                                   | 6 passed                                                                                             |
+| Live regression on corrected migrations (platform, provision, ops, eligibility, applications, grievances, catalogue, platform.int, mfa.int) | 99 of 100; the one failure is below                                                                  |
+| Isolation suite                                                                                                                             | 31 of 32; the failure is the inventory check below                                                   |
+| Lint on changed files                                                                                                                       | clean, except 3 errors in `platform-admin-service.ts` that exist unchanged in the committed original |
 
 **What the rehearsal proves** (`platform-realm-ops.int.spec.ts`): on a database built to match hosted's pre-state, the real scripts run in runbook order. Preflight passes; backup is consistent; apply in one transaction passes all of `verify.sql`; `verify-behaviour.sql` (policy logic and enforcement preconditions, run as `postgres`) passes every line and leaves nothing behind; applying twice fails whole and changes nothing; rollback restores the signature (policies, constraints, columns, RLS, grants, role-permission rows, roles, tenants, functions, row counts) **exactly**; preflight passes again after rollback; apply works again after rollback; with platform audit events present, rollback suspends the platform tenant but still restores everything else; rollback refuses, changing nothing, when API-shaped corrections exist.
 
 **What each verification script proves, and does not** (`platform-realm-enforcement.int.spec.ts`, 13 tests, run on a role built like hosted's `postgres`: not a superuser, bypasses RLS, no `SET` on `dsa_api`):
 
-| Script | Runs as | Proves | Does **not** prove |
-|---|---|---|---|
-| `verify.sql` | `postgres` | The structure is as designed: tenant, roles, grants, policies and constraints exist with the expected definitions; functions have the right security settings and privileges | That any policy is applied to anyone |
-| `verify-behaviour.sql` | `postgres` (no role switch) | **`[ENFORCEMENT-PRECONDITIONS]`**: RLS is enabled and forced on all five protected tables; `dsa_api` is not a superuser, cannot bypass RLS and owns none of them; every policy is permissive. **`[POLICY-LOGIC]`**: the real policy expressions, read from `pg_policies`, give the right answer for a platform session, a customer session and a session with no tenant: which rows would be seen, which writes (for hypothetical rows) would be allowed or refused | That PostgreSQL **enforces** the policies on `dsa_api`. `postgres` is exempt from RLS, so this script cannot test enforcement, and it says so in its output |
+| Script                  | Runs as                                    | Proves                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Does **not** prove                                                                                                                                           |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `verify.sql`            | `postgres`                                 | The structure is as designed: tenant, roles, grants, policies and constraints exist with the expected definitions; functions have the right security settings and privileges                                                                                                                                                                                                                                                                                                                                        | That any policy is applied to anyone                                                                                                                         |
+| `verify-behaviour.sql`  | `postgres` (no role switch)                | **`[ENFORCEMENT-PRECONDITIONS]`**: RLS is enabled and forced on all five protected tables; `dsa_api` is not a superuser, cannot bypass RLS and owns none of them; every policy is permissive. **`[POLICY-LOGIC]`**: the real policy expressions, read from `pg_policies`, give the right answer for a platform session, a customer session and a session with no tenant: which rows would be seen, which writes (for hypothetical rows) would be allowed or refused                                                 | That PostgreSQL **enforces** the policies on `dsa_api`. `postgres` is exempt from RLS, so this script cannot test enforcement, and it says so in its output  |
 | `enforcement-check.mjs` | **`dsa_api` itself** (from `DATABASE_URL`) | **`[ROLE-ENFORCEMENT]`**: with the real API role, a platform session sees all tenants and a customer session only its own; refused writes are really refused (SQLSTATE 42501) for flags, master data, support requests and corrections; a platform session cannot approve a support request or read corrections or business rows; the user-count function is refused outside the platform realm. `--with-writes` also proves the allowed writes work. Everything runs in one transaction that is always rolled back | Nothing about other roles; it refuses to run as a superuser, `postgres`, `service_role` or any role that bypasses RLS, because the result would mean nothing |
 
 "Enforced" means: the preconditions in `verify-behaviour.sql` pass **and** `enforcement-check.mjs` passes. Either alone is not enough.
@@ -150,13 +150,13 @@ All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 
 **Failures that are not caused by this work (evidence):**
 
-| Failure | Evidence |
-|---|---|
-| API unit `TEST-WFA-TMR-001` (Akash, workflow timers) | The test hard-codes the execution start as 2026-10-14 10:30Z and the engine fails executions older than 24 h (`EXECUTION_LIFETIME_EXCEEDED`). It passed earlier today and began failing as the clock passed 10:30Z. I printed the real error and left the file untouched. |
-| `platform.int` `TEST-ORG-INT-01` (expected 422 to be 409) | Fails identically with migration 0050 removed. |
-| Isolation inventory `INV-02` | 107 `/v1` operations of other modules have no isolation case (BRE 27, reporting 10, lender cases 8, commission 8, leads 7, customers 7, verification 6, sanctions 6, payouts 6, tasks 5, performance 5, messaging 4, activities 4, notifications 3, users 1). None belong to Modules 13 to 17 or 1. Isolation coverage is **not** complete. |
-| Fresh database cannot be built from beta | Akash's `0019_verification.sql` needs a table made in `0021`; `0037` and `0042` insert into a column `task_ref` that does not exist. The tests use a corrected copy of the migrations folder through `DSA_MIGRATIONS_DIR`. Hosted is unaffected. |
-| 3 lint errors in `platform-admin-service.ts` | Identical in the committed original. |
+| Failure                                                   | Evidence                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API unit `TEST-WFA-TMR-001` (Akash, workflow timers)      | The test hard-codes the execution start as 2026-10-14 10:30Z and the engine fails executions older than 24 h (`EXECUTION_LIFETIME_EXCEEDED`). It passed earlier today and began failing as the clock passed 10:30Z. I printed the real error and left the file untouched.                                                                   |
+| `platform.int` `TEST-ORG-INT-01` (expected 422 to be 409) | Fails identically with migration 0050 removed.                                                                                                                                                                                                                                                                                              |
+| Isolation inventory `INV-02`                              | 107 `/v1` operations of other modules have no isolation case (BRE 27, reporting 10, lender cases 8, commission 8, leads 7, customers 7, verification 6, sanctions 6, payouts 6, tasks 5, performance 5, messaging 4, activities 4, notifications 3, users 1). None belong to Modules 13 to 17 or 1. Isolation coverage is **not** complete. |
+| Fresh database cannot be built from beta                  | Akash's `0019_verification.sql` needs a table made in `0021`; `0037` and `0042` insert into a column `task_ref` that does not exist. The tests use a corrected copy of the migrations folder through `DSA_MIGRATIONS_DIR`. Hosted is unaffected.                                                                                            |
+| 3 lint errors in `platform-admin-service.ts`              | Identical in the committed original.                                                                                                                                                                                                                                                                                                        |
 
 **Not tested:** anything through a real Supabase Auth login (needs your TOTP), the API running against hosted, the new Approvals screen in a browser, and **`enforcement-check.mjs` and `verify-behaviour.sql` against the hosted database** (they need the migration applied first; both were rehearsed on throwaway PostgreSQL only). Those are in sections 8 and 10.
 
@@ -164,22 +164,22 @@ All local, on throwaway PostgreSQL (16 and 17), never on hosted.
 
 Working directory for every command: `C:\Users\Vaibhav\Desktop\Work\Qloax Intern\DSA\DSA-Agent` (Git Bash: `cd "C:/Users/Vaibhav/Desktop/Work/Qloax Intern/DSA/DSA-Agent"`). **R** = read-only (a file may be written locally); **W** = writes to hosted.
 
-| Step | Command | Type | Expect | If it fails |
-|---|---|---|---|---|
-| 1 | `git status -sb` and `git log --oneline -8` | R | the platform commits, branch ahead of origin | stop; tell me what differs |
-| 2 | `npx supabase projects list` | R | the row with `"linked":true` is `DSA-Agent`, ref `mlpkwwhnagxzinaohdxg` | run `npx supabase link --project-ref mlpkwwhnagxzinaohdxg`; do not continue on another project |
-| 3 | `npx supabase db query --linked -f tools/sql/0050/preflight.sql` | R | every `REQUIRED` row `PASS` (15) | any FAIL: do not apply; read the `actual` column |
-| 4 | `mkdir -p ~/dsa-backups/0050 && npx supabase db query --linked -f tools/sql/0050/backup.sql > ~/dsa-backups/0050/backup-before.json` | R (writes a local file) | a JSON file of about 185 KB | empty or error: do not continue |
-| 5 | `npx supabase db query --linked -f tools/sql/0050/live-counts.sql > ~/dsa-backups/0050/live-now.json` then `node tools/sql/0050/check-backup.mjs ~/dsa-backups/0050/backup-before.json ~/dsa-backups/0050/live-now.json` | R | all rows `PASS`, exit code 0 | a FAIL means hosted changed since the backup: redo step 4 |
-| 6 | `node tools/sql/0050/restore-grants.mjs ~/dsa-backups/0050/backup-before.json > ~/dsa-backups/0050/restore-grants.sql` | R (local) | first line `Restores 702 role_permission rows` | do not apply without a restorable backup |
-| 7 | `( echo "BEGIN;"; cat supabase/migrations/20261001000050_platform_realm.sql; echo; echo "COMMIT;" ) > ~/dsa-backups/0050/apply-run.sql` then `sha256sum supabase/migrations/20261001000050_platform_realm.sql` | R (local) | `d8029ef5…eb2a` | a different checksum means the file changed: stop and re-review |
-| 8 | **`npx supabase db query --linked -f ~/dsa-backups/0050/apply-run.sql`** | **W** | no error; rows `[]` | **any error: stop, do not retry.** Run step 3 again to see the state, then decide (it is one transaction, so a failure should leave nothing applied) |
-| 9 | `npx supabase db query --linked -f tools/sql/0050/verify.sql` | R | every row `PASS` (32 rows) | see section 11 for rollback |
-| 10 | `npx supabase db query --linked -f tools/sql/0050/verify-behaviour.sql` | R (raises on purpose, writes nothing) | an **error message** that starts `VERIFY-BEHAVIOUR (rolled back on purpose). RESULT: PASS=<n> FAIL=0.` and lists `PASS \|` lines tagged `[ENFORCEMENT-PRECONDITIONS]` and `[POLICY-LOGIC]` | any `FAIL` line: stop and read it. An error that does **not** start with `VERIFY-BEHAVIOUR` means the script itself failed (for example `ABORT: needs at least two customer tenants`) |
-| 11 | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs` | R (refused writes only; one transaction, always rolled back) | lines `PASS \| [ROLE-ENFORCEMENT] ...`, ending `RESULT: PASS=<n> FAIL=0 SKIP=<k>. The transaction was rolled back: nothing was kept.` and exit code 0 | `FAIL` means enforcement is not what the design says: do not provision users; run section 11 rollback if needed. Exit code 2 means it refused to run (wrong role in `DATABASE_URL`) |
-| 12 | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs --with-writes` (optional) | T: runs INSERT and UPDATE statements **inside the transaction, then rolls it back**; nothing is kept | the same, with the allowed-write lines now `PASS` instead of `SKIP` | as step 11 |
+| Step | Command                                                                                                                                                                                                                  | Type                                                                                                 | Expect                                                                                                                                                                                     | If it fails                                                                                                                                                                           |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `git status -sb` and `git log --oneline -8`                                                                                                                                                                              | R                                                                                                    | the platform commits, branch ahead of origin                                                                                                                                               | stop; tell me what differs                                                                                                                                                            |
+| 2    | `npx supabase projects list`                                                                                                                                                                                             | R                                                                                                    | the row with `"linked":true` is `DSA-Agent`, ref `mlpkwwhnagxzinaohdxg`                                                                                                                    | run `npx supabase link --project-ref mlpkwwhnagxzinaohdxg`; do not continue on another project                                                                                        |
+| 3    | `npx supabase db query --linked -f tools/sql/0050/preflight.sql`                                                                                                                                                         | R                                                                                                    | every `REQUIRED` row `PASS` (15)                                                                                                                                                           | any FAIL: do not apply; read the `actual` column                                                                                                                                      |
+| 4    | `mkdir -p ~/dsa-backups/0050 && npx supabase db query --linked -f tools/sql/0050/backup.sql > ~/dsa-backups/0050/backup-before.json`                                                                                     | R (writes a local file)                                                                              | a JSON file of about 185 KB                                                                                                                                                                | empty or error: do not continue                                                                                                                                                       |
+| 5    | `npx supabase db query --linked -f tools/sql/0050/live-counts.sql > ~/dsa-backups/0050/live-now.json` then `node tools/sql/0050/check-backup.mjs ~/dsa-backups/0050/backup-before.json ~/dsa-backups/0050/live-now.json` | R                                                                                                    | all rows `PASS`, exit code 0                                                                                                                                                               | a FAIL means hosted changed since the backup: redo step 4                                                                                                                             |
+| 6    | `node tools/sql/0050/restore-grants.mjs ~/dsa-backups/0050/backup-before.json > ~/dsa-backups/0050/restore-grants.sql`                                                                                                   | R (local)                                                                                            | first line `Restores 702 role_permission rows`                                                                                                                                             | do not apply without a restorable backup                                                                                                                                              |
+| 7    | `( echo "BEGIN;"; cat supabase/migrations/20261001000050_platform_realm.sql; echo; echo "COMMIT;" ) > ~/dsa-backups/0050/apply-run.sql` then `sha256sum supabase/migrations/20261001000050_platform_realm.sql`           | R (local)                                                                                            | `d8029ef5…eb2a`                                                                                                                                                                            | a different checksum means the file changed: stop and re-review                                                                                                                       |
+| 8    | **`npx supabase db query --linked -f ~/dsa-backups/0050/apply-run.sql`**                                                                                                                                                 | **W**                                                                                                | no error; rows `[]`                                                                                                                                                                        | **any error: stop, do not retry.** Run step 3 again to see the state, then decide (it is one transaction, so a failure should leave nothing applied)                                  |
+| 9    | `npx supabase db query --linked -f tools/sql/0050/verify.sql`                                                                                                                                                            | R                                                                                                    | every row `PASS` (32 rows)                                                                                                                                                                 | see section 11 for rollback                                                                                                                                                           |
+| 10   | `npx supabase db query --linked -f tools/sql/0050/verify-behaviour.sql`                                                                                                                                                  | R (raises on purpose, writes nothing)                                                                | an **error message** that starts `VERIFY-BEHAVIOUR (rolled back on purpose). RESULT: PASS=<n> FAIL=0.` and lists `PASS \|` lines tagged `[ENFORCEMENT-PRECONDITIONS]` and `[POLICY-LOGIC]` | any `FAIL` line: stop and read it. An error that does **not** start with `VERIFY-BEHAVIOUR` means the script itself failed (for example `ABORT: needs at least two customer tenants`) |
+| 11   | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs`                                                                                                                                                     | R (refused writes only; one transaction, always rolled back)                                         | lines `PASS \| [ROLE-ENFORCEMENT] ...`, ending `RESULT: PASS=<n> FAIL=0 SKIP=<k>. The transaction was rolled back: nothing was kept.` and exit code 0                                      | `FAIL` means enforcement is not what the design says: do not provision users; run section 11 rollback if needed. Exit code 2 means it refused to run (wrong role in `DATABASE_URL`)   |
+| 12   | `node --env-file=apps/api/.env tools/sql/0050/enforcement-check.mjs --with-writes` (optional)                                                                                                                            | T: runs INSERT and UPDATE statements **inside the transaction, then rolls it back**; nothing is kept | the same, with the allowed-write lines now `PASS` instead of `SKIP`                                                                                                                        | as step 11                                                                                                                                                                            |
 
-`SKIP` lines are not passes: they mean there was nothing to look at (for example no support request exists) or a check is opt-in. Step 11 reads and attempts writes that must be refused. If you do not want the script to execute any INSERT or UPDATE statement at all, even refused ones, skip steps 11 and 12 and rely on step 10 plus the API checks in section 10; the document then calls enforcement *unproven on hosted*.
+`SKIP` lines are not passes: they mean there was nothing to look at (for example no support request exists) or a check is opt-in. Step 11 reads and attempts writes that must be refused. If you do not want the script to execute any INSERT or UPDATE statement at all, even refused ones, skip steps 11 and 12 and rely on step 10 plus the API checks in section 10; the document then calls enforcement _unproven on hosted_.
 
 Steps 1 to 7 change nothing on hosted. Step 8 is the only write. After step 11 (and 12 if you choose), go to section 9.
 
@@ -202,15 +202,15 @@ Recovery: the run is repeatable. If it stopped after creating the Auth account, 
 
 After steps 8 to 10 and 9:
 
-| As | Do | Expect |
-|---|---|---|
-| Platform superadmin | sign in, enrol TOTP, open `/platform-admin` | sidebar shows Platform Console; tenant list shows customer tenants (not the platform tenant) with active-user counts and no business data; the browser's `GET /v1/me` lists the seven grants |
-| Platform superadmin | Support Access tab: request access for a tenant | request appears PENDING; there is no Approve button |
-| Platform support (`--role support`) | open `/platform-admin` | only what `platform.console` and `platform.support_access` allow; flags, jobs and releases return 403 |
-| Tenant admin (`admin@alpha.com`) | sign in, look at the sidebar | no Platform Console; **Approvals** present; `/platform-admin` shows a clear no-access message |
-| Tenant admin | Approvals, Support access: approve or deny the platform request, then revoke an approved one | status changes; another tenant's admin sees none of it |
-| Tenant admin | Approvals, Data corrections: request one; a different admin or the owner approves it | the requester's own Approve button is disabled (SOD-08); an approved one reads "waiting for the executor" |
-| Unauthorised | open any platform URL signed out; open it as an RM | 401 and the login redirect; 403 |
+| As                                  | Do                                                                                           | Expect                                                                                                                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Platform superadmin                 | sign in, enrol TOTP, open `/platform-admin`                                                  | sidebar shows Platform Console; tenant list shows customer tenants (not the platform tenant) with active-user counts and no business data; the browser's `GET /v1/me` lists the seven grants |
+| Platform superadmin                 | Support Access tab: request access for a tenant                                              | request appears PENDING; there is no Approve button                                                                                                                                          |
+| Platform support (`--role support`) | open `/platform-admin`                                                                       | only what `platform.console` and `platform.support_access` allow; flags, jobs and releases return 403                                                                                        |
+| Tenant admin (`admin@alpha.com`)    | sign in, look at the sidebar                                                                 | no Platform Console; **Approvals** present; `/platform-admin` shows a clear no-access message                                                                                                |
+| Tenant admin                        | Approvals, Support access: approve or deny the platform request, then revoke an approved one | status changes; another tenant's admin sees none of it                                                                                                                                       |
+| Tenant admin                        | Approvals, Data corrections: request one; a different admin or the owner approves it         | the requester's own Approve button is disabled (SOD-08); an approved one reads "waiting for the executor"                                                                                    |
+| Unauthorised                        | open any platform URL signed out; open it as an RM                                           | 401 and the login redirect; 403                                                                                                                                                              |
 
 The refused attempts show up as `platform.access_denied` events in the audit trail of the caller's tenant.
 
@@ -250,18 +250,18 @@ Everything is committed on local `beta`; nothing is pushed. To deliver:
 
 ## 14. Checklist
 
-| | Item |
-|---|---|
-| Done | Platform tenant, org, branch, roles, grant move, realm function and policies, in the migration (final, rehearsed) |
-| Done | Realm guards, audited refusals, no service bypass, database-backed support access and corrections, revocation, executor-only execution |
-| Done | Mandatory MFA for platform permissions (API and web lists) |
-| Done | Tenant-side Approvals screen; console cleaned of tenant actions and fake data |
-| Done | Provisioning tool with dry run, recovery and cleanup |
-| Done | Preflight, backup, verify, behaviour, role-enforcement and rollback scripts, rehearsed on PostgreSQL 16 and 17, including deliberate breaks |
-| Done | Hosted read-only preflight (15 of 15) and a verified, restore-tested backup |
-| Done | Tests and documentation; local commits |
-| Pending (you) | Confirm the exact hosted write (step 8) after reading section 4 and the checksum |
-| Pending (you) | Run steps 9 to 11 on hosted after applying; create the first platform superadmin (section 9) and run the checks in section 10 |
-| Pending (you) | Push, when you decide (section 12) |
-| Blocked | Applying through CI or a fresh database until Akash's migrations 0019, 0037 and 0042 are corrected |
+|                 | Item                                                                                                                                                           |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Done            | Platform tenant, org, branch, roles, grant move, realm function and policies, in the migration (final, rehearsed)                                              |
+| Done            | Realm guards, audited refusals, no service bypass, database-backed support access and corrections, revocation, executor-only execution                         |
+| Done            | Mandatory MFA for platform permissions (API and web lists)                                                                                                     |
+| Done            | Tenant-side Approvals screen; console cleaned of tenant actions and fake data                                                                                  |
+| Done            | Provisioning tool with dry run, recovery and cleanup                                                                                                           |
+| Done            | Preflight, backup, verify, behaviour, role-enforcement and rollback scripts, rehearsed on PostgreSQL 16 and 17, including deliberate breaks                    |
+| Done            | Hosted read-only preflight (15 of 15) and a verified, restore-tested backup                                                                                    |
+| Done            | Tests and documentation; local commits                                                                                                                         |
+| Pending (you)   | Confirm the exact hosted write (step 8) after reading section 4 and the checksum                                                                               |
+| Pending (you)   | Run steps 9 to 11 on hosted after applying; create the first platform superadmin (section 9) and run the checks in section 10                                  |
+| Pending (you)   | Push, when you decide (section 12)                                                                                                                             |
+| Blocked         | Applying through CI or a fresh database until Akash's migrations 0019, 0037 and 0042 are corrected                                                             |
 | Open follow-ups | Persisting flags and master data; building the correction executor; isolation cases for the other 107 operations; the one workflow test with a hard-coded date |

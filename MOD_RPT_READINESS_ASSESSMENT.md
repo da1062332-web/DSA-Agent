@@ -9,7 +9,7 @@
 **Evaluation Date:** 2026-10-14  
 **Active Branch:** `samarth`  
 **Evaluation Type:** Read-Only Implementation Readiness & Architecture Gap Assessment  
-**Document Status:** `FINAL READINESS ASSESSMENT`  
+**Document Status:** `FINAL READINESS ASSESSMENT`
 
 ---
 
@@ -17,7 +17,7 @@
 
 This document provides a detailed implementation readiness assessment of `MOD-RPT` (Module 31 — Reporting and Analytics) against the canonical specification in the DSA CRM repository.
 
-In the project specification, `MOD-RPT` is formally classified as **Deferred under TASK-414** across all 5 submodules. 
+In the project specification, `MOD-RPT` is formally classified as **Deferred under TASK-414** across all 5 submodules.
 
 During the recent delivery of `MOD-PERF` (Team Performance and Targets), a lightweight, operational reporting foundation was introduced to satisfy immediate performance dashboard and target matching requirements (Migrations `M-029` and `M-031`, canonical metric catalog in `app.metric_definition`, daily operational projection in `app.rpt_daily_operational_summary`, `GET /v1/metrics`, `GET /v1/dashboards/TEAM_PERFORMANCE`, and `POST /v1/reporting/refresh`).
 
@@ -25,20 +25,21 @@ However, an exhaustive inspection of the repository against the full Module 31 e
 
 ### Submodule Readiness Scorecard
 
-| Submodule | Specified Status | Actual Repository Status | Implementation Level | Readiness Verdict |
-|---|---|---|---|---|
-| **SUB-RPT.01 — Metric Registry** | Deferred (`TASK-414`) | Partially Implemented (Operational Subset) | ~35% | **NOT READY FOR PRODUCTION REGISTRY** (Lacks formula JSONB, versioning, global definitions, tenant overrides, audit) |
-| **SUB-RPT.02 — Reporting Store** | Deferred (`TASK-414`) | Prototype OLTP Projection Table Only | ~20% | **NOT READY** (Lacks read replica, `rpt_` schema, outbox projection workers, daily control totals FR-RPT-008) |
-| **SUB-RPT.03 — Dashboards** | Deferred (`TASK-414`) | Partially Implemented (Team & Leaderboard only) | ~30% | **NOT READY FOR ENTERPRISE SUITE** (Lacks Executive, Branch, Operations, Finance, and Connector dashboard categories) |
-| **SUB-RPT.04 — Report Catalogue** | Deferred (`TASK-414`) | Unbuilt / Completely Absent | 0% | **NOT IMPLEMENTED (DEFERRED)** |
-| **SUB-RPT.05 — Exports & Schedules** | Deferred (`TASK-414`) | Unbuilt / Completely Absent | 0% | **NOT IMPLEMENTED (DEFERRED)** |
-| **Overall MOD-RPT** | **Deferred (`TASK-414`)** | **Partially Implemented (Foundation Prototype)** | **~17% Overall** | **DEFERRED — IMPLEMENTATION AUTHORIZATION REQUIRED** |
+| Submodule                            | Specified Status          | Actual Repository Status                         | Implementation Level | Readiness Verdict                                                                                                     |
+| ------------------------------------ | ------------------------- | ------------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **SUB-RPT.01 — Metric Registry**     | Deferred (`TASK-414`)     | Partially Implemented (Operational Subset)       | ~35%                 | **NOT READY FOR PRODUCTION REGISTRY** (Lacks formula JSONB, versioning, global definitions, tenant overrides, audit)  |
+| **SUB-RPT.02 — Reporting Store**     | Deferred (`TASK-414`)     | Prototype OLTP Projection Table Only             | ~20%                 | **NOT READY** (Lacks read replica, `rpt_` schema, outbox projection workers, daily control totals FR-RPT-008)         |
+| **SUB-RPT.03 — Dashboards**          | Deferred (`TASK-414`)     | Partially Implemented (Team & Leaderboard only)  | ~30%                 | **NOT READY FOR ENTERPRISE SUITE** (Lacks Executive, Branch, Operations, Finance, and Connector dashboard categories) |
+| **SUB-RPT.04 — Report Catalogue**    | Deferred (`TASK-414`)     | Unbuilt / Completely Absent                      | 0%                   | **NOT IMPLEMENTED (DEFERRED)**                                                                                        |
+| **SUB-RPT.05 — Exports & Schedules** | Deferred (`TASK-414`)     | Unbuilt / Completely Absent                      | 0%                   | **NOT IMPLEMENTED (DEFERRED)**                                                                                        |
+| **Overall MOD-RPT**                  | **Deferred (`TASK-414`)** | **Partially Implemented (Foundation Prototype)** | **~17% Overall**     | **DEFERRED — IMPLEMENTATION AUTHORIZATION REQUIRED**                                                                  |
 
 ---
 
 ## 2. Repository Inspection Scope
 
 The assessment performed a thorough, read-only inspection of the repository across:
+
 1. **Shared Contracts & Typing:** `packages/contracts/src/` (`reporting.ts`, `permissions.ts`, `events.ts`, `kernel.ts`).
 2. **Database Schema & Migrations:** `supabase/migrations/` (`20261001000029_reporting.sql`, `20261001000036_report_manage_permission.sql`, `20261001000002_kernel_infra.sql`), `supabase/MANIFEST.md`.
 3. **Backend API Services & Modules:** `apps/api/src/modules/reporting/` (`service.ts`, `repository.ts`, `router.ts`, `openapi.ts`, `types.ts`, `index.ts`), `apps/api/src/modules/crm/targets/`.
@@ -52,6 +53,7 @@ The assessment performed a thorough, read-only inspection of the repository acro
 ## 3. Submodule-by-Submodule Assessment
 
 ### 3.1 SUB-RPT.01 — Metric Registry
+
 - **Specification Requirements:**
   - Component: `CMP-RPT.01.1` Metric registry UI.
   - API: `API-RPT-001: GET /v1/metrics` (Requires `report.read`).
@@ -68,6 +70,7 @@ The assessment performed a thorough, read-only inspection of the repository acro
   - **UI Registry Component:** `CMP-RPT.01.1` (Metric Registry admin view) is absent.
 
 ### 3.2 SUB-RPT.02 — Reporting Store
+
 - **Specification Requirements:**
   - Component: `CMP-RPT.02.1` Projection workers.
   - Architecture: Projections built from events; uses a dedicated read replica; reporting data resides in `rpt_` schema on replica; every row has `tenant_id`; RLS enforced; reporting role must NOT have `BYPASSRLS`; daily control totals compared with OLTP data (`FR-RPT-008`); depends on outbox.
@@ -83,6 +86,7 @@ The assessment performed a thorough, read-only inspection of the repository acro
   - **Daily Control Totals (`FR-RPT-008`):** No automated reconciliation job exists to compare projection totals against OLTP sources.
 
 ### 3.3 SUB-RPT.03 — Dashboards
+
 - **Specification Requirements:**
   - Component: `CMP-RPT.03.1` Dashboard framework.
   - API: `API-RPT-002: GET /v1/dashboards/{code}` (Returns dashboard data with freshness metadata; requires `report.read`).
@@ -104,6 +108,7 @@ The assessment performed a thorough, read-only inspection of the repository acro
   - Generic frontend dashboard layout/widget framework (`CMP-RPT.03.1`) is absent.
 
 ### 3.4 SUB-RPT.04 — Report Catalogue
+
 - **Specification Requirements:**
   - Component: `CMP-RPT.04.1` Report runner.
   - APIs:
@@ -119,6 +124,7 @@ The assessment performed a thorough, read-only inspection of the repository acro
   - **Component Absent:** `CMP-RPT.04.1` Report runner UI does not exist.
 
 ### 3.5 SUB-RPT.05 — Exports and Schedules
+
 - **Specification Requirements:**
   - Components: `CMP-RPT.05.1` Export job, `CMP-RPT.05.2` Scheduler.
   - APIs:
@@ -143,22 +149,22 @@ The assessment performed a thorough, read-only inspection of the repository acro
 
 ## 4. Cross-Module and Security Assessment Matrix
 
-| Security & Cross-Module Requirement | Specification Requirement | Repository Evidence & Verification | Status |
-|---|---|---|---|
-| **`report.read` Permission & Scoping** | Enforced on all reporting and metric read endpoints; respects role jurisdiction | Verified in `ReportingService.requireReportRead`. Branch managers restricted to assigned branch (403 returned on mismatch). | **IMPLEMENTED AND VERIFIED** |
-| **`report.manage` Permission** | Restricts projection refreshes and reporting configuration to privileged administrators | Verified in `M-031` and `apps/api/test/reporting.spec.ts:TC-RPT-014`. Users with only `report.read` are rejected with 403. | **IMPLEMENTED AND VERIFIED** |
-| **ROLE-ANALYST Aggregate-Only Access** | Receives aggregated summaries only; zero loan-level PII or KYC documents exposed | Verified in `ReportingService.getTeamPerformanceDashboard`. Endpoints return only counts, sums, and percentages. | **IMPLEMENTED AND VERIFIED** |
-| **`report.schedule` Permission** | Required for scheduling recurring reports; validates recipient jurisdiction | Absent from `PERMISSION_CODES` and database seeds. | **NOT IMPLEMENTED** |
-| **`export.run` Permission & Scoping** | Required for record-level data exports with role-based scope boundaries | Absent from `PERMISSION_CODES` and database seeds. | **NOT IMPLEMENTED** |
-| **MOD-ACL Scope Enforcement** | Enforces tenant and branch boundaries on drill-downs and leaderboards | Parameterized scope validation enforces caller's `allowedBranchIds` in `ReportingService`. | **IMPLEMENTED AND VERIFIED** |
-| **MOD-IMP & MOD-AUD Dependencies** | Relies on `MOD-IMP` for export handling and `MOD-AUD` for logging | `MOD-AUD` is active (`app.audit_event`). `MOD-IMP` is completely deferred. | **PARTIALLY BLOCKED (MOD-IMP Deferred)** |
-| **Outbox Relay for Projections** | Projections continuously updated from outbox events | `app.outbox_event` records events, but outbox relay worker (`TASK-403`) is unbuilt. | **BLOCKED (TASK-403 Deferred)** |
-| **Tenant Isolation & RLS** | All reporting rows contain `tenant_id`; RLS enabled and fails closed | Verified by `tools/verify-migrations.ts` and `apps/api/test/reporting.pg.int.spec.ts`. All counts return 0 without session tenant. | **IMPLEMENTED AND VERIFIED** |
-| **BYPASSRLS Prohibition** | Reporting and application database roles must not hold `BYPASSRLS` | Verified by `tools/verify-migrations.ts` assertion (b). Passes with exit code 0. | **IMPLEMENTED AND VERIFIED** |
-| **Audit Logging & Retention** | Administrative modifications and export runs audited under `R-AUD` / `R-OPS` | Target lifecycle audited. Metric registry updates and export actions lack audit logging because entities do not exist. | **PARTIALLY IMPLEMENTED** |
-| **Step-Up MFA for Record Exports** | Calling record-level export requires elevated `aal2` TOTP session | Kernel supports MFA step-up verification, but export endpoint and permission are unbuilt. | **INFRASTRUCTURE PRESENT / INTEGRATION MISSING** |
-| **24-Hour File Expiry & Presigned URLs** | Export files expire in 24 hours; download URLs expire automatically | No object storage bucket, presigned URL generator, or expiration lifecycle exists. | **NOT IMPLEMENTED** |
-| **Daily Control Totals (FR-RPT-008)** | Daily automated reconciliation between reporting projections and OLTP source data | No automated reconciliation cron or control-total comparison logic exists. | **NOT IMPLEMENTED** |
+| Security & Cross-Module Requirement      | Specification Requirement                                                               | Repository Evidence & Verification                                                                                                 | Status                                           |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **`report.read` Permission & Scoping**   | Enforced on all reporting and metric read endpoints; respects role jurisdiction         | Verified in `ReportingService.requireReportRead`. Branch managers restricted to assigned branch (403 returned on mismatch).        | **IMPLEMENTED AND VERIFIED**                     |
+| **`report.manage` Permission**           | Restricts projection refreshes and reporting configuration to privileged administrators | Verified in `M-031` and `apps/api/test/reporting.spec.ts:TC-RPT-014`. Users with only `report.read` are rejected with 403.         | **IMPLEMENTED AND VERIFIED**                     |
+| **ROLE-ANALYST Aggregate-Only Access**   | Receives aggregated summaries only; zero loan-level PII or KYC documents exposed        | Verified in `ReportingService.getTeamPerformanceDashboard`. Endpoints return only counts, sums, and percentages.                   | **IMPLEMENTED AND VERIFIED**                     |
+| **`report.schedule` Permission**         | Required for scheduling recurring reports; validates recipient jurisdiction             | Absent from `PERMISSION_CODES` and database seeds.                                                                                 | **NOT IMPLEMENTED**                              |
+| **`export.run` Permission & Scoping**    | Required for record-level data exports with role-based scope boundaries                 | Absent from `PERMISSION_CODES` and database seeds.                                                                                 | **NOT IMPLEMENTED**                              |
+| **MOD-ACL Scope Enforcement**            | Enforces tenant and branch boundaries on drill-downs and leaderboards                   | Parameterized scope validation enforces caller's `allowedBranchIds` in `ReportingService`.                                         | **IMPLEMENTED AND VERIFIED**                     |
+| **MOD-IMP & MOD-AUD Dependencies**       | Relies on `MOD-IMP` for export handling and `MOD-AUD` for logging                       | `MOD-AUD` is active (`app.audit_event`). `MOD-IMP` is completely deferred.                                                         | **PARTIALLY BLOCKED (MOD-IMP Deferred)**         |
+| **Outbox Relay for Projections**         | Projections continuously updated from outbox events                                     | `app.outbox_event` records events, but outbox relay worker (`TASK-403`) is unbuilt.                                                | **BLOCKED (TASK-403 Deferred)**                  |
+| **Tenant Isolation & RLS**               | All reporting rows contain `tenant_id`; RLS enabled and fails closed                    | Verified by `tools/verify-migrations.ts` and `apps/api/test/reporting.pg.int.spec.ts`. All counts return 0 without session tenant. | **IMPLEMENTED AND VERIFIED**                     |
+| **BYPASSRLS Prohibition**                | Reporting and application database roles must not hold `BYPASSRLS`                      | Verified by `tools/verify-migrations.ts` assertion (b). Passes with exit code 0.                                                   | **IMPLEMENTED AND VERIFIED**                     |
+| **Audit Logging & Retention**            | Administrative modifications and export runs audited under `R-AUD` / `R-OPS`            | Target lifecycle audited. Metric registry updates and export actions lack audit logging because entities do not exist.             | **PARTIALLY IMPLEMENTED**                        |
+| **Step-Up MFA for Record Exports**       | Calling record-level export requires elevated `aal2` TOTP session                       | Kernel supports MFA step-up verification, but export endpoint and permission are unbuilt.                                          | **INFRASTRUCTURE PRESENT / INTEGRATION MISSING** |
+| **24-Hour File Expiry & Presigned URLs** | Export files expire in 24 hours; download URLs expire automatically                     | No object storage bucket, presigned URL generator, or expiration lifecycle exists.                                                 | **NOT IMPLEMENTED**                              |
+| **Daily Control Totals (FR-RPT-008)**    | Daily automated reconciliation between reporting projections and OLTP source data       | No automated reconciliation cron or control-total comparison logic exists.                                                         | **NOT IMPLEMENTED**                              |
 
 ---
 
@@ -167,29 +173,37 @@ The assessment performed a thorough, read-only inspection of the repository acro
 All checks were executed directly against the active repository without modifying any application code or configuration:
 
 ### 5.1 Typecheck Verification
+
 ```bash
 npm run typecheck
 ```
+
 - **Result:** Exit code **`0`**. All 6 workspaces (`@dsa/api`, `@dsa/web`, `@dsa/bre-core`, `@dsa/contracts`, `@dsa/kernel`, `@dsa/tools`) compile cleanly without TypeScript errors.
 
 ### 5.2 API Test Suite Verification
+
 ```bash
 npm test -w @dsa/api
 ```
+
 - **Result:** Exit code **`0`**. 31 test files passed, **406/406 unit and contract tests passed**.
 - Includes `test/reporting.spec.ts` (16 tests covering `TC-RPT-001` through `TC-RPT-016`).
 
 ### 5.3 Live PostgreSQL Integration Test Verification
+
 ```bash
 npm run test:int -- test/reporting.pg.int.spec.ts test/targets.pg.int.spec.ts
 ```
+
 - **Result:** Exit code **`0`**. 2 test files passed, **10/10 tests passed** against live Supabase PostgreSQL.
 - Verifies `app.metric_definition`, `app.rpt_daily_operational_summary` RLS isolation, fail-closed isolation, and `report.manage` permissions.
 
 ### 5.4 Database Verification Suite
+
 ```bash
 npm run db:verify
 ```
+
 - **Result:** Exit code **`0`**. 5/5 automated database checks passed:
   - `[PASS]` RLS lint (zero unprotected tables)
   - `[PASS]` No DELETE privilege for `dsa_app` anywhere
@@ -198,9 +212,11 @@ npm run db:verify
   - `[PASS]` Fail-closed check (every table count returns 0 without `app.tenant_id`)
 
 ### 5.5 ESLint on Reporting Workspaces
+
 ```bash
 npx eslint apps/api/src/modules/reporting apps/web/src/features/performance packages/contracts/src/reporting.ts
 ```
+
 - **Result:** Exit code **`0`**. **0 errors, 0 warnings** in all existing reporting code.
 
 ---
@@ -210,15 +226,15 @@ npx eslint apps/api/src/modules/reporting apps/web/src/features/performance pack
 Prior to authorizing full implementation of `MOD-RPT` under `TASK-414`, the following technical and business blockers must be formally resolved:
 
 1. **Infrastructure Blocker — Read Replica vs. Single Node:**
-   - *Question for Lead Architect / DevOps:* Does the production environment budget for a dedicated PostgreSQL read replica, or should the reporting projections continue to reside in schema `app` on the primary instance with strict connection pooling?
+   - _Question for Lead Architect / DevOps:_ Does the production environment budget for a dedicated PostgreSQL read replica, or should the reporting projections continue to reside in schema `app` on the primary instance with strict connection pooling?
 2. **Infrastructure Blocker — Event Relay (`TASK-403`):**
-   - *Question for Core Platform Lead:* When will the outbox event relay worker (`TASK-403`) be deployed to transport `app.outbox_event` records into message queues or projection handlers?
+   - _Question for Core Platform Lead:_ When will the outbox event relay worker (`TASK-403`) be deployed to transport `app.outbox_event` records into message queues or projection handlers?
 3. **Storage Blocker — Object Storage Provider:**
-   - *Question for Infrastructure Lead:* What S3-compatible storage bucket (Supabase Storage, Cloudflare R2, or AWS S3) will be provisioned for `ENT-111` export jobs, and what IAM policies govern 24-hour file expiration?
+   - _Question for Infrastructure Lead:_ What S3-compatible storage bucket (Supabase Storage, Cloudflare R2, or AWS S3) will be provisioned for `ENT-111` export jobs, and what IAM policies govern 24-hour file expiration?
 4. **Governance Blocker — Competitive Leaderboard Rules ([ADR-012](docs/adr/ADR-012-leaderboard-scoring-policy.md)):**
-   - *Question for Business & Risk Committee:* All 9 scoring, quality penalty, and tie-breaking decisions in `ADR-012` remain unapproved. Scoring cannot be activated until formal committee sign-off is recorded.
+   - _Question for Business & Risk Committee:_ All 9 scoring, quality penalty, and tie-breaking decisions in `ADR-012` remain unapproved. Scoring cannot be activated until formal committee sign-off is recorded.
 5. **Security Contract Blocker — Permission Expansion:**
-   - *Question for Security Architect:* Adding `report.schedule` and `export.run` permissions requires formal updates to `packages/contracts/src/permissions.ts`, database grants, and role-mapping matrices.
+   - _Question for Security Architect:_ Adding `report.schedule` and `export.run` permissions requires formal updates to `packages/contracts/src/permissions.ts`, database grants, and role-mapping matrices.
 
 ---
 
@@ -229,5 +245,5 @@ Prior to authorizing full implementation of `MOD-RPT` under `TASK-414`, the foll
 - **Ready for Immediate Use:** The existing operational reporting subset (`API-RPT-001`, `API-RPT-002`, `M-029`, `M-031`, Team Performance Dashboard, Target matching, and unranked Leaderboard) is stable, fully tested, and verified for production use within `MOD-PERF`.
 - **Not Ready for Full Delivery:** The enterprise capabilities of `MOD-RPT` (Submodules `SUB-RPT.01` through `SUB-RPT.05`: full metric registry with formula JSONB, read replica, outbox projection workers, report catalogue runner, scheduled distributions, and S3 file exports) are **completely deferred and unbuilt**.
 - **Recommendation:** Keep `TASK-414` formally deferred. When authorized by the product owner, schedule implementation in two sequential phases:
-  - *Phase 1:* Asynchronous projection worker and event-driven pipeline (depends on `TASK-403`).
-  - *Phase 2:* Report catalogue, S3 exports, and scheduling (depends on `MOD-IMP` and storage provisioning).
+  - _Phase 1:_ Asynchronous projection worker and event-driven pipeline (depends on `TASK-403`).
+  - _Phase 2:_ Report catalogue, S3 exports, and scheduling (depends on `MOD-IMP` and storage provisioning).

@@ -343,13 +343,11 @@ describe('Module 37: Audit (MOD-AUD) Integration & Route Tests', () => {
 
   it('TEST-AUD-009 creates evidence pack request, records audit event, and returns 202 Accepted', async () => {
     const app = getApp(auditorPrincipal);
-    const res = await request(app)
-      .post('/v1/evidence-packs')
-      .send({
-        format: 'json',
-        includeDecisionRecords: true,
-        action: 'lead.created',
-      });
+    const res = await request(app).post('/v1/evidence-packs').send({
+      format: 'json',
+      includeDecisionRecords: true,
+      action: 'lead.created',
+    });
 
     expect(res.status).toBe(202);
     expect(res.body.id).toMatch(/^evp_/);
@@ -648,7 +646,9 @@ describe('Module 37: Audit (MOD-AUD) Integration & Route Tests', () => {
     // 4. Successful download returns 200, attachment headers, checksum header, and writes audit event
     const dlRes = await request(appA).get('/v1/evidence-packs/evp_ready_for_dl/download');
     expect(dlRes.status).toBe(200);
-    expect(dlRes.headers['content-disposition']).toContain('attachment; filename="evidence-pack-evp_ready_for_dl.json"');
+    expect(dlRes.headers['content-disposition']).toContain(
+      'attachment; filename="evidence-pack-evp_ready_for_dl.json"',
+    );
     expect(dlRes.headers['x-checksum']).toBe('sha256:downloadchecksum12345678');
     expect(dlRes.body.evidencePackId).toBe('evp_ready_for_dl');
 

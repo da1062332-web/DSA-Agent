@@ -61,7 +61,14 @@ export const ROLES: RoleSeed[] = [
   {
     code: 'ROLE-TENANT-ADMIN',
     name: 'Tenant administrator',
-    permissions: ['config.manage', 'user.manage', 'role.manage', 'audit.read', 'verification.read', 'verification.perform'],
+    permissions: [
+      'config.manage',
+      'user.manage',
+      'role.manage',
+      'audit.read',
+      'verification.read',
+      'verification.perform',
+    ],
   },
   {
     code: 'ROLE-ORG-OWNER',
@@ -133,12 +140,7 @@ export const ROLES: RoleSeed[] = [
   {
     code: 'ROLE-DOC-VERIFIER',
     name: 'Document verifier',
-    permissions: [
-      'application.read',
-      'document.review',
-      'verification.perform',
-      'verification.read',
-    ],
+    permissions: ['application.read', 'document.review', 'verification.perform', 'verification.read'],
   },
   {
     code: 'ROLE-COMPLIANCE',

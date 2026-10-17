@@ -113,15 +113,13 @@ export function SecurityPage() {
               ))}
             </List>
           )}
-          {factors?.length === 0 && (
-            <Button
-              variant="contained"
-              sx={{ mt: 2 }}
-              onClick={() => navigate('/mfa', { state: { from: '/account/security' } })}
-            >
-              Set up authenticator
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            sx={{ mt: 2 }}
+            onClick={() => navigate('/mfa?enrol=true', { state: { from: '/account/security' } })}
+          >
+            {factors?.length === 0 ? 'Set up authenticator' : 'Add another authenticator / Scan barcode'}
+          </Button>
         </CardContent>
       </Card>
 

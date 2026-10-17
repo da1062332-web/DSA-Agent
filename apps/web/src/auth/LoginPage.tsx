@@ -66,9 +66,7 @@ export function LoginPage() {
         setErrorMessage('Sign-in is taking too long. Close any other open tabs of this app, then try again.');
         return;
       }
-      setErrorMessage(
-        'Cannot reach the sign-in service. Please check your network and Supabase connection.',
-      );
+      setErrorMessage('Cannot reach the sign-in service. Please check your network and Supabase connection.');
     } finally {
       setIsLoading(false);
     }

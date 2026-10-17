@@ -10,7 +10,7 @@ describe('Module 36 — API Management (MOD-API) UI Component Suite', () => {
     const html = renderToString(
       <MemoryRouter initialEntries={['/api-management']}>
         <ApiManagementPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toContain('API Management &amp; Credentials');

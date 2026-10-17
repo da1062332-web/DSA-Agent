@@ -34,13 +34,7 @@ export function LeadList() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['leads', appliedState, appliedOwner, cursor],
     queryFn: () =>
       fetchLeads({
@@ -68,7 +62,7 @@ export function LeadList() {
   };
 
   const handleNextPage = () => {
-    if (data?.meta.nextCursor) {
+    if (data?.meta?.nextCursor) {
       setCursorHistory((prev) => [...prev, cursor || '']);
       setCursor(data.meta.nextCursor);
     }
@@ -168,7 +162,15 @@ export function LeadList() {
 
       {/* Error state */}
       {isError && (
-        <Alert severity="error" sx={{ mb: 3 }} action={<Button color="inherit" onClick={() => refetch()}>Retry</Button>}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
           {(error as Error)?.message || 'Failed to load leads'}
         </Alert>
       )}
@@ -187,13 +189,27 @@ export function LeadList() {
             <Table data-testid="leads.table">
               <TableHead>
                 <TableRow>
-                  <TableCell><strong>Name</strong></TableCell>
-                  <TableCell><strong>Mobile (Masked)</strong></TableCell>
-                  <TableCell><strong>Product</strong></TableCell>
-                  <TableCell><strong>Indicative Amount</strong></TableCell>
-                  <TableCell><strong>State</strong></TableCell>
-                  <TableCell><strong>Priority</strong></TableCell>
-                  <TableCell align="right"><strong>Actions</strong></TableCell>
+                  <TableCell>
+                    <strong>Name</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Mobile (Masked)</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Product</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Indicative Amount</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>State</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Priority</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Actions</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -230,18 +246,20 @@ export function LeadList() {
                           : '—'}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={lead.state}
-                          size="small"
-                          color={getStateColor(lead.state)}
-                        />
+                        <Chip label={lead.state} size="small" color={getStateColor(lead.state)} />
                       </TableCell>
                       <TableCell>
                         <Chip
                           label={lead.priority}
                           size="small"
                           variant="outlined"
-                          color={lead.priority === 'HIGH' ? 'error' : lead.priority === 'LOW' ? 'default' : 'warning'}
+                          color={
+                            lead.priority === 'HIGH'
+                              ? 'error'
+                              : lead.priority === 'LOW'
+                                ? 'default'
+                                : 'warning'
+                          }
                         />
                       </TableCell>
                       <TableCell align="right">
@@ -264,16 +282,12 @@ export function LeadList() {
 
           {/* Pagination controls */}
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button
-              size="small"
-              disabled={cursorHistory.length === 0}
-              onClick={handlePrevPage}
-            >
+            <Button size="small" disabled={cursorHistory.length === 0} onClick={handlePrevPage}>
               Previous
             </Button>
             <Button
               size="small"
-              disabled={!data?.meta.nextCursor}
+              disabled={!data?.meta?.nextCursor}
               onClick={handleNextPage}
               data-testid="leads.pagination.next"
             >

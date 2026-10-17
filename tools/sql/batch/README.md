@@ -20,8 +20,9 @@ The tests show **no technical dependency between these migrations**: every one a
 6. **0055** eligibility rules and the `eligibility.override` grant: **only after decision D1** (who may override). Run `55.revoke-override-grants.sql` straight after if you decide the four roles are not the approvers.
 7. **0063** security events and incidents tables, and `security.incident` for owner, compliance and tenant admin.
 8. **0064** sanction and disbursement grants for branch manager and loan operations (owner and tenant admin already hold them on hosted). Idempotent.
-9. **0062** only if you want the data-correction executor (Release 2); the executor stays off without `DATA_CORRECTION_EXECUTOR=true`.
-10. **Not in this batch:** 0056 (the Release 3 ledger).
+9. **0065** renames the invoices connector-statement table on hosted from `ledger_entry` to `connector_statement_entry`. **Apply it before the application code from the 2026-10-17 merge is deployed**: that code (invoices statements) reads the new name. Preflight row "0065 still needed" says YES on hosted.
+10. **0062** only if you want the data-correction executor (Release 2); the executor stays off without `DATA_CORRECTION_EXECUTOR=true`.
+11. **Not in this batch:** 0056 (the Release 3 ledger).
 
 Before the application code that uses a migration is deployed, apply that migration. Application code that is deployed first will fail on the missing tables (for example `/v1/api-clients` without 0054).
 

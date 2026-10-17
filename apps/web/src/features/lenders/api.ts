@@ -45,11 +45,7 @@ export async function createLender(input: CreateLenderInput): Promise<Lender> {
   });
 }
 
-export async function updateLender(
-  id: string,
-  version: number,
-  input: UpdateLenderInput,
-): Promise<Lender> {
+export async function updateLender(id: string, version: number, input: UpdateLenderInput): Promise<Lender> {
   return apiFetch<Lender>(`/v1/lenders/${id}`, {
     method: 'PATCH',
     version,
@@ -90,4 +86,3 @@ export async function setLenderContacts(
     body: input,
   });
 }
-

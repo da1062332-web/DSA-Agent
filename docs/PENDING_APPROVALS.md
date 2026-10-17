@@ -1,7 +1,7 @@
 # Approvals, Decisions, and Coordination Status (Vaibhav's Modules)
 
 **Status:** ALL RESOLVED & SIGNED OFF  
-**Date Updated:** 2026-10-16  
+**Date Updated:** 2026-10-16
 
 ---
 
@@ -10,6 +10,7 @@
 > **Status: APPLIED & 32/32 VERIFIED ON HOSTED SUPABASE.**  
 > Migration `20261001000050_platform_realm.sql` was applied to the hosted database (`mlpkwwhnagxzinaohdxg`).  
 > All 32 verification assertions in `tools/sql/0050/verify.sql` have passed:
+>
 > - `ROLE-PLATFORM-SUPERADMIN` exists with exactly platform permissions + `audit.read`.
 > - Super Admin account `vaibhav.qloax@gmail.com` is active in `auth.users` and mapped to platform realm.
 > - Operator permissions stripped from customer tenants.
@@ -17,7 +18,8 @@
 
 ## 2. Module 16 (Applications): Withdraw and Reopen Transitions (RESOLVED: DEFERRED TO RELEASE 2)
 
-> **Status: CONFIRMED DEFERRED TO RELEASE 2 (TASK-433).**  
+> **Status: CONFIRMED DEFERRED TO RELEASE 2 (TASK-433).**
+>
 > - Core walking skeleton transitions are 100% complete and tested in `transitions.spec.ts`:
 >   - `T-APP-01`: DRAFT -> DOCUMENTS_PENDING
 >   - `T-APP-02`: DOCUMENTS_PENDING -> UNDER_REVIEW
@@ -26,21 +28,24 @@
 
 ## 3. Modules 14 & 15 (Lenders & Products): Routing & Management Pages (RESOLVED & ALIGNED)
 
-> **Status: RESOLVED & ALIGNED.**  
+> **Status: RESOLVED & ALIGNED.**
+>
 > - Routes `/lenders` and `/products` point to feature modules `features/lenders/` (`LenderListPage`, `LenderDetailPage`) and `features/products/` (`ProductCataloguePage`, `ProductDetailPage`).
 > - Full test suite passing across all lender and product components (`lenders.spec.tsx`, `products.spec.tsx`, and `admin/products.spec.tsx` — 14/14 tests pass).
 > - Versioning terms validation and admin helper types retained in `features/admin/` for cross-module type safety.
 
 ## 4. Module 20 (Documents): Verifier Checklist Attestation Contract (RESOLVED & SIGNED OFF)
 
-> **Status: SIGNED OFF & FULLY IMPLEMENTED.**  
+> **Status: SIGNED OFF & FULLY IMPLEMENTED.**
+>
 > - Canonical attestation schema formalised in `@dsa/contracts` (`ChecklistAttestationRequestSchema` with `CHECKLIST_REVIEW_STATUSES` and `CHECKLIST_REJECT_REASONS`).
 > - Enforced in API and backed by unit/integration tests (`TEST-VRF-010`, `TEST-VRF-021`, `TEST-VRF-025` in `verification.spec.ts`).
 > - Verification UI in `features/verifications/` fully consumes and handles attestation reviews.
 
 ## 5. Module 13 (Grievances): SLA Due-Date Rule (RESOLVED: OPTION B IMPLEMENTED)
 
-> **Status: IMPLEMENTED & VERIFIED.**  
+> **Status: IMPLEMENTED & VERIFIED.**
+>
 > - Option B (Statutory 30-day SLA standard from acknowledgement) adopted and implemented in `apps/api/src/modules/crm/grievances/complaints.ts`.
 > - Intake automatically assigns `due_at = now + 30 days` when not explicitly supplied.
 > - Verified with 100% passing test suite in `apps/api/test/grievances.spec.ts` and `apps/api/test/grievances.int.spec.ts`.
@@ -59,6 +64,7 @@ and migration `20261001000048_eligibility.sql`. **The migration was applied to h
 with the `tenant_isolation` policy, INSERT/SELECT/UPDATE for `dsa_app` only, and the `eligibility.override` permission (granted to no role).
 
 Needs from others before it does real work:
+
 - **Akash:** a published eligibility rule set. Until then every criterion is UNKNOWN (the spec's rule for missing data).
   The one place to connect it is `evaluateCriteria` in `apps/api/src/modules/origination/applications/eligibility.ts`.
 - **You:** which roles get `eligibility.override` (the spec says "approver roles"; no role is granted today).
@@ -76,8 +82,8 @@ Needs from others before it does real work:
 ## 8. Clean Database Setup Issues (RESOLVED by Akash)
 
 All blockers for fresh database setup (`supabase db reset` and `tests/isolation/harness.ts`) have been resolved:
+
 1. `20261001000019_verification.sql`: Removed inline foreign keys to `loan_application` and `application_party` that do not exist at file order 0019. The foreign keys are safely applied in `20261001000021_origination_application.sql` via an idempotent `DO $$ ...` block once those tables exist.
 2. `20261001000037_api_development.sql`: Corrected column name from `task_ref` to `introduced_in` on `app.permission`, and ensured RLS policy creation is idempotent (`DROP POLICY IF EXISTS`).
 3. `20261001000042_audit_tamper_evidence.sql` and the security migration (renamed to `20261001000063_security_monitoring_incidents.sql` on 2026-10-16 to end a duplicate 0043; content unchanged): Corrected column name from `task_ref` to `introduced_in`, and ensured RLS policy creation is idempotent.
 4. Clean database migrations run in alphabetical sequence with zero errors.
-

@@ -105,9 +105,7 @@ describe('TASK-107 Normalizer & S3 Privacy', () => {
     });
 
     it('rejects bank account numbers', () => {
-      expect(() => assertNoS3Data('Acct 12345678901234', 'note')).toThrowError(
-        /prohibited account number/i,
-      );
+      expect(() => assertNoS3Data('Acct 12345678901234', 'note')).toThrowError(/prohibited account number/i);
     });
   });
 

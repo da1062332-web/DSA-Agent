@@ -18,11 +18,13 @@ describe('Module 5: Access Control (RBAC API)', () => {
     tenantId: 'ten_01JTESTTENANT00000000000000',
     authTime: new Date().toISOString(), // a role edit needs step-up (API-ACL-004)
     // An editor can only give a role what they hold themselves, so the administrator also holds the permissions these tests grant.
-    grants: ['user.manage', 'role.manage', 'lead.read', 'lead.create', 'task.read', 'task.create'].map((code) => ({
-      code: code as never,
-      scope: 'TENANT' as const,
-      branchIds: [],
-    })),
+    grants: ['user.manage', 'role.manage', 'lead.read', 'lead.create', 'task.read', 'task.create'].map(
+      (code) => ({
+        code: code as never,
+        scope: 'TENANT' as const,
+        branchIds: [],
+      }),
+    ),
   });
 
   const staffPrincipal = testPrincipal({
@@ -158,21 +160,17 @@ describe('Module 5: Access Control (RBAC API)', () => {
       });
 
       // Invalid format (lowercase)
-      const invalidRes = await request(app)
-        .post('/v1/roles')
-        .send({
-          code: 'role_invalid',
-          name: 'Invalid Role',
-        });
+      const invalidRes = await request(app).post('/v1/roles').send({
+        code: 'role_invalid',
+        name: 'Invalid Role',
+      });
       expect(invalidRes.status).toBe(422);
 
       // Duplicate code
-      const dupRes = await request(app)
-        .post('/v1/roles')
-        .send({
-          code: 'ROLE-ADMIN',
-          name: 'Another Admin',
-        });
+      const dupRes = await request(app).post('/v1/roles').send({
+        code: 'ROLE-ADMIN',
+        name: 'Another Admin',
+      });
       expect(dupRes.status).toBe(422);
       expect(dupRes.body.error.code).toBe('VALIDATION_ERROR');
     });
@@ -415,12 +413,10 @@ describe('Module 5: Access Control (RBAC API)', () => {
         deps: { txRunner: store.runner },
       });
 
-      const res = await request(app)
-        .post(`/v1/users/${adminPrincipal.id}/roles`)
-        .send({
-          roleId: 'rol_loan_officer',
-          scopeType: 'TENANT',
-        });
+      const res = await request(app).post(`/v1/users/${adminPrincipal.id}/roles`).send({
+        roleId: 'rol_loan_officer',
+        scopeType: 'TENANT',
+      });
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('SOD_VIOLATION');
@@ -462,9 +458,7 @@ describe('Module 5: Access Control (RBAC API)', () => {
       expect(permRes.status).toBe(404);
 
       // Cannot modify role of tenant A
-      const patchRes = await request(app)
-        .patch('/v1/roles/rol_admin')
-        .send({ name: 'Hacked Name' });
+      const patchRes = await request(app).patch('/v1/roles/rol_admin').send({ name: 'Hacked Name' });
       expect(patchRes.status).toBe(404);
 
       // Cannot delete role of tenant A
@@ -635,4 +629,3 @@ describe('Module 5: Access Control (RBAC API)', () => {
     });
   });
 });
-

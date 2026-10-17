@@ -10,10 +10,7 @@ export interface TransitionOutcome {
   updates: Partial<LeadRow>;
 }
 
-export function validateLeadTransition(
-  lead: LeadRow,
-  input: LeadTransitionInput,
-): TransitionOutcome {
+export function validateLeadTransition(lead: LeadRow, input: LeadTransitionInput): TransitionOutcome {
   const currentState = lead.state;
 
   switch (input.transitionCode) {
@@ -59,11 +56,7 @@ export function validateLeadTransition(
 
     case 'T-LEAD-04': {
       // T-LEAD-04: Qualify lead
-      if (
-        currentState !== 'IN_PROGRESS' &&
-        currentState !== 'NEW' &&
-        currentState !== 'CONTACT_ATTEMPTED'
-      ) {
+      if (currentState !== 'IN_PROGRESS' && currentState !== 'NEW' && currentState !== 'CONTACT_ATTEMPTED') {
         throw AppError.of(
           'INVALID_TRANSITION',
           `Cannot execute T-LEAD-04 from state '${currentState}'. Lead must be in an open state.`,
@@ -120,11 +113,9 @@ export function validateLeadTransition(
 
       const disqReason = input.disqualificationReason ?? lead.disqualification_reason;
       if (!disqReason) {
-        throw AppError.of(
-          'VALIDATION_ERROR',
-          'T-LEAD-05 requires disqualificationReason',
-          [{ field: 'disqualificationReason', issue: 'REQUIRED_FOR_DISQUALIFIED' }],
-        );
+        throw AppError.of('VALIDATION_ERROR', 'T-LEAD-05 requires disqualificationReason', [
+          { field: 'disqualificationReason', issue: 'REQUIRED_FOR_DISQUALIFIED' },
+        ]);
       }
 
       return {
@@ -148,11 +139,9 @@ export function validateLeadTransition(
       }
 
       if (!input.reasonCode) {
-        throw AppError.of(
-          'VALIDATION_ERROR',
-          'T-LEAD-06 requires a reopening reasonCode',
-          [{ field: 'reasonCode', issue: 'REQUIRED_FOR_REOPEN' }],
-        );
+        throw AppError.of('VALIDATION_ERROR', 'T-LEAD-06 requires a reopening reasonCode', [
+          { field: 'reasonCode', issue: 'REQUIRED_FOR_REOPEN' },
+        ]);
       }
 
       return {

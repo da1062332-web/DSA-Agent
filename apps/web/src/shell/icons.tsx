@@ -145,3 +145,51 @@ export function DeleteOutlineIcon(props: SvgIconProps) {
     </SvgIcon>
   );
 }
+
+export function OpenInNewIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
+    </SvgIcon>
+  );
+}
+
+export function AccountBalanceIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z" />
+    </SvgIcon>
+  );
+}
+
+export function AssessmentIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+    </SvgIcon>
+  );
+}
+
+export function PaymentIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+    </SvgIcon>
+  );
+}
+
+export function FilterListIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
+    </SvgIcon>
+  );
+}
+
+export function MonetizationOnIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-1.07c-1.61-.25-3.04-1.25-3.41-2.82l1.9-.79c.25.96 1.05 1.68 2.01 1.68 1.1 0 2-.9 2-2s-.9-2-2-2c-2.21 0-4-1.79-4-4 0-1.66 1.18-3.08 2.8-3.43V4h2v1.07c1.4.24 2.65 1.15 3.09 2.51l-1.88.79c-.27-.85-.97-1.3-1.71-1.3-1.1 0-2 .9-2 2s.9 2 2 2c2.21 0 4 1.79 4 4 0 1.66-1.18 3.08-2.8 3.43V18z" />
+    </SvgIcon>
+  );
+}

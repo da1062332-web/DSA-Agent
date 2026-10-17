@@ -96,9 +96,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Contracts & Schemas', () => {
       type: 'BRANCH',
       isSkippable: false,
       config: {
-        conditions: [
-          { if: { field: 'score', op: 'EQ', value: 100 }, goToStepIndex: 3 },
-        ],
+        conditions: [{ if: { field: 'score', op: 'EQ', value: 100 }, goToStepIndex: 3 }],
         defaultStepIndex: 2,
       },
     };
@@ -310,4 +308,3 @@ describe('Module 24: Workflow Automation (MOD-WFA) Contracts & Schemas', () => {
     expect(SkipStepSchema.safeParse({ reason: 'no' }).success).toBe(false);
   });
 });
-

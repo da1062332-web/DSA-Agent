@@ -90,13 +90,18 @@ export type MessageTemplate = z.infer<typeof MessageTemplateSchema>;
 /**
  * Recipient schema with S2 validation (no PAN/Aadhaar/bank account)
  */
-export const MessageRecipientSchema = z.object({
-  email: z.string().email().optional(),
-  mobile: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'valid E.164 phone number').optional(),
-  name: z.string().max(100).optional(),
-}).refine((data) => Boolean(data.email || data.mobile), {
-  message: 'Recipient must specify at least an email or mobile phone number',
-});
+export const MessageRecipientSchema = z
+  .object({
+    email: z.string().email().optional(),
+    mobile: z
+      .string()
+      .regex(/^\+?[1-9]\d{9,14}$/, 'valid E.164 phone number')
+      .optional(),
+    name: z.string().max(100).optional(),
+  })
+  .refine((data) => Boolean(data.email || data.mobile), {
+    message: 'Recipient must specify at least an email or mobile phone number',
+  });
 export type MessageRecipient = z.infer<typeof MessageRecipientSchema>;
 
 /**

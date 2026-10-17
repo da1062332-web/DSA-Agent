@@ -4,8 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => {
-  const connectionString =
-    requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -21,8 +20,7 @@ describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => 
     adminClient = new pg.Client({ connectionString });
     await adminClient.connect();
 
-    const apiDbUrl =
-      requireLocalTestDatabaseUrl('DATABASE_URL');
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
 
@@ -105,10 +103,7 @@ describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => 
 
       // Verify invalid status rejection by check constraint
       await expect(
-        adminClient.query(
-          `UPDATE app.import_batch SET status = 'INVALID_STATUS' WHERE id = $1`,
-          [batchId],
-        ),
+        adminClient.query(`UPDATE app.import_batch SET status = 'INVALID_STATUS' WHERE id = $1`, [batchId]),
       ).rejects.toThrow();
     } finally {
       await adminClient.query('ROLLBACK');
@@ -131,10 +126,7 @@ describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => 
     await apiClient.query('BEGIN');
     try {
       await apiClient.query(`SET LOCAL app.tenant_id = '${tenantA}'`);
-      const visible = await apiClient.query(
-        `SELECT id FROM app.import_batch WHERE id = $1`,
-        [batchA],
-      );
+      const visible = await apiClient.query(`SELECT id FROM app.import_batch WHERE id = $1`, [batchA]);
       expect(visible.rows.length).toBe(1);
       expect(visible.rows[0].id).toBe(batchA);
     } finally {
@@ -145,10 +137,7 @@ describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => 
     await apiClient.query('BEGIN');
     try {
       await apiClient.query(`SET LOCAL app.tenant_id = '${tenantB}'`);
-      const blocked = await apiClient.query(
-        `SELECT id FROM app.import_batch WHERE id = $1`,
-        [batchA],
-      );
+      const blocked = await apiClient.query(`SELECT id FROM app.import_batch WHERE id = $1`, [batchA]);
       expect(blocked.rows.length).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');
@@ -158,10 +147,7 @@ describe('Module MOD-IMP — PostgreSQL Integration (Real Tables & RLS)', () => 
     await apiClient.query('BEGIN');
     try {
       await apiClient.query(`SET LOCAL app.tenant_id = ''`);
-      const failClosed = await apiClient.query(
-        `SELECT id FROM app.import_batch WHERE id = $1`,
-        [batchA],
-      );
+      const failClosed = await apiClient.query(`SELECT id FROM app.import_batch WHERE id = $1`, [batchA]);
       expect(failClosed.rows.length).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');

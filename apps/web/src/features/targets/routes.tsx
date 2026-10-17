@@ -2,6 +2,4 @@
 import type { RouteObject } from 'react-router-dom';
 import { TargetsPage } from './TargetsPage';
 
-export const routes: RouteObject[] = [
-  { path: '/targets', element: <TargetsPage /> },
-];
+export const routes: RouteObject[] = [{ path: '/targets', element: <TargetsPage /> }];

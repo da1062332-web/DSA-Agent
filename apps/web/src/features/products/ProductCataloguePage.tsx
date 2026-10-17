@@ -36,12 +36,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import { createProduct, fetchProducts, updateProductStatus } from './api';
-import type {
-  CreateProductInput,
-  LoanProduct,
-  ProductCategory,
-  ProductStatus,
-} from './types';
+import type { CreateProductInput, LoanProduct, ProductCategory, ProductStatus } from './types';
 
 export function ProductCataloguePage() {
   const me = useMe();
@@ -161,10 +156,7 @@ export function ProductCataloguePage() {
   const filteredProducts = products.filter((p) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(term) ||
-      (p.lenderName && p.lenderName.toLowerCase().includes(term))
-    );
+    return p.name.toLowerCase().includes(term) || (p.lenderName && p.lenderName.toLowerCase().includes(term));
   });
 
   return (
@@ -236,11 +228,7 @@ export function ProductCataloguePage() {
             <Grid item xs={6} sm={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Lender</InputLabel>
-                <Select
-                  value={lenderFilter}
-                  label="Lender"
-                  onChange={(e) => setLenderFilter(e.target.value)}
-                >
+                <Select value={lenderFilter} label="Lender" onChange={(e) => setLenderFilter(e.target.value)}>
                   <MenuItem value="">All Lenders</MenuItem>
                   {lenders.map((l) => (
                     <MenuItem key={l.id} value={l.id}>
@@ -253,11 +241,7 @@ export function ProductCataloguePage() {
             <Grid item xs={6} sm={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="">All Statuses</MenuItem>
                   <MenuItem value="ACTIVE">Active</MenuItem>
                   <MenuItem value="INACTIVE">Inactive</MenuItem>
@@ -288,15 +272,33 @@ export function ProductCataloguePage() {
           <Table>
             <TableHead sx={{ bgcolor: 'grey.100' }}>
               <TableRow>
-                <TableCell><strong>Product Name</strong></TableCell>
-                <TableCell><strong>Lender</strong></TableCell>
-                <TableCell><strong>Category</strong></TableCell>
-                <TableCell><strong>Security</strong></TableCell>
-                <TableCell><strong>Amount Range (₹)</strong></TableCell>
-                <TableCell><strong>Tenure (Months)</strong></TableCell>
-                <TableCell><strong>Active Ver</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
-                <TableCell align="right"><strong>Actions</strong></TableCell>
+                <TableCell>
+                  <strong>Product Name</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Lender</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Category</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Security</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Amount Range (₹)</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Tenure (Months)</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Active Ver</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Status</strong>
+                </TableCell>
+                <TableCell align="right">
+                  <strong>Actions</strong>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -328,9 +330,7 @@ export function ProductCataloguePage() {
                       : '—'}
                   </TableCell>
                   <TableCell>
-                    {p.activeVersion
-                      ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}`
-                      : '—'}
+                    {p.activeVersion ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}` : '—'}
                   </TableCell>
                   <TableCell>
                     <Chip label={`v${p.activeVersionNo ?? 1}`} size="small" />
@@ -344,12 +344,7 @@ export function ProductCataloguePage() {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        component={RouterLink}
-                        to={`/products/${p.id}`}
-                        variant="outlined"
-                      >
+                      <Button size="small" component={RouterLink} to={`/products/${p.id}`} variant="outlined">
                         Versions
                       </Button>
                       {canManage && (
@@ -383,7 +378,8 @@ export function ProductCataloguePage() {
 
             {selectedLenderObj && selectedLenderObj.status === 'PAUSED' && (
               <Alert severity="warning" sx={{ mb: 2 }}>
-                Notice: The selected lender is currently <strong>PAUSED</strong>. Product creation is blocked by gate rule <code>LENDER_PAUSED</code>.
+                Notice: The selected lender is currently <strong>PAUSED</strong>. Product creation is blocked
+                by gate rule <code>LENDER_PAUSED</code>.
               </Alert>
             )}
 
@@ -432,10 +428,7 @@ export function ProductCataloguePage() {
               <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
-                    <Switch
-                      checked={formSecured}
-                      onChange={(e) => setFormSecured(e.target.checked)}
-                    />
+                    <Switch checked={formSecured} onChange={(e) => setFormSecured(e.target.checked)} />
                   }
                   label="Secured Facility"
                   sx={{ mt: 1 }}

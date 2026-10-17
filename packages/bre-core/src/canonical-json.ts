@@ -46,7 +46,7 @@ function sha256Raw(message: string): string {
         0xf0 | (charCode >> 18),
         0x80 | ((charCode >> 12) & 0x3f),
         0x80 | ((charCode >> 6) & 0x3f),
-        0x80 | (charCode & 0x3f)
+        0x80 | (charCode & 0x3f),
       );
     }
   }
@@ -68,7 +68,7 @@ function sha256Raw(message: string): string {
     (lowBits >>> 24) & 0xff,
     (lowBits >>> 16) & 0xff,
     (lowBits >>> 8) & 0xff,
-    lowBits & 0xff
+    lowBits & 0xff,
   );
 
   const K = [
@@ -79,7 +79,7 @@ function sha256Raw(message: string): string {
     0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
     0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
   ];
 
   let H0 = 0x6a09e667;
@@ -99,10 +99,7 @@ function sha256Raw(message: string): string {
     for (let t = 0; t < 16; t++) {
       const idx = chunk + t * 4;
       W[t] =
-        (msgBytes[idx]! << 24) |
-        (msgBytes[idx + 1]! << 16) |
-        (msgBytes[idx + 2]! << 8) |
-        msgBytes[idx + 3]!;
+        (msgBytes[idx]! << 24) | (msgBytes[idx + 1]! << 16) | (msgBytes[idx + 2]! << 8) | msgBytes[idx + 3]!;
     }
 
     for (let t = 16; t < 64; t++) {
@@ -149,7 +146,16 @@ function sha256Raw(message: string): string {
   }
 
   const toHex = (n: number) => (n >>> 0).toString(16).padStart(8, '0');
-  return (toHex(H0) + toHex(H1) + toHex(H2) + toHex(H3) + toHex(H4) + toHex(H5) + toHex(H6) + toHex(H7)).toLowerCase();
+  return (
+    toHex(H0) +
+    toHex(H1) +
+    toHex(H2) +
+    toHex(H3) +
+    toHex(H4) +
+    toHex(H5) +
+    toHex(H6) +
+    toHex(H7)
+  ).toLowerCase();
 }
 
 /**

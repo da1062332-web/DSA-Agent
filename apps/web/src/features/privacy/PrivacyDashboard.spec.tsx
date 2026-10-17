@@ -16,9 +16,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/privacy') {
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }

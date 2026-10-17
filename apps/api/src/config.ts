@@ -54,11 +54,15 @@ const EnvSchema = z
         message: 'must connect as dsa_api, never as postgres or service_role (ADR-SB-03)',
       });
     }
-    if (env.DISABLE_MFA && !mfaMayBeDisabledHere({ NODE_ENV: env.NODE_ENV, SUPABASE_URL: env.SUPABASE_URL })) {
+    if (
+      env.DISABLE_MFA &&
+      !mfaMayBeDisabledHere({ NODE_ENV: env.NODE_ENV, SUPABASE_URL: env.SUPABASE_URL })
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['DISABLE_MFA'],
-        message: 'MFA can be disabled only against the local Supabase stack and never in production; remove DISABLE_MFA',
+        message:
+          'MFA can be disabled only against the local Supabase stack and never in production; remove DISABLE_MFA',
       });
     }
     if (env.TEST_TOKENS && !isLocalHost(env.SUPABASE_URL)) {

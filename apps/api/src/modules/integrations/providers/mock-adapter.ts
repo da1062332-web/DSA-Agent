@@ -1,11 +1,7 @@
 // apps/api/src/modules/integrations/providers/mock-adapter.ts
 // Module 28: Integration Management (MOD-INT) — Deterministic Mock Test Adapter
 
-import type {
-  AdapterResult,
-  HealthCheckResult,
-  IntegrationEnvironment,
-} from '@dsa/contracts';
+import type { AdapterResult, HealthCheckResult, IntegrationEnvironment } from '@dsa/contracts';
 import type { BaseAdapter } from '../adapter';
 import type { ResolvedCredentials } from '../vault-port';
 

@@ -118,7 +118,6 @@ function formatUserRow(row: RawUserRow) {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
-
   // GET /v1/me — Returns current principal details and permissions
   router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -127,20 +126,53 @@ export function createRouter(deps: ApiDeps): Router {
       let email = (p as { email?: string }).email || '';
       let displayName = (p as { displayName?: string }).displayName || '';
       let lockVersion = 0;
+      let notificationPreferences: unknown = null;
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
-          const r = await sql<{ email: string; display_name: string; lock_version: number }>`
-            SELECT email, display_name, lock_version FROM app.app_user WHERE id = ${p.id}
+          const r = await sql<{
+            email: string;
+            display_name: string;
+            lock_version: number;
+            notification_preferences?: unknown;
+          }>`
+            SELECT email, display_name, lock_version, notification_preferences FROM app.app_user WHERE id = ${p.id}
           `.execute(tx);
           if (r.rows[0]) {
             email = r.rows[0].email;
             displayName = r.rows[0].display_name;
-            lockVersion = r.rows[0].lock_version;
+            lockVersion = Number(r.rows[0].lock_version ?? 0);
+            notificationPreferences = r.rows[0].notification_preferences;
           }
         });
       } catch {
         // tx fallback
       }
+
+      const defaultNotificationPreferences = {
+        channels: {
+          inApp: true,
+          email: false,
+          sms: false,
+          whatsapp: false,
+        },
+        digestFrequency: 'IMMEDIATE',
+        mutedCategories: [] as string[],
+      };
+
+      const rawPrefs = notificationPreferences as any;
+      const resolvedNotificationPreferences =
+        rawPrefs && typeof rawPrefs === 'object'
+          ? {
+              channels: {
+                inApp: rawPrefs.channels?.inApp ?? true,
+                email: rawPrefs.channels?.email ?? false,
+                sms: rawPrefs.channels?.sms ?? false,
+                whatsapp: rawPrefs.channels?.whatsapp ?? false,
+              },
+              digestFrequency: rawPrefs.digestFrequency ?? 'IMMEDIATE',
+              mutedCategories: Array.isArray(rawPrefs.mutedCategories) ? rawPrefs.mutedCategories : [],
+            }
+          : defaultNotificationPreferences;
 
       const body = {
         id: p.id,
@@ -153,6 +185,8 @@ export function createRouter(deps: ApiDeps): Router {
         grants: p.grants || [],
         authTime: p.authTime,
         mfaVerifiedAt: p.authTime,
+        lockVersion,
+        notificationPreferences: resolvedNotificationPreferences,
       };
 
       res.set('ETag', `"${lockVersion}"`).json({
@@ -206,6 +240,8 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       // ?q= searches the branch code and name. It was accepted before but never applied.
       const search = typeof req.query.q === 'string' && req.query.q.trim() ? req.query.q.trim() : undefined;
+      const statusFilter =
+        typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
       const branches = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
           id: string;
@@ -221,6 +257,7 @@ export function createRouter(deps: ApiDeps): Router {
           FROM app.branch
           WHERE tenant_id = ${ctx.principal.tenantId}
             AND (${search === undefined} OR code ILIKE ${'%' + (search ?? '') + '%'} OR name ILIKE ${'%' + (search ?? '') + '%'})
+            AND (${statusFilter === undefined} OR status = ${statusFilter})
           ORDER BY name ASC
         `.execute(tx);
         return result.rows.map((r) => ({
@@ -232,10 +269,11 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: r.timezone ?? 'Asia/Kolkata',
           status: r.status,
           lockVersion: r.lock_version ?? 0,
+          version: r.lock_version ?? 0,
         }));
       });
 
-      res.json({ data: branches });
+      res.json({ data: branches, meta: { nextCursor: null, limit: branches.length } });
     } catch (err) {
       next(err);
     }
@@ -276,6 +314,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: row.timezone ?? 'Asia/Kolkata',
           status: row.status,
           lockVersion: row.lock_version ?? 0,
+          version: row.lock_version ?? 0,
         };
       });
 
@@ -326,7 +365,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       // The create runs in one transaction. With an Idempotency-Key, a replay returns the original branch and a reused key with
       // a different body is refused (IDEMPOTENCY_KEY_REUSED). Without a key the create works as before.
-      const idemKey = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
+      const idemKey =
+        typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
       const createBranch = async (tx: Tx) => {
         const orgRes = await sql<{ id: string }>`
           SELECT id FROM app.organisation WHERE tenant_id = ${ctx.principal.tenantId} LIMIT 1
@@ -382,6 +422,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: body.timezone,
           status: 'ACTIVE' as const,
           lockVersion: 0,
+          version: 0,
         };
       };
       if (idemKey) {
@@ -489,6 +530,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: current.timezone,
           status: 'INACTIVE' as const,
           lockVersion: Number(upd.rows[0]?.lock_version),
+          version: Number(upd.rows[0]?.lock_version),
         };
       });
 
@@ -598,6 +640,7 @@ export function createRouter(deps: ApiDeps): Router {
           timezone: newTimezone,
           status: newStatus,
           lockVersion: newLockVersion,
+          version: newLockVersion,
         };
       });
 
@@ -871,7 +914,7 @@ export function createRouter(deps: ApiDeps): Router {
         }));
       });
 
-      res.json({ data: roles });
+      res.json({ data: roles, meta: { nextCursor: null, limit: roles.length } });
     } catch (err) {
       next(err);
     }
@@ -901,7 +944,7 @@ export function createRouter(deps: ApiDeps): Router {
         }));
       });
 
-      res.json({ data: permissions });
+      res.json({ data: permissions, meta: { nextCursor: null, limit: permissions.length } });
     } catch (err) {
       next(err);
     }
@@ -1047,7 +1090,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       const roleId = req.params.id;
       const parsed = UpdateRoleRequest.parse(req.body);
-      if (parsed.permissions !== undefined) assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
+      if (parsed.permissions !== undefined)
+        assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
 
       if (parsed.permissions !== undefined) {
         const validCodes = new Set<string>(PERMISSION_CODES);
@@ -1082,14 +1126,18 @@ export function createRouter(deps: ApiDeps): Router {
 
         // System roles are the baseline every tenant starts from: they are never edited (the database refuses it too).
         if (current.is_template) {
-          throw AppError.of('VALIDATION_ERROR', 'System roles cannot be changed. Create a custom role instead.', [
-            { field: 'roleId', issue: 'SYSTEM_ROLE' },
-          ]);
+          throw AppError.of(
+            'VALIDATION_ERROR',
+            'System roles cannot be changed. Create a custom role instead.',
+            [{ field: 'roleId', issue: 'SYSTEM_ROLE' }],
+          );
         }
         const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
         const permissionsBefore = (
           await sql<{ permission_code: string }>`
-            SELECT permission_code FROM app.role_permission WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} ORDER BY 1`.execute(tx)
+            SELECT permission_code FROM app.role_permission WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} ORDER BY 1`.execute(
+            tx,
+          )
         ).rows.map((r) => r.permission_code);
         if (parsed.permissions !== undefined) {
           assertCanGrantPermissions(
@@ -1217,7 +1265,9 @@ export function createRouter(deps: ApiDeps): Router {
         }
         const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
         const before = await sql<{ code: string; name: string }>`
-          SELECT code, name FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
+          SELECT code, name FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}`.execute(
+          tx,
+        );
 
         // Check if role is assigned to any user
         const assigned = await sql<{ id: string }>`
@@ -1231,7 +1281,9 @@ export function createRouter(deps: ApiDeps): Router {
         }
         // An assignment that has ended is history. A role that has one is kept, so that history keeps its meaning.
         const history = await sql<{ id: string }>`
-          SELECT id FROM app.user_role_assignment WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} LIMIT 1`.execute(tx);
+          SELECT id FROM app.user_role_assignment WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} LIMIT 1`.execute(
+          tx,
+        );
         if (history.rows.length > 0) {
           throw AppError.of('VALIDATION_ERROR', 'This role has assignment history and cannot be deleted.', [
             { field: 'roleId', issue: 'HAS_ASSIGNMENT_HISTORY' },
@@ -1277,7 +1329,9 @@ export function createRouter(deps: ApiDeps): Router {
         typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
       // Filter by the user's primary branch. It was accepted by the schema but never applied, so every branch's users came back.
       const branchFilter =
-        typeof req.query.branchId === 'string' && req.query.branchId.trim() ? req.query.branchId.trim() : undefined;
+        typeof req.query.branchId === 'string' && req.query.branchId.trim()
+          ? req.query.branchId.trim()
+          : undefined;
       const searchFilter =
         typeof req.query.search === 'string' && req.query.search.trim()
           ? req.query.search.trim().toLowerCase()
@@ -1580,7 +1634,9 @@ export function createRouter(deps: ApiDeps): Router {
         if (parsed.status !== undefined) {
           const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
           const previous = await sql<{ status: string }>`
-            SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
+            SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(
+            tx,
+          );
           await sql`
             UPDATE app.app_user
             SET status = ${parsed.status}, updated_by = ${ctx.principal.id}
@@ -1926,7 +1982,6 @@ export function createRouter(deps: ApiDeps): Router {
   registerOrganisationRoutes(router, deps);
   registerTeamRoutes(router, deps);
   registerQueueRoutes(router, deps);
-
 
   return router;
 }

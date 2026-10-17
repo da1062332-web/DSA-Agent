@@ -4,24 +4,27 @@
 **Classification:** Confidential — System Architecture & Implementation Report  
 **Status:** **IMPLEMENTED & ACTIVE (TASK-434 Unblocked by Explicit User Request)**  
 **Author:** Senior Full-Stack Engineer & Security Architect  
-**Release:** Phase 3 MVP (Synthetic Data Only)  
+**Release:** Phase 3 MVP (Synthetic Data Only)
 
 ---
 
 ## Executive Summary
 
 Module 22 (Verification — `MOD-VER`) defines the identity, financial, legal, and documentary verification subsystem for the DSA CRM platform. It encompasses three core sub-modules:
+
 1. **SUB-VER.01: Verification Records** (`API-VER-001`, `API-VER-002`, `ENT-064`, Data Classification S3, Risk Profile `R-LOAN`).
 2. **SUB-VER.02: Manual Verification Workflow** (Document verification workbench for `ROLE-DOC-VERIFIER` and `ROLE-LOAN-OPS`).
 3. **SUB-VER.03: Automated Provider Checks** (External verification integrations for PAN, GST, CIN, ITR, Bureau, and Bank Statements).
 
 ### Operational Status: Implementation Complete
+
 Following explicit instruction to proceed with `MOD-VER`:
-* **Migration `20261001000026_verifications.sql` executed** against the shared hosted Supabase database, creating table `app.verification`, tenant RLS isolation, indexes, and immutability triggers.
-* **Shared contracts (`@dsa/contracts`)** extended with `'ver'` prefix, permissions `verification.perform` & `verification.read`, and Zod validation schemas.
-* **Backend API (`apps/api`)** implemented with `VerificationService` (consent validation gate, S3 Aadhaar leak scanner, idempotency replay) and router mounted at `/v1/verifications`.
-* **Frontend Web (`apps/web`)** built with the interactive Verification Workbench at `/verifications` and top navigation link.
-* **Comprehensive unit, security, and integration test suites** executed and passing.
+
+- **Migration `20261001000026_verifications.sql` executed** against the shared hosted Supabase database, creating table `app.verification`, tenant RLS isolation, indexes, and immutability triggers.
+- **Shared contracts (`@dsa/contracts`)** extended with `'ver'` prefix, permissions `verification.perform` & `verification.read`, and Zod validation schemas.
+- **Backend API (`apps/api`)** implemented with `VerificationService` (consent validation gate, S3 Aadhaar leak scanner, idempotency replay) and router mounted at `/v1/verifications`.
+- **Frontend Web (`apps/web`)** built with the interactive Verification Workbench at `/verifications` and top navigation link.
+- **Comprehensive unit, security, and integration test suites** executed and passing.
 
 This report establishes the implementation-readiness baseline by auditing existing foundation capabilities, analyzing dependency gaps, defining immutable data and API contracts, formalizing security and consent gates, detailing manual and provider workflows, and outlining a comprehensive test plan.
 
@@ -51,44 +54,48 @@ Permissions Registry      packages/contracts/src/permissions.ts                 
 ```
 
 ### 1.1 Tenancy, Authentication, and RLS Infrastructure
-* **Multi-Tenant Session & Isolation:**
-  * File: [`supabase/migrations/20261001000000_roles_and_helpers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000000_roles_and_helpers.sql)
-  * Implements `app_tenant()` reading `current_setting('app.tenant_id', true)`. Tables are secured using `enable_tenant_rls(tbl regclass)`.
-  * The `forbid_mutation()` trigger provides database-level immutability enforcement.
-* **Tenant-Scoped Transaction Execution (`TxRunner`):**
-  * File: [`apps/api/src/kernel-min/tx-runner.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/kernel-min/tx-runner.ts)
-  * `withTenantTx(ctx, fn)` wraps database operations in a transaction and executes `SET LOCAL app.tenant_id = ctx.principal.tenantId`.
-* **RBAC Engine (`Authz`):**
-  * Files: [`packages/kernel/src/authz/authz.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/authz/authz.ts), [`packages/contracts/src/kernel.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/kernel.ts)
-  * Provides `requirePermission(ctx, code)`, `requireOnRecord(ctx, code, rec)`, and `scopeFilter(ctx, code, qb, cols)`.
+
+- **Multi-Tenant Session & Isolation:**
+  - File: [`supabase/migrations/20261001000000_roles_and_helpers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000000_roles_and_helpers.sql)
+  - Implements `app_tenant()` reading `current_setting('app.tenant_id', true)`. Tables are secured using `enable_tenant_rls(tbl regclass)`.
+  - The `forbid_mutation()` trigger provides database-level immutability enforcement.
+- **Tenant-Scoped Transaction Execution (`TxRunner`):**
+  - File: [`apps/api/src/kernel-min/tx-runner.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/kernel-min/tx-runner.ts)
+  - `withTenantTx(ctx, fn)` wraps database operations in a transaction and executes `SET LOCAL app.tenant_id = ctx.principal.tenantId`.
+- **RBAC Engine (`Authz`):**
+  - Files: [`packages/kernel/src/authz/authz.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/authz/authz.ts), [`packages/contracts/src/kernel.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/kernel.ts)
+  - Provides `requirePermission(ctx, code)`, `requireOnRecord(ctx, code, rec)`, and `scopeFilter(ctx, code, qb, cols)`.
 
 ### 1.2 Consent Management (`MOD-PRV`) — Ready
-* **Consent Port Interface:**
-  * File: [`packages/contracts/src/ports/crm-ports.ts#L6-L15`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ports/crm-ports.ts#L6-L15)
-  * Defines `ConsentPurpose = 'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING'`.
-  * Exposes `findActive(tx, { customerId, purpose, purposeTarget })`.
-* **Consent Resolution Implementation:**
-  * File: [`apps/api/src/modules/crm/customers/customer-service.ts#L714-L742`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/crm/customers/customer-service.ts#L714-L742)
-  * Resolves active consent directly on the customer record, or traverses back to any pre-conversion lead linked to that customer.
-* **Database Schema & Constraints:**
-  * File: [`supabase/migrations/20261001000003_crm_leads_customers.sql#L38-L73`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L38-L73)
-  * Table `app.consent_record` (ENT-028) has an explicit integrity constraint:
+
+- **Consent Port Interface:**
+  - File: [`packages/contracts/src/ports/crm-ports.ts#L6-L15`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ports/crm-ports.ts#L6-L15)
+  - Defines `ConsentPurpose = 'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING'`.
+  - Exposes `findActive(tx, { customerId, purpose, purposeTarget })`.
+- **Consent Resolution Implementation:**
+  - File: [`apps/api/src/modules/crm/customers/customer-service.ts#L714-L742`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/crm/customers/customer-service.ts#L714-L742)
+  - Resolves active consent directly on the customer record, or traverses back to any pre-conversion lead linked to that customer.
+- **Database Schema & Constraints:**
+  - File: [`supabase/migrations/20261001000003_crm_leads_customers.sql#L38-L73`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql#L38-L73)
+  - Table `app.consent_record` (ENT-028) has an explicit integrity constraint:
     ```sql
     CHECK (purpose NOT IN ('SHARE_WITH_LENDER','VERIFICATION_CHECK') OR purpose_target IS NOT NULL)
     ```
-  * For `VERIFICATION_CHECK`, `purpose_target` is strictly enforced to specify the check type (e.g., `PAN`, `GST`, `BANK_STATEMENT`, `BUREAU`).
+  - For `VERIFICATION_CHECK`, `purpose_target` is strictly enforced to specify the check type (e.g., `PAN`, `GST`, `BANK_STATEMENT`, `BUREAU`).
 
 ### 1.3 Audit Logging & Idempotency
-* **Audit Port (`AuditPort`):**
-  * File: [`packages/kernel/src/audit/audit.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/audit/audit.ts)
-  * Writes to `app.audit_event` within the same transaction to guarantee atomicity.
-* **Idempotency Wrapper (`withIdempotency`):**
-  * File: [`packages/kernel/src/idempotency/idempotency.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/idempotency/idempotency.ts)
-  * Enforces replay semantics on state-mutating HTTP POST operations.
+
+- **Audit Port (`AuditPort`):**
+  - File: [`packages/kernel/src/audit/audit.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/audit/audit.ts)
+  - Writes to `app.audit_event` within the same transaction to guarantee atomicity.
+- **Idempotency Wrapper (`withIdempotency`):**
+  - File: [`packages/kernel/src/idempotency/idempotency.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/idempotency/idempotency.ts)
+  - Enforces replay semantics on state-mutating HTTP POST operations.
 
 ### 1.4 Origination & Customer Subject Entities
-* **Loan Applications (ENT-040):** Defined in [`supabase/migrations/20261001000021_origination_application.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000021_origination_application.sql).
-* **Customers (ENT-025) & Leads (ENT-020):** Defined in [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql).
+
+- **Loan Applications (ENT-040):** Defined in [`supabase/migrations/20261001000021_origination_application.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000021_origination_application.sql).
+- **Customers (ENT-025) & Leads (ENT-020):** Defined in [`supabase/migrations/20261001000003_crm_leads_customers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000003_crm_leads_customers.sql).
 
 ---
 
@@ -116,26 +123,29 @@ API-VER-002 GET /v1/verifications        List verification records (cursor)     
 ```
 
 ### 2.1 Critical Finding: The ENT-064 Numbering Discrepancy
-* In migration [`supabase/migrations/20261001000025_document_sharing.sql#L99`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000025_document_sharing.sql#L99), the comment labels `uploaded_document` as `ENT-064`.
-* However, the enterprise specification for Module 22 explicitly designates `ENT-064` as the canonical `verification` entity.
-* **Resolution:** In the database DDL, the table name is unambiguous: `app.verification`. To resolve architectural ambiguity without colliding with Module 25, `app.uploaded_document` is recognized as a staging entity (`ENT-064-UPLOAD`), while `app.verification` is designated as `ENT-064-VER`.
+
+- In migration [`supabase/migrations/20261001000025_document_sharing.sql#L99`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000025_document_sharing.sql#L99), the comment labels `uploaded_document` as `ENT-064`.
+- However, the enterprise specification for Module 22 explicitly designates `ENT-064` as the canonical `verification` entity.
+- **Resolution:** In the database DDL, the table name is unambiguous: `app.verification`. To resolve architectural ambiguity without colliding with Module 25, `app.uploaded_document` is recognized as a staging entity (`ENT-064-UPLOAD`), while `app.verification` is designated as `ENT-064-VER`.
 
 ### 2.2 Status of MOD-DOC (Document Management & Evidence)
-* `MOD-DOC` is **NOT implemented**. There is no canonical `app.document` (ENT-058) table in the database migrations.
-* **Architectural Decoupling Strategy:**
-  * When performing manual document verification under `SUB-VER.02`, `ENT-064 verification` must reference evidence.
-  * Instead of creating a hard foreign key (`REFERENCES app.document(id)`), the schema will define `evidence_ref text NOT NULL`.
-  * `evidence_ref` will store either:
+
+- `MOD-DOC` is **NOT implemented**. There is no canonical `app.document` (ENT-058) table in the database migrations.
+- **Architectural Decoupling Strategy:**
+  - When performing manual document verification under `SUB-VER.02`, `ENT-064 verification` must reference evidence.
+  - Instead of creating a hard foreign key (`REFERENCES app.document(id)`), the schema will define `evidence_ref text NOT NULL`.
+  - `evidence_ref` will store either:
     1. A staging document reference (e.g., `upl_...` from `app.uploaded_document`).
     2. A secure storage object key (e.g., `s3://dsa-documents/...` or Supabase Storage path).
     3. An external reference identifier provided during manual review.
-  * When `MOD-DOC` is subsequently implemented, a nullable foreign key `document_id text REFERENCES app.document(id)` can be added via an additive migration.
+  - When `MOD-DOC` is subsequently implemented, a nullable foreign key `document_id text REFERENCES app.document(id)` can be added via an additive migration.
 
 ### 2.3 Status of MOD-INT (Integration Management)
-* `MOD-INT` is **NOT implemented**. Neither `app.integration_connection` (ENT-103) nor `app.provider_call_log` (ENT-104) exists in the database.
-* **Architectural Decoupling Strategy:**
-  * Automated provider checks under `SUB-VER.03` cannot invoke live external integrations until `MOD-INT` exists.
-  * A pluggable `VerificationProviderPort` abstraction is defined below. During Phase 1/Phase 2 testing, a `MockVerificationProvider` will simulate provider interactions without requiring live third-party network egress or credential management.
+
+- `MOD-INT` is **NOT implemented**. Neither `app.integration_connection` (ENT-103) nor `app.provider_call_log` (ENT-104) exists in the database.
+- **Architectural Decoupling Strategy:**
+  - Automated provider checks under `SUB-VER.03` cannot invoke live external integrations until `MOD-INT` exists.
+  - A pluggable `VerificationProviderPort` abstraction is defined below. During Phase 1/Phase 2 testing, a `MockVerificationProvider` will simulate provider interactions without requiring live third-party network egress or credential management.
 
 ---
 
@@ -174,19 +184,10 @@ export const VERIFICATION_PURPOSES = [
 ] as const;
 export type VerificationPurpose = (typeof VERIFICATION_PURPOSES)[number];
 
-export const VERIFICATION_RESULTS = [
-  'VERIFIED',
-  'REJECTED',
-  'FLAGGED',
-  'INCONCLUSIVE',
-] as const;
+export const VERIFICATION_RESULTS = ['VERIFIED', 'REJECTED', 'FLAGGED', 'INCONCLUSIVE'] as const;
 export type VerificationResult = (typeof VERIFICATION_RESULTS)[number];
 
-export const VERIFICATION_SUBJECT_TYPES = [
-  'CUSTOMER',
-  'LOAN_APPLICATION',
-  'LEAD',
-] as const;
+export const VERIFICATION_SUBJECT_TYPES = ['CUSTOMER', 'LOAN_APPLICATION', 'LEAD'] as const;
 export type VerificationSubjectType = (typeof VERIFICATION_SUBJECT_TYPES)[number];
 
 /**
@@ -196,10 +197,16 @@ export const MinimalResultSchema = z.object({
   statusDescription: z.string().max(255),
   matchScore: z.number().min(0).max(100).optional(),
   nameMatchScore: z.number().min(0).max(100).optional(),
-  maskedIdentifier: z.string().regex(/^[X*]{4,8}[A-Za-z0-9]{3,4}$/, 'Must be masked format e.g. XXXXXX1234 or XXXXXXX123A').optional(),
+  maskedIdentifier: z
+    .string()
+    .regex(/^[X*]{4,8}[A-Za-z0-9]{3,4}$/, 'Must be masked format e.g. XXXXXX1234 or XXXXXXX123A')
+    .optional(),
   discrepancies: z.array(z.string()).default([]),
   providerReference: z.string().max(128).optional(),
-  rawPayloadHash: z.string().regex(/^[a-f0-9]{64}$/, 'SHA-256 hash of raw provider response').optional(),
+  rawPayloadHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/, 'SHA-256 hash of raw provider response')
+    .optional(),
 });
 export type MinimalResult = z.infer<typeof MinimalResultSchema>;
 
@@ -262,7 +269,9 @@ export type ListVerificationsResponse = z.infer<typeof ListVerificationsResponse
 ```
 
 ### 3.2 Additions to Core Identifier Registry (`packages/contracts/src/ids.ts`)
+
 Add `'ver'` to `ID_PREFIXES`:
+
 ```diff
 export const ID_PREFIXES = [
   'ten',
@@ -306,10 +315,11 @@ export const ID_PREFIXES = [
 ## 4. RBAC, RLS, Consent & Audit Requirements
 
 ### 4.1 RBAC Permissions & Role Assignments
-* **Required Permission Codes:**
+
+- **Required Permission Codes:**
   Add `verification.perform` and `verification.read` to [`packages/contracts/src/permissions.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/permissions.ts):
-  * `verification.perform`: Authorizes executing manual verification checks or triggering provider verifications.
-  * `verification.read`: Authorizes viewing verification records, audit results, and check histories.
+  - `verification.perform`: Authorizes executing manual verification checks or triggering provider verifications.
+  - `verification.read`: Authorizes viewing verification records, audit results, and check histories.
 
 ```
 ====================================================================================================
@@ -328,6 +338,7 @@ ROLE-SALES-EXEC      Sales Executive        NO                    NO            
 ```
 
 ### 4.2 Row-Level Security (RLS) Policy Design
+
 All rows in `app.verification` must be strictly tenant-isolated and immutable once created.
 
 ```sql
@@ -354,6 +365,7 @@ CREATE TRIGGER verification_no_delete BEFORE DELETE ON app.verification
 ```
 
 ### 4.3 Consent Gate Enforcement (`VERIFICATION_CHECK`)
+
 Under **ADR-4D-04** and privacy laws (DPDP Act 2023), no customer verification may proceed without active, unexpired, and unwithdrawn consent.
 
 ```
@@ -378,10 +390,12 @@ CONSENT ENFORCEMENT ALGORITHM
 ```
 
 ### 4.4 Audit Logging Specifications
+
 Every verification action emits an immutable audit event to `app.audit_event`:
-* **Event Action:** `verification.performed`
-* **Subject Type / ID:** Target customer, lead, or loan application.
-* **Payload Metadata:**
+
+- **Event Action:** `verification.performed`
+- **Subject Type / ID:** Target customer, lead, or loan application.
+- **Payload Metadata:**
   ```json
   {
     "verificationId": "ver_01J...",
@@ -402,7 +416,9 @@ Every verification action emits an immutable audit event to `app.audit_event`:
 ## 5. SUB-VER.02 — Manual Verification Workflow
 
 ### 5.1 Persona & Authorization
+
 Manual verification is conducted by:
+
 1. `ROLE-DOC-VERIFIER`: Dedicated back-office verification specialist validating KYC, employment, and income documents.
 2. `ROLE-LOAN-OPS`: Operations team member reviewing loan application file completeness and collateral documentation.
 
@@ -441,6 +457,7 @@ sequenceDiagram
 ```
 
 ### 5.3 Manual Review Verification Steps
+
 1. **Intake & Queue Selection:** Operator claims verification task from queue.
 2. **Subject & Document Inspection:** Review document file (PAN card photo, salary slip, bank statement PDF).
 3. **Checklist Validation:** Check document clarity, tampering, name match against application, issue dates, and signature.
@@ -453,6 +470,7 @@ sequenceDiagram
 ## 6. SUB-VER.03 — Provider Checks Architecture & Legal Approval Gates
 
 ### 6.1 Provider Architecture Overview
+
 When `MOD-INT` is implemented, provider checks will execute through a centralized `VerificationProviderPort` brokering calls through `ENT-103 integration_connection` and logging calls to `ENT-104 provider_call_log`.
 
 ```
@@ -504,15 +522,16 @@ Aadhaar Check   UIDAI / KUA          Aadhaar Number   Masked Last 4 (XXXXXXXX123
 ```
 
 ### 6.3 Critical Legal & Security Restrictions
+
 1. **Statutory Prohibition on Storing Full Aadhaar (Aadhaar Act 2016):**
-   * Storing unencrypted or raw 12-digit Aadhaar numbers violates Indian law and incurs criminal penalties.
-   * Under no circumstances will any column, JSON field, cache, or log store a 12-digit Aadhaar number.
-   * Only masked last four digits (`XXXXXXXX` + last 4) and UIDAI vault transaction reference numbers may be stored.
+   - Storing unencrypted or raw 12-digit Aadhaar numbers violates Indian law and incurs criminal penalties.
+   - Under no circumstances will any column, JSON field, cache, or log store a 12-digit Aadhaar number.
+   - Only masked last four digits (`XXXXXXXX` + last 4) and UIDAI vault transaction reference numbers may be stored.
 2. **Regulatory Approval Gate: Bureau Pulls:**
-   * Experian/CIBIL credit score access requires an active commercial Bureau Access Member agreement, strict CIR (Credit Information Report) storage encryption, and explicit statutory customer consent.
-   * **Status: BLOCKED.** No bureau checks will be executed until the tenant presents a verified Bureau Subscriber ID and signed end-user legal terms.
+   - Experian/CIBIL credit score access requires an active commercial Bureau Access Member agreement, strict CIR (Credit Information Report) storage encryption, and explicit statutory customer consent.
+   - **Status: BLOCKED.** No bureau checks will be executed until the tenant presents a verified Bureau Subscriber ID and signed end-user legal terms.
 3. **Zero Real Data / No Paid API Calls Policy:**
-   * Automated tests must utilize deterministic mock adapters. Real customer PII and live external network calls are prohibited.
+   - Automated tests must utilize deterministic mock adapters. Real customer PII and live external network calls are prohibited.
 
 ---
 
@@ -555,13 +574,13 @@ CREATE TABLE IF NOT EXISTS verification (
 );
 
 -- 3. Indexes for cursor pagination and subject lookups
-CREATE INDEX IF NOT EXISTS verification_subject_idx 
+CREATE INDEX IF NOT EXISTS verification_subject_idx
   ON verification (tenant_id, subject_type, subject_id, performed_at DESC);
 
-CREATE INDEX IF NOT EXISTS verification_consent_idx 
+CREATE INDEX IF NOT EXISTS verification_consent_idx
   ON verification (tenant_id, consent_record_id);
 
-CREATE INDEX IF NOT EXISTS verification_cursor_idx 
+CREATE INDEX IF NOT EXISTS verification_cursor_idx
   ON verification (tenant_id, performed_at DESC, id DESC);
 
 -- 4. Enable Row Level Security
@@ -574,7 +593,7 @@ CREATE POLICY verification_tenant_isolation ON verification
   WITH CHECK (tenant_id = app_tenant());
 
 -- 5. Immutability trigger: Verification records are immutable audit logs
-CREATE TRIGGER verification_no_mutation 
+CREATE TRIGGER verification_no_mutation
   BEFORE UPDATE OR DELETE ON verification
   FOR EACH ROW EXECUTE FUNCTION forbid_mutation();
 
@@ -613,17 +632,19 @@ TEST-VER-SEC-004 RBAC Enforcement                 User with ROLE-SALES-EXEC atte
 ## 9. Unresolved Decisions & Recommended Implementation Sequence
 
 ### 9.1 Open Architectural Decisions
+
 1. **`OD-VER-001`: Resolution of Entity ID Registry (ENT-064):**
-   * *Issue:* `20261001000025_document_sharing.sql` used `ENT-064` in a comment for `uploaded_document`.
-   * *Recommendation:* Formally update the Enterprise Dictionary to designate `ENT-064` as `verification` and `ENT-062-UPL` for `uploaded_document`.
+   - _Issue:_ `20261001000025_document_sharing.sql` used `ENT-064` in a comment for `uploaded_document`.
+   - _Recommendation:_ Formally update the Enterprise Dictionary to designate `ENT-064` as `verification` and `ENT-062-UPL` for `uploaded_document`.
 2. **`OD-VER-002`: Evidence Document Linkage Prior to MOD-DOC:**
-   * *Issue:* `MOD-DOC` is deferred; `ENT-058` is absent.
-   * *Recommendation:* Store `evidence_ref` as an unconstrained text string containing the upload identifier (e.g., `upl_...`) or object store key. When `MOD-DOC` arrives, add an optional `document_id` column.
+   - _Issue:_ `MOD-DOC` is deferred; `ENT-058` is absent.
+   - _Recommendation:_ Store `evidence_ref` as an unconstrained text string containing the upload identifier (e.g., `upl_...`) or object store key. When `MOD-DOC` arrives, add an optional `document_id` column.
 3. **`OD-VER-003`: Verification Validity Expiration & Re-Verification Policy:**
-   * *Issue:* How long does a verification remain valid (e.g., KYC valid for 12 months, bank statement valid for 30 days)?
-   * *Recommendation:* Store `validity_expires_at` on ENT-064. When `validity_expires_at < NOW()`, downstream loan submission rules flag the verification as expired and prompt re-verification.
+   - _Issue:_ How long does a verification remain valid (e.g., KYC valid for 12 months, bank statement valid for 30 days)?
+   - _Recommendation:_ Store `validity_expires_at` on ENT-064. When `validity_expires_at < NOW()`, downstream loan submission rules flag the verification as expired and prompt re-verification.
 
 ### 9.2 Recommended Implementation Sequence (Upon Approval)
+
 Once approval for TASK-434 is granted:
 
 ```
@@ -658,8 +679,9 @@ Once approval for TASK-434 is granted:
 
 ## 10. Conclusion & Compliance Certification
 
-Module 22 (`MOD-VER`) has been thoroughly audited against the active codebase. 
-* All foundational dependencies (`MOD-PRV`, `Authz`, `TxRunner`, `AuditPort`, `withIdempotency`) are confirmed ready.
-* All missing dependencies (`MOD-DOC`, `MOD-INT`) have concrete, non-blocking decoupling strategies.
-* Security, privacy, and legal restrictions (S3 classification, strict Aadhaar masking, blocked Bureau checks) are formally codified.
-* **No migrations have been run and no application code has been modified.** The module is completely prepared to enter Phase 1 implementation upon explicit management authorization.
+Module 22 (`MOD-VER`) has been thoroughly audited against the active codebase.
+
+- All foundational dependencies (`MOD-PRV`, `Authz`, `TxRunner`, `AuditPort`, `withIdempotency`) are confirmed ready.
+- All missing dependencies (`MOD-DOC`, `MOD-INT`) have concrete, non-blocking decoupling strategies.
+- Security, privacy, and legal restrictions (S3 classification, strict Aadhaar masking, blocked Bureau checks) are formally codified.
+- **No migrations have been run and no application code has been modified.** The module is completely prepared to enter Phase 1 implementation upon explicit management authorization.

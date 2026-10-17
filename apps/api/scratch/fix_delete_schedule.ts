@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   await sql`
     GRANT DELETE ON app.report_schedule TO dsa_app;
   `.execute(db);

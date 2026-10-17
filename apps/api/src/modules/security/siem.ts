@@ -76,7 +76,10 @@ export class BufferedSiemClient implements SiemPort {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`SIEM request timed out after ${this.timeoutMs}ms`)), this.timeoutMs),
+          setTimeout(
+            () => reject(new Error(`SIEM request timed out after ${this.timeoutMs}ms`)),
+            this.timeoutMs,
+          ),
         );
         const result = await Promise.race([this.transport(event), timeoutPromise]);
         return {
@@ -124,7 +127,7 @@ export function createSplunkHecTransport(opts: {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Splunk ${opts.token}`,
+        Authorization: `Splunk ${opts.token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
@@ -190,7 +193,7 @@ export function createWebhookSiemTransport(opts: {
   return async (event: SiemEvent) => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(opts.authToken ? { 'Authorization': `Bearer ${opts.authToken}` } : {}),
+      ...(opts.authToken ? { Authorization: `Bearer ${opts.authToken}` } : {}),
       ...(opts.headers ?? {}),
     };
 

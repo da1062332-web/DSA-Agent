@@ -6,7 +6,7 @@
 **Evaluation Date:** 2026-10-14  
 **Active Branch:** `samarth`  
 **Evaluation Lead:** Senior Full-Stack Engineer, Domain Architect, and QA Automation Lead  
-**Document Status:** `FINAL CLOSURE ASSESSMENT`  
+**Document Status:** `FINAL CLOSURE ASSESSMENT`
 
 ---
 
@@ -27,11 +27,11 @@ This document provides the definitive final closure assessment of `MOD-PERF` (Te
 
 ## 2. Verification of Prerequisites: TASK-428, TASK-414, and MOD-ORG
 
-| Prerequisite | Status in Codebase & Manifest | Verification Details & Evidence |
-|---|---|---|
-| **TASK-428** (MOD-PERF SUB-PERF.01 Targets) | **`COMPLETED`** | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L26) under Migration `M-028` (`20261001000028_targets.sql`). Implemented in `apps/api/src/modules/crm/targets/` and `apps/web/src/features/targets/`. 17 API unit/contract tests and 6 live PostgreSQL tests pass. |
-| **TASK-414** (MOD-RPT Canonical Reporting) | **`COMPLETED`** | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L27) under Migration `M-029` (`20261001000029_reporting.sql`) and `M-036` (`20261001000036_report_manage_permission.sql`). Implemented in `apps/api/src/modules/reporting/` and consumed by `apps/web/src/features/performance/`. 16 API tests and 4 live PostgreSQL tests pass. |
-| **MOD-ORG** (Platform & Organizational Hierarchy) | **`COMPLETED`** | Implemented under Module 2 in `apps/api/src/modules/platform/` (`organisation.ts`, `branches.ts`, `teams.ts`, `queues.ts`). Verified in `apps/api/test/platform.spec.ts`. Supplies organizational and branch scoping consumed by target and reporting authorization. |
+| Prerequisite                                      | Status in Codebase & Manifest | Verification Details & Evidence                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **TASK-428** (MOD-PERF SUB-PERF.01 Targets)       | **`COMPLETED`**               | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L26) under Migration `M-028` (`20261001000028_targets.sql`). Implemented in `apps/api/src/modules/crm/targets/` and `apps/web/src/features/targets/`. 17 API unit/contract tests and 6 live PostgreSQL tests pass.                                                               |
+| **TASK-414** (MOD-RPT Canonical Reporting)        | **`COMPLETED`**               | Registered in [supabase/MANIFEST.md](supabase/MANIFEST.md#L27) under Migration `M-029` (`20261001000029_reporting.sql`) and `M-036` (`20261001000036_report_manage_permission.sql`). Implemented in `apps/api/src/modules/reporting/` and consumed by `apps/web/src/features/performance/`. 16 API tests and 4 live PostgreSQL tests pass. |
+| **MOD-ORG** (Platform & Organizational Hierarchy) | **`COMPLETED`**               | Implemented under Module 2 in `apps/api/src/modules/platform/` (`organisation.ts`, `branches.ts`, `teams.ts`, `queues.ts`). Verified in `apps/api/test/platform.spec.ts`. Supplies organizational and branch scoping consumed by target and reporting authorization.                                                                       |
 
 ---
 
@@ -94,36 +94,40 @@ This document provides the definitive final closure assessment of `MOD-PERF` (Te
 
 Inspection of [docs/adr/ADR-012-leaderboard-scoring-policy.md](docs/adr/ADR-012-leaderboard-scoring-policy.md) confirms that all nine scoring policy decisions remain with status `PROPOSED — NOT APPROVED`:
 
-| # | Governance Decision Dimension | Proposed Specification in ADR-012 | Designated Decision Owner | Current Policy Status |
-|---|---|---|---|---|
-| **1** | **Scorecard Weights** | Activity: 20%, Outcomes: 50%, Quality: 30% | Product Head & Sales Strategy | `PROPOSED — NOT APPROVED` |
-| **2** | **Minimum Volume Threshold** | Minimum 10 Leads Handled AND 5 Closed Outcome Records per period; below threshold labeled `INSUFFICIENT_DATA` | Product Head | `PROPOSED — NOT APPROVED` |
-| **3** | **Early Default Rate (EDR) Penalty** | EDR > 2.0% on 90-day portfolio: -15% score haircut if 2-4% EDR; disqualification if > 4% EDR | Head of Credit & Risk | `PROPOSED — NOT APPROVED` |
-| **4** | **First Payment Default (FPD) Rule** | Zero tolerance: immediate disqualification from leaderboard awards on confirmed FPD | Credit Policy Committee | `PROPOSED — NOT APPROVED` |
-| **5** | **Application Rejection Rate Haircut** | Declines > 20%: -10% deduction from Outcome score | Operations Head | `PROPOSED — NOT APPROVED` |
-| **6** | **Deterministic Tie-Breaking** | 1st: Quality Score, 2nd: Outcome Score, 3rd: Shared Rank | Product Head | `PROPOSED — NOT APPROVED` |
-| **7** | **Role & Peer Visibility** | Full name/volume visible within own branch; peer records anonymized outside branch | Compliance & HR | `PROPOSED — NOT APPROVED` |
-| **8** | **Product Normalization** | Target-relative achievement percentage used for scoring rather than raw rupee volume (LAP vs Business Loans) | Sales Strategy | `PROPOSED — NOT APPROVED` |
-| **9** | **Cycle Reset & Carry-Over** | Independent monthly and quarterly cycles; zero carry-over of rank or score between periods | Performance Committee | `PROPOSED — NOT APPROVED` |
+| #     | Governance Decision Dimension          | Proposed Specification in ADR-012                                                                             | Designated Decision Owner     | Current Policy Status     |
+| ----- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------- |
+| **1** | **Scorecard Weights**                  | Activity: 20%, Outcomes: 50%, Quality: 30%                                                                    | Product Head & Sales Strategy | `PROPOSED — NOT APPROVED` |
+| **2** | **Minimum Volume Threshold**           | Minimum 10 Leads Handled AND 5 Closed Outcome Records per period; below threshold labeled `INSUFFICIENT_DATA` | Product Head                  | `PROPOSED — NOT APPROVED` |
+| **3** | **Early Default Rate (EDR) Penalty**   | EDR > 2.0% on 90-day portfolio: -15% score haircut if 2-4% EDR; disqualification if > 4% EDR                  | Head of Credit & Risk         | `PROPOSED — NOT APPROVED` |
+| **4** | **First Payment Default (FPD) Rule**   | Zero tolerance: immediate disqualification from leaderboard awards on confirmed FPD                           | Credit Policy Committee       | `PROPOSED — NOT APPROVED` |
+| **5** | **Application Rejection Rate Haircut** | Declines > 20%: -10% deduction from Outcome score                                                             | Operations Head               | `PROPOSED — NOT APPROVED` |
+| **6** | **Deterministic Tie-Breaking**         | 1st: Quality Score, 2nd: Outcome Score, 3rd: Shared Rank                                                      | Product Head                  | `PROPOSED — NOT APPROVED` |
+| **7** | **Role & Peer Visibility**             | Full name/volume visible within own branch; peer records anonymized outside branch                            | Compliance & HR               | `PROPOSED — NOT APPROVED` |
+| **8** | **Product Normalization**              | Target-relative achievement percentage used for scoring rather than raw rupee volume (LAP vs Business Loans)  | Sales Strategy                | `PROPOSED — NOT APPROVED` |
+| **9** | **Cycle Reset & Carry-Over**           | Independent monthly and quarterly cycles; zero carry-over of rank or score between periods                    | Performance Committee         | `PROPOSED — NOT APPROVED` |
 
 ---
 
 ## 5. Security Controls, Governance, and Database Integrity Evidence
 
 ### 5.1 Target Creator-Approver Separation of Duties (`SOD-04`)
+
 - **Application Layer:** `TargetService.approveTarget` verifies `target.createdBy !== ctx.principal.userId`, throwing 403 `SOD_VIOLATION` (`apps/api/test/targets.spec.ts:TC-PERF-007`).
 - **Database Layer:** Check constraint `target_creator_approver_diff_chk` in `app.target` table prevents `approved_by = created_by` at the SQL level (`apps/api/test/targets.pg.int.spec.ts:PG-PERF-002`).
 
 ### 5.2 Tenant Isolation and RLS
+
 - **PostgreSQL RLS:** Row-Level Security enabled on `app.target` and `app.rpt_daily_operational_summary`.
 - **Fail-Closed Verification:** Queries executed as `dsa_api` without `app.tenant_id` set return 0 rows (`PG-RPT-003`, `PG-PERF-003`).
 - **Database Exposure Check:** Verification confirms `anon` and `authenticated` Supabase roles have zero access to schema `app` (`tools/verify-migrations.ts` check e).
 
 ### 5.3 Least-Privilege Refresh Authorization
+
 - `POST /v1/reporting/refresh` requires `report.manage` or `config.manage` permission (`M-031`).
 - Callers possessing only `report.read` receive 403 `FORBIDDEN` (`TC-RPT-014`).
 
 ### 5.4 Audit Trail Integrity
+
 - Target creation writes `TARGET_CREATED` audit event (`PG-PERF-004`).
 - Target approval writes `TARGET_APPROVED` audit event (`PG-PERF-004`).
 - Audit rows are written within the same database transaction to `app.audit_event` (Retention: `R-OPS`).
@@ -134,17 +138,17 @@ Inspection of [docs/adr/ADR-012-leaderboard-scoring-policy.md](docs/adr/ADR-012-
 
 An audit was conducted comparing [reports/qa/mod-perf-implementation-report.md](reports/qa/mod-perf-implementation-report.md), [reports/qa/mod-perf-test-cases.csv](reports/qa/mod-perf-test-cases.csv), and the actual codebase.
 
-| Audit Dimension | Implementation Report Claim | Actual Repository State | Discrepancy Found? |
-|---|---|---|---|
-| **API Test Suite Count** | 406 passed across 31 files | 406 passed across 31 files (`npm test -w @dsa/api`) | **None — Exact Match** |
-| **Live PG Integration Test Count** | 10 passed across 2 files | 10 passed across 2 files (`npm run test:int -- test/reporting.pg.int.spec.ts test/targets.pg.int.spec.ts`) | **None — Exact Match** |
-| **Web Frontend Test Count** | 96 passed across 20 files | 96 passed across 20 files (`npm test -w @dsa/web`) | **None — Exact Match** |
-| **Database Verification Checks** | 5/5 checks passed | 5/5 checks passed (`npm run db:verify`) | **None — Exact Match** |
-| **OpenAPI Specification** | Up to date in `openapi/openapi.yaml` | Matches endpoints and schemas (`npm run gen:openapi`) | **None — Exact Match** |
-| **Workspace Typecheck** | 0 errors across 6 workspaces | 0 errors (`npm run typecheck`) | **None — Exact Match** |
-| **Production Build** | `@dsa/api` and `@dsa/web` built | Build succeeds (`npm run build`) | **None — Exact Match** |
-| **Git Tracking of QA Reports** | Reports documented in `reports/qa/` | `reports/` is listed in `.gitignore` (line 25), so reports exist locally on disk but are not tracked in git commits | **Documented Architecture Pattern** |
-| **Repository ESLint Status** | All performance/reporting code clean | All MOD-PERF, MOD-RPT, and Targets files pass ESLint with 0 errors. Pre-existing lint errors exist in legacy modules (`lender-cases`, `users`, `tasks`) | **Documented Pre-existing Condition** |
+| Audit Dimension                    | Implementation Report Claim          | Actual Repository State                                                                                                                                 | Discrepancy Found?                    |
+| ---------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **API Test Suite Count**           | 406 passed across 31 files           | 406 passed across 31 files (`npm test -w @dsa/api`)                                                                                                     | **None — Exact Match**                |
+| **Live PG Integration Test Count** | 10 passed across 2 files             | 10 passed across 2 files (`npm run test:int -- test/reporting.pg.int.spec.ts test/targets.pg.int.spec.ts`)                                              | **None — Exact Match**                |
+| **Web Frontend Test Count**        | 96 passed across 20 files            | 96 passed across 20 files (`npm test -w @dsa/web`)                                                                                                      | **None — Exact Match**                |
+| **Database Verification Checks**   | 5/5 checks passed                    | 5/5 checks passed (`npm run db:verify`)                                                                                                                 | **None — Exact Match**                |
+| **OpenAPI Specification**          | Up to date in `openapi/openapi.yaml` | Matches endpoints and schemas (`npm run gen:openapi`)                                                                                                   | **None — Exact Match**                |
+| **Workspace Typecheck**            | 0 errors across 6 workspaces         | 0 errors (`npm run typecheck`)                                                                                                                          | **None — Exact Match**                |
+| **Production Build**               | `@dsa/api` and `@dsa/web` built      | Build succeeds (`npm run build`)                                                                                                                        | **None — Exact Match**                |
+| **Git Tracking of QA Reports**     | Reports documented in `reports/qa/`  | `reports/` is listed in `.gitignore` (line 25), so reports exist locally on disk but are not tracked in git commits                                     | **Documented Architecture Pattern**   |
+| **Repository ESLint Status**       | All performance/reporting code clean | All MOD-PERF, MOD-RPT, and Targets files pass ESLint with 0 errors. Pre-existing lint errors exist in legacy modules (`lender-cases`, `users`, `tasks`) | **Documented Pre-existing Condition** |
 
 ---
 
@@ -153,6 +157,7 @@ An audit was conducted comparing [reports/qa/mod-perf-implementation-report.md](
 All checks were executed directly against the workspace. Actual outputs and exit codes:
 
 ### 7.1 Workspace Typecheck
+
 ```
 $ npm run typecheck
 > dsa-crm@0.0.0 typecheck
@@ -168,6 +173,7 @@ Exit code: 0
 ```
 
 ### 7.2 API Test Suite (`@dsa/api`)
+
 ```
 $ npm test -w @dsa/api
 > vitest run
@@ -178,6 +184,7 @@ Exit code: 0
 ```
 
 ### 7.3 Live PostgreSQL Integration Tests
+
 ```
 $ npm run test:int -- test/reporting.pg.int.spec.ts test/targets.pg.int.spec.ts
 > vitest run --config vitest.int.config.ts test/reporting.pg.int.spec.ts test/targets.pg.int.spec.ts
@@ -189,6 +196,7 @@ Exit code: 0
 ```
 
 ### 7.4 Web Test Suite (`@dsa/web`)
+
 ```
 $ npm test -w @dsa/web
 > vitest run
@@ -199,6 +207,7 @@ Exit code: 0
 ```
 
 ### 7.5 Database Verification (`tools/verify-migrations.ts`)
+
 ```
 $ npm run db:verify
 > @dsa/tools@0.0.0 verify:migrations
@@ -211,6 +220,7 @@ Exit code: 0
 ```
 
 ### 7.6 Production Build
+
 ```
 $ npm run build
 > @dsa/api@0.0.0 build (tsup): dist/server.js 791.82 KB
@@ -220,6 +230,7 @@ Exit code: 0
 ```
 
 ### 7.7 ESLint on Changed Performance & Reporting Workspaces
+
 ```
 $ npx eslint apps/api/src/modules/reporting apps/api/src/modules/crm/targets apps/web/src/features/performance apps/web/src/features/targets packages/contracts/src/reporting.ts packages/contracts/src/target.ts
 Exit code: 0 (0 errors, 0 warnings)
@@ -230,6 +241,7 @@ Exit code: 0 (0 errors, 0 warnings)
 ## 8. Verified Completed vs. Outstanding Requirements
 
 ### 8.1 Verified Completed Requirements
+
 1. **Target Management (`SUB-PERF.01`):** Complete target creation, revision, retrieval, and approval lifecycle (`API-PERF-001`, `002`, `003`).
 2. **Dual Control (`SOD-04`):** Separation of duties enforced both in API service and PostgreSQL check constraint.
 3. **Idempotency & Concurrency:** Target creation enforces `Idempotency-Key`; target approval enforces optimistic locking via `lock_version`.
@@ -242,6 +254,7 @@ Exit code: 0 (0 errors, 0 warnings)
 10. **Connector Deferral (`MOD-CPT`):** Confirmed deferred to Release 3 with zero connector dependencies.
 
 ### 8.2 Outstanding Requirements & Approval Dependencies
+
 1. **Competitive Ranking Calculation (`SUB-PERF.03`):** Blocked pending formal approval of the 9 scoring decisions in [ADR-012](docs/adr/ADR-012-leaderboard-scoring-policy.md).
 2. **Approval Committee:** Head of Product, Head of Credit & Risk, Sales Operations Head, Performance Committee.
 3. **Shortest Next Action:** Following formal review and sign-off on [ADR-012](docs/adr/ADR-012-leaderboard-scoring-policy.md), activate composite scoring and rank calculations in `ReportingService.getLeaderboardDashboard`.

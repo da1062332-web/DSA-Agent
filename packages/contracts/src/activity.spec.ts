@@ -1,10 +1,6 @@
 // packages/contracts/src/activity.spec.ts
 import { describe, expect, it } from 'vitest';
-import {
-  CreateActivitySchema,
-  UpdateActivitySchema,
-  containsS2SensitiveData,
-} from './activity';
+import { CreateActivitySchema, UpdateActivitySchema, containsS2SensitiveData } from './activity';
 
 describe('activity contract unit tests', () => {
   it('TEST-ACT-001 validates allowed activity kinds and requires outcomeCode for CALL', () => {

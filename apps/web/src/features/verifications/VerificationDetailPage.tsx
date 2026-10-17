@@ -207,13 +207,16 @@ export function VerificationDetailPage() {
             {data.outcome && (
               <Chip
                 label={data.outcome}
-                color={data.outcome === 'POSITIVE' ? 'success' : data.outcome === 'NEGATIVE' ? 'error' : 'warning'}
+                color={
+                  data.outcome === 'POSITIVE' ? 'success' : data.outcome === 'NEGATIVE' ? 'error' : 'warning'
+                }
                 variant="outlined"
               />
             )}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Application: {data.applicationId} • Branch: {data.branchId} • Type: {data.verificationType.replace(/_/g, ' ')}
+            Application: {data.applicationId} • Branch: {data.branchId} • Type:{' '}
+            {data.verificationType.replace(/_/g, ' ')}
           </Typography>
         </Box>
 
@@ -278,9 +281,7 @@ export function VerificationDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Assigned Verifier
                   </Typography>
-                  <Typography variant="body1">
-                    {data.assignedToUserId || 'Unassigned'}
-                  </Typography>
+                  <Typography variant="body1">{data.assignedToUserId || 'Unassigned'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -332,9 +333,7 @@ export function VerificationDetailPage() {
                 Assessment Notes / Scope:
               </Typography>
               <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', mb: 2 }}>
-                <Typography variant="body2">
-                  {data.findingsSummary || 'No notes entered yet.'}
-                </Typography>
+                <Typography variant="body2">{data.findingsSummary || 'No notes entered yet.'}</Typography>
               </Paper>
 
               {data.rejectionReason && (
@@ -564,7 +563,7 @@ export function VerificationDetailPage() {
                         | 'MISMATCH'
                         | 'INCOMPLETE'
                         | 'WRONG_DOCUMENT'
-                        | 'OTHER'
+                        | 'OTHER',
                     )
                   }
                 >

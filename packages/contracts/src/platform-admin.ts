@@ -176,13 +176,7 @@ export type SystemHealthReport = z.infer<typeof SystemHealthReportSchema>;
 // SUB-ADM.06: Support Access (CMP-ADM.06.1 / API-ADM-006 / API-ADM-007)
 // ==========================================
 
-export const SupportAccessGrantStatusSchema = z.enum([
-  'PENDING',
-  'APPROVED',
-  'DENIED',
-  'EXPIRED',
-  'REVOKED',
-]);
+export const SupportAccessGrantStatusSchema = z.enum(['PENDING', 'APPROVED', 'DENIED', 'EXPIRED', 'REVOKED']);
 
 export type SupportAccessGrantStatus = z.infer<typeof SupportAccessGrantStatusSchema>;
 
@@ -232,13 +226,7 @@ export type RevokeSupportAccessRequest = z.infer<typeof RevokeSupportAccessReque
 // SUB-ADM.07: Data Correction (CMP-ADM.07.1 / API-ADM-008 / API-ADM-009)
 // ==========================================
 
-export const DataCorrectionStatusSchema = z.enum([
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'EXECUTED',
-  'FAILED',
-]);
+export const DataCorrectionStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'FAILED']);
 
 export type DataCorrectionStatus = z.infer<typeof DataCorrectionStatusSchema>;
 

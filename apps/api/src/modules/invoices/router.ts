@@ -110,7 +110,14 @@ export function createRouter(deps: ApiDeps): Router {
       const lockVersion = parseIfMatch(ifMatch);
 
       const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return service.updateInvoiceStatus(tx, ctx, invoiceId, parsed.data.status, lockVersion, parsed.data.notes);
+        return service.updateInvoiceStatus(
+          tx,
+          ctx,
+          invoiceId,
+          parsed.data.status,
+          lockVersion,
+          parsed.data.notes,
+        );
       });
 
       res.setHeader('ETag', `"${updated.lockVersion}"`);

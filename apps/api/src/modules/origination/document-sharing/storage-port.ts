@@ -103,13 +103,25 @@ export class MagicByteFileScanner implements FileScannerPort {
       buffer[7] === 0x0a;
 
     if (mimeType === 'application/pdf' && !isPdf) {
-      return { clean: false, scanStatus: 'QUARANTINED', detectedThreat: 'Magic bytes do not match PDF signature' };
+      return {
+        clean: false,
+        scanStatus: 'QUARANTINED',
+        detectedThreat: 'Magic bytes do not match PDF signature',
+      };
     }
     if ((mimeType === 'image/jpeg' || mimeType === 'image/jpg') && !isJpeg) {
-      return { clean: false, scanStatus: 'QUARANTINED', detectedThreat: 'Magic bytes do not match JPEG signature' };
+      return {
+        clean: false,
+        scanStatus: 'QUARANTINED',
+        detectedThreat: 'Magic bytes do not match JPEG signature',
+      };
     }
     if (mimeType === 'image/png' && !isPng) {
-      return { clean: false, scanStatus: 'QUARANTINED', detectedThreat: 'Magic bytes do not match PNG signature' };
+      return {
+        clean: false,
+        scanStatus: 'QUARANTINED',
+        detectedThreat: 'Magic bytes do not match PNG signature',
+      };
     }
 
     // 3. Executable / script signature heuristic

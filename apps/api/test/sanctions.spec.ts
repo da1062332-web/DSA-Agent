@@ -118,9 +118,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
   describe('API-SND-001: Record & Revise Sanction', () => {
     it('records a new sanction version 1 and rolls up lender case and application to SANCTIONED', async () => {
       const app = getApp();
-      const res = await request(app)
-        .post(`/v1/lender-cases/${caseId}/sanctions`)
-        .send(validSanctionPayload);
+      const res = await request(app).post(`/v1/lender-cases/${caseId}/sanctions`).send(validSanctionPayload);
 
       expect(res.status).toBe(201);
       expect(res.headers.etag).toBe('"0"');
@@ -186,9 +184,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       });
 
       const app = getApp();
-      const res = await request(app)
-        .post(`/v1/lender-cases/${caseId}/sanctions`)
-        .send(validSanctionPayload);
+      const res = await request(app).post(`/v1/lender-cases/${caseId}/sanctions`).send(validSanctionPayload);
 
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('INVALID_CASE_STATUS');
@@ -237,20 +233,16 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
   describe('API-SND-002: Record Disbursement Tranche', () => {
     it('records tranche 1 with masked banking identifiers and calculates remaining limit', async () => {
       const app = getApp();
-      const sRes = await request(app)
-        .post(`/v1/lender-cases/${caseId}/sanctions`)
-        .send(validSanctionPayload);
+      const sRes = await request(app).post(`/v1/lender-cases/${caseId}/sanctions`).send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(app)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 1000000,
-          disbursedOn: DISBURSED_ON,
-          utr: 'HDFCR5202610051234',
-          loanAccountNumber: '987654321098',
-          evidenceDocumentId: 'doc_ev_tranche_01',
-        });
+      const tRes = await request(app).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 1000000,
+        disbursedOn: DISBURSED_ON,
+        utr: 'HDFCR5202610051234',
+        loanAccountNumber: '987654321098',
+        evidenceDocumentId: 'doc_ev_tranche_01',
+      });
 
       expect(tRes.status).toBe(201);
       expect(tRes.body.tranche.id).toMatch(/^trn_/);
@@ -270,17 +262,13 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
 
     it('rejects tranche exceeding remaining sanctioned limit with 422 EXCEEDS_SANCTION', async () => {
       const app = getApp();
-      const sRes = await request(app)
-        .post(`/v1/lender-cases/${caseId}/sanctions`)
-        .send(validSanctionPayload);
+      const sRes = await request(app).post(`/v1/lender-cases/${caseId}/sanctions`).send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(app)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 3000000, // Sanction is 2,500,000
-          disbursedOn: DISBURSED_ON,
-        });
+      const tRes = await request(app).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 3000000, // Sanction is 2,500,000
+        disbursedOn: DISBURSED_ON,
+      });
 
       expect(tRes.status).toBe(422);
       expect(tRes.body.error.code).toBe('EXCEEDS_SANCTION');
@@ -295,13 +283,11 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-          evidenceDocumentId: 'doc_ev_01',
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+        evidenceDocumentId: 'doc_ev_01',
+      });
       const trancheId = tRes.body.tranche.id;
 
       // Ops user (who recorded) attempts verification
@@ -320,13 +306,11 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-          evidenceDocumentId: 'doc_ev_01',
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+        evidenceDocumentId: 'doc_ev_01',
+      });
       const trancheId = tRes.body.tranche.id;
 
       // Distinct verifier verifies
@@ -351,12 +335,10 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       const sanctionId = sRes.body.id;
 
       // Tranche without evidence document
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+      });
       const trancheId = tRes.body.tranche.id;
 
       const verifierApp = getApp(userVerifier);
@@ -375,22 +357,18 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-          evidenceDocumentId: 'doc_ev_01',
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+        evidenceDocumentId: 'doc_ev_01',
+      });
       const trancheId = tRes.body.tranche.id;
 
       const verifierApp = getApp(userVerifier);
-      const returnRes = await request(verifierApp)
-        .post(`/v1/tranches/${trancheId}/verification`)
-        .send({
-          decision: 'RETURN',
-          comment: 'UTR screenshot is blurred and unreadable',
-        });
+      const returnRes = await request(verifierApp).post(`/v1/tranches/${trancheId}/verification`).send({
+        decision: 'RETURN',
+        comment: 'UTR screenshot is blurred and unreadable',
+      });
 
       expect(returnRes.status).toBe(200);
       expect(returnRes.body.status).toBe('RETURNED');
@@ -410,12 +388,10 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       const sanctionId = sRes.body.id;
 
       // Tranche missing evidence document
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+      });
       const trancheId = tRes.body.tranche.id;
 
       const verifierApp = getApp(userVerifier);
@@ -444,12 +420,10 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         .send(validSanctionPayload);
       const sanctionId = sRes.body.id;
 
-      const tRes = await request(opsApp)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_ON,
-        });
+      const tRes = await request(opsApp).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_ON,
+      });
       const trancheId = tRes.body.tranche.id;
 
       // Void with replacement
@@ -487,15 +461,13 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       expect(getRes.body.error.code).toBe('NOT_FOUND');
 
       // Tenant B cannot record tranche on Tenant A sanction -> 404
-      const trancheRes = await request(appB)
-        .post(`/v1/sanctions/${sanctionId}/tranches`)
-        .send({
-          amount: 200000,
-          disbursedOn: DISBURSED_LATER,
-          utr: 'HDFCCROSS001',
-          loanAccountNumber: '987654321098',
-          evidenceDocumentId: 'doc_ev_01',
-        });
+      const trancheRes = await request(appB).post(`/v1/sanctions/${sanctionId}/tranches`).send({
+        amount: 200000,
+        disbursedOn: DISBURSED_LATER,
+        utr: 'HDFCCROSS001',
+        loanAccountNumber: '987654321098',
+        evidenceDocumentId: 'doc_ev_01',
+      });
       expect(trancheRes.status).toBe(404);
       expect(trancheRes.body.error.code).toBe('NOT_FOUND');
     });
@@ -515,21 +487,17 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       });
 
       const app = getApp(tenantAdmin);
-      const sRes = await request(app)
-        .post(`/v1/lender-cases/${caseId}/sanctions`)
-        .send(validSanctionPayload);
+      const sRes = await request(app).post(`/v1/lender-cases/${caseId}/sanctions`).send(validSanctionPayload);
       expect(sRes.status).toBe(201);
       expect(sRes.body.id).toMatch(/^snc_/);
 
-      const tRes = await request(app)
-        .post(`/v1/sanctions/${sRes.body.id}/tranches`)
-        .send({
-          amount: 500000,
-          disbursedOn: DISBURSED_LATER,
-          utr: 'UTR-ADMIN-001',
-          loanAccountNumber: '987654321098',
-          evidenceDocumentId: 'doc_ev_admin',
-        });
+      const tRes = await request(app).post(`/v1/sanctions/${sRes.body.id}/tranches`).send({
+        amount: 500000,
+        disbursedOn: DISBURSED_LATER,
+        utr: 'UTR-ADMIN-001',
+        loanAccountNumber: '987654321098',
+        evidenceDocumentId: 'doc_ev_admin',
+      });
       expect(tRes.status).toBe(201);
       expect(tRes.body.tranche.id).toMatch(/^trn_/);
       expect(tRes.body.tranche.status).toBe('RECORDED');
