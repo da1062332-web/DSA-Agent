@@ -7,9 +7,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const OPS = path.join(ROOT, 'tools/sql/0050');
@@ -25,7 +26,7 @@ const work = mkdtempSync(path.join(os.tmpdir(), 'dsa-0050-'));
 
 // 0061 needs the platform realm that this rehearsal is about to apply, so it is not part of the pre-0050 state.
 beforeAll(async () => {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
   for (const file of readdirSync(MIGRATIONS_DIR)

@@ -6,9 +6,10 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const OPS = path.join(ROOT, 'tools/sql/0050');
@@ -22,7 +23,7 @@ let admin: pg.Client; // superuser, for setup and for breaking things on purpose
 let verifier: pg.Client; // like hosted postgres: not superuser, bypasses RLS, has no SET on dsa_api
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
   for (const file of readdirSync(MIGRATIONS_DIR)

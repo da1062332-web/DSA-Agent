@@ -34,3 +34,7 @@ After the last one: re-run `tools/sql/0050/verify.sql`, `verify-behaviour.sql` a
 ## 3. Credentials
 
 `docs/CREDENTIAL_REMEDIATION.md`. Rotation changes shared credentials that every teammate's `.env`, CI and any deployment use, and I cannot list those dependencies from here, so I did not rotate. The instructions there are the exact manual steps.
+
+## Update after the rehearsal review (2026-10-17)
+
+`docs/MIGRATION_BATCH_REHEARSAL_REPORT.md` has the evidence. Three things changed here: the runner (`tools/sql/batch/run-batch.sh`) is now resumable, uses a new folder per run and stops before 0054 if its data steps would change users; the state backup is an entity snapshot, not a database backup; and point-in-time recovery of the project should be confirmed in the Supabase dashboard before applying.

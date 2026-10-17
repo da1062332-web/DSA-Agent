@@ -2,9 +2,10 @@
 // backup, apply (twice), verify, rollback, and the safeguards. Synthetic data only. Nothing here touches the hosted database.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const TOOLS = path.join(ROOT, 'tools/sql/0054');
@@ -21,7 +22,7 @@ const rowsOf = async (c: pg.Client, text: string) => {
 };
 
 async function buildBefore0054(): Promise<{ container: StartedPostgreSqlContainer; admin: pg.Client }> {
-  const container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  const container = await startPostgres();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
   for (const f of readdirSync(MIGRATIONS)

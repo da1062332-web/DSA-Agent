@@ -4,9 +4,10 @@
 // It never touches hosted. Run on PostgreSQL 16 and 17 (DSA_PG_IMAGE).
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const DIR = process.env.DSA_MIGRATIONS_DIR ?? path.resolve(__dirname, '../../../supabase/migrations');
 const files = readdirSync(DIR)
@@ -51,7 +52,7 @@ async function run(order: string[]): Promise<{ db: pg.Client; failed: string | n
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   admin = await connectTo('postgres');
   await admin.query('CREATE DATABASE hosted_like');
   const base = await connectTo('hosted_like');

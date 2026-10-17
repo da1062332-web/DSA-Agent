@@ -5,9 +5,10 @@
 // without a guard in every migration, so no migration in the project repeats cleanly as a whole file.) It never touches hosted.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { startPostgres } from '../../../tests/guard/start-postgres';
 
 const DIR = process.env.DSA_MIGRATIONS_DIR ?? path.resolve(__dirname, '../../../supabase/migrations');
 const SECURITY = '20261001000063_security_monitoring_incidents.sql';
@@ -20,7 +21,7 @@ const exists = async (table: string) =>
   (await db.query(`SELECT to_regclass('app.${table}') IS NOT NULL AS present`)).rows[0].present as boolean;
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
+  container = await startPostgres();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
   for (const f of readdirSync(DIR)
