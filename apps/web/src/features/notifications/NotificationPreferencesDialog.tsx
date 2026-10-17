@@ -44,6 +44,17 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   ALERT: 'Alerts & SLA Warnings',
 };
 
+const DEFAULT_PREFERENCES: NotificationPreferences = {
+  channels: {
+    inApp: true,
+    email: false,
+    sms: false,
+    whatsapp: false,
+  },
+  digestFrequency: 'IMMEDIATE',
+  mutedCategories: [],
+};
+
 export function NotificationPreferencesDialog({
   open,
   onClose,
@@ -55,16 +66,7 @@ export function NotificationPreferencesDialog({
   const [success, setSuccess] = useState(false);
   const [lockVersion, setLockVersion] = useState<number | null>(null);
 
-  const [preferences, setPreferences] = useState<NotificationPreferences>({
-    channels: {
-      inApp: true,
-      email: true,
-      sms: false,
-      whatsapp: false,
-    },
-    digestFrequency: 'IMMEDIATE',
-    mutedCategories: [],
-  });
+  const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -81,13 +83,33 @@ export function NotificationPreferencesDialog({
       }
 
       const etag = res.headers.get('ETag');
-      const data: UserProfile = await res.json();
+      const data: any = await res.json();
 
-      setPreferences(data.notificationPreferences);
-      if (etag) {
-        setLockVersion(parseInt(etag.replace(/["']/g, ''), 10));
+      const rawPrefs = data?.notificationPreferences ?? data?.data?.notificationPreferences;
+      if (rawPrefs && typeof rawPrefs === 'object') {
+        setPreferences({
+          channels: {
+            inApp: rawPrefs.channels?.inApp ?? true,
+            email: rawPrefs.channels?.email ?? false,
+            sms: rawPrefs.channels?.sms ?? false,
+            whatsapp: rawPrefs.channels?.whatsapp ?? false,
+          },
+          digestFrequency: rawPrefs.digestFrequency ?? 'IMMEDIATE',
+          mutedCategories: Array.isArray(rawPrefs.mutedCategories) ? rawPrefs.mutedCategories : [],
+        });
       } else {
+        setPreferences(DEFAULT_PREFERENCES);
+      }
+
+      if (etag) {
+        const parsed = parseInt(etag.replace(/["']/g, ''), 10);
+        setLockVersion(isNaN(parsed) ? 0 : parsed);
+      } else if (typeof data?.lockVersion === 'number') {
         setLockVersion(data.lockVersion);
+      } else if (typeof data?.data?.lockVersion === 'number') {
+        setLockVersion(data.data.lockVersion);
+      } else {
+        setLockVersion(0);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -103,7 +125,7 @@ export function NotificationPreferencesDialog({
   }, [open, fetchProfile]);
 
   const handleSave = async () => {
-    if (lockVersion === null) return;
+    const versionToSend = lockVersion ?? 0;
     setSaving(true);
     setError(null);
     setSuccess(false);
@@ -114,7 +136,7 @@ export function NotificationPreferencesDialog({
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'If-Match': `"${lockVersion}"`,
+          'If-Match': `"${versionToSend}"`,
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ preferences }),
@@ -133,11 +155,12 @@ export function NotificationPreferencesDialog({
         throw new Error(body?.error?.message || `Failed to save preferences: HTTP ${res.status}`);
       }
 
-      const updated: UserProfile = await res.json();
+      const updated: any = await res.json();
       const newEtag = res.headers.get('ETag');
       if (newEtag) {
-        setLockVersion(parseInt(newEtag.replace(/["']/g, ''), 10));
-      } else {
+        const parsed = parseInt(newEtag.replace(/["']/g, ''), 10);
+        setLockVersion(isNaN(parsed) ? (updated?.lockVersion ?? 0) : parsed);
+      } else if (typeof updated?.lockVersion === 'number') {
         setLockVersion(updated.lockVersion);
       }
       setSuccess(true);
@@ -153,16 +176,20 @@ export function NotificationPreferencesDialog({
 
   const toggleCategoryMute = (cat: NotificationCategory) => {
     setPreferences((prev) => {
-      const isMuted = prev.mutedCategories.includes(cat);
-      const nextMuted = isMuted
-        ? prev.mutedCategories.filter((c) => c !== cat)
-        : [...prev.mutedCategories, cat];
-      return { ...prev, mutedCategories: nextMuted };
+      const current = prev?.mutedCategories ?? [];
+      const isMuted = current.includes(cat);
+      const nextMuted = isMuted ? current.filter((c) => c !== cat) : [...current, cat];
+      return {
+        ...(prev ?? DEFAULT_PREFERENCES),
+        channels: prev?.channels ?? DEFAULT_PREFERENCES.channels,
+        digestFrequency: prev?.digestFrequency ?? 'IMMEDIATE',
+        mutedCategories: nextMuted,
+      };
     });
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disablePortal>
       <DialogTitle>Notification Preferences</DialogTitle>
       <DialogContent dividers>
         {loading ? (
@@ -187,11 +214,14 @@ export function NotificationPreferencesDialog({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={preferences.channels.inApp}
+                      checked={preferences?.channels?.inApp ?? true}
                       onChange={(e) =>
                         setPreferences((p) => ({
-                          ...p,
-                          channels: { ...p.channels, inApp: e.target.checked },
+                          ...(p ?? DEFAULT_PREFERENCES),
+                          channels: {
+                            ...(p?.channels ?? DEFAULT_PREFERENCES.channels),
+                            inApp: e.target.checked,
+                          },
                         }))
                       }
                       color="primary"
@@ -202,11 +232,14 @@ export function NotificationPreferencesDialog({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={preferences.channels.email}
+                      checked={preferences?.channels?.email ?? false}
                       onChange={(e) =>
                         setPreferences((p) => ({
-                          ...p,
-                          channels: { ...p.channels, email: e.target.checked },
+                          ...(p ?? DEFAULT_PREFERENCES),
+                          channels: {
+                            ...(p?.channels ?? DEFAULT_PREFERENCES.channels),
+                            email: e.target.checked,
+                          },
                         }))
                       }
                     />
@@ -216,11 +249,14 @@ export function NotificationPreferencesDialog({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={preferences.channels.sms}
+                      checked={preferences?.channels?.sms ?? false}
                       onChange={(e) =>
                         setPreferences((p) => ({
-                          ...p,
-                          channels: { ...p.channels, sms: e.target.checked },
+                          ...(p ?? DEFAULT_PREFERENCES),
+                          channels: {
+                            ...(p?.channels ?? DEFAULT_PREFERENCES.channels),
+                            sms: e.target.checked,
+                          },
                         }))
                       }
                     />
@@ -230,11 +266,14 @@ export function NotificationPreferencesDialog({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={preferences.channels.whatsapp}
+                      checked={preferences?.channels?.whatsapp ?? false}
                       onChange={(e) =>
                         setPreferences((p) => ({
-                          ...p,
-                          channels: { ...p.channels, whatsapp: e.target.checked },
+                          ...(p ?? DEFAULT_PREFERENCES),
+                          channels: {
+                            ...(p?.channels ?? DEFAULT_PREFERENCES.channels),
+                            whatsapp: e.target.checked,
+                          },
                         }))
                       }
                     />
@@ -253,10 +292,10 @@ export function NotificationPreferencesDialog({
                   Digest Frequency
                 </FormLabel>
                 <RadioGroup
-                  value={preferences.digestFrequency}
+                  value={preferences?.digestFrequency ?? 'IMMEDIATE'}
                   onChange={(e) =>
                     setPreferences((p) => ({
-                      ...p,
+                      ...(p ?? DEFAULT_PREFERENCES),
                       digestFrequency: e.target.value as NotificationPreferences['digestFrequency'],
                     }))
                   }
@@ -296,7 +335,7 @@ export function NotificationPreferencesDialog({
                     <FormControlLabel
                       control={
                         <Checkbox
-                          checked={preferences.mutedCategories.includes(cat)}
+                          checked={(preferences?.mutedCategories ?? []).includes(cat)}
                           onChange={() => toggleCategoryMute(cat)}
                           color="error"
                         />
@@ -314,7 +353,7 @@ export function NotificationPreferencesDialog({
         <Button onClick={onClose} disabled={saving}>
           Cancel
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={loading || saving || lockVersion === null}>
+        <Button onClick={handleSave} variant="contained" disabled={loading || saving}>
           {saving ? 'Saving...' : 'Save Preferences'}
         </Button>
       </DialogActions>
