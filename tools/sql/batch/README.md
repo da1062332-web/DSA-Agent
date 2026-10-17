@@ -69,3 +69,7 @@ Anything else (a bad apply that the rollback cannot fix) is recovered with the h
 ## After the batch
 
 Run the Module 1 checks again (`verify.sql`, `verify-behaviour.sql`, `enforcement-check.mjs` from `tools/sql/0050`) and sign in once as a platform operator and once as a tenant administrator.
+
+## One command for the whole batch
+
+`bash tools/sql/batch/run-batch.sh` (WRITES to the linked project) runs the order above one migration at a time: wrapper with hashes, apply, verify, and it stops at the first FAIL row or error and prints that migration's rollback command. It refuses unless the linked project is the shared development project (`mlpkwwhnagxzinaohdxg`). Take the state backup first (`docs/HOSTED_APPLY_CHECKLIST.md`) or point `DSA_BACKUPS` at the folder that holds `state.sql`.
