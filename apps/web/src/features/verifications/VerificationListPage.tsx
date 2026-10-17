@@ -25,10 +25,17 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchVerifications } from './api';
-import type { VerificationOutcome, VerificationPriority, VerificationRequest, VerificationStatus } from './types';
+import type {
+  VerificationOutcome,
+  VerificationPriority,
+  VerificationRequest,
+  VerificationStatus,
+} from './types';
 import { VerificationCreateDialog } from './VerificationCreateDialog';
 
-function getStatusColor(status: VerificationStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
+function getStatusColor(
+  status: VerificationStatus,
+): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
   switch (status) {
     case 'INITIATED':
       return 'info';
@@ -347,11 +354,7 @@ export function VerificationListPage() {
       </TableContainer>
 
       {/* Create Dialog */}
-      <VerificationCreateDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSuccess={loadData}
-      />
+      <VerificationCreateDialog open={createOpen} onClose={() => setCreateOpen(false)} onSuccess={loadData} />
     </Container>
   );
 }

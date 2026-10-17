@@ -45,7 +45,9 @@ import type {
   VersionStatus,
 } from './types';
 
-function getStatusColor(status: VersionStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
+function getStatusColor(
+  status: VersionStatus,
+): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -99,7 +101,9 @@ export function RuleVersionDetailPage() {
 
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT' | 'REQUEST_CHANGES'>('APPROVE');
-  const [reviewSeat, setReviewSeat] = useState<'RULE_APPROVER' | 'RISK_OFFICER' | 'COMPLIANCE' | 'SUPER_ADMIN'>('RULE_APPROVER');
+  const [reviewSeat, setReviewSeat] = useState<
+    'RULE_APPROVER' | 'RISK_OFFICER' | 'COMPLIANCE' | 'SUPER_ADMIN'
+  >('RULE_APPROVER');
   const [reviewComment, setReviewComment] = useState('');
 
   const [publishOpen, setPublishOpen] = useState(false);
@@ -155,7 +159,7 @@ export function RuleVersionDetailPage() {
           hitPolicy,
           changeReason: changeReason.trim() || undefined,
         },
-        version.lockVersion
+        version.lockVersion,
       );
 
       setVersion(res.data);
@@ -407,12 +411,10 @@ export function RuleVersionDetailPage() {
 
       {/* Validation Report Banner */}
       {validationReport && (
-        <Alert
-          severity={validationReport.result === 'PASS' ? 'success' : 'error'}
-          sx={{ mb: 3 }}
-        >
+        <Alert severity={validationReport.result === 'PASS' ? 'success' : 'error'} sx={{ mb: 3 }}>
           <Typography variant="subtitle2" fontWeight={700}>
-            Validation Status: {validationReport.result} (Content Hash: {validationReport.contentHash.slice(0, 16)}...)
+            Validation Status: {validationReport.result} (Content Hash:{' '}
+            {validationReport.contentHash.slice(0, 16)}...)
           </Typography>
           {validationReport.issues.length === 0 ? (
             <Typography variant="body2">No syntax, complexity, or reachability issues detected.</Typography>
@@ -438,12 +440,7 @@ export function RuleVersionDetailPage() {
                   {isDraft ? 'Draft Rule Definition' : 'Locked Rule Definition (Read-Only)'}
                 </Typography>
                 {isDraft && (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleSaveDraft}
-                    disabled={savingDraft}
-                  >
+                  <Button variant="contained" size="small" onClick={handleSaveDraft} disabled={savingDraft}>
                     {savingDraft ? 'Saving...' : 'Save Draft'}
                   </Button>
                 )}
@@ -492,7 +489,11 @@ export function RuleVersionDetailPage() {
                   fontFamily: 'monospace',
                   '& textarea': { fontFamily: 'Consolas, monospace', fontSize: '0.875rem' },
                 }}
-                helperText={isDraft ? 'JSON AST Definition containing rules array, condition trees, and actions.' : 'Immutable after leaving DRAFT state.'}
+                helperText={
+                  isDraft
+                    ? 'JSON AST Definition containing rules array, condition trees, and actions.'
+                    : 'Immutable after leaving DRAFT state.'
+                }
               />
             </CardContent>
           </Card>
@@ -523,8 +524,14 @@ export function RuleVersionDetailPage() {
                           color={r.enabled ? 'success' : 'default'}
                         />
                       </Stack>
-                      <Typography variant="caption" fontFamily="monospace" color="text.secondary" display="block">
-                        UID: {r.uid} {r.orderNo !== undefined ? `| Order: ${r.orderNo}` : ''} {r.priority !== undefined ? `| Priority: ${r.priority}` : ''}
+                      <Typography
+                        variant="caption"
+                        fontFamily="monospace"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        UID: {r.uid} {r.orderNo !== undefined ? `| Order: ${r.orderNo}` : ''}{' '}
+                        {r.priority !== undefined ? `| Priority: ${r.priority}` : ''}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
                         Outputs: {JSON.stringify(r.output)}
@@ -574,7 +581,8 @@ export function RuleVersionDetailPage() {
           <Stack spacing={2}>
             {simError && <Alert severity="error">{simError}</Alert>}
             <Typography variant="body2" color="text.secondary">
-              Evaluate this rule version against synthetic business inputs without modifying live customer or lead records.
+              Evaluate this rule version against synthetic business inputs without modifying live customer or
+              lead records.
             </Typography>
             <TextField
               label="Synthetic Facts (JSON)"
@@ -585,11 +593,7 @@ export function RuleVersionDetailPage() {
               onChange={(e) => setSimFactsJson(e.target.value)}
               sx={{ '& textarea': { fontFamily: 'Consolas, monospace', fontSize: '0.875rem' } }}
             />
-            <Button
-              variant="contained"
-              onClick={handleSimulate}
-              disabled={simRunning}
-            >
+            <Button variant="contained" onClick={handleSimulate} disabled={simRunning}>
               {simRunning ? 'Evaluating...' : 'Run Simulation'}
             </Button>
 
@@ -600,7 +604,8 @@ export function RuleVersionDetailPage() {
                   Simulation Outcome: {simResult.status}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Duration: {simResult.summary.durationUs} µs | Fallback Applied: {simResult.summary.fallbackApplied ? 'YES' : 'NO'}
+                  Duration: {simResult.summary.durationUs} µs | Fallback Applied:{' '}
+                  {simResult.summary.fallbackApplied ? 'YES' : 'NO'}
                 </Typography>
                 <Box mt={1}>
                   <Typography variant="subtitle2">Matched Rules:</Typography>
@@ -632,12 +637,18 @@ export function RuleVersionDetailPage() {
       </Dialog>
 
       {/* Submit for Review Dialog */}
-      <Dialog open={submitOpen} onClose={() => !actionLoading && setSubmitOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={submitOpen}
+        onClose={() => !actionLoading && setSubmitOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Submit Version for Review</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} pt={1}>
             <Typography variant="body2" color="text.secondary">
-              Submitting freezes the rule draft into IN_REVIEW state for compliance and maker-checker approval.
+              Submitting freezes the rule draft into IN_REVIEW state for compliance and maker-checker
+              approval.
             </Typography>
             <TextField
               label="Submission Notes"
@@ -659,12 +670,18 @@ export function RuleVersionDetailPage() {
       </Dialog>
 
       {/* Review / Approve Dialog */}
-      <Dialog open={reviewOpen} onClose={() => !actionLoading && setReviewOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={reviewOpen}
+        onClose={() => !actionLoading && setReviewOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Independent Maker-Checker Review (SOD-01)</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} pt={1}>
             <Alert severity="info">
-              Per SOD-01 separation of duties, authors and editors of this rule version cannot approve their own version.
+              Per SOD-01 separation of duties, authors and editors of this rule version cannot approve their
+              own version.
             </Alert>
             <FormControl fullWidth>
               <InputLabel id="review-action-label">Review Action</InputLabel>
@@ -685,7 +702,11 @@ export function RuleVersionDetailPage() {
                 labelId="review-seat-label"
                 value={reviewSeat}
                 label="Approval Seat"
-                onChange={(e) => setReviewSeat(e.target.value as 'RULE_APPROVER' | 'RISK_OFFICER' | 'COMPLIANCE' | 'SUPER_ADMIN')}
+                onChange={(e) =>
+                  setReviewSeat(
+                    e.target.value as 'RULE_APPROVER' | 'RISK_OFFICER' | 'COMPLIANCE' | 'SUPER_ADMIN',
+                  )
+                }
               >
                 <MenuItem value="RULE_APPROVER">RULE_APPROVER</MenuItem>
                 <MenuItem value="RISK_OFFICER">RISK_OFFICER</MenuItem>
@@ -721,12 +742,18 @@ export function RuleVersionDetailPage() {
       </Dialog>
 
       {/* Publish Dialog */}
-      <Dialog open={publishOpen} onClose={() => !actionLoading && setPublishOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={publishOpen}
+        onClose={() => !actionLoading && setPublishOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Publish Rule Version to Production</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} pt={1}>
             <Alert severity="warning">
-              Publishing will make this version ACTIVE. Any currently active version in this rule set will be transitioned to SUPERSEDED.
+              Publishing will make this version ACTIVE. Any currently active version in this rule set will be
+              transitioned to SUPERSEDED.
             </Alert>
             <TextField
               label="Publication Reason"
@@ -757,12 +784,18 @@ export function RuleVersionDetailPage() {
       </Dialog>
 
       {/* Suspend Dialog */}
-      <Dialog open={suspendOpen} onClose={() => !actionLoading && setSuspendOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={suspendOpen}
+        onClose={() => !actionLoading && setSuspendOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Emergency Suspend Rule Version</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} pt={1}>
             <Alert severity="error">
-              Suspends evaluation of this rule version. Fallback behavior configured on the decision definition will be used.
+              Suspends evaluation of this rule version. Fallback behavior configured on the decision
+              definition will be used.
             </Alert>
             <TextField
               label="Suspension Reason"
@@ -785,7 +818,12 @@ export function RuleVersionDetailPage() {
       </Dialog>
 
       {/* Reinstate Dialog */}
-      <Dialog open={reinstateOpen} onClose={() => !actionLoading && setReinstateOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={reinstateOpen}
+        onClose={() => !actionLoading && setReinstateOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Reinstate Suspended Version</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} pt={1}>

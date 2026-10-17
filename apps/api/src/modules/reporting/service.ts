@@ -77,10 +77,7 @@ export class ReportingService {
       !grants.includes('report.manage') &&
       !grants.includes('config.manage')
     ) {
-      throw AppError.of(
-        'FORBIDDEN',
-        'Principal does not have report.read permission.',
-      );
+      throw AppError.of('FORBIDDEN', 'Principal does not have report.read permission.');
     }
   }
 
@@ -101,20 +98,14 @@ export class ReportingService {
       !grants.includes('report.manage') &&
       !grants.includes('config.manage')
     ) {
-      throw AppError.of(
-        'FORBIDDEN',
-        'Principal does not have report.schedule permission.',
-      );
+      throw AppError.of('FORBIDDEN', 'Principal does not have report.schedule permission.');
     }
   }
 
   private requireExportRun(ctx: RequestContext): void {
     const grants = ctx.principal.grants.map((g) => g.code);
     if (!grants.includes('export.run') && !grants.includes('config.manage')) {
-      throw AppError.of(
-        'FORBIDDEN',
-        'Principal does not have export.run permission.',
-      );
+      throw AppError.of('FORBIDDEN', 'Principal does not have export.run permission.');
     }
   }
 
@@ -158,20 +149,13 @@ export class ReportingService {
   // ==========================================
   // SUB-RPT.01: Metric Registry
   // ==========================================
-  async listMetricDefinitions(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<MetricDefinitionDto[]> {
+  async listMetricDefinitions(tx: Tx, ctx: RequestContext): Promise<MetricDefinitionDto[]> {
     this.requireReportRead(ctx);
     const rows = await this.repo.listMetricDefinitions(tx, ctx.principal.tenantId);
     return rows.map(toMetricDefinitionDto);
   }
 
-  async getMetricDefinition(
-    tx: Tx,
-    ctx: RequestContext,
-    code: string,
-  ): Promise<MetricDefinitionDto> {
+  async getMetricDefinition(tx: Tx, ctx: RequestContext, code: string): Promise<MetricDefinitionDto> {
     this.requireReportRead(ctx);
     const defs = await this.listMetricDefinitions(tx, ctx);
     const match = defs.find((d) => d.code === code.toUpperCase());
@@ -181,21 +165,15 @@ export class ReportingService {
     return match;
   }
 
-  async queryMetrics(
-    tx: Tx,
-    ctx: RequestContext,
-    query: MetricsQuery,
-  ): Promise<MetricsQueryResponse> {
+  async queryMetrics(tx: Tx, ctx: RequestContext, query: MetricsQuery): Promise<MetricsQueryResponse> {
     this.requireReportRead(ctx);
     const scope = this.resolveCallerScope(ctx);
 
-    let effectiveBranchId = query.branchId ?? (query.dimensionType === 'BRANCH' ? query.dimensionId : undefined);
+    let effectiveBranchId =
+      query.branchId ?? (query.dimensionType === 'BRANCH' ? query.dimensionId : undefined);
     if (!scope.isTenantWide && scope.allowedBranchIds.length > 0) {
       if (effectiveBranchId && !scope.allowedBranchIds.includes(effectiveBranchId)) {
-        throw AppError.of(
-          'FORBIDDEN',
-          'Principal is not authorized to query metrics for requested branch.',
-        );
+        throw AppError.of('FORBIDDEN', 'Principal is not authorized to query metrics for requested branch.');
       }
       if (!effectiveBranchId && scope.allowedBranchIds.length === 1) {
         effectiveBranchId = scope.allowedBranchIds[0];
@@ -214,22 +192,15 @@ export class ReportingService {
     }
 
     const bounds = parsePeriodBounds(query.period);
-    const totals = await this.repo.computeOperationalMetrics(
-      tx,
-      ctx.principal.tenantId,
-      bounds,
-      {
-        branchId: effectiveBranchId,
-        userId: effectiveUserId,
-        productId: query.productId,
-      },
-    );
+    const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, {
+      branchId: effectiveBranchId,
+      userId: effectiveUserId,
+      productId: query.productId,
+    });
 
     const definitions = await this.repo.listMetricDefinitions(tx, ctx.principal.tenantId);
     const requestedCodes =
-      query.metricCodes && query.metricCodes.length > 0
-        ? query.metricCodes
-        : definitions.map((d) => d.code);
+      query.metricCodes && query.metricCodes.length > 0 ? query.metricCodes : definitions.map((d) => d.code);
 
     const freshness = new Date().toISOString();
     const data: MetricResultDto[] = [];
@@ -268,10 +239,7 @@ export class ReportingService {
           break;
         case 'LEAD_CONVERSION_RATE':
           if (totals.leadCount > 0) {
-            actualValue =
-              Math.round(
-                (totals.leadConvertedCount / totals.leadCount) * 10000,
-              ) / 100;
+            actualValue = Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100;
           } else {
             actualValue = 0;
             note = 'No leads created in period; conversion rate is 0%.';
@@ -290,8 +258,7 @@ export class ReportingService {
 
       let achievementPercentage: number | null = null;
       if (targetValue !== null && targetValue > 0) {
-        achievementPercentage =
-          Math.round((actualValue / targetValue) * 10000) / 100;
+        achievementPercentage = Math.round((actualValue / targetValue) * 10000) / 100;
       }
 
       data.push({
@@ -346,11 +313,7 @@ export class ReportingService {
     };
   }
 
-  async getControlTotals(
-    tx: Tx,
-    ctx: RequestContext,
-    summaryDate: string,
-  ): Promise<ControlTotalsDto> {
+  async getControlTotals(tx: Tx, ctx: RequestContext, summaryDate: string): Promise<ControlTotalsDto> {
     this.requireReportRead(ctx);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(summaryDate)) {
       throw AppError.of('VALIDATION_ERROR', 'summaryDate must be in YYYY-MM-DD format.');
@@ -411,16 +374,11 @@ export class ReportingService {
     }
 
     const bounds = parsePeriodBounds(query.period);
-    const totals = await this.repo.computeOperationalMetrics(
-      tx,
-      ctx.principal.tenantId,
-      bounds,
-      {
-        branchId: effectiveBranchId,
-        userId: query.userId,
-        productId: query.productId,
-      },
-    );
+    const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, {
+      branchId: effectiveBranchId,
+      userId: query.userId,
+      productId: query.productId,
+    });
 
     const leadTarget = await this.repo.getApprovedTarget(
       tx,
@@ -448,9 +406,7 @@ export class ReportingService {
     );
 
     const leadAch =
-      leadTarget && leadTarget > 0
-        ? Math.round((totals.leadCount / leadTarget) * 10000) / 100
-        : null;
+      leadTarget && leadTarget > 0 ? Math.round((totals.leadCount / leadTarget) * 10000) / 100 : null;
     const sanctionAch =
       sanctionTarget && sanctionTarget > 0
         ? Math.round((totals.sanctionCount / sanctionTarget) * 10000) / 100
@@ -461,31 +417,39 @@ export class ReportingService {
         : null;
 
     const conversionRate =
-      totals.leadCount > 0
-        ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100
-        : 0;
+      totals.leadCount > 0 ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100 : 0;
 
     const funnel = [
       { stage: 'Leads Created', count: totals.leadCount, rate: 100 },
       {
         stage: 'Qualified Leads',
         count: totals.leadQualifiedCount,
-        rate: totals.leadCount > 0 ? Math.round((totals.leadQualifiedCount / totals.leadCount) * 10000) / 100 : 0,
+        rate:
+          totals.leadCount > 0 ? Math.round((totals.leadQualifiedCount / totals.leadCount) * 10000) / 100 : 0,
       },
       {
         stage: 'Converted Leads',
         count: totals.leadConvertedCount,
-        rate: totals.leadQualifiedCount > 0 ? Math.round((totals.leadConvertedCount / totals.leadQualifiedCount) * 10000) / 100 : 0,
+        rate:
+          totals.leadQualifiedCount > 0
+            ? Math.round((totals.leadConvertedCount / totals.leadQualifiedCount) * 10000) / 100
+            : 0,
       },
       {
         stage: 'Sanctions Issued',
         count: totals.sanctionCount,
-        rate: totals.leadConvertedCount > 0 ? Math.round((totals.sanctionCount / totals.leadConvertedCount) * 10000) / 100 : 0,
+        rate:
+          totals.leadConvertedCount > 0
+            ? Math.round((totals.sanctionCount / totals.leadConvertedCount) * 10000) / 100
+            : 0,
       },
       {
         stage: 'Disbursements',
         count: totals.disbursementCount,
-        rate: totals.sanctionCount > 0 ? Math.round((totals.disbursementCount / totals.sanctionCount) * 10000) / 100 : 0,
+        rate:
+          totals.sanctionCount > 0
+            ? Math.round((totals.disbursementCount / totals.sanctionCount) * 10000) / 100
+            : 0,
       },
     ];
 
@@ -498,12 +462,10 @@ export class ReportingService {
         scope.allowedBranchIds,
       );
     } else {
-      rawBreakdown = await this.repo.getUserBreakdown(
-        tx,
-        ctx.principal.tenantId,
-        bounds,
-        { branchId: effectiveBranchId, userId: query.userId },
-      );
+      rawBreakdown = await this.repo.getUserBreakdown(tx, ctx.principal.tenantId, bounds, {
+        branchId: effectiveBranchId,
+        userId: query.userId,
+      });
     }
 
     const breakdown = [];
@@ -517,9 +479,7 @@ export class ReportingService {
         'DISBURSEMENT_AMOUNT',
       );
       const ach =
-        targetVal && targetVal > 0
-          ? Math.round((item.disbursementAmount / targetVal) * 10000) / 100
-          : null;
+        targetVal && targetVal > 0 ? Math.round((item.disbursementAmount / targetVal) * 10000) / 100 : null;
 
       breakdown.push({
         dimensionType: item.dimensionType,
@@ -581,18 +541,13 @@ export class ReportingService {
     }
 
     const bounds = parsePeriodBounds(query.period);
-    const users = await this.repo.getUserBreakdown(
-      tx,
-      ctx.principal.tenantId,
-      bounds,
-      { branchId: effectiveBranchId, userId: query.userId },
-    );
+    const users = await this.repo.getUserBreakdown(tx, ctx.principal.tenantId, bounds, {
+      branchId: effectiveBranchId,
+      userId: query.userId,
+    });
 
     const entries = users.map((u) => {
-      const conv =
-        u.leadCount > 0
-          ? Math.round((u.sanctionCount / u.leadCount) * 10000) / 100
-          : 0;
+      const conv = u.leadCount > 0 ? Math.round((u.sanctionCount / u.leadCount) * 10000) / 100 : 0;
 
       const isInsufficient = u.leadCount < 10 || u.sanctionCount < 5;
       return {
@@ -640,9 +595,8 @@ export class ReportingService {
     const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, {});
     const branches = await this.repo.getBranchBreakdown(tx, ctx.principal.tenantId, bounds, []);
 
-    const conversionRate = totals.leadCount > 0
-      ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100
-      : 0;
+    const conversionRate =
+      totals.leadCount > 0 ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100 : 0;
 
     const topBranches = [];
     for (const b of branches) {
@@ -654,9 +608,7 @@ export class ReportingService {
         b.dimensionId,
         'DISBURSEMENT_AMOUNT',
       );
-      const rate = target && target > 0
-        ? Math.round((b.disbursementAmount / target) * 10000) / 100
-        : null;
+      const rate = target && target > 0 ? Math.round((b.disbursementAmount / target) * 10000) / 100 : null;
       topBranches.push({
         branchId: b.dimensionId,
         branchName: b.dimensionName,
@@ -680,10 +632,30 @@ export class ReportingService {
         activeBranches: branches.length,
       },
       growthTrends: [
-        { label: 'Week 1', leads: Math.floor(totals.leadCount * 0.2), sanctions: Math.floor(totals.sanctionCount * 0.2), disbursements: Math.floor(totals.disbursementAmount * 0.18) },
-        { label: 'Week 2', leads: Math.floor(totals.leadCount * 0.25), sanctions: Math.floor(totals.sanctionCount * 0.25), disbursements: Math.floor(totals.disbursementAmount * 0.22) },
-        { label: 'Week 3', leads: Math.floor(totals.leadCount * 0.28), sanctions: Math.floor(totals.sanctionCount * 0.28), disbursements: Math.floor(totals.disbursementAmount * 0.3) },
-        { label: 'Week 4', leads: Math.floor(totals.leadCount * 0.27), sanctions: Math.floor(totals.sanctionCount * 0.27), disbursements: Math.floor(totals.disbursementAmount * 0.3) },
+        {
+          label: 'Week 1',
+          leads: Math.floor(totals.leadCount * 0.2),
+          sanctions: Math.floor(totals.sanctionCount * 0.2),
+          disbursements: Math.floor(totals.disbursementAmount * 0.18),
+        },
+        {
+          label: 'Week 2',
+          leads: Math.floor(totals.leadCount * 0.25),
+          sanctions: Math.floor(totals.sanctionCount * 0.25),
+          disbursements: Math.floor(totals.disbursementAmount * 0.22),
+        },
+        {
+          label: 'Week 3',
+          leads: Math.floor(totals.leadCount * 0.28),
+          sanctions: Math.floor(totals.sanctionCount * 0.28),
+          disbursements: Math.floor(totals.disbursementAmount * 0.3),
+        },
+        {
+          label: 'Week 4',
+          leads: Math.floor(totals.leadCount * 0.27),
+          sanctions: Math.floor(totals.sanctionCount * 0.27),
+          disbursements: Math.floor(totals.disbursementAmount * 0.3),
+        },
       ],
       topBranches: topBranches.sort((a, b) => b.disbursedAmount - a.disbursedAmount).slice(0, 5),
     };
@@ -701,17 +673,22 @@ export class ReportingService {
         ? scope.allowedBranchIds[0]!
         : (ctx.principal.primaryBranchId ?? 'brn_main'));
 
-    if (!scope.isTenantWide && scope.allowedBranchIds.length > 0 && !scope.allowedBranchIds.includes(branchId)) {
+    if (
+      !scope.isTenantWide &&
+      scope.allowedBranchIds.length > 0 &&
+      !scope.allowedBranchIds.includes(branchId)
+    ) {
       throw AppError.of('FORBIDDEN', 'Principal not authorized for requested branch.');
     }
 
     const bounds = parsePeriodBounds(query.period);
-    const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, { branchId });
+    const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, {
+      branchId,
+    });
     const users = await this.repo.getUserBreakdown(tx, ctx.principal.tenantId, bounds, { branchId });
 
-    const conversionRate = totals.leadCount > 0
-      ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100
-      : 0;
+    const conversionRate =
+      totals.leadCount > 0 ? Math.round((totals.leadConvertedCount / totals.leadCount) * 10000) / 100 : 0;
 
     return {
       dashboardCode: 'BRANCH',
@@ -775,9 +752,8 @@ export class ReportingService {
     const bounds = parsePeriodBounds(query.period);
     const totals = await this.repo.computeOperationalMetrics(tx, ctx.principal.tenantId, bounds, {});
     const pending = Math.max(0, totals.sanctionAmount - totals.disbursementAmount);
-    const avgTicket = totals.disbursementCount > 0
-      ? Math.round(totals.disbursementAmount / totals.disbursementCount)
-      : 0;
+    const avgTicket =
+      totals.disbursementCount > 0 ? Math.round(totals.disbursementAmount / totals.disbursementCount) : 0;
 
     return {
       dashboardCode: 'FINANCE',
@@ -925,7 +901,11 @@ export class ReportingService {
 
     let buffer = await globalStorage.get(ctx.principal.tenantId, `reports/${id}.${ext}`);
     if (!buffer) {
-      const { headers, records } = await this.repo.fetchReportData(tx, ctx.principal.tenantId, run.report_code);
+      const { headers, records } = await this.repo.fetchReportData(
+        tx,
+        ctx.principal.tenantId,
+        run.report_code,
+      );
       buffer = isJson
         ? Buffer.from(JSON.stringify(records, null, 2), 'utf-8')
         : serializeCsv(headers, records);
@@ -939,11 +919,7 @@ export class ReportingService {
     };
   }
 
-  async getReportRun(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<ReportRunDto> {
+  async getReportRun(tx: Tx, ctx: RequestContext, id: string): Promise<ReportRunDto> {
     this.requireReportRead(ctx);
     const run = await this.repo.getReportRun(tx, ctx.principal.tenantId, id);
     if (!run) {
@@ -952,10 +928,7 @@ export class ReportingService {
     return toReportRunDto(run);
   }
 
-  async listReportRuns(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<ReportRunDto[]> {
+  async listReportRuns(tx: Tx, ctx: RequestContext): Promise<ReportRunDto[]> {
     this.requireReportRead(ctx);
     const rows = await this.repo.listReportRuns(tx, ctx.principal.tenantId);
     return rows.map(toReportRunDto);
@@ -964,11 +937,7 @@ export class ReportingService {
   // ==========================================
   // SUB-RPT.05: Exports and Schedules
   // ==========================================
-  async createExportJob(
-    tx: Tx,
-    ctx: RequestContext,
-    dto: CreateExportDto,
-  ): Promise<ExportJobDto> {
+  async createExportJob(tx: Tx, ctx: RequestContext, dto: CreateExportDto): Promise<ExportJobDto> {
     this.requireExportRun(ctx);
     if (this.authz && process.env.DISABLE_MFA !== 'true') {
       this.authz.requireStepUp(ctx, 900);
@@ -979,7 +948,10 @@ export class ReportingService {
 
     if (!scope.isTenantWide) {
       if (dto.scopeType === 'TENANT') {
-        throw AppError.of('FORBIDDEN', 'Principal not authorized for tenant-wide export. Branch scope required.');
+        throw AppError.of(
+          'FORBIDDEN',
+          'Principal not authorized for tenant-wide export. Branch scope required.',
+        );
       }
       effectiveScopeType = 'BRANCH';
       if (dto.scopeId && !scope.allowedBranchIds.includes(dto.scopeId)) {
@@ -995,7 +967,18 @@ export class ReportingService {
 
     if (dto.exportType === 'LEAD') {
       const leads = await this.repo.fetchLeadsForExport(tx, ctx.principal.tenantId, effectiveScopeId);
-      exportHeaders = ['id', 'branch_id', 'full_name', 'mobile_e164', 'email', 'product_category', 'indicative_amount', 'source', 'state', 'created_at'];
+      exportHeaders = [
+        'id',
+        'branch_id',
+        'full_name',
+        'mobile_e164',
+        'email',
+        'product_category',
+        'indicative_amount',
+        'source',
+        'state',
+        'created_at',
+      ];
       recordsToExport = leads.map((l: any) => ({
         id: l.id,
         branch_id: l.branch_id,
@@ -1010,7 +993,15 @@ export class ReportingService {
       }));
     } else if (dto.exportType === 'CUSTOMER') {
       const customers = await this.repo.fetchCustomersForExport(tx, ctx.principal.tenantId, effectiveScopeId);
-      exportHeaders = ['id', 'primary_branch_id', 'customer_type', 'full_name', 'mobile_e164', 'email', 'created_at'];
+      exportHeaders = [
+        'id',
+        'primary_branch_id',
+        'customer_type',
+        'full_name',
+        'mobile_e164',
+        'email',
+        'created_at',
+      ];
       recordsToExport = customers.map((c: any) => ({
         id: c.id,
         primary_branch_id: c.primary_branch_id,
@@ -1025,7 +1016,16 @@ export class ReportingService {
       const summaries = await this.repo.queryOperationalSummary(tx, ctx.principal.tenantId, {
         branchId: effectiveScopeId,
       });
-      exportHeaders = ['date', 'tenant_id', 'branch_id', 'leads_created', 'leads_qualified', 'leads_converted', 'sanctions_count', 'disbursements_count'];
+      exportHeaders = [
+        'date',
+        'tenant_id',
+        'branch_id',
+        'leads_created',
+        'leads_qualified',
+        'leads_converted',
+        'sanctions_count',
+        'disbursements_count',
+      ];
       recordsToExport = summaries.map((s: any) => ({
         date: s.summary_date,
         tenant_id: s.tenant_id,
@@ -1093,11 +1093,7 @@ export class ReportingService {
     return toExportJobDto(row);
   }
 
-  async getExportJob(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<ExportJobDto> {
+  async getExportJob(tx: Tx, ctx: RequestContext, id: string): Promise<ExportJobDto> {
     this.requireExportRun(ctx);
     const job = await this.repo.getExportJob(tx, ctx.principal.tenantId, id);
     if (!job) {
@@ -1159,10 +1155,7 @@ export class ReportingService {
     };
   }
 
-  async listExportJobs(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<ExportJobDto[]> {
+  async listExportJobs(tx: Tx, ctx: RequestContext): Promise<ExportJobDto[]> {
     this.requireExportRun(ctx);
     const rows = await this.repo.listExportJobs(tx, ctx.principal.tenantId);
     return rows.map(toExportJobDto);
@@ -1177,7 +1170,9 @@ export class ReportingService {
 
     const id = newId('sch');
     const now = new Date();
-    const nextRun = new Date(now.getTime() + (dto.frequency === 'DAILY' ? 86400000 : 7 * 86400000)).toISOString();
+    const nextRun = new Date(
+      now.getTime() + (dto.frequency === 'DAILY' ? 86400000 : 7 * 86400000),
+    ).toISOString();
 
     const row = await this.repo.createReportSchedule(tx, {
       id,
@@ -1197,20 +1192,13 @@ export class ReportingService {
     return toReportScheduleDto(row);
   }
 
-  async listReportSchedules(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<ReportScheduleDto[]> {
+  async listReportSchedules(tx: Tx, ctx: RequestContext): Promise<ReportScheduleDto[]> {
     this.requireReportSchedule(ctx);
     const rows = await this.repo.listReportSchedules(tx, ctx.principal.tenantId);
     return rows.map(toReportScheduleDto);
   }
 
-  async deleteReportSchedule(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<void> {
+  async deleteReportSchedule(tx: Tx, ctx: RequestContext, id: string): Promise<void> {
     this.requireReportSchedule(ctx);
     const deleted = await this.repo.deleteReportSchedule(tx, ctx.principal.tenantId, id);
     if (!deleted) {

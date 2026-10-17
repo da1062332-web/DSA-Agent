@@ -11,11 +11,7 @@ export function requirePermission(ctx: RequestContext, code: PermissionCode): vo
 }
 
 /** Checks whether a customer is within the authorized record scope of the principal. */
-export function isCustomerInScope(
-  ctx: RequestContext,
-  code: PermissionCode,
-  customer: CustomerRow,
-): boolean {
+export function isCustomerInScope(ctx: RequestContext, code: PermissionCode, customer: CustomerRow): boolean {
   if (customer.tenant_id !== ctx.principal.tenantId) {
     return false;
   }
@@ -83,10 +79,7 @@ export interface CustomerScopeFilter {
 }
 
 /** Computes combined scope filters for customer list queries. */
-export function getCustomerScopeFilter(
-  ctx: RequestContext,
-  code: PermissionCode,
-): CustomerScopeFilter {
+export function getCustomerScopeFilter(ctx: RequestContext, code: PermissionCode): CustomerScopeFilter {
   const matchingGrants = ctx.principal.grants.filter((g) => g.code === code);
   if (matchingGrants.length === 0) {
     throw AppError.of('FORBIDDEN', `Permission '${code}' required.`);

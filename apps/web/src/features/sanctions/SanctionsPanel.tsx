@@ -183,8 +183,8 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
                     activeSanction.status === 'ACTIVE'
                       ? 'success'
                       : activeSanction.status === 'REVISED'
-                      ? 'info'
-                      : 'default'
+                        ? 'info'
+                        : 'default'
                   }
                   size="small"
                   sx={{ mr: 1 }}
@@ -303,10 +303,10 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
                                 t.status === 'VERIFIED'
                                   ? 'success'
                                   : t.status === 'RECORDED'
-                                  ? 'warning'
-                                  : t.status === 'RETURNED'
-                                  ? 'error'
-                                  : 'default'
+                                    ? 'warning'
+                                    : t.status === 'RETURNED'
+                                      ? 'error'
+                                      : 'default'
                               }
                             />
                           </TableCell>
@@ -320,7 +320,9 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId, cu
                                 color="primary"
                                 disabled={Boolean(isRecorder)}
                                 title={
-                                  isRecorder ? 'Segregation of duties: Creator cannot verify' : 'Verify Tranche'
+                                  isRecorder
+                                    ? 'Segregation of duties: Creator cannot verify'
+                                    : 'Verify Tranche'
                                 }
                                 onClick={() => {
                                   setSelectedTranche(t);

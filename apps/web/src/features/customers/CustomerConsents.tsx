@@ -57,10 +57,7 @@ export function CustomerConsents(): React.ReactElement {
     enabled: Boolean(customerId),
   });
 
-  const {
-    data: consents = [],
-    isLoading: isConsentsLoading,
-  } = useQuery({
+  const { data: consents = [], isLoading: isConsentsLoading } = useQuery({
     queryKey: ['customer-consents', customerId],
     queryFn: () => getCustomerConsents(customerId),
     enabled: Boolean(customerId),
@@ -68,8 +65,7 @@ export function CustomerConsents(): React.ReactElement {
 
   const recordMutation = useMutation({
     meta: { successMessage: 'Consent recorded.' },
-    mutationFn: (payload: RecordConsentPayload) =>
-      recordCustomerConsent(customerId, payload),
+    mutationFn: (payload: RecordConsentPayload) => recordCustomerConsent(customerId, payload),
     onSuccess: () => {
       setOpenDialog(false);
       setActionError(null);
@@ -105,9 +101,7 @@ export function CustomerConsents(): React.ReactElement {
   if (loadError) {
     return (
       <Container sx={{ py: 4 }}>
-        <Alert severity="error">
-          Failed to load customer profile: {(loadError as Error).message}
-        </Alert>
+        <Alert severity="error">Failed to load customer profile: {(loadError as Error).message}</Alert>
       </Container>
     );
   }
@@ -119,12 +113,7 @@ export function CustomerConsents(): React.ReactElement {
       <Stack spacing={3}>
         {/* Navigation & Title */}
         <Stack direction="row" alignItems="center" spacing={2}>
-          <Button
-            component={Link}
-            to="/leads"
-            variant="outlined"
-            size="small"
-          >
+          <Button component={Link} to="/leads" variant="outlined" size="small">
             ← Back to Leads
           </Button>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
@@ -144,10 +133,12 @@ export function CustomerConsents(): React.ReactElement {
                     {customer.fullName}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Customer ID: {customer.id} · Party Type: {customer.partyType} · Branch: {customer.homeBranchId}
+                    Customer ID: {customer.id} · Party Type: {customer.partyType} · Branch:{' '}
+                    {customer.homeBranchId}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Mobile: {customer.primaryMobileMasked || 'N/A'} · Email: {customer.primaryEmailMasked || 'N/A'}
+                    Mobile: {customer.primaryMobileMasked || 'N/A'} · Email:{' '}
+                    {customer.primaryEmailMasked || 'N/A'}
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -156,10 +147,7 @@ export function CustomerConsents(): React.ReactElement {
                     color={customer.status === 'ACTIVE' ? 'success' : 'default'}
                     size="small"
                   />
-                  <Button
-                    variant="contained"
-                    onClick={() => setOpenDialog(true)}
-                  >
+                  <Button variant="contained" onClick={() => setOpenDialog(true)}>
                     + Record New Consent
                   </Button>
                 </Stack>
@@ -323,8 +311,8 @@ export function CustomerConsents(): React.ReactElement {
             onClick={() => {
               const target =
                 purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
-                  ? (purposeTarget.trim() || 'LENDER_HDFC_01')
-                  : (purposeTarget.trim() || undefined);
+                  ? purposeTarget.trim() || 'LENDER_HDFC_01'
+                  : purposeTarget.trim() || undefined;
               recordMutation.mutate({
                 purpose,
                 purposeTarget: target,

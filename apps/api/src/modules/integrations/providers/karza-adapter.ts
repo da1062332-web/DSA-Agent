@@ -1,11 +1,7 @@
 // apps/api/src/modules/integrations/providers/karza-adapter.ts
 // Module 28: Integration Management (MOD-INT) — Karza Verification Adapter
 
-import type {
-  AdapterResult,
-  HealthCheckResult,
-  IntegrationEnvironment,
-} from '@dsa/contracts';
+import type { AdapterResult, HealthCheckResult, IntegrationEnvironment } from '@dsa/contracts';
 import type { BaseAdapter } from '../adapter';
 import type { ResolvedCredentials } from '../vault-port';
 
@@ -27,7 +23,10 @@ export class KarzaAdapter implements BaseAdapter<KarzaConfig> {
     const c = config as Record<string, unknown>;
     const errors: string[] = [];
 
-    if (c.minMatchScore !== undefined && (typeof c.minMatchScore !== 'number' || c.minMatchScore < 0 || c.minMatchScore > 100)) {
+    if (
+      c.minMatchScore !== undefined &&
+      (typeof c.minMatchScore !== 'number' || c.minMatchScore < 0 || c.minMatchScore > 100)
+    ) {
       errors.push('minMatchScore must be between 0 and 100');
     }
 
@@ -48,7 +47,10 @@ export class KarzaAdapter implements BaseAdapter<KarzaConfig> {
     };
   }
 
-  async execute<TInput = { idNumber: string; name?: string }, TOutput = { verified: boolean; matchScore: number; details: Record<string, unknown> }>(
+  async execute<
+    TInput = { idNumber: string; name?: string },
+    TOutput = { verified: boolean; matchScore: number; details: Record<string, unknown> },
+  >(
     capability: string,
     input: TInput,
     config: KarzaConfig,

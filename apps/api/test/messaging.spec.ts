@@ -339,7 +339,10 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
         };
         next();
       });
-      appBusinessHoursNY.use('/v1', createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService));
+      appBusinessHoursNY.use(
+        '/v1',
+        createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService),
+      );
       appBusinessHoursNY.use(errorHandler());
 
       const resAllow = await request(appBusinessHoursNY)
@@ -372,7 +375,10 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
         };
         next();
       });
-      appQuietHoursNY.use('/v1', createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService));
+      appQuietHoursNY.use(
+        '/v1',
+        createRouter(createTestDeps({ txRunner: dummyTxRunner }), nyMessagingService),
+      );
       appQuietHoursNY.use(errorHandler());
 
       const resBlock = await request(appQuietHoursNY)
@@ -585,13 +591,11 @@ describe('Module 11: Messaging (MOD-MSG) API Unit & Route Tests', () => {
     it('rejects public webhook when connectionPathId is unknown (404 NOT_FOUND)', async () => {
       const app = makeApp();
 
-      const res = await request(app)
-        .post('/public/v1/webhooks/messaging/TEST_SES/conn_unknown')
-        .send({
-          eventId: 'wh_evt_unknown',
-          providerMessageId: 'pmsg_999',
-          status: 'DELIVERED',
-        });
+      const res = await request(app).post('/public/v1/webhooks/messaging/TEST_SES/conn_unknown').send({
+        eventId: 'wh_evt_unknown',
+        providerMessageId: 'pmsg_999',
+        status: 'DELIVERED',
+      });
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('NOT_FOUND');

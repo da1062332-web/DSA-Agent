@@ -20,7 +20,7 @@ const RULE_UID_REGEX = /^RUL-[A-Z0-9-]{2,30}$/;
 
 export function validateRuleSetDefinition(
   definition: unknown,
-  ctx: ValidationContext = {}
+  ctx: ValidationContext = {},
 ): ValidationReport {
   const issues: ValidationIssue[] = [];
   const contentHash = computeContentHash(definition);
@@ -315,7 +315,7 @@ function conditionsKey(conditions: RuleCondition[]): string {
 function validateRuleConflicts(
   rules: RuleDefinition[],
   hitPolicy: HitPolicy,
-  issues: ValidationIssue[]
+  issues: ValidationIssue[],
 ): void {
   const conditionMap = new Map<string, RuleDefinition[]>();
 
@@ -389,4 +389,3 @@ export function detectDecisionDependencyCycle(graph: Record<string, string[]>): 
 
   return { hasCycle: false };
 }
-

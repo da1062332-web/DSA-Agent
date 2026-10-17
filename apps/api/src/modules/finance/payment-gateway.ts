@@ -45,7 +45,10 @@ export class PaymentGatewayService {
 
     // RTGS minimum threshold validation (standard RBI rule: minimum 2,00,000 INR for RTGS)
     if (req.mode === 'RTGS' && numAmount < 200000) {
-      throw AppError.of('VALIDATION_ERROR', 'RTGS requires a minimum transfer amount of ₹2,00,000. Use IMPS or NEFT.');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'RTGS requires a minimum transfer amount of ₹2,00,000. Use IMPS or NEFT.',
+      );
     }
 
     // Generate bank transaction reference (UTR) and transfer identifier
@@ -80,7 +83,12 @@ export class PaymentGatewayService {
     batchId: string,
     payouts: Array<{ id: string; amount: string; currency: string }>,
     mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
-  ): Promise<{ batchId: string; mode: string; results: GatewayDisbursementResult[]; totalDisbursed: number }> {
+  ): Promise<{
+    batchId: string;
+    mode: string;
+    results: GatewayDisbursementResult[];
+    totalDisbursed: number;
+  }> {
     const results: GatewayDisbursementResult[] = [];
     let total = 0;
 

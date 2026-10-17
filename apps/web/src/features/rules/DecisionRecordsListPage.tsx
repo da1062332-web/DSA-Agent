@@ -203,13 +203,7 @@ export function DecisionRecordsListPage() {
                     <Chip
                       size="small"
                       label={r.status}
-                      color={
-                        r.status === 'OK'
-                          ? 'success'
-                          : r.status === 'NO_MATCH'
-                          ? 'warning'
-                          : 'error'
-                      }
+                      color={r.status === 'OK' ? 'success' : r.status === 'NO_MATCH' ? 'warning' : 'error'}
                     />
                   </TableCell>
                   <TableCell>
@@ -218,14 +212,10 @@ export function DecisionRecordsListPage() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="caption">
-                      {r.durationUs ? `${r.durationUs} µs` : '—'}
-                    </Typography>
+                    <Typography variant="caption">{r.durationUs ? `${r.durationUs} µs` : '—'}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="caption">
-                      {new Date(r.evaluationTime).toLocaleString()}
-                    </Typography>
+                    <Typography variant="caption">{new Date(r.evaluationTime).toLocaleString()}</Typography>
                   </TableCell>
                   <TableCell align="right">
                     <Button

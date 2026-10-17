@@ -106,4 +106,3 @@ export const PERMISSION_CODES = [
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
-

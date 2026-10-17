@@ -143,18 +143,16 @@ export function createRouter(
 
       const ifMatch = req.get('If-Match');
       if (!ifMatch) {
-        throw AppError.of('VALIDATION_ERROR', 'If-Match header is required for updating profile preferences', [
-          { field: 'If-Match', issue: 'REQUIRED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'If-Match header is required for updating profile preferences',
+          [{ field: 'If-Match', issue: 'REQUIRED' }],
+        );
       }
 
       const input = UpdateProfilePreferencesSchema.parse(req.body);
       const preferences = input.notificationPreferences ?? input.preferences!;
-      const { profile, lockVersion } = await notificationService.updatePreferences(
-        ctx,
-        preferences,
-        ifMatch,
-      );
+      const { profile, lockVersion } = await notificationService.updatePreferences(ctx, preferences, ifMatch);
 
       res.setHeader('ETag', `"${lockVersion}"`);
       res.status(200).json(profile);

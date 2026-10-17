@@ -47,7 +47,12 @@ export async function evaluateApplicationEligibility(
       application: input.application,
       product: input.product,
     },
-    evaluationTime: typeof ctx.now === 'string' ? ctx.now : (ctx.now instanceof Date ? ctx.now.toISOString() : new Date().toISOString()),
+    evaluationTime:
+      typeof ctx.now === 'string'
+        ? ctx.now
+        : ctx.now instanceof Date
+          ? ctx.now.toISOString()
+          : new Date().toISOString(),
     idempotencyKey: idempotencyKey ?? `elg_${input.applicationId}_${Date.now()}`,
   };
 
@@ -59,7 +64,9 @@ export async function evaluateApplicationEligibility(
     status: decision.status,
     result: outputs?.result ?? 'REFER',
     maxEligibleAmount: outputs?.maxEligibleAmount ?? null,
-    reasons: outputs?.reasons ?? [{ code: 'UNDERWRITING_REFERRAL', text: 'Evaluation referred for manual credit assessment' }],
+    reasons: outputs?.reasons ?? [
+      { code: 'UNDERWRITING_REFERRAL', text: 'Evaluation referred for manual credit assessment' },
+    ],
     fallbackApplied: decision.fallbackApplied,
     replayed: decision.replayed,
   };
@@ -82,4 +89,3 @@ export function toEligibilityCriteria(result: EligibilityEvaluationResult): Arra
     reason: r.text,
   }));
 }
-

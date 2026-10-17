@@ -112,7 +112,6 @@ function formatUserRow(row: RawUserRow) {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
 
-
   // GET /v1/me — Returns current principal details and permissions
   router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -200,7 +199,8 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       // ?q= searches the branch code and name. It was accepted before but never applied.
       const search = typeof req.query.q === 'string' && req.query.q.trim() ? req.query.q.trim() : undefined;
-      const statusFilter = typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
+      const statusFilter =
+        typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
       const branches = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
           id: string;
@@ -324,7 +324,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       // The create runs in one transaction. With an Idempotency-Key, a replay returns the original branch and a reused key with
       // a different body is refused (IDEMPOTENCY_KEY_REUSED). Without a key the create works as before.
-      const idemKey = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
+      const idemKey =
+        typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
       const createBranch = async (tx: Tx) => {
         const orgRes = await sql<{ id: string }>`
           SELECT id FROM app.organisation WHERE tenant_id = ${ctx.principal.tenantId} LIMIT 1
@@ -1215,7 +1216,9 @@ export function createRouter(deps: ApiDeps): Router {
         typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
       // Filter by the user's primary branch. It was accepted by the schema but never applied, so every branch's users came back.
       const branchFilter =
-        typeof req.query.branchId === 'string' && req.query.branchId.trim() ? req.query.branchId.trim() : undefined;
+        typeof req.query.branchId === 'string' && req.query.branchId.trim()
+          ? req.query.branchId.trim()
+          : undefined;
       const searchFilter =
         typeof req.query.search === 'string' && req.query.search.trim()
           ? req.query.search.trim().toLowerCase()
@@ -1823,7 +1826,6 @@ export function createRouter(deps: ApiDeps): Router {
   registerOrganisationRoutes(router, deps);
   registerTeamRoutes(router, deps);
   registerQueueRoutes(router, deps);
-
 
   return router;
 }

@@ -111,7 +111,8 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
 }
 
 /** Shown wherever the API refuses a request for lack of permission. */
-export const ACCESS_DENIED_TEXT = "You don't have access to this. Ask your administrator to grant you the permission.";
+export const ACCESS_DENIED_TEXT =
+  "You don't have access to this. Ask your administrator to grant you the permission.";
 
 /** A readable message for an error, including field details from VALIDATION_ERROR. */
 export function errorText(err: unknown): string {

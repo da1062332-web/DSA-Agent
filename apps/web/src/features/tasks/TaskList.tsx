@@ -55,7 +55,7 @@ function parseJwtPayload(token: string | undefined): any {
         atob(base64)
           .split('')
           .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
+          .join(''),
       );
       return JSON.parse(jsonPayload);
     }
@@ -235,11 +235,7 @@ export function TaskList(): React.ReactElement {
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
               <FormControl size="small" sx={{ minWidth: 150 }}>
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="">All Statuses</MenuItem>
                   <MenuItem value="OPEN">Open</MenuItem>
                   <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
@@ -351,11 +347,7 @@ export function TaskList(): React.ReactElement {
                 />
                 <FormControl fullWidth size="small">
                   <InputLabel>Type</InputLabel>
-                  <Select
-                    value={type}
-                    label="Type"
-                    onChange={(e) => setType(e.target.value as TaskType)}
-                  >
+                  <Select value={type} label="Type" onChange={(e) => setType(e.target.value as TaskType)}>
                     <MenuItem value="FOLLOW_UP">Follow Up</MenuItem>
                     <MenuItem value="CALL">Call</MenuItem>
                     <MenuItem value="MEETING">Meeting</MenuItem>
@@ -410,11 +402,7 @@ export function TaskList(): React.ReactElement {
                 </Stack>
                 <FormControl fullWidth size="small">
                   <InputLabel>SLA Class</InputLabel>
-                  <Select
-                    value={slaClass}
-                    label="SLA Class"
-                    onChange={(e) => setSlaClass(e.target.value)}
-                  >
+                  <Select value={slaClass} label="SLA Class" onChange={(e) => setSlaClass(e.target.value)}>
                     <MenuItem value="CUSTOMER_FIRST_CONTACT">Customer First Contact (2h)</MenuItem>
                     <MenuItem value="CUSTOMER_FOLLOW_UP">Customer Follow-up (24h)</MenuItem>
                     <MenuItem value="LENDER_QUERY">Lender Query (4h)</MenuItem>
@@ -434,7 +422,12 @@ export function TaskList(): React.ReactElement {
         </Dialog>
 
         {/* Complete Task Dialog */}
-        <Dialog open={openCompleteDialog} onClose={() => setOpenCompleteDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={openCompleteDialog}
+          onClose={() => setOpenCompleteDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <form onSubmit={handleCompleteSubmit}>
             <DialogTitle>Complete Task: {selectedTask?.title}</DialogTitle>
             <DialogContent dividers>

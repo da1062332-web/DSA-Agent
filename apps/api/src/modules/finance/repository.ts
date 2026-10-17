@@ -175,8 +175,16 @@ export interface FinanceRepository {
 
   // Calculations & Payables
   insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void>;
-  findCommissionCalculationById(tx: Tx, tenantId: string, id: string): Promise<CommissionCalculationRow | null>;
-  findEarnedCalculationByTranche(tx: Tx, tenantId: string, trancheId: string): Promise<CommissionCalculationRow | null>;
+  findCommissionCalculationById(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionCalculationRow | null>;
+  findEarnedCalculationByTranche(
+    tx: Tx,
+    tenantId: string,
+    trancheId: string,
+  ): Promise<CommissionCalculationRow | null>;
   listCommissionCalculations(
     tx: Tx,
     tenantId: string,
@@ -228,7 +236,12 @@ export interface FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
+    updates?: {
+      paidOn?: Date;
+      paymentRefMasked?: string;
+      paymentRefCiphertext?: string;
+      failureReason?: string;
+    },
   ): Promise<PayoutRequestRow | null>;
   emitOutboxEvent?(
     tx: Tx,
@@ -247,12 +260,20 @@ export interface FinanceRepository {
   insertPayoutBatch(tx: Tx, row: PayoutBatchRow): Promise<void>;
   findPayoutBatchById(tx: Tx, tenantId: string, id: string): Promise<PayoutBatchRow | null>;
   listPayoutBatches(tx: Tx, tenantId: string): Promise<PayoutBatchRow[]>;
-  updatePayoutBatchStatus?(tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutBatchRow | null>;
-
+  updatePayoutBatchStatus?(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+  ): Promise<PayoutBatchRow | null>;
 
   // Recalculations
   insertRecalculationProposal(tx: Tx, row: RecalculationProposalRow): Promise<void>;
-  findRecalculationProposalById(tx: Tx, tenantId: string, id: string): Promise<RecalculationProposalRow | null>;
+  findRecalculationProposalById(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<RecalculationProposalRow | null>;
   listRecalculationProposals(tx: Tx, tenantId: string): Promise<RecalculationProposalRow[]>;
   approveRecalculationProposal(
     tx: Tx,
@@ -285,7 +306,11 @@ export class SqlFinanceRepository implements FinanceRepository {
     return res.rows[0] ?? null;
   }
 
-  async findActiveCommissionPlan(tx: Tx, tenantId: string, lenderId: string): Promise<CommissionPlanRow | null> {
+  async findActiveCommissionPlan(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+  ): Promise<CommissionPlanRow | null> {
     const res = await sql<CommissionPlanRow>`
       SELECT * FROM commission_plan
       WHERE tenant_id = ${tenantId} AND lender_id = ${lenderId} AND status = 'ACTIVE'
@@ -367,14 +392,22 @@ export class SqlFinanceRepository implements FinanceRepository {
     `.execute(tx);
   }
 
-  async findCommissionCalculationById(tx: Tx, tenantId: string, id: string): Promise<CommissionCalculationRow | null> {
+  async findCommissionCalculationById(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionCalculationRow | null> {
     const res = await sql<CommissionCalculationRow>`
       SELECT * FROM commission_calculation WHERE tenant_id = ${tenantId} AND id = ${id}
     `.execute(tx);
     return res.rows[0] ?? null;
   }
 
-  async findEarnedCalculationByTranche(tx: Tx, tenantId: string, trancheId: string): Promise<CommissionCalculationRow | null> {
+  async findEarnedCalculationByTranche(
+    tx: Tx,
+    tenantId: string,
+    trancheId: string,
+  ): Promise<CommissionCalculationRow | null> {
     const res = await sql<CommissionCalculationRow>`
       SELECT * FROM commission_calculation 
       WHERE tenant_id = ${tenantId} AND tranche_id = ${trancheId} AND calc_kind = 'EARNED'
@@ -418,7 +451,11 @@ export class SqlFinanceRepository implements FinanceRepository {
     `.execute(tx);
   }
 
-  async findCommissionPayableById(tx: Tx, tenantId: string, id: string): Promise<CommissionPayableRow | null> {
+  async findCommissionPayableById(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionPayableRow | null> {
     const res = await sql<CommissionPayableRow>`
       SELECT * FROM commission_payable WHERE tenant_id = ${tenantId} AND id = ${id}
     `.execute(tx);
@@ -432,7 +469,8 @@ export class SqlFinanceRepository implements FinanceRepository {
   ): Promise<{ rows: CommissionPayableRow[]; nextCursor: string | null }> {
     const limitPlusOne = filters.limit + 1;
     let query = sql<CommissionPayableRow>`SELECT * FROM commission_payable WHERE tenant_id = ${tenantId}`;
-    if (filters.connectorId) query = sql<CommissionPayableRow>`${query} AND connector_id = ${filters.connectorId}`;
+    if (filters.connectorId)
+      query = sql<CommissionPayableRow>`${query} AND connector_id = ${filters.connectorId}`;
     if (filters.state) query = sql<CommissionPayableRow>`${query} AND state = ${filters.state}`;
     if (filters.cursor) query = sql<CommissionPayableRow>`${query} AND id > ${filters.cursor}`;
     query = sql<CommissionPayableRow>`${query} ORDER BY id ASC LIMIT ${limitPlusOne}`;
@@ -486,7 +524,12 @@ export class SqlFinanceRepository implements FinanceRepository {
     return res.rows;
   }
 
-  async approveAdjustment(tx: Tx, tenantId: string, id: string, approverId: string): Promise<AdjustmentRow | null> {
+  async approveAdjustment(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    approverId: string,
+  ): Promise<AdjustmentRow | null> {
     const res = await sql<AdjustmentRow>`
       UPDATE adjustment
       SET status = 'APPROVED', approved_at = now(), approved_by = ${approverId}
@@ -527,7 +570,8 @@ export class SqlFinanceRepository implements FinanceRepository {
   ): Promise<{ rows: PayoutRequestRow[]; nextCursor: string | null }> {
     const limitPlusOne = filters.limit + 1;
     let query = sql<PayoutRequestRow>`SELECT * FROM payout_request WHERE tenant_id = ${tenantId}`;
-    if (filters.connectorId) query = sql<PayoutRequestRow>`${query} AND connector_id = ${filters.connectorId}`;
+    if (filters.connectorId)
+      query = sql<PayoutRequestRow>`${query} AND connector_id = ${filters.connectorId}`;
     if (filters.status) query = sql<PayoutRequestRow>`${query} AND status = ${filters.status}`;
     if (filters.cursor) query = sql<PayoutRequestRow>`${query} AND id > ${filters.cursor}`;
     query = sql<PayoutRequestRow>`${query} ORDER BY id ASC LIMIT ${limitPlusOne}`;
@@ -604,7 +648,12 @@ export class SqlFinanceRepository implements FinanceRepository {
     tenantId: string,
     id: string,
     status: string,
-    updates?: { paidOn?: Date; paymentRefMasked?: string; paymentRefCiphertext?: string; failureReason?: string },
+    updates?: {
+      paidOn?: Date;
+      paymentRefMasked?: string;
+      paymentRefCiphertext?: string;
+      failureReason?: string;
+    },
   ): Promise<PayoutRequestRow | null> {
     const res = await sql<PayoutRequestRow>`
       UPDATE payout_request
@@ -669,7 +718,12 @@ export class SqlFinanceRepository implements FinanceRepository {
     return res.rows;
   }
 
-  async updatePayoutBatchStatus(tx: Tx, tenantId: string, id: string, status: string): Promise<PayoutBatchRow | null> {
+  async updatePayoutBatchStatus(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    status: string,
+  ): Promise<PayoutBatchRow | null> {
     const res = await sql<PayoutBatchRow>`
       UPDATE payout_batch
       SET status = ${status}
@@ -678,7 +732,6 @@ export class SqlFinanceRepository implements FinanceRepository {
     `.execute(tx);
     return res.rows[0] ?? null;
   }
-
 
   async updateCommissionCalculationStatus(
     tx: Tx,

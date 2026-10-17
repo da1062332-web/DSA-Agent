@@ -56,27 +56,30 @@ export const ListLedgerAccountsQuerySchema = z.object({
 });
 export type ListLedgerAccountsQuery = z.input<typeof ListLedgerAccountsQuerySchema>;
 
-export const CreateLedgerAccountInputSchema = z.object({
-  code: z.string().min(1, 'Account code required'),
-  name: z.string().min(1, 'Account name required'),
-  type: z.enum(LEDGER_ACCOUNT_TYPES),
-  counterpartyType: z.enum(COUNTERPARTY_TYPES).optional(),
-  counterpartyId: z.string().optional(),
-  currency: z.string().default('INR'),
-  isActive: z.boolean().default(true),
-}).refine(
-  (data) => {
-    // OD-021: TAX_PAYABLE and TAX_RECEIVABLE must remain inactive
-    if ((data.type === 'TAX_PAYABLE' || data.type === 'TAX_RECEIVABLE') && data.isActive !== false) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'OD-021: TAX_PAYABLE and TAX_RECEIVABLE accounts must remain inactive until tax policy approval',
-    path: ['isActive'],
-  },
-);
+export const CreateLedgerAccountInputSchema = z
+  .object({
+    code: z.string().min(1, 'Account code required'),
+    name: z.string().min(1, 'Account name required'),
+    type: z.enum(LEDGER_ACCOUNT_TYPES),
+    counterpartyType: z.enum(COUNTERPARTY_TYPES).optional(),
+    counterpartyId: z.string().optional(),
+    currency: z.string().default('INR'),
+    isActive: z.boolean().default(true),
+  })
+  .refine(
+    (data) => {
+      // OD-021: TAX_PAYABLE and TAX_RECEIVABLE must remain inactive
+      if ((data.type === 'TAX_PAYABLE' || data.type === 'TAX_RECEIVABLE') && data.isActive !== false) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        'OD-021: TAX_PAYABLE and TAX_RECEIVABLE accounts must remain inactive until tax policy approval',
+      path: ['isActive'],
+    },
+  );
 export type CreateLedgerAccountInput = z.input<typeof CreateLedgerAccountInputSchema>;
 
 // --- ENT-081: ledger_entry ---
@@ -133,30 +136,32 @@ export const PostJournalLineInputSchema = z.object({
 });
 export type PostJournalLineInput = z.input<typeof PostJournalLineInputSchema>;
 
-export const PostJournalInputSchema = z.object({
-  referenceType: z.enum(JOURNAL_REFERENCE_TYPES),
-  referenceId: z.string().min(1, 'referenceId required'),
-  idempotencyKey: z.string().optional(),
-  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must be YYYY-MM'),
-  currency: z.string().default('INR'),
-  narration: z.string().optional(),
-  lines: z.array(PostJournalLineInputSchema).min(2, 'Journal must have at least 2 lines'),
-}).refine(
-  (data) => {
-    // Validate debit == credit
-    const debits = data.lines
-      .filter((l) => l.entryType === 'DEBIT')
-      .reduce((sum, l) => sum + Math.round(parseFloat(l.amount) * 100), 0);
-    const credits = data.lines
-      .filter((l) => l.entryType === 'CREDIT')
-      .reduce((sum, l) => sum + Math.round(parseFloat(l.amount) * 100), 0);
-    return debits === credits && debits > 0;
-  },
-  {
-    message: 'LEDGER_UNBALANCED: Total debits must equal total credits and be greater than zero',
-    path: ['lines'],
-  },
-);
+export const PostJournalInputSchema = z
+  .object({
+    referenceType: z.enum(JOURNAL_REFERENCE_TYPES),
+    referenceId: z.string().min(1, 'referenceId required'),
+    idempotencyKey: z.string().optional(),
+    period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must be YYYY-MM'),
+    currency: z.string().default('INR'),
+    narration: z.string().optional(),
+    lines: z.array(PostJournalLineInputSchema).min(2, 'Journal must have at least 2 lines'),
+  })
+  .refine(
+    (data) => {
+      // Validate debit == credit
+      const debits = data.lines
+        .filter((l) => l.entryType === 'DEBIT')
+        .reduce((sum, l) => sum + Math.round(parseFloat(l.amount) * 100), 0);
+      const credits = data.lines
+        .filter((l) => l.entryType === 'CREDIT')
+        .reduce((sum, l) => sum + Math.round(parseFloat(l.amount) * 100), 0);
+      return debits === credits && debits > 0;
+    },
+    {
+      message: 'LEDGER_UNBALANCED: Total debits must equal total credits and be greater than zero',
+      path: ['lines'],
+    },
+  );
 export type PostJournalInput = z.input<typeof PostJournalInputSchema>;
 
 // API-LED-003: POST /v1/ledger/periods/{period}/close
@@ -178,7 +183,10 @@ export type PeriodCloseResponse = z.infer<typeof PeriodCloseResponseSchema>;
 
 // API-LED-004: GET /v1/ledger/accounts/{id}/balance
 export const GetAccountBalanceQuerySchema = z.object({
-  asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'asOfDate must be YYYY-MM-DD').optional(),
+  asOfDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'asOfDate must be YYYY-MM-DD')
+    .optional(),
 });
 export type GetAccountBalanceQuery = z.input<typeof GetAccountBalanceQuerySchema>;
 
@@ -198,8 +206,14 @@ export type AccountBalanceResponse = z.infer<typeof AccountBalanceResponseSchema
 
 // API-LED-005: GET /v1/connectors/{id}/statements
 export const GetConnectorStatementsQuerySchema = z.object({
-  fromPeriod: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
-  toPeriod: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+  fromPeriod: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+  toPeriod: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
   limit: z.number().int().min(1).max(200).optional().default(50),
 });
 export type GetConnectorStatementsQuery = z.input<typeof GetConnectorStatementsQuerySchema>;
@@ -231,7 +245,10 @@ export type ConnectorStatementResponse = z.infer<typeof ConnectorStatementRespon
 
 // API-LED-006: POST /v1/ledger/exports
 export const CreateLedgerExportInputSchema = z.object({
-  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+  period: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
   format: z.enum(['CSV', 'JSON', 'EXCEL']).default('CSV'),
   includeInactiveAccounts: z.boolean().default(false),
 });

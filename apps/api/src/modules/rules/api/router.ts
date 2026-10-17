@@ -279,46 +279,52 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   // ---------------- Phase 4: Rule Validation ----------------
-  router.post('/rule-set-versions/:versionId/validate', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.author');
+  router.post(
+    '/rule-set-versions/:versionId/validate',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.author');
 
-      const runId = `val_${nextUlid()}`;
+        const runId = `val_${nextUlid()}`;
 
-      const reportResponse = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
-        const report = validateRuleSetDefinition(version.definition, { hitPolicy: version.hitPolicy });
-        return recordValidationRun(tx, ctx, runId, version.id, report);
-      });
+        const reportResponse = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
+          const report = validateRuleSetDefinition(version.definition, { hitPolicy: version.hitPolicy });
+          return recordValidationRun(tx, ctx, runId, version.id, report);
+        });
 
-      res.status(200).json(reportResponse);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.status(200).json(reportResponse);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // ---------------- Phase 5: Rule Simulation & Test Cases ----------------
-  router.post('/rule-set-versions/:versionId/simulations', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.simulate');
+  router.post(
+    '/rule-set-versions/:versionId/simulations',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.simulate');
 
-      const body = CreateSimulationRequestSchema.parse(req.body);
-      const simId = `sim_${nextUlid()}`;
+        const body = CreateSimulationRequestSchema.parse(req.body);
+        const simId = `sim_${nextUlid()}`;
 
-      const simResponse = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
-        const compiled = compileRuleSet(version.definition, version.hitPolicy);
-        const evalResult = evaluateRuleSet(compiled, body.facts, { stepBudget: body.stepBudget });
-        return recordSimulation(tx, ctx, simId, version.id, body, evalResult);
-      });
+        const simResponse = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
+          const compiled = compileRuleSet(version.definition, version.hitPolicy);
+          const evalResult = evaluateRuleSet(compiled, body.facts, { stepBudget: body.stepBudget });
+          return recordSimulation(tx, ctx, simId, version.id, body, evalResult);
+        });
 
-      res.status(201).json(simResponse);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.status(201).json(simResponse);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   router.get('/rule-simulations/:simulationId', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -335,117 +341,123 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  router.post('/rule-sets/:ruleSetId/comparisons', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.simulate');
+  router.post(
+    '/rule-sets/:ruleSetId/comparisons',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.simulate');
 
-      const body = VersionComparisonRequestSchema.parse(req.body);
+        const body = VersionComparisonRequestSchema.parse(req.body);
 
-      const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        const base = await getRuleSetVersionById(tx, ctx, body.baseVersionId);
-        const target = await getRuleSetVersionById(tx, ctx, body.targetVersionId);
+        const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const base = await getRuleSetVersionById(tx, ctx, body.baseVersionId);
+          const target = await getRuleSetVersionById(tx, ctx, body.targetVersionId);
 
-        const baseUids = new Set(base.definition.rules.map((r) => r.uid));
-        const targetUids = new Set(target.definition.rules.map((r) => r.uid));
+          const baseUids = new Set(base.definition.rules.map((r) => r.uid));
+          const targetUids = new Set(target.definition.rules.map((r) => r.uid));
 
-        const added = [...targetUids].filter((u) => !baseUids.has(u));
-        const removed = [...baseUids].filter((u) => !targetUids.has(u));
-        const modified: string[] = [];
-        const unchanged: string[] = [];
+          const added = [...targetUids].filter((u) => !baseUids.has(u));
+          const removed = [...baseUids].filter((u) => !targetUids.has(u));
+          const modified: string[] = [];
+          const unchanged: string[] = [];
 
-        for (const u of baseUids) {
-          if (targetUids.has(u)) {
-            const bRule = base.definition.rules.find((r) => r.uid === u);
-            const tRule = target.definition.rules.find((r) => r.uid === u);
-            if (computeContentHash(bRule) !== computeContentHash(tRule)) {
-              modified.push(u);
-            } else {
-              unchanged.push(u);
+          for (const u of baseUids) {
+            if (targetUids.has(u)) {
+              const bRule = base.definition.rules.find((r) => r.uid === u);
+              const tRule = target.definition.rules.find((r) => r.uid === u);
+              if (computeContentHash(bRule) !== computeContentHash(tRule)) {
+                modified.push(u);
+              } else {
+                unchanged.push(u);
+              }
             }
           }
-        }
 
-        const baseCompiled = compileRuleSet(base.definition, base.hitPolicy);
-        const targetCompiled = compileRuleSet(target.definition, target.hitPolicy);
+          const baseCompiled = compileRuleSet(base.definition, base.hitPolicy);
+          const targetCompiled = compileRuleSet(target.definition, target.hitPolicy);
 
-        const differences = (body.sampleFacts || []).map((facts, index) => {
-          const bRes = evaluateRuleSet(baseCompiled, facts);
-          const tRes = evaluateRuleSet(targetCompiled, facts);
-          const diff = JSON.stringify(bRes.outputs) !== JSON.stringify(tRes.outputs);
+          const differences = (body.sampleFacts || []).map((facts, index) => {
+            const bRes = evaluateRuleSet(baseCompiled, facts);
+            const tRes = evaluateRuleSet(targetCompiled, facts);
+            const diff = JSON.stringify(bRes.outputs) !== JSON.stringify(tRes.outputs);
+            return {
+              sampleIndex: index,
+              baseOutput: bRes.outputs,
+              targetOutput: tRes.outputs,
+              different: diff,
+            };
+          });
+
           return {
-            sampleIndex: index,
-            baseOutput: bRes.outputs,
-            targetOutput: tRes.outputs,
-            different: diff,
+            baseVersionId: base.id,
+            targetVersionId: target.id,
+            ruleDiffs: {
+              addedRuleUids: added,
+              removedRuleUids: removed,
+              modifiedRuleUids: modified,
+              unchangedRuleUids: unchanged,
+            },
+            sampleEvaluationDifferences: differences,
           };
         });
 
-        return {
-          baseVersionId: base.id,
-          targetVersionId: target.id,
-          ruleDiffs: {
-            addedRuleUids: added,
-            removedRuleUids: removed,
-            modifiedRuleUids: modified,
-            unchangedRuleUids: unchanged,
-          },
-          sampleEvaluationDifferences: differences,
-        };
-      });
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-      res.status(200).json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.post(
+    '/rule-set-versions/:versionId/impact-analyses',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.simulate');
 
-  router.post('/rule-set-versions/:versionId/impact-analyses', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.simulate');
+        ImpactAnalysisRequestSchema.parse(req.body);
 
-      ImpactAnalysisRequestSchema.parse(req.body);
+        const analysis = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
+          const testCases = await listTestCases(tx, ctx, version.ruleSetId);
 
-      const analysis = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        const version = await getRuleSetVersionById(tx, ctx, paramStr(req.params.versionId));
-        const testCases = await listTestCases(tx, ctx, version.ruleSetId);
+          const compiled = compileRuleSet(version.definition, version.hitPolicy);
+          let passed = 0;
+          let failed = 0;
+          const notes: string[] = [];
 
-        const compiled = compileRuleSet(version.definition, version.hitPolicy);
-        let passed = 0;
-        let failed = 0;
-        const notes: string[] = [];
-
-        for (const tc of testCases) {
-          if (!tc.active) continue;
-          const evalRes = evaluateRuleSet(compiled, tc.input);
-          const statusMatch = evalRes.status === tc.expectedStatus;
-          const outputMatch = JSON.stringify(evalRes.outputs) === JSON.stringify(tc.expectedOutput);
-          if (statusMatch && outputMatch) {
-            passed++;
-          } else {
-            failed++;
-            notes.push(`Test case '${tc.name}' failed expectation.`);
+          for (const tc of testCases) {
+            if (!tc.active) continue;
+            const evalRes = evaluateRuleSet(compiled, tc.input);
+            const statusMatch = evalRes.status === tc.expectedStatus;
+            const outputMatch = JSON.stringify(evalRes.outputs) === JSON.stringify(tc.expectedOutput);
+            if (statusMatch && outputMatch) {
+              passed++;
+            } else {
+              failed++;
+              notes.push(`Test case '${tc.name}' failed expectation.`);
+            }
           }
-        }
 
-        const readyForReview = failed === 0;
-        return {
-          versionId: version.id,
-          contentHash: version.contentHash,
-          testCasesTotal: testCases.filter((tc) => tc.active).length,
-          testCasesPassed: passed,
-          testCasesFailed: failed,
-          readyForReview,
-          notes,
-        };
-      });
+          const readyForReview = failed === 0;
+          return {
+            versionId: version.id,
+            contentHash: version.contentHash,
+            testCasesTotal: testCases.filter((tc) => tc.active).length,
+            testCasesPassed: passed,
+            testCasesFailed: failed,
+            readyForReview,
+            notes,
+          };
+        });
 
-      res.status(200).json(analysis);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.status(200).json(analysis);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // ---------------- Test Cases ----------------
   router.get('/rule-sets/:ruleSetId/test-cases', async (req: Request, res: Response, next: NextFunction) => {
@@ -502,121 +514,139 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   // ---------------- Phase 6: Lifecycle Transitions ----------------
-  router.post('/rule-set-versions/:versionId/submit', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.author');
+  router.post(
+    '/rule-set-versions/:versionId/submit',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.author');
 
-      const body = SubmitVersionRequestSchema.parse(req.body);
+        const body = SubmitVersionRequestSchema.parse(req.body);
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return submitVersion(tx, ctx, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return submitVersion(tx, ctx, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  router.post('/rule-set-versions/:versionId/reviews', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.approve');
-      requireStepUp(ctx);
+  router.post(
+    '/rule-set-versions/:versionId/reviews',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.approve');
+        requireStepUp(ctx);
 
-      const body = ReviewVersionRequestSchema.parse(req.body);
-      const approvalId = `appr_${nextUlid()}`;
+        const body = ReviewVersionRequestSchema.parse(req.body);
+        const approvalId = `appr_${nextUlid()}`;
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return reviewVersion(tx, ctx, approvalId, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return reviewVersion(tx, ctx, approvalId, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  router.post('/rule-set-versions/:versionId/publish', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.publish');
-      requireStepUp(ctx);
+  router.post(
+    '/rule-set-versions/:versionId/publish',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.publish');
+        requireStepUp(ctx);
 
-      const body = PublishVersionRequestSchema.parse(req.body);
-      const pubId = `pub_${nextUlid()}`;
+        const body = PublishVersionRequestSchema.parse(req.body);
+        const pubId = `pub_${nextUlid()}`;
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return publishVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return publishVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  router.post('/rule-set-versions/:versionId/suspend', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.suspend');
-      requireStepUp(ctx);
+  router.post(
+    '/rule-set-versions/:versionId/suspend',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.suspend');
+        requireStepUp(ctx);
 
-      const body = SuspendVersionRequestSchema.parse(req.body);
-      const pubId = `pub_${nextUlid()}`;
+        const body = SuspendVersionRequestSchema.parse(req.body);
+        const pubId = `pub_${nextUlid()}`;
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return suspendVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return suspendVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  router.post('/rule-set-versions/:versionId/reinstate', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.suspend');
-      requireStepUp(ctx);
+  router.post(
+    '/rule-set-versions/:versionId/reinstate',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.suspend');
+        requireStepUp(ctx);
 
-      const body = ReinstateVersionRequestSchema.parse(req.body);
-      const pubId = `pub_${nextUlid()}`;
+        const body = ReinstateVersionRequestSchema.parse(req.body);
+        const pubId = `pub_${nextUlid()}`;
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return reinstateVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return reinstateVersion(tx, ctx, pubId, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  router.post('/rule-set-versions/:versionId/retire', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'rule.publish');
+  router.post(
+    '/rule-set-versions/:versionId/retire',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'rule.publish');
 
-      const body = RetireVersionRequestSchema.parse(req.body);
+        const body = RetireVersionRequestSchema.parse(req.body);
 
-      const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return retireVersion(tx, ctx, paramStr(req.params.versionId), body);
-      });
+        const updated = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return retireVersion(tx, ctx, paramStr(req.params.versionId), body);
+        });
 
-      res.setHeader('ETag', `"${updated.lockVersion}"`);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.setHeader('ETag', `"${updated.lockVersion}"`);
+        res.status(200).json(updated);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   router.post('/rule-sets/:ruleSetId/rollbacks', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -639,47 +669,50 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   // ---------------- Phase 7 & 8: Decision Evaluations & Records ----------------
-  router.post('/decisions/:decisionKey/evaluations', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      const decisionKey = paramStr(req.params.decisionKey) as DecisionKey;
+  router.post(
+    '/decisions/:decisionKey/evaluations',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        const decisionKey = paramStr(req.params.decisionKey) as DecisionKey;
 
-      const body = EvaluateDecisionRequestSchema.parse(req.body);
-      const idempotencyKey = (req.header('Idempotency-Key') || nextUlid()).trim();
+        const body = EvaluateDecisionRequestSchema.parse(req.body);
+        const idempotencyKey = (req.header('Idempotency-Key') || nextUlid()).trim();
 
-      if (!decisionEngine) {
-        throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Decision engine port is not configured.');
-      }
+        if (!decisionEngine) {
+          throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Decision engine port is not configured.');
+        }
 
-      const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return decisionEngine.decide(tx, ctx, {
-          decisionKey,
-          scope: body.scope,
-          subject: body.subject,
-          facts: body.facts as never,
-          evaluationTime: body.evaluationTime || ctx.now.toISOString(),
-          idempotencyKey,
+        const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return decisionEngine.decide(tx, ctx, {
+            decisionKey,
+            scope: body.scope,
+            subject: body.subject,
+            facts: body.facts as never,
+            evaluationTime: body.evaluationTime || ctx.now.toISOString(),
+            idempotencyKey,
+          });
         });
-      });
 
-      res.status(200).json({
-        decisionRecordId: result.decisionRecordId,
-        decisionKey,
-        ruleSetVersionId: result.ruleSetVersionId,
-        status: result.status,
-        outputs: result.outputs,
-        fallbackApplied: result.fallbackApplied,
-        fallbackPolicy: result.fallbackPolicy,
-        errorCode: result.errorCode,
-        matchedRuleUids: result.matchedRuleUids,
-        inputHash: result.inputHash,
-        replayed: result.replayed,
-        durationUs: 50,
-      });
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.status(200).json({
+          decisionRecordId: result.decisionRecordId,
+          decisionKey,
+          ruleSetVersionId: result.ruleSetVersionId,
+          status: result.status,
+          outputs: result.outputs,
+          fallbackApplied: result.fallbackApplied,
+          fallbackPolicy: result.fallbackPolicy,
+          errorCode: result.errorCode,
+          matchedRuleUids: result.matchedRuleUids,
+          inputHash: result.inputHash,
+          replayed: result.replayed,
+          durationUs: 50,
+        });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   router.get('/decision-records', async (req: Request, res: Response, next: NextFunction) => {
     try {

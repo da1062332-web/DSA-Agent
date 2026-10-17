@@ -41,11 +41,7 @@ import {
   updateAgentCapacity,
   updateMyAvailability,
 } from './api';
-import type {
-  AgentWorkforceSummary,
-  AvailabilityStatus,
-  CreateDelegationInput,
-} from './types';
+import type { AgentWorkforceSummary, AvailabilityStatus, CreateDelegationInput } from './types';
 
 const AVAILABILITY_CONFIG: Record<
   AvailabilityStatus,
@@ -62,7 +58,9 @@ export function WorkforcePage() {
   const { data: me } = useMe();
   const canManageUsers = hasPermission(me, 'user.manage') || hasPermission(me, 'config.manage');
   const canManageAttendance =
-    hasPermission(me, 'attendance.manage') || hasPermission(me, 'user.manage') || hasPermission(me, 'config.manage');
+    hasPermission(me, 'attendance.manage') ||
+    hasPermission(me, 'user.manage') ||
+    hasPermission(me, 'config.manage');
 
   const [activeTab, setActiveTab] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -107,15 +105,17 @@ export function WorkforcePage() {
 
   // Current user's availability from agentsQuery or fallback
   const myAgentRecord = agentsQuery.data?.find((a) => a.id === me?.id);
-  const currentAvailability: AvailabilityStatus =
-    myAgentRecord?.availability ?? 'AVAILABLE';
+  const currentAvailability: AvailabilityStatus = myAgentRecord?.availability ?? 'AVAILABLE';
 
   // 2. Mutations
   const availabilityMutation = useMutation({
     mutationFn: (newStatus: AvailabilityStatus) => updateMyAvailability(newStatus),
     onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ['workforce-agents'] });
-      setToastMessage({ type: 'success', text: `Availability set to ${AVAILABILITY_CONFIG[newStatus].label}` });
+      setToastMessage({
+        type: 'success',
+        text: `Availability set to ${AVAILABILITY_CONFIG[newStatus].label}`,
+      });
     },
     onError: (err: any) => {
       setToastMessage({ type: 'error', text: err?.message || 'Failed to update availability.' });
@@ -234,7 +234,13 @@ export function WorkforcePage() {
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
       {/* Page Header */}
-      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
             Workforce Management
@@ -245,9 +251,20 @@ export function WorkforcePage() {
         </Box>
 
         {/* Self Availability Switcher Banner */}
-        <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', p: 1.5 }}>
+        <Card
+          sx={{
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            border: '1px solid #e2e8f0',
+            p: 1.5,
+          }}
+        >
           <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Typography variant="caption" fontWeight={600} sx={{ color: '#475569', textTransform: 'uppercase' }}>
+            <Typography
+              variant="caption"
+              fontWeight={600}
+              sx={{ color: '#475569', textTransform: 'uppercase' }}
+            >
               My Status:
             </Typography>
             {(['AVAILABLE', 'BUSY', 'OFF_DUTY', 'ON_LEAVE'] as AvailabilityStatus[]).map((status) => {
@@ -305,7 +322,13 @@ export function WorkforcePage() {
       {/* TAB 0: Capacity & Availability */}
       {activeTab === 0 && (
         <Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+            sx={{ mb: 2 }}
+          >
             <TextField
               size="small"
               placeholder="Search agent by name or email..."
@@ -328,7 +351,9 @@ export function WorkforcePage() {
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Working Status</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Active Workload</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Capacity Meter</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Actions</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -346,7 +371,8 @@ export function WorkforcePage() {
                     </TableRow>
                   ) : (
                     filteredAgents.map((agent) => {
-                      const statusConfig = AVAILABILITY_CONFIG[agent.availability] || AVAILABILITY_CONFIG.AVAILABLE;
+                      const statusConfig =
+                        AVAILABILITY_CONFIG[agent.availability] || AVAILABILITY_CONFIG.AVAILABLE;
                       const activeItems = (agent.activeLeadCount || 0) + (agent.activeApplicationCount || 0);
                       const capacity = agent.capacity || 10;
                       const percent = Math.min(Math.round((activeItems / capacity) * 100), 100);
@@ -454,11 +480,15 @@ export function WorkforcePage() {
                 <TableHead sx={{ bgcolor: '#f8fafc' }}>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>On Leave (Delegator)</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Covering Agent (Delegate)</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>
+                      Covering Agent (Delegate)
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Coverage Window</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Reason</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Actions</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -542,13 +572,27 @@ export function WorkforcePage() {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {/* Action Card: Check In / Out */}
             <Grid item xs={12} md={5}>
-              <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <Card
+                sx={{
+                  borderRadius: 3,
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                }}
+              >
                 <CardContent sx={{ p: 3 }}>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                  >
                     Today's Attendance
                   </Typography>
                   <Typography variant="h5" fontWeight={700} sx={{ color: '#0f172a', mt: 0.5, mb: 2 }}>
-                    {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date().toLocaleDateString(undefined, {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
                   </Typography>
 
                   {/* Status Banner */}
@@ -556,21 +600,33 @@ export function WorkforcePage() {
                     sx={{
                       p: 2,
                       borderRadius: 2,
-                      bgcolor: todayRecord?.checkOut ? '#f1f5f9' : todayRecord?.checkIn ? '#ecfdf5' : '#fffbeb',
+                      bgcolor: todayRecord?.checkOut
+                        ? '#f1f5f9'
+                        : todayRecord?.checkIn
+                          ? '#ecfdf5'
+                          : '#fffbeb',
                       border: '1px solid',
-                      borderColor: todayRecord?.checkOut ? '#e2e8f0' : todayRecord?.checkIn ? '#a7f3d0' : '#fde68a',
+                      borderColor: todayRecord?.checkOut
+                        ? '#e2e8f0'
+                        : todayRecord?.checkIn
+                          ? '#a7f3d0'
+                          : '#fde68a',
                       mb: 2.5,
                     }}
                   >
-                    <Typography variant="caption" fontWeight={600} sx={{ color: '#475569', textTransform: 'uppercase' }}>
+                    <Typography
+                      variant="caption"
+                      fontWeight={600}
+                      sx={{ color: '#475569', textTransform: 'uppercase' }}
+                    >
                       Status:
                     </Typography>
                     <Typography variant="h6" fontWeight={700} sx={{ color: '#0f172a' }}>
                       {todayRecord?.checkOut
                         ? 'Completed for today'
                         : todayRecord?.checkIn
-                        ? 'Clocked In'
-                        : 'Not Checked In'}
+                          ? 'Clocked In'
+                          : 'Not Checked In'}
                     </Typography>
                     {todayRecord?.checkIn && (
                       <Typography variant="caption" sx={{ color: '#059669', display: 'block', mt: 0.5 }}>
@@ -605,17 +661,27 @@ export function WorkforcePage() {
                       onClick={() => checkInMutation.mutate(attendanceNote || undefined)}
                       sx={{ py: 1.2, fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
                     >
-                      {checkInMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Check In'}
+                      {checkInMutation.isPending ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        'Check In'
+                      )}
                     </Button>
                     <Button
                       fullWidth
                       variant="contained"
                       color="warning"
-                      disabled={!todayRecord?.checkIn || Boolean(todayRecord?.checkOut) || checkOutMutation.isPending}
+                      disabled={
+                        !todayRecord?.checkIn || Boolean(todayRecord?.checkOut) || checkOutMutation.isPending
+                      }
                       onClick={() => checkOutMutation.mutate(attendanceNote || undefined)}
                       sx={{ py: 1.2, fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
                     >
-                      {checkOutMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Check Out'}
+                      {checkOutMutation.isPending ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        'Check Out'
+                      )}
                     </Button>
                   </Stack>
                 </CardContent>
@@ -658,10 +724,29 @@ export function WorkforcePage() {
                             <TableRow key={row.id}>
                               <TableCell sx={{ fontWeight: 500 }}>{row.userName || row.userId}</TableCell>
                               <TableCell>{row.date}</TableCell>
-                              <TableCell>{row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
-                              <TableCell>{row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
                               <TableCell>
-                                <Chip label={row.status} size="small" color="success" sx={{ fontSize: '0.7rem' }} />
+                                {row.checkIn
+                                  ? new Date(row.checkIn).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>
+                                {row.checkOut
+                                  ? new Date(row.checkOut).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={row.status}
+                                  size="small"
+                                  color="success"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
                               </TableCell>
                             </TableRow>
                           ))
@@ -792,7 +877,11 @@ export function WorkforcePage() {
             onClick={handleSaveDelegation}
             sx={{ textTransform: 'none', bgcolor: '#2563eb' }}
           >
-            {createDelegationMutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Confirm Delegation'}
+            {createDelegationMutation.isPending ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              'Confirm Delegation'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

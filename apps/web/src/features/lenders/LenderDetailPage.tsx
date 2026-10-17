@@ -255,9 +255,7 @@ export function LenderDetailPage() {
       escalationLevel: number;
     }>,
   ) => {
-    setContactRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
-    );
+    setContactRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
   const removeContactRow = (index: number) => {
@@ -314,11 +312,7 @@ export function LenderDetailPage() {
                 label={lender.status}
                 size="small"
                 color={
-                  lender.status === 'ACTIVE'
-                    ? 'success'
-                    : lender.status === 'PAUSED'
-                      ? 'warning'
-                      : 'error'
+                  lender.status === 'ACTIVE' ? 'success' : lender.status === 'PAUSED' ? 'warning' : 'error'
                 }
               />
             </Stack>
@@ -399,18 +393,32 @@ export function LenderDetailPage() {
             <Table>
               <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell><strong>DSA Code</strong></TableCell>
-                  <TableCell><strong>Valid Range</strong></TableCell>
-                  <TableCell><strong>Permitted Categories</strong></TableCell>
-                  <TableCell><strong>Agreement Ref</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
-                  <TableCell align="right"><strong>Actions</strong></TableCell>
+                  <TableCell>
+                    <strong>DSA Code</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Valid Range</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Permitted Categories</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Agreement Ref</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Status</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Actions</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {lender.empanelments?.map((emp) => (
                   <TableRow key={emp.id}>
-                    <TableCell><strong>{emp.dsaCode}</strong></TableCell>
+                    <TableCell>
+                      <strong>{emp.dsaCode}</strong>
+                    </TableCell>
                     <TableCell>
                       {new Date(emp.validFrom).toLocaleDateString()} —{' '}
                       {emp.validTo ? new Date(emp.validTo).toLocaleDateString() : 'Indefinite'}
@@ -487,12 +495,24 @@ export function LenderDetailPage() {
             <Table>
               <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell><strong>Escalation Level</strong></TableCell>
-                  <TableCell><strong>Contact Name</strong></TableCell>
-                  <TableCell><strong>Role</strong></TableCell>
-                  <TableCell><strong>Channel</strong></TableCell>
-                  <TableCell><strong>Email</strong></TableCell>
-                  <TableCell><strong>Phone</strong></TableCell>
+                  <TableCell>
+                    <strong>Escalation Level</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Contact Name</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Role</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Channel</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Email</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Phone</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -501,7 +521,9 @@ export function LenderDetailPage() {
                     <TableCell>
                       <Chip label={`Level ${c.escalationLevel}`} size="small" color="primary" />
                     </TableCell>
-                    <TableCell><strong>{c.name}</strong></TableCell>
+                    <TableCell>
+                      <strong>{c.name}</strong>
+                    </TableCell>
                     <TableCell>{c.role}</TableCell>
                     <TableCell>{c.channel}</TableCell>
                     <TableCell>{c.email}</TableCell>
@@ -614,7 +636,9 @@ export function LenderDetailPage() {
                   multiple
                   value={empCategories}
                   label="Permitted Product Categories"
-                  onChange={(e) => setEmpCategories(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                  onChange={(e) =>
+                    setEmpCategories(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)
+                  }
                   renderValue={(selected) => selected.join(', ')}
                 >
                   <MenuItem value="HOME_LOAN">Home Loan</MenuItem>
@@ -642,12 +666,7 @@ export function LenderDetailPage() {
       </Dialog>
 
       {/* Contacts Management Dialog */}
-      <Dialog
-        open={contactsDialogOpen}
-        onClose={() => setContactsDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={contactsDialogOpen} onClose={() => setContactsDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Manage Lender Contacts & Escalation Matrix</DialogTitle>
         <DialogContent>
           {contactsError && (
@@ -685,9 +704,7 @@ export function LenderDetailPage() {
                       <Select
                         value={row.escalationLevel}
                         label="Level"
-                        onChange={(e) =>
-                          updateContactRow(index, { escalationLevel: Number(e.target.value) })
-                        }
+                        onChange={(e) => updateContactRow(index, { escalationLevel: Number(e.target.value) })}
                       >
                         {[1, 2, 3, 4, 5].map((lvl) => (
                           <MenuItem key={lvl} value={lvl}>
@@ -703,9 +720,7 @@ export function LenderDetailPage() {
                       <Select
                         value={row.channel}
                         label="Channel"
-                        onChange={(e) =>
-                          updateContactRow(index, { channel: String(e.target.value) })
-                        }
+                        onChange={(e) => updateContactRow(index, { channel: String(e.target.value) })}
                       >
                         <MenuItem value="EMAIL">Email</MenuItem>
                         <MenuItem value="PHONE">Phone</MenuItem>
@@ -754,11 +769,7 @@ export function LenderDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setContactsDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleSaveContacts}
-            variant="contained"
-            disabled={savingContacts}
-          >
+          <Button onClick={handleSaveContacts} variant="contained" disabled={savingContacts}>
             {savingContacts ? <CircularProgress size={24} /> : 'Save Contacts Matrix'}
           </Button>
         </DialogActions>

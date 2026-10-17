@@ -59,10 +59,7 @@ describe('Notification Contracts (packages/contracts/src/notification.ts)', () =
     expect(() => MarkNotificationsReadSchema.parse({ notificationIds: [] })).toThrow();
 
     const valid = MarkNotificationsReadSchema.parse({
-      notificationIds: [
-        'ntf_01J00000000000000000000001',
-        'ntf_01J00000000000000000000002',
-      ],
+      notificationIds: ['ntf_01J00000000000000000000001', 'ntf_01J00000000000000000000002'],
     });
     expect(valid.notificationIds.length).toBe(2);
   });

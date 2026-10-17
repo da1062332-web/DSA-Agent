@@ -13,6 +13,7 @@
 `v0.1.0-rc.1` represents the internal pilot release candidate of the **Workflow A walking-skeleton MVP** for the DSA CRM platform, built across a 4-day integration schedule.
 
 The primary objective of this release candidate is to demonstrate end-to-end traversal of Workflow A using synthetic data, validating:
+
 1. Lead capture with mandatory consent recording.
 2. In-memory BRE deduplication, eligibility, and task routing.
 3. First-contact task dispatch and SLA lifecycle management.
@@ -28,6 +29,7 @@ The primary objective of this release candidate is to demonstrate end-to-end tra
 ## 2. Included and Partially Implemented Functionality
 
 ### 2.1 Administration and Platform Operations (MOD-ADM)
+
 In accordance with the Module 30 specification and the Implementation Readiness Assessment ([`MOD_ADM_READINESS_ASSESSMENT.md`](./MOD_ADM_READINESS_ASSESSMENT.md)), platform operational scope for `v0.1.0-rc.1` is restricted as follows:
 
 - **SUB-ADM.08 — Release Management:** **Partially Implemented**
@@ -38,6 +40,7 @@ In accordance with the Module 30 specification and the Implementation Readiness 
   - **Tenant Administration Screens:** Implemented for tenant-level operational entities (`apps/web/src/features/admin/`): Organization settings, branch management, internal team rosters, and operational work queues.
 
 ### 2.2 Core Workflow A Capabilities (Walking Skeleton)
+
 - **Platform & Security (Dev 1 / MOD-02):**
   - Express 5 API modular monolith with fixed middleware chain (helmet, cors, correlation ID, rate-limit, auth, zod validation, error handler).
   - Supabase Auth integration with JWT asymmetric verification and mandatory `app_metadata.tenant_id` claim.
@@ -61,15 +64,15 @@ In accordance with the Module 30 specification and the Implementation Readiness 
 
 The following seven submodules of **Module 30 (MOD-ADM)** are **deferred under TASK-420** and are **NOT IMPLEMENTED, NOT ACTIVE, AND NOT PRODUCTION-READY** in `v0.1.0-rc.1`:
 
-| Submodule | Canonical Code | Deferred Component / Capabilities |
-| :--- | :--- | :--- |
-| **Platform Console** | `SUB-ADM.01` | Component `CMP-ADM.01.1` (Platform console UI), endpoint `API-TEN-002` (`GET /platform/v1/tenants`), permission `platform.console`, and cross-tenant metadata reporting. |
-| **Feature Flags** | `SUB-ADM.02` | Component `CMP-ADM.02.1` (Flag service), endpoints `API-ADM-001` / `API-ADM-002`, entity `ENT-016 feature_flag`, permission `platform.flags`, and global/tenant flag overrides. |
-| **Master Data Management** | `SUB-ADM.03` | Component `CMP-ADM.03.1` (Master data manager), import preview endpoint `API-ADM-003`, entity `ENT-017 master_data_item`, and permission `platform.master_data`. |
-| **Background Jobs** | `SUB-ADM.04` | Component `CMP-ADM.04.1` (Job console), job inspection `API-ADM-004`, queue pause endpoint `API-ADM-005`, entity `ENT-070 dead_letter`, and permission `platform.jobs`. Blocked by architecture decision ADR-4D-02 (no Redis or asynchronous queue engine). |
-| **System Health** | `SUB-ADM.05` | Component `CMP-ADM.05.1` (Health dashboard), status page, and deep dependency health probes (only a static `GET /health` endpoint exists). |
-| **Support Access** | `SUB-ADM.06` | Component `CMP-ADM.06.1` (Access grant service), break-glass endpoints `API-ADM-006` / `API-ADM-007`, entity `ENT-018 support_access_grant`, permission `platform.support_access`, and separation-of-duties rule `SOD-06`. |
-| **Data Correction** | `SUB-ADM.07` | Component `CMP-ADM.07.1` (Correction request workflow), correction endpoints `API-ADM-008` / `API-ADM-009`, entity `ENT-112 data_correction_request`, separation-of-duties rule `SOD-08`, and service-identity execution. |
+| Submodule                  | Canonical Code | Deferred Component / Capabilities                                                                                                                                                                                                                           |
+| :------------------------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Platform Console**       | `SUB-ADM.01`   | Component `CMP-ADM.01.1` (Platform console UI), endpoint `API-TEN-002` (`GET /platform/v1/tenants`), permission `platform.console`, and cross-tenant metadata reporting.                                                                                    |
+| **Feature Flags**          | `SUB-ADM.02`   | Component `CMP-ADM.02.1` (Flag service), endpoints `API-ADM-001` / `API-ADM-002`, entity `ENT-016 feature_flag`, permission `platform.flags`, and global/tenant flag overrides.                                                                             |
+| **Master Data Management** | `SUB-ADM.03`   | Component `CMP-ADM.03.1` (Master data manager), import preview endpoint `API-ADM-003`, entity `ENT-017 master_data_item`, and permission `platform.master_data`.                                                                                            |
+| **Background Jobs**        | `SUB-ADM.04`   | Component `CMP-ADM.04.1` (Job console), job inspection `API-ADM-004`, queue pause endpoint `API-ADM-005`, entity `ENT-070 dead_letter`, and permission `platform.jobs`. Blocked by architecture decision ADR-4D-02 (no Redis or asynchronous queue engine). |
+| **System Health**          | `SUB-ADM.05`   | Component `CMP-ADM.05.1` (Health dashboard), status page, and deep dependency health probes (only a static `GET /health` endpoint exists).                                                                                                                  |
+| **Support Access**         | `SUB-ADM.06`   | Component `CMP-ADM.06.1` (Access grant service), break-glass endpoints `API-ADM-006` / `API-ADM-007`, entity `ENT-018 support_access_grant`, permission `platform.support_access`, and separation-of-duties rule `SOD-06`.                                  |
+| **Data Correction**        | `SUB-ADM.07`   | Component `CMP-ADM.07.1` (Correction request workflow), correction endpoints `API-ADM-008` / `API-ADM-009`, entity `ENT-112 data_correction_request`, separation-of-duties rule `SOD-08`, and service-identity execution.                                   |
 
 ---
 
@@ -78,6 +81,7 @@ The following seven submodules of **Module 30 (MOD-ADM)** are **deferred under T
 The verification results reported in [`MOD_ADM_READINESS_ASSESSMENT.md`](./MOD_ADM_READINESS_ASSESSMENT.md) reflect the current state of the candidate branch:
 
 ### 4.1 Passed Checks
+
 - **TypeScript Typecheck (`npm run typecheck`):**  
   **Exit Code 0 (PASS)** across all monorepo workspaces: `@dsa/api`, `@dsa/web`, `@dsa/bre-core`, `@dsa/contracts`, `@dsa/kernel`, and `@dsa/tools`.
 - **Automated Tests (`npm test`):**  
@@ -99,6 +103,7 @@ The verification results reported in [`MOD_ADM_READINESS_ASSESSMENT.md`](./MOD_A
   **Exit Code 0 (PASS)** — `@dsa/api` built via `tsup` and `@dsa/web` built via `vite`.
 
 ### 4.2 Outstanding / Failed Checks
+
 - **Code Linting (`npm run lint`):**  
   **Exit Code 1 (FAIL)** — 149 errors and 2 warnings reported. Failures are pre-existing issues primarily related to `@typescript-eslint/no-explicit-any` usage and unused variable declarations in `apps/web` and `packages/contracts`.
 - **Tenant Isolation Suite (`npm run test:isolation`):**  
@@ -124,7 +129,9 @@ Before candidate `v0.1.0-rc.1` can be formally tagged, published, or deployed to
 ## 6. Release Procedures: REL-003 and REL-004
 
 ### 6.1 REL-003: Pre-Release Quality Gate Checklist
+
 REL-003 governs the pre-release quality verification gate. The checklist consists of:
+
 - [x] All 6 monorepo workspaces pass `npm run typecheck`.
 - [x] All 444 unit and route tests pass `npm test`.
 - [x] Migration verification passes `npm run db:verify` on a target database instance.
@@ -135,7 +142,9 @@ REL-003 governs the pre-release quality verification gate. The checklist consist
 - [ ] Staging database migration push verified without data loss (`REL-001`).
 
 ### 6.2 REL-004: Release Tagging and Packaging Procedure
+
 REL-004 governs the tagging convention and artifact generation for candidate releases:
+
 - **Branch Target:** Cut release branch `release/0.1` from `main` or merge approved release PR into `main`.
 - **Tag Naming Convention:** Exact semantic version with pre-release identifier: `v0.1.0-rc.1`.
 - **Tag Type:** Annotated Git tag signed or authored by Dev 1.

@@ -194,12 +194,10 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
 
     it('verifies consent successfully for active customer consent', async () => {
       const app = makeApp(complianceAuditor);
-      const res = await request(app)
-        .post('/v1/compliance/consent-check')
-        .send({
-          customerId: 'cust_active',
-          purpose: 'LOAN_PROCESSING',
-        });
+      const res = await request(app).post('/v1/compliance/consent-check').send({
+        customerId: 'cust_active',
+        purpose: 'LOAN_PROCESSING',
+      });
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('hasConsent');
@@ -208,12 +206,10 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
 
     it('validates invalid purpose on consent check with 422 validation error', async () => {
       const app = makeApp(complianceAuditor);
-      const res = await request(app)
-        .post('/v1/compliance/consent-check')
-        .send({
-          customerId: 'cust_active',
-          purpose: 'INVALID_PURPOSE_CODE',
-        });
+      const res = await request(app).post('/v1/compliance/consent-check').send({
+        customerId: 'cust_active',
+        purpose: 'INVALID_PURPOSE_CODE',
+      });
 
       expect(res.status).toBe(422);
     });

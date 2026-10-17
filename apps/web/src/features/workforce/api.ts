@@ -41,7 +41,8 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
+  const token =
+    getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

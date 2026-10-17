@@ -41,7 +41,10 @@ export const TriggerConfigSchema = z.object({
   eventType: z.enum(DOMAIN_EVENT_TYPES).optional(),
   cronExpression: z
     .string()
-    .regex(/^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/, 'Invalid cron expression')
+    .regex(
+      /^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/,
+      'Invalid cron expression',
+    )
     .optional(),
   delayMs: z.number().int().nonnegative().optional(),
   targetDateField: z.string().max(100).optional(),
@@ -75,7 +78,13 @@ export type StepType = (typeof STEP_TYPES)[number];
 export const StepTypeSchema = z.enum(STEP_TYPES);
 
 // Strict allow-list of fields that WFA is permitted to update (rejects state, financial, consent, etc.)
-export const ALLOWED_UPDATE_FIELDS = ['tags', 'notes', 'priority', 'custom_metadata', 'assigned_team'] as const;
+export const ALLOWED_UPDATE_FIELDS = [
+  'tags',
+  'notes',
+  'priority',
+  'custom_metadata',
+  'assigned_team',
+] as const;
 export type AllowedUpdateField = (typeof ALLOWED_UPDATE_FIELDS)[number];
 export const AllowedUpdateFieldSchema = z.enum(ALLOWED_UPDATE_FIELDS);
 
@@ -105,71 +114,80 @@ export const StepBranchConditionSchema = z.object({
 });
 export type StepBranchCondition = z.infer<typeof StepBranchConditionSchema>;
 
-export const StepDefinitionSchema = z.object({
-  id: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/, 'Step ID must be alphanumeric with _ or -'),
-  name: z.string().min(1).max(200),
-  type: StepTypeSchema,
-  isSkippable: z.boolean().default(false),
-  config: z.record(z.unknown()),
-}).superRefine((step, ctx) => {
-  // Validate step-specific configuration rules
-  if (step.type === 'EVALUATE_DECISION') {
-    if (!step.config.decisionKey || typeof step.config.decisionKey !== 'string') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'decisionKey'],
-        message: 'EVALUATE_DECISION step requires a valid decisionKey',
-      });
+export const StepDefinitionSchema = z
+  .object({
+    id: z
+      .string()
+      .min(1)
+      .max(100)
+      .regex(/^[a-zA-Z0-9_-]+$/, 'Step ID must be alphanumeric with _ or -'),
+    name: z.string().min(1).max(200),
+    type: StepTypeSchema,
+    isSkippable: z.boolean().default(false),
+    config: z.record(z.unknown()),
+  })
+  .superRefine((step, ctx) => {
+    // Validate step-specific configuration rules
+    if (step.type === 'EVALUATE_DECISION') {
+      if (!step.config.decisionKey || typeof step.config.decisionKey !== 'string') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'decisionKey'],
+          message: 'EVALUATE_DECISION step requires a valid decisionKey',
+        });
+      }
+    } else if (step.type === 'BRANCH') {
+      if (!Array.isArray(step.config.conditions) || typeof step.config.defaultStepIndex !== 'number') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config'],
+          message: 'BRANCH step requires conditions array and defaultStepIndex',
+        });
+      }
+    } else if (step.type === 'CREATE_TASK') {
+      if (!step.config.title || typeof step.config.title !== 'string') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'title'],
+          message: 'CREATE_TASK step requires title',
+        });
+      }
+    } else if (step.type === 'UPDATE_FIELD') {
+      const field = String(step.config.field || '');
+      if (!field || !(ALLOWED_UPDATE_FIELDS as readonly string[]).includes(field)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'field'],
+          message: `UPDATE_FIELD step field '${field}' is not in the allowed list: ${ALLOWED_UPDATE_FIELDS.join(', ')}`,
+        });
+      }
+      if ((PROHIBITED_UPDATE_FIELDS as readonly string[]).includes(field.toLowerCase())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'field'],
+          message: `Field '${field}' is strictly prohibited from direct automation mutation`,
+        });
+      }
+    } else if (step.type === 'SEND_TEMPLATE_MESSAGE') {
+      if (!step.config.templateCode || typeof step.config.templateCode !== 'string') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'templateCode'],
+          message: 'SEND_TEMPLATE_MESSAGE step requires templateCode',
+        });
+      }
+      if (
+        !step.config.channel ||
+        !(MESSAGE_CHANNELS as readonly string[]).includes(String(step.config.channel))
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['config', 'channel'],
+          message: `SEND_TEMPLATE_MESSAGE step requires valid channel (${MESSAGE_CHANNELS.join(', ')})`,
+        });
+      }
     }
-  } else if (step.type === 'BRANCH') {
-    if (!Array.isArray(step.config.conditions) || typeof step.config.defaultStepIndex !== 'number') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config'],
-        message: 'BRANCH step requires conditions array and defaultStepIndex',
-      });
-    }
-  } else if (step.type === 'CREATE_TASK') {
-    if (!step.config.title || typeof step.config.title !== 'string') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'title'],
-        message: 'CREATE_TASK step requires title',
-      });
-    }
-  } else if (step.type === 'UPDATE_FIELD') {
-    const field = String(step.config.field || '');
-    if (!field || !(ALLOWED_UPDATE_FIELDS as readonly string[]).includes(field)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'field'],
-        message: `UPDATE_FIELD step field '${field}' is not in the allowed list: ${ALLOWED_UPDATE_FIELDS.join(', ')}`,
-      });
-    }
-    if ((PROHIBITED_UPDATE_FIELDS as readonly string[]).includes(field.toLowerCase())) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'field'],
-        message: `Field '${field}' is strictly prohibited from direct automation mutation`,
-      });
-    }
-  } else if (step.type === 'SEND_TEMPLATE_MESSAGE') {
-    if (!step.config.templateCode || typeof step.config.templateCode !== 'string') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'templateCode'],
-        message: 'SEND_TEMPLATE_MESSAGE step requires templateCode',
-      });
-    }
-    if (!step.config.channel || !(MESSAGE_CHANNELS as readonly string[]).includes(String(step.config.channel))) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['config', 'channel'],
-        message: `SEND_TEMPLATE_MESSAGE step requires valid channel (${MESSAGE_CHANNELS.join(', ')})`,
-      });
-    }
-  }
-});
+  });
 export type StepDefinition = z.infer<typeof StepDefinitionSchema>;
 
 // ---------------------------------------------------------------------------
@@ -218,7 +236,11 @@ export const VersionStatusSchema = z.enum(VERSION_STATUSES);
 export const AutomationDefinitionSchema = z.object({
   id: IdSchema('wfd'),
   tenantId: z.string(),
-  code: z.string().min(3).max(64).regex(/^[a-z0-9_-]+$/),
+  code: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/),
   name: z.string().min(3).max(200),
   description: z.string().nullable().optional(),
   triggerType: TriggerTypeSchema,
@@ -271,7 +293,11 @@ export const AutomationExecutionSchema = z.object({
   leaseExpiresAt: z.string().nullable().optional(),
   errorCode: z.string().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
-  idempotencyKey: z.string().regex(/^[A-Za-z0-9_:-]{8,256}$/).nullable().optional(),
+  idempotencyKey: z
+    .string()
+    .regex(/^[A-Za-z0-9_:-]{8,256}$/)
+    .nullable()
+    .optional(),
   correlationId: z.string(),
   causationId: z.string().nullable().optional(),
   chainDepth: z.number().int().min(0).max(3),
@@ -338,7 +364,11 @@ export type DeadLetterRecord = z.infer<typeof DeadLetterRecordSchema>;
 // API Request & Response Schemas
 // ---------------------------------------------------------------------------
 export const CreateAutomationDefinitionSchema = z.object({
-  code: z.string().min(3).max(64).regex(/^[a-z0-9_-]+$/),
+  code: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/),
   name: z.string().min(3).max(200),
   description: z.string().max(1000).optional(),
   triggerType: TriggerTypeSchema,

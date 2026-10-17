@@ -99,13 +99,24 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
        values ('prv_iso_elg_a1', $1, 'prd_iso_elg_a1', 1, '2026-01-01T00:00:00Z', 50000, 1000000, 'INR', 12, 60, $2)`,
       [env.A.tenantId, env.A.userIds[0]],
     );
-    await env.admin.query(`update app.loan_application set product_version_id = 'prv_iso_elg_a1', status = 'DOCUMENTS_PENDING' where id = $1`, [appId]);
+    await env.admin.query(
+      `update app.loan_application set product_version_id = 'prv_iso_elg_a1', status = 'DOCUMENTS_PENDING' where id = $1`,
+      [appId],
+    );
 
-    const run = await request(a).post(`/v1/applications/${appId}/eligibility-assessments`).set('Idempotency-Key', 'iso-elg-run-1').send({});
+    const run = await request(a)
+      .post(`/v1/applications/${appId}/eligibility-assessments`)
+      .set('Idempotency-Key', 'iso-elg-run-1')
+      .send({});
     expect(run.status).toBe(201);
 
     expect(
-      (await request(b).post(`/v1/applications/${appId}/eligibility-assessments`).set('Idempotency-Key', 'iso-elg-run-hostile').send({})).status,
+      (
+        await request(b)
+          .post(`/v1/applications/${appId}/eligibility-assessments`)
+          .set('Idempotency-Key', 'iso-elg-run-hostile')
+          .send({})
+      ).status,
     ).toBe(404);
     expect((await request(b).get(`/v1/applications/${appId}/eligibility-assessments`)).status).toBe(404);
     expect(

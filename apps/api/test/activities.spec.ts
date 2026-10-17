@@ -68,18 +68,15 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_key_001_lead')
-      .send({
-        kind: 'CALL',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        outcomeCode: 'CONNECTED',
-        occurredAt: '2026-10-12T10:30:00.000Z',
-        durationSeconds: 95,
-        note: 'Customer interested in business loan; discussed eligibility criteria.',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_key_001_lead').send({
+      kind: 'CALL',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      outcomeCode: 'CONNECTED',
+      occurredAt: '2026-10-12T10:30:00.000Z',
+      durationSeconds: 95,
+      note: 'Customer interested in business loan; discussed eligibility criteria.',
+    });
 
     expect(res.status).toBe(201);
     expect(res.headers.etag).toBe('"0"');
@@ -109,17 +106,14 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_key_002_cust')
-      .send({
-        kind: 'MEETING',
-        subjectType: 'CUSTOMER',
-        subjectId: CUSTOMER_1,
-        outcomeCode: 'CONNECTED',
-        occurredAt: '2026-10-12T11:00:00.000Z',
-        note: 'Branch visit completed; customer signed application forms.',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_key_002_cust').send({
+      kind: 'MEETING',
+      subjectType: 'CUSTOMER',
+      subjectId: CUSTOMER_1,
+      outcomeCode: 'CONNECTED',
+      occurredAt: '2026-10-12T11:00:00.000Z',
+      note: 'Branch visit completed; customer signed application forms.',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.subjectType).toBe('CUSTOMER');
@@ -136,16 +130,13 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_key_003_app')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LOAN_APPLICATION',
-        subjectId: APPLICATION_1,
-        occurredAt: '2026-10-12T11:30:00.000Z',
-        note: 'Underwriting verification in progress; verified income docs.',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_key_003_app').send({
+      kind: 'NOTE',
+      subjectType: 'LOAN_APPLICATION',
+      subjectId: APPLICATION_1,
+      occurredAt: '2026-10-12T11:30:00.000Z',
+      note: 'Underwriting verification in progress; verified income docs.',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.subjectType).toBe('LOAN_APPLICATION');
@@ -208,16 +199,13 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_key_forbidden')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Unauthorized note',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_key_forbidden').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Unauthorized note',
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -270,16 +258,13 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(branchDelhiUser) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_scope_fail')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1, // in BRANCH_MUMBAI
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Out of branch scope attempt',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_scope_fail').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1, // in BRANCH_MUMBAI
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Out of branch scope attempt',
+    });
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -294,18 +279,15 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const res = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_spoof_check')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Valid note',
-        actorId: 'usr_MALICIOUS_SPOOFED_ID',
-        tenantId: 'ten_MALICIOUS_SPOOFED_ID',
-      });
+    const res = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_spoof_check').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Valid note',
+      actorId: 'usr_MALICIOUS_SPOOFED_ID',
+      tenantId: 'ten_MALICIOUS_SPOOFED_ID',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.actorId).toBe(USER_1); // always bound to authenticated principal
@@ -321,43 +303,34 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     const app = createTestApp({ auth: fakeAuth(principal) });
 
     // Reject PAN
-    const panRes = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_pan')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Customer PAN is ABCDE1234F',
-      });
+    const panRes = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_pan').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Customer PAN is ABCDE1234F',
+    });
     expect(panRes.status).toBe(422);
     expect(panRes.body.error.code).toBe('VALIDATION_ERROR');
 
     // Reject Aadhaar
-    const aadhaarRes = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_aadhaar')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Aadhaar 2345 6789 0123 collected',
-      });
+    const aadhaarRes = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_aadhaar').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Aadhaar 2345 6789 0123 collected',
+    });
     expect(aadhaarRes.status).toBe(422);
 
     // Reject Account number
-    const acctRes = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_acct')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Bank account number 123456789012 recorded',
-      });
+    const acctRes = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_acct').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Bank account number 123456789012 recorded',
+    });
     expect(acctRes.status).toBe(422);
   });
 
@@ -429,17 +402,14 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const created = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_update_ok')
-      .send({
-        kind: 'CALL',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        outcomeCode: 'NO_ANSWER',
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'No answer on first ring',
-      });
+    const created = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_update_ok').send({
+      kind: 'CALL',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      outcomeCode: 'NO_ANSWER',
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'No answer on first ring',
+    });
     expect(created.status).toBe(201);
 
     // Valid update matching ETag "0"
@@ -472,16 +442,13 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    const created = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_hide_test')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'To be hidden',
-      });
+    const created = await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_hide_test').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'To be hidden',
+    });
     expect(created.status).toBe(201);
 
     // Hide activity
@@ -511,29 +478,25 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
-    await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_list_1')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T09:00:00.000Z',
-        note: 'First note',
-      });
+    await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_list_1').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T09:00:00.000Z',
+      note: 'First note',
+    });
 
-    await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', 'idem_list_2')
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LEAD',
-        subjectId: LEAD_1,
-        occurredAt: '2026-10-12T10:00:00.000Z',
-        note: 'Second note',
-      });
+    await request(app).post('/v1/activities').set('Idempotency-Key', 'idem_list_2').send({
+      kind: 'NOTE',
+      subjectType: 'LEAD',
+      subjectId: LEAD_1,
+      occurredAt: '2026-10-12T10:00:00.000Z',
+      note: 'Second note',
+    });
 
-    const listRes = await request(app).get('/v1/activities').query({ subjectType: 'LEAD', subjectId: LEAD_1 });
+    const listRes = await request(app)
+      .get('/v1/activities')
+      .query({ subjectType: 'LEAD', subjectId: LEAD_1 });
 
     expect(listRes.status).toBe(200);
     expect(listRes.body.data).toHaveLength(2);

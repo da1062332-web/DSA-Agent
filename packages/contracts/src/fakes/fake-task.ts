@@ -5,11 +5,7 @@ import type { CreateTaskCommand, CreatedTask, TaskPort } from '../ports/task-por
 export class FakeTaskPort implements TaskPort {
   readonly commands: CreateTaskCommand[] = [];
 
-  async createTask(
-    _tx: Tx,
-    _ctx: RequestContext,
-    cmd: CreateTaskCommand,
-  ): Promise<CreatedTask> {
+  async createTask(_tx: Tx, _ctx: RequestContext, cmd: CreateTaskCommand): Promise<CreatedTask> {
     this.commands.push(cmd);
     return {
       taskId: `task_fake_${this.commands.length}`,

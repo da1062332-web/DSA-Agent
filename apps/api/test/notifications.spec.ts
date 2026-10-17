@@ -265,9 +265,7 @@ describe('Module 12: Notifications (MOD-NTF) Unit & Route Tests', () => {
     it('validates mark-as-read payload format', async () => {
       const app = makeApp(testPrincipal({ id: userA, tenantId: tenantA }));
 
-      const res = await request(app)
-        .post('/v1/notifications/read')
-        .send({ notificationIds: 'not-an-array' });
+      const res = await request(app).post('/v1/notifications/read').send({ notificationIds: 'not-an-array' });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');

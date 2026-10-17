@@ -146,7 +146,10 @@ export class LenderCaseService {
     this.checkBranchScope(ctx, 'lender_case.submit', app.branch_id);
 
     if (app.status === 'CANCELLED' || app.status === 'CLOSED') {
-      throw AppError.of('INVALID_STATE', `Application is in '${app.status}' state and cannot accept new lender cases.`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Application is in '${app.status}' state and cannot accept new lender cases.`,
+      );
     }
 
     // 2. Verify Lender
@@ -180,7 +183,11 @@ export class LenderCaseService {
     }
 
     // 4. Verify Product Version
-    const productVersion = await this.deps.repository.findProductVersion(tx, tenantId, input.productVersionId);
+    const productVersion = await this.deps.repository.findProductVersion(
+      tx,
+      tenantId,
+      input.productVersionId,
+    );
     if (!productVersion) {
       throw AppError.of('NOT_FOUND', `Product version '${input.productVersionId}' not found.`);
     }
@@ -203,9 +210,17 @@ export class LenderCaseService {
     }
 
     // 6. Parallel attempts check
-    const existingActiveCases = await this.deps.repository.findActiveCasesForApplication(tx, tenantId, applicationId);
+    const existingActiveCases = await this.deps.repository.findActiveCasesForApplication(
+      tx,
+      tenantId,
+      applicationId,
+    );
     if (existingActiveCases.length > 0) {
-      const allowParallel = await this.deps.repository.getTenantSetting(tx, tenantId, 'allow_parallel_lender_attempts');
+      const allowParallel = await this.deps.repository.getTenantSetting(
+        tx,
+        tenantId,
+        'allow_parallel_lender_attempts',
+      );
       if (!allowParallel) {
         throw AppError.of(
           'ACTIVE_CASE_EXISTS',
@@ -393,7 +408,10 @@ export class LenderCaseService {
         purpose: 'SHARE_WITH_LENDER',
       });
       if (!activeConsent) {
-        throw AppError.of('CONSENT_REQUIRED', 'Active SHARE_WITH_LENDER consent is required to build submission package.');
+        throw AppError.of(
+          'CONSENT_REQUIRED',
+          'Active SHARE_WITH_LENDER consent is required to build submission package.',
+        );
       }
       consentId = activeConsent.consentId;
     }
@@ -487,7 +505,10 @@ export class LenderCaseService {
     }
 
     if (row.status !== 'PACKAGE_READY') {
-      throw AppError.of('INVALID_STATE', `Case must be in PACKAGE_READY status to submit (current: ${row.status}).`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Case must be in PACKAGE_READY status to submit (current: ${row.status}).`,
+      );
     }
 
     if (!row.package_id) {
@@ -513,7 +534,10 @@ export class LenderCaseService {
         purpose: 'SHARE_WITH_LENDER',
       });
       if (!activeConsent) {
-        throw AppError.of('CONSENT_REQUIRED', 'Consent SHARE_WITH_LENDER is no longer active at submission time.');
+        throw AppError.of(
+          'CONSENT_REQUIRED',
+          'Consent SHARE_WITH_LENDER is no longer active at submission time.',
+        );
       }
       consentId = activeConsent.consentId;
     }
@@ -689,7 +713,10 @@ export class LenderCaseService {
     }
 
     if (input.toStatus === 'REJECTED' && !input.declineReasonCode) {
-      throw AppError.of('VALIDATION_ERROR', 'declineReasonCode is required when updating status to REJECTED.');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'declineReasonCode is required when updating status to REJECTED.',
+      );
     }
 
     const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
@@ -719,7 +746,8 @@ export class LenderCaseService {
       from_status: row.status,
       to_status: input.toStatus,
       status_source: input.statusSource,
-      reason_text: input.reasonText ?? (input.declineReasonCode ? `Decline reason: ${input.declineReasonCode}` : null),
+      reason_text:
+        input.reasonText ?? (input.declineReasonCode ? `Decline reason: ${input.declineReasonCode}` : null),
       actor: ctx.principal.id,
       occurred_at: now,
     });

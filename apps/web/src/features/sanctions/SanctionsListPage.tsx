@@ -48,14 +48,20 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-const SANCTION_STATUS_COLORS: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const SANCTION_STATUS_COLORS: Record<
+  string,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   ACTIVE: 'success',
   REVISED: 'info',
   EXPIRED: 'warning',
   CANCELLED: 'error',
 };
 
-const TRANCHE_STATUS_COLORS: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const TRANCHE_STATUS_COLORS: Record<
+  string,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   RECORDED: 'info',
   VERIFIED: 'success',
   RETURNED: 'warning',
@@ -383,7 +389,9 @@ export function SanctionsListPage(): React.ReactElement {
                   <TableCell sx={{ fontWeight: 600 }}>Rate & Type</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Sanction Date</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -428,9 +436,7 @@ export function SanctionsListPage(): React.ReactElement {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {s.tenureMonths} mos
-                          </Typography>
+                          <Typography variant="body2">{s.tenureMonths} mos</Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
@@ -438,12 +444,7 @@ export function SanctionsListPage(): React.ReactElement {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            label={s.status}
-                            color={chipColor}
-                            size="small"
-                            sx={{ fontWeight: 500 }}
-                          />
+                          <Chip label={s.status} color={chipColor} size="small" sx={{ fontWeight: 500 }} />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="text.secondary">
@@ -490,7 +491,9 @@ export function SanctionsListPage(): React.ReactElement {
                   <TableCell sx={{ fontWeight: 600 }}>UTR (Masked)</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Loan Account</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -528,9 +531,7 @@ export function SanctionsListPage(): React.ReactElement {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {t.disbursedOn || '—'}
-                          </Typography>
+                          <Typography variant="body2">{t.disbursedOn || '—'}</Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -543,12 +544,7 @@ export function SanctionsListPage(): React.ReactElement {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            label={t.status}
-                            color={chipColor}
-                            size="small"
-                            sx={{ fontWeight: 500 }}
-                          />
+                          <Chip label={t.status} color={chipColor} size="small" sx={{ fontWeight: 500 }} />
                         </TableCell>
                         <TableCell align="right">
                           {parentSanction ? (

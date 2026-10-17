@@ -25,12 +25,7 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
-import {
-  useApproveTarget,
-  useCreateTarget,
-  useTargetHistory,
-  useTargets,
-} from './api';
+import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
 import {
   DIMENSION_LABELS,
   METRIC_LABELS,
@@ -76,8 +71,7 @@ export function TargetsPage() {
   };
 
   const { data, isLoading, isError, error } = useTargets(query);
-  const { data: historyData, isLoading: historyLoading } =
-    useTargetHistory(historyTargetId);
+  const { data: historyData, isLoading: historyLoading } = useTargetHistory(historyTargetId);
   const createMutation = useCreateTarget();
   const approveMutation = useApproveTarget();
 
@@ -90,8 +84,7 @@ export function TargetsPage() {
     }
   };
 
-  const computedUnit: TargetUnit =
-    metricCode === 'DISBURSEMENT_AMOUNT' ? 'INR' : 'COUNT';
+  const computedUnit: TargetUnit = metricCode === 'DISBURSEMENT_AMOUNT' ? 'INR' : 'COUNT';
 
   const handleCreateSubmit = async () => {
     setFormError(null);
@@ -161,24 +154,13 @@ export function TargetsPage() {
   const getStatusChip = (status: TargetStatus) => {
     switch (status) {
       case 'APPROVED':
-        return (
-          <Chip label="Approved" color="success" size="small" variant="filled" />
-        );
+        return <Chip label="Approved" color="success" size="small" variant="filled" />;
       case 'PENDING_APPROVAL':
-        return (
-          <Chip
-            label="Pending Approval"
-            color="warning"
-            size="small"
-            variant="filled"
-          />
-        );
+        return <Chip label="Pending Approval" color="warning" size="small" variant="filled" />;
       case 'SUPERSEDED':
         return <Chip label="Superseded" size="small" variant="outlined" />;
       case 'REJECTED':
-        return (
-          <Chip label="Rejected" color="error" size="small" variant="filled" />
-        );
+        return <Chip label="Rejected" color="error" size="small" variant="filled" />;
     }
   };
 
@@ -197,16 +179,11 @@ export function TargetsPage() {
             Performance Targets (MOD-PERF SUB-PERF.01)
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Operational target setting, version revisions, and dual-control approvals
-            (SOD-04).
+            Operational target setting, version revisions, and dual-control approvals (SOD-04).
           </Typography>
         </Box>
         {hasManage && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setCreateOpen(true)}
-          >
+          <Button variant="contained" color="primary" onClick={() => setCreateOpen(true)}>
             Create Target
           </Button>
         )}
@@ -309,8 +286,7 @@ export function TargetsPage() {
             ) : (
               data?.items?.map((item) => {
                 const isCreator = me?.id === item.createdBy;
-                const canApprove =
-                  item.status === 'PENDING_APPROVAL' && hasManage && !isCreator;
+                const canApprove = item.status === 'PENDING_APPROVAL' && hasManage && !isCreator;
 
                 return (
                   <TableRow key={item.id} hover>
@@ -325,10 +301,7 @@ export function TargetsPage() {
                     </TableCell>
                     <TableCell>
                       <Tooltip title="Actuals computation deferred pending MOD-RPT (Reporting module)">
-                        <Typography
-                          variant="caption"
-                          sx={{ fontStyle: 'italic', color: 'text.secondary' }}
-                        >
+                        <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
                           — (Pending MOD-RPT)
                         </Typography>
                       </Tooltip>
@@ -374,11 +347,7 @@ export function TargetsPage() {
                             ) : null}
                           </>
                         )}
-                        <Button
-                          size="small"
-                          variant="text"
-                          onClick={() => setHistoryTargetId(item.id)}
-                        >
+                        <Button size="small" variant="text" onClick={() => setHistoryTargetId(item.id)}>
                           History
                         </Button>
                       </Stack>
@@ -392,12 +361,7 @@ export function TargetsPage() {
       </TableContainer>
 
       {/* Create Target Dialog */}
-      <Dialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create Performance Target (API-PERF-001)</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
@@ -442,9 +406,7 @@ export function TargetsPage() {
               fullWidth
               required
             >
-              <MenuItem value="DISBURSEMENT_AMOUNT">
-                Disbursement Amount (₹)
-              </MenuItem>
+              <MenuItem value="DISBURSEMENT_AMOUNT">Disbursement Amount (₹)</MenuItem>
               <MenuItem value="LEAD_COUNT">Lead Count</MenuItem>
               <MenuItem value="SANCTION_COUNT">Sanction Count</MenuItem>
             </TextField>
@@ -467,31 +429,22 @@ export function TargetsPage() {
             />
 
             <Alert severity="info">
-              Targets are created in <strong>PENDING_APPROVAL</strong> status with{' '}
-              <strong>version 1</strong> (or next version if revising an existing slice).
-              Dual-control approval is required before it becomes active.
+              Targets are created in <strong>PENDING_APPROVAL</strong> status with <strong>version 1</strong>{' '}
+              (or next version if revising an existing slice). Dual-control approval is required before it
+              becomes active.
             </Alert>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleCreateSubmit}
-            disabled={createMutation.isPending}
-          >
+          <Button variant="contained" onClick={handleCreateSubmit} disabled={createMutation.isPending}>
             {createMutation.isPending ? 'Creating...' : 'Create Target'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Reject Target Dialog */}
-      <Dialog
-        open={Boolean(rejectTarget)}
-        onClose={() => setRejectTarget(null)}
-        maxWidth="xs"
-        fullWidth
-      >
+      <Dialog open={Boolean(rejectTarget)} onClose={() => setRejectTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Reject Performance Target</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -556,9 +509,7 @@ export function TargetsPage() {
                 {historyData?.items?.map((h) => (
                   <TableRow key={h.id}>
                     <TableCell sx={{ fontWeight: 600 }}>v{h.version}</TableCell>
-                    <TableCell>
-                      {formatTargetValue(h.targetValue, h.unit)}
-                    </TableCell>
+                    <TableCell>{formatTargetValue(h.targetValue, h.unit)}</TableCell>
                     <TableCell>{getStatusChip(h.status)}</TableCell>
                     <TableCell>{h.approvedBy ?? '—'}</TableCell>
                     <TableCell>{h.approvedAt ? h.approvedAt.slice(0, 10) : '—'}</TableCell>

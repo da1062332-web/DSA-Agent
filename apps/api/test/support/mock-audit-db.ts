@@ -20,7 +20,10 @@ export function createMockAuditStore() {
   let activeTenantId = 'ten_01JTESTTENANT00000000000000';
 
   const mockConnection: DatabaseConnection = {
-    async executeQuery<R>(compiledQuery: { sql: string; parameters: readonly unknown[] }): Promise<QueryResult<R>> {
+    async executeQuery<R>(compiledQuery: {
+      sql: string;
+      parameters: readonly unknown[];
+    }): Promise<QueryResult<R>> {
       const sqlLower = compiledQuery.sql.toLowerCase();
       const params = compiledQuery.parameters as unknown[];
 
@@ -61,7 +64,9 @@ export function createMockAuditStore() {
 
         // actor_id
         if (sqlLower.includes('actor_id =')) {
-          const actorParam = params.find((p) => typeof p === 'string' && (p.startsWith('usr_') || p.startsWith('srv_')));
+          const actorParam = params.find(
+            (p) => typeof p === 'string' && (p.startsWith('usr_') || p.startsWith('srv_')),
+          );
           if (actorParam) filtered = filtered.filter((e) => e.actor_id === actorParam);
         }
 
@@ -73,7 +78,11 @@ export function createMockAuditStore() {
 
         // entity_type =
         if (sqlLower.includes('entity_type =')) {
-          const entityTypeParam = params.find((p) => typeof p === 'string' && ['lead', 'customer', 'application', 'task', 'evidence_pack'].includes(p));
+          const entityTypeParam = params.find(
+            (p) =>
+              typeof p === 'string' &&
+              ['lead', 'customer', 'application', 'task', 'evidence_pack'].includes(p),
+          );
           if (entityTypeParam) filtered = filtered.filter((e) => e.entity_type === entityTypeParam);
         }
 

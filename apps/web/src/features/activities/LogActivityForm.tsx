@@ -303,7 +303,8 @@ export function LogActivityForm({
             onChange={(e) => setNote(e.target.value)}
             error={Boolean(fieldErrors.note)}
             helperText={
-              fieldErrors.note || `${note.length}/4000 characters. Do not record PAN, Aadhaar, or bank details.`
+              fieldErrors.note ||
+              `${note.length}/4000 characters. Do not record PAN, Aadhaar, or bank details.`
             }
             data-testid="activity.log-form.note"
           />

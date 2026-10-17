@@ -39,11 +39,7 @@ import {
   LockIcon,
   ShieldIcon,
 } from '../../shell/icons';
-import type {
-  AuditEvent,
-  AuditChainVerificationResponse,
-  EvidencePackResponse,
-} from '@dsa/contracts';
+import type { AuditEvent, AuditChainVerificationResponse, EvidencePackResponse } from '@dsa/contracts';
 import {
   searchAuditEvents,
   verifyAuditChain,
@@ -166,16 +162,12 @@ export function AuditSearchPage() {
             Audit Trail & Cryptographic Verification
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 37 (MOD-AUD): Tamper-evident immutable ledger with SHA-256 hash chaining, state diff tracking, and compliance evidence packs.
+            Module 37 (MOD-AUD): Tamper-evident immutable ledger with SHA-256 hash chaining, state diff
+            tracking, and compliance evidence packs.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<LockIcon />}
-            onClick={handleSealChain}
-            disabled={loading}
-          >
+          <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
             Seal Chain
           </Button>
           <Button
@@ -187,11 +179,7 @@ export function AuditSearchPage() {
           >
             {verifyingChain ? 'Verifying...' : 'Verify Chain Integrity'}
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={() => setEvidenceModalOpen(true)}
-          >
+          <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => setEvidenceModalOpen(true)}>
             Export Evidence Pack
           </Button>
         </Box>
@@ -258,11 +246,7 @@ export function AuditSearchPage() {
           <Grid item xs={12} sm={6} md={2.5}>
             <FormControl fullWidth size="small">
               <InputLabel>Entity Type</InputLabel>
-              <Select
-                value={entityType}
-                label="Entity Type"
-                onChange={(e) => setEntityType(e.target.value)}
-              >
+              <Select value={entityType} label="Entity Type" onChange={(e) => setEntityType(e.target.value)}>
                 <MenuItem value="">All Entities</MenuItem>
                 <MenuItem value="lead">Lead</MenuItem>
                 <MenuItem value="application">Application</MenuItem>
@@ -359,7 +343,9 @@ export function AuditSearchPage() {
               ) : events.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Typography color="text.secondary">No audit events match your search criteria.</Typography>
+                    <Typography color="text.secondary">
+                      No audit events match your search criteria.
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -374,12 +360,7 @@ export function AuditSearchPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={ev.action}
-                        color="primary"
-                        variant="outlined"
-                      />
+                      <Chip size="small" label={ev.action} color="primary" variant="outlined" />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>
@@ -444,34 +425,40 @@ export function AuditSearchPage() {
               ID: {selectedEvent?.id} | Correlation: {selectedEvent?.correlationId}
             </Typography>
           </Box>
-          {selectedEvent?.hash && (
-            <Chip size="small" color="success" label="Cryptographically Sealed" />
-          )}
+          {selectedEvent?.hash && <Chip size="small" color="success" label="Cryptographically Sealed" />}
         </DialogTitle>
         <DialogContent dividers sx={{ pt: 2 }}>
           {selectedEvent && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Actor</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Actor
+                  </Typography>
                   <Typography variant="body2" fontWeight={600}>
                     {selectedEvent.actorType}: {selectedEvent.actorId}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Permission Used</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Permission Used
+                  </Typography>
                   <Typography variant="body2" fontWeight={600}>
                     {selectedEvent.permissionUsed || 'SYSTEM_AUTH'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Client IP & Agent</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Client IP & Agent
+                  </Typography>
                   <Typography variant="body2" fontFamily="monospace">
                     {selectedEvent.ip || 'N/A'} ({selectedEvent.userAgent || 'App'})
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Linked Decision Record</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Linked Decision Record
+                  </Typography>
                   <Typography variant="body2" fontFamily="monospace">
                     {selectedEvent.decisionRecordId || 'None'}
                   </Typography>
@@ -485,16 +472,26 @@ export function AuditSearchPage() {
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="text.secondary">Before State</Typography>
-                  <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Before State
+                  </Typography>
+                  <Paper
+                    variant="outlined"
+                    sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}
+                  >
                     <pre style={{ margin: 0, fontSize: '0.8rem' }}>
                       {selectedEvent.before ? JSON.stringify(selectedEvent.before, null, 2) : 'null'}
                     </pre>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="text.secondary">After State</Typography>
-                  <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    After State
+                  </Typography>
+                  <Paper
+                    variant="outlined"
+                    sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}
+                  >
                     <pre style={{ margin: 0, fontSize: '0.8rem' }}>
                       {selectedEvent.after ? JSON.stringify(selectedEvent.after, null, 2) : 'null'}
                     </pre>
@@ -504,7 +501,9 @@ export function AuditSearchPage() {
 
               {selectedEvent.hash && (
                 <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">SHA-256 Hash Chain</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    SHA-256 Hash Chain
+                  </Typography>
                   <Typography variant="caption" fontFamily="monospace" display="block">
                     Current Hash: {selectedEvent.hash}
                   </Typography>
@@ -530,18 +529,22 @@ export function AuditSearchPage() {
         <DialogContent dividers sx={{ pt: 2 }}>
           {chainVerification && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Alert
-                severity={chainVerification.status === 'VERIFIED' ? 'success' : 'error'}
-              >
+              <Alert severity={chainVerification.status === 'VERIFIED' ? 'success' : 'error'}>
                 Chain Status: <strong>{chainVerification.status}</strong>
               </Alert>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Total Events</Typography>
-                  <Typography variant="h6" fontWeight={700}>{chainVerification.totalEvents}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Events
+                  </Typography>
+                  <Typography variant="h6" fontWeight={700}>
+                    {chainVerification.totalEvents}
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Sealed in Chain</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Sealed in Chain
+                  </Typography>
                   <Typography variant="h6" fontWeight={700} color="success.main">
                     {chainVerification.sealedEvents}
                   </Typography>
@@ -549,11 +552,20 @@ export function AuditSearchPage() {
               </Grid>
               {chainVerification.verifiedRange && (
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={600}>Verified Sequence Range</Typography>
-                  <Typography variant="body2">
-                    Sequence #{chainVerification.verifiedRange.fromSeq ?? 1} to #{chainVerification.verifiedRange.toSeq ?? chainVerification.sealedEvents}
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Verified Sequence Range
                   </Typography>
-                  <Typography variant="caption" fontFamily="monospace" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  <Typography variant="body2">
+                    Sequence #{chainVerification.verifiedRange.fromSeq ?? 1} to #
+                    {chainVerification.verifiedRange.toSeq ?? chainVerification.sealedEvents}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    fontFamily="monospace"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mt: 0.5 }}
+                  >
                     Latest Merkle Root: {chainVerification.verifiedRange.latestHash?.slice(0, 32)}...
                   </Typography>
                 </Box>
@@ -571,7 +583,8 @@ export function AuditSearchPage() {
         <DialogTitle>Request Compliance Evidence Pack</DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Generate an immutable evidence archive sealed with SHA-256 manifest and digital chain verification for external auditors.
+            Generate an immutable evidence archive sealed with SHA-256 manifest and digital chain verification
+            for external auditors.
           </Typography>
           <TextField
             label="Audit Purpose / Regulation Reference"

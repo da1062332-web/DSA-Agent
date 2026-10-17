@@ -61,7 +61,9 @@ export function ReportingPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState('2026-10');
   const [selectedDate, setSelectedDate] = useState('2026-10-12');
-  const [dashboardCategory, setDashboardCategory] = useState<'EXECUTIVE' | 'BRANCH' | 'OPERATIONS' | 'FINANCE' | 'CONNECTOR'>('EXECUTIVE');
+  const [dashboardCategory, setDashboardCategory] = useState<
+    'EXECUTIVE' | 'BRANCH' | 'OPERATIONS' | 'FINANCE' | 'CONNECTOR'
+  >('EXECUTIVE');
 
   // Dialog States
   const [runDialogOpen, setRunDialogOpen] = useState(false);
@@ -79,7 +81,10 @@ export function ReportingPage() {
   const [scheduleEmail, setScheduleEmail] = useState('');
 
   const [formulaModalDef, setFormulaModalDef] = useState<MetricDefinitionDto | null>(null);
-  const [notification, setNotification] = useState<{ severity: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [notification, setNotification] = useState<{
+    severity: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
 
   // Queries
   const { data: metricDefsData, isLoading: metricDefsLoading } = useMetricDefinitions();
@@ -109,16 +114,22 @@ export function ReportingPage() {
       format: runFormat,
       parameters: runBranchId.trim() ? { branchId: runBranchId.trim() } : {},
     };
-    startRunMutation.mutate({ code: selectedReport.code, dto }, {
-      onSuccess: () => {
-        setRunDialogOpen(false);
-        setRunBranchId('');
-        setNotification({ severity: 'success', message: `Report run for "${selectedReport.title}" queued successfully.` });
+    startRunMutation.mutate(
+      { code: selectedReport.code, dto },
+      {
+        onSuccess: () => {
+          setRunDialogOpen(false);
+          setRunBranchId('');
+          setNotification({
+            severity: 'success',
+            message: `Report run for "${selectedReport.title}" queued successfully.`,
+          });
+        },
+        onError: (err: any) => {
+          setNotification({ severity: 'error', message: err?.message || 'Failed to start report run.' });
+        },
       },
-      onError: (err: any) => {
-        setNotification({ severity: 'error', message: err?.message || 'Failed to start report run.' });
-      },
-    });
+    );
   };
 
   const handleCreateExport = () => {
@@ -152,7 +163,10 @@ export function ReportingPage() {
       onSuccess: () => {
         setScheduleDialogOpen(false);
         setScheduleEmail('');
-        setNotification({ severity: 'success', message: `Report schedule for "${scheduleReportCode}" created.` });
+        setNotification({
+          severity: 'success',
+          message: `Report schedule for "${scheduleReportCode}" created.`,
+        });
       },
       onError: (err: any) => {
         setNotification({ severity: 'error', message: err?.message || 'Failed to create report schedule.' });
@@ -172,17 +186,20 @@ export function ReportingPage() {
   };
 
   const handleRefreshProjections = () => {
-    refreshProjMutation.mutate({
-      startDate: `${selectedPeriod}-01`,
-      endDate: `${selectedPeriod}-31`,
-    }, {
-      onSuccess: () => {
-        setNotification({ severity: 'success', message: 'Projections and control totals refreshed.' });
+    refreshProjMutation.mutate(
+      {
+        startDate: `${selectedPeriod}-01`,
+        endDate: `${selectedPeriod}-31`,
       },
-      onError: (err: any) => {
-        setNotification({ severity: 'error', message: err?.message || 'Failed to refresh projections.' });
+      {
+        onSuccess: () => {
+          setNotification({ severity: 'success', message: 'Projections and control totals refreshed.' });
+        },
+        onError: (err: any) => {
+          setNotification({ severity: 'error', message: err?.message || 'Failed to refresh projections.' });
+        },
       },
-    });
+    );
   };
 
   return (
@@ -193,13 +210,23 @@ export function ReportingPage() {
         </Alert>
       )}
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Reporting and Analytics (MOD-RPT)
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Canonical reporting engine, metric registry (ENT-094), multi-category dashboards, automated schedules, and daily control totals (FR-RPT-008).
+            Canonical reporting engine, metric registry (ENT-094), multi-category dashboards, automated
+            schedules, and daily control totals (FR-RPT-008).
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -292,25 +319,45 @@ export function ReportingPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell><strong>Run ID</strong></TableCell>
-                    <TableCell><strong>Report Code</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Row Count</strong></TableCell>
-                    <TableCell><strong>Created At</strong></TableCell>
-                    <TableCell><strong>Action</strong></TableCell>
+                    <TableCell>
+                      <strong>Run ID</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Report Code</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Status</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Row Count</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Created At</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Action</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {reportRunsData?.data && reportRunsData.data.length > 0 ? (
                     reportRunsData.data.map((run) => (
                       <TableRow key={run.id}>
-                        <TableCell><code>{run.id}</code></TableCell>
+                        <TableCell>
+                          <code>{run.id}</code>
+                        </TableCell>
                         <TableCell>{run.reportCode}</TableCell>
                         <TableCell>
                           <Chip
                             label={run.status}
                             size="small"
-                            color={run.status === 'COMPLETED' ? 'success' : run.status === 'RUNNING' ? 'primary' : 'default'}
+                            color={
+                              run.status === 'COMPLETED'
+                                ? 'success'
+                                : run.status === 'RUNNING'
+                                  ? 'primary'
+                                  : 'default'
+                            }
                           />
                         </TableCell>
                         <TableCell>{run.rowCount}</TableCell>
@@ -320,13 +367,18 @@ export function ReportingPage() {
                             <Button
                               size="small"
                               onClick={() => {
-                                void apiDownload(run.downloadUrl!, `report_${run.reportCode.toLowerCase()}_${run.id}.csv`);
+                                void apiDownload(
+                                  run.downloadUrl!,
+                                  `report_${run.reportCode.toLowerCase()}_${run.id}.csv`,
+                                );
                               }}
                             >
                               Download
                             </Button>
                           ) : (
-                            <Typography variant="caption" color="text.secondary">Ready in Store</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Ready in Store
+                            </Typography>
                           )}
                         </TableCell>
                       </TableRow>
@@ -352,7 +404,16 @@ export function ReportingPage() {
       {/* ======================================================== */}
       {activeTab === 1 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 3,
+              flexWrap: 'wrap',
+              gap: 2,
+            }}
+          >
             <Box sx={{ display: 'flex', gap: 1 }}>
               {(['EXECUTIVE', 'BRANCH', 'OPERATIONS', 'FINANCE', 'CONNECTOR'] as const).map((cat) => (
                 <Button
@@ -385,31 +446,45 @@ export function ReportingPage() {
                     <Grid item xs={12} sm={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Total Lead Intake</Typography>
-                          <Typography variant="h5" fontWeight={700}>{execData.portfolioSummary.totalLeads}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Total Lead Intake
+                          </Typography>
+                          <Typography variant="h5" fontWeight={700}>
+                            {execData.portfolioSummary.totalLeads}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Conversion Rate</Typography>
-                          <Typography variant="h5" fontWeight={700}>{execData.portfolioSummary.conversionRate}%</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Conversion Rate
+                          </Typography>
+                          <Typography variant="h5" fontWeight={700}>
+                            {execData.portfolioSummary.conversionRate}%
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Sanctioned Amount</Typography>
-                          <Typography variant="h5" fontWeight={700}>₹{execData.portfolioSummary.sanctionedAmount.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Sanctioned Amount
+                          </Typography>
+                          <Typography variant="h5" fontWeight={700}>
+                            ₹{execData.portfolioSummary.sanctionedAmount.toLocaleString('en-IN')}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Disbursed Volume</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Disbursed Volume
+                          </Typography>
                           <Typography variant="h5" fontWeight={700} color="primary.main">
                             ₹{execData.portfolioSummary.disbursedAmount.toLocaleString('en-IN')}
                           </Typography>
@@ -425,10 +500,18 @@ export function ReportingPage() {
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell><strong>Branch</strong></TableCell>
-                          <TableCell><strong>Disbursed Volume</strong></TableCell>
-                          <TableCell><strong>Target</strong></TableCell>
-                          <TableCell><strong>Achievement %</strong></TableCell>
+                          <TableCell>
+                            <strong>Branch</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Disbursed Volume</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Target</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Achievement %</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -436,13 +519,21 @@ export function ReportingPage() {
                           <TableRow key={b.branchId}>
                             <TableCell>{b.branchName}</TableCell>
                             <TableCell>₹{b.disbursedAmount.toLocaleString('en-IN')}</TableCell>
-                            <TableCell>{b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : '—'}</TableCell>
+                            <TableCell>
+                              {b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : '—'}
+                            </TableCell>
                             <TableCell>
                               {b.achievementRate !== null ? (
                                 <Chip
                                   label={`${b.achievementRate}%`}
                                   size="small"
-                                  color={b.achievementRate >= 100 ? 'success' : b.achievementRate >= 80 ? 'warning' : 'default'}
+                                  color={
+                                    b.achievementRate >= 100
+                                      ? 'success'
+                                      : b.achievementRate >= 80
+                                        ? 'warning'
+                                        : 'default'
+                                  }
                                 />
                               ) : (
                                 '—'
@@ -473,19 +564,29 @@ export function ReportingPage() {
                     <CardContent>
                       <Grid container spacing={2}>
                         <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Leads</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Leads
+                          </Typography>
                           <Typography variant="h6">{branchData.summary.leadCount}</Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Conversion Rate</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Conversion Rate
+                          </Typography>
                           <Typography variant="h6">{branchData.summary.conversionRate}%</Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Sanction Amount</Typography>
-                          <Typography variant="h6">₹{branchData.summary.sanctionAmount.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Sanction Amount
+                          </Typography>
+                          <Typography variant="h6">
+                            ₹{branchData.summary.sanctionAmount.toLocaleString('en-IN')}
+                          </Typography>
                         </Grid>
                         <Grid item xs={6} sm={3}>
-                          <Typography variant="caption" color="text.secondary">Disbursement Amount</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Disbursement Amount
+                          </Typography>
                           <Typography variant="h6" color="primary.main">
                             ₹{branchData.summary.disbursementAmount.toLocaleString('en-IN')}
                           </Typography>
@@ -501,11 +602,21 @@ export function ReportingPage() {
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell><strong>Officer Name</strong></TableCell>
-                          <TableCell><strong>Leads Sourced</strong></TableCell>
-                          <TableCell><strong>Sanctions</strong></TableCell>
-                          <TableCell><strong>Disbursed Volume</strong></TableCell>
-                          <TableCell><strong>Conversion Rate</strong></TableCell>
+                          <TableCell>
+                            <strong>Officer Name</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Leads Sourced</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Sanctions</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Disbursed Volume</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Conversion Rate</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -537,11 +648,22 @@ export function ReportingPage() {
                     <Card variant="outlined">
                       <CardHeader title="Operational Pipeline Throughput" />
                       <CardContent>
-                        <Typography variant="body2" gutterBottom>Leads Processed: <strong>{opsData.throughput.leadsProcessed}</strong></Typography>
-                        <Typography variant="body2" gutterBottom>Active Applications: <strong>{opsData.throughput.activeApplications}</strong></Typography>
-                        <Typography variant="body2" gutterBottom>Pending Verifications: <strong>{opsData.throughput.pendingVerifications}</strong></Typography>
-                        <Typography variant="body2" gutterBottom>Underwriting Stage: <strong>{opsData.throughput.casesInUnderwriting}</strong></Typography>
-                        <Typography variant="body2">Sanctions Awaiting Tranche: <strong>{opsData.throughput.sanctionsAwaitingDisbursement}</strong></Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Leads Processed: <strong>{opsData.throughput.leadsProcessed}</strong>
+                        </Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Active Applications: <strong>{opsData.throughput.activeApplications}</strong>
+                        </Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Pending Verifications: <strong>{opsData.throughput.pendingVerifications}</strong>
+                        </Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Underwriting Stage: <strong>{opsData.throughput.casesInUnderwriting}</strong>
+                        </Typography>
+                        <Typography variant="body2">
+                          Sanctions Awaiting Tranche:{' '}
+                          <strong>{opsData.throughput.sanctionsAwaitingDisbursement}</strong>
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -549,9 +671,15 @@ export function ReportingPage() {
                     <Card variant="outlined">
                       <CardHeader title="SLA & Velocity Metrics" />
                       <CardContent>
-                        <Typography variant="body2" gutterBottom>Total Tasks: <strong>{opsData.slaPerformance.totalTasks}</strong></Typography>
-                        <Typography variant="body2" gutterBottom>Completed On-Time: <strong>{opsData.slaPerformance.completedOnTime}</strong></Typography>
-                        <Typography variant="body2" gutterBottom>SLA Breached Tasks: <strong>{opsData.slaPerformance.breachedTasks}</strong></Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Total Tasks: <strong>{opsData.slaPerformance.totalTasks}</strong>
+                        </Typography>
+                        <Typography variant="body2" gutterBottom>
+                          Completed On-Time: <strong>{opsData.slaPerformance.completedOnTime}</strong>
+                        </Typography>
+                        <Typography variant="body2" gutterBottom>
+                          SLA Breached Tasks: <strong>{opsData.slaPerformance.breachedTasks}</strong>
+                        </Typography>
                         <Typography variant="h6" color="success.main" sx={{ mt: 2 }}>
                           On-Time SLA Delivery: {opsData.slaPerformance.onTimeRate}%
                         </Typography>
@@ -574,38 +702,60 @@ export function ReportingPage() {
                     <Grid item xs={12} sm={4}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Gross Sanctioned</Typography>
-                          <Typography variant="h5">₹{finData.disbursements.grossSanctionedAmount.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Gross Sanctioned
+                          </Typography>
+                          <Typography variant="h5">
+                            ₹{finData.disbursements.grossSanctionedAmount.toLocaleString('en-IN')}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={12} sm={4}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Net Disbursed</Typography>
-                          <Typography variant="h5" color="primary.main">₹{finData.disbursements.netDisbursedAmount.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Net Disbursed
+                          </Typography>
+                          <Typography variant="h5" color="primary.main">
+                            ₹{finData.disbursements.netDisbursedAmount.toLocaleString('en-IN')}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={12} sm={4}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Average Ticket Size</Typography>
-                          <Typography variant="h5">₹{finData.disbursements.averageTicketSize.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Average Ticket Size
+                          </Typography>
+                          <Typography variant="h5">
+                            ₹{finData.disbursements.averageTicketSize.toLocaleString('en-IN')}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                   </Grid>
 
-                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>Product Portfolio Breakdown</Typography>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    Product Portfolio Breakdown
+                  </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell><strong>Product</strong></TableCell>
-                          <TableCell><strong>Sanction Count</strong></TableCell>
-                          <TableCell><strong>Disbursed Volume</strong></TableCell>
-                          <TableCell><strong>Portfolio Share</strong></TableCell>
+                          <TableCell>
+                            <strong>Product</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Sanction Count</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Disbursed Volume</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Portfolio Share</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -633,13 +783,16 @@ export function ReportingPage() {
               ) : conData ? (
                 <Box>
                   <Alert severity="info" sx={{ mb: 3 }}>
-                    MOD-CPT (Connector Portal) remains deferred to Release 3. Connector metrics below reflect canonical core channel reporting without third-party connector dependencies.
+                    MOD-CPT (Connector Portal) remains deferred to Release 3. Connector metrics below reflect
+                    canonical core channel reporting without third-party connector dependencies.
                   </Alert>
                   <Grid container spacing={2} sx={{ mb: 3 }}>
                     <Grid item xs={6} sm={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Total Connectors</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Total Connectors
+                          </Typography>
                           <Typography variant="h5">{conData.channelSummary.totalConnectors}</Typography>
                         </CardContent>
                       </Card>
@@ -647,7 +800,9 @@ export function ReportingPage() {
                     <Grid item xs={6} sm={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Active Connectors</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Active Connectors
+                          </Typography>
                           <Typography variant="h5">{conData.channelSummary.activeConnectors}</Typography>
                         </CardContent>
                       </Card>
@@ -655,7 +810,9 @@ export function ReportingPage() {
                     <Grid item xs={6} sm={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Leads Sourced</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Leads Sourced
+                          </Typography>
                           <Typography variant="h5">{conData.channelSummary.leadsSourced}</Typography>
                         </CardContent>
                       </Card>
@@ -663,21 +820,33 @@ export function ReportingPage() {
                     <Grid item xs={6} sm={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">Disbursed Volume</Typography>
-                          <Typography variant="h5">₹{conData.channelSummary.disbursedVolume.toLocaleString('en-IN')}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Disbursed Volume
+                          </Typography>
+                          <Typography variant="h5">
+                            ₹{conData.channelSummary.disbursedVolume.toLocaleString('en-IN')}
+                          </Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                   </Grid>
 
-                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>Top Connector Partners</Typography>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    Top Connector Partners
+                  </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell><strong>Partner Name</strong></TableCell>
-                          <TableCell><strong>Leads Sourced</strong></TableCell>
-                          <TableCell><strong>Disbursed Volume</strong></TableCell>
+                          <TableCell>
+                            <strong>Partner Name</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Leads Sourced</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Disbursed Volume</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -708,7 +877,8 @@ export function ReportingPage() {
               Canonical Metric Registry (ENT-094)
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Central catalog of tenant metric definitions with AST formula expressions, grain, date bases, and audit versioning.
+              Central catalog of tenant metric definitions with AST formula expressions, grain, date bases,
+              and audit versioning.
             </Typography>
           </Box>
 
@@ -719,32 +889,48 @@ export function ReportingPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell><strong>Code</strong></TableCell>
-                    <TableCell><strong>Name</strong></TableCell>
-                    <TableCell><strong>Category</strong></TableCell>
-                    <TableCell><strong>Unit</strong></TableCell>
-                    <TableCell><strong>Grain</strong></TableCell>
-                    <TableCell><strong>Date Basis</strong></TableCell>
-                    <TableCell><strong>Version</strong></TableCell>
-                    <TableCell><strong>Formula AST</strong></TableCell>
+                    <TableCell>
+                      <strong>Code</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Name</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Category</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Unit</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Grain</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Date Basis</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Version</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Formula AST</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {metricDefsData?.data.map((def) => (
                     <TableRow key={def.code}>
-                      <TableCell><code>{def.code}</code></TableCell>
+                      <TableCell>
+                        <code>{def.code}</code>
+                      </TableCell>
                       <TableCell>{def.name}</TableCell>
-                      <TableCell><Chip label={def.category} size="small" /></TableCell>
+                      <TableCell>
+                        <Chip label={def.category} size="small" />
+                      </TableCell>
                       <TableCell>{def.unit}</TableCell>
                       <TableCell>{def.grain}</TableCell>
                       <TableCell>{def.dateBasis}</TableCell>
                       <TableCell>v{def.version}</TableCell>
                       <TableCell>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => setFormulaModalDef(def)}
-                        >
+                        <Button size="small" variant="outlined" onClick={() => setFormulaModalDef(def)}>
                           View AST
                         </Button>
                       </TableCell>
@@ -791,22 +977,40 @@ export function ReportingPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell><strong>ID</strong></TableCell>
-                    <TableCell><strong>Export Type</strong></TableCell>
-                    <TableCell><strong>Format</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Row Count</strong></TableCell>
-                    <TableCell><strong>Expires At (24h)</strong></TableCell>
-                    <TableCell><strong>Download</strong></TableCell>
+                    <TableCell>
+                      <strong>ID</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Export Type</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Format</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Status</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Row Count</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Expires At (24h)</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Download</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {exportsData?.data && exportsData.data.length > 0 ? (
                     exportsData.data.map((job) => (
                       <TableRow key={job.id}>
-                        <TableCell><code>{job.id}</code></TableCell>
+                        <TableCell>
+                          <code>{job.id}</code>
+                        </TableCell>
                         <TableCell>{job.exportType}</TableCell>
-                        <TableCell><Chip label={job.fileFormat} size="small" /></TableCell>
+                        <TableCell>
+                          <Chip label={job.fileFormat} size="small" />
+                        </TableCell>
                         <TableCell>
                           <Chip
                             label={job.status}
@@ -821,7 +1025,10 @@ export function ReportingPage() {
                             <Button
                               size="small"
                               onClick={() => {
-                                void apiDownload(job.downloadUrl!, `export_${job.id}.${job.fileFormat.toLowerCase()}`);
+                                void apiDownload(
+                                  job.downloadUrl!,
+                                  `export_${job.id}.${job.fileFormat.toLowerCase()}`,
+                                );
                               }}
                             >
                               Download
@@ -856,26 +1063,48 @@ export function ReportingPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell><strong>ID</strong></TableCell>
-                    <TableCell><strong>Report Code</strong></TableCell>
-                    <TableCell><strong>Frequency</strong></TableCell>
-                    <TableCell><strong>Recipients</strong></TableCell>
-                    <TableCell><strong>Next Run</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Action</strong></TableCell>
+                    <TableCell>
+                      <strong>ID</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Report Code</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Frequency</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Recipients</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Next Run</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Status</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Action</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {schedulesData?.data && schedulesData.data.length > 0 ? (
                     schedulesData.data.map((sch) => (
                       <TableRow key={sch.id}>
-                        <TableCell><code>{sch.id}</code></TableCell>
+                        <TableCell>
+                          <code>{sch.id}</code>
+                        </TableCell>
                         <TableCell>{sch.reportCode}</TableCell>
-                        <TableCell><Chip label={sch.frequency} size="small" color="primary" /></TableCell>
+                        <TableCell>
+                          <Chip label={sch.frequency} size="small" color="primary" />
+                        </TableCell>
                         <TableCell>{sch.recipientEmails.join(', ')}</TableCell>
                         <TableCell>{new Date(sch.nextRunAt).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Chip label={sch.isActive ? 'ACTIVE' : 'PAUSED'} size="small" color={sch.isActive ? 'success' : 'default'} />
+                          <Chip
+                            label={sch.isActive ? 'ACTIVE' : 'PAUSED'}
+                            size="small"
+                            color={sch.isActive ? 'success' : 'default'}
+                          />
                         </TableCell>
                         <TableCell>
                           <Button
@@ -910,13 +1139,23 @@ export function ReportingPage() {
       {/* ======================================================== */}
       {activeTab === 4 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 3,
+              flexWrap: 'wrap',
+              gap: 2,
+            }}
+          >
             <Box>
               <Typography variant="h6" fontWeight={600}>
                 Daily Control Totals & Ledger Reconciliation (FR-RPT-008)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Mathematical reconciliation between OLTP primary tables and daily operational summary projections (`app.rpt_daily_operational_summary`).
+                Mathematical reconciliation between OLTP primary tables and daily operational summary
+                projections (`app.rpt_daily_operational_summary`).
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -951,7 +1190,9 @@ export function ReportingPage() {
                 <CardHeader
                   title={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Typography variant="h6">Reconciliation Status for {controlTotalsData.summaryDate}</Typography>
+                      <Typography variant="h6">
+                        Reconciliation Status for {controlTotalsData.summaryDate}
+                      </Typography>
                       <Chip
                         label={controlTotalsData.reconciled ? 'RECONCILED (0 VARIANCE)' : 'VARIANCE DETECTED'}
                         color={controlTotalsData.reconciled ? 'success' : 'error'}
@@ -966,11 +1207,21 @@ export function ReportingPage() {
                     <Table>
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell><strong>Metric Domain</strong></TableCell>
-                          <TableCell align="right"><strong>OLTP Primary Tables</strong></TableCell>
-                          <TableCell align="right"><strong>Reporting Projection Store</strong></TableCell>
-                          <TableCell align="right"><strong>Variance Difference</strong></TableCell>
-                          <TableCell align="center"><strong>Status</strong></TableCell>
+                          <TableCell>
+                            <strong>Metric Domain</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>OLTP Primary Tables</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>Reporting Projection Store</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>Variance Difference</strong>
+                          </TableCell>
+                          <TableCell align="center">
+                            <strong>Status</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1002,21 +1253,31 @@ export function ReportingPage() {
                         </TableRow>
                         <TableRow>
                           <TableCell>Sanction Amount</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.oltpTotals.sanctionAmount.toLocaleString('en-IN')}</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.projectionTotals.sanctionAmount.toLocaleString('en-IN')}</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.variance.sanctionAmountDiff.toLocaleString('en-IN')}</TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.oltpTotals.sanctionAmount.toLocaleString('en-IN')}
+                          </TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.projectionTotals.sanctionAmount.toLocaleString('en-IN')}
+                          </TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.variance.sanctionAmountDiff.toLocaleString('en-IN')}
+                          </TableCell>
                           <TableCell align="center">
                             <Chip
                               label={controlTotalsData.variance.sanctionAmountDiff === 0 ? 'MATCH' : 'DIFF'}
                               size="small"
-                              color={controlTotalsData.variance.sanctionAmountDiff === 0 ? 'success' : 'error'}
+                              color={
+                                controlTotalsData.variance.sanctionAmountDiff === 0 ? 'success' : 'error'
+                              }
                             />
                           </TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell>Disbursement Count</TableCell>
                           <TableCell align="right">{controlTotalsData.oltpTotals.disbursements}</TableCell>
-                          <TableCell align="right">{controlTotalsData.projectionTotals.disbursements}</TableCell>
+                          <TableCell align="right">
+                            {controlTotalsData.projectionTotals.disbursements}
+                          </TableCell>
                           <TableCell align="right">{controlTotalsData.variance.disbursementsDiff}</TableCell>
                           <TableCell align="center">
                             <Chip
@@ -1028,14 +1289,24 @@ export function ReportingPage() {
                         </TableRow>
                         <TableRow>
                           <TableCell>Disbursement Volume</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.oltpTotals.disbursementAmount.toLocaleString('en-IN')}</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.projectionTotals.disbursementAmount.toLocaleString('en-IN')}</TableCell>
-                          <TableCell align="right">₹{controlTotalsData.variance.disbursementAmountDiff.toLocaleString('en-IN')}</TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.oltpTotals.disbursementAmount.toLocaleString('en-IN')}
+                          </TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.projectionTotals.disbursementAmount.toLocaleString('en-IN')}
+                          </TableCell>
+                          <TableCell align="right">
+                            ₹{controlTotalsData.variance.disbursementAmountDiff.toLocaleString('en-IN')}
+                          </TableCell>
                           <TableCell align="center">
                             <Chip
-                              label={controlTotalsData.variance.disbursementAmountDiff === 0 ? 'MATCH' : 'DIFF'}
+                              label={
+                                controlTotalsData.variance.disbursementAmountDiff === 0 ? 'MATCH' : 'DIFF'
+                              }
                               size="small"
-                              color={controlTotalsData.variance.disbursementAmountDiff === 0 ? 'success' : 'error'}
+                              color={
+                                controlTotalsData.variance.disbursementAmountDiff === 0 ? 'success' : 'error'
+                              }
                             />
                           </TableCell>
                         </TableRow>
@@ -1058,9 +1329,7 @@ export function ReportingPage() {
         <DialogTitle>Run Standard Report: {selectedReport?.title}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {startRunMutation.isError && (
-              <Alert severity="error">{errorText(startRunMutation.error)}</Alert>
-            )}
+            {startRunMutation.isError && <Alert severity="error">{errorText(startRunMutation.error)}</Alert>}
             <Typography variant="body2" color="text.secondary">
               {selectedReport?.description}
             </Typography>
@@ -1072,7 +1341,9 @@ export function ReportingPage() {
               fullWidth
             >
               {selectedReport?.supportedFormats.map((fmt) => (
-                <MenuItem key={fmt} value={fmt}>{fmt}</MenuItem>
+                <MenuItem key={fmt} value={fmt}>
+                  {fmt}
+                </MenuItem>
               ))}
             </TextField>
             <TextField
@@ -1086,11 +1357,7 @@ export function ReportingPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRunDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleStartRun}
-            disabled={startRunMutation.isPending}
-          >
+          <Button variant="contained" onClick={handleStartRun} disabled={startRunMutation.isPending}>
             {startRunMutation.isPending ? 'Starting...' : 'Execute Run'}
           </Button>
         </DialogActions>
@@ -1131,11 +1398,7 @@ export function ReportingPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleCreateExport}
-            disabled={createExportMutation.isPending}
-          >
+          <Button variant="contained" onClick={handleCreateExport} disabled={createExportMutation.isPending}>
             {createExportMutation.isPending ? 'Generating...' : 'Export'}
           </Button>
         </DialogActions>
@@ -1154,7 +1417,9 @@ export function ReportingPage() {
               fullWidth
             >
               {catalogueData?.data.map((r) => (
-                <MenuItem key={r.code} value={r.code}>{r.title} ({r.code})</MenuItem>
+                <MenuItem key={r.code} value={r.code}>
+                  {r.title} ({r.code})
+                </MenuItem>
               ))}
             </TextField>
             <TextField
@@ -1196,9 +1461,13 @@ export function ReportingPage() {
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Metric Code: <code>{formulaModalDef?.code}</code> • Grain: {formulaModalDef?.grain} • Date Basis: {formulaModalDef?.dateBasis}
+              Metric Code: <code>{formulaModalDef?.code}</code> • Grain: {formulaModalDef?.grain} • Date
+              Basis: {formulaModalDef?.dateBasis}
             </Typography>
-            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.900', color: 'common.white', overflow: 'auto' }}>
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, bgcolor: 'grey.900', color: 'common.white', overflow: 'auto' }}
+            >
               <pre style={{ margin: 0, fontFamily: 'monospace' }}>
                 {JSON.stringify(formulaModalDef?.formula, null, 2)}
               </pre>

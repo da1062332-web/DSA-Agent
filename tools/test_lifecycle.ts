@@ -1,7 +1,10 @@
 // tools/test_lifecycle.ts
 const API_URL = 'http://localhost:3000';
 
-async function req(path: string, options: RequestInit & { token?: string; ifMatch?: string; idempotencyKey?: string } = {}) {
+async function req(
+  path: string,
+  options: RequestInit & { token?: string; ifMatch?: string; idempotencyKey?: string } = {},
+) {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   if (options.token) {
@@ -40,7 +43,9 @@ async function ensureMasterData(tenantId: string) {
   await client.connect();
   try {
     await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantId]);
-    const orgRes = await client.query('SELECT id FROM app.organisation WHERE tenant_id = $1 LIMIT 1', [tenantId]);
+    const orgRes = await client.query('SELECT id FROM app.organisation WHERE tenant_id = $1 LIMIT 1', [
+      tenantId,
+    ]);
     const orgId = orgRes.rows[0]?.id || 'org_demo_01';
 
     await client.query(
@@ -128,7 +133,11 @@ async function run() {
   });
 
   if (!createLeadRes.ok) {
-    console.error('Failed to create lead:', createLeadRes.status, JSON.stringify(createLeadRes.body, null, 2));
+    console.error(
+      'Failed to create lead:',
+      createLeadRes.status,
+      JSON.stringify(createLeadRes.body, null, 2),
+    );
     process.exit(1);
   }
   let lead = createLeadRes.body;
@@ -203,7 +212,9 @@ async function run() {
     process.exit(1);
   }
   const conversionResult = convertRes.body;
-  console.log(`✓ Lead converted! Customer ID=${conversionResult.customerId}, Application ID=${conversionResult.applicationId}`);
+  console.log(
+    `✓ Lead converted! Customer ID=${conversionResult.customerId}, Application ID=${conversionResult.applicationId}`,
+  );
 
   const applicationId = conversionResult.applicationId;
 
@@ -222,12 +233,18 @@ async function run() {
   });
 
   if (!createCaseRes.ok) {
-    console.error('Failed to create lender case:', createCaseRes.status, JSON.stringify(createCaseRes.body, null, 2));
+    console.error(
+      'Failed to create lender case:',
+      createCaseRes.status,
+      JSON.stringify(createCaseRes.body, null, 2),
+    );
     process.exit(1);
   }
   let lenderCase = createCaseRes.body;
   let caseEtag = createCaseRes.etag || `"${lenderCase.lockVersion}"`;
-  console.log(`✓ Lender case created: ID=${lenderCase.id}, Attempt=#${lenderCase.attemptNo}, Status=${lenderCase.status}, LockVersion=${lenderCase.lockVersion}`);
+  console.log(
+    `✓ Lender case created: ID=${lenderCase.id}, Attempt=#${lenderCase.attemptNo}, Status=${lenderCase.status}, LockVersion=${lenderCase.lockVersion}`,
+  );
 
   // Build package
   const pkgRes = await req(`/v1/lender-cases/${lenderCase.id}/package`, {
@@ -276,7 +293,11 @@ async function run() {
     }),
   });
   if (!statusRes1.ok) {
-    console.error('Failed to update status to UNDER_PROCESSING:', statusRes1.status, JSON.stringify(statusRes1.body, null, 2));
+    console.error(
+      'Failed to update status to UNDER_PROCESSING:',
+      statusRes1.status,
+      JSON.stringify(statusRes1.body, null, 2),
+    );
   } else {
     lenderCase = statusRes1.body;
     caseEtag = statusRes1.etag || `"${lenderCase.lockVersion}"`;
@@ -294,7 +315,11 @@ async function run() {
     }),
   });
   if (!statusRes2.ok) {
-    console.error('Failed to update status to SANCTIONED:', statusRes2.status, JSON.stringify(statusRes2.body, null, 2));
+    console.error(
+      'Failed to update status to SANCTIONED:',
+      statusRes2.status,
+      JSON.stringify(statusRes2.body, null, 2),
+    );
   } else {
     lenderCase = statusRes2.body;
     caseEtag = statusRes2.etag || `"${lenderCase.lockVersion}"`;
@@ -322,11 +347,17 @@ async function run() {
   });
 
   if (!recordSanctionRes.ok) {
-    console.error('Failed to record sanction:', recordSanctionRes.status, JSON.stringify(recordSanctionRes.body, null, 2));
+    console.error(
+      'Failed to record sanction:',
+      recordSanctionRes.status,
+      JSON.stringify(recordSanctionRes.body, null, 2),
+    );
     process.exit(1);
   }
   const sanction = recordSanctionRes.body;
-  console.log(`✓ Sanction recorded: ID=${sanction.id}, Version=${sanction.version}, Amount=${sanction.amount}, ValidUntil=${sanction.validUntil}`);
+  console.log(
+    `✓ Sanction recorded: ID=${sanction.id}, Version=${sanction.version}, Amount=${sanction.amount}, ValidUntil=${sanction.validUntil}`,
+  );
 
   // Record Tranche 1 (Disbursement)
   const trancheRes = await req(`/v1/sanctions/${sanction.id}/tranches`, {
@@ -342,10 +373,16 @@ async function run() {
   });
 
   if (!trancheRes.ok) {
-    console.error('Failed to record disbursement tranche:', trancheRes.status, JSON.stringify(trancheRes.body, null, 2));
+    console.error(
+      'Failed to record disbursement tranche:',
+      trancheRes.status,
+      JSON.stringify(trancheRes.body, null, 2),
+    );
   } else {
     const tranche = trancheRes.body.tranche;
-    console.log(`✓ Tranche 1 recorded: ID=${tranche.id}, Amount=${tranche.amount}, RemainingSanction=${trancheRes.body.remainingSanctionAmount}`);
+    console.log(
+      `✓ Tranche 1 recorded: ID=${tranche.id}, Amount=${tranche.amount}, RemainingSanction=${trancheRes.body.remainingSanctionAmount}`,
+    );
 
     // Verify Tranche
     const verifyRes = await req(`/v1/tranches/${tranche.id}/verification`, {
@@ -358,7 +395,9 @@ async function run() {
     });
 
     if (!verifyRes.ok) {
-      console.log(`Verify tranche result: Status ${verifyRes.status} (Note: SOD-04 Segregation of Duties blocks self-verification: ${verifyRes.body?.error?.message || 'SOD check working as designed'})`);
+      console.log(
+        `Verify tranche result: Status ${verifyRes.status} (Note: SOD-04 Segregation of Duties blocks self-verification: ${verifyRes.body?.error?.message || 'SOD check working as designed'})`,
+      );
     } else {
       console.log(`✓ Tranche verified! Status=${verifyRes.body.verificationStatus}`);
     }

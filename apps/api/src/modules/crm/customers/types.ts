@@ -22,14 +22,7 @@ export interface CustomerRow {
   updated_by: string;
 }
 
-export const ConsentChannelEnum = z.enum([
-  'IN_PERSON',
-  'PHONE',
-  'WEB_FORM',
-  'EMAIL',
-  'OTP',
-  'DOCUMENT',
-]);
+export const ConsentChannelEnum = z.enum(['IN_PERSON', 'PHONE', 'WEB_FORM', 'EMAIL', 'OTP', 'DOCUMENT']);
 export type ConsentChannel = z.infer<typeof ConsentChannelEnum>;
 
 export const ConsentPurposeEnum = z.enum([

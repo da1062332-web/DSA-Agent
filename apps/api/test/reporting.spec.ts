@@ -225,17 +225,13 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       expect(leadCount.targetValue).toBe(10);
       expect(leadCount.achievementPercentage).toBe(30); // 3/10 * 100
 
-      const disbAmount = res.body.data.find(
-        (m: any) => m.metricCode === 'DISBURSEMENT_AMOUNT',
-      );
+      const disbAmount = res.body.data.find((m: any) => m.metricCode === 'DISBURSEMENT_AMOUNT');
       expect(disbAmount).toBeDefined();
       expect(disbAmount.actualValue).toBe(2000000);
       expect(disbAmount.targetValue).toBe(5000000);
       expect(disbAmount.achievementPercentage).toBe(40); // 2M/5M * 100
 
-      const convRate = res.body.data.find(
-        (m: any) => m.metricCode === 'LEAD_CONVERSION_RATE',
-      );
+      const convRate = res.body.data.find((m: any) => m.metricCode === 'LEAD_CONVERSION_RATE');
       expect(convRate).toBeDefined();
       expect(convRate.actualValue).toBe(33.33); // 1 converted / 3 total * 100
       expect(convRate.unit).toBe('PERCENTAGE');
@@ -258,15 +254,11 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       const app = getApp(branchManager);
 
       // Querying own allowed branch works
-      const resAllowed = await request(app).get(
-        '/v1/metrics?period=2026-10&branchId=brn_main',
-      );
+      const resAllowed = await request(app).get('/v1/metrics?period=2026-10&branchId=brn_main');
       expect(resAllowed.status).toBe(200);
 
       // Querying branch outside manager scope is rejected
-      const resForbidden = await request(app).get(
-        '/v1/metrics?period=2026-10&branchId=brn_north',
-      );
+      const resForbidden = await request(app).get('/v1/metrics?period=2026-10&branchId=brn_north');
       expect(resForbidden.status).toBe(403);
     });
   });
@@ -538,9 +530,7 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     it('TC-RPT-027 rejects report run creation for non-existent report code with 404 NOT_FOUND', async () => {
       const app = getApp(reportingUser);
 
-      const res = await request(app)
-        .post('/v1/reports/UNKNOWN_REPORT_CODE/runs')
-        .send({ format: 'CSV' });
+      const res = await request(app).post('/v1/reports/UNKNOWN_REPORT_CODE/runs').send({ format: 'CSV' });
 
       expect(res.status).toBe(404);
     });
@@ -679,14 +669,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       });
       const app = getApp(staleExportUser);
 
-      const res = await request(app)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const res = await request(app).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       expect(res.status).toBe(401);
       expect(res.body.error?.code).toBe('STEP_UP_REQUIRED');
@@ -705,14 +693,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       });
       const app = getApp(branchExportUser);
 
-      const res = await request(app)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT', // Attempt tenant escalation
-        });
+      const res = await request(app).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT', // Attempt tenant escalation
+      });
 
       expect(res.status).toBe(403);
       expect(res.body.error?.code).toBe('FORBIDDEN');
@@ -721,14 +707,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     it('TC-IMP-EXP-003 downloads generated export file with correct headers and content', async () => {
       const app = getApp(exportUser);
 
-      const createRes = await request(app)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const createRes = await request(app).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       expect(createRes.status).toBe(201);
       const exportId = createRes.body.id;
@@ -744,14 +728,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       const appExporter = getApp(exportUser);
       const appUnauthorized = getApp(reportingUser); // lacks export.run
 
-      const createRes = await request(appExporter)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const createRes = await request(appExporter).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       const exportId = createRes.body.id;
       const downloadRes = await request(appUnauthorized).get(`/v1/exports/${exportId}/download`);
@@ -761,14 +743,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     it('TC-IMP-EXP-005 rejects download of expired export with 400 VALIDATION_ERROR', async () => {
       const app = getApp(exportUser);
 
-      const createRes = await request(app)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const createRes = await request(app).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       const exportId = createRes.body.id;
 
@@ -802,14 +782,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       });
       const app = getApp(expiredMfaUser);
 
-      const res = await request(app)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const res = await request(app).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       expect(res.status).toBe(401);
       expect(res.body.error?.code).toBe('STEP_UP_REQUIRED');
@@ -819,14 +797,12 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       const appA = getApp(exportUser);
       const appB = getApp(otherTenantExportUser);
 
-      const createRes = await request(appA)
-        .post('/v1/exports')
-        .send({
-          exportType: 'METRICS',
-          fileFormat: 'CSV',
-          filters: {},
-          scopeType: 'TENANT',
-        });
+      const createRes = await request(appA).post('/v1/exports').send({
+        exportType: 'METRICS',
+        fileFormat: 'CSV',
+        filters: {},
+        scopeType: 'TENANT',
+      });
 
       expect(createRes.status).toBe(201);
       const exportId = createRes.body.id;
@@ -849,9 +825,7 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
       const appA = getApp(reportingUser);
       const appB = getApp(otherTenantUser);
 
-      const runRes = await request(appA)
-        .post('/v1/reports/RPT_LEAD_PIPELINE/runs')
-        .send({ format: 'CSV' });
+      const runRes = await request(appA).post('/v1/reports/RPT_LEAD_PIPELINE/runs').send({ format: 'CSV' });
 
       expect(runRes.status).toBe(202);
       const runId = runRes.body.id;
@@ -897,4 +871,3 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     });
   });
 });
-

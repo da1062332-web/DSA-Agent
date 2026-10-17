@@ -33,12 +33,20 @@ export interface SanctionRepository {
   findApplication(tx: Tx, tenantId: string, appId: string): Promise<ApplicationSummary | null>;
   findSanctionById(tx: Tx, tenantId: string, id: string): Promise<SanctionRow | null>;
   listSanctionsByCase(tx: Tx, tenantId: string, lenderCaseId: string): Promise<SanctionRow[]>;
-  listAllSanctions(tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<SanctionRow[]>;
+  listAllSanctions(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<SanctionRow[]>;
   insertSanction(tx: Tx, row: SanctionRow): Promise<SanctionRow>;
   updateSanction(tx: Tx, row: SanctionRow): Promise<SanctionRow>;
   findTrancheById(tx: Tx, tenantId: string, id: string): Promise<DisbursementTrancheRow | null>;
   listTranchesBySanction(tx: Tx, tenantId: string, sanctionId: string): Promise<DisbursementTrancheRow[]>;
-  listAllTranches(tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<DisbursementTrancheRow[]>;
+  listAllTranches(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<DisbursementTrancheRow[]>;
   insertTranche(tx: Tx, row: DisbursementTrancheRow): Promise<DisbursementTrancheRow>;
   updateTranche(tx: Tx, row: DisbursementTrancheRow): Promise<DisbursementTrancheRow>;
   updateLenderCaseStatus(
@@ -85,10 +93,10 @@ export class SqlSanctionRepository implements SanctionRepository {
   }
 
   async findSanctionById(tx: Tx, tenantId: string, id: string): Promise<SanctionRow | null> {
-    const res = await (tx as any).query(
-      `SELECT * FROM app.sanction WHERE tenant_id = $1 AND id = $2`,
-      [tenantId, id],
-    );
+    const res = await (tx as any).query(`SELECT * FROM app.sanction WHERE tenant_id = $1 AND id = $2`, [
+      tenantId,
+      id,
+    ]);
     return res.rows[0] ?? null;
   }
 
@@ -102,7 +110,11 @@ export class SqlSanctionRepository implements SanctionRepository {
     return res.rows;
   }
 
-  async listAllSanctions(tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<SanctionRow[]> {
+  async listAllSanctions(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<SanctionRow[]> {
     const limit = Math.min(filter?.limit ?? 100, 200);
     if (filter?.status) {
       const res = await (tx as any).query(
@@ -182,7 +194,11 @@ export class SqlSanctionRepository implements SanctionRepository {
     return res.rows[0] ?? null;
   }
 
-  async listTranchesBySanction(tx: Tx, tenantId: string, sanctionId: string): Promise<DisbursementTrancheRow[]> {
+  async listTranchesBySanction(
+    tx: Tx,
+    tenantId: string,
+    sanctionId: string,
+  ): Promise<DisbursementTrancheRow[]> {
     const res = await (tx as any).query(
       `SELECT * FROM app.disbursement_tranche
        WHERE tenant_id = $1 AND sanction_id = $2
@@ -192,7 +208,11 @@ export class SqlSanctionRepository implements SanctionRepository {
     return res.rows;
   }
 
-  async listAllTranches(tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<DisbursementTrancheRow[]> {
+  async listAllTranches(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<DisbursementTrancheRow[]> {
     const limit = Math.min(filter?.limit ?? 100, 200);
     if (filter?.status) {
       const res = await (tx as any).query(
@@ -383,7 +403,14 @@ export class SqlSanctionRepository implements SanctionRepository {
         id, tenant_id, event_type, event_version, subject_type, subject_id,
         payload, correlation_id, chain_depth, created_at
       ) VALUES ($1, $2, $3, 1, $4, $5, $6::jsonb, 'system', 0, now())`,
-      [event.id, event.tenantId, eventType, event.aggregateType, event.aggregateId, JSON.stringify(event.payload)],
+      [
+        event.id,
+        event.tenantId,
+        eventType,
+        event.aggregateType,
+        event.aggregateId,
+        JSON.stringify(event.payload),
+      ],
     );
   }
 }
@@ -416,7 +443,11 @@ export class InMemorySanctionRepository implements SanctionRepository {
       .sort((a, b) => a.version - b.version);
   }
 
-  async listAllSanctions(_tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<SanctionRow[]> {
+  async listAllSanctions(
+    _tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<SanctionRow[]> {
     const limit = Math.min(filter?.limit ?? 100, 200);
     let list = Array.from(this.sanctions.values()).filter((s) => s.tenant_id === tenantId);
     if (filter?.status) {
@@ -443,13 +474,21 @@ export class InMemorySanctionRepository implements SanctionRepository {
     return this.tranches.get(k) ?? null;
   }
 
-  async listTranchesBySanction(_tx: Tx, tenantId: string, sanctionId: string): Promise<DisbursementTrancheRow[]> {
+  async listTranchesBySanction(
+    _tx: Tx,
+    tenantId: string,
+    sanctionId: string,
+  ): Promise<DisbursementTrancheRow[]> {
     return Array.from(this.tranches.values())
       .filter((t) => t.tenant_id === tenantId && t.sanction_id === sanctionId)
       .sort((a, b) => a.tranche_no - b.tranche_no);
   }
 
-  async listAllTranches(_tx: Tx, tenantId: string, filter?: { status?: string; limit?: number }): Promise<DisbursementTrancheRow[]> {
+  async listAllTranches(
+    _tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; limit?: number },
+  ): Promise<DisbursementTrancheRow[]> {
     const limit = Math.min(filter?.limit ?? 100, 200);
     let list = Array.from(this.tranches.values()).filter((t) => t.tenant_id === tenantId);
     if (filter?.status) {

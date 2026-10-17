@@ -44,7 +44,6 @@ export async function createProduct(input: CreateProductInput): Promise<LoanProd
   });
 }
 
-
 export async function createProductVersion(
   productId: string,
   input: CreateProductVersionInput,

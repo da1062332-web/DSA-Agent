@@ -48,7 +48,12 @@ export class NotificationService {
 
   static seedUserProfile(
     userId: string,
-    profile: { lockVersion: number; preferences: NotificationPreferences; email: string; displayName: string },
+    profile: {
+      lockVersion: number;
+      preferences: NotificationPreferences;
+      email: string;
+      displayName: string;
+    },
   ): void {
     NotificationService.memoryUserProfiles.set(userId, profile);
   }
@@ -59,7 +64,10 @@ export class NotificationService {
   async listNotifications(
     ctx: RequestContext,
     query: ListNotificationsQuery,
-  ): Promise<{ data: NotificationRecord[]; meta: { nextCursor: string | null; limit: number; unreadCount: number } }> {
+  ): Promise<{
+    data: NotificationRecord[];
+    meta: { nextCursor: string | null; limit: number; unreadCount: number };
+  }> {
     const tenantId = ctx.principal.tenantId;
     const userId = ctx.principal.id;
     const limit = query.limit;
@@ -108,19 +116,22 @@ export class NotificationService {
 
           const hasMore = res.rows.length > limit;
           const rows = hasMore ? res.rows.slice(0, limit) : res.rows;
-          const nextCursor = hasMore && rows[rows.length - 1] ? (rows[rows.length - 1] as { id: string }).id : null;
+          const nextCursor =
+            hasMore && rows[rows.length - 1] ? (rows[rows.length - 1] as { id: string }).id : null;
 
-          const data: NotificationRecord[] = (rows as Array<{
-            id: string;
-            tenant_id: string;
-            user_id: string;
-            category: NotificationRecord['category'];
-            title: string;
-            deep_link: string;
-            read_at: string | Date | null;
-            lock_version: number;
-            created_at: string | Date;
-          }>).map((r) => ({
+          const data: NotificationRecord[] = (
+            rows as Array<{
+              id: string;
+              tenant_id: string;
+              user_id: string;
+              category: NotificationRecord['category'];
+              title: string;
+              deep_link: string;
+              read_at: string | Date | null;
+              lock_version: number;
+              created_at: string | Date;
+            }>
+          ).map((r) => ({
             id: r.id as NotificationRecord['id'],
             tenantId: r.tenant_id,
             userId: r.user_id,
@@ -490,7 +501,9 @@ export class NotificationService {
             availability: updated.availability,
             primaryBranchId: updated.primary_branch_id,
             lockVersion: updated.lock_version,
-            notificationPreferences: PreferenceResolver.normalizePreferences(updated.notification_preferences),
+            notificationPreferences: PreferenceResolver.normalizePreferences(
+              updated.notification_preferences,
+            ),
             grants: ctx.principal.grants,
             queueIds: ctx.principal.queueIds,
             mfaVerifiedAt: ctx.principal.authTime,

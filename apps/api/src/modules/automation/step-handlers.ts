@@ -84,11 +84,10 @@ export function createDefaultStepHandlers(
 
         // Dry-run mode: Never record live decision records in database
         if (ctx.dryRun) {
-          const simulatedOutputs =
-            (ctx.step.config.simulatedOutputs as Record<string, unknown>) ?? {
-              outcome: 'APPROVED',
-              score: 85,
-            };
+          const simulatedOutputs = (ctx.step.config.simulatedOutputs as Record<string, unknown>) ?? {
+            outcome: 'APPROVED',
+            score: 85,
+          };
           return {
             status: 'SUCCEEDED',
             outputSnapshot: {
@@ -111,9 +110,7 @@ export function createDefaultStepHandlers(
             const runEvaluation = async (tx: Tx) => {
               const scope = (ctx.step.config.scope as Record<string, string>) ?? {};
               const facts = (ctx.step.config.facts as Record<string, unknown>) ?? ctx.context;
-              const subjectType = ['LEAD', 'CUSTOMER', 'LOAN_APPLICATION', 'TASK'].includes(
-                ctx.subjectType,
-              )
+              const subjectType = ['LEAD', 'CUSTOMER', 'LOAN_APPLICATION', 'TASK'].includes(ctx.subjectType)
                 ? (ctx.subjectType as 'LEAD' | 'CUSTOMER' | 'LOAN_APPLICATION' | 'TASK')
                 : 'TASK';
 
@@ -127,10 +124,9 @@ export function createDefaultStepHandlers(
               });
             };
 
-            const result =
-              ctx.tx
-                ? await runEvaluation(ctx.tx)
-                : deps.txRunner && reqCtx
+            const result = ctx.tx
+              ? await runEvaluation(ctx.tx)
+              : deps.txRunner && reqCtx
                 ? await deps.txRunner.withTenantTx(reqCtx, runEvaluation)
                 : await runEvaluation({} as Tx);
 
@@ -195,10 +191,11 @@ export function createDefaultStepHandlers(
     // -------------------------------------------------------------------------
     BRANCH: {
       async execute(ctx: StepExecutionContext): Promise<StepExecutionResult> {
-        const conditions = (ctx.step.config.conditions as Array<{
-          if: { field: string; op: 'EQ' | 'NEQ' | 'IN' | 'NOT_IN'; value: unknown };
-          goToStepIndex: number;
-        }>) || [];
+        const conditions =
+          (ctx.step.config.conditions as Array<{
+            if: { field: string; op: 'EQ' | 'NEQ' | 'IN' | 'NOT_IN'; value: unknown };
+            goToStepIndex: number;
+          }>) || [];
         const defaultStepIndex = Number(ctx.step.config.defaultStepIndex ?? ctx.stepIndex + 1);
 
         for (const cond of conditions) {
@@ -267,41 +264,39 @@ export function createDefaultStepHandlers(
             const reqCtx = ctx.requestCtx;
             const idemKey = `${ctx.executionId}:${ctx.step.id}`;
 
-            const taskType = (ctx.step.config.taskType as
-              | 'FOLLOW_UP'
-              | 'CALL'
-              | 'MEETING'
-              | 'DOCUMENT_COLLECTION'
-              | 'LENDER_QUERY'
-              | 'REVIEW'
-              | 'GENERAL') || 'FOLLOW_UP';
+            const taskType =
+              (ctx.step.config.taskType as
+                | 'FOLLOW_UP'
+                | 'CALL'
+                | 'MEETING'
+                | 'DOCUMENT_COLLECTION'
+                | 'LENDER_QUERY'
+                | 'REVIEW'
+                | 'GENERAL') || 'FOLLOW_UP';
 
             const owner = ctx.step.config.ownerUserId
               ? { userId: String(ctx.step.config.ownerUserId) }
               : ctx.step.config.ownerQueueId
-              ? { queueId: String(ctx.step.config.ownerQueueId) }
-              : { userId: reqCtx?.principal.id ?? 'usr_system' };
+                ? { queueId: String(ctx.step.config.ownerQueueId) }
+                : { userId: reqCtx?.principal.id ?? 'usr_system' };
 
-            const linkedType = (ctx.step.config.linkedType as
-              | 'LEAD'
-              | 'LOAN_APPLICATION'
-              | 'LENDER_CASE') ||
+            const linkedType =
+              (ctx.step.config.linkedType as 'LEAD' | 'LOAN_APPLICATION' | 'LENDER_CASE') ||
               (['LEAD', 'LOAN_APPLICATION', 'LENDER_CASE'].includes(ctx.subjectType)
                 ? (ctx.subjectType as 'LEAD' | 'LOAN_APPLICATION' | 'LENDER_CASE')
                 : 'LEAD');
 
             const linkedId = String(ctx.step.config.linkedId || ctx.subjectId);
-            const branchId = String(
-              ctx.step.config.branchId || ctx.context.branchId || 'branch_default',
-            );
+            const branchId = String(ctx.step.config.branchId || ctx.context.branchId || 'branch_default');
 
             const priority = (ctx.step.config.priority as 'HIGH' | 'MEDIUM' | 'LOW') || 'MEDIUM';
             const slaClass = ctx.step.config.slaClass as never;
-            const dueAt = typeof ctx.step.config.dueAt === 'string'
-              ? ctx.step.config.dueAt
-              : slaClass
-              ? undefined
-              : new Date(Date.now() + 86400000).toISOString();
+            const dueAt =
+              typeof ctx.step.config.dueAt === 'string'
+                ? ctx.step.config.dueAt
+                : slaClass
+                  ? undefined
+                  : new Date(Date.now() + 86400000).toISOString();
 
             const runTaskCreation = async (tx: Tx) => {
               return deps.taskPort!.createTask(tx, reqCtx ?? ({} as RequestContext), {
@@ -316,10 +311,9 @@ export function createDefaultStepHandlers(
               });
             };
 
-            const created =
-              ctx.tx
-                ? await runTaskCreation(ctx.tx)
-                : deps.txRunner && reqCtx
+            const created = ctx.tx
+              ? await runTaskCreation(ctx.tx)
+              : deps.txRunner && reqCtx
                 ? await deps.txRunner.withTenantTx(reqCtx, runTaskCreation)
                 : await runTaskCreation({} as Tx);
 
@@ -415,10 +409,9 @@ export function createDefaultStepHandlers(
             return { valid: true };
           };
 
-          const check =
-            ctx.tx
-              ? await runDirectoryCheck(ctx.tx)
-              : deps.txRunner && reqCtx
+          const check = ctx.tx
+            ? await runDirectoryCheck(ctx.tx)
+            : deps.txRunner && reqCtx
               ? await deps.txRunner.withTenantTx(reqCtx, runDirectoryCheck)
               : await runDirectoryCheck({} as Tx);
 
@@ -529,9 +522,7 @@ export function createDefaultStepHandlers(
         if (deps.notificationService && ctx.requestCtx) {
           try {
             const userId = String(
-              ctx.step.config.userId ||
-                ctx.context.ownerUserId ||
-                ctx.requestCtx.principal.id,
+              ctx.step.config.userId || ctx.context.ownerUserId || ctx.requestCtx.principal.id,
             );
 
             const result = await deps.notificationService.createNotification(ctx.requestCtx, {
@@ -657,8 +648,7 @@ export function createDefaultStepHandlers(
       async execute(ctx: StepExecutionContext): Promise<StepExecutionResult> {
         const durationMs =
           typeof ctx.step.config.durationMs === 'number' ? ctx.step.config.durationMs : undefined;
-        const untilIso =
-          typeof ctx.step.config.untilIso === 'string' ? ctx.step.config.untilIso : undefined;
+        const untilIso = typeof ctx.step.config.untilIso === 'string' ? ctx.step.config.untilIso : undefined;
 
         return {
           status: 'WAITING',

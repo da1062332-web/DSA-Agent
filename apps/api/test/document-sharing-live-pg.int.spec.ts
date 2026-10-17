@@ -105,14 +105,18 @@ describeLivePg('Module 25 (MOD-DSH): Live PostgreSQL & RLS Verification', () => 
 
     // 2. Query in Tenant A -> Visible
     const visibleInA = await txRunner.withTenantTx(ctxA, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(
+        tx,
+      );
       return res.rows.length;
     });
     expect(visibleInA).toBe(1);
 
     // 3. Query in Tenant B -> Invisible (RLS isolation)
     const visibleInB = await txRunner.withTenantTx(ctxB, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(
+        tx,
+      );
       return res.rows.length;
     });
     expect(visibleInB).toBe(0);

@@ -45,7 +45,8 @@ async function request<T>(
     headers.set('Idempotency-Key', options.idempotencyKey);
   }
 
-  const token = getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
+  const token =
+    getStoredAuthToken() || (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_token') : null);
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -82,9 +83,12 @@ async function request<T>(
 }
 
 export async function fetchLenderCases(applicationId: string): Promise<LenderCaseResource[]> {
-  const res = await request<{ data: LenderCaseResource[] }>(`/v1/applications/${applicationId}/lender-cases`, {
-    method: 'GET',
-  });
+  const res = await request<{ data: LenderCaseResource[] }>(
+    `/v1/applications/${applicationId}/lender-cases`,
+    {
+      method: 'GET',
+    },
+  );
   return res.data.data;
 }
 

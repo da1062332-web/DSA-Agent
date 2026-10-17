@@ -1,10 +1,6 @@
 // packages/contracts/src/messaging.spec.ts
 import { describe, expect, it } from 'vitest';
-import {
-  CreateTemplateSchema,
-  SendMessageSchema,
-  MessageRecipientSchema,
-} from './messaging';
+import { CreateTemplateSchema, SendMessageSchema, MessageRecipientSchema } from './messaging';
 
 describe('Messaging Contracts', () => {
   it('validates valid CreateTemplateSchema', () => {
@@ -39,7 +35,9 @@ describe('Messaging Contracts', () => {
     const withMobile = MessageRecipientSchema.parse({ mobile: '+919876543210' });
     expect(withMobile.mobile).toBe('+919876543210');
 
-    expect(() => MessageRecipientSchema.parse({})).toThrow('Recipient must specify at least an email or mobile');
+    expect(() => MessageRecipientSchema.parse({})).toThrow(
+      'Recipient must specify at least an email or mobile',
+    );
   });
 
   it('validates SendMessageSchema', () => {

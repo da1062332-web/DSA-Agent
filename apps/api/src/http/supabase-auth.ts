@@ -14,7 +14,9 @@ export function supabaseAuth(deps: { verifier: TokenVerifier; resolver: Principa
       const raw =
         BEARER.exec(req.get('authorization') ?? '')?.[1] ||
         (typeof req.query.token === 'string' && req.query.token ? req.query.token : undefined) ||
-        (typeof req.query.access_token === 'string' && req.query.access_token ? req.query.access_token : undefined);
+        (typeof req.query.access_token === 'string' && req.query.access_token
+          ? req.query.access_token
+          : undefined);
       if (!raw) throw AppError.of('UNAUTHENTICATED', 'Missing or invalid access token.');
 
       const now = new Date();

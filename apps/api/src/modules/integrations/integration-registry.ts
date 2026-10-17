@@ -43,12 +43,12 @@ export class IntegrationRegistry {
   }
 
   getCapabilityDescriptor(capability: string): CapabilityDescriptor | undefined {
-    return STANDARD_CAPABILITY_DESCRIPTORS.find((c) => c.capability.toUpperCase() === capability.toUpperCase());
+    return STANDARD_CAPABILITY_DESCRIPTORS.find(
+      (c) => c.capability.toUpperCase() === capability.toUpperCase(),
+    );
   }
 
-  async checkHealth(
-    connection: IntegrationConnection,
-  ): Promise<HealthCheckResult> {
+  async checkHealth(connection: IntegrationConnection): Promise<HealthCheckResult> {
     const adapter = this.getAdapter(connection.provider);
     if (!adapter) {
       return {
@@ -82,7 +82,10 @@ export class IntegrationRegistry {
     metadata: { correlationId: string },
   ): Promise<AdapterResult<TOutput>> {
     if (connection.status !== 'ACTIVE') {
-      throw AppError.of('VALIDATION_ERROR', `Integration ${connection.provider} (${capability}) is not ACTIVE (current: ${connection.status}).`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Integration ${connection.provider} (${capability}) is not ACTIVE (current: ${connection.status}).`,
+      );
     }
 
     const adapter = this.getAdapter(connection.provider);
@@ -91,7 +94,10 @@ export class IntegrationRegistry {
     }
 
     if (!adapter.supportedCapabilities.includes(capability)) {
-      throw AppError.of('VALIDATION_ERROR', `Capability ${capability} is not supported by provider ${connection.provider}.`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Capability ${capability} is not supported by provider ${connection.provider}.`,
+      );
     }
 
     // Resolve credentials from vault port
@@ -99,13 +105,10 @@ export class IntegrationRegistry {
 
     // Sanitize input in execution log
     const sanitizedInput = sanitizeProviderPayload(input);
-    const result = await adapter.execute<TInput, TOutput>(
-      capability,
-      input,
-      connection.config,
-      credentials,
-      { correlationId: metadata.correlationId, tenantId: connection.tenantId },
-    );
+    const result = await adapter.execute<TInput, TOutput>(capability, input, connection.config, credentials, {
+      correlationId: metadata.correlationId,
+      tenantId: connection.tenantId,
+    });
 
     result.metadata.maskedPayloadSummary = JSON.stringify(sanitizedInput);
     return result;

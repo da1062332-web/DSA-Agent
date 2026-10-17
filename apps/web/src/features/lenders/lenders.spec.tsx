@@ -31,9 +31,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/') {
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -95,4 +93,3 @@ describe('Lender Management Frontend Components & API Compatibility', () => {
     });
   });
 });
-

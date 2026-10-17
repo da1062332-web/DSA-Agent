@@ -50,7 +50,10 @@ import type {
   ResolveAttributionDisputeInput,
 } from '@dsa/contracts';
 
-const STATUS_COLORS: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const STATUS_COLORS: Record<
+  string,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   DRAFT: 'default',
   PENDING_VERIFICATION: 'warning',
   ACTIVE: 'success',
@@ -118,7 +121,9 @@ export function ConnectorPage() {
     evidenceRef: 'upl_referral_proof_sample',
   });
 
-  const [disputeResolutionInput, setDisputeResolutionInput] = useState<Partial<ResolveAttributionDisputeInput>>({
+  const [disputeResolutionInput, setDisputeResolutionInput] = useState<
+    Partial<ResolveAttributionDisputeInput>
+  >({
     resolution: 'ATTRIBUTED_TO_FIRST',
     resolvedConnectorId: null,
     resolutionNotes: '',
@@ -198,7 +203,15 @@ export function ConnectorPage() {
 
   const activateConnectorMutation = useMutation({
     meta: { successMessage: 'Connector activated.' },
-    mutationFn: async ({ id, lockVersion, verificationId }: { id: string; lockVersion: number; verificationId: string }) => {
+    mutationFn: async ({
+      id,
+      lockVersion,
+      verificationId,
+    }: {
+      id: string;
+      lockVersion: number;
+      verificationId: string;
+    }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/activation`, {
         method: 'POST',
         headers: {
@@ -216,7 +229,17 @@ export function ConnectorPage() {
 
   const updateStatusMutation = useMutation({
     meta: { successMessage: 'Connector status updated.' },
-    mutationFn: async ({ id, lockVersion, targetStatus, reason }: { id: string; lockVersion: number; targetStatus: string; reason: string }) => {
+    mutationFn: async ({
+      id,
+      lockVersion,
+      targetStatus,
+      reason,
+    }: {
+      id: string;
+      lockVersion: number;
+      targetStatus: string;
+      reason: string;
+    }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/status`, {
         method: 'POST',
         headers: {
@@ -234,7 +257,13 @@ export function ConnectorPage() {
 
   const createBankAccountMutation = useMutation({
     meta: { successMessage: 'Bank account added.' },
-    mutationFn: async ({ connectorId, data }: { connectorId: string; data: CreateConnectorBankAccountInput }) => {
+    mutationFn: async ({
+      connectorId,
+      data,
+    }: {
+      connectorId: string;
+      data: CreateConnectorBankAccountInput;
+    }) => {
       return apiFetch<ConnectorBankAccountResource>(`/v1/connectors/${connectorId}/bank-accounts`, {
         method: 'POST',
         headers: {
@@ -267,7 +296,13 @@ export function ConnectorPage() {
 
   const createAgreementMutation = useMutation({
     meta: { successMessage: 'Agreement saved.' },
-    mutationFn: async ({ connectorId, data }: { connectorId: string; data: CreateConnectorAgreementInput }) => {
+    mutationFn: async ({
+      connectorId,
+      data,
+    }: {
+      connectorId: string;
+      data: CreateConnectorAgreementInput;
+    }) => {
       return apiFetch<ConnectorAgreementResource>(`/v1/connectors/${connectorId}/agreements`, {
         method: 'POST',
         headers: {
@@ -317,7 +352,15 @@ export function ConnectorPage() {
 
   const resolveDisputeMutation = useMutation({
     meta: { successMessage: 'Dispute resolved.' },
-    mutationFn: async ({ id, lockVersion, data }: { id: string; lockVersion: number; data: ResolveAttributionDisputeInput }) => {
+    mutationFn: async ({
+      id,
+      lockVersion,
+      data,
+    }: {
+      id: string;
+      lockVersion: number;
+      data: ResolveAttributionDisputeInput;
+    }) => {
       return apiFetch<AttributionDisputeResource>(`/v1/attribution-disputes/${id}/resolution`, {
         method: 'POST',
         headers: {
@@ -342,7 +385,8 @@ export function ConnectorPage() {
               Connector Management (MOD-CON)
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute Workbench
+              Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute
+              Workbench
             </Typography>
           </Box>
           <Button
@@ -358,7 +402,12 @@ export function ConnectorPage() {
 
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
+        <Tabs
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
           <Tab label="Directory & Onboarding" />
           <Tab label="Bank Accounts & SOD" />
           <Tab label="Agreements & Rate Cards" />
@@ -381,11 +430,7 @@ export function ConnectorPage() {
               />
               <FormControl size="small" sx={{ width: 180 }}>
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="">All Statuses</MenuItem>
                   <MenuItem value="DRAFT">DRAFT</MenuItem>
                   <MenuItem value="ACTIVE">ACTIVE</MenuItem>
@@ -521,7 +566,8 @@ export function ConnectorPage() {
                       Bank Accounts for: {selectedConnector.legalName} ({selectedConnector.id})
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Requires Dual-Control Separation of Duties (SOD). Creator cannot approve. 24-hr cooling period applies after activation.
+                      Requires Dual-Control Separation of Duties (SOD). Creator cannot approve. 24-hr cooling
+                      period applies after activation.
                     </Typography>
                   </Box>
                   <Button
@@ -590,15 +636,24 @@ export function ConnectorPage() {
                                 </Button>
                               )}
                               {acc.status === 'ACTIVE' && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <Box
+                                  sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
+                                >
                                   <Chip
                                     label="✓ Approved (Dual-Control Verified)"
                                     color="success"
                                     size="small"
-                                    sx={{ fontWeight: 600, bgcolor: 'rgba(46, 125, 50, 0.12)', color: 'success.main' }}
+                                    sx={{
+                                      fontWeight: 600,
+                                      bgcolor: 'rgba(46, 125, 50, 0.12)',
+                                      color: 'success.main',
+                                    }}
                                   />
                                   {acc.approvedBy && (
-                                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}
+                                    >
                                       Approver: {acc.approvedBy}
                                     </Typography>
                                   )}
@@ -618,7 +673,9 @@ export function ConnectorPage() {
                 )}
               </Box>
             ) : (
-              <Alert severity="warning">Please select a connector from the Directory tab to view and manage bank accounts.</Alert>
+              <Alert severity="warning">
+                Please select a connector from the Directory tab to view and manage bank accounts.
+              </Alert>
             )}
           </CardContent>
         </Card>
@@ -636,7 +693,8 @@ export function ConnectorPage() {
                       Agreements & Commission Scope for: {selectedConnector.legalName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Governs product eligibility and links to rate card rules without duplicating commission engine calculations.
+                      Governs product eligibility and links to rate card rules without duplicating commission
+                      engine calculations.
                     </Typography>
                   </Box>
                   <Button
@@ -678,7 +736,8 @@ export function ConnectorPage() {
                             </TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>{agr.shareRuleScope}</TableCell>
                             <TableCell>
-                              {new Date(agr.validFrom).toLocaleDateString()} – {new Date(agr.validTo).toLocaleDateString()}
+                              {new Date(agr.validFrom).toLocaleDateString()} –{' '}
+                              {new Date(agr.validTo).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
                               <Chip
@@ -697,7 +756,9 @@ export function ConnectorPage() {
                 )}
               </Box>
             ) : (
-              <Alert severity="warning">Please select a connector from the Directory tab to view and manage agreements.</Alert>
+              <Alert severity="warning">
+                Please select a connector from the Directory tab to view and manage agreements.
+              </Alert>
             )}
           </CardContent>
         </Card>
@@ -711,7 +772,8 @@ export function ConnectorPage() {
               <Box>
                 <Typography variant="h6">Attribution Change Requests</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Enforces SOD-09: Requester cannot approve their own change request. Reassignment executes through security-definer function.
+                  Enforces SOD-09: Requester cannot approve their own change request. Reassignment executes
+                  through security-definer function.
                 </Typography>
               </Box>
               <Button
@@ -746,8 +808,12 @@ export function ConnectorPage() {
                       <TableRow key={req.id} hover>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{req.id}</TableCell>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{req.leadId}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{req.previousConnectorId || 'None (Organic)'}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{req.proposedConnectorId}</TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace' }}>
+                          {req.previousConnectorId || 'None (Organic)'}
+                        </TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                          {req.proposedConnectorId}
+                        </TableCell>
                         <TableCell>{req.reason}</TableCell>
                         <TableCell>
                           <Chip
@@ -818,9 +884,13 @@ export function ConnectorPage() {
                       <TableRow key={disp.id} hover>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{disp.id}</TableCell>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{disp.leadId}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{disp.claimantConnectorIds.join(', ')}</TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace' }}>
+                          {disp.claimantConnectorIds.join(', ')}
+                        </TableCell>
                         <TableCell>{disp.resolution || 'Pending Adjudication'}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{disp.resolvedConnectorId || '—'}</TableCell>
+                        <TableCell sx={{ fontFamily: 'monospace' }}>
+                          {disp.resolvedConnectorId || '—'}
+                        </TableCell>
                         <TableCell>
                           <Chip
                             label={disp.status}
@@ -1041,7 +1111,9 @@ export function ConnectorPage() {
               label="Account Holder Name"
               required
               value={bankAccountInput.accountHolderName}
-              onChange={(e) => setBankAccountInput({ ...bankAccountInput, accountHolderName: e.target.value })}
+              onChange={(e) =>
+                setBankAccountInput({ ...bankAccountInput, accountHolderName: e.target.value })
+              }
             />
             <TextField
               size="small"
@@ -1056,7 +1128,9 @@ export function ConnectorPage() {
               placeholder="HDFC0001234"
               required
               value={bankAccountInput.ifscCode}
-              onChange={(e) => setBankAccountInput({ ...bankAccountInput, ifscCode: e.target.value.toUpperCase() })}
+              onChange={(e) =>
+                setBankAccountInput({ ...bankAccountInput, ifscCode: e.target.value.toUpperCase() })
+              }
             />
           </Stack>
         </DialogContent>
@@ -1154,8 +1228,12 @@ export function ConnectorPage() {
           <Button onClick={() => setReassignModalOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            disabled={!attributionInput.leadId || !attributionInput.proposedConnectorId || !attributionInput.reason}
-            onClick={() => createAttributionMutation.mutate(attributionInput as CreateAttributionChangeRequestInput)}
+            disabled={
+              !attributionInput.leadId || !attributionInput.proposedConnectorId || !attributionInput.reason
+            }
+            onClick={() =>
+              createAttributionMutation.mutate(attributionInput as CreateAttributionChangeRequestInput)
+            }
           >
             Submit Request
           </Button>
