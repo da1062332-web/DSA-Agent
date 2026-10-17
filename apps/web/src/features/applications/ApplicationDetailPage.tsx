@@ -10,6 +10,7 @@ import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
+import { ChecklistCard } from '../documents/ChecklistCard';
 import { EligibilityCard } from './EligibilityCard';
 import {
   STATUS_LABELS,
@@ -68,6 +69,7 @@ export function ApplicationDetailPage() {
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
       <EligibilityCard applicationId={a.id} hasProduct={!!a.productVersionId} />
+      <ChecklistCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />

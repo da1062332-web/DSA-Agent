@@ -30,3 +30,10 @@ All of this is test-tenant data. Nothing in a customer tenant (`demo-alpha`, `de
 ## 4. The inventory query
 
 It counts, per table and tenant, total rows, rows from the last 14 hours, and the first and last `created_at`. It reads only. It needs `supabase db query --linked -f <file>`, with the file built from `information_schema` (tables in `app` that have `tenant_id` and `created_at`) and `query_to_xml` row counts for `tenant_id like 'ten_01J%'`.
+
+## 5. Update 2026-10-17 (re-inventory, read-only)
+
+- **1,845 rows in 30 tables** (was 1,704): test-dsa-alpha 1,826, test-dsa-beta 14, test-tenant-b 5. 141 rows were written in the last 14 hours, the latest at 04:28 UTC on 2026-10-17. They were not written by this session's guarded suites, so another checkout is still running specs that read a connection string from its own `.env`. A cleanup now would be refilled.
+- **1,030 rows cannot be removed by design:** `activity` 394, `message_template` 258, `dedupe_registry` 193, `notification` 135 and `message` 50 are delete-protected by database triggers. The procedure reports them and never disables a trigger. At most 572 rows in 19 tables are deletable.
+- **Kept:** organisation 102, app_user 50, branch 34, user_role_assignment 25, metric_definition 18, role 14 (fixtures and history).
+- **The procedure is ready and rehearsed:** `tools/sql/cleanup/` (counts, backup to JSON, a transactional children-first delete that aborts unless it finds exactly the three test tenants, verify) and `apps/api/test/cleanup-test-data.int.spec.ts` (5 tests, PostgreSQL 16 and 17). Not run on hosted: the environment refused hosted writes, and stopping the writers comes first. See `tools/sql/cleanup/README.md`.

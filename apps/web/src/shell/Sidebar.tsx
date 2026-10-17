@@ -80,7 +80,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'KYC, documents and verification (DOM-F)',
     items: [
-      { label: 'Documents', task: 'MOD-DOC' },
+      { label: 'Documents', to: '/documents', anyOf: ['application.read'] },
       { label: 'Document sharing', to: '/document-sharing', anyOf: ['document.upload', 'share.create'] },
       { label: 'Verification', to: '/verifications', anyOf: ['verification.read', 'verification.perform'] },
       { label: 'Verification workbench', to: '/verifications/workbench' },
@@ -146,11 +146,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
-      {
-        label: 'Approvals',
-        to: '/approvals',
-        anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'],
-      },
+      { label: 'Approvals', to: '/approvals', anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'] },
+      { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
       { label: 'Security', to: '/account/security' },
     ],
   },
