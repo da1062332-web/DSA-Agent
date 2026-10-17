@@ -17,9 +17,19 @@ export interface LenderCaseRepository {
   insertCase(tx: Tx, row: LenderCaseRow): Promise<void>;
   findCaseById(tx: Tx, tenantId: string, id: string): Promise<LenderCaseRow | null>;
   findCaseByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<LenderCaseRow | null>;
-  findActiveCaseForLender(tx: Tx, tenantId: string, applicationId: string, lenderId: string): Promise<LenderCaseRow | null>;
+  findActiveCaseForLender(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+    lenderId: string,
+  ): Promise<LenderCaseRow | null>;
   findActiveCasesForApplication(tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]>;
   listCasesByApplication(tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]>;
+  listAllCases(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]>;
   getNextAttemptNo(tx: Tx, tenantId: string, applicationId: string): Promise<number>;
   updateCase(
     tx: Tx,
@@ -39,11 +49,20 @@ export interface LenderCaseRepository {
 
   insertQuery(tx: Tx, row: LenderQueryRow): Promise<void>;
   findQueryById(tx: Tx, tenantId: string, queryId: string): Promise<LenderQueryRow | null>;
-  updateQuery(tx: Tx, tenantId: string, queryId: string, updates: Partial<LenderQueryRow>): Promise<LenderQueryRow | null>;
+  updateQuery(
+    tx: Tx,
+    tenantId: string,
+    queryId: string,
+    updates: Partial<LenderQueryRow>,
+  ): Promise<LenderQueryRow | null>;
   listQueriesByCase(tx: Tx, tenantId: string, caseId: string): Promise<LenderQueryRow[]>;
 
   findApplication(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null>;
-  findApplicationForUpdate(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null>;
+  findApplicationForUpdate(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<ApplicationLookupRow | null>;
   updateApplicationStatus(
     tx: Tx,
     tenantId: string,
@@ -57,7 +76,11 @@ export interface LenderCaseRepository {
 
   findLender(tx: Tx, tenantId: string, lenderId: string): Promise<LenderLookupRow | null>;
   findEmpanelment(tx: Tx, tenantId: string, empanelmentId: string): Promise<EmpanelmentLookupRow | null>;
-  findProductVersion(tx: Tx, tenantId: string, productVersionId: string): Promise<ProductVersionLookupRow | null>;
+  findProductVersion(
+    tx: Tx,
+    tenantId: string,
+    productVersionId: string,
+  ): Promise<ProductVersionLookupRow | null>;
   getTenantSetting(tx: Tx, tenantId: string, settingKey: string): Promise<boolean | null>;
 
   insertOutboxEvent(
@@ -153,7 +176,11 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return res.rows[0] ?? null;
   }
 
-  async findActiveCasesForApplication(tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]> {
+  async findActiveCasesForApplication(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<LenderCaseRow[]> {
     const res = await sql<LenderCaseRow>`
       SELECT * FROM lender_case
       WHERE tenant_id = ${tenantId}
@@ -168,6 +195,28 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
       SELECT * FROM lender_case
       WHERE tenant_id = ${tenantId} AND application_id = ${applicationId}
       ORDER BY attempt_no ASC
+    `.execute(tx);
+    return res.rows;
+  }
+
+  async listAllCases(
+    tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]> {
+    const limit = Math.min(filter?.limit ?? 100, 200);
+    const status = filter?.status ?? null;
+    const lenderId = filter?.lenderId ?? null;
+    const applicationId = filter?.applicationId ?? null;
+
+    const res = await sql<LenderCaseRow>`
+      SELECT * FROM lender_case
+      WHERE tenant_id = ${tenantId}
+        AND (${status}::text IS NULL OR status = ${status})
+        AND (${lenderId}::text IS NULL OR lender_id = ${lenderId})
+        AND (${applicationId}::text IS NULL OR application_id = ${applicationId})
+      ORDER BY created_at DESC
+      LIMIT ${limit}
     `.execute(tx);
     return res.rows;
   }
@@ -305,7 +354,11 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return [];
   }
 
-  async findApplication(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null> {
+  async findApplication(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<ApplicationLookupRow | null> {
     const res = await sql<ApplicationLookupRow>`
       SELECT id, tenant_id, branch_id, customer_id, product_category, status, sub_status, lock_version
       FROM loan_application
@@ -314,7 +367,11 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return res.rows[0] ?? null;
   }
 
-  async findApplicationForUpdate(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null> {
+  async findApplicationForUpdate(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<ApplicationLookupRow | null> {
     const res = await sql<ApplicationLookupRow>`
       SELECT id, tenant_id, branch_id, customer_id, product_category, status, sub_status, lock_version
       FROM loan_application
@@ -371,7 +428,11 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return res.rows[0] ?? null;
   }
 
-  async findEmpanelment(tx: Tx, tenantId: string, empanelmentId: string): Promise<EmpanelmentLookupRow | null> {
+  async findEmpanelment(
+    tx: Tx,
+    tenantId: string,
+    empanelmentId: string,
+  ): Promise<EmpanelmentLookupRow | null> {
     const res = await sql<EmpanelmentLookupRow>`
       SELECT id, tenant_id, lender_id, dsa_code, status, permitted_categories
       FROM empanelment
@@ -380,7 +441,11 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return res.rows[0] ?? null;
   }
 
-  async findProductVersion(tx: Tx, tenantId: string, productVersionId: string): Promise<ProductVersionLookupRow | null> {
+  async findProductVersion(
+    tx: Tx,
+    tenantId: string,
+    productVersionId: string,
+  ): Promise<ProductVersionLookupRow | null> {
     const res = await sql<ProductVersionLookupRow>`
       SELECT id, tenant_id, product_id, version_no, status
       FROM loan_product_version
@@ -466,7 +531,14 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
     lenderId: string,
   ): Promise<LenderCaseRow | null> {
     if (!tenantId) return null;
-    const activeStatuses = ['DRAFT', 'PACKAGE_READY', 'SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RAISED', 'QUERY_RESPONDED'];
+    const activeStatuses = [
+      'DRAFT',
+      'PACKAGE_READY',
+      'SUBMITTED',
+      'UNDER_PROCESSING',
+      'QUERY_RAISED',
+      'QUERY_RESPONDED',
+    ];
     for (const c of this.cases.values()) {
       if (
         c.tenant_id === tenantId &&
@@ -480,12 +552,27 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
     return null;
   }
 
-  async findActiveCasesForApplication(_tx: Tx, tenantId: string, applicationId: string): Promise<LenderCaseRow[]> {
+  async findActiveCasesForApplication(
+    _tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<LenderCaseRow[]> {
     if (!tenantId) return [];
-    const activeStatuses = ['DRAFT', 'PACKAGE_READY', 'SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RAISED', 'QUERY_RESPONDED'];
+    const activeStatuses = [
+      'DRAFT',
+      'PACKAGE_READY',
+      'SUBMITTED',
+      'UNDER_PROCESSING',
+      'QUERY_RAISED',
+      'QUERY_RESPONDED',
+    ];
     const result: LenderCaseRow[] = [];
     for (const c of this.cases.values()) {
-      if (c.tenant_id === tenantId && c.application_id === applicationId && activeStatuses.includes(c.status)) {
+      if (
+        c.tenant_id === tenantId &&
+        c.application_id === applicationId &&
+        activeStatuses.includes(c.status)
+      ) {
         result.push({ ...c, tags: [...c.tags] });
       }
     }
@@ -501,6 +588,26 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
       }
     }
     return result.sort((a, b) => a.attempt_no - b.attempt_no);
+  }
+
+  async listAllCases(
+    _tx: Tx,
+    tenantId: string,
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+  ): Promise<LenderCaseRow[]> {
+    if (!tenantId) return [];
+    const limit = Math.min(filter?.limit ?? 100, 200);
+    const result: LenderCaseRow[] = [];
+    for (const c of this.cases.values()) {
+      if (c.tenant_id !== tenantId) continue;
+      if (filter?.status && c.status !== filter.status) continue;
+      if (filter?.lenderId && c.lender_id !== filter.lenderId) continue;
+      if (filter?.applicationId && c.application_id !== filter.applicationId) continue;
+      result.push({ ...c, tags: [...c.tags] });
+    }
+    return result
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
   }
 
   async getNextAttemptNo(_tx: Tx, tenantId: string, applicationId: string): Promise<number> {
@@ -596,12 +703,20 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
     return list;
   }
 
-  async findApplication(_tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null> {
+  async findApplication(
+    _tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<ApplicationLookupRow | null> {
     const a = this.applications.get(this.key(tenantId, applicationId));
     return a ? { ...a } : null;
   }
 
-  async findApplicationForUpdate(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null> {
+  async findApplicationForUpdate(
+    tx: Tx,
+    tenantId: string,
+    applicationId: string,
+  ): Promise<ApplicationLookupRow | null> {
     return this.findApplication(tx, tenantId, applicationId);
   }
 
@@ -632,7 +747,11 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
     return l ? { ...l } : null;
   }
 
-  async findEmpanelment(_tx: Tx, tenantId: string, empanelmentId: string): Promise<EmpanelmentLookupRow | null> {
+  async findEmpanelment(
+    _tx: Tx,
+    tenantId: string,
+    empanelmentId: string,
+  ): Promise<EmpanelmentLookupRow | null> {
     const e = this.empanelments.get(this.key(tenantId, empanelmentId));
     return e ? { ...e, permitted_categories: [...e.permitted_categories] } : null;
   }

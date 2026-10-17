@@ -36,6 +36,8 @@ export const ID_PREFIXES = [
   'pty',
   'ash',
   'elg',
+  'sag',
+  'dcr',
   'lsh',
   'asg',
   'act',

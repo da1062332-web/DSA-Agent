@@ -141,13 +141,10 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
     it('TC-LEAD-002 rejects request with 422 VALIDATION_ERROR when required fields are missing', async () => {
       const app = getApp();
-      const res = await request(app)
-        .post('/v1/leads')
-        .set('Idempotency-Key', 'lead_create_invalid')
-        .send({
-          fullName: 'J', // too short
-          mobile: 'not-a-number',
-        });
+      const res = await request(app).post('/v1/leads').set('Idempotency-Key', 'lead_create_invalid').send({
+        fullName: 'J', // too short
+        mobile: 'not-a-number',
+      });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -198,10 +195,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
     it('TC-LEAD-006 detects duplicate when existing lead with same mobile exists in branch', async () => {
       const app = getApp();
-      await request(app)
-        .post('/v1/leads')
-        .set('Idempotency-Key', 'lead_first_001')
-        .send(validLeadPayload);
+      await request(app).post('/v1/leads').set('Idempotency-Key', 'lead_first_001').send(validLeadPayload);
 
       const second = await request(app)
         .post('/v1/leads')
@@ -214,19 +208,14 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       expect(second.status).toBe(201);
       expect(second.body.duplicateFlag).toBe('EXACT');
       expect(second.body.duplicateCandidateIds.length).toBeGreaterThan(0);
-      expect(repository.outboxEvents.some((e) => e.event_type === 'lead.duplicate_flagged')).toBe(
-        true,
-      );
+      expect(repository.outboxEvents.some((e) => e.event_type === 'lead.duplicate_flagged')).toBe(true);
     });
   });
 
   describe('API-LEAD-002 GET /v1/leads — List Leads', () => {
     it('TC-LEAD-007 lists leads with cursor pagination and masked phone numbers', async () => {
       const app = getApp();
-      await request(app)
-        .post('/v1/leads')
-        .set('Idempotency-Key', 'lead_list_01')
-        .send(validLeadPayload);
+      await request(app).post('/v1/leads').set('Idempotency-Key', 'lead_list_01').send(validLeadPayload);
       await request(app)
         .post('/v1/leads')
         .set('Idempotency-Key', 'lead_list_02')
@@ -241,10 +230,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
     it('TC-LEAD-008 filters leads by state', async () => {
       const app = getApp();
-      await request(app)
-        .post('/v1/leads')
-        .set('Idempotency-Key', 'lead_flt_01')
-        .send(validLeadPayload);
+      await request(app).post('/v1/leads').set('Idempotency-Key', 'lead_flt_01').send(validLeadPayload);
 
       const res = await request(app).get('/v1/leads?filter[state]=NEW');
       expect(res.status).toBe(200);
@@ -257,10 +243,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
     it('TC-LEAD-009 enforces tenant isolation on list queries', async () => {
       const appA = getApp(principalA);
-      await request(appA)
-        .post('/v1/leads')
-        .set('Idempotency-Key', 'lead_ten_01')
-        .send(validLeadPayload);
+      await request(appA).post('/v1/leads').set('Idempotency-Key', 'lead_ten_01').send(validLeadPayload);
 
       const appB = getApp(principalB);
       const resB = await request(appB).get('/v1/leads');
@@ -365,9 +348,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
       // Verify status history entry
       expect(
-        repository.statusHistories.some(
-          (h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-01',
-        ),
+        repository.statusHistories.some((h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-01'),
       ).toBe(true);
     });
 
@@ -525,7 +506,6 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
   });
 
   describe('API-LEAD-007 POST /v1/leads/:id/conversion — Atomic Conversion (TASK-110)', () => {
-
     it('TC-LEAD-020 converts a qualified lead into customer and loan application atomically', async () => {
       const app = getApp();
       const { id: leadId, etag } = await createQualifiedLead(app);
@@ -571,16 +551,12 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
       // 5. Verify status history (T-LEAD-07)
       expect(
-        repository.statusHistories.some(
-          (h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-07',
-        ),
+        repository.statusHistories.some((h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-07'),
       ).toBe(true);
 
       // 6. Verify Outbox events (lead.converted + application.created)
       expect(repository.outboxEvents.some((e) => e.event_type === 'lead.converted')).toBe(true);
-      expect(repository.outboxEvents.some((e) => e.event_type === 'application.created')).toBe(
-        true,
-      );
+      expect(repository.outboxEvents.some((e) => e.event_type === 'application.created')).toBe(true);
 
       // 7. Verify Audit event
       expect(repository.auditEvents.some((e) => e.action === 'lead.converted')).toBe(true);
@@ -668,9 +644,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
         .send(validLeadPayload);
 
       const leadId = createRes.body.id;
-      const res = await request(app)
-        .patch(`/v1/leads/${leadId}`)
-        .send({ priority: 'HIGH' });
+      const res = await request(app).patch(`/v1/leads/${leadId}`).send({ priority: 'HIGH' });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');

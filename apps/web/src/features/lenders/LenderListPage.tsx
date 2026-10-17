@@ -142,8 +142,7 @@ export function LenderListPage() {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
     return (
-      l.name.toLowerCase().includes(term) ||
-      (l.regulatorRef && l.regulatorRef.toLowerCase().includes(term))
+      l.name.toLowerCase().includes(term) || (l.regulatorRef && l.regulatorRef.toLowerCase().includes(term))
     );
   });
 
@@ -213,11 +212,7 @@ export function LenderListPage() {
             <Grid item xs={6} sm={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="">All Statuses</MenuItem>
                   <MenuItem value="ACTIVE">Active</MenuItem>
                   <MenuItem value="PAUSED">Paused</MenuItem>
@@ -228,11 +223,7 @@ export function LenderListPage() {
             <Grid item xs={6} sm={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Type</InputLabel>
-                <Select
-                  value={typeFilter}
-                  label="Type"
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                >
+                <Select value={typeFilter} label="Type" onChange={(e) => setTypeFilter(e.target.value)}>
                   <MenuItem value="">All Types</MenuItem>
                   <MenuItem value="BANK">Bank</MenuItem>
                   <MenuItem value="NBFC">NBFC</MenuItem>
@@ -264,12 +255,24 @@ export function LenderListPage() {
           <Table>
             <TableHead sx={{ bgcolor: 'grey.100' }}>
               <TableRow>
-                <TableCell><strong>Lender Name</strong></TableCell>
-                <TableCell><strong>Type</strong></TableCell>
-                <TableCell><strong>Regulator Ref</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
-                <TableCell><strong>Empanelments</strong></TableCell>
-                <TableCell align="right"><strong>Actions</strong></TableCell>
+                <TableCell>
+                  <strong>Lender Name</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Type</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Regulator Ref</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Status</strong>
+                </TableCell>
+                <TableCell>
+                  <strong>Empanelments</strong>
+                </TableCell>
+                <TableCell align="right">
+                  <strong>Actions</strong>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -289,11 +292,7 @@ export function LenderListPage() {
                   </TableCell>
                   <TableCell>{lender.regulatorRef || '—'}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={lender.status}
-                      size="small"
-                      color={getStatusChipColor(lender.status)}
-                    />
+                    <Chip label={lender.status} size="small" color={getStatusChipColor(lender.status)} />
                   </TableCell>
                   <TableCell>{lender.empanelments?.length ?? 0}</TableCell>
                   <TableCell align="right">
@@ -392,13 +391,12 @@ export function LenderListPage() {
             </Alert>
           )}
           <DialogContentText>
-            Are you sure you want to transition lender{' '}
-            <strong>{selectedLender?.name}</strong> to{' '}
+            Are you sure you want to transition lender <strong>{selectedLender?.name}</strong> to{' '}
             <strong>{targetStatus}</strong>?
             {targetStatus === 'PAUSED' && (
               <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-                Warning: When a lender is PAUSED, loan origination gates block case creation with
-                422 LENDER_PAUSED.
+                Warning: When a lender is PAUSED, loan origination gates block case creation with 422
+                LENDER_PAUSED.
               </Typography>
             )}
           </DialogContentText>

@@ -10,7 +10,7 @@ import {
   type RequestContext,
 } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import type { ApiDeps } from '../../types';
 import { SqlLenderCaseRepository, type LenderCaseRepository } from './repository';
 import { LenderCaseService } from './service';
@@ -108,6 +108,26 @@ export function createRouter(deps: ApiDeps): Router {
 
     const cases = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       return service.listCases(tx, ctx, applicationId);
+    });
+
+    res.status(200).json({ data: cases });
+  });
+
+  /**
+   * List All Lender Cases (Tenant Scope)
+   * GET /lender-cases
+   */
+  router.get('/lender-cases', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const { status, lenderId, applicationId, limit } = req.query;
+
+    const cases = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      return service.listAllCases(tx, ctx, {
+        status: typeof status === 'string' ? status : undefined,
+        lenderId: typeof lenderId === 'string' ? lenderId : undefined,
+        applicationId: typeof applicationId === 'string' ? applicationId : undefined,
+        limit: limit ? Number(limit) : undefined,
+      });
     });
 
     res.status(200).json({ data: cases });

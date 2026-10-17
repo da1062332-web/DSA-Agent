@@ -15,9 +15,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/platform-ad
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -42,7 +40,7 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     expect(html).toContain('Zero Business Data Projection');
   });
 
-  it('renders all 8 administration submodule tabs', () => {
+  it('renders the 7 platform submodule tabs (data corrections belong to the customer tenant, see /approvals)', () => {
     const html = renderWithProviders(
       <Routes>
         <Route path="/platform-admin" element={<PlatformConsolePage />} />
@@ -56,7 +54,7 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     expect(html).toContain('Background Jobs');
     expect(html).toContain('System Health');
     expect(html).toContain('Support Access (Break-Glass)');
-    expect(html).toContain('Data Corrections');
+    expect(html).not.toContain('Data Corrections');
     expect(html).toContain('Release Management');
   });
 
@@ -69,6 +67,8 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     );
 
     expect(html).toContain('Registered Tenants Directory (API-TEN-002)');
-    expect(html).toContain('Under tenant isolation policies, no individual leads, loans, or customer financial records are accessed or exposed');
+    expect(html).toContain(
+      'Under tenant isolation policies, no individual leads, loans, or customer financial records are accessed or exposed',
+    );
   });
 });

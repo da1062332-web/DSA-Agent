@@ -79,7 +79,9 @@ export function registerEligibilityRoutes(router: Router, deps: ApiDeps): void {
             );
           }
           const criteria = evaluateCriteria(app, versionId);
-          const results: ProductResult[] = [{ productVersionId: versionId, result: rollUp(criteria), criteria }];
+          const results: ProductResult[] = [
+            { productVersionId: versionId, result: rollUp(criteria), criteria },
+          ];
           const id = deps.ids.next('elg');
           const inserted = await sql<Row>`
             insert into eligibility_assessment (id, tenant_id, application_id, assessed_at, results, created_by, updated_by)
@@ -90,7 +92,10 @@ export function registerEligibilityRoutes(router: Router, deps: ApiDeps): void {
             action: 'eligibility.assessed',
             entityType: 'LOAN_APPLICATION',
             entityId: applicationId,
-            after: { assessmentId: id, results: results.map((p) => ({ v: p.productVersionId, r: p.result })) },
+            after: {
+              assessmentId: id,
+              results: results.map((p) => ({ v: p.productVersionId, r: p.result })),
+            },
             permissionUsed: 'application.read',
           });
           return { status: 201, body: toAssessment(inserted.rows[0]!), resourceRef: id };

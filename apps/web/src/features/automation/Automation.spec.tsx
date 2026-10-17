@@ -11,7 +11,7 @@ describe('Module 24 — Workflow Automation (MOD-WFA) UI Component Suite', () =>
     const html = renderToString(
       <MemoryRouter initialEntries={['/automations']}>
         <AutomationListPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toContain('Workflow Automation Engine');
@@ -27,7 +27,7 @@ describe('Module 24 — Workflow Automation (MOD-WFA) UI Component Suite', () =>
         <Routes>
           <Route path="/automations/:id" element={<AutomationDetailPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toBeDefined();

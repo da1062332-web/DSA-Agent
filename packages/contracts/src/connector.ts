@@ -22,28 +22,13 @@ export const CONNECTOR_STATUSES = [
 ] as const;
 export type ConnectorStatus = (typeof CONNECTOR_STATUSES)[number];
 
-export const BANK_ACCOUNT_STATUSES = [
-  'PENDING_APPROVAL',
-  'ACTIVE',
-  'REJECTED',
-  'DISABLED',
-] as const;
+export const BANK_ACCOUNT_STATUSES = ['PENDING_APPROVAL', 'ACTIVE', 'REJECTED', 'DISABLED'] as const;
 export type BankAccountStatus = (typeof BANK_ACCOUNT_STATUSES)[number];
 
-export const AGREEMENT_STATUSES = [
-  'DRAFT',
-  'ACTIVE',
-  'EXPIRED',
-  'TERMINATED',
-] as const;
+export const AGREEMENT_STATUSES = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED'] as const;
 export type AgreementStatus = (typeof AGREEMENT_STATUSES)[number];
 
-export const DISPUTE_STATUSES = [
-  'OPEN',
-  'UNDER_REVIEW',
-  'RESOLVED',
-  'DISMISSED',
-] as const;
+export const DISPUTE_STATUSES = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED'] as const;
 export type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
 
 export const DISPUTE_RESOLUTIONS = [
@@ -54,12 +39,7 @@ export const DISPUTE_RESOLUTIONS = [
 ] as const;
 export type DisputeResolution = (typeof DISPUTE_RESOLUTIONS)[number];
 
-export const ATTRIBUTION_CHANGE_REQUEST_STATUSES = [
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'CANCELLED',
-] as const;
+export const ATTRIBUTION_CHANGE_REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'] as const;
 export type AttributionChangeRequestStatus = (typeof ATTRIBUTION_CHANGE_REQUEST_STATUSES)[number];
 
 // Helper to mask PAN: ABCDE1234F -> ABCDE****F
@@ -126,7 +106,10 @@ export const UpdateConnectorSchema = z.object({
     })
     .optional(),
   contactPerson: z.string().min(2).max(100).optional(),
-  mobileE164: z.string().regex(/^\+[1-9]\d{6,14}$/).optional(),
+  mobileE164: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional(),
   email: z.string().email().optional(),
   gstin: z
     .string()
@@ -196,7 +179,11 @@ export type CreateConnectorAgreementInput = z.infer<typeof CreateConnectorAgreem
 export const InviteConnectorUserSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(2).max(100),
-  mobileE164: z.string().regex(/^\+[1-9]\d{6,14}$/).optional().nullable(),
+  mobileE164: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional()
+    .nullable(),
 });
 export type InviteConnectorUserInput = z.infer<typeof InviteConnectorUserSchema>;
 

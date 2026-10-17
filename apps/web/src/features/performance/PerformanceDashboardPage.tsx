@@ -100,8 +100,7 @@ export function PerformanceDashboardPage() {
     userId: '',
   });
 
-  const { data: dashboard, isLoading, isError, error, refetch } =
-    useTeamPerformanceDashboard(filters);
+  const { data: dashboard, isLoading, isError, error, refetch } = useTeamPerformanceDashboard(filters);
 
   const handlePeriodChange = (period: string) => {
     setFilters((prev) => ({ ...prev, period }));
@@ -265,9 +264,7 @@ export function PerformanceDashboardPage() {
                       <Chip
                         size="small"
                         label={`${dashboard.summary.sanctions.achievementPercentage}%`}
-                        color={getAchievementColor(
-                          dashboard.summary.sanctions.achievementPercentage,
-                        )}
+                        color={getAchievementColor(dashboard.summary.sanctions.achievementPercentage)}
                       />
                     )}
                   </Stack>
@@ -302,22 +299,15 @@ export function PerformanceDashboardPage() {
                       <Chip
                         size="small"
                         label={`${dashboard.summary.disbursements.achievementPercentage}%`}
-                        color={getAchievementColor(
-                          dashboard.summary.disbursements.achievementPercentage,
-                        )}
+                        color={getAchievementColor(dashboard.summary.disbursements.achievementPercentage)}
                       />
                     )}
                   </Stack>
                   {dashboard.summary.disbursements.achievementPercentage !== null && (
                     <LinearProgress
                       variant="determinate"
-                      value={Math.min(
-                        dashboard.summary.disbursements.achievementPercentage,
-                        100,
-                      )}
-                      color={getAchievementColor(
-                        dashboard.summary.disbursements.achievementPercentage,
-                      )}
+                      value={Math.min(dashboard.summary.disbursements.achievementPercentage, 100)}
+                      color={getAchievementColor(dashboard.summary.disbursements.achievementPercentage)}
                       sx={{ height: 6, borderRadius: 3 }}
                     />
                   )}
@@ -452,9 +442,7 @@ export function PerformanceDashboardPage() {
                           {formatCurrency(row.disbursementAmount)}
                         </TableCell>
                         <TableCell align="right" color="text.secondary">
-                          {row.disbursementTarget !== null
-                            ? formatCurrency(row.disbursementTarget)
-                            : '—'}
+                          {row.disbursementTarget !== null ? formatCurrency(row.disbursementTarget) : '—'}
                         </TableCell>
                         <TableCell align="center">
                           {row.achievementPercentage !== null ? (

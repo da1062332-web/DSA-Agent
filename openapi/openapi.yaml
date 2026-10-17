@@ -115,7 +115,9 @@ components:
           type: integer
           minimum: 0
         applicationsCount:
-          type: integer
+          type:
+            - integer
+            - "null"
           minimum: 0
         entitlements:
           type: array
@@ -561,6 +563,12 @@ components:
           type: string
       required:
         - decision
+    RevokeSupportAccessRequest:
+      type: object
+      properties:
+        comments:
+          type: string
+          maxLength: 500
     DataCorrectionRequest:
       type: object
       properties:
@@ -573,9 +581,21 @@ components:
         scriptRef:
           type: string
         dryRunDiffKey:
-          type: string
+          type:
+            - string
+            - "null"
         dryRunDiff:
-          type: string
+          type:
+            - string
+            - "null"
+        targetEntity:
+          type:
+            - string
+            - "null"
+        changeDescription:
+          type:
+            - string
+            - "null"
         requestedBy:
           type: string
         approvedBy:
@@ -591,6 +611,10 @@ components:
             - EXECUTED
             - FAILED
         executedAt:
+          type:
+            - string
+            - "null"
+        failureReason:
           type:
             - string
             - "null"
@@ -628,7 +652,6 @@ components:
           type: string
           minLength: 5
       required:
-        - tenantId
         - justification
         - scriptRef
         - targetEntity
@@ -650,6 +673,9 @@ components:
       properties:
         version:
           type: string
+        lockVersion:
+          type: integer
+          exclusiveMinimum: 0
         status:
           type: string
           enum:
@@ -697,6 +723,36 @@ components:
         - migrationVersion
         - gates
         - notesSummary
+    UpdateReleaseRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - CANDIDATE
+            - STAGING
+            - PUBLISHED
+            - ARCHIVED
+        gitTag:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 100
+        gates:
+          type: object
+          properties:
+            rel001:
+              type: boolean
+            rel002:
+              type: boolean
+            rel003:
+              type: boolean
+            rel004:
+              type: boolean
+        notesSummary:
+          type: string
+          maxLength: 2000
     IntegrationEnvironment:
       type: string
       enum: &a2
@@ -10468,7 +10524,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-16T02:55:46.262Z
+                  default: 2026-10-16T09:46:08.913Z
               required:
                 - paymentRef
       responses:

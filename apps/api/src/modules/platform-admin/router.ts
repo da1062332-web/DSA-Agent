@@ -1,6 +1,12 @@
 // apps/api/src/modules/platform-admin/router.ts
 // Module: platform-admin — owner: Platform squad (MOD-ADM: SUB-ADM.01 to SUB-ADM.08)
-import { Router, type Request, type Response, type NextFunction } from 'express';
+//
+// Two realms (DSA Notion MODULE 1 and MODULE 40):
+//   - Platform routes (console, flags, master data, jobs, health, support-access requests, releases) need the permission AND a
+//     signed-in user of the platform tenant. A tenant administrator holding the same permission code is refused.
+//   - Tenant routes (approving support access, data corrections) need the permission AND a user of a customer tenant. A platform
+//     operator cannot approve their own request.
+// Service identities get no shortcut in either realm. Every platform action and every cross-tenant read is written to the audit trail.
 import {
   AppError,
   ApproveDataCorrectionRequestSchema,
@@ -8,13 +14,18 @@ import {
   CreateDataCorrectionRequestSchema,
   CreateSupportAccessRequestSchema,
   ListPlatformTenantsQuerySchema,
+  RevokeSupportAccessRequestSchema,
   MasterDataImportRequestSchema,
   PauseQueueRequestSchema,
   ResumeQueueRequestSchema,
   UpdateFeatureFlagRequestSchema,
+  UpdateReleaseRequestSchema,
+  isPlatformRealm,
+  type AuditEventInput,
   type PermissionCode,
   type RequestContext,
 } from '@dsa/contracts';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import type { ApiDeps } from '../types';
 import { PlatformAdminService } from './platform-admin-service';
 
@@ -33,271 +44,355 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   };
 
   const requirePermission = (ctx: RequestContext, code: PermissionCode): void => {
-    if (ctx.principal.kind === 'SERVICE') return;
-    const hasGrant = ctx.principal.grants.some((g) => g.code === code);
-    if (!hasGrant) {
+    if (!ctx.principal.grants.some((g) => g.code === code)) {
       throw AppError.of('FORBIDDEN', `Permission denied: ${code} required.`);
+    }
+  };
+
+  /** An audit event for an action that has no database write of its own (the in-memory parts of the console). */
+  const audit = (ctx: RequestContext, event: AuditEventInput): Promise<void> =>
+    deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await deps.audit.record(tx, ctx, event);
+    });
+
+  /** A refusal on a sensitive route is itself recorded. The 403 stands even if the audit write fails. */
+  const refuse = async (
+    ctx: RequestContext,
+    required: string,
+    realm: 'platform' | 'tenant',
+    message: string,
+  ): Promise<never> => {
+    try {
+      await audit(ctx, {
+        action: 'platform.access_denied',
+        entityType: 'ROUTE',
+        entityId: null,
+        after: { required, realm, principalKind: ctx.principal.kind },
+        permissionUsed: required,
+      });
+    } catch {
+      // never turn a refusal into an error
+    }
+    throw AppError.of('FORBIDDEN', message);
+  };
+
+  /** The permission, held by a user of the platform tenant. */
+  const requirePlatform = async (ctx: RequestContext, code: PermissionCode): Promise<void> => {
+    if (!ctx.principal.grants.some((g) => g.code === code)) {
+      await refuse(ctx, code, 'platform', `Permission denied: ${code} required.`);
+    }
+    if (!isPlatformRealm(ctx.principal)) {
+      await refuse(ctx, code, 'platform', 'This action is for platform operators only.');
+    }
+  };
+
+  /** The permission, held by a user of a customer tenant (never a platform operator or a service identity). */
+  const requireTenant = async (ctx: RequestContext, code: PermissionCode): Promise<void> => {
+    requirePermission(ctx, code);
+    if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
+      await refuse(ctx, code, 'tenant', 'This action belongs to a customer tenant.');
+    }
+  };
+
+  /** Only the data-correction executor, a service identity, marks a correction executed (Module 40, SUB-ADM.07). */
+  const requireExecutor = (ctx: RequestContext): void => {
+    if (ctx.principal.kind !== 'SERVICE' || ctx.principal.id !== 'SYSTEM:data-correction-executor') {
+      throw AppError.of('FORBIDDEN', 'Only the data correction executor can mark a correction as executed.');
     }
   };
 
   const getParam = (req: Request, name: string): string => String(req.params[name] ?? '');
 
+  type Handler = (ctx: RequestContext, req: Request, res: Response) => Promise<void>;
+  const handle =
+    (fn: Handler) =>
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+        await fn(getContext(req), req, res);
+      } catch (err) {
+        next(err);
+      }
+    };
+
   // ==========================================
   // SUB-ADM.01: Platform Console (API-TEN-002)
   // ==========================================
-  router.get(['/v1/tenants', '/platform/v1/tenants'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.console');
+  router.get(
+    ['/v1/tenants', '/platform/v1/tenants'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.console');
       const query = ListPlatformTenantsQuerySchema.parse(req.query);
-      const result = await service.listTenants(ctx, query);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      res.json(await service.listTenants(ctx, query));
+    }),
+  );
 
   // ==========================================
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================
-  router.get(['/v1/flags', '/platform/v1/flags'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.flags');
-      const result = await service.listFeatureFlags();
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/flags', '/platform/v1/flags'],
+    handle(async (ctx, _req, res) => {
+      await requirePlatform(ctx, 'platform.flags');
+      res.json(await service.listFeatureFlags(ctx));
+    }),
+  );
 
-  router.get(['/v1/flags/:key', '/platform/v1/flags/:key'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.flags');
+  router.get(
+    ['/v1/flags/:key', '/platform/v1/flags/:key'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.flags');
       const scope = (req.query.scope as string) || 'GLOBAL';
-      const flag = await service.getFeatureFlag(getParam(req, 'key'), scope);
+      const flag = await service.getFeatureFlag(ctx, getParam(req, 'key'), scope);
       res.set('ETag', `"${flag.lockVersion}"`);
       res.json(flag);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
-  router.put(['/v1/flags/:key', '/platform/v1/flags/:key'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.flags');
+  router.put(
+    ['/v1/flags/:key', '/platform/v1/flags/:key'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.flags');
       const input = UpdateFeatureFlagRequestSchema.parse(req.body);
-      const ifMatch = req.get('if-match');
-      const updated = await service.putFeatureFlag(getParam(req, 'key'), input, ifMatch, ctx.principal.id);
+      const updated = await service.putFeatureFlag(ctx, getParam(req, 'key'), input, req.get('if-match'));
+      await audit(ctx, {
+        action: 'platform.flag_set',
+        entityType: 'FEATURE_FLAG',
+        entityId: updated.key,
+        after: { scope: updated.scope, value: updated.value },
+        permissionUsed: 'platform.flags',
+      });
       res.set('ETag', `"${updated.lockVersion}"`);
       res.json(updated);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
   // ==========================================
   // SUB-ADM.03: Master Data (API-ADM-003)
   // ==========================================
-  router.get(['/v1/master-data', '/platform/v1/master-data'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.master_data');
-      const listCode = req.query.listCode as string | undefined;
-      const result = await service.getMasterData(listCode);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/master-data', '/platform/v1/master-data'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.master_data');
+      res.json(await service.getMasterData(ctx, req.query.listCode as string | undefined));
+    }),
+  );
 
-  router.post(['/v1/master-data/imports', '/platform/v1/master-data/imports'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.master_data');
+  router.post(
+    ['/v1/master-data/imports', '/platform/v1/master-data/imports'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.master_data');
       const body = MasterDataImportRequestSchema.parse(req.body);
-      const result = await service.importMasterData(body, ctx.principal.id);
+      const result = await service.importMasterData(ctx, body);
+      if (!body.dryRun) {
+        await audit(ctx, {
+          action: 'platform.master_data_imported',
+          entityType: 'MASTER_DATA',
+          entityId: null,
+          after: { listCode: body.listCode },
+          permissionUsed: 'platform.master_data',
+        });
+      }
       res.status(body.dryRun ? 200 : 201).json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
   // ==========================================
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
-  router.get(['/v1/jobs', '/platform/v1/jobs'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.jobs');
-      const result = await service.getJobsAndQueues();
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/jobs', '/platform/v1/jobs'],
+    handle(async (ctx, _req, res) => {
+      await requirePlatform(ctx, 'platform.jobs');
+      res.json(await service.getJobsAndQueues());
+    }),
+  );
 
-  router.post(['/v1/queues/:queue/pause', '/platform/v1/queues/:queue/pause'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.jobs');
+  router.post(
+    ['/v1/queues/:queue/pause', '/platform/v1/queues/:queue/pause'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.jobs');
       const input = PauseQueueRequestSchema.parse(req.body);
       const result = await service.pauseQueue(getParam(req, 'queue'), input, ctx.principal.id);
+      await audit(ctx, {
+        action: 'platform.queue_paused',
+        entityType: 'JOB_QUEUE',
+        entityId: getParam(req, 'queue'),
+        reason: input.reason,
+        permissionUsed: 'platform.jobs',
+      });
       res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
-  router.post(['/v1/queues/:queue/resume', '/platform/v1/queues/:queue/resume'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.jobs');
+  router.post(
+    ['/v1/queues/:queue/resume', '/platform/v1/queues/:queue/resume'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.jobs');
       const input = ResumeQueueRequestSchema.parse(req.body);
       const result = await service.resumeQueue(getParam(req, 'queue'), input, ctx.principal.id);
+      await audit(ctx, {
+        action: 'platform.queue_resumed',
+        entityType: 'JOB_QUEUE',
+        entityId: getParam(req, 'queue'),
+        reason: input.reason,
+        permissionUsed: 'platform.jobs',
+      });
       res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
-  router.post(['/v1/dead-letters/:id/replay', '/platform/v1/dead-letters/:id/replay'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.jobs');
+  router.post(
+    ['/v1/dead-letters/:id/replay', '/platform/v1/dead-letters/:id/replay'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.jobs');
       const result = await service.replayDeadLetter(getParam(req, 'id'));
+      await audit(ctx, {
+        action: 'platform.dead_letter_replayed',
+        entityType: 'DEAD_LETTER',
+        entityId: getParam(req, 'id'),
+        permissionUsed: 'platform.jobs',
+      });
       res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
-  router.post(['/v1/dead-letters/:id/discard', '/platform/v1/dead-letters/:id/discard'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.jobs');
+  router.post(
+    ['/v1/dead-letters/:id/discard', '/platform/v1/dead-letters/:id/discard'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.jobs');
       const result = await service.discardDeadLetter(getParam(req, 'id'));
+      await audit(ctx, {
+        action: 'platform.dead_letter_discarded',
+        entityType: 'DEAD_LETTER',
+        entityId: getParam(req, 'id'),
+        permissionUsed: 'platform.jobs',
+      });
       res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
   // ==========================================
-  // SUB-ADM.05: System Health
+  // SUB-ADM.05: System Health (platform operators)
   // ==========================================
-  router.get(['/v1/health', '/platform/v1/health'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const result = await service.getSystemHealth();
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/health', '/platform/v1/health'],
+    handle(async (ctx, _req, res) => {
+      await requirePlatform(ctx, 'platform.console');
+      res.json(await service.getSystemHealth());
+    }),
+  );
 
   // ==========================================
   // SUB-ADM.06: Support Access (API-ADM-006 / API-ADM-007)
+  // The operator asks (platform realm). The target tenant's administrator decides (tenant realm). A tenant administrator
+  // listing here sees only their own tenant's requests, so they can find the ones waiting for them.
   // ==========================================
-  router.get(['/v1/support-access-requests', '/platform/v1/support-access-requests'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.support_access');
+  // The app mounts this router under /platform and under /v1, so the bare path is what a tenant reaches as /v1/support-access-requests.
+  router.get(
+    ['/v1/support-access-requests', '/platform/v1/support-access-requests', '/support-access-requests'],
+    handle(async (ctx, req, res) => {
       const tenantId = req.query.tenantId as string | undefined;
-      const result = await service.listSupportAccessRequests(tenantId);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      if (isPlatformRealm(ctx.principal)) {
+        await requirePlatform(ctx, 'platform.support_access');
+        res.json(await service.listSupportAccessRequests(ctx, tenantId));
+        return;
+      }
+      await requireTenant(ctx, 'config.manage');
+      if (tenantId !== undefined && tenantId !== ctx.principal.tenantId) {
+        throw AppError.of('FORBIDDEN', "You can only list your own tenant's requests.");
+      }
+      res.json(await service.listSupportAccessRequests(ctx));
+    }),
+  );
 
-  router.post(['/v1/support-access-requests', '/platform/v1/support-access-requests'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.support_access');
+  router.post(
+    ['/v1/support-access-requests', '/platform/v1/support-access-requests'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.support_access');
       const input = CreateSupportAccessRequestSchema.parse(req.body);
-      const result = await service.createSupportAccessRequest(input, ctx.principal.id);
-      res.status(201).json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      res.status(201).json(await service.createSupportAccessRequest(ctx, input));
+    }),
+  );
 
-  router.post(['/v1/support-access-requests/:id/approval', '/support-access-requests/:id/approval'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+  router.post(
+    ['/v1/support-access-requests/:id/approval', '/support-access-requests/:id/approval'],
+    handle(async (ctx, req, res) => {
+      await requireTenant(ctx, 'config.manage');
       const input = ApproveSupportAccessRequestSchema.parse(req.body);
-      const result = await service.approveSupportAccessRequest(getParam(req, 'id'), input, ctx.principal.id);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      res.json(await service.approveSupportAccessRequest(ctx, getParam(req, 'id'), input));
+    }),
+  );
+
+  router.post(
+    ['/v1/support-access-requests/:id/revocation', '/support-access-requests/:id/revocation'],
+    handle(async (ctx, req, res) => {
+      await requireTenant(ctx, 'config.manage');
+      RevokeSupportAccessRequestSchema.parse(req.body ?? {});
+      res.json(await service.revokeSupportAccessRequest(ctx, getParam(req, 'id')));
+    }),
+  );
 
   // ==========================================
-  // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
+  // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009) — tenant realm
   // ==========================================
-  router.get(['/v1/data-corrections', '/data-corrections'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'data_correction.request');
-      const result = await service.listDataCorrections(ctx.principal.tenantId);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/data-corrections', '/data-corrections'],
+    handle(async (ctx, _req, res) => {
+      await requireTenant(ctx, 'data_correction.request');
+      res.json(await service.listDataCorrections(ctx));
+    }),
+  );
 
-  router.post(['/v1/data-corrections', '/data-corrections'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'data_correction.request');
+  router.post(
+    ['/v1/data-corrections', '/data-corrections'],
+    handle(async (ctx, req, res) => {
+      await requireTenant(ctx, 'data_correction.request');
       const input = CreateDataCorrectionRequestSchema.parse(req.body);
-      const result = await service.createDataCorrectionRequest(input, ctx.principal.id);
-      res.status(201).json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      res.status(201).json(await service.createDataCorrectionRequest(ctx, input));
+    }),
+  );
 
-  router.post(['/v1/data-corrections/:id/approval', '/data-corrections/:id/approval'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'data_correction.approve');
+  router.post(
+    ['/v1/data-corrections/:id/approval', '/data-corrections/:id/approval'],
+    handle(async (ctx, req, res) => {
+      await requireTenant(ctx, 'data_correction.approve');
       const input = ApproveDataCorrectionRequestSchema.parse(req.body);
-      const result = await service.approveDataCorrectionRequest(getParam(req, 'id'), input, ctx.principal.id);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+      res.json(await service.approveDataCorrectionRequest(ctx, getParam(req, 'id'), input));
+    }),
+  );
 
-  router.post(['/v1/data-corrections/:id/execute', '/data-corrections/:id/execute'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'data_correction.approve');
-      const result = await service.executeDataCorrection(getParam(req, 'id'));
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  // Executed by the correction executor (a service identity), never by a person. The executor carries the tenant in its token.
+  router.post(
+    ['/v1/data-corrections/:id/execute', '/data-corrections/:id/execute'],
+    handle(async (ctx, req, res) => {
+      requireExecutor(ctx);
+      res.json(await service.executeDataCorrection(ctx, getParam(req, 'id')));
+    }),
+  );
 
   // ==========================================
   // SUB-ADM.08: Release Management (Release Register)
   // ==========================================
-  router.get(['/v1/releases', '/platform/v1/releases'], async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'platform.release');
-      const result = await service.getReleases();
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.get(
+    ['/v1/releases', '/platform/v1/releases'],
+    handle(async (ctx, _req, res) => {
+      await requirePlatform(ctx, 'platform.release');
+      res.json(await service.getReleases(ctx));
+    }),
+  );
+
+  router.put(
+    ['/v1/releases/:version', '/platform/v1/releases/:version'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.release');
+      // Recording that a release passed its gates, or was published, is a decision of record: it needs a recent authenticator check.
+      deps.authz.requireStepUp(ctx);
+      const patch = UpdateReleaseRequestSchema.parse(req.body);
+      const updated = await service.updateRelease(ctx, getParam(req, 'version'), patch, req.get('if-match'));
+      res.set('ETag', `"${updated.lockVersion}"`);
+      res.json(updated);
+    }),
+  );
 
   return router;
 }

@@ -39,4 +39,18 @@ describe('route table', () => {
     expect(() => createMemoryRouter(routes)).not.toThrow();
     expect(routes.flatMap((r) => r.children ?? []).every((r) => r !== undefined && r !== null)).toBe(true);
   });
+
+  it('resolves every sidebar navigation link to a valid route', async () => {
+    const { matchRoutes } = await import('react-router-dom');
+    const { NAV_GROUPS } = await import('./shell/Sidebar');
+    const sidebarPaths = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.to).filter(Boolean) as string[]);
+    for (const path of sidebarPaths) {
+      const matches = matchRoutes(routes, path);
+      expect(matches, `Path ${path} failed to match any route`).not.toBeNull();
+      const lastMatch = matches![matches!.length - 1]!;
+      expect(lastMatch.route.path, `Path ${path} matched wildcard '*' instead of an actual page`).not.toBe(
+        '*',
+      );
+    }
+  });
 });

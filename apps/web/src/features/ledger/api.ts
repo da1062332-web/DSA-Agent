@@ -16,7 +16,9 @@ import type {
   PeriodCloseResponse,
 } from '@dsa/contracts';
 
-export async function fetchLedgerAccounts(query?: ListLedgerAccountsQuery): Promise<{ data: LedgerAccount[] }> {
+export async function fetchLedgerAccounts(
+  query?: ListLedgerAccountsQuery,
+): Promise<{ data: LedgerAccount[] }> {
   return apiFetch<{ data: LedgerAccount[] }>('/v1/ledger/accounts', {
     query: query as any,
   });
@@ -52,7 +54,10 @@ export async function fetchConnectorStatements(
   });
 }
 
-export async function closeLedgerPeriod(period: string, input: CloseLedgerPeriodInput): Promise<PeriodCloseResponse> {
+export async function closeLedgerPeriod(
+  period: string,
+  input: CloseLedgerPeriodInput,
+): Promise<PeriodCloseResponse> {
   return apiFetch<PeriodCloseResponse>(`/v1/ledger/periods/${period}/close`, {
     method: 'POST',
     body: input,
@@ -66,9 +71,13 @@ export async function createLedgerExport(input: CreateLedgerExportInput): Promis
   });
 }
 
-export async function fetchTrialBalance(
-  period?: string,
-): Promise<{ period?: string; totalDebit: string; totalCredit: string; variance: string; isBalanced: boolean }> {
+export async function fetchTrialBalance(period?: string): Promise<{
+  period?: string;
+  totalDebit: string;
+  totalCredit: string;
+  variance: string;
+  isBalanced: boolean;
+}> {
   return apiFetch('/v1/ledger/trial-balance', {
     query: period ? { period } : undefined,
   });

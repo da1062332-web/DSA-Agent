@@ -2,23 +2,18 @@
 // Direct live PostgreSQL verification for Module 27 (Connectors / MOD-CON).
 // Connects as dsa_api (NOBYPASSRLS) and validates real PostgreSQL migrations, RLS policies, triggers, and tenant isolation.
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database, RequestContext } from '@dsa/contracts';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
-const adminDbUrl = process.env.VERIFY_DATABASE_URL || process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
+const adminDbUrl =
+  resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -126,7 +121,9 @@ describeLivePg('Module 27 (MOD-CON): Live PostgreSQL Verification', () => {
     expect(resB.rows.length).toBe(0);
 
     // 4. Fail-closed: unauthenticated / direct without tenant context returns 0 rows
-    const resDirect = await sql<{ id: string }>`SELECT id FROM app.connector WHERE id = ${connectorId}`.execute(db);
+    const resDirect = await sql<{
+      id: string;
+    }>`SELECT id FROM app.connector WHERE id = ${connectorId}`.execute(db);
     expect(resDirect.rows.length).toBe(0);
   });
 
@@ -191,7 +188,9 @@ describeLivePg('Module 27 (MOD-CON): Live PostgreSQL Verification', () => {
     });
 
     const resB = await txRunner.withTenantTx(ctxB, async (tx) => {
-      return sql<{ id: string }>`SELECT id FROM app.connector_bank_account WHERE id = ${bankAccId}`.execute(tx);
+      return sql<{ id: string }>`SELECT id FROM app.connector_bank_account WHERE id = ${bankAccId}`.execute(
+        tx,
+      );
     });
     expect(resB.rows.length).toBe(0);
   });

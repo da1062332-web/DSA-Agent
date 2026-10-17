@@ -94,7 +94,9 @@ export class WebhookDeliveryService {
 
   async listSubscriptions(ctx: RequestContext): Promise<WebhookSubscriptionResponse[]> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'webhook.manage' || g.code === 'config.manage' || g.code === 'api.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'webhook.manage' || g.code === 'config.manage' || g.code === 'api.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: webhook.manage or api.read required.');
     }

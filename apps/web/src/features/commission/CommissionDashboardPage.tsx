@@ -395,21 +395,38 @@ export function CommissionDashboardPage() {
                 {plans.length === 0 ? (
                   <Box sx={{ p: 4, textAlign: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
-                      No commission plans configured. Add a plan to enable disbursement commission calculations.
+                      No commission plans configured. Add a plan to enable disbursement commission
+                      calculations.
                     </Typography>
                   </Box>
                 ) : (
                   <Table>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell><strong>Lender ID</strong></TableCell>
-                        <TableCell><strong>Qualifying Event</strong></TableCell>
-                        <TableCell><strong>Basis</strong></TableCell>
-                        <TableCell><strong>Rounding</strong></TableCell>
-                        <TableCell><strong>Clawback Window</strong></TableCell>
-                        <TableCell><strong>Rule Set ID</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell align="right"><strong>Actions</strong></TableCell>
+                        <TableCell>
+                          <strong>Lender ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Qualifying Event</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Basis</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Rounding</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Clawback Window</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Rule Set ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Status</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>Actions</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -472,24 +489,44 @@ export function CommissionDashboardPage() {
                     <Table>
                       <TableHead sx={{ bgcolor: 'grey.50' }}>
                         <TableRow>
-                          <TableCell><strong>Calc ID</strong></TableCell>
-                          <TableCell><strong>Tranche ID</strong></TableCell>
-                          <TableCell><strong>Lender</strong></TableCell>
-                          <TableCell><strong>Basis Amount (₹)</strong></TableCell>
-                          <TableCell><strong>Rate</strong></TableCell>
-                          <TableCell><strong>Gross Amount (₹)</strong></TableCell>
-                          <TableCell><strong>Status</strong></TableCell>
+                          <TableCell>
+                            <strong>Calc ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Tranche ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Lender</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Basis Amount (₹)</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Rate</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Gross Amount (₹)</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Status</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {calculations.map((c) => (
                           <TableRow key={c.id}>
                             <TableCell>{c.id}</TableCell>
-                            <TableCell><strong>{c.trancheId}</strong></TableCell>
-                            <TableCell>{lenders.find((l) => l.id === c.lenderId)?.name || c.lenderId}</TableCell>
+                            <TableCell>
+                              <strong>{c.trancheId}</strong>
+                            </TableCell>
+                            <TableCell>
+                              {lenders.find((l) => l.id === c.lenderId)?.name || c.lenderId}
+                            </TableCell>
                             <TableCell>₹{Number(c.basisAmount).toLocaleString('en-IN')}</TableCell>
                             <TableCell>{(Number(c.rate) * 100).toFixed(2)}%</TableCell>
-                            <TableCell><strong>₹{Number(c.grossAmount).toLocaleString('en-IN')}</strong></TableCell>
+                            <TableCell>
+                              <strong>₹{Number(c.grossAmount).toLocaleString('en-IN')}</strong>
+                            </TableCell>
                             <TableCell>
                               <Chip
                                 label={c.status}
@@ -522,35 +559,43 @@ export function CommissionDashboardPage() {
                     <Table>
                       <TableHead sx={{ bgcolor: 'grey.50' }}>
                         <TableRow>
-                          <TableCell><strong>Payable ID</strong></TableCell>
-                          <TableCell><strong>Connector ID</strong></TableCell>
-                          <TableCell><strong>Share Rate</strong></TableCell>
-                          <TableCell><strong>Payable Amount (₹)</strong></TableCell>
-                          <TableCell><strong>State</strong></TableCell>
-                          <TableCell align="right"><strong>Actions</strong></TableCell>
+                          <TableCell>
+                            <strong>Payable ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Connector ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Share Rate</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Payable Amount (₹)</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>State</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>Actions</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {payables.map((p) => (
                           <TableRow key={p.id}>
                             <TableCell>{p.id}</TableCell>
-                            <TableCell><strong>{p.connectorId}</strong></TableCell>
-                            <TableCell>{(Number(p.shareRate) * 100).toFixed(1)}%</TableCell>
-                            <TableCell><strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong></TableCell>
                             <TableCell>
-                              <Chip
-                                label={p.state}
-                                size="small"
-                                color={getPayableChipColor(p.state)}
-                              />
+                              <strong>{p.connectorId}</strong>
+                            </TableCell>
+                            <TableCell>{(Number(p.shareRate) * 100).toFixed(1)}%</TableCell>
+                            <TableCell>
+                              <strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={p.state} size="small" color={getPayableChipColor(p.state)} />
                             </TableCell>
                             <TableCell align="right">
                               {canCreateClawback && p.state === 'ELIGIBLE' && (
-                                <Button
-                                  size="small"
-                                  color="warning"
-                                  onClick={() => handleOpenClawback(p)}
-                                >
+                                <Button size="small" color="warning" onClick={() => handleOpenClawback(p)}>
                                   Clawback
                                 </Button>
                               )}
@@ -584,18 +629,30 @@ export function CommissionDashboardPage() {
                   <Table>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell><strong>Proposal ID</strong></TableCell>
-                        <TableCell><strong>Reason</strong></TableCell>
-                        <TableCell><strong>Affected Calculations</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell align="right"><strong>Actions</strong></TableCell>
+                        <TableCell>
+                          <strong>Proposal ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Reason</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Affected Calculations</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Status</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>Actions</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {proposals.map((pr) => (
                         <TableRow key={pr.id}>
                           <TableCell>{pr.id}</TableCell>
-                          <TableCell><strong>{pr.reason}</strong></TableCell>
+                          <TableCell>
+                            <strong>{pr.reason}</strong>
+                          </TableCell>
                           <TableCell>{pr.affectedCalculationIds.join(', ')}</TableCell>
                           <TableCell>
                             <Chip
@@ -641,11 +698,7 @@ export function CommissionDashboardPage() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               <FormControl fullWidth required>
                 <InputLabel>Lender</InputLabel>
-                <Select
-                  value={planLenderId}
-                  label="Lender"
-                  onChange={(e) => setPlanLenderId(e.target.value)}
-                >
+                <Select value={planLenderId} label="Lender" onChange={(e) => setPlanLenderId(e.target.value)}>
                   {lenders.map((l) => (
                     <MenuItem key={l.id} value={l.id}>
                       {l.name}
@@ -727,11 +780,7 @@ export function CommissionDashboardPage() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               <FormControl fullWidth required>
                 <InputLabel>Lender</InputLabel>
-                <Select
-                  value={calcLenderId}
-                  label="Lender"
-                  onChange={(e) => setCalcLenderId(e.target.value)}
-                >
+                <Select value={calcLenderId} label="Lender" onChange={(e) => setCalcLenderId(e.target.value)}>
                   {lenders.map((l) => (
                     <MenuItem key={l.id} value={l.id}>
                       {l.name}

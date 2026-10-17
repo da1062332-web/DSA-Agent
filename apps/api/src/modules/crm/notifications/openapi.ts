@@ -148,8 +148,14 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
         },
       },
       401: { description: 'Unauthenticated', content: { 'application/json': { schema: ErrorEnvelope } } },
-      412: { description: 'Precondition Failed (concurrent update detected)', content: { 'application/json': { schema: ErrorEnvelope } } },
-      428: { description: 'Precondition Required (missing If-Match header)', content: { 'application/json': { schema: ErrorEnvelope } } },
+      412: {
+        description: 'Precondition Failed (concurrent update detected)',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
+      428: {
+        description: 'Precondition Required (missing If-Match header)',
+        content: { 'application/json': { schema: ErrorEnvelope } },
+      },
     },
   });
 }

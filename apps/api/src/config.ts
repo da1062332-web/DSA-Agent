@@ -1,5 +1,6 @@
 // API configuration from the environment (owner: Dev 1). Other lanes add their variables by PR.
 import { z } from 'zod';
+import { mfaMayBeDisabledHere } from './http/mfa-switch';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 const isLocalHost = (url: string) => {
@@ -31,6 +32,19 @@ const EnvSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+    /**
+     * Turns on the data-correction executor (Release 2, SUB-ADM.07): an in-process worker that carries out APPROVED corrections using the
+     * reviewed scripts in correction-scripts.ts. Off unless set to true, because it writes to tenant data.
+     */
+    DATA_CORRECTION_EXECUTOR: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    /** Development switch: skip MFA. Refused unless this is a local Supabase stack outside production (see http/mfa-switch.ts). */
+    DISABLE_MFA: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((env, ctx) => {
     if (FORBIDDEN_DB_USERS.test(decodeURIComponent(new URL(env.DATABASE_URL).username))) {
@@ -38,6 +52,17 @@ const EnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
         message: 'must connect as dsa_api, never as postgres or service_role (ADR-SB-03)',
+      });
+    }
+    if (
+      env.DISABLE_MFA &&
+      !mfaMayBeDisabledHere({ NODE_ENV: env.NODE_ENV, SUPABASE_URL: env.SUPABASE_URL })
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['DISABLE_MFA'],
+        message:
+          'MFA can be disabled only against the local Supabase stack and never in production; remove DISABLE_MFA',
       });
     }
     if (env.TEST_TOKENS && !isLocalHost(env.SUPABASE_URL)) {

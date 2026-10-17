@@ -148,7 +148,11 @@ export function createMockPlatformStore() {
 
   const permissions: MockPermissionRecord[] = [
     { code: 'user.manage', description: 'Manage users', introduced_in: 'MVP-4D' },
-    { code: 'role.manage', description: 'Manage roles and role-permission assignments', introduced_in: 'MVP-4D' },
+    {
+      code: 'role.manage',
+      description: 'Manage roles and role-permission assignments',
+      introduced_in: 'MVP-4D',
+    },
     { code: 'config.manage', description: 'Manage configuration', introduced_in: 'MVP-4D' },
     { code: 'lead.read', description: 'Read leads in scope', introduced_in: 'MVP-4D' },
     { code: 'lead.create', description: 'Create leads', introduced_in: 'MVP-4D' },
@@ -203,7 +207,7 @@ export function createMockPlatformStore() {
       tenant_id: 'ten_01JTESTTENANT00000000000000',
       code: 'ROLE-LOAN-OFFICER',
       name: 'Loan Officer',
-      is_template: true,
+      is_template: false, // a custom role: system templates are not editable, custom roles are
       version: 1,
       permissions: ['lead.read', 'lead.create'],
     },
@@ -285,7 +289,11 @@ export function createMockPlatformStore() {
     const sqlLower = sqlText.toLowerCase();
 
     // 1. SELECT branches list
-    if (sqlLower.includes('from app.branch') && sqlLower.includes('organisation_id') && !sqlLower.includes('where id =')) {
+    if (
+      sqlLower.includes('from app.branch') &&
+      sqlLower.includes('organisation_id') &&
+      !sqlLower.includes('where id =')
+    ) {
       const tid = params[0] as string;
       const rows = branches
         .filter((b) => b.tenant_id === tid)
@@ -304,7 +312,11 @@ export function createMockPlatformStore() {
     }
 
     // 2. Branch single fetch or existence check
-    if (sqlLower.includes('select') && sqlLower.includes('from app.branch') && sqlLower.includes('where id =')) {
+    if (
+      sqlLower.includes('select') &&
+      sqlLower.includes('from app.branch') &&
+      sqlLower.includes('where id =')
+    ) {
       const branchId = params[0] as string;
       const tid = params[1] as string;
       const found = branches.find((b) => b.id === branchId && b.tenant_id === tid);
@@ -358,8 +370,14 @@ export function createMockPlatformStore() {
 
     // 5. Branch update
     if (sqlLower.includes('update app.branch')) {
-      const [name, pincode, timezone, status, lock_version, updated_by, id, tenant_id, currentLockVersion] = params;
-      const b = branches.find((x) => x.id === id && x.tenant_id === tenant_id && (x.lock_version ?? 0) === (currentLockVersion as number));
+      const [name, pincode, timezone, status, lock_version, updated_by, id, tenant_id, currentLockVersion] =
+        params;
+      const b = branches.find(
+        (x) =>
+          x.id === id &&
+          x.tenant_id === tenant_id &&
+          (x.lock_version ?? 0) === (currentLockVersion as number),
+      );
       if (b) {
         b.name = name as string;
         b.pincode = (pincode as string) ?? null;
@@ -373,7 +391,11 @@ export function createMockPlatformStore() {
     }
 
     // 6. Tenant select
-    if (sqlLower.includes('select') && sqlLower.includes('from app.tenant') && sqlLower.includes('where id =')) {
+    if (
+      sqlLower.includes('select') &&
+      sqlLower.includes('from app.tenant') &&
+      sqlLower.includes('where id =')
+    ) {
       const tid = params[0] as string;
       const t = tenants.find((x) => x.id === tid);
       return {
@@ -395,7 +417,11 @@ export function createMockPlatformStore() {
     }
 
     // 7. Organisation select
-    if (sqlLower.includes('select') && sqlLower.includes('from app.organisation') && sqlLower.includes('tenant_id =')) {
+    if (
+      sqlLower.includes('select') &&
+      sqlLower.includes('from app.organisation') &&
+      sqlLower.includes('tenant_id =')
+    ) {
       const tid = params[0] as string;
       const org = organisations.find((x) => x.tenant_id === tid);
       return {
@@ -417,7 +443,9 @@ export function createMockPlatformStore() {
     // 8. Organisation update
     if (sqlLower.includes('update app.organisation')) {
       const [legalName, constitution, updatedBy, tenantId, orgId, lockVersion] = params;
-      const org = organisations.find((x) => x.tenant_id === tenantId && x.id === orgId && x.lock_version === (lockVersion as number));
+      const org = organisations.find(
+        (x) => x.tenant_id === tenantId && x.id === orgId && x.lock_version === (lockVersion as number),
+      );
       if (org) {
         if (legalName !== null && legalName !== undefined) org.legal_name = legalName as string;
         if (constitution !== null && constitution !== undefined) org.constitution = constitution as string;
@@ -474,7 +502,11 @@ export function createMockPlatformStore() {
     }
 
     // Role existence / template / version check
-    if (sqlLower.includes('select') && sqlLower.includes('from app.role') && sqlLower.includes('where id =')) {
+    if (
+      sqlLower.includes('select') &&
+      sqlLower.includes('from app.role') &&
+      sqlLower.includes('where id =')
+    ) {
       const roleId = params[0] as string;
       const tid = params[1] as string;
       const found = roles.find((r) => r.id === roleId && r.tenant_id === tid);
@@ -549,7 +581,11 @@ export function createMockPlatformStore() {
     }
 
     // DELETE app.role
-    if (sqlLower.includes('delete from app.role') && !sqlLower.includes('role_permission') && sqlLower.includes('where id =')) {
+    if (
+      sqlLower.includes('delete from app.role') &&
+      !sqlLower.includes('role_permission') &&
+      sqlLower.includes('where id =')
+    ) {
       const [roleId, tid] = params;
       const idx = roles.findIndex((r) => r.id === roleId && r.tenant_id === tid);
       if (idx >= 0) roles.splice(idx, 1);
@@ -578,7 +614,10 @@ export function createMockPlatformStore() {
     }
 
     // Query user effective permissions
-    if (sqlLower.includes('from app.user_role_assignment ura') && sqlLower.includes('join app.role_permission rp')) {
+    if (
+      sqlLower.includes('from app.user_role_assignment ura') &&
+      sqlLower.includes('join app.role_permission rp')
+    ) {
       const userId = params[0] as string;
       const tid = params[1] as string;
       const userAssignments = assignments.filter((a) => a.user_id === userId && a.tenant_id === tid);
@@ -599,7 +638,13 @@ export function createMockPlatformStore() {
     }
 
     // 4. SELECT roles list
-    if (sqlLower.includes('select') && sqlLower.includes('from app.role') && !sqlLower.includes('where id =') && !sqlLower.includes('where r.id =') && !sqlLower.includes('code =')) {
+    if (
+      sqlLower.includes('select') &&
+      sqlLower.includes('from app.role') &&
+      !sqlLower.includes('where id =') &&
+      !sqlLower.includes('where r.id =') &&
+      !sqlLower.includes('code =')
+    ) {
       const tid = params[0] as string;
       const rows = roles
         .filter((r) => r.tenant_id === tid)
@@ -616,7 +661,11 @@ export function createMockPlatformStore() {
     }
 
     // 5. Existing assignment check
-    if (sqlLower.includes('from app.user_role_assignment') && sqlLower.includes('select id') && sqlLower.includes('user_id =')) {
+    if (
+      sqlLower.includes('from app.user_role_assignment') &&
+      sqlLower.includes('select id') &&
+      sqlLower.includes('user_id =')
+    ) {
       const uId = params[0] as string;
       const rId = params[1] as string;
       const tid = params[2] as string;
@@ -644,17 +693,20 @@ export function createMockPlatformStore() {
       return { rows: [] };
     }
 
-    // 7. DELETE user_role_assignment
-    if (sqlLower.includes('delete from app.user_role_assignment')) {
+    // 7. END user_role_assignment (removal closes effective_range; the mock drops the assignment, which is how it looks to readers)
+    if (sqlLower.includes('update app.user_role_assignment')) {
       const [userId, roleId, tid] = params;
-      const idx = assignments.findIndex((a) => a.user_id === userId && a.role_id === roleId && a.tenant_id === tid);
-      if (idx >= 0) assignments.splice(idx, 1);
+      const idx = assignments.findIndex(
+        (a) => a.user_id === userId && a.role_id === roleId && a.tenant_id === tid,
+      );
+      if (idx < 0) return { rows: [] };
+      const ended = assignments.splice(idx, 1)[0]!;
       const user = users.find((u) => u.id === userId && u.tenant_id === tid);
       const role = roles.find((r) => r.id === roleId);
       if (user && role) {
         user.assigned_roles = user.assigned_roles.filter((r) => r !== role.name);
       }
-      return { rows: [] };
+      return { rows: [{ id: ended.id }] };
     }
 
     // 8. Duplicate email check
@@ -666,7 +718,11 @@ export function createMockPlatformStore() {
     }
 
     // 9. User check / lock_version check
-    if (sqlLower.includes('from app.app_user') && sqlLower.includes('where id =') && !sqlLower.includes('display_name')) {
+    if (
+      sqlLower.includes('from app.app_user') &&
+      sqlLower.includes('where id =') &&
+      !sqlLower.includes('display_name')
+    ) {
       const uId = params[0] as string;
       const tid = params[1] as string;
       const found = users.find((u) => u.id === uId && u.tenant_id === tid);
@@ -675,17 +731,8 @@ export function createMockPlatformStore() {
 
     // 10. INSERT app_user
     if (sqlLower.includes('insert into app.app_user')) {
-      const [
-        id,
-        tid,
-        idpSubject,
-        email,
-        mobileE164,
-        displayName,
-        status,
-        availability,
-        primaryBranchId,
-      ] = params;
+      const [id, tid, idpSubject, email, mobileE164, displayName, status, availability, primaryBranchId] =
+        params;
       const newRecord: MockUserRecord = {
         id: id as string,
         tenant_id: tid as string,
@@ -821,7 +868,10 @@ export function createMockPlatformStore() {
   };
 
   class MockConnection implements DatabaseConnection {
-    async executeQuery<R>(compiledQuery: { sql: string; parameters: readonly unknown[] }): Promise<QueryResult<R>> {
+    async executeQuery<R>(compiledQuery: {
+      sql: string;
+      parameters: readonly unknown[];
+    }): Promise<QueryResult<R>> {
       return handleQuery(compiledQuery.sql, compiledQuery.parameters) as QueryResult<R>;
     }
     async *streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {}

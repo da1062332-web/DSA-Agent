@@ -31,7 +31,11 @@ export interface ReconciliationRepository {
   // SUB-REC.02: Matching
   findCalculationsForMatching(tx: Tx, tenantId: string, lenderId: string): Promise<any[]>;
   insertReconciliationMatch(tx: Tx, row: ReconciliationMatchRow): Promise<void>;
-  findActiveMatchForLine(tx: Tx, tenantId: string, statementLineId: string): Promise<ReconciliationMatchRow | null>;
+  findActiveMatchForLine(
+    tx: Tx,
+    tenantId: string,
+    statementLineId: string,
+  ): Promise<ReconciliationMatchRow | null>;
   listMatchesForStatement(tx: Tx, tenantId: string, statementId: string): Promise<ReconciliationMatchRow[]>;
 
   // SUB-REC.03: Exceptions & Adjustments
@@ -70,7 +74,11 @@ export interface ReconciliationRepository {
   // SUB-REC.04: Disputes & Holds
   insertDispute(tx: Tx, row: DisputeRow): Promise<void>;
   findDisputeById(tx: Tx, tenantId: string, id: string): Promise<DisputeRow | null>;
-  listDisputes(tx: Tx, tenantId: string, filters?: { status?: string; partyType?: string }): Promise<DisputeRow[]>;
+  listDisputes(
+    tx: Tx,
+    tenantId: string,
+    filters?: { status?: string; partyType?: string },
+  ): Promise<DisputeRow[]>;
   updateDispute(
     tx: Tx,
     tenantId: string,
@@ -221,7 +229,11 @@ export class PgReconciliationRepository implements ReconciliationRepository {
     `.execute(tx);
   }
 
-  async findActiveMatchForLine(tx: Tx, tenantId: string, statementLineId: string): Promise<ReconciliationMatchRow | null> {
+  async findActiveMatchForLine(
+    tx: Tx,
+    tenantId: string,
+    statementLineId: string,
+  ): Promise<ReconciliationMatchRow | null> {
     const res = await sql<ReconciliationMatchRow>`
       SELECT * FROM app.reconciliation_match
       WHERE tenant_id = ${tenantId} AND statement_line_id = ${statementLineId} AND status = 'ACTIVE'
@@ -229,7 +241,11 @@ export class PgReconciliationRepository implements ReconciliationRepository {
     return res.rows[0] ?? null;
   }
 
-  async listMatchesForStatement(tx: Tx, tenantId: string, statementId: string): Promise<ReconciliationMatchRow[]> {
+  async listMatchesForStatement(
+    tx: Tx,
+    tenantId: string,
+    statementId: string,
+  ): Promise<ReconciliationMatchRow[]> {
     const res = await sql<ReconciliationMatchRow>`
       SELECT m.* FROM app.reconciliation_match m
       JOIN app.lender_statement_line l ON l.id = m.statement_line_id AND l.tenant_id = m.tenant_id

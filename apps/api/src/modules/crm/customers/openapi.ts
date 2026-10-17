@@ -10,7 +10,10 @@ import {
 } from './types';
 
 export const tags = [
-  { name: 'MOD-CUST Customers', description: 'Customer profiles, consent tracking, and party deduplication (MOD-CUST).' },
+  {
+    name: 'MOD-CUST Customers',
+    description: 'Customer profiles, consent tracking, and party deduplication (MOD-CUST).',
+  },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {

@@ -37,7 +37,9 @@ export function UserCreatePage() {
   const [mobileE164, setMobileE164] = useState<string>('');
   const [primaryBranchId, setPrimaryBranchId] = useState<string>('');
   const [status, setStatus] = useState<'ACTIVE' | 'INVITED'>('ACTIVE');
-  const [availability, setAvailability] = useState<'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE'>('AVAILABLE');
+  const [availability, setAvailability] = useState<'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE'>(
+    'AVAILABLE',
+  );
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
 
   // Errors & Loading
@@ -129,12 +131,7 @@ export function UserCreatePage() {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       {/* Navigation */}
-      <Button
-        component={RouterLink}
-        to="/users"
-        variant="text"
-        sx={{ mb: 2, fontWeight: 500 }}
-      >
+      <Button component={RouterLink} to="/users" variant="text" sx={{ mb: 2, fontWeight: 500 }}>
         &larr; Back to Staff Directory
       </Button>
 
@@ -248,9 +245,7 @@ export function UserCreatePage() {
                       value={availability}
                       label="Initial Availability"
                       onChange={(e) =>
-                        setAvailability(
-                          e.target.value as 'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE',
-                        )
+                        setAvailability(e.target.value as 'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE')
                       }
                       data-testid="users.create.availability"
                     >
@@ -310,12 +305,7 @@ export function UserCreatePage() {
 
               {/* Form Actions */}
               <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  component={RouterLink}
-                  to="/users"
-                  disabled={isSubmitting}
-                >
+                <Button variant="outlined" component={RouterLink} to="/users" disabled={isSubmitting}>
                   Cancel
                 </Button>
                 <Button

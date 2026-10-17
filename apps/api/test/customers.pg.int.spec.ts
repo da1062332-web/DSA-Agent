@@ -1,11 +1,10 @@
 // apps/api/test/customers.pg.spec.ts — owner: Dev 5 (MOD-CUST PostgreSQL Integration & RLS)
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', () => {
-  const connectionString =
-    process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -20,9 +19,7 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
     await adminClient.connect();
 
     // App client connecting as dsa_api via DATABASE_URL
-    const apiDbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });
@@ -154,10 +151,7 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
       // Attempt illegal status update (e.g. status = 'EXPIRED') -> blocked by consent_only_withdraw trigger
       await adminClient.query('SAVEPOINT sp_exp');
       await expect(
-        adminClient.query(
-          `UPDATE app.consent_record SET status = 'EXPIRED' WHERE id = $1`,
-          [consentId],
-        ),
+        adminClient.query(`UPDATE app.consent_record SET status = 'EXPIRED' WHERE id = $1`, [consentId]),
       ).rejects.toThrow(/may only move ACTIVE -> WITHDRAWN/i);
       await adminClient.query('ROLLBACK TO SAVEPOINT sp_exp');
 
@@ -205,10 +199,10 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
       await apiClient.query('SET LOCAL search_path = app, public');
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantA]);
 
-      const selectA = await apiClient.query(
-        `SELECT id, tenant_id FROM app.customer WHERE id IN ($1, $2)`,
-        [custA, custB],
-      );
+      const selectA = await apiClient.query(`SELECT id, tenant_id FROM app.customer WHERE id IN ($1, $2)`, [
+        custA,
+        custB,
+      ]);
 
       // RLS must return ONLY Tenant A's customer; Tenant B's customer must be invisible
       expect(selectA.rows.length).toBe(1);
@@ -216,10 +210,7 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
       expect(selectA.rows[0].tenant_id).toBe(tenantA);
 
       // Attempting to select Tenant B's customer directly returns 0 rows
-      const directB = await apiClient.query(
-        `SELECT id FROM app.customer WHERE id = $1`,
-        [custB],
-      );
+      const directB = await apiClient.query(`SELECT id FROM app.customer WHERE id = $1`, [custB]);
       expect(directB.rows.length).toBe(0);
 
       await apiClient.query('ROLLBACK');
@@ -227,18 +218,15 @@ describe('Module 8 — Customers PostgreSQL Integration (Real Database & RLS)', 
       // Fail-closed verification: Query without app.tenant_id must see 0 rows
       await apiClient.query('BEGIN');
       await apiClient.query('SET LOCAL search_path = app, public');
-      const noTenant = await apiClient.query(
-        `SELECT id FROM app.customer WHERE id IN ($1, $2)`,
-        [custA, custB],
-      );
+      const noTenant = await apiClient.query(`SELECT id FROM app.customer WHERE id IN ($1, $2)`, [
+        custA,
+        custB,
+      ]);
       expect(noTenant.rows.length).toBe(0);
       await apiClient.query('ROLLBACK');
     } finally {
       // Clean up test rows
-      await adminClient.query(
-        `DELETE FROM app.customer WHERE id IN ($1, $2)`,
-        [custA, custB],
-      );
+      await adminClient.query(`DELETE FROM app.customer WHERE id IN ($1, $2)`, [custA, custB]);
     }
   });
 });

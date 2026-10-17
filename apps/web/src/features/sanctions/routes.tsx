@@ -1,8 +1,14 @@
 import React from 'react';
-import type { RouteObject } from 'react-router-dom';
+import { useParams, type RouteObject } from 'react-router-dom';
 import { SanctionsPanel } from './SanctionsPanel';
+import { SanctionsListPage } from './SanctionsListPage';
+
+function SanctionsForCase() {
+  const { lenderCaseId } = useParams<{ lenderCaseId: string }>();
+  return lenderCaseId ? <SanctionsPanel lenderCaseId={lenderCaseId} /> : <SanctionsListPage />;
+}
 
 export const routes: RouteObject[] = [
-  { path: '/sanctions', element: <SanctionsPanel /> },
-  { path: '/sanctions/:lenderCaseId', element: <SanctionsPanel /> },
+  { path: '/sanctions', element: <SanctionsListPage /> },
+  { path: '/sanctions/:lenderCaseId', element: <SanctionsForCase /> },
 ];

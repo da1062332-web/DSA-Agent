@@ -20,7 +20,10 @@ import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
 import { getStoredAuthToken } from '../../auth/token';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
-const CATEGORY_COLORS: Record<NotificationCategory, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const CATEGORY_COLORS: Record<
+  NotificationCategory,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   TASK: 'info',
   LEAD: 'primary',
   APPLICATION: 'secondary',
@@ -80,9 +83,7 @@ export function NotificationsPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string 
 
       if (res.ok) {
         const nowIso = new Date().toISOString();
-        setNotifications((prev) =>
-          prev.map((n) => (ids.includes(n.id) ? { ...n, readAt: nowIso } : n)),
-        );
+        setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, readAt: nowIso } : n)));
         setUnreadCount((c) => Math.max(0, c - ids.length));
       }
     } catch {
@@ -169,7 +170,9 @@ export function NotificationsPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string 
                     >
                       Open Link
                     </Button>
-                  ) : <span />}
+                  ) : (
+                    <span />
+                  )}
                   {!notif.readAt && (
                     <Button size="small" color="inherit" onClick={() => handleMarkAsRead([notif.id])}>
                       Mark Read

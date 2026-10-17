@@ -113,4 +113,3 @@ export function useAuth(): AuthState {
 export function useOptionalAuth(): AuthState | null {
   return useContext(AuthContext);
 }
-

@@ -28,9 +28,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: DocumentSharingSer
 
       const idempotencyKey = req.get('Idempotency-Key');
       if (!idempotencyKey) {
-        throw AppError.of('VALIDATION_ERROR', 'Idempotency-Key header is required for creating upload links.', [
-          { field: 'Idempotency-Key', issue: 'REQUIRED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Idempotency-Key header is required for creating upload links.',
+          [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
+        );
       }
       if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
         throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [
@@ -93,9 +95,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: DocumentSharingSer
 
       const idempotencyKey = req.get('Idempotency-Key');
       if (!idempotencyKey) {
-        throw AppError.of('VALIDATION_ERROR', 'Idempotency-Key header is required for creating share packages.', [
-          { field: 'Idempotency-Key', issue: 'REQUIRED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Idempotency-Key header is required for creating share packages.',
+          [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
+        );
       }
       if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
         throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [
@@ -207,7 +211,10 @@ export function createPublicDocumentSharingRouter(
 
       const { checklistItemId, filename, mimeType, contentBase64 } = req.body ?? {};
       if (!checklistItemId || !filename || !mimeType || !contentBase64) {
-        throw AppError.of('VALIDATION_ERROR', 'File payload requires checklistItemId, filename, mimeType, and contentBase64.');
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'File payload requires checklistItemId, filename, mimeType, and contentBase64.',
+        );
       }
 
       const fileBuffer = Buffer.from(contentBase64, 'base64');

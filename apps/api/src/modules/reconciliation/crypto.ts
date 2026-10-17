@@ -8,10 +8,7 @@ const HMAC_SALT = process.env.REC_HMAC_SALT || 'dsa_reconciliation_salt_2026';
  * for S2 privacy-preserving matching.
  */
 export function hashLoanAccount(loanAccount: string): string {
-  return crypto
-    .createHmac('sha256', HMAC_SALT)
-    .update(loanAccount.trim().toUpperCase())
-    .digest('hex');
+  return crypto.createHmac('sha256', HMAC_SALT).update(loanAccount.trim().toUpperCase()).digest('hex');
 }
 
 /**

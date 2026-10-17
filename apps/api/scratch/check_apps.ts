@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   const lenders = await sql<{ id: string; tenant_id: string; name: string }>`
     SELECT id, tenant_id, name FROM app.lender
   `.execute(db);

@@ -11,7 +11,10 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
 
 export const tags = [
-  { name: 'MOD-SND Sanctions & Disbursement', description: 'Sanction recording, tranches, verification, and exceptions (MOD-SND).' },
+  {
+    name: 'MOD-SND Sanctions & Disbursement',
+    description: 'Sanction recording, tranches, verification, and exceptions (MOD-SND).',
+  },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {

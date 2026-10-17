@@ -435,13 +435,11 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     const contentHash = subRes.body.contentHash;
 
     // Self-approval attempt -> 403 SOD_VIOLATION
-    const selfApproveRes = await request(app)
-      .post(`/v1/rule-set-versions/${versionId}/reviews`)
-      .send({
-        action: 'APPROVE',
-        comment: 'Self approval attempt',
-        reviewedContentHash: contentHash,
-      });
+    const selfApproveRes = await request(app).post(`/v1/rule-set-versions/${versionId}/reviews`).send({
+      action: 'APPROVE',
+      comment: 'Self approval attempt',
+      reviewedContentHash: contentHash,
+    });
 
     expect(selfApproveRes.status).toBe(403);
     expect(selfApproveRes.body.error.code).toBe('SOD_VIOLATION');
@@ -477,14 +475,12 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
       deps: { txRunner: store.runner },
     });
 
-    const approveRes = await request(approverApp)
-      .post(`/v1/rule-set-versions/${versionId}/reviews`)
-      .send({
-        seat: 'RULE_APPROVER',
-        action: 'APPROVE',
-        comment: 'Compliance verified against policy v1',
-        reviewedContentHash: contentHash,
-      });
+    const approveRes = await request(approverApp).post(`/v1/rule-set-versions/${versionId}/reviews`).send({
+      seat: 'RULE_APPROVER',
+      action: 'APPROVE',
+      comment: 'Compliance verified against policy v1',
+      reviewedContentHash: contentHash,
+    });
     expect(approveRes.status).toBe(200);
     expect(approveRes.body.status).toBe('APPROVED');
 
@@ -549,9 +545,7 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
       id: 'usr_independent_approver_99',
       tenantId: 'ten_01JTESTTENANT00000000000000',
       authTime: new Date().toISOString(),
-      grants: [
-        { code: 'rule.suspend', scope: 'TENANT', branchIds: [] },
-      ],
+      grants: [{ code: 'rule.suspend', scope: 'TENANT', branchIds: [] }],
     });
     const secondApp = createTestApp({
       auth: fakeAuth(secondApprover),
@@ -727,15 +721,15 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     };
 
     // Missing If-Match header -> 422 VALIDATION_ERROR
-    const noHeaderRes = await request(app)
-      .put(`/v1/rule-set-versions/${verId}`)
-      .send({ definition: newDef });
+    const noHeaderRes = await request(app).put(`/v1/rule-set-versions/${verId}`).send({ definition: newDef });
     expect(noHeaderRes.status).toBe(422);
     expect(noHeaderRes.body.error.code).toBe('VALIDATION_ERROR');
 
     // Submit version to IN_REVIEW
     await request(app).post(`/v1/rule-set-versions/${verId}/validate`);
-    await request(app).post(`/v1/rule-set-versions/${verId}/submit`).send({ changeReason: 'Ready for review' });
+    await request(app)
+      .post(`/v1/rule-set-versions/${verId}/submit`)
+      .send({ changeReason: 'Ready for review' });
 
     // Attempting edit on IN_REVIEW version -> 409 INVALID_STATE
     const nonDraftEdit = await request(app)
@@ -1007,13 +1001,11 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
       .post(`/v1/rule-set-versions/${verId}/submit`)
       .send({ changeReason: 'Ready for review' });
 
-    const rejectRes = await request(approverApp)
-      .post(`/v1/rule-set-versions/${verId}/reviews`)
-      .send({
-        action: 'REJECT',
-        comment: 'Condition threshold exceeds allowed policy limits.',
-        reviewedContentHash: subRes.body.contentHash,
-      });
+    const rejectRes = await request(approverApp).post(`/v1/rule-set-versions/${verId}/reviews`).send({
+      action: 'REJECT',
+      comment: 'Condition threshold exceeds allowed policy limits.',
+      reviewedContentHash: subRes.body.contentHash,
+    });
 
     expect(rejectRes.status).toBe(200);
     expect(rejectRes.body.status).toBe('REJECTED');
@@ -1082,7 +1074,9 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     const v1Id = listV1.body.data[0].id;
 
     await request(authorApp).post(`/v1/rule-set-versions/${v1Id}/validate`);
-    const subV1 = await request(authorApp).post(`/v1/rule-set-versions/${v1Id}/submit`).send({ changeReason: 'Initial version 1' });
+    const subV1 = await request(authorApp)
+      .post(`/v1/rule-set-versions/${v1Id}/submit`)
+      .send({ changeReason: 'Initial version 1' });
     await request(approverApp).post(`/v1/rule-set-versions/${v1Id}/reviews`).send({
       action: 'APPROVE',
       comment: 'Approved v1',
@@ -1091,10 +1085,14 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     await request(approverApp).post(`/v1/rule-set-versions/${v1Id}/publish`).send({ reason: 'Publish v1' });
 
     // 2. Create and publish v2 -> v1 becomes SUPERSEDED
-    const v2Res = await request(authorApp).post(`/v1/rule-sets/${rsId}/versions`).send({ changeReason: 'Draft version 2' });
+    const v2Res = await request(authorApp)
+      .post(`/v1/rule-sets/${rsId}/versions`)
+      .send({ changeReason: 'Draft version 2' });
     const v2Id = v2Res.body.id;
     await request(authorApp).post(`/v1/rule-set-versions/${v2Id}/validate`);
-    const subV2 = await request(authorApp).post(`/v1/rule-set-versions/${v2Id}/submit`).send({ changeReason: 'Updated version 2' });
+    const subV2 = await request(authorApp)
+      .post(`/v1/rule-set-versions/${v2Id}/submit`)
+      .send({ changeReason: 'Updated version 2' });
     await request(approverApp).post(`/v1/rule-set-versions/${v2Id}/reviews`).send({
       action: 'APPROVE',
       comment: 'Approved v2',
@@ -1103,12 +1101,10 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     await request(approverApp).post(`/v1/rule-set-versions/${v2Id}/publish`).send({ reason: 'Publish v2' });
 
     // 3. Rollback back to v1
-    const rollbackRes = await request(approverApp)
-      .post(`/v1/rule-sets/${rsId}/rollbacks`)
-      .send({
-        targetVersionId: v1Id,
-        reason: 'Rollback to v1 due to unexpected routing in v2',
-      });
+    const rollbackRes = await request(approverApp).post(`/v1/rule-sets/${rsId}/rollbacks`).send({
+      targetVersionId: v1Id,
+      reason: 'Rollback to v1 due to unexpected routing in v2',
+    });
 
     expect(rollbackRes.status).toBe(200);
     expect(rollbackRes.body.id).toBe(v1Id);
@@ -1145,13 +1141,11 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
       deps: { txRunner: store.runner },
     });
 
-    const createRes = await request(app)
-      .post('/v1/rule-sets')
-      .send({
-        decisionKey: 'DK-application.eligibility',
-        scopeType: 'TENANT_DEFAULT',
-        name: 'Tenant Default Eligibility Policy',
-      });
+    const createRes = await request(app).post('/v1/rule-sets').send({
+      decisionKey: 'DK-application.eligibility',
+      scopeType: 'TENANT_DEFAULT',
+      name: 'Tenant Default Eligibility Policy',
+    });
 
     expect(createRes.status).toBe(201);
     expect(createRes.body.decisionKey).toBe('DK-application.eligibility');
@@ -1186,5 +1180,3 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     expect(incompleteRes.body.outputs.result).toBe('INCOMPLETE');
   });
 });
-
-

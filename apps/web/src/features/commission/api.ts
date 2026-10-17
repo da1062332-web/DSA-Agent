@@ -26,9 +26,7 @@ export async function fetchCommissionPlans(params?: {
   });
 }
 
-export async function createCommissionPlan(
-  input: CreateCommissionPlanInput,
-): Promise<CommissionPlan> {
+export async function createCommissionPlan(input: CreateCommissionPlanInput): Promise<CommissionPlan> {
   return apiFetch<CommissionPlan>('/v1/commission-plans', {
     method: 'POST',
     body: input,
@@ -97,18 +95,13 @@ export async function createClawback(
   });
 }
 
-export async function approveClawback(
-  id: string,
-): Promise<{ id: string; status: string }> {
+export async function approveClawback(id: string): Promise<{ id: string; status: string }> {
   return apiFetch(`/v1/clawbacks/${id}/approval`, {
     method: 'POST',
   });
 }
 
-export async function rejectClawback(
-  id: string,
-  reason?: string,
-): Promise<{ id: string; status: string }> {
+export async function rejectClawback(id: string, reason?: string): Promise<{ id: string; status: string }> {
   return apiFetch(`/v1/clawbacks/${id}/rejection`, {
     method: 'POST',
     body: { reason: reason ?? 'Clawback rejected by approver' },
@@ -137,4 +130,3 @@ export async function approveRecalculationProposal(
     body: { comment: comment ?? 'Approved by checker' },
   });
 }
-

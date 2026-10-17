@@ -94,7 +94,10 @@ export async function fetchRuleSets(params?: {
   if (params?.cursor) url.searchParams.set('cursor', params.cursor);
 
   const res = await fetch(url.toString(), { headers: getAuthHeaders() });
-  const { data } = await handleResponse<{ data: RuleSetResponse[]; meta: { limit: number; nextCursor: string | null } }>(res);
+  const { data } = await handleResponse<{
+    data: RuleSetResponse[];
+    meta: { limit: number; nextCursor: string | null };
+  }>(res);
   return data;
 }
 
@@ -109,7 +112,9 @@ export async function createRuleSet(input: CreateRuleSetInput): Promise<RuleSetR
   return data;
 }
 
-export async function fetchRuleSet(ruleSetId: string): Promise<{ data: RuleSetResponse; etag?: string | null }> {
+export async function fetchRuleSet(
+  ruleSetId: string,
+): Promise<{ data: RuleSetResponse; etag?: string | null }> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-sets/${ruleSetId}`, {
     headers: getAuthHeaders(),
@@ -129,7 +134,7 @@ export async function fetchRuleSetVersions(ruleSetId: string): Promise<RuleSetVe
 
 export async function createRuleSetVersion(
   ruleSetId: string,
-  input: CreateRuleSetVersionInput
+  input: CreateRuleSetVersionInput,
 ): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-sets/${ruleSetId}/versions`, {
@@ -142,7 +147,7 @@ export async function createRuleSetVersion(
 }
 
 export async function fetchRuleSetVersion(
-  versionId: string
+  versionId: string,
 ): Promise<{ data: RuleSetVersionResponse; etag?: string | null }> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}`, {
@@ -154,7 +159,7 @@ export async function fetchRuleSetVersion(
 export async function updateRuleSetVersion(
   versionId: string,
   input: UpdateRuleSetVersionInput,
-  lockVersion: number
+  lockVersion: number,
 ): Promise<{ data: RuleSetVersionResponse; etag?: string | null }> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}`, {
@@ -180,7 +185,7 @@ export async function validateRuleSetVersion(versionId: string): Promise<Validat
 
 export async function simulateRuleSetVersion(
   versionId: string,
-  input: SimulateVersionInput
+  input: SimulateVersionInput,
 ): Promise<SimulationResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/simulations`, {
@@ -204,7 +209,7 @@ export async function fetchTestCases(ruleSetId: string): Promise<TestCaseRespons
 
 export async function createTestCase(
   ruleSetId: string,
-  input: CreateTestCaseInput
+  input: CreateTestCaseInput,
 ): Promise<TestCaseResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-sets/${ruleSetId}/test-cases`, {
@@ -217,7 +222,10 @@ export async function createTestCase(
 }
 
 // ---------------- Lifecycle Actions ----------------
-export async function submitVersion(versionId: string, input: SubmitVersionInput): Promise<RuleSetVersionResponse> {
+export async function submitVersion(
+  versionId: string,
+  input: SubmitVersionInput,
+): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/submit`, {
     method: 'POST',
@@ -228,7 +236,10 @@ export async function submitVersion(versionId: string, input: SubmitVersionInput
   return data;
 }
 
-export async function reviewVersion(versionId: string, input: ReviewVersionInput): Promise<RuleSetVersionResponse> {
+export async function reviewVersion(
+  versionId: string,
+  input: ReviewVersionInput,
+): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/reviews`, {
     method: 'POST',
@@ -239,7 +250,10 @@ export async function reviewVersion(versionId: string, input: ReviewVersionInput
   return data;
 }
 
-export async function publishVersion(versionId: string, input: PublishVersionInput): Promise<RuleSetVersionResponse> {
+export async function publishVersion(
+  versionId: string,
+  input: PublishVersionInput,
+): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/publish`, {
     method: 'POST',
@@ -250,7 +264,10 @@ export async function publishVersion(versionId: string, input: PublishVersionInp
   return data;
 }
 
-export async function suspendVersion(versionId: string, input: SuspendVersionInput): Promise<RuleSetVersionResponse> {
+export async function suspendVersion(
+  versionId: string,
+  input: SuspendVersionInput,
+): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/suspend`, {
     method: 'POST',
@@ -261,7 +278,10 @@ export async function suspendVersion(versionId: string, input: SuspendVersionInp
   return data;
 }
 
-export async function reinstateVersion(versionId: string, input: ReinstateVersionInput): Promise<RuleSetVersionResponse> {
+export async function reinstateVersion(
+  versionId: string,
+  input: ReinstateVersionInput,
+): Promise<RuleSetVersionResponse> {
   const baseUrl = getApiBaseUrl();
   const res = await fetch(`${baseUrl}/v1/rule-set-versions/${versionId}/reinstate`, {
     method: 'POST',
@@ -298,7 +318,10 @@ export async function fetchDecisionRecords(params?: {
   if (params?.cursor) url.searchParams.set('cursor', params.cursor);
 
   const res = await fetch(url.toString(), { headers: getAuthHeaders() });
-  const { data } = await handleResponse<{ data: DecisionRecordResponse[]; meta: { limit: number; nextCursor: string | null } }>(res);
+  const { data } = await handleResponse<{
+    data: DecisionRecordResponse[];
+    meta: { limit: number; nextCursor: string | null };
+  }>(res);
   return data;
 }
 

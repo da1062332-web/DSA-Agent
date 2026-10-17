@@ -40,10 +40,7 @@ export function normalizeMobile(raw: string): string {
 
 /** Computes tenant-scoped HMAC-SHA-256 for mobile matching. */
 export function computeMobileHash(tenantId: string, mobileE164: string): Buffer {
-  return crypto
-    .createHmac('sha256', `${HMAC_SECRET}:${tenantId}`)
-    .update(mobileE164)
-    .digest();
+  return crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`).update(mobileE164).digest();
 }
 
 /** Normalizes email to lowercase citext without destructive transforms. */
@@ -61,10 +58,7 @@ export function normalizeEmail(raw?: string | null): string | null {
 
 /** Computes tenant-scoped HMAC-SHA-256 for email. */
 export function computeEmailHash(tenantId: string, email: string): Buffer {
-  return crypto
-    .createHmac('sha256', `${HMAC_SECRET}:${tenantId}`)
-    .update(email)
-    .digest();
+  return crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`).update(email).digest();
 }
 
 /** Validates 6-digit Indian postal code. */

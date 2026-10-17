@@ -101,11 +101,7 @@ export function CustomerDetailPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Top Navigation */}
-      <Button
-        component={RouterLink}
-        to="/customers"
-        sx={{ mb: 3 }}
-      >
+      <Button component={RouterLink} to="/customers" sx={{ mb: 3 }}>
         ← Back to Customers
       </Button>
 
@@ -140,10 +136,7 @@ export function CustomerDetailPage() {
           </Box>
 
           <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined"
-              onClick={handleOpenEdit}
-            >
+            <Button variant="outlined" onClick={handleOpenEdit}>
               Edit Profile
             </Button>
             <Button
@@ -205,25 +198,19 @@ export function CustomerDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Party Type
                   </Typography>
-                  <Typography variant="body1">
-                    {customer.partyType}
-                  </Typography>
+                  <Typography variant="body1">{customer.partyType}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Primary Home Branch
                   </Typography>
-                  <Typography variant="body1">
-                    {customer.homeBranchId || 'Not Assigned'}
-                  </Typography>
+                  <Typography variant="body1">{customer.homeBranchId || 'Not Assigned'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Account Status
                   </Typography>
-                  <Typography variant="body1">
-                    {customer.status}
-                  </Typography>
+                  <Typography variant="body1">{customer.status}</Typography>
                 </Box>
               </Stack>
             </CardContent>
@@ -252,25 +239,19 @@ export function CustomerDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Primary Email (Masked)
                   </Typography>
-                  <Typography variant="body1">
-                    {customer.primaryEmailMasked || '—'}
-                  </Typography>
+                  <Typography variant="body1">{customer.primaryEmailMasked || '—'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Profile Created
                   </Typography>
-                  <Typography variant="body1">
-                    {new Date(customer.createdAt).toLocaleString()}
-                  </Typography>
+                  <Typography variant="body1">{new Date(customer.createdAt).toLocaleString()}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Last Profile Update
                   </Typography>
-                  <Typography variant="body1">
-                    {new Date(customer.updatedAt).toLocaleString()}
-                  </Typography>
+                  <Typography variant="body1">{new Date(customer.updatedAt).toLocaleString()}</Typography>
                 </Box>
               </Stack>
             </CardContent>
@@ -285,7 +266,8 @@ export function CustomerDetailPage() {
                 Consent Management
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Review active and historical borrower consent notices, purposes (contact, loan processing, verification checks), and record withdrawals.
+                Review active and historical borrower consent notices, purposes (contact, loan processing,
+                verification checks), and record withdrawals.
               </Typography>
               <Button
                 variant="outlined"
@@ -307,7 +289,8 @@ export function CustomerDetailPage() {
                 Grievances & Complaints
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Track service tickets, fee disputes, and escalate borrower grievances directly to the Grievances module (MOD-GRV).
+                Track service tickets, fee disputes, and escalate borrower grievances directly to the
+                Grievances module (MOD-GRV).
               </Typography>
               <Button
                 variant="outlined"
@@ -346,11 +329,7 @@ export function CustomerDetailPage() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={updateMutation.isPending}
-            >
+            <Button type="submit" variant="contained" disabled={updateMutation.isPending}>
               {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogActions>

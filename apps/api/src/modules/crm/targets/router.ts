@@ -11,12 +11,7 @@ import {
 import { withIdempotency } from '@dsa/kernel';
 import { Router, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
-import {
-  idempotencyKey,
-  ifMatchVersion,
-  requireCtx,
-  sendResource,
-} from '../../../http/request';
+import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { SqlTargetRepository, type TargetRepository } from './repository';
 import { TargetService } from './service';
@@ -66,21 +61,11 @@ export function createRouter(deps: ApiDeps): Router {
       };
 
       if ('executeQuery' in (tx as unknown as Record<string, unknown>)) {
-        return withIdempotency(
-          tx,
-          ctx,
-          { key, method: 'POST', path: '/v1/targets', body: input },
-          runCreate,
-        );
+        return withIdempotency(tx, ctx, { key, method: 'POST', path: '/v1/targets', body: input }, runCreate);
       }
 
       if (typeof repo.withIdempotencyInMemory === 'function') {
-        return repo.withIdempotencyInMemory(
-          ctx.principal.tenantId,
-          key,
-          input,
-          runCreate,
-        );
+        return repo.withIdempotencyInMemory(ctx.principal.tenantId, key, input, runCreate);
       }
 
       return runCreate();
@@ -106,9 +91,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listTargets(tx, ctx, query),
-    );
+    const result = await deps.txRunner.withTenantTx(ctx, (tx) => service.listTargets(tx, ctx, query));
 
     res.json(result);
   });
@@ -140,9 +123,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParamId(req);
 
-    const target = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getTarget(tx, ctx, id),
-    );
+    const target = await deps.txRunner.withTenantTx(ctx, (tx) => service.getTarget(tx, ctx, id));
 
     res.setHeader('ETag', `"${target.lockVersion}"`);
     res.json(target);
@@ -153,9 +134,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParamId(req);
 
-    const history = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getTargetHistory(tx, ctx, id),
-    );
+    const history = await deps.txRunner.withTenantTx(ctx, (tx) => service.getTargetHistory(tx, ctx, id));
 
     res.json(history);
   });

@@ -4,7 +4,7 @@ import { sql } from 'kysely';
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
   const tenantId = 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA';
-  
+
   // 1. Insert into app.permission with introduced_in
   await sql`
     INSERT INTO app.permission (code, description, introduced_in)
@@ -32,7 +32,9 @@ async function main() {
     }
   }
 
-  console.log('Successfully registered customer.create and customer.update in permission and role_permission!');
+  console.log(
+    'Successfully registered customer.create and customer.update in permission and role_permission!',
+  );
   await db.destroy();
 }
 

@@ -128,7 +128,12 @@ export interface CatalogueRepository {
   ): Promise<EmpanelmentRow | null>;
 
   // Contacts
-  replaceLenderContacts(tx: Tx, tenantId: string, lenderId: string, contacts: LenderContactRow[]): Promise<void>;
+  replaceLenderContacts(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    contacts: LenderContactRow[],
+  ): Promise<void>;
   listLenderContacts(tx: Tx, tenantId: string, lenderId: string): Promise<LenderContactRow[]>;
 
   // Loan Products
@@ -144,7 +149,11 @@ export interface CatalogueRepository {
   // Versions
   insertProductVersion(tx: Tx, row: LoanProductVersionRow): Promise<void>;
   findProductVersionById(tx: Tx, tenantId: string, id: string): Promise<LoanProductVersionRow | null>;
-  findActiveProductVersion(tx: Tx, tenantId: string, productId: string): Promise<LoanProductVersionRow | null>;
+  findActiveProductVersion(
+    tx: Tx,
+    tenantId: string,
+    productId: string,
+  ): Promise<LoanProductVersionRow | null>;
   listProductVersions(tx: Tx, tenantId: string, productId: string): Promise<LoanProductVersionRow[]>;
 }
 

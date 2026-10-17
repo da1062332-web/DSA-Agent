@@ -68,11 +68,21 @@ export function LenderCaseDetailPage(): React.ReactElement {
               Case Placement Details
             </Typography>
             <Divider sx={{ mb: 1.5 }} />
-            <Typography variant="body2"><strong>Lender ID:</strong> {c.lenderId}</Typography>
-            <Typography variant="body2"><strong>Product Version:</strong> {c.productVersionId}</Typography>
-            <Typography variant="body2"><strong>Empanelment ID:</strong> {c.empanelmentId}</Typography>
-            <Typography variant="body2"><strong>Channel:</strong> {c.submissionChannel || '—'}</Typography>
-            <Typography variant="body2"><strong>Reference:</strong> {c.lenderReference || '—'}</Typography>
+            <Typography variant="body2">
+              <strong>Lender ID:</strong> {c.lenderId}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Product Version:</strong> {c.productVersionId}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Empanelment ID:</strong> {c.empanelmentId}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Channel:</strong> {c.submissionChannel || '—'}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Reference:</strong> {c.lenderReference || '—'}
+            </Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
@@ -81,10 +91,19 @@ export function LenderCaseDetailPage(): React.ReactElement {
               Audit & Versioning
             </Typography>
             <Divider sx={{ mb: 1.5 }} />
-            <Typography variant="body2"><strong>Lock Version:</strong> {c.lockVersion}</Typography>
-            <Typography variant="body2"><strong>Package ID:</strong> {c.packageId || '—'}</Typography>
-            <Typography variant="body2"><strong>Created At:</strong> {new Date(c.createdAt).toLocaleString()}</Typography>
-            <Typography variant="body2"><strong>Last Status At:</strong> {c.lastStatusAt ? new Date(c.lastStatusAt).toLocaleString() : '—'}</Typography>
+            <Typography variant="body2">
+              <strong>Lock Version:</strong> {c.lockVersion}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Package ID:</strong> {c.packageId || '—'}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Created At:</strong> {new Date(c.createdAt).toLocaleString()}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Last Status At:</strong>{' '}
+              {c.lastStatusAt ? new Date(c.lastStatusAt).toLocaleString() : '—'}
+            </Typography>
           </Paper>
         </Grid>
       </Grid>

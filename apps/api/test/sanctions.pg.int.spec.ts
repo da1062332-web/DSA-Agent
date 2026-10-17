@@ -1,11 +1,10 @@
 // apps/api/test/sanctions.pg.int.spec.ts — owner: Dev 3 / Dev 4 (MOD-SND PostgreSQL Integration & Real Database Verification)
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real Database & Constraints)', () => {
-  const connectionString =
-    process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_demo_01';
@@ -31,9 +30,7 @@ describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real D
     adminClient = new pg.Client({ connectionString });
     await adminClient.connect();
 
-    const apiDbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
 
@@ -67,8 +64,16 @@ describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real D
        VALUES ($1, $2, $3, $4, 'SND Recorder', $5, 'tester', 'tester'),
               ($6, $2, $7, $8, 'SND Verifier', $5, 'tester', 'tester')
        ON CONFLICT (id) DO NOTHING`,
-      [userId, tenantA, `sub_rec_${runId}`, `rec_${runId}@example.com`, branchA,
-       verifierId, `sub_vrf_${runId}`, `vrf_${runId}@example.com`],
+      [
+        userId,
+        tenantA,
+        `sub_rec_${runId}`,
+        `rec_${runId}@example.com`,
+        branchA,
+        verifierId,
+        `sub_vrf_${runId}`,
+        `vrf_${runId}@example.com`,
+      ],
     );
 
     // Ensure customer
@@ -295,7 +300,10 @@ describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real D
         ) VALUES ($1, $2, $3, 1, 500000, CURRENT_DATE, 'VERIFIED', $4, $5, now(), $4, $4)`,
         [trnId, tenantA, sncId, userId, verifierId],
       );
-      const res = await adminClient.query(`SELECT status, verified_by FROM app.disbursement_tranche WHERE id = $1`, [trnId]);
+      const res = await adminClient.query(
+        `SELECT status, verified_by FROM app.disbursement_tranche WHERE id = $1`,
+        [trnId],
+      );
       expect(res.rows[0].status).toBe('VERIFIED');
       expect(res.rows[0].verified_by).toBe(verifierId);
     } finally {
@@ -337,7 +345,10 @@ describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real D
         ) VALUES ($1, $2, $3, 1, 500000, CURRENT_DATE, 'VOIDED', $4, $5, 'Wrong bank account', $4, $4)`,
         [trnId, tenantA, sncId, userId, verifierId],
       );
-      const res = await adminClient.query(`SELECT status, void_reason FROM app.disbursement_tranche WHERE id = $1`, [trnId]);
+      const res = await adminClient.query(
+        `SELECT status, void_reason FROM app.disbursement_tranche WHERE id = $1`,
+        [trnId],
+      );
       expect(res.rows[0].status).toBe('VOIDED');
       expect(res.rows[0].void_reason).toBe('Wrong bank account');
     } finally {
@@ -440,7 +451,9 @@ describe('Module 19 — Sanction and Disbursement PostgreSQL Integration (Real D
         const sResNone = await apiClient.query(`SELECT id FROM app.sanction WHERE id = $1`, [sncId]);
         expect(sResNone.rows.length).toBe(0);
 
-        const tResNone = await apiClient.query(`SELECT id FROM app.disbursement_tranche WHERE id = $1`, [trnId]);
+        const tResNone = await apiClient.query(`SELECT id FROM app.disbursement_tranche WHERE id = $1`, [
+          trnId,
+        ]);
         expect(tResNone.rows.length).toBe(0);
       } finally {
         await apiClient.query('ROLLBACK');

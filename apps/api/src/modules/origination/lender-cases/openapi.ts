@@ -15,7 +15,10 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
 
 export const tags = [
-  { name: 'MOD-LCS Lender Cases', description: 'Lender cases, submission packaging, and status tracking (MOD-LCS).' },
+  {
+    name: 'MOD-LCS Lender Cases',
+    description: 'Lender cases, submission packaging, and status tracking (MOD-LCS).',
+  },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {

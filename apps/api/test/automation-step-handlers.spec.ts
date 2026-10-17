@@ -124,9 +124,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Step Handlers (Phase 5)', () 
         },
       };
 
-      const result = await handlers.EVALUATE_DECISION.execute(
-        makeContext(step, { dryRun: true }),
-      );
+      const result = await handlers.EVALUATE_DECISION.execute(makeContext(step, { dryRun: true }));
 
       expect(result.status).toBe('SUCCEEDED');
       expect(result.outputSnapshot?.dryRun).toBe(true);
@@ -157,9 +155,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Step Handlers (Phase 5)', () 
         },
       };
 
-      const result = await handlers.BRANCH.execute(
-        makeContext(step, { context: { score: 100 } }),
-      );
+      const result = await handlers.BRANCH.execute(makeContext(step, { context: { score: 100 } }));
 
       expect(result.status).toBe('SUCCEEDED');
       expect(result.nextStepIndex).toBe(3);
@@ -179,9 +175,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Step Handlers (Phase 5)', () 
         },
       };
 
-      const result = await handlers.BRANCH.execute(
-        makeContext(step, { context: { score: 100 } }),
-      );
+      const result = await handlers.BRANCH.execute(makeContext(step, { context: { score: 100 } }));
 
       expect(result.status).toBe('SUCCEEDED');
       expect(result.nextStepIndex).toBe(1);

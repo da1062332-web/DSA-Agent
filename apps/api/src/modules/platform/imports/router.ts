@@ -52,9 +52,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const batch = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.createImport(tx, ctx, body),
-    );
+    const batch = await deps.txRunner.withTenantTx(ctx, (tx) => service.createImport(tx, ctx, body));
 
     if (idempotencyKey) {
       res.setHeader('Idempotent-Replayed', 'false');
@@ -77,9 +75,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const batch = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.configureMapping(tx, ctx, id, body),
-    );
+    const batch = await deps.txRunner.withTenantTx(ctx, (tx) => service.configureMapping(tx, ctx, id, body));
 
     res.status(200).json(batch);
   });
@@ -99,9 +95,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const batch = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.commitImport(tx, ctx, id, body),
-    );
+    const batch = await deps.txRunner.withTenantTx(ctx, (tx) => service.commitImport(tx, ctx, id, body));
 
     res.status(200).json(batch);
   });
@@ -121,9 +115,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const batch = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.rollbackImport(tx, ctx, id, body),
-    );
+    const batch = await deps.txRunner.withTenantTx(ctx, (tx) => service.rollbackImport(tx, ctx, id, body));
 
     res.status(200).json(batch);
   });
@@ -135,9 +127,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParam(req, 'id');
 
-    const batch = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getImportBatch(tx, ctx, id),
-    );
+    const batch = await deps.txRunner.withTenantTx(ctx, (tx) => service.getImportBatch(tx, ctx, id));
 
     res.status(200).json(batch);
   });
@@ -149,9 +139,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParam(req, 'id');
 
-    const buffer = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getReport(tx, ctx, id),
-    );
+    const buffer = await deps.txRunner.withTenantTx(ctx, (tx) => service.getReport(tx, ctx, id));
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="import_${id}_errors.csv"`);
@@ -164,9 +152,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/imports', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const batches = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listBatches(tx, ctx),
-    );
+    const batches = await deps.txRunner.withTenantTx(ctx, (tx) => service.listBatches(tx, ctx));
 
     res.status(200).json({ data: batches });
   });

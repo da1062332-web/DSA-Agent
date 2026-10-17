@@ -5,6 +5,7 @@
 import { AppError } from '@dsa/contracts';
 import { requiresMfa, type PrincipalResolver, type TokenVerifier } from '@dsa/kernel';
 import type { RequestHandler } from 'express';
+import { mfaDisabled } from './mfa-switch';
 
 const BEARER = /^Bearer ([A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)$/;
 
@@ -14,14 +15,17 @@ export function supabaseAuth(deps: { verifier: TokenVerifier; resolver: Principa
       const raw =
         BEARER.exec(req.get('authorization') ?? '')?.[1] ||
         (typeof req.query.token === 'string' && req.query.token ? req.query.token : undefined) ||
-        (typeof req.query.access_token === 'string' && req.query.access_token ? req.query.access_token : undefined);
+        (typeof req.query.access_token === 'string' && req.query.access_token
+          ? req.query.access_token
+          : undefined);
       if (!raw) throw AppError.of('UNAUTHENTICATED', 'Missing or invalid access token.');
 
       const now = new Date();
       const token = await deps.verifier.verify(raw);
       const principal = await deps.resolver.resolve(token, { correlationId: req.correlationId, now });
       const profileOnly = req.method === 'GET' && (req.path === '/me' || req.path === '/v1/me');
-      const skipMfa = process.env.DISABLE_MFA === 'true';
+      // Honoured only against a local Supabase stack outside production (see mfa-switch.ts); ignored everywhere else.
+      const skipMfa = mfaDisabled();
       if (!skipMfa && requiresMfa(principal) && token.aal !== 'aal2' && !profileOnly) {
         throw AppError.of(
           'STEP_UP_REQUIRED',
