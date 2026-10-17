@@ -166,8 +166,15 @@ export function PlatformConsolePage() {
   const flagsQuery = useQuery({ queryKey: ['platform-flags'], queryFn: fetchFeatureFlags });
   const masterDataQuery = useQuery({ queryKey: ['platform-master-data'], queryFn: () => fetchMasterData() });
   const jobsQuery = useQuery({ queryKey: ['platform-jobs'], queryFn: fetchJobsAndQueues });
-  const healthQuery = useQuery({ queryKey: ['platform-health'], queryFn: fetchSystemHealth, refetchInterval: 15000 });
-  const supportQuery = useQuery({ queryKey: ['platform-support'], queryFn: () => fetchSupportAccessRequests() });
+  const healthQuery = useQuery({
+    queryKey: ['platform-health'],
+    queryFn: fetchSystemHealth,
+    refetchInterval: 15000,
+  });
+  const supportQuery = useQuery({
+    queryKey: ['platform-support'],
+    queryFn: () => fetchSupportAccessRequests(),
+  });
   const releasesQuery = useQuery({ queryKey: ['platform-releases'], queryFn: fetchReleases });
 
   // Dialog & Form States
@@ -299,7 +306,8 @@ export function PlatformConsolePage() {
             />
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Operator console, feature flags, master data catalogues, background job queues, break-glass support access & governed release register.
+            Operator console, feature flags, master data catalogues, background job queues, break-glass
+            support access & governed release register.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -332,7 +340,11 @@ export function PlatformConsolePage() {
           <Tab icon={<SpeedIcon fontSize="small" />} iconPosition="start" label="Master Data" />
           <Tab icon={<WorkIcon fontSize="small" />} iconPosition="start" label="Background Jobs" />
           <Tab icon={<HealthAndSafetyIcon fontSize="small" />} iconPosition="start" label="System Health" />
-          <Tab icon={<VpnKeyIcon fontSize="small" />} iconPosition="start" label="Support Access (Break-Glass)" />
+          <Tab
+            icon={<VpnKeyIcon fontSize="small" />}
+            iconPosition="start"
+            label="Support Access (Break-Glass)"
+          />
           <Tab icon={<NewReleasesIcon fontSize="small" />} iconPosition="start" label="Release Management" />
         </Tabs>
       </Paper>
@@ -341,7 +353,9 @@ export function PlatformConsolePage() {
       {tabIndex === 0 && (
         <Box>
           <Alert severity="info" sx={{ mb: 3 }} icon={<SecurityIcon />}>
-            <strong>Zero Business Data Projection:</strong> Platform console displays strictly tenant organizational metadata, entitlements, and operational health status. Under tenant isolation policies, no individual leads, loans, or customer financial records are accessed or exposed.
+            <strong>Zero Business Data Projection:</strong> Platform console displays strictly tenant
+            organizational metadata, entitlements, and operational health status. Under tenant isolation
+            policies, no individual leads, loans, or customer financial records are accessed or exposed.
           </Alert>
 
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
@@ -350,34 +364,58 @@ export function PlatformConsolePage() {
                 Registered Tenants Directory (API-TEN-002)
               </Typography>
               {tenantsQuery.isLoading ? (
-                <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={32} /></Box>
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <CircularProgress size={32} />
+                </Box>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell><strong>Slug / ID</strong></TableCell>
-                        <TableCell><strong>Legal Name</strong></TableCell>
-                        <TableCell><strong>Type</strong></TableCell>
-                        <TableCell><strong>Region / Timezone</strong></TableCell>
-                        <TableCell><strong>Health Status</strong></TableCell>
-                        <TableCell><strong>Active Users</strong></TableCell>
-                        <TableCell><strong>Entitlements</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
+                        <TableCell>
+                          <strong>Slug / ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Legal Name</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Type</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Region / Timezone</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Health Status</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Active Users</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Entitlements</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Status</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {tenantsQuery.data?.data.map((t) => (
                         <TableRow key={t.id} hover>
                           <TableCell>
-                            <Typography variant="subtitle2" fontWeight={600}>{t.slug}</Typography>
-                            <Typography variant="caption" color="text.secondary">{t.id}</Typography>
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              {t.slug}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {t.id}
+                            </Typography>
                           </TableCell>
                           <TableCell>{t.legalName}</TableCell>
                           <TableCell>
                             <Chip label={t.tenantType} size="small" variant="outlined" />
                           </TableCell>
-                          <TableCell>{t.dataRegion} / {t.timezone}</TableCell>
+                          <TableCell>
+                            {t.dataRegion} / {t.timezone}
+                          </TableCell>
                           <TableCell>
                             <Chip
                               label={t.healthStatus}
@@ -392,7 +430,11 @@ export function PlatformConsolePage() {
                                 <Chip key={e} label={e} size="small" sx={{ fontSize: '0.65rem' }} />
                               ))}
                               {t.entitlements.length > 3 && (
-                                <Chip label={`+${t.entitlements.length - 3}`} size="small" sx={{ fontSize: '0.65rem' }} />
+                                <Chip
+                                  label={`+${t.entitlements.length - 3}`}
+                                  size="small"
+                                  sx={{ fontSize: '0.65rem' }}
+                                />
                               )}
                             </Box>
                           </TableCell>
@@ -421,7 +463,12 @@ export function PlatformConsolePage() {
             <Typography variant="h6" fontWeight={600}>
               Platform & Tenant Feature Flags (CMP-ADM.02.1)
             </Typography>
-            <Chip label="Optimistic Concurrency (If-Match) Active" size="small" color="secondary" variant="outlined" />
+            <Chip
+              label="Optimistic Concurrency (If-Match) Active"
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
           </Box>
 
           <Grid container spacing={2}>
@@ -435,13 +482,20 @@ export function PlatformConsolePage() {
                           {flag.key}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1, my: 0.5 }}>
-                          <Chip label={`Scope: ${flag.scope}`} size="small" color="primary" variant="outlined" />
+                          <Chip
+                            label={`Scope: ${flag.scope}`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
                           <Chip label={`v${flag.lockVersion}`} size="small" variant="outlined" />
                         </Box>
                       </Box>
                       <Switch
                         checked={Boolean(flag.value)}
-                        onChange={(e) => toggleFlagMutation.mutate({ key: flag.key, value: e.target.checked })}
+                        onChange={(e) =>
+                          toggleFlagMutation.mutate({ key: flag.key, value: e.target.checked })
+                        }
                         disabled={toggleFlagMutation.isPending}
                         color="success"
                       />
@@ -450,7 +504,14 @@ export function PlatformConsolePage() {
                       {flag.description || 'No description provided.'}
                     </Typography>
                     <Divider sx={{ my: 1.5 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'text.secondary' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '0.75rem',
+                        color: 'text.secondary',
+                      }}
+                    >
                       <span>Owner: {flag.owner}</span>
                       <span>Updated: {new Date(flag.updatedAt).toLocaleTimeString()}</span>
                     </Box>
@@ -488,7 +549,14 @@ export function PlatformConsolePage() {
                 <Grid item xs={12} md={6} key={listCode}>
                   <Card variant="outlined" sx={{ borderRadius: 2 }}>
                     <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 1.5,
+                        }}
+                      >
                         <Typography variant="subtitle1" fontWeight={700}>
                           {listCode}
                         </Typography>
@@ -506,7 +574,9 @@ export function PlatformConsolePage() {
                           <TableBody>
                             {items.map((i) => (
                               <TableRow key={i.id}>
-                                <TableCell><code>{i.code}</code></TableCell>
+                                <TableCell>
+                                  <code>{i.code}</code>
+                                </TableCell>
                                 <TableCell>{i.label}</TableCell>
                                 <TableCell>v{i.version}</TableCell>
                               </TableRow>
@@ -552,16 +622,24 @@ export function PlatformConsolePage() {
                     </Box>
                     <Box sx={{ display: 'flex', gap: 2, my: 1.5 }}>
                       <Box>
-                        <Typography variant="caption" color="text.secondary">Active</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Active
+                        </Typography>
                         <Typography variant="h6">{q.activeJobs}</Typography>
                       </Box>
                       <Box>
-                        <Typography variant="caption" color="text.secondary">Completed</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Completed
+                        </Typography>
                         <Typography variant="h6">{q.completedJobs}</Typography>
                       </Box>
                       <Box>
-                        <Typography variant="caption" color="text.secondary">Failed</Typography>
-                        <Typography variant="h6" color={q.failedJobs > 0 ? 'error' : 'inherit'}>{q.failedJobs}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Failed
+                        </Typography>
+                        <Typography variant="h6" color={q.failedJobs > 0 ? 'error' : 'inherit'}>
+                          {q.failedJobs}
+                        </Typography>
                       </Box>
                     </Box>
 
@@ -617,26 +695,47 @@ export function PlatformConsolePage() {
                 {jobsQuery.data?.deadLetters.map((dl) => (
                   <TableRow key={dl.id}>
                     <TableCell>
-                      <Typography variant="subtitle2"><code>{dl.id}</code></Typography>
-                      <Typography variant="caption" color="text.secondary">{dl.queue}</Typography>
+                      <Typography variant="subtitle2">
+                        <code>{dl.id}</code>
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {dl.queue}
+                      </Typography>
                     </TableCell>
-                    <TableCell><code>{dl.originalJobId}</code></TableCell>
+                    <TableCell>
+                      <code>{dl.originalJobId}</code>
+                    </TableCell>
                     <TableCell sx={{ color: 'error.main', fontSize: '0.85rem' }}>{dl.errorReason}</TableCell>
                     <TableCell>{dl.retryCount}</TableCell>
                     <TableCell>
                       <Chip
                         label={dl.status}
                         size="small"
-                        color={dl.status === 'REPLAYED' ? 'success' : dl.status === 'DISCARDED' ? 'default' : 'error'}
+                        color={
+                          dl.status === 'REPLAYED'
+                            ? 'success'
+                            : dl.status === 'DISCARDED'
+                              ? 'default'
+                              : 'error'
+                        }
                       />
                     </TableCell>
                     <TableCell align="right">
                       {dl.status === 'UNRESOLVED' && (
                         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <Button size="small" variant="contained" onClick={() => replayDlMutation.mutate(dl.id)}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => replayDlMutation.mutate(dl.id)}
+                          >
                             Replay
                           </Button>
-                          <Button size="small" variant="outlined" color="error" onClick={() => discardDlMutation.mutate(dl.id)}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            onClick={() => discardDlMutation.mutate(dl.id)}
+                          >
                             Discard
                           </Button>
                         </Box>
@@ -660,25 +759,36 @@ export function PlatformConsolePage() {
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={3}>
               <Card variant="outlined" sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-                <Typography variant="caption" color="text.secondary">Database Round-Trip</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Database Round-Trip
+                </Typography>
                 <Typography variant="h4" fontWeight={700} color="primary" sx={{ my: 1 }}>
                   {healthQuery.data?.dependencies.database.latencyMs ?? '--'} ms
                 </Typography>
-                <Chip label={`Status: ${healthQuery.data?.dependencies.database.status ?? 'UP'}`} size="small" color="success" />
+                <Chip
+                  label={`Status: ${healthQuery.data?.dependencies.database.status ?? 'UP'}`}
+                  size="small"
+                  color="success"
+                />
               </Card>
             </Grid>
             <Grid item xs={12} md={3}>
               <Card variant="outlined" sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-                <Typography variant="caption" color="text.secondary">Process Uptime</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Process Uptime
+                </Typography>
                 <Typography variant="h4" fontWeight={700} color="primary" sx={{ my: 1 }}>
-                  {Math.floor((healthQuery.data?.uptimeSeconds ?? 0) / 60)}m {(healthQuery.data?.uptimeSeconds ?? 0) % 60}s
+                  {Math.floor((healthQuery.data?.uptimeSeconds ?? 0) / 60)}m{' '}
+                  {(healthQuery.data?.uptimeSeconds ?? 0) % 60}s
                 </Typography>
                 <Chip label="Node.js Engine" size="small" variant="outlined" />
               </Card>
             </Grid>
             <Grid item xs={12} md={3}>
               <Card variant="outlined" sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-                <Typography variant="caption" color="text.secondary">Heap Memory Used</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Heap Memory Used
+                </Typography>
                 <Typography variant="h4" fontWeight={700} color="primary" sx={{ my: 1 }}>
                   {healthQuery.data?.memoryUsage.heapUsedMb ?? '--'} MB
                 </Typography>
@@ -689,7 +799,9 @@ export function PlatformConsolePage() {
             </Grid>
             <Grid item xs={12} md={3}>
               <Card variant="outlined" sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-                <Typography variant="caption" color="text.secondary">Queue Pipeline</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Queue Pipeline
+                </Typography>
                 <Typography variant="h6" fontWeight={700} sx={{ my: 1 }}>
                   {healthQuery.data?.dependencies.redisQueue.status}
                 </Typography>
@@ -711,8 +823,8 @@ export function PlatformConsolePage() {
                 Break-Glass Support Access Grants (CMP-ADM.06.1)
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Platform operators request access. The target tenant's administrator approves, denies or revokes it in their own
-                approvals screen (SOD-06). Maximum duration: 4 hours.
+                Platform operators request access. The target tenant's administrator approves, denies or
+                revokes it in their own approvals screen (SOD-06). Maximum duration: 4 hours.
               </Typography>
             </Box>
             <Button variant="contained" color="warning" onClick={() => setSupportDialogOpen(true)}>
@@ -735,28 +847,43 @@ export function PlatformConsolePage() {
               <TableBody>
                 {supportQuery.data?.data.map((grant) => (
                   <TableRow key={grant.id}>
-                    <TableCell><code>{grant.id}</code></TableCell>
+                    <TableCell>
+                      <code>{grant.id}</code>
+                    </TableCell>
                     <TableCell>
                       <Typography variant="subtitle2">{grant.tenantName}</Typography>
-                      <Typography variant="caption" color="text.secondary">{grant.tenantId}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {grant.tenantId}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip label={grant.incidentRef} size="small" color="error" sx={{ mr: 1 }} />
                       <Typography variant="caption">{grant.reason}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">Req: <code>{grant.requester}</code></Typography>
-                      <Typography variant="caption" color="text.secondary">Appr: <code>{grant.approver || 'Pending'}</code></Typography>
+                      <Typography variant="body2">
+                        Req: <code>{grant.requester}</code>
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Appr: <code>{grant.approver || 'Pending'}</code>
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption">
-                        {new Date(grant.startsAt).toLocaleTimeString()} - {new Date(grant.endsAt).toLocaleTimeString()}
+                        {new Date(grant.startsAt).toLocaleTimeString()} -{' '}
+                        {new Date(grant.endsAt).toLocaleTimeString()}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={grant.status}
-                        color={grant.status === 'APPROVED' ? 'success' : grant.status === 'PENDING' ? 'warning' : 'default'}
+                        color={
+                          grant.status === 'APPROVED'
+                            ? 'success'
+                            : grant.status === 'PENDING'
+                              ? 'warning'
+                              : 'default'
+                        }
                         size="small"
                       />
                     </TableCell>
@@ -788,7 +915,9 @@ export function PlatformConsolePage() {
               <Grid item xs={12} key={rel.version}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box
+                      sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
+                    >
                       <Typography variant="h5" fontWeight={700}>
                         {rel.version}
                       </Typography>
@@ -807,8 +936,12 @@ export function PlatformConsolePage() {
                         <Paper sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CheckCircleIcon color="success" />
                           <Box>
-                            <Typography variant="body2" fontWeight={600}>REL-001</Typography>
-                            <Typography variant="caption" color="text.secondary">DB & Auth Baseline</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              REL-001
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              DB & Auth Baseline
+                            </Typography>
                           </Box>
                         </Paper>
                       </Grid>
@@ -816,8 +949,12 @@ export function PlatformConsolePage() {
                         <Paper sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CheckCircleIcon color="success" />
                           <Box>
-                            <Typography variant="body2" fontWeight={600}>REL-002</Typography>
-                            <Typography variant="caption" color="text.secondary">Contract OpenAPI Sync</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              REL-002
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Contract OpenAPI Sync
+                            </Typography>
                           </Box>
                         </Paper>
                       </Grid>
@@ -825,8 +962,12 @@ export function PlatformConsolePage() {
                         <Paper sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CheckCircleIcon color="success" />
                           <Box>
-                            <Typography variant="body2" fontWeight={600}>REL-003</Typography>
-                            <Typography variant="caption" color="text.secondary">Pre-Release Tests</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              REL-003
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Pre-Release Tests
+                            </Typography>
                           </Box>
                         </Paper>
                       </Grid>
@@ -834,8 +975,12 @@ export function PlatformConsolePage() {
                         <Paper sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <WarningAmberIcon color="warning" />
                           <Box>
-                            <Typography variant="body2" fontWeight={600}>REL-004</Typography>
-                            <Typography variant="caption" color="text.secondary">Git Tagging & Release</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              REL-004
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Git Tagging & Release
+                            </Typography>
                           </Box>
                         </Paper>
                       </Grid>
@@ -843,9 +988,15 @@ export function PlatformConsolePage() {
 
                     <Divider sx={{ my: 1.5 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>Rule-Pack: <strong>{rel.rulePackVersion}</strong></span>
-                      <span>Target Date: <strong>{rel.targetDate}</strong></span>
-                      <span>Release Notes: <code>{rel.releaseNotesRef}</code></span>
+                      <span>
+                        Rule-Pack: <strong>{rel.rulePackVersion}</strong>
+                      </span>
+                      <span>
+                        Target Date: <strong>{rel.targetDate}</strong>
+                      </span>
+                      <span>
+                        Release Notes: <code>{rel.releaseNotesRef}</code>
+                      </span>
                     </Box>
                   </CardContent>
                 </Card>
@@ -924,7 +1075,11 @@ export function PlatformConsolePage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <FormControl fullWidth>
               <InputLabel>Target Tenant</InputLabel>
-              <Select value={supportTenantId} label="Target Tenant" onChange={(e) => setSupportTenantId(e.target.value)}>
+              <Select
+                value={supportTenantId}
+                label="Target Tenant"
+                onChange={(e) => setSupportTenantId(e.target.value)}
+              >
                 {(tenantsQuery.data?.data ?? []).map((t) => (
                   <MenuItem key={t.id} value={t.id}>
                     {t.legalName} ({t.id})
@@ -965,7 +1120,12 @@ export function PlatformConsolePage() {
             variant="contained"
             color="warning"
             onClick={() => createSupportMutation.mutate()}
-            disabled={!supportTenantId || !supportReason || parseFloat(supportDuration) > 4.0 || createSupportMutation.isPending}
+            disabled={
+              !supportTenantId ||
+              !supportReason ||
+              parseFloat(supportDuration) > 4.0 ||
+              createSupportMutation.isPending
+            }
           >
             Submit Request
           </Button>
@@ -973,13 +1133,22 @@ export function PlatformConsolePage() {
       </Dialog>
 
       {/* DIALOG: Import Master Data with Preview */}
-      <Dialog open={masterImportDialogOpen} onClose={() => setMasterImportDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={masterImportDialogOpen}
+        onClose={() => setMasterImportDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Import Master Data Item</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <FormControl fullWidth>
               <InputLabel>Catalogue List</InputLabel>
-              <Select value={importListCode} label="Catalogue List" onChange={(e) => setImportListCode(e.target.value)}>
+              <Select
+                value={importListCode}
+                label="Catalogue List"
+                onChange={(e) => setImportListCode(e.target.value)}
+              >
                 <MenuItem value="PINCODES">PINCODES</MenuItem>
                 <MenuItem value="STATES">STATES</MenuItem>
                 <MenuItem value="OCCUPATIONS">OCCUPATIONS</MenuItem>
@@ -1005,7 +1174,8 @@ export function PlatformConsolePage() {
 
             {importPreviewData && (
               <Alert severity="success" sx={{ mt: 1 }}>
-                Preview Ready: Total: {importPreviewData.totalSubmitted}, New: {importPreviewData.newItemsCount}, Updated: {importPreviewData.updatedItemsCount}
+                Preview Ready: Total: {importPreviewData.totalSubmitted}, New:{' '}
+                {importPreviewData.newItemsCount}, Updated: {importPreviewData.updatedItemsCount}
               </Alert>
             )}
           </Box>

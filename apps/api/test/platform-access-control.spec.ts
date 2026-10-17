@@ -18,11 +18,13 @@ describe('Module 5: Access Control (RBAC API)', () => {
     tenantId: 'ten_01JTESTTENANT00000000000000',
     authTime: new Date().toISOString(), // a role edit needs step-up (API-ACL-004)
     // An editor can only give a role what they hold themselves, so the administrator also holds the permissions these tests grant.
-    grants: ['user.manage', 'role.manage', 'lead.read', 'lead.create', 'task.read', 'task.create'].map((code) => ({
-      code: code as never,
-      scope: 'TENANT' as const,
-      branchIds: [],
-    })),
+    grants: ['user.manage', 'role.manage', 'lead.read', 'lead.create', 'task.read', 'task.create'].map(
+      (code) => ({
+        code: code as never,
+        scope: 'TENANT' as const,
+        branchIds: [],
+      }),
+    ),
   });
 
   const staffPrincipal = testPrincipal({

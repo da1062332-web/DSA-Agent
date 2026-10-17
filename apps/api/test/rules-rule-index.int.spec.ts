@@ -125,7 +125,11 @@ describe('rule_set_rule against a fresh database', () => {
     const draft = await request(app).get(`/v1/rule-set-versions/${versionId}`);
     const etag = draft.headers.etag as string;
 
-    const output = (result: string) => ({ result, maxEligibleAmount: null, reasons: [{ code: 'TEST', text: 'test' }] });
+    const output = (result: string) => ({
+      result,
+      maxEligibleAmount: null,
+      reasons: [{ code: 'TEST', text: 'test' }],
+    });
     const definition = {
       schemaVersion: 1,
       hitPolicy: 'FIRST',

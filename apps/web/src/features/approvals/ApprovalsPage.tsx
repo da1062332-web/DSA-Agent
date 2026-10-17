@@ -71,7 +71,9 @@ export function ApprovalsPage() {
       {(canSupport || showCorrections) && (
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
           {canSupport && <Tab value="support" label="Support access" data-testid="approvals.tab.support" />}
-          {showCorrections && <Tab value="corrections" label="Data corrections" data-testid="approvals.tab.corrections" />}
+          {showCorrections && (
+            <Tab value="corrections" label="Data corrections" data-testid="approvals.tab.corrections" />
+          )}
         </Tabs>
       )}
       {canSupport && tab === 'support' && <SupportAccessTab />}
@@ -88,8 +90,8 @@ function SupportAccessTab() {
   return (
     <>
       <Alert severity="info" sx={{ mb: 2 }}>
-        A platform operator asked to look at your organisation's configuration for a limited time (at most 4 hours). Approve only a
-        request you recognise. You can revoke an approved access at any time.
+        A platform operator asked to look at your organisation's configuration for a limited time (at most 4
+        hours). Approve only a request you recognise. You can revoke an approved access at any time.
       </Alert>
       <ErrorAlert error={list.error} />
       {list.isPending ? (
@@ -168,7 +170,12 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
               variant="contained"
               color="success"
               disabled={busy}
-              onClick={() => decide.mutate({ decision: 'APPROVED' }, { onSuccess: () => toast.success('Access approved.') })}
+              onClick={() =>
+                decide.mutate(
+                  { decision: 'APPROVED' },
+                  { onSuccess: () => toast.success('Access approved.') },
+                )
+              }
             >
               Approve
             </Button>
@@ -177,14 +184,22 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
               variant="outlined"
               color="error"
               disabled={busy}
-              onClick={() => decide.mutate({ decision: 'DENIED' }, { onSuccess: () => toast.success('Access denied.') })}
+              onClick={() =>
+                decide.mutate({ decision: 'DENIED' }, { onSuccess: () => toast.success('Access denied.') })
+              }
             >
               Deny
             </Button>
           </Stack>
         )}
         {action === 'REVOKE' && (
-          <Button size="small" variant="outlined" color="error" disabled={busy} onClick={() => revoke.mutate({})}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            disabled={busy}
+            onClick={() => revoke.mutate({})}
+          >
             Revoke
           </Button>
         )}
@@ -193,19 +208,37 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
   );
 }
 
-function CorrectionsTab({ meId, canRequest, canApprove }: { meId: string | undefined; canRequest: boolean; canApprove: boolean }) {
+function CorrectionsTab({
+  meId,
+  canRequest,
+  canApprove,
+}: {
+  meId: string | undefined;
+  canRequest: boolean;
+  canApprove: boolean;
+}) {
   const list = useList<DataCorrectionRequest>(CORRECTIONS, {}, 100);
   const [creating, setCreating] = useState(false);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   return (
     <>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ sm: 'center' }} sx={{ mb: 2 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        justifyContent="space-between"
+        alignItems={{ sm: 'center' }}
+        sx={{ mb: 2 }}
+      >
         <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
-          A correction changes business data, so one person asks and a different person approves (SOD-08). An approved correction is run
-          by the correction executor service, never by a person on this screen.
+          A correction changes business data, so one person asks and a different person approves (SOD-08). An
+          approved correction is run by the correction executor service, never by a person on this screen.
         </Typography>
         {canRequest && (
-          <Button variant="contained" onClick={() => setCreating(true)} data-testid="approvals.corrections.new">
+          <Button
+            variant="contained"
+            onClick={() => setCreating(true)}
+            data-testid="approvals.corrections.new"
+          >
             New correction request
           </Button>
         )}
@@ -229,7 +262,15 @@ function CorrectionsTab({ meId, canRequest, canApprove }: { meId: string | undef
   );
 }
 
-function CorrectionCard({ correction: c, meId, canApprove }: { correction: DataCorrectionRequest; meId: string | undefined; canApprove: boolean }) {
+function CorrectionCard({
+  correction: c,
+  meId,
+  canApprove,
+}: {
+  correction: DataCorrectionRequest;
+  meId: string | undefined;
+  canApprove: boolean;
+}) {
   const decide = useCommand<{ decision: 'APPROVED' | 'REJECTED' }, DataCorrectionRequest>(
     () => ({ path: `${CORRECTIONS}/${c.id}/approval`, method: 'POST' }),
     [[CORRECTIONS]],
@@ -245,14 +286,29 @@ function CorrectionCard({ correction: c, meId, canApprove }: { correction: DataC
             <Typography variant="subtitle1" fontWeight={700}>
               {c.scriptRef}
             </Typography>
-            <StatusChip active={c.status === 'EXECUTED' || c.status === 'APPROVED'} label={CORRECTION_STATUS_LABELS[c.status]} />
+            <StatusChip
+              active={c.status === 'EXECUTED' || c.status === 'APPROVED'}
+              label={CORRECTION_STATUS_LABELS[c.status]}
+            />
           </Stack>
           {may && (
             <Stack direction="row" spacing={1}>
-              <Button size="small" variant="contained" color="success" disabled={decide.isPending} onClick={() => decide.mutate({ decision: 'APPROVED' })}>
+              <Button
+                size="small"
+                variant="contained"
+                color="success"
+                disabled={decide.isPending}
+                onClick={() => decide.mutate({ decision: 'APPROVED' })}
+              >
                 Approve
               </Button>
-              <Button size="small" variant="outlined" color="error" disabled={decide.isPending} onClick={() => decide.mutate({ decision: 'REJECTED' })}>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                disabled={decide.isPending}
+                onClick={() => decide.mutate({ decision: 'REJECTED' })}
+              >
                 Reject
               </Button>
             </Stack>

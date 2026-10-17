@@ -106,7 +106,9 @@ export class MasterKeyKmsPort implements KmsPort {
     }
 
     if (this.masterKey.length !== 32) {
-      throw new Error(`Master KEK must be exactly 256 bits (32 bytes), received ${this.masterKey.length} bytes`);
+      throw new Error(
+        `Master KEK must be exactly 256 bits (32 bytes), received ${this.masterKey.length} bytes`,
+      );
     }
 
     this.keyVersion = opts.keyVersion ?? 'kek-v1';

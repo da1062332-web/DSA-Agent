@@ -48,7 +48,8 @@ export interface PartnerLeadRecord {
   tenantId: string;
   partnerId: string;
   externalReferenceId: string;
-  status: 'RECEIVED' | 'DUPLICATE_SUSPECTED' | 'QUALIFIED' | 'CONVERTED' | 'CONTACTED' | 'DROPPED' | 'REJECTED';
+  status:
+    'RECEIVED' | 'DUPLICATE_SUSPECTED' | 'QUALIFIED' | 'CONVERTED' | 'CONTACTED' | 'DROPPED' | 'REJECTED';
   loanProductCode: string;
   requestedAmount: { amount: string; currency: string };
   applicant: {
@@ -74,7 +75,16 @@ export interface PartnerApplicationRecord {
   productId: string;
   appliedAmount: { amount: string; currency: string };
   tenureMonths: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'UNDERWRITING' | 'LENDER_PROCESSING' | 'APPROVED' | 'SANCTIONED' | 'DISBURSED' | 'REJECTED' | 'CANCELLED';
+  status:
+    | 'DRAFT'
+    | 'SUBMITTED'
+    | 'UNDERWRITING'
+    | 'LENDER_PROCESSING'
+    | 'APPROVED'
+    | 'SANCTIONED'
+    | 'DISBURSED'
+    | 'REJECTED'
+    | 'CANCELLED';
   currentStage: string;
   sanctionCount: number;
   createdAt: string;
@@ -92,7 +102,10 @@ export class PartnerApiService {
     private apiKeyStore: ApiKeyStore,
     apiClients?: ApiClientRepository,
   ) {
-    this.apiClients = apiClients ?? (deps.apiClientRepository as ApiClientRepository | undefined) ?? new InMemoryApiClientRepository();
+    this.apiClients =
+      apiClients ??
+      (deps.apiClientRepository as ApiClientRepository | undefined) ??
+      new InMemoryApiClientRepository();
   }
 
   // Helper for masking
@@ -119,15 +132,19 @@ export class PartnerApiService {
     const str = typeof val === 'string' ? val : JSON.stringify(val);
     // PAN: [A-Z]{5}[0-9]{4}[A-Z]{1}
     if (/[A-Za-z]{5}\d{4}[A-Za-z]/.test(str)) {
-      throw AppError.of('VALIDATION_ERROR', 'Plaintext PAN detected. S3-class identity data is prohibited in Partner API.', [
-        { field: 'metadata', issue: 'S3_PAN_PROHIBITED' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Plaintext PAN detected. S3-class identity data is prohibited in Partner API.',
+        [{ field: 'metadata', issue: 'S3_PAN_PROHIBITED' }],
+      );
     }
     // Aadhaar: 12 digits
     if (/\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b/.test(str)) {
-      throw AppError.of('VALIDATION_ERROR', 'Plaintext Aadhaar detected. S3-class identity data is prohibited in Partner API.', [
-        { field: 'metadata', issue: 'S3_AADHAAR_PROHIBITED' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Plaintext Aadhaar detected. S3-class identity data is prohibited in Partner API.',
+        [{ field: 'metadata', issue: 'S3_AADHAAR_PROHIBITED' }],
+      );
     }
   }
 
@@ -207,7 +224,9 @@ export class PartnerApiService {
     }
 
     // 2. Authorization
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.create');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.create',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -284,7 +303,9 @@ export class PartnerApiService {
 
   async getLead(ctx: RequestContext, id: string): Promise<PartnerLeadResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -314,7 +335,9 @@ export class PartnerApiService {
 
   async listLeads(ctx: RequestContext, query: PartnerListLeadsQuery): Promise<PartnerListLeadsResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -371,7 +394,9 @@ export class PartnerApiService {
       return { application: cached.body as PartnerApplicationResponse, isReplayed: true };
     }
 
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'application.create');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'application.create',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -423,7 +448,9 @@ export class PartnerApiService {
 
   async getApplication(ctx: RequestContext, id: string): Promise<PartnerApplicationResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.application_read' || g.code === 'application.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.application_read' || g.code === 'application.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.application_read required.');
     }
@@ -449,7 +476,9 @@ export class PartnerApiService {
 
   async getApplicationOffers(ctx: RequestContext, id: string): Promise<PartnerSanctionOffersResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.application_read' || g.code === 'application.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.application_read' || g.code === 'application.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.application_read required.');
     }
@@ -491,7 +520,9 @@ export class PartnerApiService {
     _idemKey: string,
   ): Promise<PartnerUploadSessionResponse> {
     const { principal } = ctx;
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'document.upload');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'document.upload',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -537,7 +568,9 @@ export class PartnerApiService {
   }
 
   private requireApiRead(principal: RequestContext['principal']): void {
-    const hasAccess = principal.grants.some((g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage');
+    const hasAccess = principal.grants.some(
+      (g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage',
+    );
     if (!hasAccess && principal.kind !== 'SERVICE') {
       throw AppError.of('FORBIDDEN', 'Permission denied: api.read or api.manage required.');
     }
@@ -593,7 +626,11 @@ export class PartnerApiService {
     return this.toClientResponse(record);
   }
 
-  async updateApiClient(ctx: RequestContext, id: string, input: UpdateApiClientInput): Promise<ApiClientResponse> {
+  async updateApiClient(
+    ctx: RequestContext,
+    id: string,
+    input: UpdateApiClientInput,
+  ): Promise<ApiClientResponse> {
     this.requireApiManage(ctx.principal);
     const record = await this.apiClients.update(ctx, id, input);
     if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
@@ -602,13 +639,18 @@ export class PartnerApiService {
 
   async deleteApiClient(ctx: RequestContext, id: string): Promise<void> {
     this.requireApiManage(ctx.principal);
-    if (!(await this.apiClients.revoke(ctx, id))) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
+    if (!(await this.apiClients.revoke(ctx, id)))
+      throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
   }
 
   async rotateClientSecret(ctx: RequestContext, id: string): Promise<RotateClientSecretResponse> {
     this.requireApiManage(ctx.principal);
     const clientSecret = `sec_${crypto.randomBytes(24).toString('hex')}`;
-    const record = await this.apiClients.rotateSecret(ctx, id, crypto.createHash('sha256').update(clientSecret).digest('hex'));
+    const record = await this.apiClients.rotateSecret(
+      ctx,
+      id,
+      crypto.createHash('sha256').update(clientSecret).digest('hex'),
+    );
     if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
     return { clientId: record.clientId, clientSecret, rotatedAt: record.updatedAt };
   }

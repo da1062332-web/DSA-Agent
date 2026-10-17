@@ -475,7 +475,8 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
   });
 
   it('PG-MSG-011 verifies message.send permission grants across tenant operational and admin roles', async () => {
-    const adminDbUrl = resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
+    const adminDbUrl =
+      resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
     const adminDb = createDb(adminDbUrl!, { poolMax: 2 });
     try {
       const grantRows = await sql<{ role_code: string; permission_code: string }>`

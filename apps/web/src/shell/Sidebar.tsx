@@ -146,7 +146,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
-      { label: 'Approvals', to: '/approvals', anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'] },
+      {
+        label: 'Approvals',
+        to: '/approvals',
+        anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'],
+      },
       { label: 'Security', to: '/account/security' },
     ],
   },
@@ -181,7 +185,8 @@ export function visibleGroups(
     .map((g) => ({
       ...g,
       items: g.items.filter(
-        (i) => (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
+        (i) =>
+          (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
       ),
     }))
     .filter((g) => g.items.length > 0);

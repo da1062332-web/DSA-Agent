@@ -28,10 +28,16 @@ beforeAll(async () => {
   container = await new PostgreSqlContainer(process.env.DSA_PG_IMAGE ?? 'postgres:16').start();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
-  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql') && !f.includes('0050_platform_realm') && !f.includes('0061_master_data')).sort()) {
+  for (const file of readdirSync(MIGRATIONS_DIR)
+    .filter(
+      (f) => f.endsWith('.sql') && !f.includes('0050_platform_realm') && !f.includes('0061_master_data'),
+    )
+    .sort()) {
     await db.query(readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'));
   }
-  await db.query(`CREATE ROLE dsa_api LOGIN PASSWORD 'rehearsal' NOBYPASSRLS IN ROLE dsa_app; ALTER ROLE dsa_api SET search_path = app, extensions;`);
+  await db.query(
+    `CREATE ROLE dsa_api LOGIN PASSWORD 'rehearsal' NOBYPASSRLS IN ROLE dsa_app; ALTER ROLE dsa_api SET search_path = app, extensions;`,
+  );
   await seedHostedLikeState();
 }, 240_000);
 afterAll(async () => {
@@ -47,30 +53,65 @@ async function seedHostedLikeState(): Promise<void> {
     ['ten_demo_01', 'demo-dsa', 'Demo DSA Financial Services Ltd'],
   ];
   for (const [id, slug, name] of tenants) {
-    await db.query(`insert into app.tenant (id, slug, legal_name, tenant_type, created_by) values ($1, $2, $3, 'DSA_ORG', 'seed')`, [id, slug, name]);
+    await db.query(
+      `insert into app.tenant (id, slug, legal_name, tenant_type, created_by) values ($1, $2, $3, 'DSA_ORG', 'seed')`,
+      [id, slug, name],
+    );
   }
   // Roles as on hosted: owner in Alpha and Beta, admin in all three, branch manager and loan ops in Alpha and Beta.
   const roles: [string, string][] = [
-    ['ROLE-ORG-OWNER', tenants[0]![0]!], ['ROLE-ORG-OWNER', tenants[1]![0]!],
-    ['ROLE-TENANT-ADMIN', tenants[0]![0]!], ['ROLE-TENANT-ADMIN', tenants[1]![0]!], ['ROLE-TENANT-ADMIN', tenants[2]![0]!],
-    ['ROLE-BRANCH-MGR', tenants[0]![0]!], ['ROLE-BRANCH-MGR', tenants[1]![0]!],
-    ['ROLE-LOAN-OPS', tenants[0]![0]!], ['ROLE-LOAN-OPS', tenants[1]![0]!],
+    ['ROLE-ORG-OWNER', tenants[0]![0]!],
+    ['ROLE-ORG-OWNER', tenants[1]![0]!],
+    ['ROLE-TENANT-ADMIN', tenants[0]![0]!],
+    ['ROLE-TENANT-ADMIN', tenants[1]![0]!],
+    ['ROLE-TENANT-ADMIN', tenants[2]![0]!],
+    ['ROLE-BRANCH-MGR', tenants[0]![0]!],
+    ['ROLE-BRANCH-MGR', tenants[1]![0]!],
+    ['ROLE-LOAN-OPS', tenants[0]![0]!],
+    ['ROLE-LOAN-OPS', tenants[1]![0]!],
   ];
-  const platformCodes = ['platform.console', 'platform.flags', 'platform.master_data', 'platform.jobs', 'platform.support_access', 'platform.release'];
+  const platformCodes = [
+    'platform.console',
+    'platform.flags',
+    'platform.master_data',
+    'platform.jobs',
+    'platform.support_access',
+    'platform.release',
+  ];
   for (const [i, [code, tenant]] of roles.entries()) {
     const roleId = `role_seed_${i}`;
-    await db.query(`insert into app.role (id, tenant_id, code, name, created_by) values ($1, $2, $3, $3, 'seed')`, [roleId, tenant, code]);
+    await db.query(
+      `insert into app.role (id, tenant_id, code, name, created_by) values ($1, $2, $3, $3, 'seed')`,
+      [roleId, tenant, code],
+    );
     const perms: string[] = [];
-    if (code === 'ROLE-ORG-OWNER' || code === 'ROLE-TENANT-ADMIN') perms.push(...platformCodes, 'data_correction.request', 'data_correction.approve');
+    if (code === 'ROLE-ORG-OWNER' || code === 'ROLE-TENANT-ADMIN')
+      perms.push(...platformCodes, 'data_correction.request', 'data_correction.approve');
     if (code === 'ROLE-BRANCH-MGR' || code === 'ROLE-LOAN-OPS') perms.push('data_correction.request');
-    for (const p of perms) await db.query(`insert into app.role_permission (tenant_id, role_id, permission_code) values ($1, $2, $3)`, [tenant, roleId, p]);
+    for (const p of perms)
+      await db.query(
+        `insert into app.role_permission (tenant_id, role_id, permission_code) values ($1, $2, $3)`,
+        [tenant, roleId, p],
+      );
   }
   // One real user with the owner role, so "who loses access" has something to show.
   const alpha = tenants[0]![0]!;
-  await db.query(`insert into app.organisation (id, tenant_id, legal_name, constitution, created_by, updated_by) values ('org_seed_1', $1, 'Alpha', 'PVT_LTD', 'seed', 'seed')`, [alpha]);
-  await db.query(`insert into app.branch (id, tenant_id, organisation_id, code, name, created_by, updated_by) values ('br_seed_1', $1, 'org_seed_1', 'MUM01', 'Mumbai', 'seed', 'seed')`, [alpha]);
-  await db.query(`insert into app.app_user (id, tenant_id, idp_subject, email, display_name, primary_branch_id, created_by, updated_by) values ('usr_seed_1', $1, 'sub-seed-1', 'owner@alpha.test', 'Alpha Owner', 'br_seed_1', 'seed', 'seed')`, [alpha]);
-  await db.query(`insert into app.user_role_assignment (id, tenant_id, user_id, role_id, scope_type, created_by) values ('ura_seed_1', $1, 'usr_seed_1', 'role_seed_0', 'TENANT', 'seed')`, [alpha]);
+  await db.query(
+    `insert into app.organisation (id, tenant_id, legal_name, constitution, created_by, updated_by) values ('org_seed_1', $1, 'Alpha', 'PVT_LTD', 'seed', 'seed')`,
+    [alpha],
+  );
+  await db.query(
+    `insert into app.branch (id, tenant_id, organisation_id, code, name, created_by, updated_by) values ('br_seed_1', $1, 'org_seed_1', 'MUM01', 'Mumbai', 'seed', 'seed')`,
+    [alpha],
+  );
+  await db.query(
+    `insert into app.app_user (id, tenant_id, idp_subject, email, display_name, primary_branch_id, created_by, updated_by) values ('usr_seed_1', $1, 'sub-seed-1', 'owner@alpha.test', 'Alpha Owner', 'br_seed_1', 'seed', 'seed')`,
+    [alpha],
+  );
+  await db.query(
+    `insert into app.user_role_assignment (id, tenant_id, user_id, role_id, scope_type, created_by) values ('ura_seed_1', $1, 'usr_seed_1', 'role_seed_0', 'TENANT', 'seed')`,
+    [alpha],
+  );
   // The leftover live-test rows in the 0046 (legacy) shape, and a fifth flag.
   await db.query(
     `insert into app.support_access_grant (id, tenant_id, support_user_id, reason, expires_at, status, lock_version, created_by)
@@ -82,7 +123,9 @@ async function seedHostedLikeState(): Promise<void> {
      values ('dcr_seed_1', $1, 'LEAD', 'lead_test_01', 'phone', '1', '2', 'Incorrect phone', 'PENDING', 'usr_maker', 1, 'usr_maker')`,
     [alpha],
   );
-  await db.query(`insert into app.feature_flag (key, scope, value, owner, updated_by) values ('flag_test_seed', 'GLOBAL', true, 'test', 'test')`);
+  await db.query(
+    `insert into app.feature_flag (key, scope, value, owner, updated_by) values ('flag_test_seed', 'GLOBAL', true, 'test', 'test')`,
+  );
 }
 
 /** Everything 0050 touches, as JSON, so before and after can be compared whole. */
@@ -90,17 +133,33 @@ async function signature(): Promise<unknown> {
   const q = async (text: string) => (await db.query(text)).rows;
   const tables = `('tenant','feature_flag','master_data_item','support_access_grant','data_correction_request')`;
   return {
-    policies: await q(`select tablename, policyname, cmd, roles::text, qual, with_check from pg_policies where schemaname = 'app' and tablename in ${tables} order by 1, 2`),
-    constraints: await q(`select conrelid::regclass::text as tbl, conname, contype::text, pg_get_constraintdef(oid) as def, convalidated from pg_constraint where conrelid in ('app.tenant'::regclass, 'app.support_access_grant'::regclass, 'app.data_correction_request'::regclass) order by 1, 2`),
-    columns: await q(`select table_name, column_name, data_type, is_nullable, column_default from information_schema.columns where table_schema = 'app' and table_name in ${tables} order by 1, 2`),
-    rls: await q(`select relname, relrowsecurity, relforcerowsecurity from pg_class where relnamespace = 'app'::regnamespace and relname in ${tables} order by 1`),
-    grants: await q(`select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema = 'app' and table_name in ${tables} order by 1, 2, 3`),
-    rolePermission: await q(`select tenant_id, role_id, permission_code from app.role_permission order by 1, 2, 3`),
+    policies: await q(
+      `select tablename, policyname, cmd, roles::text, qual, with_check from pg_policies where schemaname = 'app' and tablename in ${tables} order by 1, 2`,
+    ),
+    constraints: await q(
+      `select conrelid::regclass::text as tbl, conname, contype::text, pg_get_constraintdef(oid) as def, convalidated from pg_constraint where conrelid in ('app.tenant'::regclass, 'app.support_access_grant'::regclass, 'app.data_correction_request'::regclass) order by 1, 2`,
+    ),
+    columns: await q(
+      `select table_name, column_name, data_type, is_nullable, column_default from information_schema.columns where table_schema = 'app' and table_name in ${tables} order by 1, 2`,
+    ),
+    rls: await q(
+      `select relname, relrowsecurity, relforcerowsecurity from pg_class where relnamespace = 'app'::regnamespace and relname in ${tables} order by 1`,
+    ),
+    grants: await q(
+      `select table_name, grantee, privilege_type from information_schema.role_table_grants where table_schema = 'app' and table_name in ${tables} order by 1, 2, 3`,
+    ),
+    rolePermission: await q(
+      `select tenant_id, role_id, permission_code from app.role_permission order by 1, 2, 3`,
+    ),
     roles: await q(`select id, tenant_id, code from app.role order by 1`),
     tenants: await q(`select id, tenant_type, status from app.tenant order by 1`),
-    orgsAndBranches: await q(`select (select count(*) from app.organisation) as orgs, (select count(*) from app.branch) as branches`),
+    orgsAndBranches: await q(
+      `select (select count(*) from app.organisation) as orgs, (select count(*) from app.branch) as branches`,
+    ),
     functions: await q(`select proname from pg_proc where pronamespace = 'app'::regnamespace order by 1`),
-    rows: await q(`select (select count(*) from app.support_access_grant) as support, (select count(*) from app.data_correction_request) as corrections, (select count(*) from app.feature_flag) as flags, (select count(*) from app.master_data_item) as master`),
+    rows: await q(
+      `select (select count(*) from app.support_access_grant) as support, (select count(*) from app.data_correction_request) as corrections, (select count(*) from app.feature_flag) as flags, (select count(*) from app.master_data_item) as master`,
+    ),
   };
 }
 
@@ -113,7 +172,12 @@ const checks = async (file: string) => {
   const fresh = new pg.Client({ connectionString: container.getConnectionUri() });
   await fresh.connect();
   try {
-    return (await fresh.query(sqlOf(file))).rows as { name?: string; actual?: string; severity?: string; result: string }[];
+    return (await fresh.query(sqlOf(file))).rows as {
+      name?: string;
+      actual?: string;
+      severity?: string;
+      result: string;
+    }[];
   } finally {
     await fresh.end();
   }
@@ -130,8 +194,12 @@ describe('TEST-RUNBOOK migration 0050 runbook, rehearsed', () => {
     expect(required.length).toBeGreaterThanOrEqual(14);
     expect(required.filter((r) => r.result !== 'PASS')).toEqual([]);
     const info = Object.fromEntries(rows.filter((r) => r.severity === 'INFO').map((r) => [r.name, r.actual]));
-    expect(info['operator grants that will be DELETED from customer-tenant roles (hosted dev: 30)']).toBe('30');
-    expect(info['accounts that will LOSE platform.* (hosted dev: 7 accounts, 5 people)']).toBe('owner@alpha.test');
+    expect(info['operator grants that will be DELETED from customer-tenant roles (hosted dev: 30)']).toBe(
+      '30',
+    );
+    expect(info['accounts that will LOSE platform.* (hosted dev: 7 accounts, 5 people)']).toBe(
+      'owner@alpha.test',
+    );
   });
 
   it('TEST-RUNBOOK-02 backup: one JSON object with exact role_permission rows and consistent counts, and the grant restore reads it', async () => {
@@ -142,12 +210,22 @@ describe('TEST-RUNBOOK migration 0050 runbook, rehearsed', () => {
     expect(backup.role_permission).toHaveLength(backup.counts.role_permission);
     expect(backup.role_permission).toHaveLength(44); // 30 operator grants + 5 data_correction.approve + 9 data_correction.request
     writeFileSync(backupFile, JSON.stringify({ rows: [{ backup }] }));
-    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], { encoding: 'utf8' });
+    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], {
+      encoding: 'utf8',
+    });
     expect(restore).toContain(`Restores ${backup.counts.role_permission} role_permission rows`);
     expect(restore).toContain('ON CONFLICT DO NOTHING');
     // A damaged backup is refused rather than half-restored.
-    writeFileSync(path.join(work, 'bad.json'), JSON.stringify({ rows: [{ backup: { ...backup, counts: { ...backup.counts, role_permission: 1 } } }] }));
-    expect(() => execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), path.join(work, 'bad.json')], { encoding: 'utf8', stdio: 'pipe' })).toThrow();
+    writeFileSync(
+      path.join(work, 'bad.json'),
+      JSON.stringify({ rows: [{ backup: { ...backup, counts: { ...backup.counts, role_permission: 1 } } }] }),
+    );
+    expect(() =>
+      execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), path.join(work, 'bad.json')], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+    ).toThrow();
   });
 
   it('TEST-RUNBOOK-03 apply: the migration runs once in a transaction and verify.sql passes every row', async () => {
@@ -185,7 +263,9 @@ describe('TEST-RUNBOOK migration 0050 runbook, rehearsed', () => {
        values ('dcr_api_1', 'ten_demo_01', 'API shaped correction', 'SCR-1', 'usr_x', 'PENDING', 'usr_x')`,
     );
     const applied = await signature();
-    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], { encoding: 'utf8' });
+    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], {
+      encoding: 'utf8',
+    });
     await expect(db.query(wrap(`${sqlOf('rollback.sql')}\n${restore}`))).rejects.toThrow(/ROLLBACK STOPPED/);
     await db.query('ROLLBACK').catch(() => undefined);
     expect(await signature()).toEqual(applied);
@@ -193,7 +273,9 @@ describe('TEST-RUNBOOK migration 0050 runbook, rehearsed', () => {
   });
 
   it('TEST-RUNBOOK-07 rollback restores the original state exactly, and preflight passes again afterwards', async () => {
-    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], { encoding: 'utf8' });
+    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], {
+      encoding: 'utf8',
+    });
     await db.query(wrap(`${sqlOf('rollback.sql')}\n${restore}`));
     expect(await signature()).toEqual(before);
     const rows = await checks('preflight.sql');
@@ -211,9 +293,13 @@ describe('TEST-RUNBOOK migration 0050 runbook, rehearsed', () => {
        values ('aud_runbook_1', $1, 'USER', 'usr_platform_1', 'platform.tenants_listed', 'TENANT', null, 'corr-runbook-1')`,
       [PLATFORM],
     );
-    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], { encoding: 'utf8' });
+    const restore = execFileSync(process.execPath, [path.join(OPS, 'restore-grants.mjs'), backupFile], {
+      encoding: 'utf8',
+    });
     await db.query(wrap(`${sqlOf('rollback.sql')}\n${restore}`));
-    expect((await db.query(`select status, tenant_type from app.tenant where id = $1`, [PLATFORM])).rows[0]).toEqual({ status: 'SUSPENDED', tenant_type: 'PLATFORM' });
+    expect(
+      (await db.query(`select status, tenant_type from app.tenant where id = $1`, [PLATFORM])).rows[0],
+    ).toEqual({ status: 'SUSPENDED', tenant_type: 'PLATFORM' });
     const now = (await signature()) as Record<string, unknown>;
     const was = before as Record<string, unknown>;
     // Everything except the (suspended) platform tenant and the type check that must keep allowing it is back as it was.

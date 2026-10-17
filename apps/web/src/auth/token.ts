@@ -11,8 +11,10 @@ export function getStoredAuthToken(): string | undefined {
   if (currentToken) return currentToken;
   if (typeof window === 'undefined') return undefined;
   try {
-    const sess = typeof window.sessionStorage !== 'undefined' ? window.sessionStorage.getItem('dsa_auth_token') : null;
-    const loc = typeof window.localStorage !== 'undefined' ? window.localStorage.getItem('dsa_auth_token') : null;
+    const sess =
+      typeof window.sessionStorage !== 'undefined' ? window.sessionStorage.getItem('dsa_auth_token') : null;
+    const loc =
+      typeof window.localStorage !== 'undefined' ? window.localStorage.getItem('dsa_auth_token') : null;
     const direct = sess || loc;
     if (direct) return direct;
   } catch {

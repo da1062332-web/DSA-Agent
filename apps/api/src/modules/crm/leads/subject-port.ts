@@ -6,7 +6,6 @@
 import { AppError, type ComplaintSubjectPort, type ComplaintSubjectType, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
 
-
 /**
  * Creates a ComplaintSubjectPort provider specifically for LEAD subjects.
  * Returns true if the lead exists in the caller's tenant, false otherwise.

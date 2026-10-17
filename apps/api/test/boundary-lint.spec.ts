@@ -28,7 +28,9 @@ describe.skipIf(!ESLintClass)('module boundary lint', () => {
     const messages = await lint(
       "import { createRouter } from '../../origination/applications/router';\nexport const r = createRouter;\n",
     );
-    expect(messages.some((m: Linter.LintMessage) => m.ruleId === 'import/no-restricted-paths' && m.severity === 2)).toBe(true);
+    expect(
+      messages.some((m: Linter.LintMessage) => m.ruleId === 'import/no-restricted-paths' && m.severity === 2),
+    ).toBe(true);
   });
 
   it('allows imports from @dsa/contracts and within the same boundary unit', async () => {

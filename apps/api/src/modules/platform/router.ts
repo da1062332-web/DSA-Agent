@@ -1055,7 +1055,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       const roleId = req.params.id;
       const parsed = UpdateRoleRequest.parse(req.body);
-      if (parsed.permissions !== undefined) assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
+      if (parsed.permissions !== undefined)
+        assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
 
       if (parsed.permissions !== undefined) {
         const validCodes = new Set<string>(PERMISSION_CODES);
@@ -1090,14 +1091,18 @@ export function createRouter(deps: ApiDeps): Router {
 
         // System roles are the baseline every tenant starts from: they are never edited (the database refuses it too).
         if (current.is_template) {
-          throw AppError.of('VALIDATION_ERROR', 'System roles cannot be changed. Create a custom role instead.', [
-            { field: 'roleId', issue: 'SYSTEM_ROLE' },
-          ]);
+          throw AppError.of(
+            'VALIDATION_ERROR',
+            'System roles cannot be changed. Create a custom role instead.',
+            [{ field: 'roleId', issue: 'SYSTEM_ROLE' }],
+          );
         }
         const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
         const permissionsBefore = (
           await sql<{ permission_code: string }>`
-            SELECT permission_code FROM app.role_permission WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} ORDER BY 1`.execute(tx)
+            SELECT permission_code FROM app.role_permission WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} ORDER BY 1`.execute(
+            tx,
+          )
         ).rows.map((r) => r.permission_code);
         if (parsed.permissions !== undefined) {
           assertCanGrantPermissions(
@@ -1225,7 +1230,9 @@ export function createRouter(deps: ApiDeps): Router {
         }
         const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
         const before = await sql<{ code: string; name: string }>`
-          SELECT code, name FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
+          SELECT code, name FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}`.execute(
+          tx,
+        );
 
         // Check if role is assigned to any user
         const assigned = await sql<{ id: string }>`
@@ -1239,7 +1246,9 @@ export function createRouter(deps: ApiDeps): Router {
         }
         // An assignment that has ended is history. A role that has one is kept, so that history keeps its meaning.
         const history = await sql<{ id: string }>`
-          SELECT id FROM app.user_role_assignment WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} LIMIT 1`.execute(tx);
+          SELECT id FROM app.user_role_assignment WHERE role_id = ${roleId} AND tenant_id = ${ctx.principal.tenantId} LIMIT 1`.execute(
+          tx,
+        );
         if (history.rows.length > 0) {
           throw AppError.of('VALIDATION_ERROR', 'This role has assignment history and cannot be deleted.', [
             { field: 'roleId', issue: 'HAS_ASSIGNMENT_HISTORY' },
@@ -1590,7 +1599,9 @@ export function createRouter(deps: ApiDeps): Router {
         if (parsed.status !== undefined) {
           const administratorsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
           const previous = await sql<{ status: string }>`
-            SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(tx);
+            SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(
+            tx,
+          );
           await sql`
             UPDATE app.app_user
             SET status = ${parsed.status}, updated_by = ${ctx.principal.id}

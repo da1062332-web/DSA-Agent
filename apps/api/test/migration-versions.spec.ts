@@ -5,9 +5,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(__dirname, '../../../supabase');
-const files = readdirSync(path.join(ROOT, 'migrations')).filter((f) => f.endsWith('.sql')).sort();
+const files = readdirSync(path.join(ROOT, 'migrations'))
+  .filter((f) => f.endsWith('.sql'))
+  .sort();
 const manifest = readFileSync(path.join(ROOT, 'MANIFEST.md'), 'utf8');
-const rows = [...manifest.matchAll(/^\| (M-\d+) \| `([^`]+\.sql)`/gm)].map((m) => ({ id: m[1]!, file: m[2]! }));
+const rows = [...manifest.matchAll(/^\| (M-\d+) \| `([^`]+\.sql)`/gm)].map((m) => ({
+  id: m[1]!,
+  file: m[2]!,
+}));
 
 // Known duplicates that still have to be renumbered by their owners. Remove an entry when it is fixed (TEST-MIG-04 insists).
 // Empty since the security migration moved from 0043 to 0063 (its content is byte-identical).

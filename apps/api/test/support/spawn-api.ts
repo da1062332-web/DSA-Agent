@@ -19,7 +19,8 @@ export function apiRoleUrl(admin: { host: string; port: number; database?: strin
 
 export async function startApi(databaseUrl: string): Promise<RunningApi> {
   const host = new URL(databaseUrl).hostname;
-  if (!/^(localhost|127(\.\d{1,3}){3}|\[?::1\]?)$/i.test(host)) throw new Error(`refusing to start the API against a non-local database (${host})`);
+  if (!/^(localhost|127(\.\d{1,3}){3}|\[?::1\]?)$/i.test(host))
+    throw new Error(`refusing to start the API against a non-local database (${host})`);
 
   const port = nextPort++;
   let out = '';

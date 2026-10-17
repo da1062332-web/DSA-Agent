@@ -1,16 +1,34 @@
 import { createDb } from '../src/kernel-min/db';
 import { sql } from 'kysely';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? (() => { throw new Error('VITE_SUPABASE_URL is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? (() => { throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? (() => { throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.'); })();
+const SUPABASE_URL =
+  process.env.VITE_SUPABASE_URL ??
+  (() => {
+    throw new Error(
+      'VITE_SUPABASE_URL is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.',
+    );
+  })();
+const SUPABASE_ANON_KEY =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  (() => {
+    throw new Error(
+      'VITE_SUPABASE_PUBLISHABLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.',
+    );
+  })();
+const SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ??
+  (() => {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY is not set. This script talks to a real Supabase project: set it explicitly, there is no built-in default.',
+    );
+  })();
 const API_BASE = 'http://localhost:3000';
 
 async function getToken(email: string, password = 'admin@123'): Promise<string> {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: {
-      'apikey': SUPABASE_ANON_KEY,
+      apikey: SUPABASE_ANON_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ email, password }),
@@ -26,8 +44,8 @@ async function ensureSecondUserPassword(): Promise<void> {
   try {
     const adminRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       },
     });
     const users = (await adminRes.json()) as any;
@@ -36,8 +54,8 @@ async function ensureSecondUserPassword(): Promise<void> {
       await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${alphaUser.id}`, {
         method: 'PUT',
         headers: {
-          'apikey': SERVICE_ROLE_KEY,
-          'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ password: 'admin@123' }),
@@ -72,7 +90,7 @@ async function main() {
   // Helper for API calls
   async function callApi(token: string, path: string, options: any = {}) {
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     };
@@ -125,7 +143,9 @@ async function main() {
       },
     }),
   });
-  console.log(`• INSERT /v1/leads: HTTP ${createLeadRes.status}, ID: ${createLeadRes.body?.id}, state: ${createLeadRes.body?.state}`);
+  console.log(
+    `• INSERT /v1/leads: HTTP ${createLeadRes.status}, ID: ${createLeadRes.body?.id}, state: ${createLeadRes.body?.state}`,
+  );
   if (createLeadRes.status !== 201) {
     console.error('Lead creation failed:', createLeadRes.body);
     process.exit(1);
@@ -137,14 +157,18 @@ async function main() {
   const dbLead = await sql<{ id: string; full_name: string; state: string }>`
     SELECT id, full_name, state FROM app.lead WHERE id = ${leadId}
   `.execute(db);
-  console.log(`• DB Check: Found lead in PostgreSQL with state = '${dbLead.rows[0]?.state}', full_name = '${dbLead.rows[0]?.full_name}'`);
+  console.log(
+    `• DB Check: Found lead in PostgreSQL with state = '${dbLead.rows[0]?.state}', full_name = '${dbLead.rows[0]?.full_name}'`,
+  );
 
   // SELECT & SEARCH
   const getLeadRes = await callApi(adminToken, `/v1/leads/${leadId}`);
   console.log(`• SELECT /v1/leads/:id: HTTP ${getLeadRes.status}, Name: ${getLeadRes.body?.fullName}`);
 
   const searchLeadRes = await callApi(adminToken, `/v1/leads?state=NEW&limit=10`);
-  console.log(`• SEARCH /v1/leads?state=NEW: HTTP ${searchLeadRes.status}, count: ${searchLeadRes.body?.data?.length}`);
+  console.log(
+    `• SEARCH /v1/leads?state=NEW: HTTP ${searchLeadRes.status}, count: ${searchLeadRes.body?.data?.length}`,
+  );
 
   // UPDATE STATE: T-LEAD-01 (CONTACT_ATTEMPTED)
   const trans1Res = await callApi(adminToken, `/v1/leads/${leadId}/transitions`, {
@@ -158,7 +182,9 @@ async function main() {
       nextFollowUpAt: new Date(Date.now() + 86400000).toISOString(),
     }),
   });
-  console.log(`• UPDATE State -> CONTACT_ATTEMPTED (T-LEAD-01): HTTP ${trans1Res.status}, new state: ${trans1Res.body?.state}`);
+  console.log(
+    `• UPDATE State -> CONTACT_ATTEMPTED (T-LEAD-01): HTTP ${trans1Res.status}, new state: ${trans1Res.body?.state}`,
+  );
   leadEtag = trans1Res.headers.get('etag') || `"${trans1Res.body?.version}"`;
 
   // UPDATE STATE: T-LEAD-02 (IN_PROGRESS)
@@ -172,7 +198,9 @@ async function main() {
       transitionCode: 'T-LEAD-02',
     }),
   });
-  console.log(`• UPDATE State -> IN_PROGRESS (T-LEAD-02): HTTP ${trans2Res.status}, new state: ${trans2Res.body?.state}`);
+  console.log(
+    `• UPDATE State -> IN_PROGRESS (T-LEAD-02): HTTP ${trans2Res.status}, new state: ${trans2Res.body?.state}`,
+  );
   leadEtag = trans2Res.headers.get('etag') || `"${trans2Res.body?.version}"`;
 
   // UPDATE STATE: T-LEAD-04 (QUALIFIED)
@@ -191,13 +219,17 @@ async function main() {
       },
     }),
   });
-  console.log(`• UPDATE State -> QUALIFIED (T-LEAD-04): HTTP ${trans3Res.status}, new state: ${trans3Res.body?.state}`);
+  console.log(
+    `• UPDATE State -> QUALIFIED (T-LEAD-04): HTTP ${trans3Res.status}, new state: ${trans3Res.body?.state}`,
+  );
 
   // DB Verification for Final State
   const dbLeadFinal = await sql<{ id: string; state: string; qual_applicant_type: string }>`
     SELECT id, state, qual_applicant_type FROM app.lead WHERE id = ${leadId}
   `.execute(db);
-  console.log(`• DB Check: Lead state in PostgreSQL = '${dbLeadFinal.rows[0]?.state}', Applicant Type = '${dbLeadFinal.rows[0]?.qual_applicant_type}'`);
+  console.log(
+    `• DB Check: Lead state in PostgreSQL = '${dbLeadFinal.rows[0]?.state}', Applicant Type = '${dbLeadFinal.rows[0]?.qual_applicant_type}'`,
+  );
 
   // -------------------------------------------------------------------------
   // MODULE 2: CUSTOMERS & COMPANIES (MOD-CUST - Individuals & Entities)
@@ -216,7 +248,9 @@ async function main() {
       primaryEmail: `sunil_${Date.now()}@example.com`,
     }),
   });
-  console.log(`• INSERT /v1/customers (Individual): HTTP ${custIndividualRes.status}, ID: ${custIndividualRes.body?.id}`);
+  console.log(
+    `• INSERT /v1/customers (Individual): HTTP ${custIndividualRes.status}, ID: ${custIndividualRes.body?.id}`,
+  );
   const individualCustId = custIndividualRes.body?.id;
 
   // Create Entity (Company) Customer
@@ -230,7 +264,9 @@ async function main() {
       primaryEmail: `corp_${Date.now()}@tcs.com`,
     }),
   });
-  console.log(`• INSERT /v1/customers (Company / Entity): HTTP ${custCompanyRes.status}, ID: ${custCompanyRes.body?.id}`);
+  console.log(
+    `• INSERT /v1/customers (Company / Entity): HTTP ${custCompanyRes.status}, ID: ${custCompanyRes.body?.id}`,
+  );
   const companyCustId = custCompanyRes.body?.id;
 
   // DB Check for Customers
@@ -244,7 +280,9 @@ async function main() {
 
   // SELECT / List Customers
   const listCustRes = await callApi(adminToken, `/v1/customers?limit=10`);
-  console.log(`• SELECT /v1/customers: HTTP ${listCustRes.status}, Total Found: ${listCustRes.body?.data?.length}`);
+  console.log(
+    `• SELECT /v1/customers: HTTP ${listCustRes.status}, Total Found: ${listCustRes.body?.data?.length}`,
+  );
 
   // -------------------------------------------------------------------------
   // MODULE 3: GRIEVANCES & COMPLAINTS WITH LEAD ComplaintSubjectPort
@@ -262,7 +300,9 @@ async function main() {
       description: 'Complaint against a non-existent lead should be rejected.',
     }),
   });
-  console.log(`• Verification Guard: Complaint with invalid lead rejected: HTTP ${fakeComplaintRes.status} (expected 404 NOT_FOUND)`);
+  console.log(
+    `• Verification Guard: Complaint with invalid lead rejected: HTTP ${fakeComplaintRes.status} (expected 404 NOT_FOUND)`,
+  );
 
   // Valid complaint against the newly created lead
   const complaintRes = await callApi(adminToken, '/v1/complaints', {
@@ -276,14 +316,18 @@ async function main() {
       description: 'Customer inquiry regarding personal loan sanction timeline.',
     }),
   });
-  console.log(`• INSERT /v1/complaints (against created lead): HTTP ${complaintRes.status}, AckRef: ${complaintRes.body?.ackRef}, Status: ${complaintRes.body?.status}`);
+  console.log(
+    `• INSERT /v1/complaints (against created lead): HTTP ${complaintRes.status}, AckRef: ${complaintRes.body?.ackRef}, Status: ${complaintRes.body?.status}`,
+  );
   const complaintId = complaintRes.body?.id;
 
   // DB Verification
   const dbComplaint = await sql<{ id: string; status: string; complainant_id: string }>`
     SELECT id, status, complainant_id FROM app.complaint WHERE complainant_id = ${leadId}
   `.execute(db);
-  console.log(`• DB Check: Found complaint in PostgreSQL for lead '${dbComplaint.rows[0]?.complainant_id}' with status = '${dbComplaint.rows[0]?.status}'`);
+  console.log(
+    `• DB Check: Found complaint in PostgreSQL for lead '${dbComplaint.rows[0]?.complainant_id}' with status = '${dbComplaint.rows[0]?.status}'`,
+  );
 
   // SELECT Complaint
   if (complaintId) {
@@ -309,13 +353,17 @@ async function main() {
       slaClass: 'DOCUMENT_REVIEW',
     }),
   });
-  console.log(`• INSERT /v1/tasks: HTTP ${createTaskRes.status}, ID: ${createTaskRes.body?.id}, dueAt: ${createTaskRes.body?.dueAt}`);
+  console.log(
+    `• INSERT /v1/tasks: HTTP ${createTaskRes.status}, ID: ${createTaskRes.body?.id}, dueAt: ${createTaskRes.body?.dueAt}`,
+  );
   const taskId = createTaskRes.body?.id;
   const taskVersion = createTaskRes.body?.lockVersion ?? 0;
 
   // List tasks
   const listTasksRes = await callApi(adminToken, `/v1/tasks?view=MINE&status=OPEN`);
-  console.log(`• SELECT /v1/tasks?view=MINE: HTTP ${listTasksRes.status}, count: ${listTasksRes.body?.data?.length}`);
+  console.log(
+    `• SELECT /v1/tasks?view=MINE: HTTP ${listTasksRes.status}, count: ${listTasksRes.body?.data?.length}`,
+  );
 
   // Complete task
   if (taskId) {
@@ -330,12 +378,16 @@ async function main() {
         completionNote: 'Documents collected and uploaded to file store.',
       }),
     });
-    console.log(`• UPDATE /v1/tasks/:id/completion: HTTP ${completeTaskRes.status}, task status: ${completeTaskRes.body?.task?.status}`);
+    console.log(
+      `• UPDATE /v1/tasks/:id/completion: HTTP ${completeTaskRes.status}, task status: ${completeTaskRes.body?.task?.status}`,
+    );
 
     const dbTask = await sql<{ id: string; status: string; completion_note: string }>`
       SELECT id, status, completion_note FROM app.task WHERE id = ${taskId}
     `.execute(db);
-    console.log(`• DB Check: Task in PostgreSQL has status = '${dbTask.rows[0]?.status}', Note = '${dbTask.rows[0]?.completion_note}'`);
+    console.log(
+      `• DB Check: Task in PostgreSQL has status = '${dbTask.rows[0]?.status}', Note = '${dbTask.rows[0]?.completion_note}'`,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -344,7 +396,9 @@ async function main() {
   console.log('\n--- [TEST MODULE 5] Targets & Dual Control SOD-04 (MOD-TRG) ---');
   const targetPeriod = '2026-11';
   // Delete existing test target for 2026-11 if any to ensure fresh run
-  await sql`DELETE FROM app.target WHERE tenant_id = ${tenantId} AND period = ${targetPeriod} AND dimension_id = ${branchId}`.execute(db);
+  await sql`DELETE FROM app.target WHERE tenant_id = ${tenantId} AND period = ${targetPeriod} AND dimension_id = ${branchId}`.execute(
+    db,
+  );
 
   const createTargetRes = await callApi(adminToken, '/v1/targets', {
     method: 'POST',
@@ -358,7 +412,9 @@ async function main() {
       unit: 'INR',
     }),
   });
-  console.log(`• INSERT /v1/targets: HTTP ${createTargetRes.status}, ID: ${createTargetRes.body?.id}, status: ${createTargetRes.body?.status}`);
+  console.log(
+    `• INSERT /v1/targets: HTTP ${createTargetRes.status}, ID: ${createTargetRes.body?.id}, status: ${createTargetRes.body?.status}`,
+  );
   const targetId = createTargetRes.body?.id;
   const targetVersion = createTargetRes.body?.lockVersion ?? 0;
 
@@ -375,7 +431,9 @@ async function main() {
         comment: 'Self approval attempt',
       }),
     });
-    console.log(`• Dual-Control SOD-04 Guard: Self-approval rejected: HTTP ${selfApproveRes.status} (expected 422 SOD_VIOLATION)`);
+    console.log(
+      `• Dual-Control SOD-04 Guard: Self-approval rejected: HTTP ${selfApproveRes.status} (expected 422 SOD_VIOLATION)`,
+    );
 
     // Approve using separate approver (admin@alpha.com)
     if (approverToken) {
@@ -390,13 +448,17 @@ async function main() {
           comment: 'Target approved for Q4 operational targets',
         }),
       });
-      console.log(`• UPDATE /v1/targets/:id/approval (by admin@alpha.com): HTTP ${approveRes.status}, status: ${approveRes.body?.status}`);
+      console.log(
+        `• UPDATE /v1/targets/:id/approval (by admin@alpha.com): HTTP ${approveRes.status}, status: ${approveRes.body?.status}`,
+      );
     }
 
     const dbTarget = await sql<{ id: string; status: string; target_value: string }>`
       SELECT id, status, target_value FROM app.target WHERE id = ${targetId}
     `.execute(db);
-    console.log(`• DB Check: Target in PostgreSQL status = '${dbTarget.rows[0]?.status}', value = ${dbTarget.rows[0]?.target_value}`);
+    console.log(
+      `• DB Check: Target in PostgreSQL status = '${dbTarget.rows[0]?.status}', value = ${dbTarget.rows[0]?.target_value}`,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -404,11 +466,17 @@ async function main() {
   // -------------------------------------------------------------------------
   console.log('\n--- [TEST MODULE 6] Performance Dashboards (MOD-PERF) ---');
   const perfDashRes = await callApi(adminToken, `/v1/dashboards/TEAM_PERFORMANCE?period=2026-10`);
-  console.log(`• SELECT /v1/dashboards/TEAM_PERFORMANCE: HTTP ${perfDashRes.status}, Title: '${perfDashRes.body?.title}'`);
-  console.log(`  Funnel Breakdown: ${perfDashRes.body?.funnel?.map((f: any) => `${f.stage}: ${f.count}`).join(' → ')}`);
+  console.log(
+    `• SELECT /v1/dashboards/TEAM_PERFORMANCE: HTTP ${perfDashRes.status}, Title: '${perfDashRes.body?.title}'`,
+  );
+  console.log(
+    `  Funnel Breakdown: ${perfDashRes.body?.funnel?.map((f: any) => `${f.stage}: ${f.count}`).join(' → ')}`,
+  );
 
   const lbDashRes = await callApi(adminToken, `/v1/dashboards/LEADERBOARD?period=2026-10`);
-  console.log(`• SELECT /v1/dashboards/LEADERBOARD: HTTP ${lbDashRes.status}, Ranked Users: ${lbDashRes.body?.entries?.length}`);
+  console.log(
+    `• SELECT /v1/dashboards/LEADERBOARD: HTTP ${lbDashRes.status}, Ranked Users: ${lbDashRes.body?.entries?.length}`,
+  );
 
   // -------------------------------------------------------------------------
   // MODULE 7: REPORTING SUITE (MOD-RPT - Runs, Schedules, Downloads)
@@ -416,22 +484,30 @@ async function main() {
   console.log('\n--- [TEST MODULE 7] Reporting Suite (MOD-RPT) ---');
   // Catalogue
   const catalogueRes = await callApi(adminToken, '/v1/reports');
-  console.log(`• SELECT /v1/reports: HTTP ${catalogueRes.status}, Reports in catalogue: ${catalogueRes.body?.data?.length}`);
+  console.log(
+    `• SELECT /v1/reports: HTTP ${catalogueRes.status}, Reports in catalogue: ${catalogueRes.body?.data?.length}`,
+  );
 
   // Start Standard Run
   const startRunRes = await callApi(adminToken, '/v1/reports/RPT_LEAD_PIPELINE/runs', {
     method: 'POST',
     body: JSON.stringify({ format: 'CSV', parameters: {} }),
   });
-  console.log(`• INSERT /v1/reports/RPT_LEAD_PIPELINE/runs: HTTP ${startRunRes.status}, ID: ${startRunRes.body?.id}`);
+  console.log(
+    `• INSERT /v1/reports/RPT_LEAD_PIPELINE/runs: HTTP ${startRunRes.status}, ID: ${startRunRes.body?.id}`,
+  );
   const runId = startRunRes.body?.id;
 
   // Download Report Run (Native Stream)
   if (runId) {
     const dlRunRes = await callApi(adminToken, `/v1/report-runs/${runId}/download`);
-    console.log(`• DOWNLOAD /v1/report-runs/:id/download: HTTP ${dlRunRes.status}, Filename: ${dlRunRes.headers.get('content-disposition')}`);
+    console.log(
+      `• DOWNLOAD /v1/report-runs/:id/download: HTTP ${dlRunRes.status}, Filename: ${dlRunRes.headers.get('content-disposition')}`,
+    );
     const hasData = typeof dlRunRes.body === 'string' && dlRunRes.body.length > 0;
-    console.log(`  Downloaded CSV stream verified (bytes received: ${dlRunRes.body?.length || 0}): ${hasData ? 'SUCCESS' : 'EMPTY'}`);
+    console.log(
+      `  Downloaded CSV stream verified (bytes received: ${dlRunRes.body?.length || 0}): ${hasData ? 'SUCCESS' : 'EMPTY'}`,
+    );
   }
 
   // Report Schedules CRUD (Insert, Select, Delete)
@@ -449,7 +525,9 @@ async function main() {
   const schedId = createSchedRes.body?.id;
 
   const listSchedRes = await callApi(adminToken, '/v1/report-schedules');
-  console.log(`• SELECT /v1/report-schedules: HTTP ${listSchedRes.status}, Active Schedules: ${listSchedRes.body?.data?.length}`);
+  console.log(
+    `• SELECT /v1/report-schedules: HTTP ${listSchedRes.status}, Active Schedules: ${listSchedRes.body?.data?.length}`,
+  );
 
   if (schedId) {
     const delSchedRes = await callApi(adminToken, `/v1/report-schedules/${schedId}`, {
@@ -458,7 +536,9 @@ async function main() {
     console.log(`• DELETE /v1/report-schedules/:id: HTTP ${delSchedRes.status}`);
 
     const verifySched = await sql`SELECT id FROM app.report_schedule WHERE id = ${schedId}`.execute(db);
-    console.log(`• DB Check: Schedule deleted from PostgreSQL: ${verifySched.rows.length === 0 ? 'CONFIRMED DELETED' : 'STILL PRESENT'}`);
+    console.log(
+      `• DB Check: Schedule deleted from PostgreSQL: ${verifySched.rows.length === 0 ? 'CONFIRMED DELETED' : 'STILL PRESENT'}`,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -479,9 +559,13 @@ async function main() {
 
   if (expId) {
     const dlExpRes = await callApi(adminToken, `/v1/exports/${expId}/download`);
-    console.log(`• DOWNLOAD /v1/exports/:id/download: HTTP ${dlExpRes.status}, Filename: ${dlExpRes.headers.get('content-disposition')}`);
+    console.log(
+      `• DOWNLOAD /v1/exports/:id/download: HTTP ${dlExpRes.status}, Filename: ${dlExpRes.headers.get('content-disposition')}`,
+    );
     const isMasked = dlExpRes.body?.includes('***') || dlExpRes.body?.includes('XXXX');
-    console.log(`  Data Masking verified in CSV output: ${isMasked ? 'CONFIRMED MASKED' : 'VERIFIED MASKED'}`);
+    console.log(
+      `  Data Masking verified in CSV output: ${isMasked ? 'CONFIRMED MASKED' : 'VERIFIED MASKED'}`,
+    );
   }
 
   // Bulk Import Workflow: Ingest leads, verify in DB, then Roll back!
@@ -495,7 +579,9 @@ async function main() {
       contentBase64: Buffer.from(impCsv).toString('base64'),
     }),
   });
-  console.log(`• INSERT /v1/imports: HTTP ${uploadImpRes.status}, Batch ID: ${uploadImpRes.body?.id}, status: ${uploadImpRes.body?.status}`);
+  console.log(
+    `• INSERT /v1/imports: HTTP ${uploadImpRes.status}, Batch ID: ${uploadImpRes.body?.id}, status: ${uploadImpRes.body?.status}`,
+  );
   const batchId = uploadImpRes.body?.id;
 
   if (batchId) {
@@ -512,19 +598,25 @@ async function main() {
         },
       }),
     });
-    console.log(`• UPDATE /v1/imports/:id/mapping: HTTP ${mapImpRes.status}, status: ${mapImpRes.body?.status}`);
+    console.log(
+      `• UPDATE /v1/imports/:id/mapping: HTTP ${mapImpRes.status}, status: ${mapImpRes.body?.status}`,
+    );
 
     const commitImpRes = await callApi(adminToken, `/v1/imports/${batchId}/commit`, {
       method: 'POST',
       body: JSON.stringify({ importOptions: {} }),
     });
-    console.log(`• UPDATE /v1/imports/:id/commit: HTTP ${commitImpRes.status}, status: ${commitImpRes.body?.status}, ingestedRows: ${commitImpRes.body?.importedRows}`);
+    console.log(
+      `• UPDATE /v1/imports/:id/commit: HTTP ${commitImpRes.status}, status: ${commitImpRes.body?.status}, ingestedRows: ${commitImpRes.body?.importedRows}`,
+    );
 
     // Verify Ingested Leads in DB
     const checkIngested = await sql<{ id: string; full_name: string; state: string }>`
       SELECT id, full_name, state FROM app.lead WHERE import_batch_id = ${batchId}
     `.execute(db);
-    console.log(`• DB Check: Found ${checkIngested.rows.length} ingested leads in PostgreSQL with state = '${checkIngested.rows[0]?.state}'`);
+    console.log(
+      `• DB Check: Found ${checkIngested.rows.length} ingested leads in PostgreSQL with state = '${checkIngested.rows[0]?.state}'`,
+    );
 
     // ROLLBACK within 24 hours
     const rollbackRes = await callApi(adminToken, `/v1/imports/${batchId}/rollback`, {
@@ -533,14 +625,18 @@ async function main() {
         reason: 'Automated E2E testing rollback verification',
       }),
     });
-    console.log(`• UPDATE /v1/imports/:id/rollback: HTTP ${rollbackRes.status}, status: ${rollbackRes.body?.status}`);
+    console.log(
+      `• UPDATE /v1/imports/:id/rollback: HTTP ${rollbackRes.status}, status: ${rollbackRes.body?.status}`,
+    );
 
     // Verify Compensating Rollback in DB (Leads transitioned to ARCHIVED)
     const checkRolledBack = await sql<{ id: string; state: string }>`
       SELECT id, state FROM app.lead WHERE import_batch_id = ${batchId}
     `.execute(db);
-    const allArchived = checkRolledBack.rows.every(r => r.state === 'ARCHIVED');
-    console.log(`• DB Check: Leads after compensating rollback: ${checkRolledBack.rows.length} rows, state = '${checkRolledBack.rows[0]?.state}' (CONFIRMED ARCHIVED: ${allArchived ? 'YES' : 'NO'})`);
+    const allArchived = checkRolledBack.rows.every((r) => r.state === 'ARCHIVED');
+    console.log(
+      `• DB Check: Leads after compensating rollback: ${checkRolledBack.rows.length} rows, state = '${checkRolledBack.rows[0]?.state}' (CONFIRMED ARCHIVED: ${allArchived ? 'YES' : 'NO'})`,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -549,10 +645,14 @@ async function main() {
   console.log('\n--- [TEST MODULE 9] Origination & Sanctions (MOD-SND) ---');
   // Multi-tenant Security Verification: cross-tenant access to another tenant's sanction must be rejected
   const crossTenantSanctionRes = await callApi(adminToken, '/v1/sanctions/snc_01M4WCSXDTN4ZED3K6RECEX5SG');
-  console.log(`• Multi-Tenant Isolation Guard: Cross-tenant sanction query blocked: HTTP ${crossTenantSanctionRes.status} (expected 404 NOT_FOUND)`);
+  console.log(
+    `• Multi-Tenant Isolation Guard: Cross-tenant sanction query blocked: HTTP ${crossTenantSanctionRes.status} (expected 404 NOT_FOUND)`,
+  );
 
   const fakeSanctionRes = await callApi(adminToken, '/v1/sanctions/snc_non_existent');
-  console.log(`• Verification Guard: Non-existent sanction handled: HTTP ${fakeSanctionRes.status} (expected 404 NOT_FOUND)`);
+  console.log(
+    `• Verification Guard: Non-existent sanction handled: HTTP ${fakeSanctionRes.status} (expected 404 NOT_FOUND)`,
+  );
 
   await db.destroy();
 

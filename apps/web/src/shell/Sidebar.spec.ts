@@ -44,7 +44,12 @@ describe('sidebar visibility by permission', () => {
 
 describe('platform realm in the sidebar', () => {
   it('TEST-REALM-WEB-001 a tenant administrator (no platform permission) sees Approvals but not the Platform Console', () => {
-    const tenantAdmin = new Set(['config.manage', 'user.manage', 'data_correction.request', 'data_correction.approve']);
+    const tenantAdmin = new Set([
+      'config.manage',
+      'user.manage',
+      'data_correction.request',
+      'data_correction.approve',
+    ]);
     const shown = labels((c) => tenantAdmin.has(c), true);
     expect(shown).toContain('Approvals');
     expect(shown).not.toContain('Platform Console');
@@ -54,7 +59,9 @@ describe('platform realm in the sidebar', () => {
     const operator = new Set(['platform.console', 'platform.flags', 'platform.support_access']);
     const shown = labels((c) => operator.has(c), false);
     expect(shown).not.toContain('Approvals');
-    expect(visibleGroups(false, (c) => operator.has(c)).flatMap((g) => g.items.map((i) => i.label))).not.toContain('Users');
+    expect(
+      visibleGroups(false, (c) => operator.has(c)).flatMap((g) => g.items.map((i) => i.label)),
+    ).not.toContain('Users');
   });
 
   it('TEST-REALM-WEB-004 in the platform realm the menu has no tenant screens, whatever the permissions', () => {
@@ -62,14 +69,24 @@ describe('platform realm in the sidebar', () => {
     // Not an admin: a platform operator holds no config.manage or user.manage, and still needs the Platform Console.
     const shown = visibleGroups(false, everything, true).flatMap((g) => g.items.map((i) => i.label));
     expect([...shown].sort()).toEqual(['Home', 'Platform Console', 'Security']);
-    for (const tenantScreen of ['Leads', 'Customers', 'Payouts', 'Workforce', 'Invoices', 'Reconciliation', 'Approvals'])
+    for (const tenantScreen of [
+      'Leads',
+      'Customers',
+      'Payouts',
+      'Workforce',
+      'Invoices',
+      'Reconciliation',
+      'Approvals',
+    ])
       expect(shown).not.toContain(tenantScreen);
     // A customer tenant is unaffected, and still has no Platform Console without the permission.
     expect(visibleGroups(true, everything, false).flatMap((g) => g.items).length).toBeGreaterThan(30);
   });
 
   it('TEST-REALM-WEB-003 the Platform Console item needs platform.console even for an admin', () => {
-    expect(labels((c) => c === 'config.manage' || c === 'user.manage', true)).not.toContain('Platform Console');
+    expect(labels((c) => c === 'config.manage' || c === 'user.manage', true)).not.toContain(
+      'Platform Console',
+    );
     expect(labels((c) => c === 'platform.console', true)).toContain('Platform Console');
   });
 });
