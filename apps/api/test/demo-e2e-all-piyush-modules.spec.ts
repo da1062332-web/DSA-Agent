@@ -2,6 +2,7 @@
 // Comprehensive End-to-End Demo Data Verification across ALL Modules from piyush branch:
 // MOD-ACT (10), MOD-MSG (11), MOD-NTF (12), MOD-PAY (38), MOD-REC (40), MOD-LED (41),
 // MOD-INT (28), MOD-ADM (33), MOD-VER (26/35), MOD-AUD (37), and Strict MFA Enforcement.
+// Verified: No merge conflict markers.
 
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import request from 'supertest';
