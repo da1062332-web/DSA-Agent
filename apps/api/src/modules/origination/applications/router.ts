@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import type { ApiDeps } from '../../types';
 import { registerApplicationRoutes } from './applications';
+import { registerChecklistRoutes } from './checklist';
 import { registerEligibilityRoutes } from './eligibility';
 import { registerTransitionRoutes } from './transitions';
 
@@ -12,5 +13,6 @@ export function createRouter(deps: ApiDeps): Router {
   registerApplicationRoutes(router, deps);
   registerTransitionRoutes(router, deps);
   registerEligibilityRoutes(router, deps);
+  registerChecklistRoutes(router, deps);
   return router;
 }
