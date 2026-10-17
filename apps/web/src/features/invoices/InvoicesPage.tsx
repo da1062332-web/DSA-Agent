@@ -29,18 +29,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
-import {
-  createInvoice,
-  getConnectorStatements,
-  getInvoices,
-  updateInvoiceStatus,
-} from './api';
-import type {
-  CreateInvoiceInput,
-  InvoiceDirection,
-  InvoiceRecord,
-  InvoiceStatus,
-} from './types';
+import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
+import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
 
 export function InvoicesPage() {
   const queryClient = useQueryClient();
@@ -120,7 +110,7 @@ export function InvoicesPage() {
 
   // KPI Metrics calculation
   const metrics = useMemo(() => {
-    let totalCount = invoices.length;
+    const totalCount = invoices.length;
     let totalAmount = 0;
     let toLenderAmount = 0;
     let fromConnectorAmount = 0;
@@ -163,8 +153,15 @@ export function InvoicesPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status, lockVersion }: { id: string; status: 'ISSUED' | 'PAID' | 'VOID'; lockVersion: number }) =>
-      updateInvoiceStatus(id, { status }, `"${lockVersion}"`),
+    mutationFn: ({
+      id,
+      status,
+      lockVersion,
+    }: {
+      id: string;
+      status: 'ISSUED' | 'PAID' | 'VOID';
+      lockVersion: number;
+    }) => updateInvoiceStatus(id, { status }, `"${lockVersion}"`),
     onSuccess: (_data, vars) => {
       toast.success(`Invoice status updated to ${vars.status}.`);
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -239,7 +236,13 @@ export function InvoicesPage() {
   const getStatusChip = (status: InvoiceStatus) => {
     switch (status) {
       case 'DRAFT':
-        return <Chip label="DRAFT" size="small" sx={{ bgcolor: 'grey.300', color: 'text.primary', fontWeight: 600 }} />;
+        return (
+          <Chip
+            label="DRAFT"
+            size="small"
+            sx={{ bgcolor: 'grey.300', color: 'text.primary', fontWeight: 600 }}
+          />
+        );
       case 'ISSUED':
         return <Chip label="ISSUED" size="small" color="warning" sx={{ fontWeight: 600 }} />;
       case 'PAID':
@@ -275,13 +278,20 @@ export function InvoicesPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Top Header */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ sm: 'center' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.5px' }}>
             Invoices & Statements
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 33 (MOD-INV) — Manage lender billing, connector invoices, and periodic payout account statements.
+            Module 33 (MOD-INV) — Manage lender billing, connector invoices, and periodic payout account
+            statements.
           </Typography>
         </Box>
         {canManage && (
@@ -320,7 +330,12 @@ export function InvoicesPage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: 2 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={600}
+                    textTransform="uppercase"
+                  >
                     Total Volume
                   </Typography>
                   <Typography variant="h5" fontWeight={700} sx={{ mt: 0.5 }}>
@@ -336,7 +351,12 @@ export function InvoicesPage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: 2 }}>
-                  <Typography variant="caption" color="primary.main" fontWeight={600} textTransform="uppercase">
+                  <Typography
+                    variant="caption"
+                    color="primary.main"
+                    fontWeight={600}
+                    textTransform="uppercase"
+                  >
                     Billed to Lenders
                   </Typography>
                   <Typography variant="h5" fontWeight={700} color="primary.main" sx={{ mt: 0.5 }}>
@@ -352,7 +372,12 @@ export function InvoicesPage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: 2 }}>
-                  <Typography variant="caption" color="secondary.main" fontWeight={600} textTransform="uppercase">
+                  <Typography
+                    variant="caption"
+                    color="secondary.main"
+                    fontWeight={600}
+                    textTransform="uppercase"
+                  >
                     From Connectors
                   </Typography>
                   <Typography variant="h5" fontWeight={700} color="secondary.main" sx={{ mt: 0.5 }}>
@@ -368,7 +393,12 @@ export function InvoicesPage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: 2 }}>
-                  <Typography variant="caption" color="success.main" fontWeight={600} textTransform="uppercase">
+                  <Typography
+                    variant="caption"
+                    color="success.main"
+                    fontWeight={600}
+                    textTransform="uppercase"
+                  >
                     Paid Volume
                   </Typography>
                   <Typography variant="h5" fontWeight={700} color="success.main" sx={{ mt: 0.5 }}>
@@ -425,7 +455,12 @@ export function InvoicesPage() {
                 </TextField>
               </Grid>
               <Grid item xs={12} sm={12} md={1}>
-                <Button fullWidth variant="outlined" onClick={() => refetchInvoices()} sx={{ height: 40, textTransform: 'none' }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => refetchInvoices()}
+                  sx={{ height: 40, textTransform: 'none' }}
+                >
                   Refresh
                 </Button>
               </Grid>
@@ -451,7 +486,10 @@ export function InvoicesPage() {
               </Typography>
             </Card>
           ) : (
-            <TableContainer component={Card} sx={{ borderRadius: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <TableContainer
+              component={Card}
+              sx={{ borderRadius: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}
+            >
               <Table>
                 <TableHead sx={{ bgcolor: 'action.hover' }}>
                   <TableRow>
@@ -459,10 +497,14 @@ export function InvoicesPage() {
                     <TableCell sx={{ fontWeight: 700 }}>Direction</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Party Name</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }} align="right">Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="right">
+                      Amount
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Taxes</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }} align="center">Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="center">
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -505,7 +547,8 @@ export function InvoicesPage() {
                       <TableCell>
                         {inv.taxFields.gstRate ? (
                           <Typography variant="caption" display="block">
-                            GST: {inv.taxFields.gstRate}% ({formatCurrency(Number(inv.taxFields.gstAmount ?? 0))})
+                            GST: {inv.taxFields.gstRate}% (
+                            {formatCurrency(Number(inv.taxFields.gstAmount ?? 0))})
                           </Typography>
                         ) : null}
                         {inv.taxFields.tdsRate ? (
@@ -609,7 +652,8 @@ export function InvoicesPage() {
               Generate Connector Periodic Statement
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Reconciles opening balance, earned commissions from ledger/payables, payouts disbursed, and net closing balance.
+              Reconciles opening balance, earned commissions from ledger/payables, payouts disbursed, and net
+              closing balance.
             </Typography>
 
             <Grid container spacing={2} alignItems="center">
@@ -776,9 +820,15 @@ export function InvoicesPage() {
               <Card sx={{ borderRadius: 2, mb: 3 }}>
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    Account Activity: {statementData.connectorId} ({statementData.fromDate} to {statementData.toDate})
+                    Account Activity: {statementData.connectorId} ({statementData.fromDate} to{' '}
+                    {statementData.toDate})
                   </Typography>
-                  <Button variant="outlined" size="small" onClick={() => window.print()} sx={{ textTransform: 'none' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => window.print()}
+                    sx={{ textTransform: 'none' }}
+                  >
                     Print / Export
                   </Button>
                 </Box>
@@ -790,9 +840,15 @@ export function InvoicesPage() {
                         <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">Credit (+)</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">Debit (-)</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">Balance</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }} align="right">
+                          Credit (+)
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700 }} align="right">
+                          Debit (-)
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700 }} align="right">
+                          Balance
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -816,8 +872,8 @@ export function InvoicesPage() {
                                   entry.type === 'COMMISSION_EARNED'
                                     ? 'success'
                                     : entry.type === 'PAYOUT_DISBURSED'
-                                    ? 'info'
-                                    : 'default'
+                                      ? 'info'
+                                      : 'default'
                                 }
                                 sx={{ fontSize: '0.75rem', fontWeight: 600 }}
                               />
@@ -1001,7 +1057,9 @@ export function InvoicesPage() {
       {/* ======================================================== */}
       {detailsInvoice && (
         <Dialog open={true} onClose={() => setDetailsInvoice(null)} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <DialogTitle
+            sx={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
             <span>Invoice: {detailsInvoice.number}</span>
             {getStatusChip(detailsInvoice.status)}
           </DialogTitle>
@@ -1009,13 +1067,19 @@ export function InvoicesPage() {
             <Stack spacing={2}>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Direction</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Direction
+                  </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    {detailsInvoice.direction === 'TO_LENDER' ? 'To Lender (Billing)' : 'From Connector (Payout)'}
+                    {detailsInvoice.direction === 'TO_LENDER'
+                      ? 'To Lender (Billing)'
+                      : 'From Connector (Payout)'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Total Amount</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Amount
+                  </Typography>
                   <Typography variant="body1" fontWeight={700} color="primary.main">
                     {formatCurrency(detailsInvoice.amount, detailsInvoice.currency)}
                   </Typography>
@@ -1024,19 +1088,27 @@ export function InvoicesPage() {
 
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Invoice Date</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Invoice Date
+                  </Typography>
                   <Typography variant="body2">{detailsInvoice.date}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">Due Date</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Due Date
+                  </Typography>
                   <Typography variant="body2">{detailsInvoice.dueDate || 'Immediate / Net 0'}</Typography>
                 </Grid>
               </Grid>
 
               <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">Counterparty</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Counterparty
+                </Typography>
                 <Typography variant="body2" fontWeight={600}>
-                  {detailsInvoice.partyName ? `${detailsInvoice.partyName} (${detailsInvoice.partyId})` : detailsInvoice.partyId}
+                  {detailsInvoice.partyName
+                    ? `${detailsInvoice.partyName} (${detailsInvoice.partyId})`
+                    : detailsInvoice.partyId}
                 </Typography>
               </Box>
 
@@ -1046,23 +1118,33 @@ export function InvoicesPage() {
                 </Typography>
                 <Grid container spacing={1}>
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">GST Rate & Amount</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      GST Rate & Amount
+                    </Typography>
                     <Typography variant="body2">
-                      {detailsInvoice.taxFields.gstRate ?? 0}% ({formatCurrency(Number(detailsInvoice.taxFields.gstAmount ?? 0))})
+                      {detailsInvoice.taxFields.gstRate ?? 0}% (
+                      {formatCurrency(Number(detailsInvoice.taxFields.gstAmount ?? 0))})
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">TDS Rate & Amount</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      TDS Rate & Amount
+                    </Typography>
                     <Typography variant="body2">
-                      {detailsInvoice.taxFields.tdsRate ?? 0}% ({formatCurrency(Number(detailsInvoice.taxFields.tdsAmount ?? 0))})
+                      {detailsInvoice.taxFields.tdsRate ?? 0}% (
+                      {formatCurrency(Number(detailsInvoice.taxFields.tdsAmount ?? 0))})
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">HSN/SAC Code</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      HSN/SAC Code
+                    </Typography>
                     <Typography variant="body2">{detailsInvoice.taxFields.hsnSac || '—'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">Lock Version (ETag)</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Lock Version (ETag)
+                    </Typography>
                     <Typography variant="body2">{detailsInvoice.lockVersion}</Typography>
                   </Grid>
                 </Grid>
@@ -1070,14 +1152,17 @@ export function InvoicesPage() {
 
               {detailsInvoice.notes && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary">Notes</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Notes
+                  </Typography>
                   <Typography variant="body2">{detailsInvoice.notes}</Typography>
                 </Box>
               )}
 
               <Box sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary">
-                  System ID: {detailsInvoice.id} · Created by {detailsInvoice.createdBy} at {detailsInvoice.createdAt}
+                  System ID: {detailsInvoice.id} · Created by {detailsInvoice.createdBy} at{' '}
+                  {detailsInvoice.createdAt}
                 </Typography>
               </Box>
             </Stack>

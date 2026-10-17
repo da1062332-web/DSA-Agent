@@ -187,7 +187,9 @@ export function PayoutsDashboardPage() {
   const handleApprovalSubmit = async () => {
     if (!selectedRequest) return;
     if (selectedRequest.submittedBy === currentUserId) {
-      setApprovalError('Maker-Checker Violation (SOD-03): Submitter cannot approve their own payout request.');
+      setApprovalError(
+        'Maker-Checker Violation (SOD-03): Submitter cannot approve their own payout request.',
+      );
       return;
     }
     try {
@@ -262,7 +264,9 @@ export function PayoutsDashboardPage() {
         failureReason: failureReason.trim(),
       };
       await recordPayoutFailure(selectedRequest.id, input);
-      setSuccessMsg(`Payment failure recorded for payout ${selectedRequest.id}. Payables returned to ELIGIBLE.`);
+      setSuccessMsg(
+        `Payment failure recorded for payout ${selectedRequest.id}. Payables returned to ELIGIBLE.`,
+      );
       setFailureDialogOpen(false);
       await loadRequests();
     } catch (err) {
@@ -338,7 +342,6 @@ export function PayoutsDashboardPage() {
     }
   };
 
-
   const getStatusColor = (status: PayoutRequestStatus) => {
     switch (status) {
       case 'SUBMITTED':
@@ -372,7 +375,8 @@ export function PayoutsDashboardPage() {
             Payouts & Settlement Hub
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 31 / 30 Part B — Connector payouts with maker-checker controls, bank batching, and payment recording
+            Module 31 / 30 Part B — Connector payouts with maker-checker controls, bank batching, and payment
+            recording
           </Typography>
         </Box>
         {canRequestPayout && (
@@ -444,38 +448,48 @@ export function PayoutsDashboardPage() {
                   <Table>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell><strong>Payout ID</strong></TableCell>
-                        <TableCell><strong>Connector</strong></TableCell>
-                        <TableCell><strong>Origin</strong></TableCell>
-                        <TableCell><strong>Total Amount (₹)</strong></TableCell>
-                        <TableCell><strong>Payment Ref</strong></TableCell>
-                        <TableCell><strong>Status</strong></TableCell>
-                        <TableCell align="right"><strong>Actions</strong></TableCell>
+                        <TableCell>
+                          <strong>Payout ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Connector</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Origin</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Total Amount (₹)</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Payment Ref</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Status</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>Actions</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {requests.map((r) => (
                         <TableRow key={r.id}>
-                          <TableCell><strong>{r.id}</strong></TableCell>
+                          <TableCell>
+                            <strong>{r.id}</strong>
+                          </TableCell>
                           <TableCell>{r.connectorId}</TableCell>
                           <TableCell>{r.origin}</TableCell>
-                          <TableCell><strong>₹{Number(r.total).toLocaleString('en-IN')}</strong></TableCell>
+                          <TableCell>
+                            <strong>₹{Number(r.total).toLocaleString('en-IN')}</strong>
+                          </TableCell>
                           <TableCell>{r.paymentRefMasked || '—'}</TableCell>
                           <TableCell>
-                            <Chip
-                              label={r.status}
-                              size="small"
-                              color={getStatusColor(r.status)}
-                            />
+                            <Chip label={r.status} size="small" color={getStatusColor(r.status)} />
                           </TableCell>
                           <TableCell align="right">
                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                               {r.status === 'SUBMITTED' && canRequestPayout && (
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleCancelRequest(r.id)}
-                                >
+                                <Button size="small" color="error" onClick={() => handleCancelRequest(r.id)}>
                                   Cancel
                                 </Button>
                               )}
@@ -518,20 +532,36 @@ export function PayoutsDashboardPage() {
                   <Table>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell><strong>Payout ID</strong></TableCell>
-                        <TableCell><strong>Connector</strong></TableCell>
-                        <TableCell><strong>Total Amount (₹)</strong></TableCell>
-                        <TableCell><strong>Submitted By</strong></TableCell>
-                        <TableCell><strong>Submitted At</strong></TableCell>
-                        <TableCell align="right"><strong>Action</strong></TableCell>
+                        <TableCell>
+                          <strong>Payout ID</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Connector</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Total Amount (₹)</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Submitted By</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>Submitted At</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>Action</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {pendingApprovals.map((req) => (
                         <TableRow key={req.id}>
-                          <TableCell><strong>{req.id}</strong></TableCell>
+                          <TableCell>
+                            <strong>{req.id}</strong>
+                          </TableCell>
                           <TableCell>{req.connectorId}</TableCell>
-                          <TableCell><strong>₹{Number(req.total).toLocaleString('en-IN')}</strong></TableCell>
+                          <TableCell>
+                            <strong>₹{Number(req.total).toLocaleString('en-IN')}</strong>
+                          </TableCell>
                           <TableCell>{req.submittedBy}</TableCell>
                           <TableCell>{new Date(req.submittedAt).toLocaleDateString()}</TableCell>
                           <TableCell align="right">
@@ -570,7 +600,11 @@ export function PayoutsDashboardPage() {
                         onClick={handleGenerateBatch}
                         disabled={batching}
                       >
-                        {batching ? <CircularProgress size={24} /> : `Generate Bank Batch (${readyForPayment.length})`}
+                        {batching ? (
+                          <CircularProgress size={24} />
+                        ) : (
+                          `Generate Bank Batch (${readyForPayment.length})`
+                        )}
                       </Button>
                     )
                   }
@@ -587,18 +621,30 @@ export function PayoutsDashboardPage() {
                     <Table>
                       <TableHead sx={{ bgcolor: 'grey.50' }}>
                         <TableRow>
-                          <TableCell><strong>Payout ID</strong></TableCell>
-                          <TableCell><strong>Connector</strong></TableCell>
-                          <TableCell><strong>Total (₹)</strong></TableCell>
-                          <TableCell align="right"><strong>Payment Actions</strong></TableCell>
+                          <TableCell>
+                            <strong>Payout ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Connector</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Total (₹)</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>Payment Actions</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {readyForPayment.map((p) => (
                           <TableRow key={p.id}>
-                            <TableCell><strong>{p.id}</strong></TableCell>
+                            <TableCell>
+                              <strong>{p.id}</strong>
+                            </TableCell>
                             <TableCell>{p.connectorId}</TableCell>
-                            <TableCell><strong>₹{Number(p.total).toLocaleString('en-IN')}</strong></TableCell>
+                            <TableCell>
+                              <strong>₹{Number(p.total).toLocaleString('en-IN')}</strong>
+                            </TableCell>
                             <TableCell align="right">
                               <Stack direction="row" spacing={1} justifyContent="flex-end">
                                 <Button
@@ -618,11 +664,7 @@ export function PayoutsDashboardPage() {
                                 >
                                   Record UTR
                                 </Button>
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleOpenFailureDialog(p)}
-                                >
+                                <Button size="small" color="error" onClick={() => handleOpenFailureDialog(p)}>
                                   Mark Failed
                                 </Button>
                               </Stack>
@@ -646,18 +688,30 @@ export function PayoutsDashboardPage() {
                     <Table>
                       <TableHead sx={{ bgcolor: 'grey.50' }}>
                         <TableRow>
-                          <TableCell><strong>Batch ID</strong></TableCell>
-                          <TableCell><strong>Payouts Count</strong></TableCell>
-                          <TableCell><strong>SHA-256 Integrity Hash</strong></TableCell>
-                          <TableCell align="right"><strong>Disbursement Actions</strong></TableCell>
+                          <TableCell>
+                            <strong>Batch ID</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>Payouts Count</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>SHA-256 Integrity Hash</strong>
+                          </TableCell>
+                          <TableCell align="right">
+                            <strong>Disbursement Actions</strong>
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {createdBatches.map((b) => (
                           <TableRow key={b.id}>
-                            <TableCell><strong>{b.id}</strong></TableCell>
+                            <TableCell>
+                              <strong>{b.id}</strong>
+                            </TableCell>
                             <TableCell>{b.payoutIds.length}</TableCell>
-                            <TableCell><code>{b.fileSha256.slice(0, 24)}...</code></TableCell>
+                            <TableCell>
+                              <code>{b.fileSha256.slice(0, 24)}...</code>
+                            </TableCell>
                             <TableCell align="right">
                               <Stack direction="row" spacing={1} justifyContent="flex-end">
                                 <Button
@@ -746,10 +800,18 @@ export function PayoutsDashboardPage() {
                           }}
                         />
                       </TableCell>
-                      <TableCell><strong>Payable ID</strong></TableCell>
-                      <TableCell><strong>Calculation ID</strong></TableCell>
-                      <TableCell><strong>Share Rate</strong></TableCell>
-                      <TableCell><strong>Amount (₹)</strong></TableCell>
+                      <TableCell>
+                        <strong>Payable ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Calculation ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Share Rate</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Amount (₹)</strong>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -772,7 +834,9 @@ export function PayoutsDashboardPage() {
                           <TableCell>{p.id}</TableCell>
                           <TableCell>{p.calculationId}</TableCell>
                           <TableCell>{(Number(p.shareRate) * 100).toFixed(0)}%</TableCell>
-                          <TableCell><strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong></TableCell>
+                          <TableCell>
+                            <strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -805,7 +869,8 @@ export function PayoutsDashboardPage() {
           )}
           <Typography variant="body2" sx={{ mb: 2 }}>
             Reviewing Payout Request <strong>{selectedRequest?.id}</strong> for Connector{' '}
-            <strong>{selectedRequest?.connectorId}</strong>. Total Amount: <strong>₹{selectedRequest?.total}</strong>.
+            <strong>{selectedRequest?.connectorId}</strong>. Total Amount:{' '}
+            <strong>₹{selectedRequest?.total}</strong>.
           </Typography>
 
           <Stack spacing={2}>
@@ -886,8 +951,8 @@ export function PayoutsDashboardPage() {
               </Alert>
             )}
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Recording a payment failure will mark payout{' '}
-              <strong>{selectedRequest?.id}</strong> as <code>PAYMENT_FAILED</code> and return all constituent payables back to <code>ELIGIBLE</code>.
+              Recording a payment failure will mark payout <strong>{selectedRequest?.id}</strong> as{' '}
+              <code>PAYMENT_FAILED</code> and return all constituent payables back to <code>ELIGIBLE</code>.
             </Typography>
             <TextField
               required

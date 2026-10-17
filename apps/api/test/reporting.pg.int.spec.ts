@@ -72,10 +72,9 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
 
   afterAll(async () => {
     if (adminClient) {
-      await adminClient.query(
-        `DELETE FROM app.rpt_daily_operational_summary WHERE tenant_id = $1`,
-        [tenantA],
-      );
+      await adminClient.query(`DELETE FROM app.rpt_daily_operational_summary WHERE tenant_id = $1`, [
+        tenantA,
+      ]);
       await adminClient.end();
     }
     if (apiClient) {
@@ -134,9 +133,7 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
     await apiClient.query('BEGIN');
     try {
       // No set_config('app.tenant_id')
-      const res = await apiClient.query(
-        `SELECT count(*)::int as cnt FROM app.rpt_daily_operational_summary`,
-      );
+      const res = await apiClient.query(`SELECT count(*)::int as cnt FROM app.rpt_daily_operational_summary`);
       expect(res.rows[0].cnt).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');
@@ -190,19 +187,15 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
       );
 
       // Verify readable in tenantA
-      const resA = await apiClient.query(
-        `SELECT id, report_code, status FROM app.report_run WHERE id = $1`,
-        [reportRunId],
-      );
+      const resA = await apiClient.query(`SELECT id, report_code, status FROM app.report_run WHERE id = $1`, [
+        reportRunId,
+      ]);
       expect(resA.rows.length).toBe(1);
       expect(resA.rows[0].report_code).toBe('RPT_LEAD_PIPELINE');
 
       // Verify isolated from tenantB
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantB]);
-      const resB = await apiClient.query(
-        `SELECT id FROM app.report_run WHERE id = $1`,
-        [reportRunId],
-      );
+      const resB = await apiClient.query(`SELECT id FROM app.report_run WHERE id = $1`, [reportRunId]);
       expect(resB.rows.length).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');
@@ -232,10 +225,7 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
 
       // Verify isolated from tenantB
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantB]);
-      const resB = await apiClient.query(
-        `SELECT id FROM app.export_job WHERE id = $1`,
-        [exportJobId],
-      );
+      const resB = await apiClient.query(`SELECT id FROM app.export_job WHERE id = $1`, [exportJobId]);
       expect(resB.rows.length).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');
@@ -265,10 +255,7 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
 
       // Verify isolated from tenantB
       await apiClient.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantB]);
-      const resB = await apiClient.query(
-        `SELECT id FROM app.report_schedule WHERE id = $1`,
-        [scheduleId],
-      );
+      const resB = await apiClient.query(`SELECT id FROM app.report_schedule WHERE id = $1`, [scheduleId]);
       expect(resB.rows.length).toBe(0);
     } finally {
       await apiClient.query('ROLLBACK');
@@ -289,4 +276,3 @@ describe('Module MOD-RPT — PostgreSQL Integration (Real Tables & RLS)', () => 
     expect(rolePermRes.rows.length).toBe(2);
   });
 });
-

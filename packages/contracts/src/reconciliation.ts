@@ -1,7 +1,7 @@
 // packages/contracts/src/reconciliation.ts — MOD-REC Reconciliation Management
 import { z } from 'zod';
 import { IdSchema } from './ids';
-import { ADJUSTMENT_TYPES, type AdjustmentType } from './commission';
+import { ADJUSTMENT_TYPES } from './commission';
 
 export const MATCH_TYPES = ['EXACT', 'PARTIAL', 'VARIANCE', 'UNMATCHED', 'DUPLICATE'] as const;
 export type MatchType = (typeof MATCH_TYPES)[number];
@@ -28,7 +28,13 @@ export type FinancialDisputePartyType = (typeof FINANCIAL_DISPUTE_PARTY_TYPES)[n
 export const FINANCIAL_DISPUTE_SUBJECT_TYPES = ['STATEMENT_LINE', 'PAYOUT', 'CALCULATION'] as const;
 export type FinancialDisputeSubjectType = (typeof FINANCIAL_DISPUTE_SUBJECT_TYPES)[number];
 
-export const FINANCIAL_DISPUTE_STATUSES = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED', 'WITHDRAWN'] as const;
+export const FINANCIAL_DISPUTE_STATUSES = [
+  'OPEN',
+  'UNDER_REVIEW',
+  'RESOLVED',
+  'REJECTED',
+  'WITHDRAWN',
+] as const;
 export type FinancialDisputeStatus = (typeof FINANCIAL_DISPUTE_STATUSES)[number];
 
 // SUB-REC.01: Statement Ingestion
@@ -233,4 +239,3 @@ export const AutoIngestBankFeedResponseSchema = z.object({
   message: z.string(),
 });
 export type AutoIngestBankFeedResponse = z.infer<typeof AutoIngestBankFeedResponseSchema>;
-

@@ -178,9 +178,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
   describe('API-LCS-001: Create Lender Case', () => {
     it('creates a new lender case draft with attempt_no 1 and returns 201 with ETag', async () => {
       const app = getApp();
-      const res = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const res = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
 
       expect(res.status).toBe(201);
       expect(res.headers.etag).toBe('"0"');
@@ -221,23 +219,17 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
     it('blocks duplicate active case for the same lender with 409 ACTIVE_CASE_EXISTS', async () => {
       const app = getApp();
-      const first = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const first = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       expect(first.status).toBe(201);
 
-      const second = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const second = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       expect(second.status).toBe(409);
       expect(second.body.error.code).toBe('ACTIVE_CASE_EXISTS');
     });
 
     it('blocks parallel attempts with different lenders when parallel attempts not enabled', async () => {
       const app = getApp();
-      const first = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const first = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       expect(first.status).toBe(201);
 
       // Second lender attempt without parallel permission
@@ -258,9 +250,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       repository.tenantSettings.set(tenantA, tenantSettings);
 
       const app = getApp();
-      const first = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const first = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       expect(first.status).toBe(201);
       expect(first.body.attemptNo).toBe(1);
 
@@ -295,9 +285,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
   describe('API-LCS-002: Retrieve Lender Case & Listing', () => {
     it('retrieves single lender case by ID with ETag', async () => {
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
       const getRes = await request(app).get(`/v1/lender-cases/${caseId}`);
@@ -321,11 +309,13 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
       const app = getApp();
       await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
-      await request(app).post(`/v1/applications/${appId}/lender-cases`).send({
-        ...validPayload,
-        lenderId: lenderId2,
-        empanelmentId: empanelmentId2,
-      });
+      await request(app)
+        .post(`/v1/applications/${appId}/lender-cases`)
+        .send({
+          ...validPayload,
+          lenderId: lenderId2,
+          empanelmentId: empanelmentId2,
+        });
 
       const listRes = await request(app).get(`/v1/applications/${appId}/lender-cases`);
       expect(listRes.status).toBe(200);
@@ -352,9 +342,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
   describe('API-LCS-003: Build Submission Package', () => {
     it('builds frozen package with deterministic sha256 manifest and transitions case to PACKAGE_READY', async () => {
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
       const pkgRes = await request(app)
@@ -374,14 +362,10 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       consentPort.consents.clear(); // remove consent
 
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
-      const pkgRes = await request(app)
-        .post(`/v1/lender-cases/${caseId}/package`)
-        .send({ freeze: true });
+      const pkgRes = await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
 
       expect(pkgRes.status).toBe(422);
       expect(pkgRes.body.error.code).toBe('CONSENT_REQUIRED');
@@ -391,9 +375,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
   describe('API-LCS-004: Submit Lender Case', () => {
     it('submits case, rolls up application status to SUBMITTED, and records ENT-100 data sharing record', async () => {
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
       await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
@@ -419,9 +401,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
     it('revalidates consent at submission time and blocks when consent was revoked after package build', async () => {
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
       await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
@@ -439,9 +419,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
     it('rejects submission when caller lacks lender_case.submit permission with 403 FORBIDDEN', async () => {
       const app = getApp();
-      const createRes = await request(app)
-        .post(`/v1/applications/${appId}/lender-cases`)
-        .send(validPayload);
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
       const caseId = createRes.body.id;
 
       await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });

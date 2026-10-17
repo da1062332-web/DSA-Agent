@@ -1,10 +1,6 @@
 // apps/api/src/modules/automation/scheduler.ts — owner: Dev 1 / Dev 6 (MOD-WFA Phase 6)
-import {
-  AppError,
-  type RequestContext,
-  type TxRunner,
-} from '@dsa/contracts';
-import { AutomationEngine } from './engine';
+import { AppError, type RequestContext, type TxRunner } from '@dsa/contracts';
+import type { AutomationEngine } from './engine';
 import { AutomationRepository, type ScheduledTrigger } from './repository';
 
 export interface SchedulerServiceDependencies {
@@ -18,7 +14,12 @@ export interface SchedulerServiceDependencies {
  * Checks if a specific value matches a single cron field pattern.
  * Supports: '*' (any), 'X' (exact), 'X,Y' (list), 'X-Y' (range), '* /N' (step).
  */
-export function matchesCronField(fieldPattern: string, value: number, minValue: number, maxValue: number): boolean {
+export function matchesCronField(
+  fieldPattern: string,
+  value: number,
+  minValue: number,
+  maxValue: number,
+): boolean {
   if (fieldPattern === '*') return true;
 
   // Step expression: */N or X/N
@@ -86,8 +87,20 @@ function getZonedParts(date: Date, timeZone: string) {
     else if (part.type === 'weekday') {
       // en-US weekday formatToParts gives string or number
       const dayMap: Record<string, number> = {
-        Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-        '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6,
+        Sun: 0,
+        Mon: 1,
+        Tue: 2,
+        Wed: 3,
+        Thu: 4,
+        Fri: 5,
+        Sat: 6,
+        '1': 0,
+        '2': 1,
+        '3': 2,
+        '4': 3,
+        '5': 4,
+        '6': 5,
+        '7': 6,
       };
       weekday = dayMap[part.value] ?? date.getUTCDay();
     }
@@ -138,7 +151,10 @@ export function computeNextCronRun(
     iterations++;
   }
 
-  throw AppError.of('VALIDATION_ERROR', `Could not find next matching cron run within 1 year for '${cronExpression}'.`);
+  throw AppError.of(
+    'VALIDATION_ERROR',
+    `Could not find next matching cron run within 1 year for '${cronExpression}'.`,
+  );
 }
 
 export class AutomationSchedulerService {
@@ -291,10 +307,7 @@ export class AutomationSchedulerService {
   /**
    * Reaps executions whose worker lease expired without a heartbeat (stale worker recovery).
    */
-  async reapStaleWorkers(
-    ctx: RequestContext,
-    nowIsoOverride?: string,
-  ): Promise<{ reapedCount: number }> {
+  async reapStaleWorkers(ctx: RequestContext, nowIsoOverride?: string): Promise<{ reapedCount: number }> {
     const nowIso = nowIsoOverride || (ctx.now ? ctx.now.toISOString() : new Date().toISOString());
 
     const staleExecutions = await this.deps.txRunner.withTenantTx(ctx, async (tx) => {

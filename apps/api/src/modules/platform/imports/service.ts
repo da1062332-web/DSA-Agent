@@ -27,8 +27,15 @@ export class ImportService {
   private requireTargetPermission(ctx: RequestContext, targetEntity: string): void {
     const grants = ctx.principal.grants.map((g) => g.code);
     const required = targetEntity === 'CUSTOMER' ? 'customer.create' : 'lead.create';
-    if (!grants.includes(required as any) && !grants.includes('import.run') && !grants.includes('config.manage')) {
-      throw AppError.of('FORBIDDEN', `Principal lacks ${required} permission required for ${targetEntity} imports.`);
+    if (
+      !grants.includes(required as any) &&
+      !grants.includes('import.run') &&
+      !grants.includes('config.manage')
+    ) {
+      throw AppError.of(
+        'FORBIDDEN',
+        `Principal lacks ${required} permission required for ${targetEntity} imports.`,
+      );
     }
   }
 
@@ -173,12 +180,7 @@ export class ImportService {
     return toImportBatchDto(updated);
   }
 
-  async commitImport(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-    _dto?: CommitImportDto,
-  ): Promise<ImportBatch> {
+  async commitImport(tx: Tx, ctx: RequestContext, id: string, _dto?: CommitImportDto): Promise<ImportBatch> {
     const batch = await this.repo.findBatchByIdForUpdate(tx, ctx.principal.tenantId, id);
     if (!batch) {
       throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
@@ -193,7 +195,10 @@ export class ImportService {
       return toImportBatchDto(batch);
     }
     if (batch.status !== 'MAPPED' && batch.status !== 'READY') {
-      throw AppError.of('VALIDATION_ERROR', `Batch must be in MAPPED status to commit. Current status: ${batch.status}`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Batch must be in MAPPED status to commit. Current status: ${batch.status}`,
+      );
     }
 
     // Retrieve source file from private storage
@@ -203,7 +208,8 @@ export class ImportService {
     }
 
     const parsed = parseCsvBuffer(rawBuffer);
-    const mapping = typeof batch.column_mapping === 'string' ? JSON.parse(batch.column_mapping) : batch.column_mapping;
+    const mapping =
+      typeof batch.column_mapping === 'string' ? JSON.parse(batch.column_mapping) : batch.column_mapping;
 
     const errors: ImportErrorDetail[] = [];
     let validCount = 0;
@@ -279,13 +285,16 @@ export class ImportService {
           if (batch.target_entity === 'LEAD') {
             const leadId = this.deps.ids.next('lead');
             const rawCat = (mappedRow['productCategory'] ?? 'PL').toUpperCase();
-            const productCategory = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'].includes(rawCat)
+            const productCategory = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'].includes(
+              rawCat,
+            )
               ? rawCat
               : 'PL';
 
-            const indicativeAmount = mappedRow['indicativeAmount'] && !isNaN(Number(mappedRow['indicativeAmount']))
-              ? Number(mappedRow['indicativeAmount'])
-              : null;
+            const indicativeAmount =
+              mappedRow['indicativeAmount'] && !isNaN(Number(mappedRow['indicativeAmount']))
+                ? Number(mappedRow['indicativeAmount'])
+                : null;
 
             await sql`
               INSERT INTO lead (
@@ -391,7 +400,10 @@ export class ImportService {
       return toImportBatchDto(batch);
     }
     if (batch.status !== 'COMPLETED') {
-      throw AppError.of('VALIDATION_ERROR', `Cannot roll back batch with status ${batch.status}. Only COMPLETED batches can be rolled back.`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Cannot roll back batch with status ${batch.status}. Only COMPLETED batches can be rolled back.`,
+      );
     }
 
     // 24-Hour Rollback Window Check
@@ -428,11 +440,7 @@ export class ImportService {
     return toImportBatchDto(updated);
   }
 
-  async getImportBatch(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<ImportBatch> {
+  async getImportBatch(tx: Tx, ctx: RequestContext, id: string): Promise<ImportBatch> {
     const batch = await this.repo.findBatchById(tx, ctx.principal.tenantId, id);
     if (!batch) {
       throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
@@ -441,19 +449,12 @@ export class ImportService {
     return toImportBatchDto(batch);
   }
 
-  async listBatches(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<ImportBatch[]> {
+  async listBatches(tx: Tx, ctx: RequestContext): Promise<ImportBatch[]> {
     const rows = await this.repo.listBatches(tx, ctx.principal.tenantId);
     return rows.map(toImportBatchDto);
   }
 
-  async getReport(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<Buffer> {
+  async getReport(tx: Tx, ctx: RequestContext, id: string): Promise<Buffer> {
     const batch = await this.repo.findBatchById(tx, ctx.principal.tenantId, id);
     if (!batch) {
       throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);

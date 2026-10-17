@@ -211,10 +211,7 @@ export class ComplianceService {
   /**
    * Verify whether valid active consent exists for a subject and purpose (SUB-PRV.01)
    */
-  async verifyConsent(
-    ctx: RequestContext,
-    input: VerifyConsentInput,
-  ): Promise<VerifyConsentResult> {
+  async verifyConsent(ctx: RequestContext, input: VerifyConsentInput): Promise<VerifyConsentResult> {
     this.checkAuthz(ctx);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {

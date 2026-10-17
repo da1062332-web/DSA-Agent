@@ -79,14 +79,16 @@ async function request<T>(
   return { data, etag };
 }
 
-export async function getInvoices(params: {
-  direction?: string;
-  status?: string;
-  partyId?: string;
-  search?: string;
-  cursor?: string;
-  limit?: number;
-} = {}): Promise<{ data: InvoiceRecord[]; nextCursor: string | null }> {
+export async function getInvoices(
+  params: {
+    direction?: string;
+    status?: string;
+    partyId?: string;
+    search?: string;
+    cursor?: string;
+    limit?: number;
+  } = {},
+): Promise<{ data: InvoiceRecord[]; nextCursor: string | null }> {
   const q = new URLSearchParams();
   if (params.direction) q.set('direction', params.direction);
   if (params.status) q.set('status', params.status);
@@ -96,10 +98,9 @@ export async function getInvoices(params: {
   if (params.limit) q.set('limit', String(params.limit));
 
   const queryStr = q.toString() ? `?${q.toString()}` : '';
-  const res = await request<{ data: InvoiceRecord[]; nextCursor: string | null }>(
-    `/v1/invoices${queryStr}`,
-    { method: 'GET' },
-  );
+  const res = await request<{ data: InvoiceRecord[]; nextCursor: string | null }>(`/v1/invoices${queryStr}`, {
+    method: 'GET',
+  });
   return res.data;
 }
 

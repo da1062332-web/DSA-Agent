@@ -113,7 +113,12 @@ export function createRouter(deps: ApiDeps): Router {
             return withIdempotency(
               tx,
               ctx,
-              { key: idempotencyKey, method: 'POST', path: req.originalUrl || '/v1/ledger/journals', body: input },
+              {
+                key: idempotencyKey,
+                method: 'POST',
+                path: req.originalUrl || '/v1/ledger/journals',
+                body: input,
+              },
               async () => {
                 const result = await service.postJournal(tx, ctx, input);
                 return { status: 201, body: result };
@@ -153,7 +158,12 @@ export function createRouter(deps: ApiDeps): Router {
             return withIdempotency(
               tx,
               ctx,
-              { key: idempotencyKey, method: 'POST', path: req.originalUrl || `/v1/ledger/periods/${period}/close`, body: parsed.data },
+              {
+                key: idempotencyKey,
+                method: 'POST',
+                path: req.originalUrl || `/v1/ledger/periods/${period}/close`,
+                body: parsed.data,
+              },
               async () => {
                 const result = await service.closePeriod(tx, ctx, period, parsed.data);
                 return { status: 200, body: result };

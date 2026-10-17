@@ -10,7 +10,12 @@ import {
 } from '@dsa/contracts';
 import { assertValidTransition } from './lifecycle';
 import { AutomationRepository } from './repository';
-import { calculateRetryDelay, classifyError, DEFAULT_RETRY_CONFIG, sanitizeErrorDetails } from './retry-policy';
+import {
+  calculateRetryDelay,
+  classifyError,
+  DEFAULT_RETRY_CONFIG,
+  sanitizeErrorDetails,
+} from './retry-policy';
 import { createDefaultStepHandlers } from './step-handlers';
 import type {
   AutomationEngineDependencies,
@@ -70,7 +75,11 @@ export class AutomationEngine {
     return this.deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       // 1. Deduplication check by idempotency key
       if (params.idempotencyKey) {
-        const existing = await this.repository.findExecutionByIdempotencyKey(tx, tenantId, params.idempotencyKey);
+        const existing = await this.repository.findExecutionByIdempotencyKey(
+          tx,
+          tenantId,
+          params.idempotencyKey,
+        );
         if (existing) {
           return { execution: existing, replayed: true };
         }
@@ -188,11 +197,7 @@ export class AutomationEngine {
   /**
    * Heartbeat to extend active worker lease on a running execution.
    */
-  async heartbeat(
-    ctx: RequestContext,
-    executionId: string,
-    workerIdOverride?: string,
-  ): Promise<boolean> {
+  async heartbeat(ctx: RequestContext, executionId: string, workerIdOverride?: string): Promise<boolean> {
     const tenantId = ctx.principal.tenantId;
     const workerId = workerIdOverride || this.workerConfig.workerId;
 
@@ -353,7 +358,10 @@ export class AutomationEngine {
         const classified = classifyError(err);
         const errMsg = err instanceof Error ? err.message : String(err);
         const errCode =
-          err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          err &&
+          typeof err === 'object' &&
+          'code' in err &&
+          typeof (err as { code: unknown }).code === 'string'
             ? String((err as { code: unknown }).code)
             : 'STEP_EXECUTION_THREW';
         return this.handleStepFailure(ctx, currentExec, activeStepExec, workerId, {
@@ -567,7 +575,10 @@ export class AutomationEngine {
         });
       }
 
-      if (this.deps.outboxPort && ['SUCCEEDED', 'FAILED', 'CANCELLED', 'DEAD_LETTERED'].includes(update.status)) {
+      if (
+        this.deps.outboxPort &&
+        ['SUCCEEDED', 'FAILED', 'CANCELLED', 'DEAD_LETTERED'].includes(update.status)
+      ) {
         await this.deps.outboxPort.emit(tx, ctx, {
           type: `automation.execution_${update.status.toLowerCase()}`,
           subject: { type: 'AUTOMATION_EXECUTION', id: updated.id },
@@ -602,7 +613,12 @@ export class AutomationEngine {
       assertValidTransition(exec.status, 'RUNNING', executionId);
 
       // Complete the waiting step
-      const stepExec = await this.repository.getStepExecution(tx, tenantId, executionId, exec.currentStepIndex);
+      const stepExec = await this.repository.getStepExecution(
+        tx,
+        tenantId,
+        executionId,
+        exec.currentStepIndex,
+      );
       if (stepExec && stepExec.status !== 'SUCCEEDED') {
         await this.repository.updateStepExecution(tx, tenantId, stepExec.id, {
           status: 'SUCCEEDED',
@@ -692,15 +708,10 @@ export class AutomationEngine {
       if (action === 'RETRY') {
         // Reset step attempts and allow worker to retry
         assertValidTransition(exec.status, 'RETRYING', exec.id);
-        updatedExec = await this.repository.updateExecutionByOperator(
-          tx,
-          tenantId,
-          exec.id,
-          {
-            status: 'RETRYING',
-            errorMessage: `Dead letter resolved: retry approved by operator (${reason || 'no note'})`,
-          },
-        );
+        updatedExec = await this.repository.updateExecutionByOperator(tx, tenantId, exec.id, {
+          status: 'RETRYING',
+          errorMessage: `Dead letter resolved: retry approved by operator (${reason || 'no note'})`,
+        });
       } else if (action === 'SKIP') {
         // Mark step SKIPPED and advance current_step_index
         await this.repository.updateStepExecution(tx, tenantId, dl.stepExecutionId, {
@@ -711,16 +722,11 @@ export class AutomationEngine {
         });
 
         assertValidTransition(exec.status, 'RUNNING', exec.id);
-        updatedExec = await this.repository.updateExecutionByOperator(
-          tx,
-          tenantId,
-          exec.id,
-          {
-            status: 'RUNNING',
-            currentStepIndex: exec.currentStepIndex + 1,
-            errorMessage: null,
-          },
-        );
+        updatedExec = await this.repository.updateExecutionByOperator(tx, tenantId, exec.id, {
+          status: 'RUNNING',
+          currentStepIndex: exec.currentStepIndex + 1,
+          errorMessage: null,
+        });
       } else {
         // CANCEL
         assertValidTransition(exec.status, 'CANCELLED', exec.id);

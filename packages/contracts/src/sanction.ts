@@ -32,13 +32,10 @@ export const RecordSanctionRequestSchema = z
     letterDocumentId: z.string().nullable().optional(),
     source: SanctionSourceEnum.default('MANUAL'),
   })
-  .refine(
-    (data) => data.validUntil >= data.sanctionDate,
-    {
-      message: 'validUntil must be on or after sanctionDate',
-      path: ['validUntil'],
-    },
-  );
+  .refine((data) => data.validUntil >= data.sanctionDate, {
+    message: 'validUntil must be on or after sanctionDate',
+    path: ['validUntil'],
+  });
 
 export type RecordSanctionRequest = z.infer<typeof RecordSanctionRequestSchema>;
 
@@ -63,7 +60,9 @@ export const VerifyTrancheRequestSchema = z
     comment: z.string().max(1000).nullable().optional(),
   })
   .refine(
-    (data) => data.decision !== 'RETURN' || (data.comment !== null && data.comment !== undefined && data.comment.trim().length > 0),
+    (data) =>
+      data.decision !== 'RETURN' ||
+      (data.comment !== null && data.comment !== undefined && data.comment.trim().length > 0),
     {
       message: 'comment is required when returning a tranche',
       path: ['comment'],

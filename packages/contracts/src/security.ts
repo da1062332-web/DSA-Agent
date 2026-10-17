@@ -72,13 +72,7 @@ export const INCIDENT_TYPES = [
 ] as const;
 export type IncidentType = (typeof INCIDENT_TYPES)[number];
 
-export const INCIDENT_STATUSES = [
-  'OPEN',
-  'INVESTIGATING',
-  'CONTAINED',
-  'RESOLVED',
-  'CLOSED',
-] as const;
+export const INCIDENT_STATUSES = ['OPEN', 'INVESTIGATING', 'CONTAINED', 'RESOLVED', 'CLOSED'] as const;
 export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
 
 export const NotificationEvidenceSchema = z.object({

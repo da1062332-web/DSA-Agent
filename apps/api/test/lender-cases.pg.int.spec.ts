@@ -119,9 +119,18 @@ describe('Module 18 — Lender Cases PostgreSQL Integration (Real Database & Con
   afterAll(async () => {
     // Clean up test data in reverse foreign key order
     try {
-      await adminClient.query(`DELETE FROM app.submission_package WHERE tenant_id = $1 AND lender_case_id IN (SELECT id FROM app.lender_case WHERE tenant_id = $1)`, [tenantA]);
-      await adminClient.query(`DELETE FROM app.lender_case_status_history WHERE tenant_id = $1 AND lender_case_id IN (SELECT id FROM app.lender_case WHERE tenant_id = $1)`, [tenantA]);
-      await adminClient.query(`DELETE FROM app.lender_case WHERE tenant_id = $1 AND application_id = $2`, [tenantA, appId]);
+      await adminClient.query(
+        `DELETE FROM app.submission_package WHERE tenant_id = $1 AND lender_case_id IN (SELECT id FROM app.lender_case WHERE tenant_id = $1)`,
+        [tenantA],
+      );
+      await adminClient.query(
+        `DELETE FROM app.lender_case_status_history WHERE tenant_id = $1 AND lender_case_id IN (SELECT id FROM app.lender_case WHERE tenant_id = $1)`,
+        [tenantA],
+      );
+      await adminClient.query(`DELETE FROM app.lender_case WHERE tenant_id = $1 AND application_id = $2`, [
+        tenantA,
+        appId,
+      ]);
       await adminClient.query(`DELETE FROM app.loan_application WHERE id = $1`, [appId]);
       await adminClient.query(`DELETE FROM app.loan_product_version WHERE id = $1`, [prodVerId]);
       await adminClient.query(`DELETE FROM app.loan_product WHERE id = $1`, [prodId]);
@@ -329,20 +338,16 @@ describe('Module 18 — Lender Cases PostgreSQL Integration (Real Database & Con
       // Attempting UPDATE on status history must fail
       await adminClient.query('SAVEPOINT sp_upd');
       await expect(
-        adminClient.query(
-          `UPDATE app.lender_case_status_history SET to_status = 'SUBMITTED' WHERE id = $1`,
-          [histId],
-        ),
+        adminClient.query(`UPDATE app.lender_case_status_history SET to_status = 'SUBMITTED' WHERE id = $1`, [
+          histId,
+        ]),
       ).rejects.toThrow(/append-only/i);
       await adminClient.query('ROLLBACK TO SAVEPOINT sp_upd');
 
       // Attempting DELETE on status history must fail
       await adminClient.query('SAVEPOINT sp_del');
       await expect(
-        adminClient.query(
-          `DELETE FROM app.lender_case_status_history WHERE id = $1`,
-          [histId],
-        ),
+        adminClient.query(`DELETE FROM app.lender_case_status_history WHERE id = $1`, [histId]),
       ).rejects.toThrow(/append-only/i);
       await adminClient.query('ROLLBACK TO SAVEPOINT sp_del');
     } finally {
@@ -445,7 +450,10 @@ describe('Module 18 — Lender Cases PostgreSQL Integration (Real Database & Con
     }
 
     // Verify after rollback: case must still be in DRAFT state
-    const caseCheck = await adminClient.query(`SELECT status, submitted_at, lock_version FROM app.lender_case WHERE id = $1`, [caseId]);
+    const caseCheck = await adminClient.query(
+      `SELECT status, submitted_at, lock_version FROM app.lender_case WHERE id = $1`,
+      [caseId],
+    );
     expect(caseCheck.rows[0].status).toBe('DRAFT');
     expect(caseCheck.rows[0].submitted_at).toBeNull();
     expect(caseCheck.rows[0].lock_version).toBe(0);
@@ -455,7 +463,9 @@ describe('Module 18 — Lender Cases PostgreSQL Integration (Real Database & Con
     expect(pkgCheck.rows.length).toBe(0);
 
     // Status history must NOT exist
-    const histCheck = await adminClient.query(`SELECT id FROM app.lender_case_status_history WHERE id = $1`, [histId]);
+    const histCheck = await adminClient.query(`SELECT id FROM app.lender_case_status_history WHERE id = $1`, [
+      histId,
+    ]);
     expect(histCheck.rows.length).toBe(0);
 
     // Cleanup

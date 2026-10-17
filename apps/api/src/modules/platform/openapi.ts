@@ -40,9 +40,18 @@ import {
 } from './schemas';
 
 export const tags = [
-  { name: 'MOD-USR Users', description: 'User management, staff accounts, profiles, and assignments (MOD-USR).' },
-  { name: 'MOD-ACL Access Control', description: 'Role-based access control, custom roles, and permission catalog (MOD-ACL).' },
-  { name: 'MOD-ORG Organisation', description: 'Organisation hierarchy, branches, teams, and work queues (MOD-ORG).' },
+  {
+    name: 'MOD-USR Users',
+    description: 'User management, staff accounts, profiles, and assignments (MOD-USR).',
+  },
+  {
+    name: 'MOD-ACL Access Control',
+    description: 'Role-based access control, custom roles, and permission catalog (MOD-ACL).',
+  },
+  {
+    name: 'MOD-ORG Organisation',
+    description: 'Organisation hierarchy, branches, teams, and work queues (MOD-ORG).',
+  },
 ];
 
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';

@@ -36,7 +36,10 @@ import { PageHeader } from '../admin/components';
 import { fetchAllLenderCases } from './api';
 import type { LenderCaseResource, LenderCaseStatus } from './types';
 
-const STATUS_CHIP_COLORS: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const STATUS_CHIP_COLORS: Record<
+  string,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   DRAFT: 'default',
   PACKAGE_READY: 'primary',
   SUBMITTED: 'info',
@@ -76,7 +79,12 @@ export function LenderCaseListPage(): React.ReactElement {
   const [channelFilter, setChannelFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const { data: cases = [], isLoading, error, refetch } = useQuery({
+  const {
+    data: cases = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['lender-cases', statusFilter],
     queryFn: () => fetchAllLenderCases(statusFilter ? { status: statusFilter } : undefined),
   });
@@ -111,12 +119,7 @@ export function LenderCaseListPage(): React.ReactElement {
         title="Lender Cases"
         subtitle="Track and manage lender submission cases, underwriting progress, and sanction milestones across applications."
         action={
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => refetch()}
-            startIcon={<FilterListIcon />}
-          >
+          <Button variant="outlined" size="small" onClick={() => refetch()} startIcon={<FilterListIcon />}>
             Refresh
           </Button>
         }
@@ -298,7 +301,9 @@ export function LenderCaseListPage(): React.ReactElement {
                   <TableCell sx={{ fontWeight: 600 }}>Channel</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>Created Date</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

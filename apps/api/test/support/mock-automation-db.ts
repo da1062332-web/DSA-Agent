@@ -1,5 +1,12 @@
 // apps/api/test/support/mock-automation-db.ts — owner: Dev 1 / Dev 6 (MOD-WFA)
-import type { AuditEventInput, Database, DomainEventInput, RequestContext, Tx, TxRunner } from '@dsa/contracts';
+import type {
+  AuditEventInput,
+  Database,
+  DomainEventInput,
+  RequestContext,
+  Tx,
+  TxRunner,
+} from '@dsa/contracts';
 import {
   Kysely,
   PostgresAdapter,
@@ -254,7 +261,10 @@ export function createMockAutomationStore() {
   let activeTenantId = 'ten_01JTESTTENANT00000000000000';
 
   const connection: DatabaseConnection = {
-    async executeQuery<R>(compiledQuery: { sql: string; parameters: readonly unknown[] }): Promise<QueryResult<R>> {
+    async executeQuery<R>(compiledQuery: {
+      sql: string;
+      parameters: readonly unknown[];
+    }): Promise<QueryResult<R>> {
       const sqlLower = compiledQuery.sql.toLowerCase();
       const params = compiledQuery.parameters;
 
@@ -267,15 +277,29 @@ export function createMockAutomationStore() {
       // 2a. SELECT app.automation_definition by id
       if (sqlLower.includes('from app.automation_definition') && sqlLower.includes('where id =')) {
         const id = String(params[0]);
-        const found = definitions.find(
-          (d) => d.id === id && (d.tenant_id === activeTenantId || d.is_system),
-        );
+        const found = definitions.find((d) => d.id === id && (d.tenant_id === activeTenantId || d.is_system));
         return { rows: (found ? [found] : []) as unknown as R[] };
       }
 
       // 2b. INSERT INTO app.automation_definition
       if (sqlLower.includes('insert into app.automation_definition')) {
-        const [id, tenantId, code, name, desc, trigType, entType, status, isSys, pinVerId, lockVer, createdBy, createdAt, updatedBy, updatedAt] = params;
+        const [
+          id,
+          tenantId,
+          code,
+          name,
+          desc,
+          trigType,
+          entType,
+          status,
+          isSys,
+          pinVerId,
+          lockVer,
+          createdBy,
+          createdAt,
+          updatedBy,
+          updatedAt,
+        ] = params;
         const newDef = {
           id: String(id),
           tenant_id: String(tenantId),
@@ -314,9 +338,7 @@ export function createMockAutomationStore() {
 
       // 2d. SELECT app.automation_definition (list)
       if (sqlLower.includes('from app.automation_definition') && !sqlLower.includes('join')) {
-        const matches = definitions.filter(
-          (d) => d.tenant_id === activeTenantId || d.is_system,
-        );
+        const matches = definitions.filter((d) => d.tenant_id === activeTenantId || d.is_system);
         return { rows: matches as unknown as R[] };
       }
 
@@ -330,13 +352,33 @@ export function createMockAutomationStore() {
       // 3b. SELECT app.automation_version by definition_id (list)
       if (sqlLower.includes('from app.automation_version') && sqlLower.includes('where definition_id =')) {
         const defId = String(params[0]);
-        const matches = versions.filter((v) => v.definition_id === defId && (v.tenant_id === activeTenantId || v.tenant_id === 'ten_system'));
+        const matches = versions.filter(
+          (v) =>
+            v.definition_id === defId && (v.tenant_id === activeTenantId || v.tenant_id === 'ten_system'),
+        );
         return { rows: matches as unknown as R[] };
       }
 
       // 3c. INSERT INTO app.automation_version
       if (sqlLower.includes('insert into app.automation_version')) {
-        const [id, tenantId, defId, verNo, status, trigCfgJson, stepsJson, contentHash, authorId, subBy, subAt, appBy, appAt, rejReason, lockVer, createdAt] = params;
+        const [
+          id,
+          tenantId,
+          defId,
+          verNo,
+          status,
+          trigCfgJson,
+          stepsJson,
+          contentHash,
+          authorId,
+          subBy,
+          subAt,
+          appBy,
+          appAt,
+          rejReason,
+          lockVer,
+          createdAt,
+        ] = params;
         const newVer = {
           id: String(id),
           tenant_id: String(tenantId),
@@ -363,7 +405,9 @@ export function createMockAutomationStore() {
       if (sqlLower.includes('update app.automation_version')) {
         const verId = String(params[params.length - 2]);
         const tenantId = String(params[params.length - 1]);
-        const found = versions.find((v) => v.id === verId && (v.tenant_id === tenantId || v.tenant_id === 'ten_system'));
+        const found = versions.find(
+          (v) => v.id === verId && (v.tenant_id === tenantId || v.tenant_id === 'ten_system'),
+        );
         if (!found) return { rows: [] };
         if (params[0] !== null) found.status = String(params[0]);
         if (params[1] !== null) found.submitted_by = (params[1] as string) ?? null;
@@ -376,15 +420,10 @@ export function createMockAutomationStore() {
       }
 
       // 4. SELECT app.automation_execution by idempotency_key
-      if (
-        sqlLower.includes('from app.automation_execution') &&
-        sqlLower.includes('idempotency_key =')
-      ) {
+      if (sqlLower.includes('from app.automation_execution') && sqlLower.includes('idempotency_key =')) {
         const tenantIdParam = String(params[0]);
         const keyParam = String(params[1]);
-        const found = executions.find(
-          (e) => e.tenant_id === tenantIdParam && e.idempotency_key === keyParam,
-        );
+        const found = executions.find((e) => e.tenant_id === tenantIdParam && e.idempotency_key === keyParam);
         return { rows: (found ? [found] : []) as unknown as R[] };
       }
 
@@ -571,10 +610,7 @@ export function createMockAutomationStore() {
       }
 
       // 8c. Operator Update Execution / Reset Worker Lease
-      if (
-        sqlLower.includes('update app.automation_execution') &&
-        sqlLower.includes('worker_id = null')
-      ) {
+      if (sqlLower.includes('update app.automation_execution') && sqlLower.includes('worker_id = null')) {
         if (sqlLower.includes("status = 'pending'")) {
           const execId = String(params[0]);
           const tenantId = String(params[1]);
@@ -664,9 +700,7 @@ export function createMockAutomationStore() {
       if (sqlLower.includes('from app.automation_step_execution')) {
         const tenantId = String(params[0]);
         const execId = String(params[1]);
-        const matches = stepExecutions.filter(
-          (s) => s.tenant_id === tenantId && s.execution_id === execId,
-        );
+        const matches = stepExecutions.filter((s) => s.tenant_id === tenantId && s.execution_id === execId);
         return { rows: matches as unknown as R[] };
       }
 
@@ -825,7 +859,8 @@ export function createMockAutomationStore() {
 
       // 18. INSERT INTO app.scheduled_trigger
       if (sqlLower.includes('insert into app.scheduled_trigger')) {
-        const [id, tenantId, defId, verId, cronExpr, nextRunAt, lastRunAt, status, payload, createdAt] = params;
+        const [id, tenantId, defId, verId, cronExpr, nextRunAt, lastRunAt, status, payload, createdAt] =
+          params;
         const newTrigger: RawScheduledTriggerRow = {
           id: String(id),
           tenant_id: String(tenantId),
@@ -878,10 +913,18 @@ export function createMockAutomationStore() {
 
         const matches: unknown[] = [];
         for (const def of definitions) {
-          if ((def.tenant_id === tenantId || def.is_system) && def.status === 'ACTIVE' && def.trigger_type === 'EVENT') {
+          if (
+            (def.tenant_id === tenantId || def.is_system) &&
+            def.status === 'ACTIVE' &&
+            def.trigger_type === 'EVENT'
+          ) {
             const ver = versions.find((v) => v.id === def.pinned_version_id);
             if (ver && ver.status === 'ACTIVE') {
-              const cfg = (typeof ver.trigger_config === 'object' && ver.trigger_config !== null ? ver.trigger_config : {}) as Record<string, unknown>;
+              const cfg = (
+                typeof ver.trigger_config === 'object' && ver.trigger_config !== null
+                  ? ver.trigger_config
+                  : {}
+              ) as Record<string, unknown>;
               if (!cfg.eventType || cfg.eventType === eventType) {
                 matches.push({
                   def_id: def.id,
@@ -928,7 +971,10 @@ export function createMockAutomationStore() {
         const nowIso = String(params[0] ?? new Date().toISOString());
         const waiting = executions.filter((e) => {
           if (e.status !== 'WAITING') return false;
-          const ctxObj = (typeof e.context === 'object' && e.context !== null ? e.context : {}) as Record<string, unknown>;
+          const ctxObj = (typeof e.context === 'object' && e.context !== null ? e.context : {}) as Record<
+            string,
+            unknown
+          >;
           const waitCfg = (ctxObj.waitConfig || {}) as Record<string, unknown>;
           const untilIso = waitCfg.untilIso as string | undefined;
           return untilIso && untilIso <= nowIso;

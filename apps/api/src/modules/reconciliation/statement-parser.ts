@@ -61,7 +61,7 @@ export function parseMt940Feed(content: string): ParseResult {
       // Parse :61: statement line
       // Format: :61:YYMMDD[MMDD]C|D[FundsCode]Amount,Dec[Type][Reference]
       const body = raw.substring(4);
-      const match = body.match(/^(\d{6})(\d{4})?([CD][R]?)([A-Za-z])?([0-9]+[,\.][0-9]{2})(.*)$/);
+      const match = body.match(/^(\d{6})(\d{4})?([CD][R]?)([A-Za-z])?([0-9]+[,.][0-9]{2})(.*)$/);
       if (match) {
         const yymmdd = match[1];
         const amountStr = match[5];
@@ -145,7 +145,10 @@ export function parseMt940Feed(content: string): ParseResult {
   }
 
   if (parsedLines.length === 0) {
-    throw AppError.of('VALIDATION_ERROR', 'No valid MT940 statement transaction lines (:61:) detected in feed.');
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'No valid MT940 statement transaction lines (:61:) detected in feed.',
+    );
   }
 
   const totals = calculateTotals(parsedLines);
@@ -162,7 +165,11 @@ export function parseMt940Feed(content: string): ParseResult {
  * Parses Bank CSV Feed with header detection and normalization
  */
 export function parseCsvFeed(content: string): ParseResult {
-  const rows = content.trim().split(/\r?\n/).map((r) => r.trim()).filter(Boolean);
+  const rows = content
+    .trim()
+    .split(/\r?\n/)
+    .map((r) => r.trim())
+    .filter(Boolean);
   const firstRow = rows[0];
   if (!firstRow) {
     throw AppError.of('VALIDATION_ERROR', 'Empty CSV feed content provided.');
@@ -187,11 +194,18 @@ export function parseCsvFeed(content: string): ParseResult {
   };
 
   if (hasHeaders) {
-    const headers = firstRow.split(',').map((h) => h.trim().toLowerCase().replace(/[\s_-]+/g, ''));
+    const headers = firstRow.split(',').map((h) =>
+      h
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_-]+/g, ''),
+    );
     headers.forEach((h, idx) => {
       if (h.includes('loan') || h.includes('account') || h.includes('acct')) colMap.loanAccount = idx;
-      else if (h.includes('customer') || h.includes('client') || h.includes('borrower') || h.includes('name')) colMap.customerName = idx;
-      else if (h.includes('disburs') || h.includes('principal') || h.includes('loanamt')) colMap.disbursed = idx;
+      else if (h.includes('customer') || h.includes('client') || h.includes('borrower') || h.includes('name'))
+        colMap.customerName = idx;
+      else if (h.includes('disburs') || h.includes('principal') || h.includes('loanamt'))
+        colMap.disbursed = idx;
       else if (h.includes('comm') || h.includes('brokerage') || h.includes('payout')) colMap.commission = idx;
       else if (h.includes('tds') || h.includes('tax')) colMap.tax = idx;
       else if (h.includes('date') || h.includes('paid') || h.includes('settle')) colMap.date = idx;

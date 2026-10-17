@@ -99,7 +99,7 @@ export interface RawRuleSetVersionRow {
 
 export function formatDecisionDefinition(
   row: RawDecisionDefinitionRow,
-  dependencies: string[] = []
+  dependencies: string[] = [],
 ): DecisionDefinitionResponse {
   return {
     key: row.key,
@@ -107,7 +107,8 @@ export function formatDecisionDefinition(
     tier: row.tier as 'T1' | 'T2' | 'T3',
     inputSchema: (row.input_schema as Record<string, unknown>) ?? {},
     outputSchema: (row.output_schema as Record<string, unknown>) ?? {},
-    allowedHitPolicies: (row.allowed_hit_policies as ('UNIQUE' | 'FIRST' | 'PRIORITY' | 'COLLECT' | 'RULE_ORDER')[]) ?? [],
+    allowedHitPolicies:
+      (row.allowed_hit_policies as ('UNIQUE' | 'FIRST' | 'PRIORITY' | 'COLLECT' | 'RULE_ORDER')[]) ?? [],
     bindingMode: row.binding_mode as 'EVAL' | 'EVENT' | 'PIN',
     fallbackPolicy: row.fallback_policy as 'DEFAULT_OUTPUT' | 'FAIL_CLOSED' | 'MANUAL_REVIEW',
     fallbackOutput: (row.fallback_output as Record<string, unknown>) ?? null,
@@ -122,7 +123,11 @@ export function formatDecisionDefinition(
 
 export function formatRuleSet(
   row: RawRuleSetRow,
-  extras?: { activeVersionId?: string | null; scheduledVersionId?: string | null; draftVersionCount?: number }
+  extras?: {
+    activeVersionId?: string | null;
+    scheduledVersionId?: string | null;
+    draftVersionCount?: number;
+  },
 ): RuleSetResponse {
   return {
     id: row.id as RuleSetResponse['id'],
@@ -178,10 +183,7 @@ export function formatRuleSetVersion(row: RawRuleSetVersionRow): RuleSetVersionR
 }
 
 // ---------------- Decision Definitions ----------------
-export async function getDecisionDefinition(
-  tx: Tx,
-  key: string
-): Promise<DecisionDefinitionResponse> {
+export async function getDecisionDefinition(tx: Tx, key: string): Promise<DecisionDefinitionResponse> {
   const result = await sql<RawDecisionDefinitionRow>`
     SELECT * FROM app.decision_definition WHERE key = ${key}
   `.execute(tx);
@@ -199,9 +201,7 @@ export async function getDecisionDefinition(
   return formatDecisionDefinition(row, deps);
 }
 
-export async function listDecisionDefinitions(
-  tx: Tx
-): Promise<DecisionDefinitionResponse[]> {
+export async function listDecisionDefinitions(tx: Tx): Promise<DecisionDefinitionResponse[]> {
   const result = await sql<RawDecisionDefinitionRow>`
     SELECT * FROM app.decision_definition ORDER BY key ASC
   `.execute(tx);
@@ -243,7 +243,12 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             output: {
               result: 'INELIGIBLE',
               maxEligibleAmount: null,
-              reasons: [{ code: 'CREDIT_SCORE_LOW', text: 'Credit bureau score below acceptable threshold (min 600)' }],
+              reasons: [
+                {
+                  code: 'CREDIT_SCORE_LOW',
+                  text: 'Credit bureau score below acceptable threshold (min 600)',
+                },
+              ],
             },
             explanation: 'Bureau score of applicant is below credit risk cutoff',
           },
@@ -258,14 +263,20 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             output: {
               result: 'INELIGIBLE',
               maxEligibleAmount: null,
-              reasons: [{ code: 'INCOME_BELOW_MINIMUM', text: 'Monthly net income is below minimum requirement of 25,000 INR' }],
+              reasons: [
+                {
+                  code: 'INCOME_BELOW_MINIMUM',
+                  text: 'Monthly net income is below minimum requirement of 25,000 INR',
+                },
+              ],
             },
             explanation: 'Net take-home income does not meet minimum retail borrowing cutoff',
           },
           {
             uid: 'RUL-ELG-003',
             name: 'Prime Borrower High Eligibility Pass',
-            description: 'Applicant with credit score >= 750 and income >= 75,000 qualifies for prime sanction',
+            description:
+              'Applicant with credit score >= 750 and income >= 75,000 qualifies for prime sanction',
             orderNo: 2,
             priority: 80,
             enabled: true,
@@ -276,14 +287,20 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             output: {
               result: 'ELIGIBLE',
               maxEligibleAmount: { amount: '2500000.00', currency: 'INR' },
-              reasons: [{ code: 'PRIME_BORROWER_ELIGIBLE', text: 'Applicant meets prime credit and income benchmarks' }],
+              reasons: [
+                {
+                  code: 'PRIME_BORROWER_ELIGIBLE',
+                  text: 'Applicant meets prime credit and income benchmarks',
+                },
+              ],
             },
             explanation: 'High credit score and strong income qualification',
           },
           {
             uid: 'RUL-ELG-004',
             name: 'Standard Salaried Borrower Pass',
-            description: 'Applicant with credit score >= 650 and income >= 25,000 qualifies for standard sanction',
+            description:
+              'Applicant with credit score >= 650 and income >= 25,000 qualifies for standard sanction',
             orderNo: 3,
             priority: 70,
             enabled: true,
@@ -294,7 +311,9 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             output: {
               result: 'ELIGIBLE',
               maxEligibleAmount: { amount: '1000000.00', currency: 'INR' },
-              reasons: [{ code: 'STANDARD_ELIGIBLE', text: 'Applicant satisfies standard eligibility criteria' }],
+              reasons: [
+                { code: 'STANDARD_ELIGIBLE', text: 'Applicant satisfies standard eligibility criteria' },
+              ],
             },
             explanation: 'Satisfies baseline credit and income requirements',
           },
@@ -317,9 +336,7 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             name: 'Salaried Income Verification Documents',
             orderNo: 0,
             enabled: true,
-            conditions: [
-              { field: 'party.applicant_type', operator: '==', value: 'SALARIED' },
-            ],
+            conditions: [{ field: 'party.applicant_type', operator: '==', value: 'SALARIED' }],
             output: {
               documents: [
                 { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
@@ -346,12 +363,15 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             name: 'Missing Consent Check',
             orderNo: 0,
             enabled: true,
-            conditions: [
-              { field: 'parties.all_processing_consent', operator: '==', value: false },
-            ],
+            conditions: [{ field: 'parties.all_processing_consent', operator: '==', value: false }],
             output: {
               result: 'INCOMPLETE',
-              reasons: [{ code: 'NO_PROCESSING_CONSENT', text: 'All parties must execute active data processing consent' }],
+              reasons: [
+                {
+                  code: 'NO_PROCESSING_CONSENT',
+                  text: 'All parties must execute active data processing consent',
+                },
+              ],
             },
           },
           {
@@ -359,12 +379,15 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             name: 'Mandatory Documents Missing Check',
             orderNo: 1,
             enabled: true,
-            conditions: [
-              { field: 'application.mandatory_pending_count', operator: '>', value: 0 },
-            ],
+            conditions: [{ field: 'application.mandatory_pending_count', operator: '>', value: 0 }],
             output: {
               result: 'INCOMPLETE',
-              reasons: [{ code: 'MANDATORY_DOCUMENTS_PENDING', text: 'Required mandatory KYC and income documents are missing' }],
+              reasons: [
+                {
+                  code: 'MANDATORY_DOCUMENTS_PENDING',
+                  text: 'Required mandatory KYC and income documents are missing',
+                },
+              ],
             },
           },
         ],
@@ -385,7 +408,7 @@ export async function createRuleSet(
   ctx: RequestContext,
   id: string,
   initialVersionId: string,
-  input: CreateRuleSetRequest
+  input: CreateRuleSetRequest,
 ): Promise<RuleSetResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
@@ -437,8 +460,11 @@ export async function createRuleSet(
 export async function listRuleSets(
   tx: Tx,
   _ctx: RequestContext,
-  query: RuleSetListQuery
-): Promise<{ data: RuleSetResponse[]; meta: { nextCursor: string | null; limit: number; totalCount?: number } }> {
+  query: RuleSetListQuery,
+): Promise<{
+  data: RuleSetResponse[];
+  meta: { nextCursor: string | null; limit: number; totalCount?: number };
+}> {
   const conditions = [sql`1=1`];
 
   if (query.decisionKey) conditions.push(sql`rs.decision_key = ${query.decisionKey}`);
@@ -473,7 +499,7 @@ export async function listRuleSets(
 export async function getRuleSetById(
   tx: Tx,
   _ctx: RequestContext,
-  ruleSetId: string
+  ruleSetId: string,
 ): Promise<RuleSetResponse> {
   const result = await sql<RawRuleSetRow>`
     SELECT * FROM app.rule_set WHERE id = ${ruleSetId}
@@ -504,7 +530,7 @@ export async function getRuleSetById(
 export async function listRuleSetVersions(
   tx: Tx,
   ctx: RequestContext,
-  ruleSetId: string
+  ruleSetId: string,
 ): Promise<RuleSetVersionResponse[]> {
   await getRuleSetById(tx, ctx, ruleSetId);
 
@@ -520,7 +546,7 @@ export async function listRuleSetVersions(
 export async function getRuleSetVersionById(
   tx: Tx,
   _ctx: RequestContext,
-  versionId: string
+  versionId: string,
 ): Promise<RuleSetVersionResponse> {
   const result = await sql<RawRuleSetVersionRow>`
     SELECT * FROM app.rule_set_version WHERE id = ${versionId}
@@ -538,7 +564,7 @@ export async function createRuleSetVersion(
   ctx: RequestContext,
   ruleSetId: string,
   versionId: string,
-  input: CreateRuleSetVersionRequest
+  input: CreateRuleSetVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const tenantId = ctx.principal.tenantId;
   const actor = ctx.principal.id;
@@ -554,7 +580,7 @@ export async function createRuleSetVersion(
   if (Number(draftsRes.rows[0]?.count ?? 0) >= 5) {
     throw AppError.of(
       'DRAFT_LIMIT_REACHED',
-      'Maximum limit of 5 open drafts reached for this rule set. Publish, abandon, or delete existing drafts before creating a new one.'
+      'Maximum limit of 5 open drafts reached for this rule set. Publish, abandon, or delete existing drafts before creating a new one.',
     );
   }
 
@@ -599,7 +625,7 @@ export async function updateRuleSetVersion(
   ctx: RequestContext,
   versionId: string,
   ifMatch: number,
-  input: UpdateRuleSetVersionRequest
+  input: UpdateRuleSetVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
 
@@ -615,7 +641,7 @@ export async function updateRuleSetVersion(
   if (current.status !== 'DRAFT') {
     throw AppError.of(
       'INVALID_STATE',
-      `Rule set version '${versionId}' is in status '${current.status}' and is immutable. Only DRAFT versions can be edited.`
+      `Rule set version '${versionId}' is in status '${current.status}' and is immutable. Only DRAFT versions can be edited.`,
     );
   }
 
@@ -652,7 +678,7 @@ export async function recordValidationRun(
   ctx: RequestContext,
   runId: string,
   versionId: string,
-  report: ValidationReport
+  report: ValidationReport,
 ): Promise<ValidationReportResponse> {
   const tenantId = ctx.principal.tenantId;
   const actor = ctx.principal.id;
@@ -698,7 +724,7 @@ export async function recordValidationRun(
 export async function getLatestValidationReport(
   tx: Tx,
   _ctx: RequestContext,
-  versionId: string
+  versionId: string,
 ): Promise<ValidationReportResponse | null> {
   const result = await sql<{
     id: string;
@@ -724,7 +750,11 @@ export async function getLatestValidationReport(
     contentHash: row.content_hash,
     result: row.result as 'PASS' | 'FAIL',
     issues: Array.isArray(row.issues) ? (row.issues as ValidationReportResponse['issues']) : [],
-    testsSummary: (row.tests_summary as ValidationReportResponse['testsSummary']) ?? { total: 0, passed: 0, failed: 0 },
+    testsSummary: (row.tests_summary as ValidationReportResponse['testsSummary']) ?? {
+      total: 0,
+      passed: 0,
+      failed: 0,
+    },
     runBy: row.run_by,
     runAt: new Date(row.run_at).toISOString(),
   };
@@ -737,7 +767,7 @@ export async function recordSimulation(
   simId: string,
   versionId: string,
   input: CreateSimulationRequest,
-  result: EvaluationResult
+  result: EvaluationResult,
 ): Promise<SimulationResponse> {
   const tenantId = ctx.principal.tenantId;
   const actor = ctx.principal.id;
@@ -780,7 +810,7 @@ export async function recordSimulation(
 export async function getSimulationById(
   tx: Tx,
   _ctx: RequestContext,
-  simId: string
+  simId: string,
 ): Promise<SimulationResponse> {
   const result = await sql<{
     id: string;
@@ -824,7 +854,7 @@ export async function getSimulationById(
 export async function listTestCases(
   tx: Tx,
   _ctx: RequestContext,
-  ruleSetId: string
+  ruleSetId: string,
 ): Promise<TestCaseResponse[]> {
   const result = await sql<{
     id: string;
@@ -870,7 +900,7 @@ export async function createTestCase(
   ctx: RequestContext,
   testCaseId: string,
   ruleSetId: string,
-  input: CreateTestCaseRequest
+  input: CreateTestCaseRequest,
 ): Promise<TestCaseResponse> {
   const tenantId = ctx.principal.tenantId;
   const actor = ctx.principal.id;
@@ -928,7 +958,7 @@ export async function updateTestCase(
   ctx: RequestContext,
   testCaseId: string,
   ifMatch: number,
-  input: UpdateTestCaseRequest
+  input: UpdateTestCaseRequest,
 ): Promise<TestCaseResponse> {
   const actor = ctx.principal.id;
 
@@ -1017,7 +1047,7 @@ export async function submitVersion(
   tx: Tx,
   ctx: RequestContext,
   versionId: string,
-  input: SubmitVersionRequest
+  input: SubmitVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const version = await getRuleSetVersionById(tx, ctx, versionId);
@@ -1025,7 +1055,7 @@ export async function submitVersion(
   if (version.status !== 'DRAFT') {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot submit version '${versionId}' in status '${version.status}'. Must be in DRAFT status.`
+      `Cannot submit version '${versionId}' in status '${version.status}'. Must be in DRAFT status.`,
     );
   }
 
@@ -1037,7 +1067,7 @@ export async function submitVersion(
   if (latestValidation.result !== 'PASS' || latestValidation.contentHash !== version.contentHash) {
     throw AppError.of(
       'VALIDATION_STALE',
-      'Validation report is stale or failing. Please re-run validation before submitting.'
+      'Validation report is stale or failing. Please re-run validation before submitting.',
     );
   }
 
@@ -1076,7 +1106,7 @@ export async function reviewVersion(
   ctx: RequestContext,
   approvalId: string,
   versionId: string,
-  input: ReviewVersionRequest
+  input: ReviewVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
@@ -1085,7 +1115,7 @@ export async function reviewVersion(
   if (version.status !== 'IN_REVIEW') {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot review version '${versionId}' in status '${version.status}'. Version must be IN_REVIEW.`
+      `Cannot review version '${versionId}' in status '${version.status}'. Version must be IN_REVIEW.`,
     );
   }
 
@@ -1093,7 +1123,7 @@ export async function reviewVersion(
   if (input.action === 'APPROVE' && version.editors.includes(actor)) {
     throw AppError.of(
       'SOD_VIOLATION',
-      'SOD-01 Maker-checker violation: Authors and editors are prohibited from approving their own rule version.'
+      'SOD-01 Maker-checker violation: Authors and editors are prohibited from approving their own rule version.',
     );
   }
 
@@ -1101,7 +1131,7 @@ export async function reviewVersion(
   if (input.reviewedContentHash !== version.contentHash) {
     throw AppError.of(
       'CONTENT_HASH_MISMATCH',
-      'Reviewed content hash does not match active version content hash.'
+      'Reviewed content hash does not match active version content hash.',
     );
   }
 
@@ -1115,7 +1145,8 @@ export async function reviewVersion(
     )
   `.execute(tx);
 
-  const nextStatus = input.action === 'APPROVE' ? 'APPROVED' : input.action === 'REJECT' ? 'REJECTED' : 'DRAFT';
+  const nextStatus =
+    input.action === 'APPROVE' ? 'APPROVED' : input.action === 'REJECT' ? 'REJECTED' : 'DRAFT';
 
   const result = await sql<RawRuleSetVersionRow>`
     UPDATE app.rule_set_version
@@ -1132,7 +1163,7 @@ export async function publishVersion(
   ctx: RequestContext,
   pubId: string,
   versionId: string,
-  input: PublishVersionRequest
+  input: PublishVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
@@ -1141,13 +1172,17 @@ export async function publishVersion(
   if (version.status !== 'APPROVED') {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot publish version '${versionId}' with status '${version.status}'. Must be in APPROVED status.`
+      `Cannot publish version '${versionId}' with status '${version.status}'. Must be in APPROVED status.`,
     );
   }
 
   // Reject publication if validation evidence is missing or stale
   const latestValidation = await getLatestValidationReport(tx, ctx, versionId);
-  if (!latestValidation || latestValidation.result !== 'PASS' || latestValidation.contentHash !== version.contentHash) {
+  if (
+    !latestValidation ||
+    latestValidation.result !== 'PASS' ||
+    latestValidation.contentHash !== version.contentHash
+  ) {
     throw AppError.of('VALIDATION_STALE', 'Validation report is missing or stale. Re-validation required.');
   }
 
@@ -1193,7 +1228,7 @@ export async function suspendVersion(
   ctx: RequestContext,
   pubId: string,
   versionId: string,
-  input: SuspendVersionRequest
+  input: SuspendVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
@@ -1202,7 +1237,7 @@ export async function suspendVersion(
   if (version.status !== 'ACTIVE' && version.status !== 'SCHEDULED') {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot suspend version '${versionId}' in status '${version.status}'. Must be ACTIVE or SCHEDULED.`
+      `Cannot suspend version '${versionId}' in status '${version.status}'. Must be ACTIVE or SCHEDULED.`,
     );
   }
 
@@ -1234,7 +1269,7 @@ export async function reinstateVersion(
   ctx: RequestContext,
   pubId: string,
   versionId: string,
-  input: ReinstateVersionRequest
+  input: ReinstateVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
@@ -1243,7 +1278,7 @@ export async function reinstateVersion(
   if (version.status !== 'SUSPENDED') {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot reinstate version '${versionId}' in status '${version.status}'. Must be in SUSPENDED status.`
+      `Cannot reinstate version '${versionId}' in status '${version.status}'. Must be in SUSPENDED status.`,
     );
   }
 
@@ -1251,7 +1286,7 @@ export async function reinstateVersion(
   if (version.suspendedBy === actor) {
     throw AppError.of(
       'SOD_VIOLATION',
-      'Separation of duties: The user who suspended this rule set version cannot reinstate it.'
+      'Separation of duties: The user who suspended this rule set version cannot reinstate it.',
     );
   }
 
@@ -1281,7 +1316,7 @@ export async function retireVersion(
   tx: Tx,
   ctx: RequestContext,
   versionId: string,
-  input: RetireVersionRequest
+  input: RetireVersionRequest,
 ): Promise<RuleSetVersionResponse> {
   const version = await getRuleSetVersionById(tx, ctx, versionId);
 
@@ -1306,21 +1341,24 @@ export async function rollbackRuleSet(
   ctx: RequestContext,
   pubId: string,
   ruleSetId: string,
-  input: RollbackRequest
+  input: RollbackRequest,
 ): Promise<RuleSetVersionResponse> {
   const actor = ctx.principal.id;
   const tenantId = ctx.principal.tenantId;
 
   const target = await getRuleSetVersionById(tx, ctx, input.targetVersionId);
   if (target.ruleSetId !== ruleSetId) {
-    throw AppError.of('NOT_FOUND', `Target version '${input.targetVersionId}' does not belong to rule set '${ruleSetId}'.`);
+    throw AppError.of(
+      'NOT_FOUND',
+      `Target version '${input.targetVersionId}' does not belong to rule set '${ruleSetId}'.`,
+    );
   }
 
   // Target version must have been previously published (SUPERSEDED, RETIRED, or APPROVED)
   if (!['SUPERSEDED', 'APPROVED', 'RETIRED'].includes(target.status)) {
     throw AppError.of(
       'INVALID_TRANSITION',
-      `Cannot rollback to target version with status '${target.status}'. Target must be previously approved or superseded.`
+      `Cannot rollback to target version with status '${target.status}'. Target must be previously approved or superseded.`,
     );
   }
 
@@ -1359,7 +1397,7 @@ export async function rollbackRuleSet(
 export async function recordDecisionRecord(
   tx: Tx,
   ctx: RequestContext,
-  record: DecisionRecordResponse
+  record: DecisionRecordResponse,
 ): Promise<DecisionRecordResponse> {
   await sql`
     INSERT INTO app.decision_record (
@@ -1384,7 +1422,7 @@ export async function recordDecisionRecord(
 export async function listDecisionRecords(
   tx: Tx,
   _ctx: RequestContext,
-  query: DecisionRecordListQuery
+  query: DecisionRecordListQuery,
 ): Promise<{ data: DecisionRecordResponse[]; meta: { nextCursor: string | null; limit: number } }> {
   const conditions = [sql`1=1`];
 
@@ -1463,7 +1501,7 @@ export async function listDecisionRecords(
 export async function getDecisionRecordById(
   tx: Tx,
   _ctx: RequestContext,
-  id: string
+  id: string,
 ): Promise<DecisionRecordResponse> {
   const result = await sql<{
     id: string;

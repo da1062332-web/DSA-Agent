@@ -202,4 +202,3 @@ export async function autoIngestBankFeed(input: {
     body: input,
   });
 }
-

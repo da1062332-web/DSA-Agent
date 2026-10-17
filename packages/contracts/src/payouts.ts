@@ -128,4 +128,3 @@ export const DisbursePayoutGatewayResponseSchema = z.object({
   disbursedAt: z.string(),
 });
 export type DisbursePayoutGatewayResponse = z.infer<typeof DisbursePayoutGatewayResponseSchema>;
-

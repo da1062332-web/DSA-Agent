@@ -10,7 +10,7 @@ import {
   type RequestContext,
 } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import type { ApiDeps } from '../../types';
 import { SqlLenderCaseRepository, type LenderCaseRepository } from './repository';
 import { LenderCaseService } from './service';

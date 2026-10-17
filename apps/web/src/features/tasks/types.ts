@@ -1,12 +1,6 @@
 // apps/web/src/features/tasks/types.ts — owner: Dev 6 (MOD-08 Tasks)
 export type TaskType =
-  | 'FOLLOW_UP'
-  | 'CALL'
-  | 'MEETING'
-  | 'DOCUMENT_COLLECTION'
-  | 'LENDER_QUERY'
-  | 'REVIEW'
-  | 'GENERAL';
+  'FOLLOW_UP' | 'CALL' | 'MEETING' | 'DOCUMENT_COLLECTION' | 'LENDER_QUERY' | 'REVIEW' | 'GENERAL';
 
 export type TaskPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 

@@ -143,7 +143,10 @@ export class CatalogueService {
       if (!current) {
         throw AppError.of('NOT_FOUND', `Lender ${id} not found.`);
       }
-      throw AppError.of('VERSION_CONFLICT', `Lender version conflict. Current version is ${current.lock_version}.`);
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        `Lender version conflict. Current version is ${current.lock_version}.`,
+      );
     }
 
     return this.toLenderResponse(updated);
@@ -213,13 +216,19 @@ export class CatalogueService {
   ): Promise<EmpanelmentResponse> {
     this.assertPermission(ctx, 'config.manage');
 
-    const updated = await this.deps.repository.updateEmpanelment(tx, ctx.principal.tenantId, id, ifMatchVersion, {
-      permitted_categories: input.permittedCategories,
-      permitted_geos: input.permittedGeos,
-      agreement_document_id: input.agreementDocumentId,
-      status: input.status,
-      updated_by: ctx.principal.id,
-    });
+    const updated = await this.deps.repository.updateEmpanelment(
+      tx,
+      ctx.principal.tenantId,
+      id,
+      ifMatchVersion,
+      {
+        permitted_categories: input.permittedCategories,
+        permitted_geos: input.permittedGeos,
+        agreement_document_id: input.agreementDocumentId,
+        status: input.status,
+        updated_by: ctx.principal.id,
+      },
+    );
 
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', `Empanelment version conflict for ${id}.`);
@@ -315,7 +324,9 @@ export class CatalogueService {
         tenant_id: tenantId,
         product_id: id,
         version_no: 1,
-        effective_from: input.initialVersion.effectiveFrom ? new Date(input.initialVersion.effectiveFrom) : now,
+        effective_from: input.initialVersion.effectiveFrom
+          ? new Date(input.initialVersion.effectiveFrom)
+          : now,
         amount_min: input.initialVersion.amountMin,
         amount_max: input.initialVersion.amountMax,
         currency: input.initialVersion.currency,
@@ -453,13 +464,21 @@ export class CatalogueService {
       throw AppError.of('NOT_FOUND', `Lender ${lenderId} not found.`);
     }
     if (lender.status === 'PAUSED') {
-      throw AppError.of('LENDER_PAUSED', `[LENDER_PAUSED] Lender ${lender.name} is paused. Case cannot be submitted.`);
+      throw AppError.of(
+        'LENDER_PAUSED',
+        `[LENDER_PAUSED] Lender ${lender.name} is paused. Case cannot be submitted.`,
+      );
     }
     if (lender.status === 'TERMINATED') {
       throw AppError.of('INVALID_STATE', `[INVALID_STATE] Lender ${lender.name} is terminated.`);
     }
 
-    const empanelment = await this.deps.repository.findActiveEmpanelmentForLender(tx, tenantId, lenderId, category);
+    const empanelment = await this.deps.repository.findActiveEmpanelmentForLender(
+      tx,
+      tenantId,
+      lenderId,
+      category,
+    );
     if (!empanelment) {
       throw AppError.of(
         'EMPANELMENT_INACTIVE',

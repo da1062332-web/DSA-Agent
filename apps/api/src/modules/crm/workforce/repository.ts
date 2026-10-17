@@ -1,11 +1,7 @@
 // apps/api/src/modules/crm/workforce/repository.ts — Module 26: Workforce persistence
 import { AppError, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
-import type {
-  AgentWorkforceSummary,
-  AttendanceRecord,
-  DelegationRecord,
-} from './types';
+import type { AgentWorkforceSummary, AttendanceRecord, DelegationRecord } from './types';
 
 export interface WorkforceUserRow {
   id: string;

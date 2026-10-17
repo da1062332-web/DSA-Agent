@@ -62,13 +62,16 @@ async function main() {
     ];
 
     for (const perm of operationalPermissions) {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO app.role_permission (tenant_id, role_id, permission_code)
         SELECT r.tenant_id, r.id, $1
         FROM app.role r
         WHERE r.code IN ('ROLE-TENANT-ADMIN', 'ROLE-ORG-OWNER')
         ON CONFLICT DO NOTHING;
-      `, [perm]);
+      `,
+        [perm],
+      );
     }
     console.log('Applied operational and sanction grants to ROLE-TENANT-ADMIN and ROLE-ORG-OWNER.');
 
@@ -85,25 +88,34 @@ async function main() {
     for (const user of noRoleUsers.rows) {
       console.log(`Processing test account ${user.email} (${user.id}) in tenant ${user.tenant_id}...`);
       // Assign test role and mark SUSPENDED
-      const roleRes = await client.query(`
+      const roleRes = await client.query(
+        `
         SELECT id FROM app.role WHERE tenant_id = $1 ORDER BY id LIMIT 1;
-      `, [user.tenant_id]);
+      `,
+        [user.tenant_id],
+      );
 
       if (roleRes.rows[0]) {
         const roleId = roleRes.rows[0].id;
         const assignmentId = 'ura_' + Math.random().toString(36).substring(2, 12);
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO app.user_role_assignment (id, tenant_id, user_id, role_id, scope_type, created_by)
           VALUES ($1, $2, $3, $4, 'TENANT', 'system_audit_reconcile')
           ON CONFLICT DO NOTHING;
-        `, [assignmentId, user.tenant_id, user.id, roleId]);
+        `,
+          [assignmentId, user.tenant_id, user.id, roleId],
+        );
       }
 
-      await client.query(`
+      await client.query(
+        `
         UPDATE app.app_user
         SET status = 'SUSPENDED'
         WHERE id = $1 AND tenant_id = $2;
-      `, [user.id, user.tenant_id]);
+      `,
+        [user.id, user.tenant_id],
+      );
     }
     console.log('All obsolete test accounts assigned a role and marked SUSPENDED.');
 
@@ -127,7 +139,6 @@ async function main() {
       ORDER BY t.slug;
     `);
     console.table(adminCheck.rows);
-
   } finally {
     await client.end();
   }

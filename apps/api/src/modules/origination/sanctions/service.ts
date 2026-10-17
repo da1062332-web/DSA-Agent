@@ -167,7 +167,10 @@ export class SanctionService {
     });
   }
 
-  async listAllSanctions(ctx: RequestContext, filter?: { status?: string; limit?: number }): Promise<SanctionDto[]> {
+  async listAllSanctions(
+    ctx: RequestContext,
+    filter?: { status?: string; limit?: number },
+  ): Promise<SanctionDto[]> {
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllSanctions(tx, tenantId, filter);
@@ -175,7 +178,10 @@ export class SanctionService {
     });
   }
 
-  async listAllTranches(ctx: RequestContext, filter?: { status?: string; limit?: number }): Promise<DisbursementTrancheDto[]> {
+  async listAllTranches(
+    ctx: RequestContext,
+    filter?: { status?: string; limit?: number },
+  ): Promise<DisbursementTrancheDto[]> {
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllTranches(tx, tenantId, filter);

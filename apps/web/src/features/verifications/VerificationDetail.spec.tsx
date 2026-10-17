@@ -10,7 +10,7 @@ import { routes } from './routes';
 describe('Module 19 — Verification Detail & Create Dialog Component Rendering', () => {
   it('renders VerificationCreateDialog with all form fields and actions when open', () => {
     const html = renderToString(
-      <VerificationCreateDialog open={true} onClose={() => {}} onSuccess={() => {}} />
+      <VerificationCreateDialog open={true} onClose={() => {}} onSuccess={() => {}} />,
     );
 
     expect(html).toContain('Initiate Verification Case');
@@ -29,7 +29,7 @@ describe('Module 19 — Verification Detail & Create Dialog Component Rendering'
         <Routes>
           <Route path="/verifications/:id" element={<VerificationDetailPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Initial state renders circular loading indicator

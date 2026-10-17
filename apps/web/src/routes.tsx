@@ -20,7 +20,9 @@ const featureModules = import.meta.glob<{ routes: RouteObject[] }>('./features/*
 // broken feature cannot take the whole app down with a router error.
 export const featureRoutes: RouteObject[] = Object.entries(featureModules).flatMap(([file, m]) => {
   if (!Array.isArray(m?.routes)) {
-    console.error(`Routes missing for ${file}: restart the dev server (npm run dev -- --force) if this persists.`);
+    console.error(
+      `Routes missing for ${file}: restart the dev server (npm run dev -- --force) if this persists.`,
+    );
     return [];
   }
   return m.routes.filter((r): r is RouteObject => !!r);

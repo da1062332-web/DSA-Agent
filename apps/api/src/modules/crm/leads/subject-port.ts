@@ -5,6 +5,7 @@
 // Row-level security limits the lookup to the caller's tenant, so another tenant's lead reads as absent.
 import { AppError, type ComplaintSubjectPort, type ComplaintSubjectType, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
+// eslint-disable-next-line import/no-restricted-paths -- composite port wires together lead and application providers
 import { createApplicationSubjectPort } from '../../origination/applications/subject-port';
 
 /**
@@ -16,9 +17,11 @@ export function createLeadSubjectPort(): ComplaintSubjectPort {
   return {
     async exists(tx: Tx, type: ComplaintSubjectType, id: string): Promise<boolean> {
       if (type !== 'LEAD') {
-        throw AppError.of('VALIDATION_ERROR', `Complaints about ${type} are not supported by the lead provider.`, [
-          { field: 'complainantType', issue: 'SUBJECT_UNSUPPORTED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Complaints about ${type} are not supported by the lead provider.`,
+          [{ field: 'complainantType', issue: 'SUBJECT_UNSUPPORTED' }],
+        );
       }
       const r = await sql<{ id: string }>`select id from lead where id = ${id}`.execute(tx);
       return r.rows.length > 0;

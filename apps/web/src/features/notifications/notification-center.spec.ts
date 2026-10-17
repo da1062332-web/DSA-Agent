@@ -93,10 +93,7 @@ describe('Frontend Notification Integration Tests', () => {
 
   it('FE-NTF-004: validates mark-as-read batch payload', () => {
     const payload = MarkNotificationsReadSchema.parse({
-      notificationIds: [
-        'ntf_01J00000000000000000000001',
-        'ntf_01J00000000000000000000002',
-      ],
+      notificationIds: ['ntf_01J00000000000000000000001', 'ntf_01J00000000000000000000002'],
     });
     expect(payload.notificationIds).toHaveLength(2);
   });

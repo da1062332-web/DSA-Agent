@@ -84,10 +84,7 @@ describe('Module 20 — Performance Targets PostgreSQL Integration (Real Databas
         creatorId,
         approverId,
       ]);
-      await adminClient.query(`DELETE FROM app.branch WHERE tenant_id = $1 AND id = $2`, [
-        tenantA,
-        branchId,
-      ]);
+      await adminClient.query(`DELETE FROM app.branch WHERE tenant_id = $1 AND id = $2`, [tenantA, branchId]);
       await adminClient.query(`DELETE FROM app.organisation WHERE tenant_id = $1 AND id = $2`, [
         tenantA,
         orgId,

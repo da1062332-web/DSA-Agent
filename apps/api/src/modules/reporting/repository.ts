@@ -1,8 +1,4 @@
-import type {
-  ControlTotalsDto,
-  DimensionType,
-  Tx,
-} from '@dsa/contracts';
+import type { ControlTotalsDto, DimensionType, Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type {
   ExportJobRow,
@@ -61,32 +57,39 @@ export interface ReportingRepository {
     bounds: PeriodBounds,
     filters: { branchId?: string; userId?: string },
   ): Promise<EntitySummaryRow[]>;
-  refreshProjections(
-    tx: Tx,
-    tenantId: string,
-    startDate: string,
-    endDate: string,
-  ): Promise<void>;
-  getControlTotals(
-    tx: Tx,
-    tenantId: string,
-    summaryDate: string,
-  ): Promise<ControlTotalsDto>;
+  refreshProjections(tx: Tx, tenantId: string, startDate: string, endDate: string): Promise<void>;
+  getControlTotals(tx: Tx, tenantId: string, summaryDate: string): Promise<ControlTotalsDto>;
 
   // Submodule 4: Report Runs
   createReportRun(tx: Tx, row: ReportRunRow): Promise<ReportRunRow>;
   getReportRun(tx: Tx, tenantId: string, id: string): Promise<ReportRunRow | null>;
   listReportRuns(tx: Tx, tenantId: string): Promise<ReportRunRow[]>;
-  fetchReportData(tx: Tx, tenantId: string, reportCode: string): Promise<{ headers: string[]; records: Array<Record<string, unknown>> }>;
+  fetchReportData(
+    tx: Tx,
+    tenantId: string,
+    reportCode: string,
+  ): Promise<{ headers: string[]; records: Array<Record<string, unknown>> }>;
 
   // Submodule 5: Exports
   createExportJob(tx: Tx, row: ExportJobRow): Promise<ExportJobRow>;
   getExportJob(tx: Tx, tenantId: string, id: string): Promise<ExportJobRow | null>;
   listExportJobs(tx: Tx, tenantId: string, requesterId?: string): Promise<ExportJobRow[]>;
   updateExportJobDownloadedAt(tx: Tx, tenantId: string, id: string): Promise<void>;
-  fetchLeadsForExport(tx: Tx, tenantId: string, branchId?: string | null): Promise<Array<Record<string, unknown>>>;
-  fetchCustomersForExport(tx: Tx, tenantId: string, branchId?: string | null): Promise<Array<Record<string, unknown>>>;
-  queryOperationalSummary(tx: Tx, tenantId: string, filters: { branchId?: string | null }): Promise<Array<Record<string, unknown>>>;
+  fetchLeadsForExport(
+    tx: Tx,
+    tenantId: string,
+    branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>>;
+  fetchCustomersForExport(
+    tx: Tx,
+    tenantId: string,
+    branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>>;
+  queryOperationalSummary(
+    tx: Tx,
+    tenantId: string,
+    filters: { branchId?: string | null },
+  ): Promise<Array<Record<string, unknown>>>;
 
   // Submodule 5: Schedules
   createReportSchedule(tx: Tx, row: ReportScheduleRow): Promise<ReportScheduleRow>;
@@ -292,12 +295,7 @@ export class SqlReportingRepository implements ReportingRepository {
     return results;
   }
 
-  async refreshProjections(
-    tx: Tx,
-    tenantId: string,
-    startDate: string,
-    endDate: string,
-  ): Promise<void> {
+  async refreshProjections(tx: Tx, tenantId: string, startDate: string, endDate: string): Promise<void> {
     await sql`
       INSERT INTO rpt_daily_operational_summary (
         tenant_id,
@@ -342,11 +340,7 @@ export class SqlReportingRepository implements ReportingRepository {
     `.execute(tx);
   }
 
-  async getControlTotals(
-    tx: Tx,
-    tenantId: string,
-    summaryDate: string,
-  ): Promise<ControlTotalsDto> {
+  async getControlTotals(tx: Tx, tenantId: string, summaryDate: string): Promise<ControlTotalsDto> {
     const oltpLead = await sql<{ total: string }>`
       SELECT count(*)::text as total FROM lead
       WHERE tenant_id = ${tenantId} AND created_at::date = ${summaryDate}::date
@@ -499,7 +493,11 @@ export class SqlReportingRepository implements ReportingRepository {
     `.execute(tx);
   }
 
-  async fetchLeadsForExport(tx: Tx, tenantId: string, branchId?: string | null): Promise<Array<Record<string, unknown>>> {
+  async fetchLeadsForExport(
+    tx: Tx,
+    tenantId: string,
+    branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>> {
     const branchFilter = branchId ? sql`AND branch_id = ${branchId}` : sql``;
     const res = await sql<Record<string, unknown>>`
       SELECT id, branch_id, full_name, mobile_e164, email, product_category, indicative_amount, source, state, created_at
@@ -511,7 +509,11 @@ export class SqlReportingRepository implements ReportingRepository {
     return res.rows;
   }
 
-  async fetchCustomersForExport(tx: Tx, tenantId: string, branchId?: string | null): Promise<Array<Record<string, unknown>>> {
+  async fetchCustomersForExport(
+    tx: Tx,
+    tenantId: string,
+    branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>> {
     const branchFilter = branchId ? sql`AND c.home_branch_id = ${branchId}` : sql``;
     const res = await sql<Record<string, unknown>>`
       SELECT
@@ -539,7 +541,18 @@ export class SqlReportingRepository implements ReportingRepository {
   ): Promise<{ headers: string[]; records: Array<Record<string, unknown>> }> {
     if (reportCode === 'RPT_LEAD_PIPELINE') {
       const records = await this.fetchLeadsForExport(tx, tenantId, null);
-      const headers = ['id', 'branch_id', 'full_name', 'mobile_e164', 'email', 'product_category', 'indicative_amount', 'source', 'state', 'created_at'];
+      const headers = [
+        'id',
+        'branch_id',
+        'full_name',
+        'mobile_e164',
+        'email',
+        'product_category',
+        'indicative_amount',
+        'source',
+        'state',
+        'created_at',
+      ];
       return { headers, records };
     }
 
@@ -586,7 +599,15 @@ export class SqlReportingRepository implements ReportingRepository {
         ORDER BY a.occurred_at DESC
         LIMIT 1000
       `.execute(tx);
-      const headers = ['id', 'actor_id', 'actor_branch_id', 'entity_type', 'entity_id', 'kind', 'occurred_at'];
+      const headers = [
+        'id',
+        'actor_id',
+        'actor_branch_id',
+        'entity_type',
+        'entity_id',
+        'kind',
+        'occurred_at',
+      ];
       return { headers, records: res.rows };
     }
 
@@ -598,7 +619,16 @@ export class SqlReportingRepository implements ReportingRepository {
         ORDER BY t.created_at DESC
         LIMIT 1000
       `.execute(tx);
-      const headers = ['id', 'period', 'dimension_type', 'dimension_id', 'metric_code', 'target_value', 'unit', 'status'];
+      const headers = [
+        'id',
+        'period',
+        'dimension_type',
+        'dimension_id',
+        'metric_code',
+        'target_value',
+        'unit',
+        'status',
+      ];
       return { headers, records: res.rows };
     }
 
@@ -993,7 +1023,9 @@ export class InMemoryReportingRepository implements ReportingRepository {
     });
 
     const leadCount = matchingLeads.length;
-    const leadQualifiedCount = matchingLeads.filter((l) => ['QUALIFIED', 'CONVERTED'].includes(l.state)).length;
+    const leadQualifiedCount = matchingLeads.filter((l) =>
+      ['QUALIFIED', 'CONVERTED'].includes(l.state),
+    ).length;
     const leadConvertedCount = matchingLeads.filter((l) => l.state === 'CONVERTED').length;
 
     const matchingActs = this.activities.filter((a) => {
@@ -1089,21 +1121,18 @@ export class InMemoryReportingRepository implements ReportingRepository {
     return results;
   }
 
-  async refreshProjections(
-    _tx: Tx,
-    _tenantId: string,
-    _startDate: string,
-    _endDate: string,
-  ): Promise<void> {}
+  async refreshProjections(_tx: Tx, _tenantId: string, _startDate: string, _endDate: string): Promise<void> {}
 
-  async getControlTotals(
-    _tx: Tx,
-    tenantId: string,
-    summaryDate: string,
-  ): Promise<ControlTotalsDto> {
-    const matchingLeads = this.leads.filter((l) => l.tenantId === tenantId && l.createdAt.startsWith(summaryDate));
-    const matchingSancs = this.sanctions.filter((s) => s.tenantId === tenantId && s.sanctionDate === summaryDate);
-    const matchingDisbs = this.disbursements.filter((d) => d.tenantId === tenantId && d.disbursedOn === summaryDate);
+  async getControlTotals(_tx: Tx, tenantId: string, summaryDate: string): Promise<ControlTotalsDto> {
+    const matchingLeads = this.leads.filter(
+      (l) => l.tenantId === tenantId && l.createdAt.startsWith(summaryDate),
+    );
+    const matchingSancs = this.sanctions.filter(
+      (s) => s.tenantId === tenantId && s.sanctionDate === summaryDate,
+    );
+    const matchingDisbs = this.disbursements.filter(
+      (d) => d.tenantId === tenantId && d.disbursedOn === summaryDate,
+    );
 
     const oltpTotals = {
       leads: matchingLeads.length,
@@ -1167,15 +1196,27 @@ export class InMemoryReportingRepository implements ReportingRepository {
     }
   }
 
-  async fetchLeadsForExport(_tx: Tx, _tenantId: string, _branchId?: string | null): Promise<Array<Record<string, unknown>>> {
+  async fetchLeadsForExport(
+    _tx: Tx,
+    _tenantId: string,
+    _branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>> {
     return [];
   }
 
-  async fetchCustomersForExport(_tx: Tx, _tenantId: string, _branchId?: string | null): Promise<Array<Record<string, unknown>>> {
+  async fetchCustomersForExport(
+    _tx: Tx,
+    _tenantId: string,
+    _branchId?: string | null,
+  ): Promise<Array<Record<string, unknown>>> {
     return [];
   }
 
-  async queryOperationalSummary(_tx: Tx, _tenantId: string, _filters: { branchId?: string | null }): Promise<Array<Record<string, unknown>>> {
+  async queryOperationalSummary(
+    _tx: Tx,
+    _tenantId: string,
+    _filters: { branchId?: string | null },
+  ): Promise<Array<Record<string, unknown>>> {
     return [];
   }
 

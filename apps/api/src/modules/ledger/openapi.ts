@@ -15,7 +15,10 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
 
 export const tags = [
-  { name: 'MOD-LED Ledger Management', description: 'Double-entry ledger, accounts, journals, balances, and period close (MOD-LED).' },
+  {
+    name: 'MOD-LED Ledger Management',
+    description: 'Double-entry ledger, accounts, journals, balances, and period close (MOD-LED).',
+  },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {

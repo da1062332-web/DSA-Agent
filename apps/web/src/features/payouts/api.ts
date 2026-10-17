@@ -31,9 +31,7 @@ export async function fetchPayoutRequestById(id: string): Promise<PayoutRequest>
   return apiFetch<PayoutRequest>(`/v1/payout-requests/${id}`);
 }
 
-export async function createPayoutRequest(
-  input: CreatePayoutRequestInput,
-): Promise<PayoutRequest> {
+export async function createPayoutRequest(input: CreatePayoutRequestInput): Promise<PayoutRequest> {
   return apiFetch<PayoutRequest>('/v1/payout-requests', {
     method: 'POST',
     body: input,
@@ -80,9 +78,7 @@ export async function recordPayoutFailure(
   });
 }
 
-export async function createPayoutBatch(
-  input: CreatePayoutBatchInput,
-): Promise<PayoutBatch> {
+export async function createPayoutBatch(input: CreatePayoutBatchInput): Promise<PayoutBatch> {
   return apiFetch<PayoutBatch>('/v1/payout-batches', {
     method: 'POST',
     body: input,
@@ -135,4 +131,3 @@ export async function dispatchPayoutBatchGateway(
     body: { mode },
   });
 }
-

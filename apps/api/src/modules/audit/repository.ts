@@ -38,7 +38,9 @@ export async function searchAuditEvents(
   const dateFromCond = query.dateFrom ? sql`AND occurred_at >= ${query.dateFrom}::timestamptz` : sql``;
   const dateToCond = query.dateTo ? sql`AND occurred_at <= ${query.dateTo}::timestamptz` : sql``;
   const correlationCond = query.correlationId ? sql`AND correlation_id = ${query.correlationId}` : sql``;
-  const decisionCond = query.decisionRecordId ? sql`AND decision_record_id = ${query.decisionRecordId}` : sql``;
+  const decisionCond = query.decisionRecordId
+    ? sql`AND decision_record_id = ${query.decisionRecordId}`
+    : sql``;
 
   // Fetch limit + 1 to check if there are more results
   const fetchLimit = limit + 1;
@@ -183,11 +185,7 @@ export async function findEvidencePackById(
   return res.rows[0] ?? null;
 }
 
-export async function listEvidencePacks(
-  tx: Tx,
-  tenantId: string,
-  limit = 50,
-): Promise<EvidencePackRow[]> {
+export async function listEvidencePacks(tx: Tx, tenantId: string, limit = 50): Promise<EvidencePackRow[]> {
   const res = await sql<EvidencePackRow>`
     SELECT * FROM app.evidence_pack
     WHERE tenant_id = ${tenantId}

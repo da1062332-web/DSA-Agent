@@ -6,7 +6,11 @@ import { createTestApp, fakeAuth, testPrincipal, testDeps } from './support/fake
 import { createMockSecurityStore } from './support/mock-security-db';
 import { BufferedSiemClient, type SiemPort, type SiemEvent } from '../src/modules/security/siem';
 import { EnvelopeEncryptionService, DeferredKmsPort, type KmsPort } from '../src/modules/security/kms';
-import { validateRetentionPurge, assertRetentionCompliance, RETENTION_RULES } from '../src/modules/security/retention';
+import {
+  validateRetentionPurge,
+  assertRetentionCompliance,
+  RETENTION_RULES,
+} from '../src/modules/security/retention';
 import { SecurityService } from '../src/modules/security/service';
 
 describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
@@ -73,10 +77,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         },
       };
 
-      const res = await request(app)
-        .post('/v1/security/events')
-        .send(payload)
-        .expect(201);
+      const res = await request(app).post('/v1/security/events').send(payload).expect(201);
 
       expect(res.body.id).toMatch(/^sec_[0-9A-HJKMNP-TV-Z]{26}$/);
       expect(res.body.type).toBe('AUTH_FAILURE');
@@ -262,10 +263,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
 
     it('API-SEC-001: requires Idempotency-Key header (400 MALFORMED_REQUEST)', async () => {
       const app = getApp(compliancePrincipal);
-      await request(app)
-        .post('/v1/incidents')
-        .send(validIncidentPayload)
-        .expect(400);
+      await request(app).post('/v1/incidents').send(validIncidentPayload).expect(400);
     });
 
     it('API-SEC-002: updates incident assessment and notification timestamps with If-Match', async () => {
@@ -338,10 +336,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         .send(validIncidentPayload)
         .expect(201);
 
-      await request(app)
-        .patch(`/v1/incidents/${createRes.body.id}`)
-        .send({ status: 'RESOLVED' })
-        .expect(400);
+      await request(app).patch(`/v1/incidents/${createRes.body.id}`).send({ status: 'RESOLVED' }).expect(400);
     });
 
     it('API-SEC-002: validates notification evidence requires notifiedAt when notified=true', async () => {
@@ -438,10 +433,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
   // SUB-SEC.04: Encryption, Blind Indexing & Tamper Detection
   // ==========================================================================
   describe('SUB-SEC.04 — Field-Level Encryption & Cryptographic Integrity', () => {
-    const ENCRYPTION_KEY = crypto
-      .createHash('sha256')
-      .update('dev_dsa_encryption_key_32_bytes!')
-      .digest();
+    const ENCRYPTION_KEY = crypto.createHash('sha256').update('dev_dsa_encryption_key_32_bytes!').digest();
 
     function encryptAesGcm(plaintext: string): Buffer {
       const iv = crypto.randomBytes(12);
@@ -495,21 +487,12 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       const pan = 'ABCDE1234F';
       const hmacSecret = 'test_hmac_secret_key';
 
-      const hashTenantA = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantA}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantA = crypto.createHmac('sha256', `${hmacSecret}:${tenantA}`).update(pan).digest('hex');
 
-      const hashTenantB = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantB}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantB = crypto.createHmac('sha256', `${hmacSecret}:${tenantB}`).update(pan).digest('hex');
 
       // Matching within same tenant is deterministic
-      const hashTenantA2 = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantA}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantA2 = crypto.createHmac('sha256', `${hmacSecret}:${tenantA}`).update(pan).digest('hex');
 
       expect(hashTenantA).toBe(hashTenantA2);
       // Blind index across different tenants must NOT match

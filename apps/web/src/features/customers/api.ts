@@ -99,13 +99,15 @@ export async function recordCustomerConsent(
   return data;
 }
 
-export async function listCustomers(params: {
-  partyType?: 'INDIVIDUAL' | 'ENTITY';
-  status?: 'ACTIVE' | 'MERGED';
-  homeBranchId?: string;
-  limit?: number;
-  cursor?: string;
-} = {}): Promise<{ data: CustomerResource[]; meta: { nextCursor: string | null; limit: number } }> {
+export async function listCustomers(
+  params: {
+    partyType?: 'INDIVIDUAL' | 'ENTITY';
+    status?: 'ACTIVE' | 'MERGED';
+    homeBranchId?: string;
+    limit?: number;
+    cursor?: string;
+  } = {},
+): Promise<{ data: CustomerResource[]; meta: { nextCursor: string | null; limit: number } }> {
   const query = new URLSearchParams();
   if (params.partyType) query.set('partyType', params.partyType);
   if (params.status) query.set('status', params.status);
@@ -114,9 +116,10 @@ export async function listCustomers(params: {
   if (params.cursor) query.set('cursor', params.cursor);
 
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const { data } = await request<{ data: CustomerResource[]; meta: { nextCursor: string | null; limit: number } }>(
-    `/v1/customers${qs}`,
-  );
+  const { data } = await request<{
+    data: CustomerResource[];
+    meta: { nextCursor: string | null; limit: number };
+  }>(`/v1/customers${qs}`);
   return data;
 }
 

@@ -1,11 +1,5 @@
 // apps/api/src/modules/crm/targets/types.ts — owner: Dev 5 (MOD-PERF Targets, ENT-037)
-import type {
-  DimensionType,
-  MetricCode,
-  TargetDto,
-  TargetStatus,
-  TargetUnit,
-} from '@dsa/contracts';
+import type { DimensionType, MetricCode, TargetDto, TargetStatus, TargetUnit } from '@dsa/contracts';
 
 export interface TargetRow {
   id: string;
@@ -48,11 +42,9 @@ export function toTargetDto(row: TargetRow): TargetDto {
     version: Number(row.version),
     status: row.status,
     createdBy: row.created_by,
-    createdAt:
-      typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString(),
+    createdAt: typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString(),
     updatedBy: row.updated_by,
-    updatedAt:
-      typeof row.updated_at === 'string' ? row.updated_at : row.updated_at.toISOString(),
+    updatedAt: typeof row.updated_at === 'string' ? row.updated_at : row.updated_at.toISOString(),
     approvedBy: row.approved_by ?? null,
     approvedAt: row.approved_at
       ? typeof row.approved_at === 'string'

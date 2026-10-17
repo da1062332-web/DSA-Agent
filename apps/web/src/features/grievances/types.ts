@@ -9,13 +9,7 @@ export type ComplaintCategory =
   | 'OTHER';
 
 export type ComplaintStatus =
-  | 'SUBMITTED'
-  | 'ACKNOWLEDGED'
-  | 'IN_REVIEW'
-  | 'REFERRED_TO_LENDER'
-  | 'RESOLVED'
-  | 'REOPENED'
-  | 'CLOSED';
+  'SUBMITTED' | 'ACKNOWLEDGED' | 'IN_REVIEW' | 'REFERRED_TO_LENDER' | 'RESOLVED' | 'REOPENED' | 'CLOSED';
 
 export interface Complaint {
   id: string;

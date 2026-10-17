@@ -20,11 +20,13 @@ export function registerUserRoutes(router: Router, deps: ApiDeps): void {
   router.get('/me', async (req, res) => {
     const ctx = requireCtx(req);
     const p = ctx.principal;
-    const user = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<{ email: string; display_name: string; lock_version: number }>`
+    const user = await deps.txRunner
+      .withTenantTx(ctx, async (tx) => {
+        const r = await sql<{ email: string; display_name: string; lock_version: number }>`
         select email, display_name, lock_version from app_user where id = ${p.id}`.execute(tx);
-      return r.rows[0];
-    }).catch(() => null);
+        return r.rows[0];
+      })
+      .catch(() => null);
 
     const email = user?.email ?? (p as { email?: string }).email ?? 'admin@dsa.com';
     const displayName = user?.display_name ?? (p as { displayName?: string }).displayName ?? 'Akash Admin';

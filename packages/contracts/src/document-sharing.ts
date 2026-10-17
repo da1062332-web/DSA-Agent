@@ -3,13 +3,7 @@
 import { z } from 'zod';
 import { IdSchema } from './ids';
 
-export const UPLOAD_LINK_STATUSES = [
-  'ACTIVE',
-  'EXPIRED',
-  'REVOKED',
-  'LOCKED',
-  'COMPLETED',
-] as const;
+export const UPLOAD_LINK_STATUSES = ['ACTIVE', 'EXPIRED', 'REVOKED', 'LOCKED', 'COMPLETED'] as const;
 export type UploadLinkStatus = (typeof UPLOAD_LINK_STATUSES)[number];
 
 export const SHARE_RECIPIENT_TYPES = ['LENDER', 'CO_LENDER', 'PARTNER', 'AUDITOR'] as const;

@@ -192,9 +192,7 @@ export class ReconciliationService {
     this.assertPermission(ctx, 'finance.reconcile');
 
     const parsed =
-      input.format === 'MT940'
-        ? parseMt940Feed(input.rawFeedContent)
-        : parseCsvFeed(input.rawFeedContent);
+      input.format === 'MT940' ? parseMt940Feed(input.rawFeedContent) : parseCsvFeed(input.rawFeedContent);
 
     // Compute SHA-256 of raw content
     const hash = createHash('sha256').update(input.rawFeedContent).digest('hex');
@@ -225,11 +223,7 @@ export class ReconciliationService {
     };
   }
 
-  async getLenderStatement(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<LenderStatementResponse> {
+  async getLenderStatement(tx: Tx, ctx: RequestContext, id: string): Promise<LenderStatementResponse> {
     this.assertPermission(ctx, 'finance.view');
     const statement = await this.deps.repository.findLenderStatementById(tx, ctx.principal.tenantId, id);
     if (!statement) {
@@ -270,7 +264,11 @@ export class ReconciliationService {
     }
 
     const lines = await this.deps.repository.listStatementLines(tx, tenantId, statementId);
-    const calculations = await this.deps.repository.findCalculationsForMatching(tx, tenantId, statement.lender_id);
+    const calculations = await this.deps.repository.findCalculationsForMatching(
+      tx,
+      tenantId,
+      statement.lender_id,
+    );
 
     let matchedCount = 0;
     let varianceCount = 0;
@@ -507,7 +505,10 @@ export class ReconciliationService {
       throw AppError.of('NOT_FOUND', `Adjustment ${id} not found.`);
     }
     if (adjustment.status !== 'PENDING') {
-      throw AppError.of('VALIDATION_ERROR', `Adjustment ${id} is not pending approval (status: ${adjustment.status}).`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Adjustment ${id} is not pending approval (status: ${adjustment.status}).`,
+      );
     }
 
     // SOD-07 Enforcement: Approver must differ from creator
@@ -548,11 +549,7 @@ export class ReconciliationService {
 
   // --- SUB-REC.04: DISPUTES & HOLDS ---
 
-  async createDispute(
-    tx: Tx,
-    ctx: RequestContext,
-    input: CreateDisputeInput,
-  ): Promise<DisputeResponse> {
+  async createDispute(tx: Tx, ctx: RequestContext, input: CreateDisputeInput): Promise<DisputeResponse> {
     this.assertPermission(ctx, 'finance.dispute');
     const tenantId = ctx.principal.tenantId;
     const id = this.nextId('dsp');
@@ -580,7 +577,12 @@ export class ReconciliationService {
 
     // Business Rule: Open dispute places relevant payables on ON_HOLD
     if (input.payableIds && input.payableIds.length > 0) {
-      await this.deps.repository.holdPayables(tx, tenantId, input.payableIds, `Dispute ${id}: ${input.reason}`);
+      await this.deps.repository.holdPayables(
+        tx,
+        tenantId,
+        input.payableIds,
+        `Dispute ${id}: ${input.reason}`,
+      );
     }
 
     if (this.deps.audit) {

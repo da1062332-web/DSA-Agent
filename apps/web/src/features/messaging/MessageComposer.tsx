@@ -31,11 +31,7 @@ export interface MessageComposerProps {
   apiBaseUrl?: string;
 }
 
-export function MessageComposer({
-  templates,
-  onMessageSent,
-  apiBaseUrl = '/v1',
-}: MessageComposerProps) {
+export function MessageComposer({ templates, onMessageSent, apiBaseUrl = '/v1' }: MessageComposerProps) {
   const [subjectType, setSubjectType] = useState<'LEAD' | 'CUSTOMER' | 'LOAN_APPLICATION'>('LEAD');
   const [subjectId, setSubjectId] = useState('');
   const [channel, setChannel] = useState<MessageChannel>('EMAIL');
@@ -50,9 +46,7 @@ export function MessageComposer({
     error?: { code: string; message: string; issue?: string; details?: unknown };
   } | null>(null);
 
-  const activeTemplate = templates.find(
-    (t) => t.code === selectedTemplateCode && t.channel === channel,
-  );
+  const activeTemplate = templates.find((t) => t.code === selectedTemplateCode && t.channel === channel);
 
   const handleTemplateChange = (code: string) => {
     setSelectedTemplateCode(code);
@@ -135,8 +129,8 @@ export function MessageComposer({
           Message Dispatch & Send-Eligibility Guard
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Every outbound send is guarded against consent revocation, quiet hours (21:00-09:00),
-          suppression preferences, and tenant isolation policies.
+          Every outbound send is guarded against consent revocation, quiet hours (21:00-09:00), suppression
+          preferences, and tenant isolation policies.
         </Typography>
 
         <form onSubmit={handleSend}>

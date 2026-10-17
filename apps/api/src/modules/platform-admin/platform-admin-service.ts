@@ -111,28 +111,172 @@ export class PlatformAdminService {
     // ----------------------------------------------------
     const now = new Date().toISOString();
     const pincodes: MasterDataItem[] = [
-      { id: 'md_pin_01', listCode: 'PINCODES', code: '400008', label: 'Mumbai Central', attributes: { state: 'Maharashtra', tier: 1 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_02', listCode: 'PINCODES', code: '411001', label: 'Pune Camp', attributes: { state: 'Maharashtra', tier: 2 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_03', listCode: 'PINCODES', code: '560001', label: 'Bangalore GPO', attributes: { state: 'Karnataka', tier: 1 }, version: 1, active: true, createdAt: now },
-      { id: 'md_pin_04', listCode: 'PINCODES', code: '110001', label: 'New Delhi Connaught Place', attributes: { state: 'Delhi', tier: 1 }, version: 1, active: true, createdAt: now },
+      {
+        id: 'md_pin_01',
+        listCode: 'PINCODES',
+        code: '400008',
+        label: 'Mumbai Central',
+        attributes: { state: 'Maharashtra', tier: 1 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_pin_02',
+        listCode: 'PINCODES',
+        code: '411001',
+        label: 'Pune Camp',
+        attributes: { state: 'Maharashtra', tier: 2 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_pin_03',
+        listCode: 'PINCODES',
+        code: '560001',
+        label: 'Bangalore GPO',
+        attributes: { state: 'Karnataka', tier: 1 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_pin_04',
+        listCode: 'PINCODES',
+        code: '110001',
+        label: 'New Delhi Connaught Place',
+        attributes: { state: 'Delhi', tier: 1 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
     ];
     const states: MasterDataItem[] = [
-      { id: 'md_st_01', listCode: 'STATES', code: 'MH', label: 'Maharashtra', attributes: { gstCode: '27', region: 'WEST' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_02', listCode: 'STATES', code: 'KA', label: 'Karnataka', attributes: { gstCode: '29', region: 'SOUTH' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_03', listCode: 'STATES', code: 'DL', label: 'Delhi', attributes: { gstCode: '07', region: 'NORTH' }, version: 1, active: true, createdAt: now },
-      { id: 'md_st_04', listCode: 'STATES', code: 'TN', label: 'Tamil Nadu', attributes: { gstCode: '33', region: 'SOUTH' }, version: 1, active: true, createdAt: now },
+      {
+        id: 'md_st_01',
+        listCode: 'STATES',
+        code: 'MH',
+        label: 'Maharashtra',
+        attributes: { gstCode: '27', region: 'WEST' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_st_02',
+        listCode: 'STATES',
+        code: 'KA',
+        label: 'Karnataka',
+        attributes: { gstCode: '29', region: 'SOUTH' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_st_03',
+        listCode: 'STATES',
+        code: 'DL',
+        label: 'Delhi',
+        attributes: { gstCode: '07', region: 'NORTH' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_st_04',
+        listCode: 'STATES',
+        code: 'TN',
+        label: 'Tamil Nadu',
+        attributes: { gstCode: '33', region: 'SOUTH' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
     ];
     const occupations: MasterDataItem[] = [
-      { id: 'md_occ_01', listCode: 'OCCUPATIONS', code: 'SALARIED_PVT', label: 'Salaried Private Sector', attributes: { category: 'SALARIED', riskWeight: 1.0 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_02', listCode: 'OCCUPATIONS', code: 'SALARIED_GOVT', label: 'Salaried Government / PSU', attributes: { category: 'SALARIED', riskWeight: 0.8 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_03', listCode: 'OCCUPATIONS', code: 'SELF_EMP_PROF', label: 'Self Employed Professional', attributes: { category: 'SEP', riskWeight: 1.2 }, version: 1, active: true, createdAt: now },
-      { id: 'md_occ_04', listCode: 'OCCUPATIONS', code: 'SELF_EMP_BIZ', label: 'Self Employed Business Owner', attributes: { category: 'SENP', riskWeight: 1.4 }, version: 1, active: true, createdAt: now },
+      {
+        id: 'md_occ_01',
+        listCode: 'OCCUPATIONS',
+        code: 'SALARIED_PVT',
+        label: 'Salaried Private Sector',
+        attributes: { category: 'SALARIED', riskWeight: 1.0 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_occ_02',
+        listCode: 'OCCUPATIONS',
+        code: 'SALARIED_GOVT',
+        label: 'Salaried Government / PSU',
+        attributes: { category: 'SALARIED', riskWeight: 0.8 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_occ_03',
+        listCode: 'OCCUPATIONS',
+        code: 'SELF_EMP_PROF',
+        label: 'Self Employed Professional',
+        attributes: { category: 'SEP', riskWeight: 1.2 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_occ_04',
+        listCode: 'OCCUPATIONS',
+        code: 'SELF_EMP_BIZ',
+        label: 'Self Employed Business Owner',
+        attributes: { category: 'SENP', riskWeight: 1.4 },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
     ];
     const reasonCodes: MasterDataItem[] = [
-      { id: 'md_rsn_01', listCode: 'REASON_CODES', code: 'INSUFFICIENT_INCOME', label: 'Monthly income below policy threshold', attributes: { category: 'FINANCIAL' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_02', listCode: 'REASON_CODES', code: 'LOW_CREDIT_SCORE', label: 'CIBIL score below lender requirement', attributes: { category: 'CREDIT' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_03', listCode: 'REASON_CODES', code: 'INCOMPLETE_DOCUMENTS', label: 'Mandatory KYC or income proof missing', attributes: { category: 'DOCUMENT' }, version: 1, active: true, createdAt: now },
-      { id: 'md_rsn_04', listCode: 'REASON_CODES', code: 'CUSTOMER_OPT_OUT', label: 'Customer declined loan terms or withdrawn', attributes: { category: 'BUSINESS' }, version: 1, active: true, createdAt: now },
+      {
+        id: 'md_rsn_01',
+        listCode: 'REASON_CODES',
+        code: 'INSUFFICIENT_INCOME',
+        label: 'Monthly income below policy threshold',
+        attributes: { category: 'FINANCIAL' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_rsn_02',
+        listCode: 'REASON_CODES',
+        code: 'LOW_CREDIT_SCORE',
+        label: 'CIBIL score below lender requirement',
+        attributes: { category: 'CREDIT' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_rsn_03',
+        listCode: 'REASON_CODES',
+        code: 'INCOMPLETE_DOCUMENTS',
+        label: 'Mandatory KYC or income proof missing',
+        attributes: { category: 'DOCUMENT' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
+      {
+        id: 'md_rsn_04',
+        listCode: 'REASON_CODES',
+        code: 'CUSTOMER_OPT_OUT',
+        label: 'Customer declined loan terms or withdrawn',
+        attributes: { category: 'BUSINESS' },
+        version: 1,
+        active: true,
+        createdAt: now,
+      },
     ];
 
     this.masterData.set('PINCODES', pincodes);
@@ -144,11 +288,46 @@ export class PlatformAdminService {
     // Seed Queues and Dead Letters (SUB-ADM.04)
     // ----------------------------------------------------
     const defaultQueues: JobQueueInfo[] = [
-      { queue: 'outbox-relay', activeJobs: 0, failedJobs: 0, delayedJobs: 0, completedJobs: 1420, paused: false },
-      { queue: 'bre-evaluations', activeJobs: 2, failedJobs: 1, delayedJobs: 0, completedJobs: 8940, paused: false },
-      { queue: 'notifications-dispatch', activeJobs: 0, failedJobs: 0, delayedJobs: 3, completedJobs: 5120, paused: false },
-      { queue: 'document-processing', activeJobs: 1, failedJobs: 2, delayedJobs: 1, completedJobs: 3200, paused: false },
-      { queue: 'webhook-delivery', activeJobs: 0, failedJobs: 0, delayedJobs: 0, completedJobs: 1105, paused: false },
+      {
+        queue: 'outbox-relay',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 0,
+        completedJobs: 1420,
+        paused: false,
+      },
+      {
+        queue: 'bre-evaluations',
+        activeJobs: 2,
+        failedJobs: 1,
+        delayedJobs: 0,
+        completedJobs: 8940,
+        paused: false,
+      },
+      {
+        queue: 'notifications-dispatch',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 3,
+        completedJobs: 5120,
+        paused: false,
+      },
+      {
+        queue: 'document-processing',
+        activeJobs: 1,
+        failedJobs: 2,
+        delayedJobs: 1,
+        completedJobs: 3200,
+        paused: false,
+      },
+      {
+        queue: 'webhook-delivery',
+        activeJobs: 0,
+        failedJobs: 0,
+        delayedJobs: 0,
+        completedJobs: 1105,
+        paused: false,
+      },
     ];
     for (const q of defaultQueues) {
       this.queues.set(q.queue, q);
@@ -229,7 +408,10 @@ export class PlatformAdminService {
   // SUB-ADM.01: Platform Console (API-TEN-002)
   // ==========================================
 
-  async listTenants(ctx: RequestContext, query: ListPlatformTenantsQuery): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
+  async listTenants(
+    ctx: RequestContext,
+    query: ListPlatformTenantsQuery,
+  ): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
     // Platform Console restriction: NO tenant business data exposed!
     // Queries only tenant metadata from database, falling back cleanly if offline.
     const tenants: PlatformTenantSummary[] = [];
@@ -315,7 +497,9 @@ export class PlatformAdminService {
     }
     if (query.search) {
       const q = query.search.toLowerCase();
-      filtered = filtered.filter((t) => t.legalName.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q));
+      filtered = filtered.filter(
+        (t) => t.legalName.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q),
+      );
     }
 
     return { data: filtered, meta: { total: filtered.length } };
@@ -353,7 +537,10 @@ export class PlatformAdminService {
       if (ifMatchHeader !== undefined) {
         const expectedVersion = parseInt(ifMatchHeader.replace(/"/g, ''), 10);
         if (!isNaN(expectedVersion) && existing.lockVersion !== expectedVersion) {
-          throw AppError.of('VERSION_CONFLICT', `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`);
+          throw AppError.of(
+            'VERSION_CONFLICT',
+            `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`,
+          );
         }
       }
 
@@ -392,7 +579,9 @@ export class PlatformAdminService {
   // SUB-ADM.03: Master Data (API-ADM-003)
   // ==========================================
 
-  async getMasterData(listCode?: string): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
+  async getMasterData(
+    listCode?: string,
+  ): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
     const result: Record<string, MasterDataItem[]> = {};
     if (listCode) {
       const items = this.masterData.get(listCode.toUpperCase()) ?? [];
@@ -447,7 +636,10 @@ export class PlatformAdminService {
 
     if (!req.dryRun) {
       // Save permanently
-      const updatedList = [...existing.filter((e) => !req.items.some((i) => i.code === e.code)), ...processed];
+      const updatedList = [
+        ...existing.filter((e) => !req.items.some((i) => i.code === e.code)),
+        ...processed,
+      ];
       this.masterData.set(listCode, updatedList);
     }
 
@@ -478,7 +670,10 @@ export class PlatformAdminService {
       throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
     }
     if (!req.reason || req.reason.trim().length < 5) {
-      throw AppError.of('VALIDATION_ERROR', 'A reason is required when pausing a queue (minimum 5 characters).');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'A reason is required when pausing a queue (minimum 5 characters).',
+      );
     }
 
     q.paused = true;
@@ -494,7 +689,10 @@ export class PlatformAdminService {
       throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
     }
     if (!req.reason || req.reason.trim().length < 5) {
-      throw AppError.of('VALIDATION_ERROR', 'A reason is required when resuming a queue (minimum 5 characters).');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'A reason is required when resuming a queue (minimum 5 characters).',
+      );
     }
 
     q.paused = false;
@@ -528,14 +726,23 @@ export class PlatformAdminService {
 
   async getSystemHealth(): Promise<SystemHealthReport> {
     const start = performance.now();
-    let dbStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
+    const dbStatus: 'UP' | 'DEGRADED' | 'DOWN' = 'UP';
     let latencyMs = 2.4;
 
     try {
       // Probe active database connectivity
       await this.deps.txRunner.withTenantTx(
         {
-          principal: { kind: 'SERVICE', id: 'SYSTEM:health', tenantId: 'ten_health_probe', primaryBranchId: null, managedTeamMemberIds: [], queueIds: [], grants: [], authTime: null },
+          principal: {
+            kind: 'SERVICE',
+            id: 'SYSTEM:health',
+            tenantId: 'ten_health_probe',
+            primaryBranchId: null,
+            managedTeamMemberIds: [],
+            queueIds: [],
+            grants: [],
+            authTime: null,
+          },
           correlationId: 'probe',
           now: new Date(),
         },
@@ -584,7 +791,9 @@ export class PlatformAdminService {
   // SUB-ADM.06: Support Access (API-ADM-006 / API-ADM-007)
   // ==========================================
 
-  async listSupportAccessRequests(tenantId?: string): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
+  async listSupportAccessRequests(
+    tenantId?: string,
+  ): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
     let list = Array.from(this.supportGrants.values());
     if (tenantId) {
       list = list.filter((g) => g.tenantId === tenantId);
@@ -592,10 +801,16 @@ export class PlatformAdminService {
     return { data: list, meta: { total: list.length } };
   }
 
-  async createSupportAccessRequest(req: CreateSupportAccessRequest, requesterId: string): Promise<SupportAccessGrant> {
+  async createSupportAccessRequest(
+    req: CreateSupportAccessRequest,
+    requesterId: string,
+  ): Promise<SupportAccessGrant> {
     // Constraint: ends_at must be no more than four hours after starts_at
     if (req.durationHours > 4.0 || req.durationHours <= 0) {
-      throw AppError.of('VALIDATION_ERROR', 'Access duration must be greater than zero and cannot exceed 4.0 hours.');
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Access duration must be greater than zero and cannot exceed 4.0 hours.',
+      );
     }
 
     const now = new Date();
@@ -654,7 +869,9 @@ export class PlatformAdminService {
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
   // ==========================================
 
-  async listDataCorrections(tenantId?: string): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
+  async listDataCorrections(
+    tenantId?: string,
+  ): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
     let list = Array.from(this.dataCorrections.values());
     if (tenantId) {
       list = list.filter((c) => c.tenantId === tenantId);
@@ -662,7 +879,10 @@ export class PlatformAdminService {
     return { data: list, meta: { total: list.length } };
   }
 
-  async createDataCorrectionRequest(req: CreateDataCorrectionRequest, requesterId: string): Promise<DataCorrectionRequest> {
+  async createDataCorrectionRequest(
+    req: CreateDataCorrectionRequest,
+    requesterId: string,
+  ): Promise<DataCorrectionRequest> {
     const id = `dcr_${nextUlid()}`;
     const dryRunDiffKey = `diff_${nextUlid().slice(-8)}`;
 
@@ -720,7 +940,10 @@ export class PlatformAdminService {
     }
 
     if (record.status !== 'PENDING') {
-      throw AppError.of('INVALID_STATE', `Data correction '${correctionId}' is already in state '${record.status}'.`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Data correction '${correctionId}' is already in state '${record.status}'.`,
+      );
     }
 
     record.status = req.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
@@ -734,7 +957,10 @@ export class PlatformAdminService {
       throw AppError.of('NOT_FOUND', `Data correction request '${correctionId}' not found.`);
     }
     if (record.status !== 'APPROVED') {
-      throw AppError.of('INVALID_STATE', `Data correction must be APPROVED prior to execution (current: ${record.status}).`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Data correction must be APPROVED prior to execution (current: ${record.status}).`,
+      );
     }
 
     // Must be executed by service identity

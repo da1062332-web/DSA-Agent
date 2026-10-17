@@ -367,7 +367,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-requests', body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || '/v1/payout-requests',
+              body: parsed.data,
+            },
             async () => {
               const result = await service.createPayoutRequest(tx, ctx, parsed.data);
               return { status: 201, body: result };
@@ -440,7 +445,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/approval`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/approval`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.approvePayoutRequest(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -475,7 +485,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/cancel`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/cancel`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.cancelPayoutRequest(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -511,7 +526,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/payment`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.recordPayoutPayment(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -548,7 +568,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/payment-failure`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/payment-failure`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.recordPayoutFailure(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -586,7 +611,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || '/v1/payout-batches', body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || '/v1/payout-batches',
+              body: parsed.data,
+            },
             async () => {
               const result = await service.createPayoutBatch(tx, ctx, parsed.data);
               return { status: 201, body: result };
@@ -644,7 +674,12 @@ export function createRouter(deps: ApiDeps): Router {
           return withIdempotency(
             tx,
             ctx,
-            { key: idemKey, method: 'POST', path: req.originalUrl || `/v1/payout-requests/${id}/disburse-gateway`, body: parsed.data },
+            {
+              key: idemKey,
+              method: 'POST',
+              path: req.originalUrl || `/v1/payout-requests/${id}/disburse-gateway`,
+              body: parsed.data,
+            },
             async () => {
               const result = await service.disbursePayoutViaGateway(tx, ctx, id, parsed.data);
               return { status: 200, body: result };
@@ -684,4 +719,3 @@ export function createRouter(deps: ApiDeps): Router {
 
   return router;
 }
-

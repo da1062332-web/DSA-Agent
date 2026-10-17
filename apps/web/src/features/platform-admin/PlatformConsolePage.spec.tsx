@@ -15,9 +15,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/platform-ad
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -69,6 +67,8 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     );
 
     expect(html).toContain('Registered Tenants Directory (API-TEN-002)');
-    expect(html).toContain('Under tenant isolation policies, no individual leads, loans, or customer financial records are accessed or exposed');
+    expect(html).toContain(
+      'Under tenant isolation policies, no individual leads, loans, or customer financial records are accessed or exposed',
+    );
   });
 });

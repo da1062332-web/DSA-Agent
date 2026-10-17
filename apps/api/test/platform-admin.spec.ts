@@ -236,25 +236,21 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const app = createTestApp(platformAdmin);
 
       // 1. Duration > 4.0 hours rejected
-      const invalidDuration = await request(app)
-        .post('/platform/v1/support-access-requests')
-        .send({
-          tenantId: 'ten_demo_01',
-          reason: 'Diagnose critical bug',
-          incidentRef: 'INC-9999',
-          durationHours: 6.0, // Exceeds 4 hours max!
-        });
+      const invalidDuration = await request(app).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Diagnose critical bug',
+        incidentRef: 'INC-9999',
+        durationHours: 6.0, // Exceeds 4 hours max!
+      });
       expect(invalidDuration.status).toBe(422);
 
       // 2. Valid request created (duration <= 4h)
-      const validReq = await request(app)
-        .post('/platform/v1/support-access-requests')
-        .send({
-          tenantId: 'ten_demo_01',
-          reason: 'Investigate duplicate lead sync exception in Mumbai branch',
-          incidentRef: 'INC-2026-4401',
-          durationHours: 2.5,
-        });
+      const validReq = await request(app).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Investigate duplicate lead sync exception in Mumbai branch',
+        incidentRef: 'INC-2026-4401',
+        durationHours: 2.5,
+      });
       expect(validReq.status).toBe(201);
       expect(validReq.body.status).toBe('PENDING');
       const grantId = validReq.body.id;

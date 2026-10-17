@@ -272,14 +272,12 @@ describe('Module 6: Configuration & Branch Management API', () => {
         auth: fakeAuth(configAdminPrincipal),
       });
 
-      const res = await request(app)
-        .post('/v1/branches')
-        .send({
-          code: 'PUN01',
-          name: 'Pune Shivaji Nagar',
-          pincode: '411005',
-          timezone: 'Asia/Kolkata',
-        });
+      const res = await request(app).post('/v1/branches').send({
+        code: 'PUN01',
+        name: 'Pune Shivaji Nagar',
+        pincode: '411005',
+        timezone: 'Asia/Kolkata',
+      });
 
       expect(res.status).toBe(201);
       expect(res.headers.etag).toBe('"0"');
@@ -303,12 +301,10 @@ describe('Module 6: Configuration & Branch Management API', () => {
       });
 
       // Lowercase or special characters not allowed in code ^[A-Z0-9_-]{2,20}$
-      const res = await request(app)
-        .post('/v1/branches')
-        .send({
-          code: 'pun_lowercase',
-          name: 'Invalid Code Branch',
-        });
+      const res = await request(app).post('/v1/branches').send({
+        code: 'pun_lowercase',
+        name: 'Invalid Code Branch',
+      });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -322,23 +318,19 @@ describe('Module 6: Configuration & Branch Management API', () => {
       });
 
       // Pincode must be 6 digits starting with 1-9
-      const res1 = await request(app)
-        .post('/v1/branches')
-        .send({
-          code: 'BLR01',
-          name: 'Bangalore Branch',
-          pincode: '012345', // Starts with 0
-        });
+      const res1 = await request(app).post('/v1/branches').send({
+        code: 'BLR01',
+        name: 'Bangalore Branch',
+        pincode: '012345', // Starts with 0
+      });
       expect(res1.status).toBe(422);
       expect(res1.body.error.code).toBe('VALIDATION_ERROR');
 
-      const res2 = await request(app)
-        .post('/v1/branches')
-        .send({
-          code: 'BLR01',
-          name: 'Bangalore Branch',
-          pincode: '5600', // Only 4 digits
-        });
+      const res2 = await request(app).post('/v1/branches').send({
+        code: 'BLR01',
+        name: 'Bangalore Branch',
+        pincode: '5600', // Only 4 digits
+      });
       expect(res2.status).toBe(422);
       expect(res2.body.error.code).toBe('VALIDATION_ERROR');
     });
@@ -350,12 +342,10 @@ describe('Module 6: Configuration & Branch Management API', () => {
         auth: fakeAuth(configAdminPrincipal),
       });
 
-      const res = await request(app)
-        .post('/v1/branches')
-        .send({
-          code: 'MUM01', // Already exists in tenant
-          name: 'Duplicate Mumbai',
-        });
+      const res = await request(app).post('/v1/branches').send({
+        code: 'MUM01', // Already exists in tenant
+        name: 'Duplicate Mumbai',
+      });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -371,14 +361,11 @@ describe('Module 6: Configuration & Branch Management API', () => {
         auth: fakeAuth(configAdminPrincipal),
       });
 
-      const res = await request(app)
-        .patch('/v1/branches/br_mumbai')
-        .set('If-Match', '"0"')
-        .send({
-          name: 'Mumbai Regional HQ',
-          pincode: '400020',
-          status: 'ACTIVE',
-        });
+      const res = await request(app).patch('/v1/branches/br_mumbai').set('If-Match', '"0"').send({
+        name: 'Mumbai Regional HQ',
+        pincode: '400020',
+        status: 'ACTIVE',
+      });
 
       expect(res.status).toBe(200);
       expect(res.headers.etag).toBe('"1"');
@@ -416,9 +403,7 @@ describe('Module 6: Configuration & Branch Management API', () => {
         auth: fakeAuth(configAdminPrincipal),
       });
 
-      const res = await request(app)
-        .patch('/v1/branches/br_unknown')
-        .send({ name: 'Does Not Exist' });
+      const res = await request(app).patch('/v1/branches/br_unknown').send({ name: 'Does Not Exist' });
 
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe('NOT_FOUND');
@@ -460,7 +445,9 @@ describe('Module 6: Configuration & Branch Management API', () => {
       expect(getRes.body.error.code).toBe('NOT_FOUND');
 
       // Tenant B tries to update Tenant A's branch br_mumbai
-      const patchRes = await request(otherApp).patch('/v1/branches/br_mumbai').send({ name: 'Hacked Branch' });
+      const patchRes = await request(otherApp)
+        .patch('/v1/branches/br_mumbai')
+        .send({ name: 'Hacked Branch' });
       expect(patchRes.status).toBe(404);
       expect(patchRes.body.error.code).toBe('NOT_FOUND');
     });

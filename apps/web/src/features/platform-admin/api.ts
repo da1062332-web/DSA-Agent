@@ -21,7 +21,9 @@ import type {
 import { apiFetch } from '../../api/client';
 
 // SUB-ADM.01: Platform Console
-export async function fetchPlatformTenants(query?: ListPlatformTenantsQuery): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
+export async function fetchPlatformTenants(
+  query?: ListPlatformTenantsQuery,
+): Promise<{ data: PlatformTenantSummary[]; meta: { total: number } }> {
   return apiFetch<{ data: PlatformTenantSummary[]; meta: { total: number } }>('/platform/v1/tenants', {
     query: query as Record<string, string | number | undefined>,
   });
@@ -47,16 +49,19 @@ export async function updateFeatureFlag(
 }
 
 // SUB-ADM.03: Master Data
-export async function fetchMasterData(listCode?: string): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
+export async function fetchMasterData(
+  listCode?: string,
+): Promise<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }> {
   const query = listCode ? { listCode } : undefined;
-  return apiFetch<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }>('/platform/v1/master-data', {
-    query,
-  });
+  return apiFetch<{ data: Record<string, MasterDataItem[]>; meta: { listsCount: number } }>(
+    '/platform/v1/master-data',
+    {
+      query,
+    },
+  );
 }
 
-export async function importMasterData(
-  req: MasterDataImportRequest,
-): Promise<{
+export async function importMasterData(req: MasterDataImportRequest): Promise<{
   dryRun: boolean;
   listCode: string;
   totalSubmitted: number;
@@ -71,7 +76,10 @@ export async function importMasterData(
 }
 
 // SUB-ADM.04: Background Jobs & Queues
-export async function fetchJobsAndQueues(): Promise<{ queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }> {
+export async function fetchJobsAndQueues(): Promise<{
+  queues: JobQueueInfo[];
+  deadLetters: DeadLetterItem[];
+}> {
   return apiFetch<{ queues: JobQueueInfo[]; deadLetters: DeadLetterItem[] }>('/platform/v1/jobs');
 }
 
@@ -107,14 +115,21 @@ export async function fetchSystemHealth(): Promise<SystemHealthReport> {
 }
 
 // SUB-ADM.06: Support Access
-export async function fetchSupportAccessRequests(tenantId?: string): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
+export async function fetchSupportAccessRequests(
+  tenantId?: string,
+): Promise<{ data: SupportAccessGrant[]; meta: { total: number } }> {
   const query = tenantId ? { tenantId } : undefined;
-  return apiFetch<{ data: SupportAccessGrant[]; meta: { total: number } }>('/platform/v1/support-access-requests', {
-    query,
-  });
+  return apiFetch<{ data: SupportAccessGrant[]; meta: { total: number } }>(
+    '/platform/v1/support-access-requests',
+    {
+      query,
+    },
+  );
 }
 
-export async function createSupportAccessRequest(req: CreateSupportAccessRequest): Promise<SupportAccessGrant> {
+export async function createSupportAccessRequest(
+  req: CreateSupportAccessRequest,
+): Promise<SupportAccessGrant> {
   return apiFetch<SupportAccessGrant>('/platform/v1/support-access-requests', {
     method: 'POST',
     body: req,
@@ -134,7 +149,10 @@ export async function approveSupportAccessRequest(
 }
 
 // SUB-ADM.07: Data Corrections
-export async function fetchDataCorrections(): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
+export async function fetchDataCorrections(): Promise<{
+  data: DataCorrectionRequest[];
+  meta: { total: number };
+}> {
   return apiFetch<{ data: DataCorrectionRequest[]; meta: { total: number } }>('/v1/data-corrections');
 }
 

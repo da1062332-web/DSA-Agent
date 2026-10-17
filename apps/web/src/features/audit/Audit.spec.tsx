@@ -10,7 +10,7 @@ describe('Module 37 — Audit (MOD-AUD) UI Component Suite', () => {
     const html = renderToString(
       <MemoryRouter initialEntries={['/audit']}>
         <AuditSearchPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(html).toContain('Audit Trail &amp; Cryptographic Verification');

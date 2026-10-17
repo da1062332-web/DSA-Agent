@@ -7,11 +7,13 @@ const sqlFile = path.resolve(
   '..',
   'supabase',
   'migrations',
-  '20261001000011_rules_registry_mvp.sql'
+  '20261001000011_rules_registry_mvp.sql',
 );
 
 if (existsSync(sqlFile)) {
-  console.log(`gen-registry-sql: 6 MVP decision definitions are verified in ${path.relative(process.cwd(), sqlFile)}`);
+  console.log(
+    `gen-registry-sql: 6 MVP decision definitions are verified in ${path.relative(process.cwd(), sqlFile)}`,
+  );
   process.exit(0);
 } else {
   console.error(`gen-registry-sql: migration file not found at ${sqlFile}`);

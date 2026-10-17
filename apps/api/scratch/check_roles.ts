@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function check() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   const rolesWithCust = await sql<{ role_code: string; permission_code: string }>`
     SELECT r.code as role_code, rp.permission_code
     FROM app.role_permission rp

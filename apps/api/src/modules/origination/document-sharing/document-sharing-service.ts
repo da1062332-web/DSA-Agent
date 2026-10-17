@@ -72,7 +72,10 @@ export class DocumentSharingService {
       }
       return { linkId, tenantId };
     } catch {
-      throw AppError.of('UNAUTHENTICATED', 'Invalid or expired upload session token. Please verify OTP again.');
+      throw AppError.of(
+        'UNAUTHENTICATED',
+        'Invalid or expired upload session token. Please verify OTP again.',
+      );
     }
   }
 
@@ -88,7 +91,10 @@ export class DocumentSharingService {
     ctx: RequestContext,
     input: CreateUploadLinkInput,
     idempotencyKey: string,
-  ): Promise<{ link: UploadLinkRecord & { uploadUrl: string; generatedOtp?: string }; isReplayed?: boolean }> {
+  ): Promise<{
+    link: UploadLinkRecord & { uploadUrl: string; generatedOtp?: string };
+    isReplayed?: boolean;
+  }> {
     this.deps.authz.requirePermission(ctx, 'document.upload');
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -275,7 +281,16 @@ export class DocumentSharingService {
     try {
       const resolveRes = await this.deps.txRunner.withTenantTx(
         {
-          principal: { kind: 'SERVICE', id: 'SYSTEM:dsh', tenantId: 'SYSTEM', grants: [], queueIds: [], managedTeamMemberIds: [], primaryBranchId: null, authTime: null },
+          principal: {
+            kind: 'SERVICE',
+            id: 'SYSTEM:dsh',
+            tenantId: 'SYSTEM',
+            grants: [],
+            queueIds: [],
+            managedTeamMemberIds: [],
+            primaryBranchId: null,
+            authTime: null,
+          },
           correlationId: `res_${nextUlid()}`,
           now: new Date(),
         },
@@ -315,18 +330,33 @@ export class DocumentSharingService {
       throw AppError.of('LINK_EXPIRED', 'This upload link has been revoked.');
     }
     if (link.locked_at) {
-      throw AppError.of('LINK_LOCKED', 'This upload link is locked due to too many failed verification attempts.');
+      throw AppError.of(
+        'LINK_LOCKED',
+        'This upload link is locked due to too many failed verification attempts.',
+      );
     }
     if (new Date(link.expires_at) < now) {
       throw AppError.of('LINK_EXPIRED', 'This upload link has expired.');
     }
     if (link.uses >= link.max_uses) {
-      throw AppError.of('USAGE_LIMIT_EXCEEDED', 'This upload link has already reached its maximum upload limit.');
+      throw AppError.of(
+        'USAGE_LIMIT_EXCEEDED',
+        'This upload link has already reached its maximum upload limit.',
+      );
     }
 
     // Fetch checklist item types using resolved tenant context
     const tenantCtx: RequestContext = {
-      principal: { kind: 'SERVICE', id: 'SYSTEM:dsh', tenantId: link.tenant_id, grants: [], queueIds: [], managedTeamMemberIds: [], primaryBranchId: null, authTime: null },
+      principal: {
+        kind: 'SERVICE',
+        id: 'SYSTEM:dsh',
+        tenantId: link.tenant_id,
+        grants: [],
+        queueIds: [],
+        managedTeamMemberIds: [],
+        primaryBranchId: null,
+        authTime: null,
+      },
       correlationId: `chk_${nextUlid()}`,
       now,
     };
@@ -366,7 +396,12 @@ export class DocumentSharingService {
 
       return [
         { checklistItemId: 'chk_pan_card', documentTypeCode: 'PAN_CARD', ordinal: 1, mandatory: true },
-        { checklistItemId: 'chk_bank_statement', documentTypeCode: 'BANK_STATEMENT', ordinal: 2, mandatory: true },
+        {
+          checklistItemId: 'chk_bank_statement',
+          documentTypeCode: 'BANK_STATEMENT',
+          ordinal: 2,
+          mandatory: true,
+        },
         { checklistItemId: 'chk_salary_slip', documentTypeCode: 'SALARY_SLIP', ordinal: 3, mandatory: false },
       ];
     });
@@ -388,7 +423,16 @@ export class DocumentSharingService {
 
     const resolveRes = await this.deps.txRunner.withTenantTx(
       {
-        principal: { kind: 'SERVICE', id: 'SYSTEM:dsh', tenantId: 'SYSTEM', grants: [], queueIds: [], managedTeamMemberIds: [], primaryBranchId: null, authTime: null },
+        principal: {
+          kind: 'SERVICE',
+          id: 'SYSTEM:dsh',
+          tenantId: 'SYSTEM',
+          grants: [],
+          queueIds: [],
+          managedTeamMemberIds: [],
+          primaryBranchId: null,
+          authTime: null,
+        },
         correlationId: `ver_${nextUlid()}`,
         now: new Date(),
       },
@@ -420,11 +464,21 @@ export class DocumentSharingService {
 
     const now = new Date();
     if (link.revoked_at) throw AppError.of('LINK_EXPIRED', 'This link has been revoked.');
-    if (link.locked_at) throw AppError.of('LINK_LOCKED', 'Upload link is permanently locked due to 5 failed attempts.');
+    if (link.locked_at)
+      throw AppError.of('LINK_LOCKED', 'Upload link is permanently locked due to 5 failed attempts.');
     if (new Date(link.expires_at) < now) throw AppError.of('LINK_EXPIRED', 'This link has expired.');
 
     const tenantCtx: RequestContext = {
-      principal: { kind: 'SERVICE', id: 'SYSTEM:dsh', tenantId: link.tenant_id, grants: [], queueIds: [], managedTeamMemberIds: [], primaryBranchId: null, authTime: null },
+      principal: {
+        kind: 'SERVICE',
+        id: 'SYSTEM:dsh',
+        tenantId: link.tenant_id,
+        grants: [],
+        queueIds: [],
+        managedTeamMemberIds: [],
+        primaryBranchId: null,
+        authTime: null,
+      },
       correlationId: `ver_otp_${nextUlid()}`,
       now,
     };
@@ -447,7 +501,10 @@ export class DocumentSharingService {
           throw AppError.of('LINK_LOCKED', 'Upload link locked after 5 failed verification attempts.');
         }
 
-        throw AppError.of('VALIDATION_ERROR', `Incorrect verification code. ${5 - attempts} attempts remaining.`);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Incorrect verification code. ${5 - attempts} attempts remaining.`,
+        );
       }
 
       // Reset failed attempts upon successful verification
@@ -503,14 +560,26 @@ export class DocumentSharingService {
     // 1. Scan file for safety
     const scan = await this.scanner.scan(fileBuffer, filename, mimeType);
     if (!scan.clean) {
-      throw AppError.of('MALWARE_DETECTED', `File security validation failed: ${scan.detectedThreat ?? 'Unsafe content'}`);
+      throw AppError.of(
+        'MALWARE_DETECTED',
+        `File security validation failed: ${scan.detectedThreat ?? 'Unsafe content'}`,
+      );
     }
 
     const docId = `doc_${nextUlid()}`;
     const stored = await this.storage.save(tenantId, docId, fileBuffer, mimeType);
 
     const tenantCtx: RequestContext = {
-      principal: { kind: 'SERVICE', id: 'SYSTEM:dsh', tenantId, grants: [], queueIds: [], managedTeamMemberIds: [], primaryBranchId: null, authTime: null },
+      principal: {
+        kind: 'SERVICE',
+        id: 'SYSTEM:dsh',
+        tenantId,
+        grants: [],
+        queueIds: [],
+        managedTeamMemberIds: [],
+        primaryBranchId: null,
+        authTime: null,
+      },
       correlationId: `upload_${nextUlid()}`,
       now: new Date(),
     };
@@ -534,17 +603,24 @@ export class DocumentSharingService {
 
       const link = linkRes.rows[0];
       if (!link) throw AppError.of('NOT_FOUND', 'Upload link not found.');
-      if (link.revoked_at || link.locked_at) throw AppError.of('LINK_EXPIRED', 'Upload link is no longer valid.');
-      if (link.uses >= link.max_uses) throw AppError.of('USAGE_LIMIT_EXCEEDED', 'Maximum file upload limit reached for this link.');
+      if (link.revoked_at || link.locked_at)
+        throw AppError.of('LINK_EXPIRED', 'Upload link is no longer valid.');
+      if (link.uses >= link.max_uses)
+        throw AppError.of('USAGE_LIMIT_EXCEEDED', 'Maximum file upload limit reached for this link.');
 
       // 3. Verify checklist item
       const isValidItem =
         link.items.length === 0 ||
         link.items.includes(checklistItemId) ||
-        ['chk_pan_card', 'chk_bank_statement', 'chk_salary_slip', 'chk_address_proof'].includes(checklistItemId);
+        ['chk_pan_card', 'chk_bank_statement', 'chk_salary_slip', 'chk_address_proof'].includes(
+          checklistItemId,
+        );
 
       if (!isValidItem) {
-        throw AppError.of('VALIDATION_ERROR', 'The specified checklist item was not requested for this upload link.');
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'The specified checklist item was not requested for this upload link.',
+        );
       }
 
       const now = new Date();
@@ -657,7 +733,10 @@ export class DocumentSharingService {
 
           const activeConsent = consentRes.rows[0];
           if (!activeConsent) {
-            throw AppError.of('CONSENT_REQUIRED', 'Customer consent for data sharing is required before creating a share package.');
+            throw AppError.of(
+              'CONSENT_REQUIRED',
+              'Customer consent for data sharing is required before creating a share package.',
+            );
           }
           if (activeConsent.expires_at && new Date(activeConsent.expires_at) < ctx.now) {
             throw AppError.of('CONSENT_REQUIRED', 'Customer consent has expired.');
@@ -835,7 +914,7 @@ export class DocumentSharingService {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const limit = query.limit;
 
-      let qb = sql<{
+      const qb = sql<{
         id: string;
         tenant_id: string;
         application_id: string;
@@ -906,7 +985,7 @@ export class DocumentSharingService {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const limit = query.limit;
 
-      let qb = sql<{
+      const qb = sql<{
         id: string;
         tenant_id: string;
         application_id: string;

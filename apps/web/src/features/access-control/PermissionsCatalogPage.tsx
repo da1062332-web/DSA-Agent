@@ -43,7 +43,9 @@ export function PermissionsCatalogPage() {
   }
 
   // Extract unique domains (e.g. "lead", "task", "application", "rule", etc.)
-  const domains: string[] = Array.from(new Set(permissions.map((p) => p.code.split('.')[0]))).filter((d): d is string => Boolean(d)).sort();
+  const domains: string[] = Array.from(new Set(permissions.map((p) => p.code.split('.')[0])))
+    .filter((d): d is string => Boolean(d))
+    .sort();
 
   const filtered = permissions.filter((p) => {
     const domain = p.code.split('.')[0];
@@ -57,7 +59,14 @@ export function PermissionsCatalogPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }} flexWrap="wrap" gap={2}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 3 }}
+        flexWrap="wrap"
+        gap={2}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Permissions Catalog
@@ -129,13 +138,30 @@ export function PermissionsCatalogPage() {
             const domain = perm.code.split('.')[0];
             return (
               <Grid item xs={12} sm={6} md={4} key={perm.code}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 1 }}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: 2,
+                    boxShadow: 1,
+                  }}
+                >
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                       <Chip label={domain} size="small" color="primary" variant="outlined" />
-                      <Chip label={perm.introducedIn} size="small" variant="filled" sx={{ fontSize: '0.7rem' }} />
+                      <Chip
+                        label={perm.introducedIn}
+                        size="small"
+                        variant="filled"
+                        sx={{ fontSize: '0.7rem' }}
+                      />
                     </Stack>
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ fontFamily: 'monospace', mb: 0.5 }}>
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight={700}
+                      sx={{ fontFamily: 'monospace', mb: 0.5 }}
+                    >
                       {perm.code}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
