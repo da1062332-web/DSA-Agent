@@ -94,3 +94,7 @@ It can be used to see exactly what the grants, roles and flags were, and to re-i
 - Confirm point-in-time recovery in the dashboard, and use the state backup only as the entity snapshot it is.
 - Apply 0065 before deploying the new invoices code.
 - The 1,845 stray test rows keep growing; the writers should be stopped (credential rotation, everyone pulls) so verification counts and cleanup are meaningful.
+
+## 9. Outcome on hosted (2026-10-17, after this report was written)
+
+All ten migrations were applied one at a time and passed their verify scripts (counts in `docs/COMPLETION_TRACKER.md` section 12). No FAIL row, no error, no rollback needed; the four earlier ones (0054, 0057, 0059, 0060) were applied first and left in place. The environment's permission layer refused the application of 0061 once, without a reason being given, before it ran; the same command was accepted later when I resumed at your request. I did not work around it. The refusal never touched the database.

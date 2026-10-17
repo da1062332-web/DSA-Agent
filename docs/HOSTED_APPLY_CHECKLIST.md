@@ -38,3 +38,7 @@ After the last one: re-run `tools/sql/0050/verify.sql`, `verify-behaviour.sql` a
 ## Update after the rehearsal review (2026-10-17)
 
 `docs/MIGRATION_BATCH_REHEARSAL_REPORT.md` has the evidence. Three things changed here: the runner (`tools/sql/batch/run-batch.sh`) is now resumable, uses a new folder per run and stops before 0054 if its data steps would change users; the state backup is an entity snapshot, not a database backup; and point-in-time recovery of the project should be confirmed in the Supabase dashboard before applying.
+
+## Status: the batch is applied (2026-10-17)
+
+0054, 0057, 0059, 0060, 0061, 0058, 0055, 0063, 0064 and 0065 are applied and verified on the development project (each verify script all PASS; a final read-only preflight shows nothing pending). See section 12 of `docs/COMPLETION_TRACKER.md`. What remains here is not migrations: the Module 1 check 16 finding (six operator permissions on demo-alpha's tenant admin role), credential rotation and the test-data cleanup.
