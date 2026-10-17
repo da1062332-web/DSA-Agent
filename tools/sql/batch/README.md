@@ -1,4 +1,4 @@
-# Hosted migration batch: runbook (0054, 0055, 0057 to 0063)
+# Hosted migration batch: runbook (0054, 0055, 0057 to 0064)
 
 Status: **prepared and rehearsed, not applied.** Every command below that writes is yours to run, after you approve. Nothing in this folder has been run against hosted except `preflight.sql` and the read-only checks listed in `docs/MIGRATION_MATRIX.md`.
 
@@ -19,8 +19,9 @@ The tests show **no technical dependency between these migrations**: every one a
 5. **0058** two feature flags.
 6. **0055** eligibility rules and the `eligibility.override` grant: **only after decision D1** (who may override). Run `55.revoke-override-grants.sql` straight after if you decide the four roles are not the approvers.
 7. **0063** security events and incidents tables, and `security.incident` for owner, compliance and tenant admin.
-8. **0062** only if you want the data-correction executor (Release 2); the executor stays off without `DATA_CORRECTION_EXECUTOR=true`.
-9. **Not in this batch:** 0056 (the Release 3 ledger) and 0064 (already effective on hosted).
+8. **0064** sanction and disbursement grants for branch manager and loan operations (owner and tenant admin already hold them on hosted). Idempotent.
+9. **0062** only if you want the data-correction executor (Release 2); the executor stays off without `DATA_CORRECTION_EXECUTOR=true`.
+10. **Not in this batch:** 0056 (the Release 3 ledger).
 
 Before the application code that uses a migration is deployed, apply that migration. Application code that is deployed first will fail on the missing tables (for example `/v1/api-clients` without 0054).
 
@@ -59,6 +60,7 @@ npx supabase db query --linked -f tools/sql/batch/NN.rollback.sql
 | 0060 | removes the nine permissions nobody holds | A permission granted since stays. |
 | 0061 | drops `platform_release` if it holds only the unchanged seed row | The baseline master data rows stay (they cannot be told apart from rows that already existed). |
 | 0062 | drops the function and constraint; drops the column if no failure reason is recorded | |
+| 0064 | removes the four permissions from branch manager and loan operations again | Owner and tenant admin keep theirs (hosted already had them, so they cannot be told apart from this migration's grants). |
 | 0063 | drops the two tables if empty and removes the permissions | Refused if a security event or incident exists: that is an audit trail. |
 
 Anything else (a bad apply that the rollback cannot fix) is recovered with the hosted project's point-in-time recovery; ask for it before, not after.
