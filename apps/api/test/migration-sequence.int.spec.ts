@@ -19,8 +19,8 @@ const byPrefix = (n: string) => {
 };
 
 /** Not applied on hosted (see docs/MIGRATION_MATRIX.md). 0056 is the Release 3 ledger and is not in the batch. */
-const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64'];
-const BATCH_ORDER = ['54', '57', '59', '60', '61', '58', '55', '63', '64'];
+const PENDING = ['54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65'];
+const BATCH_ORDER = ['54', '57', '59', '60', '61', '58', '55', '63', '64', '65'];
 
 let container: StartedPostgreSqlContainer;
 let admin: pg.Client;
@@ -95,11 +95,11 @@ describe('hosted migration batch', () => {
     expect(
       (await r.db.query(`SELECT to_regclass('app.ledger_journal_line') IS NOT NULL AS ok`)).rows[0].ok,
     ).toBe(true);
-    // The invoices table that already exists on hosted keeps its shape.
+    // The invoices connector statement table (renamed from ledger_entry, see 0065) keeps its shape.
     expect(
       (
         await r.db.query(
-          `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='app' AND table_name='ledger_entry' AND column_name='connector_id'`,
+          `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='app' AND table_name='connector_statement_entry' AND column_name='connector_id'`,
         )
       ).rows[0].n,
     ).toBe(1);
@@ -137,8 +137,8 @@ describe('hosted migration batch', () => {
     const orders = [
       [...BATCH_ORDER].reverse(),
       [...BATCH_ORDER].sort(), // numeric-name order
-      ['64', '55', '54', '63', '58', '61', '60', '59', '57'],
-      ['63', '55', '61', '64', '57', '54', '59', '58', '60'],
+      ['65', '64', '55', '54', '63', '58', '61', '60', '59', '57'],
+      ['63', '55', '61', '64', '65', '57', '54', '59', '58', '60'],
     ];
     for (const order of orders) {
       const r = await run(order);
@@ -154,7 +154,7 @@ describe('hosted migration batch', () => {
   it('TEST-SEQ-04 the batch can be applied in two halves (the plan lets you stop after 0061)', async () => {
     const first = await run(['54', '57', '59', '60', '61']);
     expect(first.error, `stopped at ${first.failed}`).toBeNull();
-    for (const n of ['58', '55', '63', '64'])
+    for (const n of ['58', '55', '63', '64', '65'])
       await first.db.query(readFileSync(path.join(DIR, byPrefix(n.padStart(2, '0'))), 'utf8'));
     await first.db.end();
   });

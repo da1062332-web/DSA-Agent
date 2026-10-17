@@ -4,13 +4,13 @@ Status date: 2026-10-16. **Rotation has not been done and needs the owner's expl
 
 ## 1. What was exposed
 
-| # | Credential | Where it was written | Reach if misused |
-|---|---|---|---|
-| 1 | Database login for the hosted project, administrator role (`postgres.<project-ref>`, through the pooler) | 14 tracked files (see 2) | Full read and write of the shared dev database, bypassing row-level security |
-| 2 | Database login for the application role `dsa_api.<project-ref>` | The same files | Everything the API can do, still limited by row-level security |
-| 3 | Supabase **service-role key** (a long-lived JWT) | `apps/api/test/e2e_all_modules.ts` (fallback value) | Bypasses row-level security through the REST API, and can create, change and delete Auth users |
-| 4 | Supabase anon (publishable) key | `apps/api/test/e2e_all_modules.ts`, `apps/api/scratch/debug_delete_schedule.ts` | Public by design (it ships in the web bundle). Removed anyway, because a fallback key hides a missing setting |
-| — | Project reference and project URL | Several places, including `packages/kernel/src/auth/verify-token.ts` (allowed issuer list) | **Not secret.** It appears in every browser request. Left as is |
+| #   | Credential                                                                                               | Where it was written                                                                       | Reach if misused                                                                                              |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 1   | Database login for the hosted project, administrator role (`postgres.<project-ref>`, through the pooler) | 14 tracked files (see 2)                                                                   | Full read and write of the shared dev database, bypassing row-level security                                  |
+| 2   | Database login for the application role `dsa_api.<project-ref>`                                          | The same files                                                                             | Everything the API can do, still limited by row-level security                                                |
+| 3   | Supabase **service-role key** (a long-lived JWT)                                                         | `apps/api/test/e2e_all_modules.ts` (fallback value)                                        | Bypasses row-level security through the REST API, and can create, change and delete Auth users                |
+| 4   | Supabase anon (publishable) key                                                                          | `apps/api/test/e2e_all_modules.ts`, `apps/api/scratch/debug_delete_schedule.ts`            | Public by design (it ships in the web bundle). Removed anyway, because a fallback key hides a missing setting |
+| —   | Project reference and project URL                                                                        | Several places, including `packages/kernel/src/auth/verify-token.ts` (allowed issuer list) | **Not secret.** It appears in every browser request. Left as is                                               |
 
 All of them are in the repository's **git history** (a scan found 11 commits that added the database URL with its password) and on `origin/beta`. A password that was pushed stays recoverable from history even after the file is fixed, so **only rotation removes the exposure**.
 

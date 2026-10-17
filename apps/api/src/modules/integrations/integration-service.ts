@@ -151,7 +151,10 @@ export class IntegrationService {
     const key = `${ctx.principal.tenantId}:${provider.toUpperCase()}:${capability.toUpperCase()}`;
     const conn = this.connections.get(key);
     if (!conn) {
-      throw AppError.of('NOT_FOUND', `Integration not found for provider '${provider}' and capability '${capability}'.`);
+      throw AppError.of(
+        'NOT_FOUND',
+        `Integration not found for provider '${provider}' and capability '${capability}'.`,
+      );
     }
     return conn;
   }
@@ -170,13 +173,19 @@ export class IntegrationService {
     // 1. Validate capability against platform descriptors
     const desc = this.registry.getCapabilityDescriptor(capabilityUpper);
     if (!desc) {
-      throw AppError.of('VALIDATION_ERROR', `Capability '${input.capability}' is not recognized in the platform registry.`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Capability '${input.capability}' is not recognized in the platform registry.`,
+      );
     }
 
     // 2. Validate credentialRef belongs to context tenant
     const credMatch = input.credentialRef.match(/^vault:\/\/tenants\/([a-zA-Z0-9_-]+)\//);
     if (credMatch && credMatch[1] !== tenantId) {
-      throw AppError.of('FORBIDDEN', `Tenant mismatch: credentialRef belongs to ${credMatch[1]}, but context tenant is ${tenantId}`);
+      throw AppError.of(
+        'FORBIDDEN',
+        `Tenant mismatch: credentialRef belongs to ${credMatch[1]}, but context tenant is ${tenantId}`,
+      );
     }
 
     // 3. Validate provider against adapter implementation if present
@@ -184,7 +193,10 @@ export class IntegrationService {
     if (adapter) {
       const validation = adapter.validateConfig(input.config);
       if (!validation.valid) {
-        throw AppError.of('VALIDATION_ERROR', `Invalid configuration for provider '${provider}': ${(validation.errors ?? []).join(', ')}`);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Invalid configuration for provider '${provider}': ${(validation.errors ?? []).join(', ')}`,
+        );
       }
     }
 
@@ -193,11 +205,17 @@ export class IntegrationService {
     // 3. Optimistic Concurrency Control (If-Match required on update)
     if (existing) {
       if (!ifMatch) {
-        throw AppError.of('MALFORMED_REQUEST', 'If-Match header is mandatory when updating an existing integration.');
+        throw AppError.of(
+          'MALFORMED_REQUEST',
+          'If-Match header is mandatory when updating an existing integration.',
+        );
       }
       const matchVersion = parseInt(ifMatch.replace(/["']/g, ''), 10);
       if (isNaN(matchVersion) || matchVersion !== existing.lockVersion) {
-        throw AppError.of('VERSION_CONFLICT', `Version conflict: provided ETag ${ifMatch} does not match current version ${existing.lockVersion}.`);
+        throw AppError.of(
+          'VERSION_CONFLICT',
+          `Version conflict: provided ETag ${ifMatch} does not match current version ${existing.lockVersion}.`,
+        );
       }
     }
 

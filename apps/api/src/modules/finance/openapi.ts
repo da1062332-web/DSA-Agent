@@ -27,7 +27,10 @@ import { z } from 'zod';
 
 export const tags = [
   { name: 'MOD-COM Commission', description: 'Lender commission plans, calculations, and splits (MOD-COM).' },
-  { name: 'MOD-PAY Payouts', description: 'Connector payout requests, maker-checker approvals and batches (MOD-PAY).' },
+  {
+    name: 'MOD-PAY Payouts',
+    description: 'Connector payout requests, maker-checker approvals and batches (MOD-PAY).',
+  },
 ];
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {
@@ -163,7 +166,10 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     summary: 'Propose commission recalculation (API-COM-005)',
     tags: ['MOD-COM Commission'],
     request: {
-      body: { content: { 'application/json': { schema: CreateRecalculationProposalInputSchema } }, required: true },
+      body: {
+        content: { 'application/json': { schema: CreateRecalculationProposalInputSchema } },
+        required: true,
+      },
     },
     responses: {
       201: {
@@ -182,7 +188,10 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     tags: ['MOD-COM Commission'],
     request: {
       params: z.object({ id: z.string() }),
-      body: { content: { 'application/json': { schema: ApproveRecalculationProposalInputSchema } }, required: true },
+      body: {
+        content: { 'application/json': { schema: ApproveRecalculationProposalInputSchema } },
+        required: true,
+      },
     },
     responses: {
       200: {

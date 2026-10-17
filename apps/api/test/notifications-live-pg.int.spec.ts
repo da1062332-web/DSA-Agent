@@ -139,9 +139,7 @@ describeLivePg('Module 12 (MOD-NTF): Live PostgreSQL Verification', () => {
       `.execute(tx);
 
       // Attempt DELETE -> must fail via trigger
-      await expect(
-        sql`DELETE FROM app.notification WHERE id = ${notifId}`.execute(tx),
-      ).rejects.toThrow();
+      await expect(sql`DELETE FROM app.notification WHERE id = ${notifId}`.execute(tx)).rejects.toThrow();
     });
   });
 

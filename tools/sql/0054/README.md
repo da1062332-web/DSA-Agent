@@ -6,13 +6,13 @@ Migration: `supabase/migrations/20261001000054_access_control_and_api_clients.sq
 
 ## Files
 
-| File | Purpose | Writes? |
-|---|---|---|
-| `preflight.sql` | prerequisites present, and what would change | no |
-| `backup.sql` | one JSON object with the state of the entities 0054 touches | no |
-| `apply.sql` | the migration inside `BEGIN; … COMMIT;` (kept equal to the migration by a test) | yes |
-| `verify.sql` | 14 PASS/FAIL checks after applying | no |
-| `rollback.sql` | removes what 0054 added, with guards | yes |
+| File                    | Purpose                                                                                  | Writes?                  |
+| ----------------------- | ---------------------------------------------------------------------------------------- | ------------------------ |
+| `preflight.sql`         | prerequisites present, and what would change                                             | no                       |
+| `backup.sql`            | one JSON object with the state of the entities 0054 touches                              | no                       |
+| `apply.sql`             | the migration inside `BEGIN; … COMMIT;` (kept equal to the migration by a test)          | yes                      |
+| `verify.sql`            | 14 PASS/FAIL checks after applying                                                       | no                       |
+| `rollback.sql`          | removes what 0054 added, with guards                                                     | yes                      |
 | `../make-apply-run.mjs` | generates the apply wrapper from the migration, outside the repository, with both hashes | writes a local file only |
 
 ## What the backup is, and is not

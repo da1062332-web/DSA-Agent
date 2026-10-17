@@ -87,7 +87,11 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     security: [{ bearerAuth: [] }],
     request: {
       params: z.object({
-        code: z.string().describe('Dashboard code (EXECUTIVE, BRANCH, TEAM_PERFORMANCE, OPERATIONS, FINANCE, CONNECTOR, LEADERBOARD)'),
+        code: z
+          .string()
+          .describe(
+            'Dashboard code (EXECUTIVE, BRANCH, TEAM_PERFORMANCE, OPERATIONS, FINANCE, CONNECTOR, LEADERBOARD)',
+          ),
       }),
       query: DashboardQuerySchema,
     },

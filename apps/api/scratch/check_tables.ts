@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   const lcCols = await sql<{ column_name: string; is_nullable: string }>`
     SELECT column_name, is_nullable
     FROM information_schema.columns

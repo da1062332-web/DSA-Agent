@@ -55,9 +55,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.queryMetrics(tx, ctx, query),
-    );
+    const result = await deps.txRunner.withTenantTx(ctx, (tx) => service.queryMetrics(tx, ctx, query));
 
     res.json(result);
   });
@@ -65,9 +63,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/metrics/definitions', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const definitions = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listMetricDefinitions(tx, ctx),
-    );
+    const definitions = await deps.txRunner.withTenantTx(ctx, (tx) => service.listMetricDefinitions(tx, ctx));
 
     res.json({ data: definitions });
   });
@@ -75,9 +71,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/metric-definitions', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const definitions = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listMetricDefinitions(tx, ctx),
-    );
+    const definitions = await deps.txRunner.withTenantTx(ctx, (tx) => service.listMetricDefinitions(tx, ctx));
 
     res.json({ data: definitions });
   });
@@ -98,9 +92,10 @@ export function createRouter(deps: ApiDeps): Router {
   // ==========================================
   router.get('/reporting/control-totals', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
-    const dateParam = typeof req.query.summaryDate === 'string'
-      ? req.query.summaryDate
-      : new Date().toISOString().split('T')[0]!;
+    const dateParam =
+      typeof req.query.summaryDate === 'string'
+        ? req.query.summaryDate
+        : new Date().toISOString().split('T')[0]!;
 
     const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
       service.getControlTotals(tx, ctx, dateParam),
@@ -170,9 +165,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const run = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.startReportRun(tx, ctx, code, body),
-    );
+    const run = await deps.txRunner.withTenantTx(ctx, (tx) => service.startReportRun(tx, ctx, code, body));
 
     res.status(202).json(run);
   });
@@ -181,9 +174,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParam(req, 'id');
 
-    const run = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getReportRun(tx, ctx, id),
-    );
+    const run = await deps.txRunner.withTenantTx(ctx, (tx) => service.getReportRun(tx, ctx, id));
 
     res.json(run);
   });
@@ -204,9 +195,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/report-runs', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const runs = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listReportRuns(tx, ctx),
-    );
+    const runs = await deps.txRunner.withTenantTx(ctx, (tx) => service.listReportRuns(tx, ctx));
 
     res.json({ data: runs });
   });
@@ -225,9 +214,7 @@ export function createRouter(deps: ApiDeps): Router {
       throw err;
     }
 
-    const job = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.createExportJob(tx, ctx, body),
-    );
+    const job = await deps.txRunner.withTenantTx(ctx, (tx) => service.createExportJob(tx, ctx, body));
 
     res.status(201).json(job);
   });
@@ -236,9 +223,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParam(req, 'id');
 
-    const job = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.getExportJob(tx, ctx, id),
-    );
+    const job = await deps.txRunner.withTenantTx(ctx, (tx) => service.getExportJob(tx, ctx, id));
 
     res.json(job);
   });
@@ -259,9 +244,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/exports', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const jobs = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listExportJobs(tx, ctx),
-    );
+    const jobs = await deps.txRunner.withTenantTx(ctx, (tx) => service.listExportJobs(tx, ctx));
 
     res.json({ data: jobs });
   });
@@ -287,9 +270,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/report-schedules', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
 
-    const schedules = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.listReportSchedules(tx, ctx),
-    );
+    const schedules = await deps.txRunner.withTenantTx(ctx, (tx) => service.listReportSchedules(tx, ctx));
 
     res.json({ data: schedules });
   });
@@ -298,9 +279,7 @@ export function createRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const id = getParam(req, 'id');
 
-    await deps.txRunner.withTenantTx(ctx, (tx) =>
-      service.deleteReportSchedule(tx, ctx, id),
-    );
+    await deps.txRunner.withTenantTx(ctx, (tx) => service.deleteReportSchedule(tx, ctx, id));
 
     res.status(204).send();
   });

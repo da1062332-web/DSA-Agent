@@ -4,8 +4,10 @@ import {
   Alert,
   AlertTitle,
   Box,
+  Button,
   Chip,
   CircularProgress,
+  Collapse,
   FormControl,
   InputLabel,
   List,
@@ -44,6 +46,22 @@ function ErrorOutlineIcon(props: SvgIconProps) {
   );
 }
 
+function ExpandMoreIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+    </SvgIcon>
+  );
+}
+
+function ExpandLessIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
+    </SvgIcon>
+  );
+}
+
 function formatCurrency(amount: number): string {
   if (amount >= 10000000) {
     return `₹${(amount / 10000000).toFixed(2)} Cr`;
@@ -62,6 +80,7 @@ export function LeaderboardPage() {
   const [filters, setFilters] = useState<DashboardFilterState>({
     period: '2026-10',
   });
+  const [isBannerExpanded, setIsBannerExpanded] = useState<boolean>(false);
 
   const { data: leaderboard, isLoading, isError, error } =
     useLeaderboardDashboard(filters);
@@ -102,16 +121,41 @@ export function LeaderboardPage() {
         </FormControl>
       </Box>
 
-      {/* Governance & Business-Rule Blocker Banner */}
+      {/* Governance & Business-Rule Blocker Banner (Collapsible) */}
       <Alert
         severity="warning"
         icon={<WarningAmberIcon fontSize="large" />}
-        sx={{ mb: 4, borderRadius: 2 }}
+        sx={{
+          mb: 4,
+          borderRadius: 2,
+          alignItems: 'flex-start',
+          '& .MuiAlert-message': { width: '100%' },
+        }}
+        action={
+          <Button
+            size="small"
+            color="warning"
+            variant="outlined"
+            onClick={() => setIsBannerExpanded(!isBannerExpanded)}
+            endIcon={isBannerExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap',
+              mt: { xs: 1, sm: 0 },
+            }}
+          >
+            {isBannerExpanded
+              ? 'Hide Governance Decisions'
+              : `View ${leaderboard?.unresolvedDecisions?.length ?? 9} Decisions`}
+          </Button>
+        }
       >
-        <AlertTitle sx={{ fontWeight: 'bold', fontSize: '1.05rem' }}>
+        <AlertTitle sx={{ fontWeight: 'bold', fontSize: '1.02rem', mb: 0.5 }}>
           Competitive Ranking Calculation Blocked Pending Business-Rule Sign-Off
         </AlertTitle>
-        <Typography variant="body2" sx={{ mb: 1 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           In accordance with the Master Implementation Prompt and NBFC domain governance,
           leaderboard scoring formulas, weights, and quality guardrails must not be invented.
           Participant operational volumes are tracked below, but competitive scores and ordinal
@@ -119,30 +163,34 @@ export function LeaderboardPage() {
           decisions:
         </Typography>
 
-        <List dense sx={{ pl: 1 }}>
-          {leaderboard?.unresolvedDecisions ? (
-            leaderboard.unresolvedDecisions.map((decision, idx) => (
-              <ListItem key={idx} disableGutters sx={{ py: 0.2 }}>
-                <ListItemIcon sx={{ minWidth: 28 }}>
-                  <ErrorOutlineIcon color="warning" fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={<Typography variant="caption">{decision}</Typography>}
-                />
-              </ListItem>
-            ))
-          ) : (
-            <ListItem disableGutters>
-              <ListItemText
-                primary={
-                  <Typography variant="caption">
-                    Loading unresolved business decisions...
-                  </Typography>
-                }
-              />
-            </ListItem>
-          )}
-        </List>
+        <Collapse in={isBannerExpanded}>
+          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px dashed rgba(237, 108, 2, 0.35)' }}>
+            <List dense sx={{ pl: 0.5 }}>
+              {leaderboard?.unresolvedDecisions ? (
+                leaderboard.unresolvedDecisions.map((decision, idx) => (
+                  <ListItem key={idx} disableGutters sx={{ py: 0.2 }}>
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <ErrorOutlineIcon color="warning" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="caption">{decision}</Typography>}
+                    />
+                  </ListItem>
+                ))
+              ) : (
+                <ListItem disableGutters>
+                  <ListItemText
+                    primary={
+                      <Typography variant="caption">
+                        Loading unresolved business decisions...
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              )}
+            </List>
+          </Box>
+        </Collapse>
       </Alert>
 
       {isLoading && (

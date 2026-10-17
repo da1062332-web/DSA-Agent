@@ -31,16 +31,8 @@ export interface TargetRepository {
     expectedLockVersion: number,
     updates: Partial<TargetRow>,
   ): Promise<TargetRow>;
-  supersedeSlice(
-    tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-    excludeId: string,
-  ): Promise<void>;
-  listTargets(
-    tx: Tx,
-    params: TargetListParams,
-  ): Promise<{ targets: TargetRow[]; nextCursor: string | null }>;
+  supersedeSlice(tx: Tx, tenantId: string, slice: TargetSlice, excludeId: string): Promise<void>;
+  listTargets(tx: Tx, params: TargetListParams): Promise<{ targets: TargetRow[]; nextCursor: string | null }>;
   getSliceHistory(tx: Tx, tenantId: string, slice: TargetSlice): Promise<TargetRow[]>;
   checkBranchExists(tx: Tx, tenantId: string, branchId: string): Promise<boolean>;
   getUserPrimaryBranch(tx: Tx, tenantId: string, userId: string): Promise<string | null>;
@@ -131,7 +123,8 @@ export class SqlTargetRepository implements TargetRepository {
     if (updates.status !== undefined) sets.push(sql`status = ${updates.status}`);
     if (updates.approved_by !== undefined) sets.push(sql`approved_by = ${updates.approved_by}`);
     if (updates.approved_at !== undefined) sets.push(sql`approved_at = ${updates.approved_at}`);
-    if (updates.rejection_reason !== undefined) sets.push(sql`rejection_reason = ${updates.rejection_reason}`);
+    if (updates.rejection_reason !== undefined)
+      sets.push(sql`rejection_reason = ${updates.rejection_reason}`);
     if (updates.updated_by !== undefined) sets.push(sql`updated_by = ${updates.updated_by}`);
     sets.push(sql`lock_version = lock_version + 1`);
 
@@ -152,12 +145,7 @@ export class SqlTargetRepository implements TargetRepository {
     return updated;
   }
 
-  async supersedeSlice(
-    tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-    excludeId: string,
-  ): Promise<void> {
+  async supersedeSlice(tx: Tx, tenantId: string, slice: TargetSlice, excludeId: string): Promise<void> {
     await sql`
       UPDATE target
       SET status = 'SUPERSEDED',
@@ -225,11 +213,7 @@ export class SqlTargetRepository implements TargetRepository {
         ${params.metricCode ? sql`AND metric_code = ${params.metricCode}` : sql``}
         ${params.status ? sql`AND status = ${params.status}` : sql``}
         ${branchScopeCondition}
-        ${
-          cursorPeriod && cursorId
-            ? sql`AND (period, id) < (${cursorPeriod}, ${cursorId})`
-            : sql``
-        }
+        ${cursorPeriod && cursorId ? sql`AND (period, id) < (${cursorPeriod}, ${cursorId})` : sql``}
       ORDER BY period DESC, id DESC
       LIMIT ${fetchLimit}
     `.execute(tx);
@@ -307,10 +291,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     const existing = this.idempotencyStore.get(k);
     if (existing) {
       if (existing.inputHash !== inputHash) {
-        throw AppError.of(
-          'IDEMPOTENCY_KEY_REUSED',
-          'This Idempotency-Key was used for a different request.',
-        );
+        throw AppError.of('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was used for a different request.');
       }
       return { status: existing.status, body: existing.body as T, replayed: true };
     }
@@ -329,11 +310,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     return this.targets.get(k) ?? null;
   }
 
-  async findApprovedSlice(
-    _tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-  ): Promise<TargetRow | null> {
+  async findApprovedSlice(_tx: Tx, tenantId: string, slice: TargetSlice): Promise<TargetRow | null> {
     for (const t of this.targets.values()) {
       if (
         t.tenant_id === tenantId &&
@@ -349,11 +326,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     return null;
   }
 
-  async findPendingSlice(
-    _tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-  ): Promise<TargetRow | null> {
+  async findPendingSlice(_tx: Tx, tenantId: string, slice: TargetSlice): Promise<TargetRow | null> {
     for (const t of this.targets.values()) {
       if (
         t.tenant_id === tenantId &&
@@ -416,12 +389,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     return updated;
   }
 
-  async supersedeSlice(
-    _tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-    excludeId: string,
-  ): Promise<void> {
+  async supersedeSlice(_tx: Tx, tenantId: string, slice: TargetSlice, excludeId: string): Promise<void> {
     for (const [k, t] of this.targets.entries()) {
       if (
         t.tenant_id === tenantId &&
@@ -499,11 +467,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     return { targets: rows, nextCursor };
   }
 
-  async getSliceHistory(
-    _tx: Tx,
-    tenantId: string,
-    slice: TargetSlice,
-  ): Promise<TargetRow[]> {
+  async getSliceHistory(_tx: Tx, tenantId: string, slice: TargetSlice): Promise<TargetRow[]> {
     const matching: TargetRow[] = [];
     for (const t of this.targets.values()) {
       if (
@@ -524,11 +488,7 @@ export class InMemoryTargetRepository implements TargetRepository {
     return this.branches.has(`${tenantId}:${branchId}`);
   }
 
-  async getUserPrimaryBranch(
-    _tx: Tx,
-    tenantId: string,
-    userId: string,
-  ): Promise<string | null> {
+  async getUserPrimaryBranch(_tx: Tx, tenantId: string, userId: string): Promise<string | null> {
     return this.users.get(`${tenantId}:${userId}`) ?? null;
   }
 
@@ -536,4 +496,3 @@ export class InMemoryTargetRepository implements TargetRepository {
     return this.products.has(`${tenantId}:${productId}`);
   }
 }
-

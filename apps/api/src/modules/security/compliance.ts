@@ -56,10 +56,7 @@ export interface CertInSlaStatus {
 /**
  * Computes the CERT-In 6-hour reporting window and compliance status.
  */
-export function evaluateCertInSla(
-  incident: IncidentRecord,
-  now: Date = new Date(),
-): CertInSlaStatus {
+export function evaluateCertInSla(incident: IncidentRecord, now: Date = new Date()): CertInSlaStatus {
   const isCritical = incident.severity === 'CRITICAL';
   const mandatoryReportingRequired = isCritical || incident.type === 'DATA_BREACH';
   const category = CERT_IN_CATEGORIES[incident.type] ?? CERT_IN_CATEGORIES.OTHER;
@@ -93,12 +90,15 @@ export function evaluateCertInSla(
 /**
  * Generates official CERT-In Incident Notification Report Payload (Annexure-1).
  */
-export function generateCertInReport(incident: IncidentRecord, metadata?: {
-  organizationName?: string;
-  contactPerson?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-}): Record<string, unknown> {
+export function generateCertInReport(
+  incident: IncidentRecord,
+  metadata?: {
+    organizationName?: string;
+    contactPerson?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+  },
+): Record<string, unknown> {
   const sla = evaluateCertInSla(incident);
   return {
     certInReportingForm: 'ANNEXURE-1_INCIDENT_REPORT',
@@ -190,10 +190,9 @@ export function generateIndividualBreachNotice(
     grievanceEmail?: string;
   },
 ): { subject: string; bodyHtml: string; plainText: string } {
-  const categories = (opts?.compromisedCategories ?? [
-    'Borrower Contact Profile',
-    'Loan Application Reference Number',
-  ]).join(', ');
+  const categories = (
+    opts?.compromisedCategories ?? ['Borrower Contact Profile', 'Loan Application Reference Number']
+  ).join(', ');
 
   const subject = `[Important Security Notice] Notification Regarding Your Personal Data Protection`;
 

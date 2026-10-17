@@ -41,7 +41,10 @@ interface SanctionsPanelProps {
   currentUserId?: string;
 }
 
-export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: propLenderCaseId, currentUserId }) => {
+export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
+  lenderCaseId: propLenderCaseId,
+  currentUserId,
+}) => {
   const { lenderCaseId: paramLenderCaseId } = useParams<{ lenderCaseId?: string }>();
   const [searchParams] = useSearchParams();
   const queryLenderCaseId = searchParams.get('lenderCaseId');
@@ -220,8 +223,8 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: pr
                     activeSanction.status === 'ACTIVE'
                       ? 'success'
                       : activeSanction.status === 'REVISED'
-                      ? 'info'
-                      : 'default'
+                        ? 'info'
+                        : 'default'
                   }
                   size="small"
                   sx={{ mr: 1 }}
@@ -340,10 +343,10 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: pr
                                 t.status === 'VERIFIED'
                                   ? 'success'
                                   : t.status === 'RECORDED'
-                                  ? 'warning'
-                                  : t.status === 'RETURNED'
-                                  ? 'error'
-                                  : 'default'
+                                    ? 'warning'
+                                    : t.status === 'RETURNED'
+                                      ? 'error'
+                                      : 'default'
                               }
                             />
                           </TableCell>
@@ -357,7 +360,9 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({ lenderCaseId: pr
                                 color="primary"
                                 disabled={Boolean(isRecorder)}
                                 title={
-                                  isRecorder ? 'Segregation of duties: Creator cannot verify' : 'Verify Tranche'
+                                  isRecorder
+                                    ? 'Segregation of duties: Creator cannot verify'
+                                    : 'Verify Tranche'
                                 }
                                 onClick={() => {
                                   setSelectedTranche(t);

@@ -105,19 +105,28 @@ export function WorkforcePage() {
     queryFn: () => getAttendance(),
   });
 
-  // Current user's availability from agentsQuery or fallback
+  // Optimistic availability state for instantaneous UI feedback
+  const [optimisticAvailability, setOptimisticAvailability] = useState<AvailabilityStatus | null>(null);
+
+  // Current user's availability from optimistic state, agentsQuery, or fallback
   const myAgentRecord = agentsQuery.data?.find((a) => a.id === me?.id);
   const currentAvailability: AvailabilityStatus =
-    myAgentRecord?.availability ?? 'AVAILABLE';
+    optimisticAvailability ?? myAgentRecord?.availability ?? (me as any)?.availability ?? 'AVAILABLE';
 
   // 2. Mutations
   const availabilityMutation = useMutation({
     mutationFn: (newStatus: AvailabilityStatus) => updateMyAvailability(newStatus),
+    onMutate: (newStatus) => {
+      setOptimisticAvailability(newStatus);
+    },
     onSuccess: (_, newStatus) => {
+      setOptimisticAvailability(newStatus);
       queryClient.invalidateQueries({ queryKey: ['workforce-agents'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
       setToastMessage({ type: 'success', text: `Availability set to ${AVAILABILITY_CONFIG[newStatus].label}` });
     },
     onError: (err: any) => {
+      setOptimisticAvailability(null);
       setToastMessage({ type: 'error', text: err?.message || 'Failed to update availability.' });
     },
   });
@@ -257,7 +266,7 @@ export function WorkforcePage() {
                 <Chip
                   key={status}
                   label={config.label}
-                  color={isSelected ? config.color : 'default'}
+                  color={isSelected ? 'success' : 'default'}
                   variant={isSelected ? 'filled' : 'outlined'}
                   size="small"
                   clickable
@@ -268,6 +277,18 @@ export function WorkforcePage() {
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     transform: isSelected ? 'scale(1.05)' : 'none',
+                    ...(isSelected
+                      ? {
+                          bgcolor: '#16a34a !important',
+                          color: '#ffffff !important',
+                          borderColor: '#16a34a !important',
+                          boxShadow: '0 2px 6px rgba(22, 163, 74, 0.35)',
+                        }
+                      : {
+                          borderColor: '#cbd5e1',
+                          color: '#475569',
+                          '&:hover': { bgcolor: '#f1f5f9' },
+                        }),
                   }}
                 />
               );
@@ -384,7 +405,7 @@ export function WorkforcePage() {
                             <Typography variant="body2" fontWeight={600}>
                               {activeItems}{' '}
                               <Typography component="span" variant="caption" sx={{ color: '#64748b' }}>
-                                ({agent.activeLeadCount} leads, {agent.activeApplicationCount} apps)
+                                ({agent.activeLeadCount} leads, {agent.activeApplicationCount ?? 0} apps)
                               </Typography>
                             </Typography>
                           </TableCell>

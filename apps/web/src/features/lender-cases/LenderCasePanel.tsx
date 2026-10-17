@@ -37,18 +37,16 @@ import {
   submitLenderCase,
   updateLenderCaseStatus,
 } from './api';
-import type {
-  DeclineReasonCode,
-  LenderCaseResource,
-  LenderCaseStatus,
-  SubmissionChannel,
-} from './types';
+import type { DeclineReasonCode, LenderCaseResource, LenderCaseStatus, SubmissionChannel } from './types';
 
 interface LenderCasePanelProps {
   applicationId?: string;
 }
 
-const statusColors: Record<LenderCaseStatus, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
+const statusColors: Record<
+  LenderCaseStatus,
+  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+> = {
   DRAFT: 'default',
   PACKAGE_READY: 'info',
   SUBMITTED: 'primary',
@@ -99,7 +97,11 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
   const [responseDialogOpen, setResponseDialogOpen] = useState(false);
   const [responseText, setResponseText] = useState('');
 
-  const { data: cases = [], isLoading, error } = useQuery({
+  const {
+    data: cases = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['lender-cases', applicationId],
     queryFn: () => fetchLenderCases(applicationId),
     enabled: !!applicationId,
@@ -131,8 +133,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
 
   const packageMutation = useMutation({
     meta: { successMessage: 'Submission package built.' },
-    mutationFn: (caseItem: LenderCaseResource) =>
-      buildPackage(caseItem.id, {}, `"${caseItem.lockVersion}"`),
+    mutationFn: (caseItem: LenderCaseResource) => buildPackage(caseItem.id, {}, `"${caseItem.lockVersion}"`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
       setSuccessMessage('Submission package built and frozen.');
@@ -195,11 +196,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
     meta: { successMessage: 'Lender query recorded.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
-      return recordLenderQuery(
-        activeCase.id,
-        { text: queryText },
-        `"${activeCase.lockVersion}"`,
-      );
+      return recordLenderQuery(activeCase.id, { text: queryText }, `"${activeCase.lockVersion}"`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
@@ -274,7 +271,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               No Application Selected
             </Typography>
             <Typography color="text.secondary" mb={2}>
-              Please provide an Application ID in the route URL (e.g. /applications/:applicationId/lender-cases) or enter one below:
+              Please provide an Application ID in the route URL (e.g.
+              /applications/:applicationId/lender-cases) or enter one below:
             </Typography>
             <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
               <TextField
@@ -303,13 +301,27 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
             <Table size="small">
               <TableHead sx={{ bgcolor: 'grey.100' }}>
                 <TableRow>
-                  <TableCell><strong>Attempt</strong></TableCell>
-                  <TableCell><strong>Lender ID</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
-                  <TableCell><strong>Channel</strong></TableCell>
-                  <TableCell><strong>Reference</strong></TableCell>
-                  <TableCell><strong>Submitted At</strong></TableCell>
-                  <TableCell align="right"><strong>Actions</strong></TableCell>
+                  <TableCell>
+                    <strong>Attempt</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Lender ID</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Status</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Channel</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Reference</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Submitted At</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Actions</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -320,11 +332,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                     </TableCell>
                     <TableCell>{c.lenderId}</TableCell>
                     <TableCell>
-                      <Chip
-                        label={c.status}
-                        size="small"
-                        color={statusColors[c.status] || 'default'}
-                      />
+                      <Chip label={c.status} size="small" color={statusColors[c.status] || 'default'} />
                       {c.declineReasonCode && (
                         <Typography variant="caption" display="block" color="error">
                           {c.declineReasonCode}
@@ -603,7 +611,12 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
         </Dialog>
 
         {/* Respond to Query Dialog */}
-        <Dialog open={responseDialogOpen} onClose={() => setResponseDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={responseDialogOpen}
+          onClose={() => setResponseDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>Respond to Lender Query</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>

@@ -1,6 +1,9 @@
 // apps/web/src/features/notifications/notification-center.spec.ts
 // Frontend integration tests for NotificationCenter & NotificationPreferencesDialog.
+import React from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 import {
   NotificationRecordSchema,
   NotificationPreferencesSchema,
@@ -93,10 +96,7 @@ describe('Frontend Notification Integration Tests', () => {
 
   it('FE-NTF-004: validates mark-as-read batch payload', () => {
     const payload = MarkNotificationsReadSchema.parse({
-      notificationIds: [
-        'ntf_01J00000000000000000000001',
-        'ntf_01J00000000000000000000002',
-      ],
+      notificationIds: ['ntf_01J00000000000000000000001', 'ntf_01J00000000000000000000002'],
     });
     expect(payload.notificationIds).toHaveLength(2);
   });
@@ -159,5 +159,15 @@ describe('Frontend Notification Integration Tests', () => {
         createdAt: '2026-10-12T10:00:00.000Z',
       }),
     ).toThrow();
+  });
+
+  it('FE-NTF-007: renders NotificationPreferencesDialog safely without throwing error on missing channels', () => {
+    const html = renderToString(
+      React.createElement(NotificationPreferencesDialog, { open: true, onClose: () => {} }),
+    );
+    expect(html).toContain('Notification Preferences');
+    expect(html).toContain('Delivery Channels');
+    expect(html).toContain('Digest Frequency');
+    expect(html).toContain('Save Preferences');
   });
 });

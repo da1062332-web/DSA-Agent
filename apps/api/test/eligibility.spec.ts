@@ -20,8 +20,12 @@ const IDEM = { 'Idempotency-Key': 'elg-unit-1' };
 describe('eligibility: permissions and headers (MOD-ELG)', () => {
   it('TEST-ELG-001 running and reading assessments need application.read (403 without)', async () => {
     const none = as('lead.read');
-    expect(code(await request(none).post(`/v1/applications/${APP}/eligibility-assessments`).set(IDEM).send({}))).toBe('FORBIDDEN');
-    expect(code(await request(none).get(`/v1/applications/${APP}/eligibility-assessments`))).toBe('FORBIDDEN');
+    expect(
+      code(await request(none).post(`/v1/applications/${APP}/eligibility-assessments`).set(IDEM).send({})),
+    ).toBe('FORBIDDEN');
+    expect(code(await request(none).get(`/v1/applications/${APP}/eligibility-assessments`))).toBe(
+      'FORBIDDEN',
+    );
   });
 
   it('TEST-ELG-002 an override needs eligibility.override; application.read is not enough', async () => {
@@ -33,7 +37,9 @@ describe('eligibility: permissions and headers (MOD-ELG)', () => {
   });
 
   it('TEST-ELG-003 running an assessment or an override without an Idempotency-Key is 400', async () => {
-    const run = await request(as('application.read')).post(`/v1/applications/${APP}/eligibility-assessments`).send({});
+    const run = await request(as('application.read'))
+      .post(`/v1/applications/${APP}/eligibility-assessments`)
+      .send({});
     expect(run.status).toBe(400);
     const over = await request(as('eligibility.override'))
       .post(`/v1/eligibility-assessments/${ELG}/overrides`)
@@ -44,9 +50,17 @@ describe('eligibility: permissions and headers (MOD-ELG)', () => {
   it('TEST-ELG-004 an override with a short reason, or an unknown field, is 422 before any database call', async () => {
     const approver = as('eligibility.override');
     const url = `/v1/eligibility-assessments/${ELG}/overrides`;
-    expect((await request(approver).post(url).set(IDEM).send({ productVersionId: 'prv_x_1', reason: 'short' })).status).toBe(422);
     expect(
-      (await request(approver).post(url).set(IDEM).send({ productVersionId: 'prv_x_1', reason: 'A reason that is long enough', extra: 1 })).status,
+      (await request(approver).post(url).set(IDEM).send({ productVersionId: 'prv_x_1', reason: 'short' }))
+        .status,
+    ).toBe(422);
+    expect(
+      (
+        await request(approver)
+          .post(url)
+          .set(IDEM)
+          .send({ productVersionId: 'prv_x_1', reason: 'A reason that is long enough', extra: 1 })
+      ).status,
     ).toBe(422);
   });
 });

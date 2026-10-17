@@ -3,6 +3,4 @@
 import type { RouteObject } from 'react-router-dom';
 import { TaskList } from './TaskList';
 
-export const routes: RouteObject[] = [
-  { path: '/tasks', element: <TaskList /> },
-];
+export const routes: RouteObject[] = [{ path: '/tasks', element: <TaskList /> }];

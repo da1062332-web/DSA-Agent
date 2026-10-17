@@ -23,4 +23,3 @@ export interface DashboardFilterState {
   userId?: string;
   productId?: string;
 }
-

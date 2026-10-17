@@ -1,8 +1,4 @@
-export type ProductCategory =
-  | 'HOME_LOAN'
-  | 'LAP'
-  | 'BUSINESS_LOAN'
-  | 'PERSONAL_LOAN';
+export type ProductCategory = 'HOME_LOAN' | 'LAP' | 'BUSINESS_LOAN' | 'PERSONAL_LOAN';
 
 export type ProductStatus = 'ACTIVE' | 'INACTIVE';
 

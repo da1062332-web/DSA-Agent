@@ -42,20 +42,32 @@ export function toImportBatchDto(row: ImportBatchRow): ImportBatch {
     fileSizeBytes: Number(row.file_size_bytes),
     checksumSha256: row.checksum_sha256,
     idempotencyKey: row.idempotency_key,
-    columnMapping: typeof row.column_mapping === 'string' ? JSON.parse(row.column_mapping) : row.column_mapping ?? {},
-    importOptions: typeof row.import_options === 'string' ? JSON.parse(row.import_options) : row.import_options ?? {},
+    columnMapping:
+      typeof row.column_mapping === 'string' ? JSON.parse(row.column_mapping) : (row.column_mapping ?? {}),
+    importOptions:
+      typeof row.import_options === 'string' ? JSON.parse(row.import_options) : (row.import_options ?? {}),
     status: row.status,
     totalRows: row.total_rows,
     validRows: row.valid_rows,
     invalidRows: row.invalid_rows,
     importedRows: row.imported_rows,
     reportFileKey: row.report_file_key,
-    errorSummary: typeof row.error_summary === 'string' ? JSON.parse(row.error_summary) : row.error_summary ?? [],
-    previewData: typeof row.preview_data === 'string' ? JSON.parse(row.preview_data) : row.preview_data ?? [],
+    errorSummary:
+      typeof row.error_summary === 'string' ? JSON.parse(row.error_summary) : (row.error_summary ?? []),
+    previewData:
+      typeof row.preview_data === 'string' ? JSON.parse(row.preview_data) : (row.preview_data ?? []),
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
-    committedAt: row.committed_at ? (row.committed_at instanceof Date ? row.committed_at.toISOString() : String(row.committed_at)) : null,
-    rolledBackAt: row.rolled_back_at ? (row.rolled_back_at instanceof Date ? row.rolled_back_at.toISOString() : String(row.rolled_back_at)) : null,
+    committedAt: row.committed_at
+      ? row.committed_at instanceof Date
+        ? row.committed_at.toISOString()
+        : String(row.committed_at)
+      : null,
+    rolledBackAt: row.rolled_back_at
+      ? row.rolled_back_at instanceof Date
+        ? row.rolled_back_at.toISOString()
+        : String(row.rolled_back_at)
+      : null,
     expiresAt: row.expires_at instanceof Date ? row.expires_at.toISOString() : String(row.expires_at),
     lockVersion: row.lock_version,
   };
@@ -95,11 +107,7 @@ export class ImportRepository {
     return result.rows[0]!;
   }
 
-  async findBatchById(
-    tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<ImportBatchRow | null> {
+  async findBatchById(tx: Tx, tenantId: string, id: string): Promise<ImportBatchRow | null> {
     const result = await sql<ImportBatchRow>`
       SELECT * FROM import_batch
        WHERE tenant_id = ${tenantId} AND id = ${id}
@@ -108,11 +116,7 @@ export class ImportRepository {
     return result.rows[0] ?? null;
   }
 
-  async findBatchByIdForUpdate(
-    tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<ImportBatchRow | null> {
+  async findBatchByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<ImportBatchRow | null> {
     const result = await sql<ImportBatchRow>`
       SELECT * FROM import_batch
        WHERE tenant_id = ${tenantId} AND id = ${id}
@@ -122,10 +126,7 @@ export class ImportRepository {
     return result.rows[0] ?? null;
   }
 
-  async listBatches(
-    tx: Tx,
-    tenantId: string,
-  ): Promise<ImportBatchRow[]> {
+  async listBatches(tx: Tx, tenantId: string): Promise<ImportBatchRow[]> {
     const result = await sql<ImportBatchRow>`
       SELECT * FROM import_batch
        WHERE tenant_id = ${tenantId}
@@ -190,11 +191,7 @@ export class ImportRepository {
     return result.rows[0]!;
   }
 
-  async updateRollback(
-    tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<ImportBatchRow> {
+  async updateRollback(tx: Tx, tenantId: string, id: string): Promise<ImportBatchRow> {
     const result = await sql<ImportBatchRow>`
       UPDATE import_batch
          SET status = 'ROLLED_BACK',
@@ -222,11 +219,7 @@ export class ImportRepository {
     return result.rows;
   }
 
-  async rollbackImportedLeads(
-    tx: Tx,
-    tenantId: string,
-    batchId: string,
-  ): Promise<number> {
+  async rollbackImportedLeads(tx: Tx, tenantId: string, batchId: string): Promise<number> {
     // Only archive leads that have not converted and have no applications
     const result = await sql`
       UPDATE lead
@@ -241,11 +234,7 @@ export class ImportRepository {
     return Number(result.numAffectedRows ?? 0);
   }
 
-  async rollbackImportedCustomers(
-    tx: Tx,
-    tenantId: string,
-    batchId: string,
-  ): Promise<number> {
+  async rollbackImportedCustomers(tx: Tx, tenantId: string, batchId: string): Promise<number> {
     // Anonymize or mark inactive for customers
     const result = await sql`
       UPDATE customer
@@ -260,7 +249,10 @@ export class ImportRepository {
 
 export class InMemoryImportRepository extends ImportRepository {
   private batches = new Map<string, ImportBatchRow>();
-  private importedLeads = new Map<string, Array<{ id: string; state: string; application_id: string | null }>>();
+  private importedLeads = new Map<
+    string,
+    Array<{ id: string; state: string; application_id: string | null }>
+  >();
 
   override async createImportBatch(
     _tx: Tx,
@@ -315,7 +307,11 @@ export class InMemoryImportRepository extends ImportRepository {
     return this.batches.get(`${tenantId}:${id}`) ?? null;
   }
 
-  override async findBatchByIdForUpdate(_tx: Tx, tenantId: string, id: string): Promise<ImportBatchRow | null> {
+  override async findBatchByIdForUpdate(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<ImportBatchRow | null> {
     return this.batches.get(`${tenantId}:${id}`) ?? null;
   }
 
@@ -381,7 +377,11 @@ export class InMemoryImportRepository extends ImportRepository {
     return row;
   }
 
-  override async findImportedLeads(_tx: Tx, tenantId: string, batchId: string): Promise<Array<{ id: string; state: string; application_id: string | null }>> {
+  override async findImportedLeads(
+    _tx: Tx,
+    tenantId: string,
+    batchId: string,
+  ): Promise<Array<{ id: string; state: string; application_id: string | null }>> {
     return this.importedLeads.get(`${tenantId}:${batchId}`) ?? [];
   }
 

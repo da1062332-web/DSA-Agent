@@ -212,10 +212,7 @@ export function createRouter(deps: ApiDeps): Router {
    * POST /tasks/:id/snooze
    */
   router.post('/tasks/:id/snooze', async (_req: Request, _res: Response) => {
-    throw AppError.of(
-      'INVALID_STATE',
-      'Task snooze and reminder schedules are deferred to TASK-405.',
-    );
+    throw AppError.of('INVALID_STATE', 'Task snooze and reminder schedules are deferred to TASK-405.');
   });
 
   /**
@@ -223,10 +220,7 @@ export function createRouter(deps: ApiDeps): Router {
    * POST /tasks/bulk-reassignment
    */
   router.post('/tasks/bulk-reassignment', async (_req: Request, _res: Response) => {
-    throw AppError.of(
-      'INVALID_STATE',
-      'Bulk reassignment is deferred pending TASK-411.',
-    );
+    throw AppError.of('INVALID_STATE', 'Bulk reassignment is deferred pending TASK-411.');
   });
 
   return router;

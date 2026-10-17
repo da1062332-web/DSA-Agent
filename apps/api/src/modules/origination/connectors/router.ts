@@ -123,13 +123,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const idemKey = requireIdempotencyKey(req);
       const input = ActivateConnectorSchema.parse(req.body);
 
-      const { connector, isReplayed } = await service.activateConnector(
-        ctx,
-        id,
-        input,
-        ifMatch,
-        idemKey,
-      );
+      const { connector, isReplayed } = await service.activateConnector(ctx, id, input, ifMatch, idemKey);
 
       res.setHeader('ETag', `"${connector.lockVersion}"`);
       if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');
@@ -150,13 +144,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const idemKey = requireIdempotencyKey(req);
       const input = UpdateConnectorStatusSchema.parse(req.body);
 
-      const { connector, isReplayed } = await service.updateConnectorStatus(
-        ctx,
-        id,
-        input,
-        ifMatch,
-        idemKey,
-      );
+      const { connector, isReplayed } = await service.updateConnectorStatus(ctx, id, input, ifMatch, idemKey);
 
       res.setHeader('ETag', `"${connector.lockVersion}"`);
       if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');
@@ -190,12 +178,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const idemKey = requireIdempotencyKey(req);
       const input = CreateConnectorBankAccountSchema.parse(req.body);
 
-      const { bankAccount, isReplayed } = await service.createBankAccount(
-        ctx,
-        id,
-        input,
-        idemKey,
-      );
+      const { bankAccount, isReplayed } = await service.createBankAccount(ctx, id, input, idemKey);
 
       res.setHeader('ETag', `"${bankAccount.lockVersion}"`);
       if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');
@@ -208,20 +191,23 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
   // ==========================================
   // Approval for Bank Account (SOD)
   // ==========================================
-  router.post('/connectors/:id/bank-accounts/:accountId/approval', async (req: Request, res: Response, next) => {
-    try {
-      const ctx = requireContext(req);
-      const id = String(req.params.id);
-      const accountId = String(req.params.accountId);
-      const input = ApproveConnectorBankAccountSchema.parse(req.body);
+  router.post(
+    '/connectors/:id/bank-accounts/:accountId/approval',
+    async (req: Request, res: Response, next) => {
+      try {
+        const ctx = requireContext(req);
+        const id = String(req.params.id);
+        const accountId = String(req.params.accountId);
+        const input = ApproveConnectorBankAccountSchema.parse(req.body);
 
-      const approved = await service.approveBankAccount(ctx, id, accountId, input);
-      res.setHeader('ETag', `"${approved.lockVersion}"`);
-      res.status(200).json(approved);
-    } catch (err) {
-      next(err);
-    }
-  });
+        const approved = await service.approveBankAccount(ctx, id, accountId, input);
+        res.setHeader('ETag', `"${approved.lockVersion}"`);
+        res.status(200).json(approved);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // ==========================================
   // GET /v1/connectors/:id/agreements

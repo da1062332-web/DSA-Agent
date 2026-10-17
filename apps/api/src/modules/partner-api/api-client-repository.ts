@@ -15,7 +15,9 @@ export interface ApiClientRepository {
   update(
     ctx: RequestContext,
     id: string,
-    patch: Partial<Pick<ApiClientRecord, 'name' | 'partnerName' | 'status' | 'scopes' | 'rateLimitRpm' | 'allowedIps'>>,
+    patch: Partial<
+      Pick<ApiClientRecord, 'name' | 'partnerName' | 'status' | 'scopes' | 'rateLimitRpm' | 'allowedIps'>
+    >,
   ): Promise<ApiClientRecord | null>;
   /** Replaces the secret hash and bumps lock_version. */
   rotateSecret(ctx: RequestContext, id: string, clientSecretHash: string): Promise<ApiClientRecord | null>;
@@ -72,14 +74,28 @@ export class PgApiClientRepository implements ApiClientRepository {
     private readonly auditPort: AuditPort,
   ) {}
 
-  private audit(tx: Parameters<AuditPort['record']>[0], ctx: RequestContext, action: string, id: string, extra: { before?: Record<string, unknown>; after?: Record<string, unknown> } = {}) {
-    return this.auditPort.record(tx, ctx, { action, entityType: 'API_CLIENT', entityId: id, permissionUsed: 'api.manage', ...extra });
+  private audit(
+    tx: Parameters<AuditPort['record']>[0],
+    ctx: RequestContext,
+    action: string,
+    id: string,
+    extra: { before?: Record<string, unknown>; after?: Record<string, unknown> } = {},
+  ) {
+    return this.auditPort.record(tx, ctx, {
+      action,
+      entityType: 'API_CLIENT',
+      entityId: id,
+      permissionUsed: 'api.manage',
+      ...extra,
+    });
   }
 
   list(ctx: RequestContext): Promise<ApiClientRecord[]> {
     return this.txRunner.withTenantTx(ctx, async (tx) => {
       const res = await sql<Row>`
-        SELECT * FROM app.api_client WHERE tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' ORDER BY created_at DESC, id`.execute(tx);
+        SELECT * FROM app.api_client WHERE tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' ORDER BY created_at DESC, id`.execute(
+        tx,
+      );
       return res.rows.map(toRecord);
     });
   }
@@ -87,7 +103,9 @@ export class PgApiClientRepository implements ApiClientRepository {
   get(ctx: RequestContext, id: string): Promise<ApiClientRecord | null> {
     return this.txRunner.withTenantTx(ctx, async (tx) => {
       const res = await sql<Row>`
-        SELECT * FROM app.api_client WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED'`.execute(tx);
+        SELECT * FROM app.api_client WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED'`.execute(
+        tx,
+      );
       return res.rows[0] ? toRecord(res.rows[0]) : null;
     });
   }
@@ -99,9 +117,17 @@ export class PgApiClientRepository implements ApiClientRepository {
                                     allowed_ips, last_used_at, lock_version, created_at, updated_at, created_by, updated_by)
         VALUES (${r.id}, ${r.tenantId}, ${r.clientId}, ${r.clientSecretHash}, ${r.name}, ${r.partnerName}, ${r.status},
                 ${textArray(r.scopes)}, ${r.rateLimitRpm}, ${textArray(r.allowedIps)}, NULL, ${r.lockVersion},
-                ${r.createdAt}::timestamptz, ${r.updatedAt}::timestamptz, ${r.createdBy}, ${r.updatedBy})`.execute(tx);
+                ${r.createdAt}::timestamptz, ${r.updatedAt}::timestamptz, ${r.createdBy}, ${r.updatedBy})`.execute(
+        tx,
+      );
       await this.audit(tx, ctx, 'api_client.created', r.id, {
-        after: { clientId: r.clientId, name: r.name, partnerName: r.partnerName, scopes: r.scopes, rateLimitRpm: r.rateLimitRpm },
+        after: {
+          clientId: r.clientId,
+          name: r.name,
+          partnerName: r.partnerName,
+          scopes: r.scopes,
+          rateLimitRpm: r.rateLimitRpm,
+        },
       });
     });
   }
@@ -113,7 +139,9 @@ export class PgApiClientRepository implements ApiClientRepository {
   ): Promise<ApiClientRecord | null> {
     return this.txRunner.withTenantTx(ctx, async (tx) => {
       const current = await sql<Row>`
-        SELECT * FROM app.api_client WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' FOR UPDATE`.execute(tx);
+        SELECT * FROM app.api_client WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' FOR UPDATE`.execute(
+        tx,
+      );
       const row = current.rows[0];
       if (!row) return null;
       const next = {
@@ -131,8 +159,20 @@ export class PgApiClientRepository implements ApiClientRepository {
          WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} RETURNING *`.execute(tx);
       if (!updated.rows[0]) return null;
       await this.audit(tx, ctx, 'api_client.updated', id, {
-        before: { name: row.name, partnerName: row.partner_name, status: row.status, scopes: row.scopes ?? [], rateLimitRpm: Number(row.rate_limit_rpm) },
-        after: { name: next.name, partnerName: next.partner_name, status: next.status, scopes: next.scopes, rateLimitRpm: next.rate_limit_rpm },
+        before: {
+          name: row.name,
+          partnerName: row.partner_name,
+          status: row.status,
+          scopes: row.scopes ?? [],
+          rateLimitRpm: Number(row.rate_limit_rpm),
+        },
+        after: {
+          name: next.name,
+          partnerName: next.partner_name,
+          status: next.status,
+          scopes: next.scopes,
+          rateLimitRpm: next.rate_limit_rpm,
+        },
       });
       return toRecord(updated.rows[0]);
     });
@@ -143,9 +183,13 @@ export class PgApiClientRepository implements ApiClientRepository {
       const res = await sql<Row>`
         UPDATE app.api_client SET client_secret_hash = ${clientSecretHash}, lock_version = lock_version + 1,
                updated_at = ${ctx.now.toISOString()}::timestamptz, updated_by = ${ctx.principal.id}
-         WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING *`.execute(tx);
+         WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING *`.execute(
+        tx,
+      );
       if (!res.rows[0]) return null;
-      await this.audit(tx, ctx, 'api_client.secret_rotated', id, { after: { clientId: res.rows[0].client_id } }); // never the secret or its hash
+      await this.audit(tx, ctx, 'api_client.secret_rotated', id, {
+        after: { clientId: res.rows[0].client_id },
+      }); // never the secret or its hash
       return toRecord(res.rows[0]);
     });
   }
@@ -155,7 +199,9 @@ export class PgApiClientRepository implements ApiClientRepository {
       const res = await sql<{ id: string }>`
         UPDATE app.api_client SET status = 'REVOKED', lock_version = lock_version + 1,
                updated_at = ${ctx.now.toISOString()}::timestamptz, updated_by = ${ctx.principal.id}
-         WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING id`.execute(tx);
+         WHERE id = ${id} AND tenant_id = ${ctx.principal.tenantId} AND status <> 'REVOKED' RETURNING id`.execute(
+        tx,
+      );
       if (res.rows.length === 0) return false;
       await this.audit(tx, ctx, 'api_client.revoked', id);
       return true;
@@ -182,7 +228,11 @@ export class InMemoryApiClientRepository implements ApiClientRepository {
     this.clients.set(record.id, { ...record });
   }
 
-  async update(ctx: RequestContext, id: string, patch: Parameters<ApiClientRepository['update']>[2]): Promise<ApiClientRecord | null> {
+  async update(
+    ctx: RequestContext,
+    id: string,
+    patch: Parameters<ApiClientRepository['update']>[2],
+  ): Promise<ApiClientRecord | null> {
     const c = this.clients.get(id);
     if (!c || c.tenantId !== ctx.principal.tenantId || c.status === 'REVOKED') return null;
     if (patch.name !== undefined) c.name = patch.name;
@@ -197,7 +247,11 @@ export class InMemoryApiClientRepository implements ApiClientRepository {
     return { ...c };
   }
 
-  async rotateSecret(ctx: RequestContext, id: string, clientSecretHash: string): Promise<ApiClientRecord | null> {
+  async rotateSecret(
+    ctx: RequestContext,
+    id: string,
+    clientSecretHash: string,
+  ): Promise<ApiClientRecord | null> {
     const c = this.clients.get(id);
     if (!c || c.tenantId !== ctx.principal.tenantId || c.status === 'REVOKED') return null;
     c.clientSecretHash = clientSecretHash;

@@ -3,6 +3,7 @@
 import type { Database, RequestContext } from '@dsa/contracts';
 import { createAuditPort, createAuthz, createIdGenerator } from '@dsa/kernel';
 import { sql, type Kysely } from 'kysely';
+import crypto from 'node:crypto';
 import { monotonicFactory } from 'ulid';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb } from '../src/kernel-min/db';
@@ -14,7 +15,8 @@ import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 const nextUlid = monotonicFactory();
 
 const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
-const adminDbUrl = resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
+const adminDbUrl =
+  resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -110,7 +112,10 @@ describeLivePg('MOD-REC: Live PostgreSQL & RLS Verification', () => {
   it('INT-REC-002: Imports lender statement and persists masked lines to live DB', async () => {
     const ctxA = contextFor(TENANT_A, USER_A_MAKER, ['finance.reconcile']);
     const period = `2026-${Math.floor(Math.random() * 80 + 10)}`;
-    const fileSha256 = 'f'.repeat(64);
+    const fileSha256 = crypto
+      .createHash('sha256')
+      .update(Date.now() + nextUlid())
+      .digest('hex');
 
     const imported = await txRunner.withTenantTx(ctxA, async (tx) => {
       return service.importLenderStatement(tx, ctxA, {
@@ -154,7 +159,10 @@ describeLivePg('MOD-REC: Live PostgreSQL & RLS Verification', () => {
     const ctxB = contextFor(TENANT_B, 'usr_b_maker', ['finance.reconcile', 'finance.view']);
 
     const period = `2026-${Math.floor(Math.random() * 80 + 10)}`;
-    const fileSha256 = 'e'.repeat(64);
+    const fileSha256 = crypto
+      .createHash('sha256')
+      .update(Date.now() + nextUlid())
+      .digest('hex');
 
     const statementA = await txRunner.withTenantTx(ctxA, async (tx) => {
       return service.importLenderStatement(tx, ctxA, {
@@ -188,7 +196,10 @@ describeLivePg('MOD-REC: Live PostgreSQL & RLS Verification', () => {
   it('INT-REC-004: Enforces partial unique constraint uq_active_match_per_line', async () => {
     const ctxA = contextFor(TENANT_A, USER_A_MAKER, ['finance.reconcile']);
     const period = `2026-${Math.floor(Math.random() * 80 + 10)}`;
-    const fileSha256 = 'd'.repeat(64);
+    const fileSha256 = crypto
+      .createHash('sha256')
+      .update(Date.now() + nextUlid())
+      .digest('hex');
 
     const statement = await txRunner.withTenantTx(ctxA, async (tx) => {
       return service.importLenderStatement(tx, ctxA, {

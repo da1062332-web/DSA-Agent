@@ -74,7 +74,7 @@ export function formatVerificationRow(row: RawVerificationRow): VerificationResp
 export async function getVerificationById(
   tx: Tx,
   _ctx: RequestContext,
-  id: string
+  id: string,
 ): Promise<VerificationResponse> {
   const result = await sql<RawVerificationRow>`
     SELECT * FROM app.verification_request WHERE id = ${id}
@@ -90,13 +90,16 @@ export async function getVerificationById(
 export async function listVerifications(
   tx: Tx,
   ctx: RequestContext,
-  query: VerificationListQuery
-): Promise<{ data: VerificationResponse[]; meta: { nextCursor: string | null; limit: number; totalCount?: number } }> {
+  query: VerificationListQuery,
+): Promise<{
+  data: VerificationResponse[];
+  meta: { nextCursor: string | null; limit: number; totalCount?: number };
+}> {
   const conditions: RawBuilder<unknown>[] = [];
 
   // Scoping check: if user has branch grants and not tenant scope, enforce their branch
   const grants = ctx.principal.grants.filter(
-    (g) => g.code === 'verification.read' || g.code === 'verification.complete'
+    (g) => g.code === 'verification.read' || g.code === 'verification.complete',
   );
   const isTenantWide = ctx.principal.kind === 'SERVICE' || grants.some((g) => g.scope === 'TENANT');
   if (!isTenantWide) {
@@ -160,7 +163,7 @@ export async function createVerification(
   tx: Tx,
   ctx: RequestContext,
   id: string,
-  input: CreateVerificationRequest
+  input: CreateVerificationRequest,
 ): Promise<VerificationResponse> {
   const actor = ctx.principal.id;
   const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
@@ -217,7 +220,7 @@ export async function updateVerification(
   ctx: RequestContext,
   id: string,
   ifMatchVersion: number,
-  input: UpdateVerificationRequest
+  input: UpdateVerificationRequest,
 ): Promise<VerificationResponse> {
   const existing = await sql<RawVerificationRow>`
     SELECT * FROM app.verification_request WHERE id = ${id} FOR UPDATE
@@ -237,8 +240,10 @@ export async function updateVerification(
   const updates: RawBuilder<unknown>[] = [];
   if (input.status !== undefined) updates.push(sql`status = ${input.status}`);
   if (input.priority !== undefined) updates.push(sql`priority = ${input.priority}`);
-  if (input.assignedToUserId !== undefined) updates.push(sql`assigned_to_user_id = ${input.assignedToUserId}`);
-  if (input.assignedToQueueId !== undefined) updates.push(sql`assigned_to_queue_id = ${input.assignedToQueueId}`);
+  if (input.assignedToUserId !== undefined)
+    updates.push(sql`assigned_to_user_id = ${input.assignedToUserId}`);
+  if (input.assignedToQueueId !== undefined)
+    updates.push(sql`assigned_to_queue_id = ${input.assignedToQueueId}`);
   if (input.scheduledAt !== undefined) {
     const sAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
     updates.push(sql`scheduled_at = ${sAt}`);
@@ -267,7 +272,7 @@ export async function completeVerification(
   ctx: RequestContext,
   id: string,
   ifMatchVersion: number | null,
-  input: CompleteVerificationRequest
+  input: CompleteVerificationRequest,
 ): Promise<VerificationResponse> {
   const existing = await sql<RawVerificationRow>`
     SELECT * FROM app.verification_request WHERE id = ${id} FOR UPDATE
@@ -291,7 +296,7 @@ export async function completeVerification(
 
   const now = new Date();
   const markStatus = input.markStatus ?? (input.outcome === 'POSITIVE' ? 'VERIFIED' : 'REJECTED');
-  const rejectionReason = markStatus === 'REJECTED' ? input.rejectionReason ?? 'OTHER' : null;
+  const rejectionReason = markStatus === 'REJECTED' ? (input.rejectionReason ?? 'OTHER') : null;
 
   const result = await sql<RawVerificationRow>`
     UPDATE app.verification_request
@@ -318,7 +323,7 @@ export async function reviewChecklistItem(
   tx: Tx,
   ctx: RequestContext,
   verificationId: string,
-  input: ChecklistAttestationRequest
+  input: ChecklistAttestationRequest,
 ): Promise<{ checklistItemId: string; status: string; reviewedBy: string; reviewedAt: string }> {
   // Ensure the verification request exists
   const vrfRes = await sql<RawVerificationRow>`
@@ -330,7 +335,7 @@ export async function reviewChecklistItem(
 
   const now = new Date();
   const actor = ctx.principal.id;
-  const rejectReason = input.status === 'REJECTED' ? input.rejectReason ?? 'OTHER' : null;
+  const rejectReason = input.status === 'REJECTED' ? (input.rejectReason ?? 'OTHER') : null;
 
   const itemRes = await sql<{ id: string; status: string; reviewed_by: string; reviewed_at: string }>`
     UPDATE app.checklist_item

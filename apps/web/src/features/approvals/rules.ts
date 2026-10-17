@@ -6,7 +6,12 @@ export const isValidScriptRef = (v: string): boolean => v.trim().length >= 3;
 export const isValidTargetEntity = (v: string): boolean => v.trim().length >= 2;
 export const isValidChangeDescription = (v: string): boolean => v.trim().length >= 5;
 
-export const isValidCorrection = (c: { justification: string; scriptRef: string; targetEntity: string; changeDescription: string }): boolean =>
+export const isValidCorrection = (c: {
+  justification: string;
+  scriptRef: string;
+  targetEntity: string;
+  changeDescription: string;
+}): boolean =>
   isValidJustification(c.justification) &&
   isValidScriptRef(c.scriptRef) &&
   isValidTargetEntity(c.targetEntity) &&
@@ -41,4 +46,5 @@ export const CORRECTION_STATUS_LABELS: Record<DataCorrectionRequest['status'], s
 };
 
 /** Shown with every correction: no dry-run diff is invented. */
-export const NO_DIFF_NOTE = 'No dry-run diff has been attached yet. The executor attaches it before running the script.';
+export const NO_DIFF_NOTE =
+  'No dry-run diff has been attached yet. The executor attaches it before running the script.';

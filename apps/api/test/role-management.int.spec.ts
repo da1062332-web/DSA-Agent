@@ -26,7 +26,10 @@ afterAll(async () => {
 });
 
 /** The API as a user of `tenant`. `fresh` controls whether the session passed an authenticator check in the last 15 minutes (step-up). */
-function appFor(tenant: TenantFixture, opts: { fresh?: boolean; userIndex?: 0 | 1; held?: PermissionCode[] } = {}) {
+function appFor(
+  tenant: TenantFixture,
+  opts: { fresh?: boolean; userIndex?: 0 | 1; held?: PermissionCode[] } = {},
+) {
   const ids = createIdGenerator();
   const userId = tenant.userIds[opts.userIndex ?? 0];
   return createApp({

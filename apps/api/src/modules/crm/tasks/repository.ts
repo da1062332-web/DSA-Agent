@@ -196,10 +196,7 @@ export class SqlTaskRepository implements TaskRepository {
     return result.rows[0] ?? null;
   }
 
-  async listTasks(
-    tx: Tx,
-    params: TaskListParams,
-  ): Promise<{ tasks: TaskRow[]; nextCursor: string | null }> {
+  async listTasks(tx: Tx, params: TaskListParams): Promise<{ tasks: TaskRow[]; nextCursor: string | null }> {
     const limit = params.limit;
     const fetchLimit = limit + 1;
 
@@ -244,11 +241,7 @@ export class SqlTaskRepository implements TaskRepository {
                   )`
                 : sql``
         }
-        ${
-          cursorDate && cursorId
-            ? sql`AND (due_at, id) < (${cursorDate}, ${cursorId})`
-            : sql``
-        }
+        ${cursorDate && cursorId ? sql`AND (due_at, id) < (${cursorDate}, ${cursorId})` : sql``}
       ORDER BY due_at ASC, id ASC
       LIMIT ${fetchLimit}
     `.execute(tx);
@@ -259,9 +252,7 @@ export class SqlTaskRepository implements TaskRepository {
     if (rows.length > limit) {
       const nextItem = rows[limit - 1];
       if (nextItem) {
-        nextCursor = Buffer.from(
-          `${nextItem.due_at.toISOString()}|${nextItem.id}`,
-        ).toString('base64url');
+        nextCursor = Buffer.from(`${nextItem.due_at.toISOString()}|${nextItem.id}`).toString('base64url');
       }
       rows.pop();
     }
@@ -418,10 +409,7 @@ export class InMemoryTaskRepository implements TaskRepository {
     return updated;
   }
 
-  async listTasks(
-    _tx: Tx,
-    params: TaskListParams,
-  ): Promise<{ tasks: TaskRow[]; nextCursor: string | null }> {
+  async listTasks(_tx: Tx, params: TaskListParams): Promise<{ tasks: TaskRow[]; nextCursor: string | null }> {
     let list = Array.from(this.tasks.values()).filter((t) => t.tenant_id === params.tenantId);
 
     if (params.status) {
@@ -452,7 +440,11 @@ export class InMemoryTaskRepository implements TaskRepository {
         if (params.allowedOwnUserId && t.owner_user_id === params.allowedOwnUserId) {
           return true;
         }
-        if (params.allowedTeamUserIds && t.owner_user_id && params.allowedTeamUserIds.includes(t.owner_user_id)) {
+        if (
+          params.allowedTeamUserIds &&
+          t.owner_user_id &&
+          params.allowedTeamUserIds.includes(t.owner_user_id)
+        ) {
           return true;
         }
         if (t.owner_queue_id && params.userQueueIds.includes(t.owner_queue_id)) {
@@ -494,9 +486,7 @@ export class InMemoryTaskRepository implements TaskRepository {
     if (list.length > params.limit) {
       const nextItem = list[params.limit - 1];
       if (nextItem) {
-        nextCursor = Buffer.from(
-          `${nextItem.due_at.toISOString()}|${nextItem.id}`,
-        ).toString('base64url');
+        nextCursor = Buffer.from(`${nextItem.due_at.toISOString()}|${nextItem.id}`).toString('base64url');
       }
       list = list.slice(0, params.limit);
     }

@@ -76,6 +76,36 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
+  // List All Sanctions (Tenant Scope)
+  router.get('/sanctions', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const { status, limit } = req.query;
+      const list = await service.listAllSanctions(ctx, {
+        status: typeof status === 'string' ? status : undefined,
+        limit: limit ? Number(limit) : undefined,
+      });
+      return res.status(200).json({ data: list });
+    } catch (err) {
+      return next(err);
+    }
+  });
+
+  // List All Disbursement Tranches (Tenant Scope)
+  router.get('/disbursements', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const { status, limit } = req.query;
+      const list = await service.listAllTranches(ctx, {
+        status: typeof status === 'string' ? status : undefined,
+        limit: limit ? Number(limit) : undefined,
+      });
+      return res.status(200).json({ data: list });
+    } catch (err) {
+      return next(err);
+    }
+  });
+
   // Get Sanction by ID
   router.get('/sanctions/:id', async (req: Request, res: Response, next) => {
     try {

@@ -21,8 +21,14 @@ export type RoutingMode = (typeof ROUTING_MODES)[number];
 export const OperationalSettings = z.object({
   defaultSlaMinutes: z.number().int().min(1).max(1440).default(15),
   leadRoutingMode: z.enum(ROUTING_MODES).default('ROUND_ROBIN'),
-  businessHoursStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format').default('09:30'),
-  businessHoursEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format').default('18:30'),
+  businessHoursStart: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format')
+    .default('09:30'),
+  businessHoursEnd: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format')
+    .default('18:30'),
   dataRetentionDays: z.number().int().min(30).max(3650).default(365),
 });
 export type OperationalSettings = z.infer<typeof OperationalSettings>;
@@ -63,8 +69,14 @@ export const UpdateTenantConfigRequest = z.object({
     .object({
       defaultSlaMinutes: z.number().int().min(1).max(1440).optional(),
       leadRoutingMode: z.enum(ROUTING_MODES).optional(),
-      businessHoursStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format').optional(),
-      businessHoursEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format').optional(),
+      businessHoursStart: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format')
+        .optional(),
+      businessHoursEnd: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be HH:MM format')
+        .optional(),
       dataRetentionDays: z.number().int().min(30).max(3650).optional(),
     })
     .optional(),
@@ -83,19 +95,32 @@ export const BranchConfigSummary = z.object({
 });
 export type BranchConfigSummary = z.infer<typeof BranchConfigSummary>;
 
-export const CreateBranchRequest = z.object({
-  code: z
-    .string()
-    .regex(/^[A-Z0-9_-]{2,20}$/, 'Branch code must be 2-20 characters matching ^[A-Z0-9_-]{2,20}$, e.g. MUM01'),
-  name: z.string().min(1).max(100),
-  pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9').optional().nullable(),
-  timezone: z.string().default('Asia/Kolkata'),
-}).strict(); // unknown fields (for example tenantId) are refused, never ignored (FR-TEN-007)
+export const CreateBranchRequest = z
+  .object({
+    code: z
+      .string()
+      .regex(
+        /^[A-Z0-9_-]{2,20}$/,
+        'Branch code must be 2-20 characters matching ^[A-Z0-9_-]{2,20}$, e.g. MUM01',
+      ),
+    name: z.string().min(1).max(100),
+    pincode: z
+      .string()
+      .regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9')
+      .optional()
+      .nullable(),
+    timezone: z.string().default('Asia/Kolkata'),
+  })
+  .strict(); // unknown fields (for example tenantId) are refused, never ignored (FR-TEN-007)
 export type CreateBranchRequest = z.infer<typeof CreateBranchRequest>;
 
 export const UpdateBranchRequest = z.object({
   name: z.string().min(1).max(100).optional(),
-  pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9').optional().nullable(),
+  pincode: z
+    .string()
+    .regex(/^[1-9][0-9]{5}$/, 'Pincode must be 6 digits starting with 1-9')
+    .optional()
+    .nullable(),
   timezone: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });

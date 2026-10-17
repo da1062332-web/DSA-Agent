@@ -99,7 +99,8 @@ export class LeadService {
         : null,
       qualTenureMonths: lead.qual_tenure_months,
       qualPurposeCode: lead.qual_purpose_code,
-      disqualificationReason: (lead.disqualification_reason as MaskedLeadResource['disqualificationReason']) ?? null,
+      disqualificationReason:
+        (lead.disqualification_reason as MaskedLeadResource['disqualificationReason']) ?? null,
       lockVersion: lead.lock_version,
       createdAt: new Date(lead.created_at).toISOString(),
       updatedAt: new Date(lead.updated_at).toISOString(),
@@ -226,18 +227,12 @@ export class LeadService {
     let ownerQueueId: string | null = null;
 
     // Check if user has OWN scope grant exclusively
-    const isOwnOnly = ctx.principal.grants.every(
-      (g) => g.code !== 'lead.create' || g.scope === 'OWN',
-    );
+    const isOwnOnly = ctx.principal.grants.every((g) => g.code !== 'lead.create' || g.scope === 'OWN');
     if (isOwnOnly) {
       ownerUserId = ctx.principal.id;
     } else if (this.deps.userDirectoryPort) {
       try {
-        const branchQueue = await this.deps.userDirectoryPort.findBranchQueue(
-          tx,
-          input.branchId,
-          'INTAKE',
-        );
+        const branchQueue = await this.deps.userDirectoryPort.findBranchQueue(tx, input.branchId, 'INTAKE');
         if (branchQueue?.queueId) {
           ownerQueueId = branchQueue.queueId;
           const rrPick = await this.deps.userDirectoryPort.pickRoundRobin(tx, branchQueue.queueId);
@@ -630,16 +625,10 @@ export class LeadService {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
-    const updated = await this.deps.repository.updateLead(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        ...outcome.updates,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updated = await this.deps.repository.updateLead(tx, tenantId, id, expectedLockVersion, {
+      ...outcome.updates,
+      updated_by: ctx.principal.id,
+    });
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', 'Concurrent modification during transition.');
     }
@@ -767,7 +756,10 @@ export class LeadService {
     if (input.toUserId && this.deps.userDirectoryPort) {
       const dirUser = await this.deps.userDirectoryPort.getUser(tx, input.toUserId);
       if (!dirUser || dirUser.status !== 'ACTIVE' || !dirUser.branchIds.includes(lead.branch_id)) {
-        throw AppError.of('INVALID_ASSIGNEE', `User ${input.toUserId} cannot own leads in branch ${lead.branch_id}`);
+        throw AppError.of(
+          'INVALID_ASSIGNEE',
+          `User ${input.toUserId} cannot own leads in branch ${lead.branch_id}`,
+        );
       }
     }
     if (input.toQueueId && this.deps.userDirectoryPort) {
@@ -777,17 +769,11 @@ export class LeadService {
       }
     }
 
-    const updated = await this.deps.repository.updateLead(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        owner_user_id: input.toUserId ?? null,
-        owner_queue_id: input.toQueueId ?? null,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updated = await this.deps.repository.updateLead(tx, tenantId, id, expectedLockVersion, {
+      owner_user_id: input.toUserId ?? null,
+      owner_queue_id: input.toQueueId ?? null,
+      updated_by: ctx.principal.id,
+    });
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', 'Concurrent modification during assignment.');
     }
@@ -918,10 +904,7 @@ export class LeadService {
     }
 
     if (!lead.qual_applicant_type || !lead.qual_requested_amount) {
-      throw AppError.of(
-        'VALIDATION_ERROR',
-        'Lead is missing qualification fields required for conversion.',
-      );
+      throw AppError.of('VALIDATION_ERROR', 'Lead is missing qualification fields required for conversion.');
     }
 
     const now = ctx.now;
@@ -1078,18 +1061,12 @@ export class LeadService {
     }
 
     // 3. Update Lead to CONVERTED
-    const updatedLead = await this.deps.repository.updateLead(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        state: 'CONVERTED',
-        customer_id: customerId,
-        application_id: applicationId,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updatedLead = await this.deps.repository.updateLead(tx, tenantId, id, expectedLockVersion, {
+      state: 'CONVERTED',
+      customer_id: customerId,
+      application_id: applicationId,
+      updated_by: ctx.principal.id,
+    });
     if (!updatedLead) {
       throw AppError.of('VERSION_CONFLICT', 'Concurrent modification during lead conversion.');
     }

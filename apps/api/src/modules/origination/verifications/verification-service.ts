@@ -94,9 +94,7 @@ export class VerificationService {
           // 2. Generate unique verification ID
           const verId = `ver_${nextUlid()}`;
           const nowIso = ctx.now.toISOString();
-          const validityExpiresAt = input.validityExpiresAt
-            ? new Date(input.validityExpiresAt)
-            : null;
+          const validityExpiresAt = input.validityExpiresAt ? new Date(input.validityExpiresAt) : null;
 
           // 3. Insert immutable verification row (ENT-064)
           await sql`

@@ -7,7 +7,7 @@
 **Task Code:** `TASK-414`  
 **Evaluation Date:** 2026-10-14  
 **Active Branch:** `samarth`  
-**Document Status:** `FINAL CLOSURE VERIFIED & SIGNED OFF`  
+**Document Status:** `FINAL CLOSURE VERIFIED & SIGNED OFF`
 
 ---
 
@@ -30,12 +30,12 @@ Following explicit authorization to proceed with implementation under `TASK-414`
 
 ### Submodule Delivery Scorecard
 
-| Submodule | Code | Entities & Tables | Contract & API Endpoints | Security & RLS | Verification Status |
-|---|---|---|---|---|---|
-| **Metric Registry** | `SUB-RPT.01` | `app.metric_definition` (`ENT-094`) | `GET /v1/metric-definitions`<br>`GET /v1/metric-definitions/:code` | `report.read` | **100% COMPLETE — PASS** |
-| **Reporting Store** | `SUB-RPT.02` | `app.rpt_daily_operational_summary` | `GET /v1/reporting/control-totals`<br>`POST /v1/reporting/refresh` | `report.read`<br>`report.manage` | **100% COMPLETE — PASS** |
-| **Dashboards** | `SUB-RPT.03` | `rpt_daily_operational_summary`, `target` | `GET /v1/dashboards/{code}`<br>(6 Categories Supported) | `report.read` + Branch Scoping | **100% COMPLETE — PASS** |
-| **Report Catalogue** | `SUB-RPT.04` | `app.report_run` | `GET /v1/reports`<br>`POST /v1/reports/:code/runs`<br>`GET /v1/report-runs/:id` | `report.read` + Tenant Isolation | **100% COMPLETE — PASS** |
+| Submodule               | Code         | Entities & Tables                                     | Contract & API Endpoints                                                                                        | Security & RLS                                  | Verification Status      |
+| ----------------------- | ------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------ |
+| **Metric Registry**     | `SUB-RPT.01` | `app.metric_definition` (`ENT-094`)                   | `GET /v1/metric-definitions`<br>`GET /v1/metric-definitions/:code`                                              | `report.read`                                   | **100% COMPLETE — PASS** |
+| **Reporting Store**     | `SUB-RPT.02` | `app.rpt_daily_operational_summary`                   | `GET /v1/reporting/control-totals`<br>`POST /v1/reporting/refresh`                                              | `report.read`<br>`report.manage`                | **100% COMPLETE — PASS** |
+| **Dashboards**          | `SUB-RPT.03` | `rpt_daily_operational_summary`, `target`             | `GET /v1/dashboards/{code}`<br>(6 Categories Supported)                                                         | `report.read` + Branch Scoping                  | **100% COMPLETE — PASS** |
+| **Report Catalogue**    | `SUB-RPT.04` | `app.report_run`                                      | `GET /v1/reports`<br>`POST /v1/reports/:code/runs`<br>`GET /v1/report-runs/:id`                                 | `report.read` + Tenant Isolation                | **100% COMPLETE — PASS** |
 | **Exports & Schedules** | `SUB-RPT.05` | `app.export_job` (`ENT-111`)<br>`app.report_schedule` | `POST /v1/exports`<br>`GET /v1/exports/:id`<br>`POST /v1/report-schedules`<br>`DELETE /v1/report-schedules/:id` | `export.run`<br>`report.schedule`<br>24h Expiry | **100% COMPLETE — PASS** |
 
 ---
@@ -43,6 +43,7 @@ Following explicit authorization to proceed with implementation under `TASK-414`
 ## 2. Architecture & Database Changes
 
 ### 2.1 Database Migration `M-032`
+
 - **File:** `supabase/migrations/20261001000032_reporting_enterprise_suite.sql`
 - **Registered in:** `supabase/MANIFEST.md`
 - **Applied to:** Live Supabase PostgreSQL database
@@ -62,6 +63,7 @@ Following explicit authorization to proceed with implementation under `TASK-414`
 ## 3. Automated Verification Evidence
 
 ### 3.1 Database Integrity Checks (`npm run db:verify`)
+
 ```
 PASS  (a) RLS lint: must return zero rows (NFR-SEC-003)
 PASS  (b) No DELETE privilege for dsa_app anywhere: must return zero rows
@@ -69,9 +71,11 @@ PASS  (c) Tables without tenant_id must be on the global allow-list {tenant, per
 PASS  (e) Supabase exposure check: must return zero rows (anon/authenticated have no access to schema app)
 PASS  (d) Fail-closed check, run as dsa_api without SET app.tenant_id: every count must be 0
 ```
+
 **Result: 5/5 Checks Passed (Exit code 0).**
 
 ### 3.2 Live PostgreSQL Integration Tests (`apps/api/test/reporting.pg.int.spec.ts`)
+
 ```
  ✓ test/reporting.pg.int.spec.ts (9 tests) 2371ms
    ✓ PG-RPT-001 metric_definition catalog exists and is readable in schema app
@@ -84,9 +88,11 @@ PASS  (d) Fail-closed check, run as dsa_api without SET app.tenant_id: every cou
    ✓ PG-RPT-008 app.report_schedule enforces RLS and tenant isolation
    ✓ PG-RPT-009 verifies export.run and report.schedule permissions exist and are granted
 ```
+
 **Result: 9/9 Tests Passed (Exit code 0).**
 
 ### 3.3 Unit and Route Contract Tests (`apps/api/test/reporting.spec.ts`)
+
 ```
  ✓ test/reporting.spec.ts (33 tests) 1248ms
    ✓ TC-RPT-001 to TC-RPT-005: Metrics Query & Tenant/Branch Scoping
@@ -98,9 +104,11 @@ PASS  (d) Fail-closed check, run as dsa_api without SET app.tenant_id: every cou
    ✓ TC-RPT-024 to TC-RPT-027: Report Catalogue & Asynchronous Report Runs
    ✓ TC-RPT-028 to TC-RPT-034: Data Exports (24h Expiry) & Recurring Report Schedules
 ```
+
 **Result: 33/33 Tests Passed (Exit code 0).**
 
 ### 3.4 Web Client Tests & Build
+
 - `npm test -w @dsa/web`: 21 test files, 97 tests passed.
 - `npm run typecheck`: 0 errors across all 6 workspaces.
 - `npm run build`: `@dsa/api` (tsup) and `@dsa/web` (Vite) built production bundles with 0 errors.

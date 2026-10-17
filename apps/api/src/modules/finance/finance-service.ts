@@ -15,6 +15,8 @@ import {
   type CreatePayoutBatchInput,
   type CreatePayoutRequestInput,
   type CreateRecalculationProposalInput,
+  type DisbursePayoutGatewayInput,
+  type DisbursePayoutGatewayResponse,
   type PayoutApprovalInput,
   type PayoutApprovalResponse,
   type PayoutBatchResponse,
@@ -32,6 +34,7 @@ import {
 import { createHash } from 'crypto';
 import { ulid } from 'ulid';
 import { encryptPaymentRef, maskPaymentRef } from './crypto';
+import { paymentGatewayService } from './payment-gateway';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
@@ -43,11 +46,7 @@ import type {
   PayoutRequestRow,
   RecalculationProposalRow,
 } from './repository';
-import {
-  generateBankFileCsv,
-  InMemoryFinancialStorage,
-  type FinancialStoragePort,
-} from './storage';
+import { generateBankFileCsv, InMemoryFinancialStorage, type FinancialStoragePort } from './storage';
 
 export interface SettlementJournalEntry {
   sourceRef: string;
@@ -193,7 +192,11 @@ export class FinanceService {
     return this.toPlanResponse(row);
   }
 
-  async listCommissionPlans(tx: Tx, ctx: RequestContext, lenderId?: string): Promise<CommissionPlanResponse[]> {
+  async listCommissionPlans(
+    tx: Tx,
+    ctx: RequestContext,
+    lenderId?: string,
+  ): Promise<CommissionPlanResponse[]> {
     const rows = await this.deps.repository.listCommissionPlans(tx, ctx.principal.tenantId, lenderId);
     return rows.map((r) => this.toPlanResponse(r));
   }
@@ -244,7 +247,13 @@ export class FinanceService {
       throw AppError.of('SOD_VIOLATION', 'SOD-02: Plan creator cannot approve the commission plan.');
     }
 
-    const approved = await this.deps.repository.approveCommissionPlan(tx, tenantId, id, ifMatchVersion, ctx.principal.id);
+    const approved = await this.deps.repository.approveCommissionPlan(
+      tx,
+      tenantId,
+      id,
+      ifMatchVersion,
+      ctx.principal.id,
+    );
     if (!approved) {
       throw AppError.of('VERSION_CONFLICT', `Commission plan version conflict for ${id}.`);
     }
@@ -267,9 +276,16 @@ export class FinanceService {
       throw AppError.of('INVALID_STATE', `No active commission plan found for lender ${input.lenderId}.`);
     }
 
-    const existingEarned = await this.deps.repository.findEarnedCalculationByTranche(tx, tenantId, input.trancheId);
+    const existingEarned = await this.deps.repository.findEarnedCalculationByTranche(
+      tx,
+      tenantId,
+      input.trancheId,
+    );
     if (existingEarned) {
-      throw AppError.of('INVALID_STATE', `Earned commission calculation already exists for tranche ${input.trancheId}.`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Earned commission calculation already exists for tranche ${input.trancheId}.`,
+      );
     }
 
     const rate = input.customRate ?? 0.015;
@@ -301,7 +317,9 @@ export class FinanceService {
       calc_kind: 'EARNED',
       rule_set_version_id: plan?.rule_set_id ?? null,
       decision_record_id: null,
-      inputs_hash: createHash('sha256').update(`${input.lenderId}:${input.trancheId}:${input.basisAmount}`).digest('hex'),
+      inputs_hash: createHash('sha256')
+        .update(`${input.lenderId}:${input.trancheId}:${input.basisAmount}`)
+        .digest('hex'),
       status: 'EARNED',
       supersedes_id: null,
       lock_version: 0,
@@ -377,7 +395,11 @@ export class FinanceService {
     ctx: RequestContext,
     filters: { connectorId?: string; state?: string; cursor?: string; limit: number },
   ): Promise<{ data: CommissionPayableResponse[]; meta: { nextCursor: string | null; limit: number } }> {
-    const { rows, nextCursor } = await this.deps.repository.listCommissionPayables(tx, ctx.principal.tenantId, filters);
+    const { rows, nextCursor } = await this.deps.repository.listCommissionPayables(
+      tx,
+      ctx.principal.tenantId,
+      filters,
+    );
     return {
       data: rows.map((r) => this.toPayableResponse(r)),
       meta: { nextCursor, limit: filters.limit },
@@ -386,11 +408,7 @@ export class FinanceService {
 
   // --- CLAWBACKS & ADJUSTMENTS ---
 
-  async createClawback(
-    tx: Tx,
-    ctx: RequestContext,
-    input: CreateClawbackInput,
-  ): Promise<AdjustmentResponse> {
+  async createClawback(tx: Tx, ctx: RequestContext, input: CreateClawbackInput): Promise<AdjustmentResponse> {
     this.assertPermission(ctx, 'adjustment.create');
 
     const tenantId = ctx.principal.tenantId;
@@ -423,11 +441,7 @@ export class FinanceService {
     return this.toAdjustmentResponse(row);
   }
 
-  async approveClawback(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<AdjustmentResponse> {
+  async approveClawback(tx: Tx, ctx: RequestContext, id: string): Promise<AdjustmentResponse> {
     this.assertPermission(ctx, 'adjustment.approve');
 
     const tenantId = ctx.principal.tenantId;
@@ -454,11 +468,7 @@ export class FinanceService {
     return this.toAdjustmentResponse(approved);
   }
 
-  async rejectClawback(
-    tx: Tx,
-    ctx: RequestContext,
-    id: string,
-  ): Promise<AdjustmentResponse> {
+  async rejectClawback(tx: Tx, ctx: RequestContext, id: string): Promise<AdjustmentResponse> {
     this.assertPermission(ctx, 'adjustment.approve');
 
     const tenantId = ctx.principal.tenantId;
@@ -537,7 +547,12 @@ export class FinanceService {
       throw AppError.of('SOD_VIOLATION', 'SOD-07: Proposal creator cannot approve recalculation proposal.');
     }
 
-    const approved = await this.deps.repository.approveRecalculationProposal(tx, tenantId, id, ctx.principal.id);
+    const approved = await this.deps.repository.approveRecalculationProposal(
+      tx,
+      tenantId,
+      id,
+      ctx.principal.id,
+    );
     if (!approved) {
       throw AppError.of('INVALID_STATE', `Recalculation proposal ${id} is not in PENDING state.`);
     }
@@ -569,10 +584,7 @@ export class FinanceService {
     return this.toRecalculationProposalResponse(row);
   }
 
-  async listRecalculationProposals(
-    tx: Tx,
-    ctx: RequestContext,
-  ): Promise<RecalculationProposalResponse[]> {
+  async listRecalculationProposals(tx: Tx, ctx: RequestContext): Promise<RecalculationProposalResponse[]> {
     this.assertPermission(ctx, 'finance.view');
     const rows = await this.deps.repository.listRecalculationProposals(tx, ctx.principal.tenantId);
     return rows.map((r) => this.toRecalculationProposalResponse(r));
@@ -591,15 +603,25 @@ export class FinanceService {
 
     // Retry handling (SUB-PAY.04)
     if (input.retryOfPayoutId) {
-      const prevPayout = await this.deps.repository.findPayoutRequestById(tx, tenantId, input.retryOfPayoutId);
+      const prevPayout = await this.deps.repository.findPayoutRequestById(
+        tx,
+        tenantId,
+        input.retryOfPayoutId,
+      );
       if (!prevPayout) {
         throw AppError.of('NOT_FOUND', `Prior payout request ${input.retryOfPayoutId} for retry not found.`);
       }
       if (prevPayout.status !== 'PAYMENT_FAILED') {
-        throw AppError.of('INVALID_STATE', `Only PAYMENT_FAILED payout requests can be retried (current: ${prevPayout.status}).`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Only PAYMENT_FAILED payout requests can be retried (current: ${prevPayout.status}).`,
+        );
       }
       if (prevPayout.connector_id !== input.connectorId) {
-        throw AppError.of('VALIDATION_ERROR', `Prior payout belongs to connector ${prevPayout.connector_id}, not ${input.connectorId}.`);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Prior payout belongs to connector ${prevPayout.connector_id}, not ${input.connectorId}.`,
+        );
       }
     }
 
@@ -618,14 +640,23 @@ export class FinanceService {
       // BR-DOM-025: A payable can belong to at most one live payout line
       const activeLine = await this.deps.repository.findActivePayoutLineForPayable(tx, tenantId, pId);
       if (activeLine) {
-        throw AppError.of('INVALID_STATE', `Payable ${pId} is already included in live payout request ${activeLine.payout_id}.`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Payable ${pId} is already included in live payout request ${activeLine.payout_id}.`,
+        );
       }
 
       if (payable.state !== 'ELIGIBLE') {
-        throw AppError.of('INVALID_STATE', `Payable ${pId} is not in ELIGIBLE state (current: ${payable.state}).`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Payable ${pId} is not in ELIGIBLE state (current: ${payable.state}).`,
+        );
       }
       if (payable.connector_id !== input.connectorId) {
-        throw AppError.of('VALIDATION_ERROR', `Payable ${pId} belongs to connector ${payable.connector_id}, not ${input.connectorId}.`);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `Payable ${pId} belongs to connector ${payable.connector_id}, not ${input.connectorId}.`,
+        );
       }
 
       totalPaise += parseMoneyToPaise(payable.amount);
@@ -676,7 +707,10 @@ export class FinanceService {
         await this.deps.repository.insertPayoutLine(tx, lineRow);
       } catch (err: any) {
         if (err?.code === '23505' || err?.message?.includes('uq_payout_line_once')) {
-          throw AppError.of('INVALID_STATE', `Payable ${line.payableId} is already included in an active payout line.`);
+          throw AppError.of(
+            'INVALID_STATE',
+            `Payable ${line.payableId} is already included in an active payout line.`,
+          );
         }
         throw err;
       }
@@ -750,7 +784,11 @@ export class FinanceService {
     ctx: RequestContext,
     filters: { connectorId?: string; status?: string; cursor?: string; limit: number },
   ): Promise<{ data: PayoutRequestResponse[]; meta: { nextCursor: string | null; limit: number } }> {
-    const { rows, nextCursor } = await this.deps.repository.listPayoutRequests(tx, ctx.principal.tenantId, filters);
+    const { rows, nextCursor } = await this.deps.repository.listPayoutRequests(
+      tx,
+      ctx.principal.tenantId,
+      filters,
+    );
     return {
       data: rows.map((r) => this.toPayoutResponse(r)),
       meta: { nextCursor, limit: filters.limit },
@@ -772,26 +810,38 @@ export class FinanceService {
     }
 
     if (payout.status !== 'SUBMITTED') {
-      throw AppError.of('INVALID_STATE', `Only SUBMITTED payout requests can be approved (current: ${payout.status}).`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Only SUBMITTED payout requests can be approved (current: ${payout.status}).`,
+      );
     }
 
     // SOD-03: Creator or submitter cannot approve the payout request
     if (payout.created_by === ctx.principal.id || payout.submitted_by === ctx.principal.id) {
-      throw AppError.of('SOD_VIOLATION', 'SOD-03: Payout creator or submitter cannot approve the payout request.');
+      throw AppError.of(
+        'SOD_VIOLATION',
+        'SOD-03: Payout creator or submitter cannot approve the payout request.',
+      );
     }
 
     const lines = await this.deps.repository.listPayoutLines(tx, tenantId, id);
     const payableIds = lines.map((l) => l.payable_id);
 
     // Concurrency hardening: Lock constituent payables deterministically in ascending ID order (SELECT ... FOR UPDATE)
-    const lockedPayables = await this.deps.repository.lockCommissionPayablesAscending(tx, tenantId, payableIds);
+    const lockedPayables = await this.deps.repository.lockCommissionPayablesAscending(
+      tx,
+      tenantId,
+      payableIds,
+    );
 
     // Revalidate eligibility & holds under exclusive lock
     for (const payable of lockedPayables) {
       if (payable.state === 'ON_HOLD') {
-        throw AppError.of('INVALID_STATE', '[PAYABLE_ON_HOLD] Cannot approve payout request: one or more payables are ON_HOLD', [
-          { field: payable.id, issue: 'PAYABLE_ON_HOLD' },
-        ]);
+        throw AppError.of(
+          'INVALID_STATE',
+          '[PAYABLE_ON_HOLD] Cannot approve payout request: one or more payables are ON_HOLD',
+          [{ field: payable.id, issue: 'PAYABLE_ON_HOLD' }],
+        );
       }
     }
 
@@ -876,7 +926,10 @@ export class FinanceService {
       throw AppError.of('NOT_FOUND', `Payout request ${id} not found.`);
     }
     if (payout.status !== 'DRAFT' && payout.status !== 'SUBMITTED') {
-      throw AppError.of('INVALID_STATE', `Only DRAFT or SUBMITTED payouts can be cancelled (status: ${payout.status}).`);
+      throw AppError.of(
+        'INVALID_STATE',
+        `Only DRAFT or SUBMITTED payouts can be cancelled (status: ${payout.status}).`,
+      );
     }
 
     const updated = await this.deps.repository.updatePayoutStatus(tx, tenantId, id, 'CANCELLED');
@@ -1039,6 +1092,88 @@ export class FinanceService {
     return this.toPayoutResponse(updated!);
   }
 
+  // --- AUTOMATED DIRECT NET-BANKING / PAYMENT GATEWAY INTEGRATION (MOD-PAY / TASK-418) ---
+  async disbursePayoutViaGateway(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+    input: DisbursePayoutGatewayInput,
+  ): Promise<DisbursePayoutGatewayResponse> {
+    this.assertPermission(ctx, 'payout.record_payment');
+
+    const tenantId = ctx.principal.tenantId;
+    const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, id);
+    if (!payout) {
+      throw AppError.of('NOT_FOUND', `Payout request ${id} not found.`);
+    }
+    if (payout.status !== 'APPROVED') {
+      throw AppError.of(
+        'INVALID_STATE',
+        `Payout ${id} is not APPROVED for gateway disbursement (status: ${payout.status}).`,
+      );
+    }
+
+    const gatewayResult = await paymentGatewayService.disburse({
+      payoutId: id,
+      amount: payout.total,
+      currency: payout.currency,
+      mode: input.mode ?? 'IMPS',
+    });
+
+    // Record the payment with the gateway generated UTR
+    await this.recordPayoutPayment(tx, ctx, id, {
+      paymentRef: gatewayResult.utrNumber,
+      paidOn: gatewayResult.disbursedAt,
+    });
+
+    return {
+      payoutId: id as any,
+      status: 'PAYMENT_RECORDED',
+      transferId: gatewayResult.transferId,
+      utrNumber: gatewayResult.utrNumber,
+      gatewayMode: gatewayResult.gatewayMode,
+      amount: gatewayResult.amount,
+      currency: gatewayResult.currency,
+      disbursedAt: gatewayResult.disbursedAt,
+    };
+  }
+
+  async dispatchPayoutBatchToGateway(
+    tx: Tx,
+    ctx: RequestContext,
+    batchId: string,
+    mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
+  ): Promise<{ batchId: string; totalDisbursed: number; results: DisbursePayoutGatewayResponse[] }> {
+    this.assertPermission(ctx, 'payout.record_payment');
+    const tenantId = ctx.principal.tenantId;
+    const batch = await this.deps.repository.findPayoutBatchById(tx, tenantId, batchId);
+    if (!batch) {
+      throw AppError.of('NOT_FOUND', `Payout batch ${batchId} not found.`);
+    }
+
+    const results: DisbursePayoutGatewayResponse[] = [];
+    let total = 0;
+
+    for (const pid of batch.payout_ids) {
+      const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, pid);
+      if (payout && payout.status === 'APPROVED') {
+        const res = await this.disbursePayoutViaGateway(tx, ctx, pid, { mode });
+        results.push(res);
+        total += Number(res.amount);
+      }
+    }
+
+    if (this.deps.repository.updatePayoutBatchStatus) {
+      await this.deps.repository.updatePayoutBatchStatus(tx, tenantId, batchId, 'PROCESSED');
+    }
+
+    return {
+      batchId,
+      totalDisbursed: Math.round(total * 100) / 100,
+      results,
+    };
+  }
+
   // --- PAYOUT BATCHES ---
 
   async createPayoutBatch(
@@ -1061,7 +1196,10 @@ export class FinanceService {
         throw AppError.of('NOT_FOUND', `Payout request ${pid} not found.`);
       }
       if (p.status !== 'APPROVED' && p.status !== 'PAYMENT_RECORDED') {
-        throw AppError.of('INVALID_STATE', `Payout ${pid} is not in eligible status for batching (current: ${p.status}).`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Payout ${pid} is not in eligible status for batching (current: ${p.status}).`,
+        );
       }
       validPayouts.push(p);
     }

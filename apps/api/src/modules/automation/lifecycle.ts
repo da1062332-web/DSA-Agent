@@ -35,7 +35,11 @@ export function isValidTransition(from: ExecutionStatus, to: ExecutionStatus): b
   return allowed ? allowed.includes(to) : false;
 }
 
-export function assertValidTransition(from: ExecutionStatus, to: ExecutionStatus, executionId?: string): void {
+export function assertValidTransition(
+  from: ExecutionStatus,
+  to: ExecutionStatus,
+  executionId?: string,
+): void {
   if (!isValidTransition(from, to)) {
     throw AppError.of(
       'INVALID_TRANSITION',

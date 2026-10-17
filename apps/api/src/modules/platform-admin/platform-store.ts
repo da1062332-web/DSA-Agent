@@ -35,7 +35,11 @@ export interface PlatformStore {
   /** Platform session: all requests (optionally one tenant). Tenant session: only its own tenant's. */
   listSupportGrants(ctx: RequestContext, tenantId?: string): Promise<SupportAccessGrant[]>;
   /** The target tenant's administrator decides. The requester cannot (SOD-06). */
-  decideSupportGrant(ctx: RequestContext, id: string, decision: 'APPROVED' | 'DENIED'): Promise<SupportAccessGrant>;
+  decideSupportGrant(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'DENIED',
+  ): Promise<SupportAccessGrant>;
   /** The target tenant ends an approved access early. */
   revokeSupportGrant(ctx: RequestContext, id: string): Promise<SupportAccessGrant>;
 
@@ -43,7 +47,12 @@ export interface PlatformStore {
   listFlags(ctx: RequestContext): Promise<FeatureFlag[]>;
   getFlag(ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null>;
   /** Creates or updates a flag. A stale If-Match is a VERSION_CONFLICT. Only on/off flags are stored. */
-  putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag>;
+  putFlag(
+    ctx: RequestContext,
+    key: string,
+    input: UpdateFeatureFlagRequest,
+    ifMatch: string | undefined,
+  ): Promise<FeatureFlag>;
 
   /** Master data lists, readable by every session; written by the platform realm only. Dataset names are stored lower case, list codes are upper case. */
   listMasterData(ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>>;
@@ -51,13 +60,22 @@ export interface PlatformStore {
 
   /** The release register: platform realm only, for reading and writing. */
   listReleases(ctx: RequestContext): Promise<ReleaseRegisterItem[]>;
-  updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem>;
+  updateRelease(
+    ctx: RequestContext,
+    version: string,
+    patch: UpdateReleaseRequest,
+    ifMatch: string | undefined,
+  ): Promise<ReleaseRegisterItem>;
 
   /** The caller's own tenant only. */
   listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]>;
   createDataCorrection(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest>;
   /** SOD-08: the approver is not the requester. */
-  decideDataCorrection(ctx: RequestContext, id: string, decision: 'APPROVED' | 'REJECTED'): Promise<DataCorrectionRequest>;
+  decideDataCorrection(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'REJECTED',
+  ): Promise<DataCorrectionRequest>;
   /** Only the correction executor (a service identity) calls this, on an APPROVED correction. */
   markDataCorrectionExecuted(ctx: RequestContext, id: string): Promise<DataCorrectionRequest>;
 }
@@ -67,7 +85,8 @@ const iso = (v: unknown): string => (v instanceof Date ? v : new Date(String(v))
 
 /** DB status ACTIVE is APPROVED in the API, and an approved grant past its window reads as EXPIRED. */
 export function grantStatus(status: string, expiresAt: unknown, now: Date): SupportAccessGrant['status'] {
-  if (status === 'ACTIVE') return new Date(String(expiresAt)).getTime() <= now.getTime() ? 'EXPIRED' : 'APPROVED';
+  if (status === 'ACTIVE')
+    return new Date(String(expiresAt)).getTime() <= now.getTime() ? 'EXPIRED' : 'APPROVED';
   return status as SupportAccessGrant['status'];
 }
 
@@ -144,7 +163,15 @@ export interface MasterDataImportResult {
   preview: MasterDataItem[];
 }
 
-type MasterRow = { dataset: string; code: string; label: string; is_active: boolean; metadata: Record<string, unknown> | null; lock_version: number | string; created_at: string | Date };
+type MasterRow = {
+  dataset: string;
+  code: string;
+  label: string;
+  is_active: boolean;
+  metadata: Record<string, unknown> | null;
+  lock_version: number | string;
+  created_at: string | Date;
+};
 
 const toMasterItem = (r: MasterRow): MasterDataItem => ({
   id: `md_${r.dataset}_${r.code}`,
@@ -227,7 +254,10 @@ export class PgPlatformStore implements PlatformStore {
   }
 
   // ---- support access -------------------------------------------------------------------------------------------
-  async createSupportGrant(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant> {
+  async createSupportGrant(
+    ctx: RequestContext,
+    req: CreateSupportAccessRequest,
+  ): Promise<SupportAccessGrant> {
     if (req.tenantId === PLATFORM_TENANT_ID) {
       throw AppError.of('VALIDATION_ERROR', 'Support access is requested against a customer tenant.', [
         { field: 'tenantId', issue: 'INVALID' },
@@ -236,9 +266,14 @@ export class PgPlatformStore implements PlatformStore {
     const id = this.deps.ids.next('sag');
     const ends = new Date(ctx.now.getTime() + req.durationHours * 3600 * 1000);
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const target = await sql<Row>`SELECT id FROM tenant WHERE id = ${req.tenantId} AND tenant_type <> 'PLATFORM'`.execute(tx);
+      const target =
+        await sql<Row>`SELECT id FROM tenant WHERE id = ${req.tenantId} AND tenant_type <> 'PLATFORM'`.execute(
+          tx,
+        );
       if (!target.rows[0]) {
-        throw AppError.of('VALIDATION_ERROR', 'That tenant does not exist.', [{ field: 'tenantId', issue: 'NOT_FOUND' }]);
+        throw AppError.of('VALIDATION_ERROR', 'That tenant does not exist.', [
+          { field: 'tenantId', issue: 'NOT_FOUND' },
+        ]);
       }
       await sql`
         INSERT INTO support_access_grant (id, tenant_id, support_user_id, reason, scope, incident_ref, starts_at, expires_at,
@@ -249,11 +284,19 @@ export class PgPlatformStore implements PlatformStore {
         action: 'platform.support_access_requested',
         entityType: 'SUPPORT_ACCESS_GRANT',
         entityId: id,
-        after: { targetTenantId: req.tenantId, incidentRef: req.incidentRef, scope: req.scope, durationHours: req.durationHours },
+        after: {
+          targetTenantId: req.tenantId,
+          incidentRef: req.incidentRef,
+          scope: req.scope,
+          durationHours: req.durationHours,
+        },
         reason: req.reason,
         permissionUsed: 'platform.support_access',
       });
-      const r = await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(tx);
+      const r =
+        await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(
+          tx,
+        );
       return toGrant(r.rows[0]!, ctx.now);
     });
   }
@@ -269,14 +312,20 @@ export class PgPlatformStore implements PlatformStore {
         entityType: 'SUPPORT_ACCESS_GRANT',
         entityId: null,
         after: { count: r.rows.length, tenantFilter: tenantId ?? null },
-        permissionUsed: ctx.principal.grants.some((g) => g.code === 'platform.support_access') ? 'platform.support_access' : 'config.manage',
+        permissionUsed: ctx.principal.grants.some((g) => g.code === 'platform.support_access')
+          ? 'platform.support_access'
+          : 'config.manage',
       });
       return r.rows.map((x) => toGrant(x, ctx.now));
     });
   }
 
   /** A grant that belongs to the caller's tenant, locked. Another tenant's grant reads as missing. */
-  private async ownGrantForUpdate(tx: Parameters<Parameters<ApiDeps['txRunner']['withTenantTx']>[1]>[0], ctx: RequestContext, id: string): Promise<Row> {
+  private async ownGrantForUpdate(
+    tx: Parameters<Parameters<ApiDeps['txRunner']['withTenantTx']>[1]>[0],
+    ctx: RequestContext,
+    id: string,
+  ): Promise<Row> {
     const found = await sql<Row>`SELECT * FROM support_access_grant WHERE id = ${id} FOR UPDATE`.execute(tx);
     const grant = found.rows[0];
     if (!grant || grant.tenant_id !== ctx.principal.tenantId) {
@@ -285,14 +334,24 @@ export class PgPlatformStore implements PlatformStore {
     return grant;
   }
 
-  async decideSupportGrant(ctx: RequestContext, id: string, decision: 'APPROVED' | 'DENIED'): Promise<SupportAccessGrant> {
+  async decideSupportGrant(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'DENIED',
+  ): Promise<SupportAccessGrant> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const grant = await this.ownGrantForUpdate(tx, ctx, id);
       if (grant.support_user_id === ctx.principal.id) {
-        throw AppError.of('SOD_VIOLATION', 'Separation of Duties violation (SOD-06): the requester cannot approve their own support access request.');
+        throw AppError.of(
+          'SOD_VIOLATION',
+          'Separation of Duties violation (SOD-06): the requester cannot approve their own support access request.',
+        );
       }
       if (grant.status !== 'PENDING') {
-        throw AppError.of('INVALID_STATE', `Support access request is already ${grantStatus(String(grant.status), grant.expires_at, ctx.now)}.`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Support access request is already ${grantStatus(String(grant.status), grant.expires_at, ctx.now)}.`,
+        );
       }
       if (new Date(String(grant.expires_at)).getTime() <= ctx.now.getTime()) {
         throw AppError.of('INVALID_STATE', 'The requested access window has already ended.');
@@ -303,14 +362,18 @@ export class PgPlatformStore implements PlatformStore {
            SET status = ${next}, approved_by = ${ctx.principal.id}, approved_at = ${ctx.now}, lock_version = lock_version + 1
          WHERE id = ${id}`.execute(tx);
       await this.deps.audit.record(tx, ctx, {
-        action: decision === 'APPROVED' ? 'platform.support_access_approved' : 'platform.support_access_denied',
+        action:
+          decision === 'APPROVED' ? 'platform.support_access_approved' : 'platform.support_access_denied',
         entityType: 'SUPPORT_ACCESS_GRANT',
         entityId: id,
         before: { status: grant.status },
         after: { status: next },
         permissionUsed: 'config.manage',
       });
-      const r = await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(tx);
+      const r =
+        await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(
+          tx,
+        );
       return toGrant(r.rows[0]!, ctx.now);
     });
   }
@@ -320,7 +383,10 @@ export class PgPlatformStore implements PlatformStore {
       const grant = await this.ownGrantForUpdate(tx, ctx, id);
       const current = grantStatus(String(grant.status), grant.expires_at, ctx.now);
       if (current !== 'APPROVED') {
-        throw AppError.of('INVALID_STATE', `Only an approved, unexpired access can be revoked (this one is ${current}).`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Only an approved, unexpired access can be revoked (this one is ${current}).`,
+        );
       }
       await sql`
         UPDATE support_access_grant
@@ -334,7 +400,10 @@ export class PgPlatformStore implements PlatformStore {
         after: { status: 'REVOKED' },
         permissionUsed: 'config.manage',
       });
-      const r = await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(tx);
+      const r =
+        await sql<Row>`SELECT ${GRANT_COLUMNS} FROM support_access_grant g JOIN tenant t ON t.id = g.tenant_id WHERE g.id = ${id}`.execute(
+          tx,
+        );
       return toGrant(r.rows[0]!, ctx.now);
     });
   }
@@ -342,7 +411,8 @@ export class PgPlatformStore implements PlatformStore {
   // ---- data corrections (tenant realm) ----------------------------------------------------------------------------
   async listFlags(ctx: RequestContext): Promise<FeatureFlag[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+      const r =
+        await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
                                      FROM feature_flag ORDER BY key, scope`.execute(tx);
       return r.rows.map(toFlag);
     });
@@ -350,20 +420,31 @@ export class PgPlatformStore implements PlatformStore {
 
   async getFlag(ctx: RequestContext, key: string, scope: string): Promise<FeatureFlag | null> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+      const r =
+        await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
                                      FROM feature_flag WHERE key = ${key} AND scope = ${scope}`.execute(tx);
       return r.rows[0] ? toFlag(r.rows[0]) : null;
     });
   }
 
-  async putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag> {
+  async putFlag(
+    ctx: RequestContext,
+    key: string,
+    input: UpdateFeatureFlagRequest,
+    ifMatch: string | undefined,
+  ): Promise<FeatureFlag> {
     if (typeof input.value !== 'boolean') {
-      throw AppError.of('VALIDATION_ERROR', 'Only on/off feature flags are supported.', [{ field: 'value', issue: 'MUST_BE_BOOLEAN' }]);
+      throw AppError.of('VALIDATION_ERROR', 'Only on/off feature flags are supported.', [
+        { field: 'value', issue: 'MUST_BE_BOOLEAN' },
+      ]);
     }
     const scope = input.scope ?? 'GLOBAL';
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const found = await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
-                                         FROM feature_flag WHERE key = ${key} AND scope = ${scope} FOR UPDATE`.execute(tx);
+      const found =
+        await sql<FlagRow>`SELECT key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by
+                                         FROM feature_flag WHERE key = ${key} AND scope = ${scope} FOR UPDATE`.execute(
+          tx,
+        );
       const existing = found.rows[0];
       if (existing) {
         const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
@@ -379,16 +460,21 @@ export class PgPlatformStore implements PlatformStore {
                  description = ${input.description ?? existing.description}, lock_version = lock_version + 1, updated_at = now(),
                  updated_by = ${ctx.principal.id}
            WHERE key = ${key} AND scope = ${scope}
-           RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(tx);
+           RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(
+          tx,
+        );
         // Row-level security lets only the platform realm update a flag: no row back means this session may not.
-        if (!updated.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change feature flags.');
+        if (!updated.rows[0])
+          throw AppError.of('FORBIDDEN', 'Only the platform realm can change feature flags.');
         return toFlag(updated.rows[0]);
       }
       const created = await sql<FlagRow>`
         INSERT INTO feature_flag (key, scope, value, owner, remove_by, description, lock_version, updated_by)
         VALUES (${key}, ${scope}, ${input.value}, ${input.owner ?? 'Platform Admin'}, ${input.removeBy ?? null}::date,
                 ${input.description ?? ''}, 1, ${ctx.principal.id})
-        RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(tx);
+        RETURNING key, scope, value, owner, remove_by, description, lock_version, updated_at, updated_by`.execute(
+        tx,
+      );
       return toFlag(created.rows[0]!);
     });
   }
@@ -398,8 +484,11 @@ export class PgPlatformStore implements PlatformStore {
       const dataset = listCode?.toLowerCase();
       const r = await sql<MasterRow>`
         SELECT dataset, code, label, is_active, metadata, lock_version, created_at FROM master_data_item
-         WHERE ${dataset === undefined ? sql`true` : sql`dataset = ${dataset}`} ORDER BY dataset, code`.execute(tx);
-      const out: Record<string, MasterDataItem[]> = dataset === undefined ? {} : { [dataset.toUpperCase()]: [] };
+         WHERE ${dataset === undefined ? sql`true` : sql`dataset = ${dataset}`} ORDER BY dataset, code`.execute(
+        tx,
+      );
+      const out: Record<string, MasterDataItem[]> =
+        dataset === undefined ? {} : { [dataset.toUpperCase()]: [] };
       for (const row of r.rows) (out[row.dataset.toUpperCase()] ??= []).push(toMasterItem(row));
       return out;
     });
@@ -409,9 +498,11 @@ export class PgPlatformStore implements PlatformStore {
     const dataset = req.listCode.toLowerCase();
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const existing = new Map(
-        (await sql<MasterRow>`SELECT dataset, code, label, is_active, metadata, lock_version, created_at FROM master_data_item WHERE dataset = ${dataset} FOR UPDATE`.execute(tx)).rows.map(
-          (r) => [r.code, r],
-        ),
+        (
+          await sql<MasterRow>`SELECT dataset, code, label, is_active, metadata, lock_version, created_at FROM master_data_item WHERE dataset = ${dataset} FOR UPDATE`.execute(
+            tx,
+          )
+        ).rows.map((r) => [r.code, r]),
       );
       let newCount = 0;
       let updateCount = 0;
@@ -429,7 +520,8 @@ export class PgPlatformStore implements PlatformStore {
                SET label = EXCLUDED.label, metadata = EXCLUDED.metadata, is_active = true, lock_version = master_data_item.lock_version + 1
             RETURNING dataset, code, label, is_active, metadata, lock_version, created_at`.execute(tx);
           // Row-level security lets only the platform realm write master data: no row back means this session may not.
-          if (!written.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change master data.');
+          if (!written.rows[0])
+            throw AppError.of('FORBIDDEN', 'Only the platform realm can change master data.');
           preview.push(toMasterItem(written.rows[0]));
         } else {
           preview.push({
@@ -444,25 +536,46 @@ export class PgPlatformStore implements PlatformStore {
           });
         }
       }
-      return { dryRun: !!req.dryRun, listCode: dataset.toUpperCase(), totalSubmitted: req.items.length, newItemsCount: newCount, updatedItemsCount: updateCount, preview };
+      return {
+        dryRun: !!req.dryRun,
+        listCode: dataset.toUpperCase(),
+        totalSubmitted: req.items.length,
+        newItemsCount: newCount,
+        updatedItemsCount: updateCount,
+        preview,
+      };
     });
   }
 
   async listReleases(ctx: RequestContext): Promise<ReleaseRegisterItem[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release ORDER BY target_date DESC, version DESC`.execute(tx);
+      const r =
+        await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release ORDER BY target_date DESC, version DESC`.execute(
+          tx,
+        );
       return r.rows.map(toRelease);
     });
   }
 
-  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+  async updateRelease(
+    ctx: RequestContext,
+    version: string,
+    patch: UpdateReleaseRequest,
+    ifMatch: string | undefined,
+  ): Promise<ReleaseRegisterItem> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const found = await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release WHERE version = ${version} FOR UPDATE`.execute(tx);
+      const found =
+        await sql<ReleaseRow>`SELECT ${RELEASE_COLUMNS} FROM platform_release WHERE version = ${version} FOR UPDATE`.execute(
+          tx,
+        );
       const current = found.rows[0];
       if (!current) throw AppError.of('NOT_FOUND', `Release ${version} was not found.`);
       const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
       if (!Number.isNaN(expected) && Number(current.lock_version) !== expected) {
-        throw AppError.of('VERSION_CONFLICT', `Release ${version} was changed by someone else. Current version: ${current.lock_version}.`);
+        throw AppError.of(
+          'VERSION_CONFLICT',
+          `Release ${version} was changed by someone else. Current version: ${current.lock_version}.`,
+        );
       }
       const gates = { ...current.gates, ...(patch.gates ?? {}) };
       const updated = await sql<ReleaseRow>`
@@ -471,13 +584,18 @@ export class PgPlatformStore implements PlatformStore {
                gates = ${JSON.stringify(gates)}::jsonb, notes_summary = ${patch.notesSummary ?? current.notes_summary},
                lock_version = lock_version + 1, updated_at = now(), updated_by = ${ctx.principal.id}
          WHERE version = ${version} RETURNING ${RELEASE_COLUMNS}`.execute(tx);
-      if (!updated.rows[0]) throw AppError.of('FORBIDDEN', 'Only the platform realm can change the release register.');
+      if (!updated.rows[0])
+        throw AppError.of('FORBIDDEN', 'Only the platform realm can change the release register.');
       await this.deps.audit.record(tx, ctx, {
         action: 'release.updated',
         entityType: 'RELEASE',
         entityId: version,
         before: { status: current.status, gitTag: current.git_tag, gates: current.gates },
-        after: { status: updated.rows[0].status, gitTag: updated.rows[0].git_tag, gates: updated.rows[0].gates },
+        after: {
+          status: updated.rows[0].status,
+          gitTag: updated.rows[0].git_tag,
+          gates: updated.rows[0].gates,
+        },
         permissionUsed: 'platform.release',
       });
       return toRelease(updated.rows[0]);
@@ -486,12 +604,17 @@ export class PgPlatformStore implements PlatformStore {
 
   async listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<Row>`SELECT * FROM data_correction_request ORDER BY created_at DESC, id`.execute(tx);
+      const r = await sql<Row>`SELECT * FROM data_correction_request ORDER BY created_at DESC, id`.execute(
+        tx,
+      );
       return r.rows.map(toCorrection);
     });
   }
 
-  async createDataCorrection(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
+  async createDataCorrection(
+    ctx: RequestContext,
+    req: CreateDataCorrectionRequest,
+  ): Promise<DataCorrectionRequest> {
     const id = this.deps.ids.next('dcr');
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       // The tenant is the caller's own: set by the session, never by the body.
@@ -513,8 +636,14 @@ export class PgPlatformStore implements PlatformStore {
     });
   }
 
-  private async ownCorrectionForUpdate(tx: Parameters<Parameters<ApiDeps['txRunner']['withTenantTx']>[1]>[0], ctx: RequestContext, id: string): Promise<Row> {
-    const found = await sql<Row>`SELECT * FROM data_correction_request WHERE id = ${id} FOR UPDATE`.execute(tx);
+  private async ownCorrectionForUpdate(
+    tx: Parameters<Parameters<ApiDeps['txRunner']['withTenantTx']>[1]>[0],
+    ctx: RequestContext,
+    id: string,
+  ): Promise<Row> {
+    const found = await sql<Row>`SELECT * FROM data_correction_request WHERE id = ${id} FOR UPDATE`.execute(
+      tx,
+    );
     const row = found.rows[0];
     if (!row || row.tenant_id !== ctx.principal.tenantId) {
       throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
@@ -522,12 +651,19 @@ export class PgPlatformStore implements PlatformStore {
     return row;
   }
 
-  async decideDataCorrection(ctx: RequestContext, id: string, decision: 'APPROVED' | 'REJECTED'): Promise<DataCorrectionRequest> {
+  async decideDataCorrection(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'REJECTED',
+  ): Promise<DataCorrectionRequest> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const row = await this.ownCorrectionForUpdate(tx, ctx, id);
       const requester = (row.requested_by ?? row.submitted_by ?? row.created_by) as string;
       if (requester === ctx.principal.id) {
-        throw AppError.of('SOD_VIOLATION', 'Separation of Duties violation (SOD-08): the approver must differ from the requester.');
+        throw AppError.of(
+          'SOD_VIOLATION',
+          'Separation of Duties violation (SOD-08): the approver must differ from the requester.',
+        );
       }
       if (row.status !== 'PENDING') {
         throw AppError.of('INVALID_STATE', `Data correction '${id}' is already in state '${row.status}'.`);
@@ -552,7 +688,10 @@ export class PgPlatformStore implements PlatformStore {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const row = await this.ownCorrectionForUpdate(tx, ctx, id);
       if (row.status !== 'APPROVED') {
-        throw AppError.of('INVALID_STATE', `Data correction must be APPROVED prior to execution (current: ${row.status}).`);
+        throw AppError.of(
+          'INVALID_STATE',
+          `Data correction must be APPROVED prior to execution (current: ${row.status}).`,
+        );
       }
       const r = await sql<Row>`
         UPDATE data_correction_request
@@ -573,81 +712,81 @@ export class PgPlatformStore implements PlatformStore {
 
 /** The flags a unit-test store starts with (the database gets the same ones from migrations 0046 and 0058). */
 const DEFAULT_FLAGS: FeatureFlag[] = [
-    {
-      key: 'bre.v2_engine',
-      scope: 'GLOBAL',
-      value: true,
-      owner: 'Platform Team',
-      removeBy: '2026-12-31',
-      description: 'Enable next-generation compiled-IR Business Rule Engine',
-      lockVersion: 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'SYSTEM:platform',
-    },
-    {
-      key: 'lender.instant_submission',
-      scope: 'GLOBAL',
-      value: true,
-      owner: 'Lender Integrations Squad',
-      removeBy: null,
-      description: 'Direct API dispatch for empanelled lenders',
-      lockVersion: 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'SYSTEM:platform',
-    },
-    {
-      key: 'mfa.enforce_all',
-      scope: 'GLOBAL',
-      value: true,
-      owner: 'Security Squad',
-      removeBy: null,
-      description: 'Require TOTP step-up on sensitive operations',
-      lockVersion: 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'SYSTEM:platform',
-    },
-    {
-      key: 'crm.lead_auto_qualify',
-      scope: 'TENANT',
-      value: false,
-      owner: 'CRM Squad',
-      removeBy: '2026-11-30',
-      description: 'Automatic qualification when BRE score is above 750',
-      lockVersion: 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'SYSTEM:platform',
-    },
-    {
-      key: 'whatsapp.notifications_enabled',
-      scope: 'GLOBAL',
-      value: true,
-      owner: 'Messaging Squad',
-      removeBy: null,
-      description: 'Real-time customer status notifications over WhatsApp',
-      lockVersion: 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'SYSTEM:platform',
-    },
-  ];
+  {
+    key: 'bre.v2_engine',
+    scope: 'GLOBAL',
+    value: true,
+    owner: 'Platform Team',
+    removeBy: '2026-12-31',
+    description: 'Enable next-generation compiled-IR Business Rule Engine',
+    lockVersion: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'SYSTEM:platform',
+  },
+  {
+    key: 'lender.instant_submission',
+    scope: 'GLOBAL',
+    value: true,
+    owner: 'Lender Integrations Squad',
+    removeBy: null,
+    description: 'Direct API dispatch for empanelled lenders',
+    lockVersion: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'SYSTEM:platform',
+  },
+  {
+    key: 'mfa.enforce_all',
+    scope: 'GLOBAL',
+    value: true,
+    owner: 'Security Squad',
+    removeBy: null,
+    description: 'Require TOTP step-up on sensitive operations',
+    lockVersion: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'SYSTEM:platform',
+  },
+  {
+    key: 'crm.lead_auto_qualify',
+    scope: 'TENANT',
+    value: false,
+    owner: 'CRM Squad',
+    removeBy: '2026-11-30',
+    description: 'Automatic qualification when BRE score is above 750',
+    lockVersion: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'SYSTEM:platform',
+  },
+  {
+    key: 'whatsapp.notifications_enabled',
+    scope: 'GLOBAL',
+    value: true,
+    owner: 'Messaging Squad',
+    removeBy: null,
+    description: 'Real-time customer status notifications over WhatsApp',
+    lockVersion: 1,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'SYSTEM:platform',
+  },
+];
 
 /** The master data a unit-test store starts with (the database gets the same lists from migration 0061). */
 const DEFAULT_MASTER_DATA: Array<[string, string, string, Record<string, unknown>]> = [
-  ["PINCODES", "400008", "Mumbai Central", {"state": "Maharashtra", "tier": 1}],
-  ["PINCODES", "411001", "Pune Camp", {"state": "Maharashtra", "tier": 2}],
-  ["PINCODES", "560001", "Bangalore GPO", {"state": "Karnataka", "tier": 1}],
-  ["PINCODES", "110001", "New Delhi Connaught Place", {"state": "Delhi", "tier": 1}],
-  ["STATES", "MH", "Maharashtra", {"gstCode": "27", "region": "WEST"}],
-  ["STATES", "KA", "Karnataka", {"gstCode": "29", "region": "SOUTH"}],
-  ["STATES", "DL", "Delhi", {"gstCode": "07", "region": "NORTH"}],
-  ["STATES", "TN", "Tamil Nadu", {"gstCode": "33", "region": "SOUTH"}],
-  ["OCCUPATIONS", "SALARIED_PVT", "Salaried Private Sector", {"category": "SALARIED", "riskWeight": 1.0}],
-  ["OCCUPATIONS", "SALARIED_GOVT", "Salaried Government / PSU", {"category": "SALARIED", "riskWeight": 0.8}],
-  ["OCCUPATIONS", "SELF_EMP_PROF", "Self Employed Professional", {"category": "SEP", "riskWeight": 1.2}],
-  ["OCCUPATIONS", "SELF_EMP_BIZ", "Self Employed Business Owner", {"category": "SENP", "riskWeight": 1.4}],
-  ["REASON_CODES", "INSUFFICIENT_INCOME", "Monthly income below policy threshold", {"category": "FINANCIAL"}],
-  ["REASON_CODES", "LOW_CREDIT_SCORE", "CIBIL score below lender requirement", {"category": "CREDIT"}],
-  ["REASON_CODES", "INCOMPLETE_DOCUMENTS", "Mandatory KYC or income proof missing", {"category": "DOCUMENT"}],
-  ["REASON_CODES", "CUSTOMER_OPT_OUT", "Customer declined loan terms or withdrawn", {"category": "BUSINESS"}],
+  ['PINCODES', '400008', 'Mumbai Central', { state: 'Maharashtra', tier: 1 }],
+  ['PINCODES', '411001', 'Pune Camp', { state: 'Maharashtra', tier: 2 }],
+  ['PINCODES', '560001', 'Bangalore GPO', { state: 'Karnataka', tier: 1 }],
+  ['PINCODES', '110001', 'New Delhi Connaught Place', { state: 'Delhi', tier: 1 }],
+  ['STATES', 'MH', 'Maharashtra', { gstCode: '27', region: 'WEST' }],
+  ['STATES', 'KA', 'Karnataka', { gstCode: '29', region: 'SOUTH' }],
+  ['STATES', 'DL', 'Delhi', { gstCode: '07', region: 'NORTH' }],
+  ['STATES', 'TN', 'Tamil Nadu', { gstCode: '33', region: 'SOUTH' }],
+  ['OCCUPATIONS', 'SALARIED_PVT', 'Salaried Private Sector', { category: 'SALARIED', riskWeight: 1.0 }],
+  ['OCCUPATIONS', 'SALARIED_GOVT', 'Salaried Government / PSU', { category: 'SALARIED', riskWeight: 0.8 }],
+  ['OCCUPATIONS', 'SELF_EMP_PROF', 'Self Employed Professional', { category: 'SEP', riskWeight: 1.2 }],
+  ['OCCUPATIONS', 'SELF_EMP_BIZ', 'Self Employed Business Owner', { category: 'SENP', riskWeight: 1.4 }],
+  ['REASON_CODES', 'INSUFFICIENT_INCOME', 'Monthly income below policy threshold', { category: 'FINANCIAL' }],
+  ['REASON_CODES', 'LOW_CREDIT_SCORE', 'CIBIL score below lender requirement', { category: 'CREDIT' }],
+  ['REASON_CODES', 'INCOMPLETE_DOCUMENTS', 'Mandatory KYC or income proof missing', { category: 'DOCUMENT' }],
+  ['REASON_CODES', 'CUSTOMER_OPT_OUT', 'Customer declined loan terms or withdrawn', { category: 'BUSINESS' }],
 ];
 
 /** Unit-test double with the same rules as the database policies. Not used by the running API. */
@@ -678,7 +817,16 @@ export class InMemoryPlatformStore implements PlatformStore {
   constructor() {
     for (const [list, code, label, attributes] of DEFAULT_MASTER_DATA) {
       const items = this.masterData.get(list) ?? [];
-      items.push({ id: `md_${list.toLowerCase()}_${code}`, listCode: list, code, label, attributes, version: 1, active: true, createdAt: '2026-10-01T00:00:00.000Z' });
+      items.push({
+        id: `md_${list.toLowerCase()}_${code}`,
+        listCode: list,
+        code,
+        label,
+        attributes,
+        version: 1,
+        active: true,
+        createdAt: '2026-10-01T00:00:00.000Z',
+      });
       this.masterData.set(list, items);
     }
   }
@@ -694,14 +842,22 @@ export class InMemoryPlatformStore implements PlatformStore {
     return this.flags.get(`${key}:${scope}`) ?? null;
   }
 
-  async putFlag(ctx: RequestContext, key: string, input: UpdateFeatureFlagRequest, ifMatch: string | undefined): Promise<FeatureFlag> {
+  async putFlag(
+    ctx: RequestContext,
+    key: string,
+    input: UpdateFeatureFlagRequest,
+    ifMatch: string | undefined,
+  ): Promise<FeatureFlag> {
     const scope = input.scope ?? 'GLOBAL';
     const flagKey = `${key}:${scope}`;
     const existing = this.flags.get(flagKey);
     if (existing) {
       const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
       if (!Number.isNaN(expected) && existing.lockVersion !== expected) {
-        throw AppError.of('VERSION_CONFLICT', `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`);
+        throw AppError.of(
+          'VERSION_CONFLICT',
+          `Feature flag '${key}' has been modified by another process. Current version: ${existing.lockVersion}.`,
+        );
       }
       const updated: FeatureFlag = {
         key,
@@ -733,7 +889,8 @@ export class InMemoryPlatformStore implements PlatformStore {
   }
 
   async listMasterData(_ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>> {
-    if (listCode) return { [listCode.toUpperCase()]: [...(this.masterData.get(listCode.toUpperCase()) ?? [])] };
+    if (listCode)
+      return { [listCode.toUpperCase()]: [...(this.masterData.get(listCode.toUpperCase()) ?? [])] };
     return Object.fromEntries([...this.masterData.entries()].map(([k, v]) => [k, [...v]]));
   }
 
@@ -747,22 +904,50 @@ export class InMemoryPlatformStore implements PlatformStore {
       const current = byCode.get(item.code);
       if (current) updateCount += 1;
       else newCount += 1;
-      return { id: `md_${listCode.toLowerCase()}_${item.code}`, listCode, code: item.code, label: item.label, attributes: item.attributes ?? {}, version: current ? current.version + 1 : 1, active: true, createdAt: ctx.now.toISOString() };
+      return {
+        id: `md_${listCode.toLowerCase()}_${item.code}`,
+        listCode,
+        code: item.code,
+        label: item.label,
+        attributes: item.attributes ?? {},
+        version: current ? current.version + 1 : 1,
+        active: true,
+        createdAt: ctx.now.toISOString(),
+      };
     });
-    if (!req.dryRun) this.masterData.set(listCode, [...existing.filter((e) => !req.items.some((i) => i.code === e.code)), ...processed]);
-    return { dryRun: !!req.dryRun, listCode, totalSubmitted: req.items.length, newItemsCount: newCount, updatedItemsCount: updateCount, preview: processed };
+    if (!req.dryRun)
+      this.masterData.set(listCode, [
+        ...existing.filter((e) => !req.items.some((i) => i.code === e.code)),
+        ...processed,
+      ]);
+    return {
+      dryRun: !!req.dryRun,
+      listCode,
+      totalSubmitted: req.items.length,
+      newItemsCount: newCount,
+      updatedItemsCount: updateCount,
+      preview: processed,
+    };
   }
 
   async listReleases(): Promise<ReleaseRegisterItem[]> {
     return [...this.releases.values()];
   }
 
-  async updateRelease(ctx: RequestContext, version: string, patch: UpdateReleaseRequest, ifMatch: string | undefined): Promise<ReleaseRegisterItem> {
+  async updateRelease(
+    ctx: RequestContext,
+    version: string,
+    patch: UpdateReleaseRequest,
+    ifMatch: string | undefined,
+  ): Promise<ReleaseRegisterItem> {
     const current = this.releases.get(version);
     if (!current) throw AppError.of('NOT_FOUND', `Release ${version} was not found.`);
     const expected = ifMatch === undefined ? NaN : parseInt(ifMatch.replace(/"/g, ''), 10);
     if (!Number.isNaN(expected) && current.lockVersion !== expected) {
-      throw AppError.of('VERSION_CONFLICT', `Release ${version} was changed by someone else. Current version: ${current.lockVersion}.`);
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        `Release ${version} was changed by someone else. Current version: ${current.lockVersion}.`,
+      );
     }
     const updated: ReleaseRegisterItem = {
       ...current,
@@ -782,7 +967,10 @@ export class InMemoryPlatformStore implements PlatformStore {
     return [...this.tenants];
   }
 
-  async createSupportGrant(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant> {
+  async createSupportGrant(
+    ctx: RequestContext,
+    req: CreateSupportAccessRequest,
+  ): Promise<SupportAccessGrant> {
     this.seq += 1;
     const id = `sag_test_${this.seq}`;
     const grant: SupportAccessGrant = {
@@ -808,29 +996,44 @@ export class InMemoryPlatformStore implements PlatformStore {
   async listSupportGrants(ctx: RequestContext, tenantId?: string): Promise<SupportAccessGrant[]> {
     const platform = ctx.principal.tenantId === PLATFORM_TENANT_ID;
     this.audit.push('platform.support_access_listed');
-    return [...this.grants.values()].filter((g) => (platform ? !tenantId || g.tenantId === tenantId : g.tenantId === ctx.principal.tenantId));
+    return [...this.grants.values()].filter((g) =>
+      platform ? !tenantId || g.tenantId === tenantId : g.tenantId === ctx.principal.tenantId,
+    );
   }
 
   private ownGrant(ctx: RequestContext, id: string): SupportAccessGrant {
     const grant = this.grants.get(id);
-    if (!grant || grant.tenantId !== ctx.principal.tenantId) throw AppError.of('NOT_FOUND', 'Support access request not found.');
+    if (!grant || grant.tenantId !== ctx.principal.tenantId)
+      throw AppError.of('NOT_FOUND', 'Support access request not found.');
     return grant;
   }
 
-  async decideSupportGrant(ctx: RequestContext, id: string, decision: 'APPROVED' | 'DENIED'): Promise<SupportAccessGrant> {
+  async decideSupportGrant(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'DENIED',
+  ): Promise<SupportAccessGrant> {
     const grant = this.ownGrant(ctx, id);
-    if (grant.requester === ctx.principal.id) throw AppError.of('SOD_VIOLATION', 'Separation of Duties violation (SOD-06).');
-    if (grant.status !== 'PENDING') throw AppError.of('INVALID_STATE', `Support access request is already ${grant.status}.`);
+    if (grant.requester === ctx.principal.id)
+      throw AppError.of('SOD_VIOLATION', 'Separation of Duties violation (SOD-06).');
+    if (grant.status !== 'PENDING')
+      throw AppError.of('INVALID_STATE', `Support access request is already ${grant.status}.`);
     grant.status = decision;
     grant.approver = ctx.principal.id;
     grant.updatedAt = ctx.now.toISOString();
-    this.audit.push(decision === 'APPROVED' ? 'platform.support_access_approved' : 'platform.support_access_denied');
+    this.audit.push(
+      decision === 'APPROVED' ? 'platform.support_access_approved' : 'platform.support_access_denied',
+    );
     return grant;
   }
 
   async revokeSupportGrant(ctx: RequestContext, id: string): Promise<SupportAccessGrant> {
     const grant = this.ownGrant(ctx, id);
-    if (grant.status !== 'APPROVED') throw AppError.of('INVALID_STATE', `Only an approved, unexpired access can be revoked (this one is ${grant.status}).`);
+    if (grant.status !== 'APPROVED')
+      throw AppError.of(
+        'INVALID_STATE',
+        `Only an approved, unexpired access can be revoked (this one is ${grant.status}).`,
+      );
     grant.status = 'REVOKED';
     grant.updatedAt = ctx.now.toISOString();
     this.audit.push('platform.support_access_revoked');
@@ -841,7 +1044,10 @@ export class InMemoryPlatformStore implements PlatformStore {
     return [...this.corrections.values()].filter((c) => c.tenantId === ctx.principal.tenantId);
   }
 
-  async createDataCorrection(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
+  async createDataCorrection(
+    ctx: RequestContext,
+    req: CreateDataCorrectionRequest,
+  ): Promise<DataCorrectionRequest> {
     this.seq += 1;
     const record: DataCorrectionRequest = {
       id: `dcr_test_${this.seq}`,
@@ -866,14 +1072,24 @@ export class InMemoryPlatformStore implements PlatformStore {
 
   private ownCorrection(ctx: RequestContext, id: string): DataCorrectionRequest {
     const record = this.corrections.get(id);
-    if (!record || record.tenantId !== ctx.principal.tenantId) throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
+    if (!record || record.tenantId !== ctx.principal.tenantId)
+      throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
     return record;
   }
 
-  async decideDataCorrection(ctx: RequestContext, id: string, decision: 'APPROVED' | 'REJECTED'): Promise<DataCorrectionRequest> {
+  async decideDataCorrection(
+    ctx: RequestContext,
+    id: string,
+    decision: 'APPROVED' | 'REJECTED',
+  ): Promise<DataCorrectionRequest> {
     const record = this.ownCorrection(ctx, id);
-    if (record.requestedBy === ctx.principal.id) throw AppError.of('SOD_VIOLATION', 'Separation of Duties violation (SOD-08): the approver must differ from the requester.');
-    if (record.status !== 'PENDING') throw AppError.of('INVALID_STATE', `Data correction '${id}' is already in state '${record.status}'.`);
+    if (record.requestedBy === ctx.principal.id)
+      throw AppError.of(
+        'SOD_VIOLATION',
+        'Separation of Duties violation (SOD-08): the approver must differ from the requester.',
+      );
+    if (record.status !== 'PENDING')
+      throw AppError.of('INVALID_STATE', `Data correction '${id}' is already in state '${record.status}'.`);
     record.status = decision;
     record.approvedBy = ctx.principal.id;
     this.audit.push(decision === 'APPROVED' ? 'data_correction.approved' : 'data_correction.rejected');
@@ -882,7 +1098,11 @@ export class InMemoryPlatformStore implements PlatformStore {
 
   async markDataCorrectionExecuted(ctx: RequestContext, id: string): Promise<DataCorrectionRequest> {
     const record = this.ownCorrection(ctx, id);
-    if (record.status !== 'APPROVED') throw AppError.of('INVALID_STATE', `Data correction must be APPROVED prior to execution (current: ${record.status}).`);
+    if (record.status !== 'APPROVED')
+      throw AppError.of(
+        'INVALID_STATE',
+        `Data correction must be APPROVED prior to execution (current: ${record.status}).`,
+      );
     record.status = 'EXECUTED';
     record.executedAt = ctx.now.toISOString();
     this.audit.push('data_correction.executed');

@@ -53,11 +53,7 @@ export function useCreateTarget() {
 
 export function useApproveTarget() {
   const queryClient = useQueryClient();
-  return useMutation<
-    TargetDto,
-    Error,
-    { id: string; version: number; input: ApproveTargetRequest }
-  >({
+  return useMutation<TargetDto, Error, { id: string; version: number; input: ApproveTargetRequest }>({
     meta: { successMessage: 'Target approved.' },
     mutationFn: ({ id, version, input }) =>
       apiFetch<TargetDto>(`/v1/targets/${id}/approval`, {

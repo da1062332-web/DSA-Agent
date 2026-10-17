@@ -22,11 +22,7 @@ export type CreateInvoiceData = Omit<CreateInvoiceInput, 'taxFields' | 'calculat
 };
 
 export interface InvoiceRepository {
-  createInvoice(
-    tx: Tx,
-    tenantId: string,
-    invoice: CreateInvoiceData,
-  ): Promise<InvoiceRecord>;
+  createInvoice(tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord>;
   findInvoiceById(tx: Tx, tenantId: string, id: string): Promise<InvoiceRecord | null>;
   findInvoiceByNumber(
     tx: Tx,
@@ -138,11 +134,7 @@ function mapLedgerEntryRow(row: LedgerEntryRow): LedgerEntryRecord {
 }
 
 export class SqlInvoiceRepository implements InvoiceRepository {
-  async createInvoice(
-    tx: Tx,
-    tenantId: string,
-    invoice: CreateInvoiceData,
-  ): Promise<InvoiceRecord> {
+  async createInvoice(tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord> {
     const taxFieldsJson = JSON.stringify(invoice.taxFields ?? {});
     const calculationIds = invoice.calculationIds ?? [];
 
@@ -295,7 +287,10 @@ export class SqlInvoiceRepository implements InvoiceRepository {
       if (!existing) {
         throw AppError.of('NOT_FOUND', 'Invoice not found');
       }
-      throw AppError.of('VERSION_CONFLICT', 'Conflict: Invoice was modified concurrently (lock_version mismatch)');
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        'Conflict: Invoice was modified concurrently (lock_version mismatch)',
+      );
     }
     return mapInvoiceRow(row);
   }
@@ -319,7 +314,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
     const entryDate = entry.entryDate ? sql`${entry.entryDate}::date` : sql`CURRENT_DATE`;
 
     const res = await sql<LedgerEntryRow>`
-      INSERT INTO ledger_entry (
+      INSERT INTO connector_statement_entry (
         id, tenant_id, connector_id, entry_type, amount,
         currency, reference_id, description, entry_date, balance_after,
         lock_version, created_at, created_by, updated_at, updated_by
@@ -348,7 +343,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
     limit = 100,
   ): Promise<LedgerEntryRecord[]> {
     const res = await sql<LedgerEntryRow>`
-      SELECT * FROM ledger_entry
+      SELECT * FROM connector_statement_entry
       WHERE tenant_id = ${tenantId}
         AND connector_id = ${connectorId}
         AND (${fromDate ?? null}::date IS NULL OR entry_date >= ${fromDate}::date)
@@ -381,7 +376,7 @@ export class SqlInvoiceRepository implements InvoiceRepository {
           ELSE 0
         END
       ), 0) as balance
-      FROM ledger_entry
+      FROM connector_statement_entry
       WHERE tenant_id = ${tenantId}
         AND connector_id = ${connectorId}
         AND entry_date < ${beforeDate}::date
@@ -429,13 +424,10 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
   private invoices: InvoiceRecord[] = [];
   private ledgerEntries: LedgerEntryRecord[] = [];
 
-  async createInvoice(
-    _tx: Tx,
-    tenantId: string,
-    invoice: CreateInvoiceData,
-  ): Promise<InvoiceRecord> {
+  async createInvoice(_tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord> {
     const existing = this.invoices.find(
-      (inv) => inv.tenantId === tenantId && inv.direction === invoice.direction && inv.number === invoice.number,
+      (inv) =>
+        inv.tenantId === tenantId && inv.direction === invoice.direction && inv.number === invoice.number,
     );
     if (existing) {
       throw AppError.of('VERSION_CONFLICT', 'Invoice with this number and direction already exists');
@@ -535,7 +527,10 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
     }
     const current = this.invoices[idx]!;
     if (expectedLockVersion !== undefined && current.lockVersion !== expectedLockVersion) {
-      throw AppError.of('VERSION_CONFLICT', 'Conflict: Invoice was modified concurrently (lock_version mismatch)');
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        'Conflict: Invoice was modified concurrently (lock_version mismatch)',
+      );
     }
 
     const updated: InvoiceRecord = {
@@ -596,9 +591,7 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
     toDate?: string,
     limit = 100,
   ): Promise<LedgerEntryRecord[]> {
-    let items = this.ledgerEntries.filter(
-      (e) => e.tenantId === tenantId && e.connectorId === connectorId,
-    );
+    let items = this.ledgerEntries.filter((e) => e.tenantId === tenantId && e.connectorId === connectorId);
     if (fromDate) items = items.filter((e) => e.entryDate >= fromDate);
     if (toDate) items = items.filter((e) => e.entryDate <= toDate);
 

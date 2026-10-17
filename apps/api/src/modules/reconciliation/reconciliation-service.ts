@@ -1,14 +1,18 @@
-// apps/api/src/modules/reconciliation/reconciliation-service.ts
 import {
   AppError,
   type AuditPort,
+  type AutoIngestBankFeedInput,
+  type AutoIngestBankFeedResponse,
   type OutboxPort,
   type PermissionCode,
   type RequestContext,
   type Tx,
 } from '@dsa/contracts';
+import { createHash } from 'node:crypto';
 import { ulid } from 'ulid';
 import { hashLoanAccount, maskCustomerName } from './crypto';
+import { parseCsvFeed, parseMt940Feed } from './statement-parser';
+
 import type { ReconciliationRepository } from './repository';
 import type {
   AdjustmentApprovalInput,
@@ -179,11 +183,47 @@ export class ReconciliationService {
     return this.toStatementResponse(statementRow, lineRows);
   }
 
-  async getLenderStatement(
+  // --- AUTOMATED BANK STATEMENT INGESTION ENGINE (MT940 / CSV FEEDS) (MOD-REC / TASK-418) ---
+  async autoIngestBankFeed(
     tx: Tx,
     ctx: RequestContext,
-    id: string,
-  ): Promise<LenderStatementResponse> {
+    input: AutoIngestBankFeedInput,
+  ): Promise<AutoIngestBankFeedResponse> {
+    this.assertPermission(ctx, 'finance.reconcile');
+
+    const parsed =
+      input.format === 'MT940' ? parseMt940Feed(input.rawFeedContent) : parseCsvFeed(input.rawFeedContent);
+
+    // Compute SHA-256 of raw content
+    const hash = createHash('sha256').update(input.rawFeedContent).digest('hex');
+
+    // Ingest via canonical importLenderStatement logic
+    const statement = await this.importLenderStatement(tx, ctx, {
+      lenderId: input.lenderId,
+      period: input.period,
+      sourceFileKey: `feeds/${input.format.toLowerCase()}/${input.filename || 'bank_feed'}`,
+      importBatchId: `auto_ingest_${Date.now()}`,
+      fileSha256: hash,
+      lines: parsed.lines,
+    });
+
+    return {
+      statementId: statement.id as any,
+      lenderId: input.lenderId,
+      period: input.period,
+      format: input.format,
+      parsedLinesCount: parsed.lines.length,
+      totalDisbursed: parsed.totalDisbursed,
+      totalCommission: parsed.totalCommission,
+      totalTaxDeducted: parsed.totalTaxDeducted,
+      netCommission: parsed.netCommission,
+      fileSha256: hash,
+      status: statement.status as any,
+      message: `Successfully auto-parsed and ingested ${parsed.lines.length} lines from bank ${input.format} feed.`,
+    };
+  }
+
+  async getLenderStatement(tx: Tx, ctx: RequestContext, id: string): Promise<LenderStatementResponse> {
     this.assertPermission(ctx, 'finance.view');
     const statement = await this.deps.repository.findLenderStatementById(tx, ctx.principal.tenantId, id);
     if (!statement) {
@@ -224,7 +264,11 @@ export class ReconciliationService {
     }
 
     const lines = await this.deps.repository.listStatementLines(tx, tenantId, statementId);
-    const calculations = await this.deps.repository.findCalculationsForMatching(tx, tenantId, statement.lender_id);
+    const calculations = await this.deps.repository.findCalculationsForMatching(
+      tx,
+      tenantId,
+      statement.lender_id,
+    );
 
     let matchedCount = 0;
     let varianceCount = 0;
@@ -461,7 +505,10 @@ export class ReconciliationService {
       throw AppError.of('NOT_FOUND', `Adjustment ${id} not found.`);
     }
     if (adjustment.status !== 'PENDING') {
-      throw AppError.of('VALIDATION_ERROR', `Adjustment ${id} is not pending approval (status: ${adjustment.status}).`);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        `Adjustment ${id} is not pending approval (status: ${adjustment.status}).`,
+      );
     }
 
     // SOD-07 Enforcement: Approver must differ from creator
@@ -502,11 +549,7 @@ export class ReconciliationService {
 
   // --- SUB-REC.04: DISPUTES & HOLDS ---
 
-  async createDispute(
-    tx: Tx,
-    ctx: RequestContext,
-    input: CreateDisputeInput,
-  ): Promise<DisputeResponse> {
+  async createDispute(tx: Tx, ctx: RequestContext, input: CreateDisputeInput): Promise<DisputeResponse> {
     this.assertPermission(ctx, 'finance.dispute');
     const tenantId = ctx.principal.tenantId;
     const id = this.nextId('dsp');
@@ -534,7 +577,12 @@ export class ReconciliationService {
 
     // Business Rule: Open dispute places relevant payables on ON_HOLD
     if (input.payableIds && input.payableIds.length > 0) {
-      await this.deps.repository.holdPayables(tx, tenantId, input.payableIds, `Dispute ${id}: ${input.reason}`);
+      await this.deps.repository.holdPayables(
+        tx,
+        tenantId,
+        input.payableIds,
+        `Dispute ${id}: ${input.reason}`,
+      );
     }
 
     if (this.deps.audit) {

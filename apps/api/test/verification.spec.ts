@@ -21,9 +21,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
   const staffWithoutPerms = testPrincipal({
     id: 'usr_staff_unauthorized',
     tenantId: 'ten_01JTESTTENANT00000000000000',
-    grants: [
-      { code: 'lead.read', scope: 'BRANCH', branchIds: ['br_mumbai'] },
-    ],
+    grants: [{ code: 'lead.read', scope: 'BRANCH', branchIds: ['br_mumbai'] }],
   });
 
   const otherTenantVerifier = testPrincipal({
@@ -146,19 +144,14 @@ describe('Module 19: Verification API & Integration Tests', () => {
     const targetId = 'vrf_01JTESTVRF0000000000000001';
 
     // Without If-Match -> 422 VALIDATION_ERROR
-    const failRes = await request(app)
-      .patch(`/v1/verifications/${targetId}`)
-      .send({ priority: 'LOW' });
+    const failRes = await request(app).patch(`/v1/verifications/${targetId}`).send({ priority: 'LOW' });
     expect(failRes.status).toBe(422);
 
     // With valid If-Match -> 200
-    const successRes = await request(app)
-      .patch(`/v1/verifications/${targetId}`)
-      .set('If-Match', '"0"')
-      .send({
-        status: 'IN_PROGRESS',
-        findingsSummary: 'Document analysis started by underwriters',
-      });
+    const successRes = await request(app).patch(`/v1/verifications/${targetId}`).set('If-Match', '"0"').send({
+      status: 'IN_PROGRESS',
+      findingsSummary: 'Document analysis started by underwriters',
+    });
     expect(successRes.status).toBe(200);
     expect(successRes.body.status).toBe('IN_PROGRESS');
   });
@@ -178,9 +171,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       markStatus: 'VERIFIED',
     };
 
-    const res = await request(app)
-      .post(`/v1/verifications/${targetId}/complete`)
-      .send(completePayload);
+    const res = await request(app).post(`/v1/verifications/${targetId}/complete`).send(completePayload);
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('VERIFIED');
@@ -205,9 +196,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       // rejectionReason missing
     };
 
-    const res = await request(app)
-      .post(`/v1/verifications/${targetId}/complete`)
-      .send(invalidPayload);
+    const res = await request(app).post(`/v1/verifications/${targetId}/complete`).send(invalidPayload);
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -246,21 +235,17 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     // Missing applicationId and branchId
-    const res = await request(app)
-      .post('/v1/verifications')
-      .send({ verificationType: 'DOCUMENT_REVIEW' });
+    const res = await request(app).post('/v1/verifications').send({ verificationType: 'DOCUMENT_REVIEW' });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
 
     // Invalid verificationType enum
-    const res2 = await request(app)
-      .post('/v1/verifications')
-      .send({
-        applicationId: 'app_1',
-        branchId: 'br_mumbai',
-        verificationType: 'INVALID_TYPE',
-      });
+    const res2 = await request(app).post('/v1/verifications').send({
+      applicationId: 'app_1',
+      branchId: 'br_mumbai',
+      verificationType: 'INVALID_TYPE',
+    });
 
     expect(res2.status).toBe(422);
     expect(res2.body.error.code).toBe('VALIDATION_ERROR');
@@ -274,15 +259,13 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     // Client supplies malicious foreign tenantId and created_by
-    const res = await request(app)
-      .post('/v1/verifications')
-      .send({
-        applicationId: 'app_1',
-        branchId: 'br_mumbai',
-        verificationType: 'IDENTITY_KYC',
-        tenantId: 'ten_MALICIOUS',
-        created_by: 'usr_hacker',
-      });
+    const res = await request(app).post('/v1/verifications').send({
+      applicationId: 'app_1',
+      branchId: 'br_mumbai',
+      verificationType: 'IDENTITY_KYC',
+      tenantId: 'ten_MALICIOUS',
+      created_by: 'usr_hacker',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.tenantId).toBe(verifierPrincipal.tenantId);
@@ -351,13 +334,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000001/complete')
-      .send({
-        outcome: 'POSITIVE',
-        findingsSummary: 'Self check attempt by submitter',
-        markStatus: 'VERIFIED',
-      });
+    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000001/complete').send({
+      outcome: 'POSITIVE',
+      findingsSummary: 'Self check attempt by submitter',
+      markStatus: 'VERIFIED',
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -371,13 +352,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications/vrf_NONEXISTENT_9999999/complete')
-      .send({
-        outcome: 'POSITIVE',
-        findingsSummary: 'Valid findings for nonexistent',
-        markStatus: 'VERIFIED',
-      });
+    const res = await request(app).post('/v1/verifications/vrf_NONEXISTENT_9999999/complete').send({
+      outcome: 'POSITIVE',
+      findingsSummary: 'Valid findings for nonexistent',
+      markStatus: 'VERIFIED',
+    });
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -390,13 +369,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete')
-      .send({
-        outcome: 'POSITIVE',
-        findingsSummary: 'Tiny', // < 5 chars
-        markStatus: 'VERIFIED',
-      });
+    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete').send({
+      outcome: 'POSITIVE',
+      findingsSummary: 'Tiny', // < 5 chars
+      markStatus: 'VERIFIED',
+    });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -409,12 +386,10 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications/vrf_NONEXISTENT_9999999/checklist-review')
-      .send({
-        checklistItemId: 'chk_pan_01',
-        status: 'ACCEPTED',
-      });
+    const res = await request(app).post('/v1/verifications/vrf_NONEXISTENT_9999999/checklist-review').send({
+      checklistItemId: 'chk_pan_01',
+      status: 'ACCEPTED',
+    });
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -470,13 +445,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications')
-      .send({
-        applicationId: 'app_1',
-        branchId: 'br_mumbai',
-        verificationType: 'DOCUMENT_REVIEW',
-      });
+    const res = await request(app).post('/v1/verifications').send({
+      applicationId: 'app_1',
+      branchId: 'br_mumbai',
+      verificationType: 'DOCUMENT_REVIEW',
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -520,13 +493,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete')
-      .send({
-        outcome: 'POSITIVE',
-        findingsSummary: 'Completed investigation notes',
-        markStatus: 'VERIFIED',
-      });
+    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete').send({
+      outcome: 'POSITIVE',
+      findingsSummary: 'Completed investigation notes',
+      markStatus: 'VERIFIED',
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -564,9 +535,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     const mumbaiUser = testPrincipal({
       id: 'usr_mumbai_only',
       tenantId: 'ten_01JTESTTENANT00000000000000',
-      grants: [
-        { code: 'verification.read', scope: 'BRANCH', branchIds: ['br_mumbai'] },
-      ],
+      grants: [{ code: 'verification.read', scope: 'BRANCH', branchIds: ['br_mumbai'] }],
     });
 
     const app = createTestApp({

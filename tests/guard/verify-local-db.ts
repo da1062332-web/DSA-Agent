@@ -19,14 +19,20 @@ export async function assertThrowawayDatabase(
   for (const url of connectionUrls) {
     const host = new URL(url).hostname;
     if (!LOOPBACK.test(host)) {
-      throw new Error(`Test database check failed: the connection string points at "${host}", not at the local machine.`);
+      throw new Error(
+        `Test database check failed: the connection string points at "${host}", not at the local machine.`,
+      );
     }
     const client = new pg.Client({ connectionString: url });
     await client.connect();
     try {
-      const { rows } = await client.query<{ marker: string | null }>(`SELECT current_setting('dsa.test_container', true) AS marker`);
+      const { rows } = await client.query<{ marker: string | null }>(
+        `SELECT current_setting('dsa.test_container', true) AS marker`,
+      );
       if (rows[0]?.marker !== id) {
-        throw new Error('Test database check failed: the database behind this connection string is not the throwaway container.');
+        throw new Error(
+          'Test database check failed: the database behind this connection string is not the throwaway container.',
+        );
       }
     } finally {
       await client.end();

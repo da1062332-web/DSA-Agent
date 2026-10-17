@@ -6,7 +6,9 @@ import pg from 'pg';
 const url = (() => {
   const value = process.env.VERIFY_DATABASE_URL;
   if (!value) {
-    throw new Error('VERIFY_DATABASE_URL is not set. This tool writes to the database it is pointed at: set it explicitly (node --env-file=apps/api/.env), never rely on a built-in default.');
+    throw new Error(
+      'VERIFY_DATABASE_URL is not set. This tool writes to the database it is pointed at: set it explicitly (node --env-file=apps/api/.env), never rely on a built-in default.',
+    );
   }
   return value;
 })();

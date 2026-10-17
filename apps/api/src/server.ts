@@ -20,7 +20,10 @@ import { createApplicationSubjectPort } from './modules/origination/applications
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 import { registeredCorrectionScripts } from './modules/platform-admin/correction-scripts';
-import { DataCorrectionExecutor, startDataCorrectionExecutor } from './modules/platform-admin/data-correction-executor';
+import {
+  DataCorrectionExecutor,
+  startDataCorrectionExecutor,
+} from './modules/platform-admin/data-correction-executor';
 
 let config: ApiConfig;
 try {
@@ -36,7 +39,9 @@ const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
 const ids = createIdGenerator();
 const audit = createAuditPort(ids);
-const complaintSubjectPort = createCompositeComplaintSubjectPort({ application: createApplicationSubjectPort() });
+const complaintSubjectPort = createCompositeComplaintSubjectPort({
+  application: createApplicationSubjectPort(),
+});
 
 const app = createApp({
   deps: {
@@ -75,10 +80,21 @@ if (config.DATA_CORRECTION_EXECUTOR) {
     { registeredScripts: registeredCorrectionScripts.size },
     'DATA_CORRECTION_EXECUTOR is on: approved data corrections will be carried out by the reviewed scripts.',
   );
-  startDataCorrectionExecutor(new DataCorrectionExecutor({ txRunner, audit, scripts: registeredCorrectionScripts }), {
-    onOutcome: (o) => logger.info({ correctionId: o.id, tenantId: o.tenantId, outcome: o.outcome }, 'data correction processed'),
-    onError: (err) => logger.error({ error: err instanceof Error ? err.message : 'unknown' }, 'data correction executor tick failed'),
-  });
+  startDataCorrectionExecutor(
+    new DataCorrectionExecutor({ txRunner, audit, scripts: registeredCorrectionScripts }),
+    {
+      onOutcome: (o) =>
+        logger.info(
+          { correctionId: o.id, tenantId: o.tenantId, outcome: o.outcome },
+          'data correction processed',
+        ),
+      onError: (err) =>
+        logger.error(
+          { error: err instanceof Error ? err.message : 'unknown' },
+          'data correction executor tick failed',
+        ),
+    },
+  );
 }
 
 const worker = startBackgroundWorker({

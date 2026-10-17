@@ -25,9 +25,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: VerificationServic
 
       const idempotencyKey = req.get('Idempotency-Key');
       if (!idempotencyKey) {
-        throw AppError.of('VALIDATION_ERROR', 'Idempotency-Key header is required for creating verification checks.', [
-          { field: 'Idempotency-Key', issue: 'REQUIRED' },
-        ]);
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'Idempotency-Key header is required for creating verification checks.',
+          [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
+        );
       }
       if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
         throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [

@@ -49,8 +49,8 @@ END $$;
 
 GRANT SELECT, INSERT, UPDATE ON invoice TO dsa_app;
 
--- 2. ENT-081: Ledger Entries for Connector Account Statements
-CREATE TABLE IF NOT EXISTS ledger_entry (
+-- 2. ENT-081: Connector Statement Entries for Connector Account Statements
+CREATE TABLE IF NOT EXISTS connector_statement_entry (
   id            text PRIMARY KEY,
   tenant_id     text NOT NULL REFERENCES tenant(id),
   connector_id  text NOT NULL,
@@ -69,24 +69,24 @@ CREATE TABLE IF NOT EXISTS ledger_entry (
   UNIQUE (tenant_id, id)
 );
 
-CREATE INDEX IF NOT EXISTS ledger_entry_tenant_conn_date_idx ON ledger_entry (tenant_id, connector_id, entry_date);
+CREATE INDEX IF NOT EXISTS connector_statement_entry_tenant_conn_date_idx ON connector_statement_entry (tenant_id, connector_id, entry_date);
 
-ALTER TABLE ledger_entry ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ledger_entry FORCE ROW LEVEL SECURITY;
+ALTER TABLE connector_statement_entry ENABLE ROW LEVEL SECURITY;
+ALTER TABLE connector_statement_entry FORCE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'app' AND tablename = 'ledger_entry' AND policyname = 'ledger_entry_tenant_isolation'
+    SELECT 1 FROM pg_policies WHERE schemaname = 'app' AND tablename = 'connector_statement_entry' AND policyname = 'connector_statement_entry_tenant_isolation'
   ) THEN
-    CREATE POLICY ledger_entry_tenant_isolation ON ledger_entry
+    CREATE POLICY connector_statement_entry_tenant_isolation ON connector_statement_entry
       FOR ALL
       USING (tenant_id = app_tenant())
       WITH CHECK (tenant_id = app_tenant());
   END IF;
 END $$;
 
-GRANT SELECT, INSERT, UPDATE ON ledger_entry TO dsa_app;
+GRANT SELECT, INSERT, UPDATE ON connector_statement_entry TO dsa_app;
 
 -- 3. Seed Permissions & Role Grants
 INSERT INTO permission (code, description, introduced_in)

@@ -113,9 +113,7 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
   describe('SUB-DEV.01: Partner API Gateway & Authentication', () => {
     it('TEST-API-DEV-001 rejects request without API Key with 401 UNAUTHENTICATED', async () => {
       const { app } = createTestPartnerApp();
-      const res = await request(app)
-        .post('/v1/partner/sandbox/echo')
-        .send({ message: 'ping' });
+      const res = await request(app).post('/v1/partner/sandbox/echo').send({ message: 'ping' });
 
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('UNAUTHENTICATED');
@@ -315,18 +313,14 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
       const leadId = createRes.body.id;
 
       // GET /partner/leads/:id
-      const getRes = await request(app)
-        .get(`/v1/partner/leads/${leadId}`)
-        .set('X-API-Key', validKeySecret);
+      const getRes = await request(app).get(`/v1/partner/leads/${leadId}`).set('X-API-Key', validKeySecret);
 
       expect(getRes.status).toBe(200);
       expect(getRes.body.id).toBe(leadId);
       expect(getRes.body.externalReferenceId).toBe('EXT-PARTNER-101');
 
       // GET /partner/leads
-      const listRes = await request(app)
-        .get('/v1/partner/leads?limit=10')
-        .set('X-API-Key', validKeySecret);
+      const listRes = await request(app).get('/v1/partner/leads?limit=10').set('X-API-Key', validKeySecret);
 
       expect(listRes.status).toBe(200);
       expect(listRes.body.data.length).toBeGreaterThanOrEqual(1);
@@ -1122,7 +1116,7 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
         .set('X-API-Key', validKeySecret);
 
       expect(listRes.status).toBe(200);
-      for (const item of (listRes.body.data as Record<string, unknown>[])) {
+      for (const item of listRes.body.data as Record<string, unknown>[]) {
         expect(item.signingSecret).toBeUndefined();
         expect(item.secretHash).toBeUndefined();
       }
@@ -1184,9 +1178,7 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
         allowedIps: ['203.0.113.15'],
       };
 
-      const res = await request(app)
-        .post('/v1/api-clients')
-        .send(payload);
+      const res = await request(app).post('/v1/api-clients').send(payload);
 
       expect(res.status).toBe(201);
       expect(res.body.id).toMatch(/^clt_/);
@@ -1230,12 +1222,10 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
         });
 
       const clientId = createRes.body.id;
-      const patchRes = await request(app)
-        .patch(`/v1/api-clients/${clientId}`)
-        .send({
-          status: 'SUSPENDED',
-          rateLimitRpm: 300,
-        });
+      const patchRes = await request(app).patch(`/v1/api-clients/${clientId}`).send({
+        status: 'SUSPENDED',
+        rateLimitRpm: 300,
+      });
 
       expect(patchRes.status).toBe(200);
       expect(patchRes.body.status).toBe('SUSPENDED');
@@ -1255,8 +1245,7 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
       const initialSecret = createRes.body.clientSecret;
       const clientId = createRes.body.id;
 
-      const rotateRes = await request(app)
-        .post(`/v1/api-clients/${clientId}/rotate-secret`);
+      const rotateRes = await request(app).post(`/v1/api-clients/${clientId}/rotate-secret`);
 
       expect(rotateRes.status).toBe(200);
       expect(rotateRes.body.clientId).toBe(createRes.body.clientId);

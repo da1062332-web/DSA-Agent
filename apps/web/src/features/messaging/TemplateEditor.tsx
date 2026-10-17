@@ -35,12 +35,7 @@ export interface TemplateEditorProps {
   apiBaseUrl?: string;
 }
 
-export function TemplateEditor({
-  open,
-  onClose,
-  onSuccess,
-  apiBaseUrl = '/v1',
-}: TemplateEditorProps) {
+export function TemplateEditor({ open, onClose, onSuccess, apiBaseUrl = '/v1' }: TemplateEditorProps) {
   const [code, setCode] = useState('');
   const [channel, setChannel] = useState<MessageChannel>('EMAIL');
   const [category, setCategory] = useState<TemplateCategory>('TRANSACTIONAL');
@@ -120,9 +115,7 @@ export function TemplateEditor({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontWeight: 700 }}>
-          Create Message Template (CMP-MSG.01.1)
-        </DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Create Message Template (CMP-MSG.01.1)</DialogTitle>
         <DialogContent dividers>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
