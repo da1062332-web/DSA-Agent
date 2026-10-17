@@ -37,3 +37,7 @@ It counts, per table and tenant, total rows, rows from the last 14 hours, and th
 - **1,030 rows cannot be removed by design:** `activity` 394, `message_template` 258, `dedupe_registry` 193, `notification` 135 and `message` 50 are delete-protected by database triggers. The procedure reports them and never disables a trigger. At most 572 rows in 19 tables are deletable.
 - **Kept:** organisation 102, app_user 50, branch 34, user_role_assignment 25, metric_definition 18, role 14 (fixtures and history).
 - **The procedure is ready and rehearsed:** `tools/sql/cleanup/` (counts, backup to JSON, a transactional children-first delete that aborts unless it finds exactly the three test tenants, verify) and `apps/api/test/cleanup-test-data.int.spec.ts` (5 tests, PostgreSQL 16 and 17). Not run on hosted: the environment refused hosted writes, and stopping the writers comes first. See `tools/sql/cleanup/README.md`.
+
+## 6. Update 2026-10-17 10:28 UTC (read-only)
+
+1,909 rows in 32 tables. Six of them (3 `rule_set`, 3 `rule_set_version`) are the eligibility rules that migration 0055 created in the three test tenants at 10:01 UTC: legitimate, not residue, and not in the cleanup list. **Stray rows: 1,903.** They grew by 58 between 04:34 and 04:48:32 UTC (two full test bursts, 04:07 to 04:09 and 04:47 to 04:48), and nothing stray has been written since. See `docs/HOSTED_FINDINGS_20261017.md`.

@@ -39,6 +39,13 @@ describe('sidebar visibility by permission', () => {
     expect(group?.task).toBeUndefined();
   });
 
+  it('shows the Platform Console only in the platform realm, even to a customer-tenant role that holds platform.console', () => {
+    const customer = visibleGroups(true, () => true, false).flatMap((g) => g.items.map((i) => i.label));
+    expect(customer).not.toContain('Platform Console');
+    const platform = visibleGroups(false, () => true, true).flatMap((g) => g.items.map((i) => i.label));
+    expect(platform).toContain('Platform Console');
+  });
+
   it('shows a screen when any one of its permissions is held', () => {
     expect(labels((c) => c === 'complaint.create')).toContain('Grievances');
     expect(labels((c) => c === 'config.manage')).toContain('Messaging');
@@ -112,11 +119,16 @@ describe('platform realm in the sidebar', () => {
     expect(visibleGroups(true, everything, false).flatMap((g) => g.items).length).toBeGreaterThan(30);
   });
 
-  it('TEST-REALM-WEB-003 the Platform Console item needs platform.console even for an admin', () => {
+  it('TEST-REALM-WEB-003 the Platform Console item is for the platform realm and needs platform.console there; a customer-tenant role never gets it', () => {
+    const inPlatform = (can: (c: string) => boolean) =>
+      visibleGroups(false, can, true).flatMap((g) => g.items.map((i) => i.label));
+    expect(inPlatform((c) => c === 'platform.console')).toContain('Platform Console');
+    expect(inPlatform(() => false)).not.toContain('Platform Console');
+    // Customer realm: an admin without the permission, and (since 2026-10-17) a role that holds it by mistake, both get no entry.
     expect(labels((c) => c === 'config.manage' || c === 'user.manage', true)).not.toContain(
       'Platform Console',
     );
-    expect(labels((c) => c === 'platform.console', true)).toContain('Platform Console');
+    expect(labels((c) => c === 'platform.console', true)).not.toContain('Platform Console');
   });
 });
 

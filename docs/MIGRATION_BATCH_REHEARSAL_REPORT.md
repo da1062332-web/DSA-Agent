@@ -82,7 +82,7 @@ Nothing from the batch is applied: 0054, 0055, 0057, 0058, 0059, 0060, 0061, 006
 
 `~/dsa-backups/batch-20261017/state-before-apply.json` (165 KB, taken 2026-10-17 07:17 UTC) exists. It is a **snapshot of the entities the batch touches, not a database backup.** It holds: all 87 permissions, all 687 role-to-permission grants, all 51 roles (id, tenant, code, name, template flag), all 11 feature flags with their values, the count (only) of master data rows, the list of rule sets (none), the decision definition keys, and the 7 tenants (id, slug).
 
-It can be used to see exactly what the grants, roles and flags were, and to re-insert deleted grants, roles or flags by hand. It **cannot** restore: table structure, any other table's rows (users, applications, leads, invoices, audit), master data contents, or anything changed after it was taken. `0054-backup.json` (5.8 KB) is a similar entity snapshot for 0054. The real recovery for anything beyond that is the tested per-migration rollback scripts, and the hosted project's point-in-time recovery, **whose availability on this plan I could not verify** from here; check it in the Supabase dashboard before applying.
+It can be used to see exactly what the grants, roles and flags were, and to re-insert deleted grants, roles or flags by hand. It **cannot** restore: table structure, any other table's rows (users, applications, leads, invoices, audit), master data contents, or anything changed after it was taken. `0054-backup.json` (5.8 KB) is a similar entity snapshot for 0054. The real recovery for anything beyond that is the tested per-migration rollback scripts. **Point-in-time recovery is not enabled on this project** (`supabase backups list` shows `pitr_enabled: false` and no backups; checked 2026-10-17 after the batch, corrected from an earlier version of this report that listed it as a fallback).
 
 ## 8. Is the batch safe to propose?
 
@@ -91,7 +91,7 @@ It can be used to see exactly what the grants, roles and flags were, and to re-i
 **Conditions and remaining risks:**
 - The cause of the six failures is unproven (section 1); the suite is now configured to be less contended and to retry only the known start-up race. If the same six failures return, the kept logs will say why.
 - Re-run the preflight right before applying; the runner now refuses on a non-zero 0054 data-step count.
-- Confirm point-in-time recovery in the dashboard, and use the state backup only as the entity snapshot it is.
+- Point-in-time recovery is NOT enabled (see section 7); use the state backup only as the entity snapshot it is.
 - Apply 0065 before deploying the new invoices code.
 - The 1,845 stray test rows keep growing; the writers should be stopped (credential rotation, everyone pulls) so verification counts and cleanup are meaningful.
 

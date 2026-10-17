@@ -216,7 +216,11 @@ export function visibleGroups(
       ...g,
       items: g.items.filter(
         (i) =>
-          (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) && (!i.anyOf || i.anyOf.some(can)),
+          (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) &&
+          // The Platform Console belongs to the platform realm only. A customer-tenant role that holds platform.console by mistake
+          // (found on hosted, 2026-10-17) must not get a menu entry that leads to a refusal.
+          (platformRealm || i.to !== '/platform-admin') &&
+          (!i.anyOf || i.anyOf.some(can)),
       ),
     }))
     .filter((g) => g.items.length > 0);

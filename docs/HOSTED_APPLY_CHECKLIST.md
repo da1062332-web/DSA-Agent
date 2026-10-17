@@ -37,7 +37,7 @@ After the last one: re-run `tools/sql/0050/verify.sql`, `verify-behaviour.sql` a
 
 ## Update after the rehearsal review (2026-10-17)
 
-`docs/MIGRATION_BATCH_REHEARSAL_REPORT.md` has the evidence. Three things changed here: the runner (`tools/sql/batch/run-batch.sh`) is now resumable, uses a new folder per run and stops before 0054 if its data steps would change users; the state backup is an entity snapshot, not a database backup; and point-in-time recovery of the project should be confirmed in the Supabase dashboard before applying.
+`docs/MIGRATION_BATCH_REHEARSAL_REPORT.md` has the evidence. Three things changed here: the runner (`tools/sql/batch/run-batch.sh`) is now resumable, uses a new folder per run and stops before 0054 if its data steps would change users; the state backup is an entity snapshot, not a database backup; and point-in-time recovery is **not enabled** on the project (checked after the batch).
 
 ## Status: the batch is applied (2026-10-17)
 

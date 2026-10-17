@@ -45,3 +45,7 @@ Rotating a shared hosted project's credentials changes shared state and interrup
 - **History scan (counts only):** 11 commits added or removed a database URL with a password, 2 contain a Supabase key token. No tracked file in the current tree holds a real credential (the few matches are dummy values in tests).
 - **Rotation was not attempted.** It would change the database passwords and Supabase keys that every teammate's `.env`, the CI secrets and any deployment depend on, and those dependencies cannot be listed from this machine. It also stops the stray test writers described in `docs/HOSTED_TEST_RESIDUE.md`, which is a reason to do it soon. Do it in the order of section 3, and tell the team first.
 - **Verification after rotation:** the old passwords must fail to connect and the new ones must work (`npx supabase db query --linked "select 1"`), then run the Module 1 checks.
+
+## 6. Update 2026-10-17 (status only)
+
+Still not rotated. Evidence that a stored connection string worked: stray test writes to hosted at 04:07 to 04:09 and 04:47 to 04:48 UTC on 2026-10-17, and none since. I did not try the exposed passwords. Rotating the database password is what would stop any remaining writer. Details: `docs/HOSTED_FINDINGS_20261017.md`.

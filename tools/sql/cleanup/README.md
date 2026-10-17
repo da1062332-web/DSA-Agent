@@ -37,4 +37,4 @@ Compare `counts-before.json` and `counts-after.json`: every row for a tenant oth
 
 ## Recovery
 
-Restoring a table is an `INSERT` from `backup.json` (rows are plain JSON of the table). Hosted point-in-time recovery is the fallback for anything else.
+Restoring a table is an `INSERT` from `backup.json` (rows are plain JSON of the table). There is no hosted point-in-time recovery on this project (not enabled, checked 2026-10-17), so the backup JSON is the whole recovery.

@@ -17,7 +17,7 @@ Migration: `supabase/migrations/20261001000054_access_control_and_api_clients.sq
 
 ## What the backup is, and is not
 
-`backup.sql` records the **state of the affected entities** (the permission, the admin grants, the eligibility definition, whether `api_client` exists, and the role-less active users). It is not a copy of the database and it does not restore anything by itself. Recovery is `rollback.sql`, which removes only what 0054 added. Hosted point-in-time recovery is the fallback for anything else. The backup file contains user e-mails of test accounts, so it lives in `~/dsa-backups/0054/` and is never committed.
+`backup.sql` records the **state of the affected entities** (the permission, the admin grants, the eligibility definition, whether `api_client` exists, and the role-less active users). It is not a copy of the database and it does not restore anything by itself. Recovery is `rollback.sql`, which removes only what 0054 added. There is no hosted point-in-time recovery on this project (not enabled, checked 2026-10-17), so the backup JSON and the rollback script are the whole recovery. The backup file contains user e-mails of test accounts, so it lives in `~/dsa-backups/0054/` and is never committed.
 
 ## Commands (in order)
 

@@ -64,7 +64,7 @@ npx supabase db query --linked -f tools/sql/batch/NN.rollback.sql
 | 0064 | removes the four permissions from branch manager and loan operations again | Owner and tenant admin keep theirs (hosted already had them, so they cannot be told apart from this migration's grants). |
 | 0063 | drops the two tables if empty and removes the permissions | Refused if a security event or incident exists: that is an audit trail. |
 
-Anything else (a bad apply that the rollback cannot fix) is recovered with the hosted project's point-in-time recovery; ask for it before, not after.
+Anything else (a bad apply that the rollback cannot fix) has **no point-in-time recovery** behind it on this project (not enabled; checked 2026-10-17): the per-migration rollbacks and the entity snapshot are all there is.
 
 ## After the batch
 
