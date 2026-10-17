@@ -3,21 +3,15 @@
 // Connects as dsa_api (NOBYPASSRLS) and validates real PostgreSQL migrations, RLS policies, triggers, and audit transactions.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -82,7 +76,9 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
 
     // Query from Tenant A -> visible
     const queryA = await txRunner.withTenantTx(ctxA, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.message_template WHERE id = ${tmplId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.message_template WHERE id = ${tmplId}`.execute(
+        tx,
+      );
       return res.rows;
     });
     expect(queryA.length).toBe(1);
@@ -96,14 +92,18 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
       },
     };
     const queryB = await txRunner.withTenantTx(ctxB, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.message_template WHERE id = ${tmplId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.message_template WHERE id = ${tmplId}`.execute(
+        tx,
+      );
       return res.rows;
     });
     expect(queryB.length).toBe(0);
   });
 
   it('PG-MSG-003 verifies fail-closed: querying message_template without app.tenant_id returns 0 rows', async () => {
-    const { rows } = await sql<{ count: string }>`SELECT count(*) as count FROM app.message_template`.execute(db);
+    const { rows } = await sql<{ count: string }>`SELECT count(*) as count FROM app.message_template`.execute(
+      db,
+    );
     expect(rows[0]?.count).toBe('0');
   });
 
@@ -296,10 +296,15 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
 
     // Verify all 3 records persisted inside Tenant A
     await txRunner.withTenantTx(ctx, async (tx) => {
-      const msgRes = await sql<{ id: string; status: string }>`SELECT id, status FROM app.message WHERE id = ${msgId}`.execute(tx);
+      const msgRes = await sql<{
+        id: string;
+        status: string;
+      }>`SELECT id, status FROM app.message WHERE id = ${msgId}`.execute(tx);
       expect(msgRes.rows[0]?.status).toBe('SENT');
 
-      const audRes = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${audId}`.execute(tx);
+      const audRes = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${audId}`.execute(
+        tx,
+      );
       expect(audRes.rows.length).toBe(1);
     });
   });
@@ -470,7 +475,8 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
   });
 
   it('PG-MSG-011 verifies message.send permission grants across tenant operational and admin roles', async () => {
-    const adminDbUrl = process.env.VERIFY_DATABASE_URL || process.env.DATABASE_URL;
+    const adminDbUrl =
+      resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || resolveLocalTestDatabaseUrl('DATABASE_URL');
     const adminDb = createDb(adminDbUrl!, { poolMax: 2 });
     try {
       const grantRows = await sql<{ role_code: string; permission_code: string }>`
@@ -490,4 +496,3 @@ describeLivePg('Module 11 (MOD-MSG): Live PostgreSQL Verification', () => {
     }
   });
 });
-

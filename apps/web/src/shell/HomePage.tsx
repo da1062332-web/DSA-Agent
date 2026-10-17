@@ -1,4 +1,5 @@
 import { Box, Button, Card, CardContent, Container, Grid, Typography } from '@mui/material';
+import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { Link as RouterLink } from 'react-router-dom';
 import { useMe } from '../api/useMe';
 
@@ -114,6 +115,10 @@ export function HomePage() {
       badge: 'Configuration',
     },
   ];
+  // Same realm test as the sidebar: a platform operator is offered only the Platform Console, and customer-tenant users
+  // are not offered it (the API refuses them anyway).
+  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
+  const shownCards = cards.filter((c) => (c.to === '/platform-admin') === platformRealm);
 
   return (
     <Container maxWidth="lg" sx={{ py: 5 }}>
@@ -128,7 +133,7 @@ export function HomePage() {
       </Box>
 
       <Grid container spacing={3}>
-        {cards.map((c) => (
+        {shownCards.map((c) => (
           <Grid item xs={12} sm={6} md={3} key={c.title}>
             <Card
               sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 1 }}

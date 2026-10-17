@@ -3,22 +3,16 @@
 // Connects as dsa_api (NOBYPASSRLS) and validates real PostgreSQL migrations, RLS policies, triggers, and preferences.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
 import { NotificationService } from '../src/modules/crm/notifications/notification-service';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -145,9 +139,7 @@ describeLivePg('Module 12 (MOD-NTF): Live PostgreSQL Verification', () => {
       `.execute(tx);
 
       // Attempt DELETE -> must fail via trigger
-      await expect(
-        sql`DELETE FROM app.notification WHERE id = ${notifId}`.execute(tx),
-      ).rejects.toThrow();
+      await expect(sql`DELETE FROM app.notification WHERE id = ${notifId}`.execute(tx)).rejects.toThrow();
     });
   });
 

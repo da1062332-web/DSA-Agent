@@ -68,7 +68,9 @@ export const ConsentChannelSchema = z.enum(CONSENT_CHANNELS);
 export const LeadConsentInputSchema = z.object({
   purpose: ConsentPurposeSchema.default('CONTACT'),
   purposeTarget: z.string().nullable().optional(),
-  noticeVersion: z.string().regex(/^[a-zA-Z0-9._-]{2,40}$/, 'noticeVersion must match ^[a-zA-Z0-9._-]{2,40}$'),
+  noticeVersion: z
+    .string()
+    .regex(/^[a-zA-Z0-9._-]{2,40}$/, 'noticeVersion must match ^[a-zA-Z0-9._-]{2,40}$'),
   channel: ConsentChannelSchema,
   evidenceRef: z.string().nullable().optional(),
 });
@@ -80,7 +82,11 @@ export const CreateLeadInputSchema = z.object({
   email: z.string().email().nullable().optional(),
   productCategory: ProductCategorySchema,
   indicativeAmount: MoneySchema.nullable().optional(),
-  pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'pincode must be 6 digits').nullable().optional(),
+  pincode: z
+    .string()
+    .regex(/^[1-9][0-9]{5}$/, 'pincode must be 6 digits')
+    .nullable()
+    .optional(),
   branchId: z.string().min(1),
   source: LeadSourceSchema,
   subSource: z.string().max(100).nullable().optional(),
@@ -97,7 +103,11 @@ export const UpdateLeadInputSchema = z.object({
   fullName: z.string().min(2).max(200).optional(),
   email: z.string().email().nullable().optional(),
   indicativeAmount: MoneySchema.nullable().optional(),
-  pincode: z.string().regex(/^[1-9][0-9]{5}$/).nullable().optional(),
+  pincode: z
+    .string()
+    .regex(/^[1-9][0-9]{5}$/)
+    .nullable()
+    .optional(),
   priority: LeadPrioritySchema.optional(),
   tags: z.array(z.string()).optional(),
   nextFollowUpAt: z.string().datetime().nullable().optional(),

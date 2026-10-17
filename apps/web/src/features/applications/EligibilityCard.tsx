@@ -28,7 +28,13 @@ import {
   type ProductResult,
 } from './eligibility';
 
-export function EligibilityCard({ applicationId, hasProduct }: { applicationId: string; hasProduct: boolean }) {
+export function EligibilityCard({
+  applicationId,
+  hasProduct,
+}: {
+  applicationId: string;
+  hasProduct: boolean;
+}) {
   const me = useMe();
   const canRun = hasPermission(me.data, 'application.read');
   const canOverrideNow = hasPermission(me.data, 'eligibility.override');
@@ -39,7 +45,9 @@ export function EligibilityCard({ applicationId, hasProduct }: { applicationId: 
     [[path]],
     'Eligibility checked.',
   );
-  const [target, setTarget] = useState<{ assessment: EligibilityAssessment; result: ProductResult } | null>(null);
+  const [target, setTarget] = useState<{ assessment: EligibilityAssessment; result: ProductResult } | null>(
+    null,
+  );
 
   if (!canRun) return null;
   const rows = history.data?.pages.flatMap((p) => p.data) ?? [];

@@ -4,6 +4,14 @@
 
 SET search_path = app, extensions, public;
 
+-- The grants below include customer.create and customer.update. They are in the contracts and in the hosted catalog (introduced in
+-- M-001), but no migration created them, so on a fresh build with a tenant present this migration failed on the foreign key.
+-- Defining them here, before they are granted, is idempotent: on hosted they already exist and are left as they are.
+INSERT INTO permission (code, description, introduced_in) VALUES
+  ('customer.create', 'Create party profile / customer', 'M-001'),
+  ('customer.update', 'Update customer profile', 'M-001')
+ON CONFLICT (code) DO NOTHING;
+
 -- Revoke any disallowed DELETE privileges from dsa_app to preserve NFR-SEC-003 immutability
 REVOKE DELETE, TRUNCATE ON app.report_schedule FROM dsa_app;
 

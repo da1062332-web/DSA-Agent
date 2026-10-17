@@ -10,11 +10,7 @@ import {
   type Tx,
 } from '@dsa/contracts';
 import crypto from 'node:crypto';
-import {
-  getCustomerScopeFilter,
-  requireCustomerAccess,
-  requirePermission,
-} from './authz-helper';
+import { getCustomerScopeFilter, requireCustomerAccess, requirePermission } from './authz-helper';
 import {
   assertNoS3Data,
   computeEmailHash,
@@ -25,11 +21,7 @@ import {
   normalizeEmail,
   normalizeMobile,
 } from './normalizer';
-import type {
-  ConsentRecordRow,
-  CustomerRepository,
-  CustomerRow,
-} from './repository';
+import type { ConsentRecordRow, CustomerRepository, CustomerRow } from './repository';
 import type {
   ConsentResource,
   CreateConsentInput,
@@ -149,9 +141,11 @@ export class CustomerService implements PartyPort, ConsentPort {
       input.bankAccount !== undefined ||
       input.bankAccountNumber !== undefined
     ) {
-      throw AppError.of('VALIDATION_ERROR', 'S3-class data (PAN, Aadhaar, DOB, bank account) is prohibited in MVP', [
-        { field: 'pan', issue: 'PROHIBITED_S3_DATA' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'S3-class data (PAN, Aadhaar, DOB, bank account) is prohibited in MVP',
+        [{ field: 'pan', issue: 'PROHIBITED_S3_DATA' }],
+      );
     }
 
     assertNoS3Data(input.fullName, 'fullName');
@@ -293,9 +287,11 @@ export class CustomerService implements PartyPort, ConsentPort {
       input.bankAccount !== undefined ||
       input.bankAccountNumber !== undefined
     ) {
-      throw AppError.of('VALIDATION_ERROR', 'S3-class data (PAN, Aadhaar, DOB, bank account) is prohibited in MVP', [
-        { field: 'pan', issue: 'PROHIBITED_S3_DATA' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'S3-class data (PAN, Aadhaar, DOB, bank account) is prohibited in MVP',
+        [{ field: 'pan', issue: 'PROHIBITED_S3_DATA' }],
+      );
     }
 
     if (input.fullName) {
@@ -311,17 +307,11 @@ export class CustomerService implements PartyPort, ConsentPort {
       throw AppError.of('VERSION_CONFLICT', 'Resource has been modified (ETag mismatch).');
     }
 
-    const updated = await this.deps.repository.updateCustomer(
-      tx,
-      tenantId,
-      id,
-      expectedLockVersion,
-      {
-        full_name: input.fullName?.trim(),
-        home_branch_id: input.homeBranchId,
-        updated_by: ctx.principal.id,
-      },
-    );
+    const updated = await this.deps.repository.updateCustomer(tx, tenantId, id, expectedLockVersion, {
+      full_name: input.fullName?.trim(),
+      home_branch_id: input.homeBranchId,
+      updated_by: ctx.principal.id,
+    });
 
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', 'Concurrent modification detected.');
@@ -396,11 +386,7 @@ export class CustomerService implements PartyPort, ConsentPort {
     // Fetch contact points for each customer
     const resources: MaskedCustomerResource[] = [];
     for (const c of result.customers) {
-      const contactPoints = await this.deps.repository.findPrimaryContactPoints(
-        tx,
-        c.tenant_id,
-        c.id,
-      );
+      const contactPoints = await this.deps.repository.findPrimaryContactPoints(tx, c.tenant_id, c.id);
       resources.push(this.toCustomerResource(c, contactPoints));
     }
 
@@ -440,11 +426,7 @@ export class CustomerService implements PartyPort, ConsentPort {
   /**
    * List Consents for a Customer
    */
-  async listConsents(
-    tx: Tx,
-    ctx: RequestContext,
-    customerId: string,
-  ): Promise<{ data: ConsentResource[] }> {
+  async listConsents(tx: Tx, ctx: RequestContext, customerId: string): Promise<{ data: ConsentResource[] }> {
     requirePermission(ctx, 'customer.read');
     const customer = await this.deps.repository.findCustomerById(tx, ctx.principal.tenantId, customerId);
     requireCustomerAccess(ctx, 'customer.read', customer);
@@ -645,7 +627,10 @@ export class CustomerService implements PartyPort, ConsentPort {
     );
 
     if (!updated) {
-      throw AppError.of('INVALID_STATE', 'Failed to withdraw consent; record may have already been modified.');
+      throw AppError.of(
+        'INVALID_STATE',
+        'Failed to withdraw consent; record may have already been modified.',
+      );
     }
 
     await this.deps.repository.insertOutboxEvent(tx, {

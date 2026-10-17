@@ -86,9 +86,7 @@ class InMemoryReconciliationRepository implements ReconciliationRepository {
   }
 
   async listLenderStatements(_tx: Tx, tenantId: string, lenderId?: string): Promise<LenderStatementRow[]> {
-    return this.statements.filter(
-      (s) => s.tenant_id === tenantId && (!lenderId || s.lender_id === lenderId),
-    );
+    return this.statements.filter((s) => s.tenant_id === tenantId && (!lenderId || s.lender_id === lenderId));
   }
 
   async updateLenderStatementStatus(_tx: Tx, tenantId: string, id: string, status: string): Promise<void> {
@@ -96,7 +94,11 @@ class InMemoryReconciliationRepository implements ReconciliationRepository {
     if (stmt) stmt.status = status as any;
   }
 
-  async listStatementLines(_tx: Tx, tenantId: string, statementId: string): Promise<LenderStatementLineRow[]> {
+  async listStatementLines(
+    _tx: Tx,
+    tenantId: string,
+    statementId: string,
+  ): Promise<LenderStatementLineRow[]> {
     return this.lines.filter((l) => l.tenant_id === tenantId && l.statement_id === statementId);
   }
 
@@ -132,7 +134,11 @@ class InMemoryReconciliationRepository implements ReconciliationRepository {
     this.matches.push(row);
   }
 
-  async findActiveMatchForLine(_tx: Tx, tenantId: string, statementLineId: string): Promise<ReconciliationMatchRow | null> {
+  async findActiveMatchForLine(
+    _tx: Tx,
+    tenantId: string,
+    statementLineId: string,
+  ): Promise<ReconciliationMatchRow | null> {
     return (
       this.matches.find(
         (m) => m.tenant_id === tenantId && m.statement_line_id === statementLineId && m.status === 'ACTIVE',
@@ -140,7 +146,11 @@ class InMemoryReconciliationRepository implements ReconciliationRepository {
     );
   }
 
-  async listMatchesForStatement(_tx: Tx, tenantId: string, statementId: string): Promise<ReconciliationMatchRow[]> {
+  async listMatchesForStatement(
+    _tx: Tx,
+    tenantId: string,
+    statementId: string,
+  ): Promise<ReconciliationMatchRow[]> {
     const lineIds = new Set(this.lines.filter((l) => l.statement_id === statementId).map((l) => l.id));
     return this.matches.filter((m) => m.tenant_id === tenantId && lineIds.has(m.statement_line_id));
   }
@@ -519,14 +529,16 @@ describe('MOD-REC: Reconciliation Management (Domain DOM-K)', () => {
     it('TC-REC-012: Dispute creation places associated payables on ON_HOLD', async () => {
       const app = appWith('finance.dispute');
       const validPayableId = `cpay_${ulid()}`;
-      const res = await request(app).post('/v1/disputes').send({
-        partyType: 'LENDER',
-        partyId: 'lnd_hdfc_bank',
-        subjectType: 'STATEMENT_LINE',
-        subjectId: 'stl_test_line_01',
-        reason: 'Short remittance of ₹2,500 disputed with lender account manager',
-        payableIds: [validPayableId],
-      });
+      const res = await request(app)
+        .post('/v1/disputes')
+        .send({
+          partyType: 'LENDER',
+          partyId: 'lnd_hdfc_bank',
+          subjectType: 'STATEMENT_LINE',
+          subjectId: 'stl_test_line_01',
+          reason: 'Short remittance of ₹2,500 disputed with lender account manager',
+          payableIds: [validPayableId],
+        });
       expect(res.status).toBe(201);
       expect(res.body.id).toMatch(/^dsp_/);
       expect(res.body.status).toBe('OPEN');

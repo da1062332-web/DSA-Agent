@@ -2,6 +2,4 @@
 import type { RouteObject } from 'react-router-dom';
 import { ImportExportPage } from './ImportExportPage';
 
-export const routes: RouteObject[] = [
-  { path: '/admin/import-export', element: <ImportExportPage /> },
-];
+export const routes: RouteObject[] = [{ path: '/admin/import-export', element: <ImportExportPage /> }];

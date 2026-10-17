@@ -13,27 +13,29 @@ export function startBackgroundWorker(deps: ApiDeps, intervalMs = 2000): { stop:
 
     try {
       // 1. Process pending jobs from PostgreSQL queue
-      await deps.txRunner.withTenantTx(
-        {
-          principal: {
-            kind: 'SERVICE',
-            id: 'usr_system',
-            tenantId: 'ten_default',
-            primaryBranchId: null,
-            managedTeamMemberIds: [],
-            queueIds: [],
-            grants: [],
-            authTime: null,
+      await deps.txRunner
+        .withTenantTx(
+          {
+            principal: {
+              kind: 'SERVICE',
+              id: 'usr_system',
+              tenantId: 'ten_default',
+              primaryBranchId: null,
+              managedTeamMemberIds: [],
+              queueIds: [],
+              grants: [],
+              authTime: null,
+            },
+            correlationId: 'worker_poll',
+            now: new Date(),
           },
-          correlationId: 'worker_poll',
-          now: new Date(),
-        },
-        async (tx) => {
-          await globalJobQueue.processNextJob(tx);
-        },
-      ).catch(() => {
-        // Ignore idle / no-tenant errors in background poll
-      });
+          async (tx) => {
+            await globalJobQueue.processNextJob(tx);
+          },
+        )
+        .catch(() => {
+          // Ignore idle / no-tenant errors in background poll
+        });
 
       // 2. Periodic Storage Retention Cleanup (every 1 hour)
       const now = Date.now();

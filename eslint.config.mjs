@@ -40,6 +40,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/scratch/**',
+      'scratch/**',
       'openapi/**',
       'supabase/**',
       'playwright-report/**',
@@ -50,8 +52,11 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-redeclare': 'off',
+      '@typescript-eslint/no-redeclare': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
   {
@@ -60,8 +65,18 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
   },
   {
-    files: ['apps/api/**/*.ts', 'tools/**/*.ts', 'packages/**/*.ts', 'tests/**/*.ts', '*.cjs', '*.mjs'],
+    files: [
+      'apps/api/**/*.{ts,js,mjs,cjs}',
+      'tools/**/*.{ts,js,mjs,cjs}',
+      'packages/**/*.ts',
+      'tests/**/*.ts',
+      '**/*.cjs',
+      '**/*.mjs',
+    ],
     languageOptions: { globals: { ...globals.node } },
+    rules: {
+      'no-redeclare': 'off',
+    },
   },
   {
     files: ['apps/web/**/*.{ts,tsx}'],

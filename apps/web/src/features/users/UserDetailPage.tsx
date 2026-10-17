@@ -27,14 +27,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, useParams } from 'react-router-dom';
-import {
-  assignUserRole,
-  fetchBranches,
-  fetchRoles,
-  fetchUserById,
-  removeUserRole,
-  updateUser,
-} from './api';
+import { assignUserRole, fetchBranches, fetchRoles, fetchUserById, removeUserRole, updateUser } from './api';
 import type { Branch, Role, UserSummary } from './types';
 
 export function UserDetailPage() {
@@ -218,9 +211,19 @@ export function UserDetailPage() {
 
       {/* Header Profile Card */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}>
+            <Avatar
+              sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}
+            >
               {user.displayName.charAt(0).toUpperCase()}
             </Avatar>
             <Box>
@@ -239,7 +242,9 @@ export function UserDetailPage() {
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
               label={user.status}
-              color={user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'}
+              color={
+                user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
+              }
               sx={{ fontWeight: 600 }}
             />
             <Chip label={`Availability: ${user.availability}`} variant="outlined" />
@@ -373,13 +378,14 @@ export function UserDetailPage() {
               Account Status & Security Controls
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Manage access status. Deactivated or suspended accounts are instantly barred from performing operations.
+              Manage access status. Deactivated or suspended accounts are instantly barred from performing
+              operations.
             </Typography>
 
             {isSelf && (
               <Alert severity="info" sx={{ mb: 3 }}>
-                <strong>Separation of Duties Notice:</strong> You are currently viewing your own profile. You cannot
-                deactivate or suspend your own account to prevent administrative lockout.
+                <strong>Separation of Duties Notice:</strong> You are currently viewing your own profile. You
+                cannot deactivate or suspend your own account to prevent administrative lockout.
               </Alert>
             )}
 
@@ -388,14 +394,18 @@ export function UserDetailPage() {
                 Current Status:{' '}
                 <Chip
                   label={user.status}
-                  color={user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'}
+                  color={
+                    user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
+                  }
                   sx={{ ml: 1, fontWeight: 700 }}
                 />
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {user.status === 'ACTIVE' && 'User is active and possesses full operational access based on assigned roles.'}
+                {user.status === 'ACTIVE' &&
+                  'User is active and possesses full operational access based on assigned roles.'}
                 {user.status === 'INVITED' && 'Invitation pending. User has not finalized initial setup.'}
-                {user.status === 'SUSPENDED' && 'User is temporarily suspended. Inbound requests are rejected.'}
+                {user.status === 'SUSPENDED' &&
+                  'User is temporarily suspended. Inbound requests are rejected.'}
                 {user.status === 'DEACTIVATED' && 'User is permanently deactivated. Access is blocked.'}
               </Typography>
             </Paper>
@@ -470,8 +480,8 @@ export function UserDetailPage() {
 
             {isSelf && (
               <Alert severity="warning" sx={{ mb: 3 }}>
-                <strong>SOD-05 Enforcement:</strong> Under Separation of Duties regulations, administrators are prohibited
-                from assigning or unassigning roles to their own account.
+                <strong>SOD-05 Enforcement:</strong> Under Separation of Duties regulations, administrators
+                are prohibited from assigning or unassigning roles to their own account.
               </Alert>
             )}
 
@@ -485,7 +495,16 @@ export function UserDetailPage() {
               <Grid container spacing={2}>
                 {user.assignedRoles.map((roleName) => (
                   <Grid item xs={12} sm={6} key={roleName}>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
                       <Box>
                         <Typography variant="subtitle2" fontWeight={600}>
                           {roleName}
@@ -555,17 +574,13 @@ export function UserDetailPage() {
                 <Typography variant="caption" color="text.secondary">
                   Created Timestamp
                 </Typography>
-                <Typography variant="body2">
-                  {new Date(user.createdAt).toLocaleString()}
-                </Typography>
+                <Typography variant="body2">{new Date(user.createdAt).toLocaleString()}</Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="caption" color="text.secondary">
                   Last Updated Timestamp
                 </Typography>
-                <Typography variant="body2">
-                  {new Date(user.updatedAt).toLocaleString()}
-                </Typography>
+                <Typography variant="body2">{new Date(user.updatedAt).toLocaleString()}</Typography>
               </Grid>
             </Grid>
           </CardContent>
@@ -611,11 +626,7 @@ export function UserDetailPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth required>
               <InputLabel>Role</InputLabel>
-              <Select
-                value={selectedRoleId}
-                label="Role"
-                onChange={(e) => setSelectedRoleId(e.target.value)}
-              >
+              <Select value={selectedRoleId} label="Role" onChange={(e) => setSelectedRoleId(e.target.value)}>
                 {roles.map((r) => (
                   <MenuItem key={r.id} value={r.id}>
                     {r.name} ({r.code})

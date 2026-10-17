@@ -2,7 +2,6 @@
 import { z } from 'zod';
 import { IdSchema } from './ids';
 
-
 export const DECISION_KEYS = [
   'DK-lead.duplicate',
   'DK-customer.duplicate',
@@ -64,12 +63,7 @@ export const CONDITION_OPERATORS = [
 ] as const;
 export type RuleConditionOperator = (typeof CONDITION_OPERATORS)[number];
 
-export const APPROVAL_SEATS = [
-  'RULE_APPROVER',
-  'COMMISSION_APPROVER',
-  'COMPLIANCE',
-  'PLATFORM',
-] as const;
+export const APPROVAL_SEATS = ['RULE_APPROVER', 'COMMISSION_APPROVER', 'COMPLIANCE', 'PLATFORM'] as const;
 export type ApprovalSeat = (typeof APPROVAL_SEATS)[number];
 
 export const APPROVAL_ACTIONS = ['APPROVE', 'REQUEST_CHANGES', 'REJECT'] as const;
@@ -126,16 +120,18 @@ export const DecisionDefinitionResponseSchema = z.object({
 export type DecisionDefinitionResponse = z.infer<typeof DecisionDefinitionResponseSchema>;
 
 // Rule Set Request / Response Schemas
-export const CreateRuleSetRequestSchema = z.object({
-  decisionKey: z.enum(DECISION_KEYS),
-  scopeType: z.enum(RULE_SCOPE_TYPES).default('TENANT_DEFAULT'),
-  scopeRef: z.string().nullable().optional(),
-  name: z.string().min(1, 'Rule set name is required').max(100),
-  description: z.string().max(500).optional(),
-}).refine(
-  (data) => (data.scopeType === 'TENANT_DEFAULT' ? !data.scopeRef : !!data.scopeRef),
-  { message: 'scopeRef must be null if and only if scopeType is TENANT_DEFAULT', path: ['scopeRef'] }
-);
+export const CreateRuleSetRequestSchema = z
+  .object({
+    decisionKey: z.enum(DECISION_KEYS),
+    scopeType: z.enum(RULE_SCOPE_TYPES).default('TENANT_DEFAULT'),
+    scopeRef: z.string().nullable().optional(),
+    name: z.string().min(1, 'Rule set name is required').max(100),
+    description: z.string().max(500).optional(),
+  })
+  .refine((data) => (data.scopeType === 'TENANT_DEFAULT' ? !data.scopeRef : !!data.scopeRef), {
+    message: 'scopeRef must be null if and only if scopeType is TENANT_DEFAULT',
+    path: ['scopeRef'],
+  });
 export type CreateRuleSetRequest = z.infer<typeof CreateRuleSetRequestSchema>;
 
 export const RuleSetResponseSchema = z.object({
@@ -241,7 +237,7 @@ export const ValidationReportResponseSchema = z.object({
       message: z.string(),
       ruleUid: z.string().optional(),
       path: z.string().optional(),
-    })
+    }),
   ),
   testsSummary: z
     .object({
@@ -258,11 +254,13 @@ export type ValidationReportResponse = z.infer<typeof ValidationReportResponseSc
 // Simulation Schemas
 export const CreateSimulationRequestSchema = z.object({
   facts: z.record(z.unknown()),
-  scope: z.object({
-    branchId: z.string().optional(),
-    lenderId: z.string().optional(),
-    productVersionId: z.string().optional(),
-  }).default({}),
+  scope: z
+    .object({
+      branchId: z.string().optional(),
+      lenderId: z.string().optional(),
+      productVersionId: z.string().optional(),
+    })
+    .default({}),
   stepBudget: z.number().int().min(10).max(5000).default(1000),
 });
 export type CreateSimulationRequest = z.infer<typeof CreateSimulationRequestSchema>;
@@ -312,7 +310,7 @@ export const VersionComparisonResponseSchema = z.object({
       baseOutput: z.record(z.unknown()).nullable(),
       targetOutput: z.record(z.unknown()).nullable(),
       different: z.boolean(),
-    })
+    }),
   ),
 });
 export type VersionComparisonResponse = z.infer<typeof VersionComparisonResponseSchema>;
@@ -422,11 +420,13 @@ export const EvaluateDecisionRequestSchema = z.object({
     id: z.string(),
   }),
   facts: z.record(z.unknown()),
-  scope: z.object({
-    branchId: z.string().optional(),
-    lenderId: z.string().optional(),
-    productVersionId: z.string().optional(),
-  }).default({}),
+  scope: z
+    .object({
+      branchId: z.string().optional(),
+      lenderId: z.string().optional(),
+      productVersionId: z.string().optional(),
+    })
+    .default({}),
   evaluationTime: z.string().datetime().optional(),
   mode: z.enum(['LIVE', 'SIMULATION']).default('LIVE'),
 });

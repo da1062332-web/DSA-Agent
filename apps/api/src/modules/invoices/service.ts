@@ -46,11 +46,7 @@ export class InvoiceService {
   /**
    * API-INV-001: POST /v1/invoices — Record invoice
    */
-  async recordInvoice(
-    tx: Tx,
-    ctx: RequestContext,
-    input: CreateInvoiceInput,
-  ): Promise<InvoiceRecord> {
+  async recordInvoice(tx: Tx, ctx: RequestContext, input: CreateInvoiceInput): Promise<InvoiceRecord> {
     this.deps.authz.requirePermission(ctx, 'invoice.manage');
 
     const tenantId = ctx.principal.tenantId;
@@ -246,16 +242,10 @@ export class InvoiceService {
 
     const toDate = query.toDate ?? new Date().toISOString().split('T')[0]!;
     const fromDate =
-      query.fromDate ??
-      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!;
+      query.fromDate ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!;
 
     // 1. Opening balance before fromDate
-    const openingBalance = await this.deps.repository.getOpeningBalance(
-      tx,
-      tenantId,
-      connectorId,
-      fromDate,
-    );
+    const openingBalance = await this.deps.repository.getOpeningBalance(tx, tenantId, connectorId, fromDate);
 
     // 2. Ledger entries within date range
     const ledgerEntries = await this.deps.repository.listLedgerEntries(

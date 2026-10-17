@@ -46,7 +46,9 @@ export type ApiKeyResponse = z.infer<typeof ApiKeyResponseSchema>;
 
 export const PartnerConsentDeclarationSchema = z.object({
   consentArtifactRef: z.string().min(3).max(200),
-  consentPurpose: z.enum(['LOAN_APPLICATION', 'CREDIT_CHECK', 'MARKETING', 'GENERAL_ASSISTANCE']).default('LOAN_APPLICATION'),
+  consentPurpose: z
+    .enum(['LOAN_APPLICATION', 'CREDIT_CHECK', 'MARKETING', 'GENERAL_ASSISTANCE'])
+    .default('LOAN_APPLICATION'),
   optInTimestamp: z.string().datetime(),
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
@@ -58,11 +60,16 @@ export const PartnerApplicantSchema = z.object({
   lastName: z.string().min(1).max(100),
   mobile: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Invalid phone number format'),
   email: z.string().email(),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required').optional(),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
+    .optional(),
   city: z.string().min(2).max(100),
   state: z.string().min(2).max(100),
   pincode: z.string().regex(/^\d{6}$/, 'Must be a 6-digit Indian PIN code'),
-  employmentType: z.enum(['SALARIED', 'SELF_EMPLOYED_PROFESSIONAL', 'SELF_EMPLOYED_BUSINESS', 'OTHER']).default('SALARIED'),
+  employmentType: z
+    .enum(['SALARIED', 'SELF_EMPLOYED_PROFESSIONAL', 'SELF_EMPLOYED_BUSINESS', 'OTHER'])
+    .default('SALARIED'),
   monthlyIncome: MoneySchema.optional(),
 });
 export type PartnerApplicant = z.infer<typeof PartnerApplicantSchema>;
@@ -223,9 +230,12 @@ export type WebhookEventType = (typeof WebhookEventTypes)[number];
 
 export const CreateWebhookSubscriptionSchema = z.object({
   name: z.string().min(3).max(100),
-  targetUrl: z.string().url().refine((u) => u.startsWith('https://') || u.startsWith('http://localhost'), {
-    message: 'Webhook URL must use HTTPS (except for local development)',
-  }),
+  targetUrl: z
+    .string()
+    .url()
+    .refine((u) => u.startsWith('https://') || u.startsWith('http://localhost'), {
+      message: 'Webhook URL must use HTTPS (except for local development)',
+    }),
   subscribedEvents: z.array(z.enum(WebhookEventTypes)).min(1),
   secret: z.string().min(16).max(128).optional(),
 });
@@ -360,4 +370,3 @@ export const RotateClientSecretResponseSchema = z.object({
   rotatedAt: z.string(),
 });
 export type RotateClientSecretResponse = z.infer<typeof RotateClientSecretResponseSchema>;
-

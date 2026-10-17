@@ -36,9 +36,7 @@ describe('Module 20 — TargetsPage Frontend Component (MOD-PERF SUB-PERF.01)', 
     const html = renderTargetsPage();
 
     expect(html).toContain('Performance Targets (MOD-PERF SUB-PERF.01)');
-    expect(html).toContain(
-      'Operational target setting, version revisions, and dual-control approvals',
-    );
+    expect(html).toContain('Operational target setting, version revisions, and dual-control approvals');
   });
 
   it('renders status tabs: All, Pending Approval, Approved, Superseded, Rejected', () => {

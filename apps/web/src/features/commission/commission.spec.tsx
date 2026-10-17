@@ -26,7 +26,6 @@ vi.mock('../../api/useMe', () => ({
   hasPermission: () => true,
 }));
 
-
 function renderWithProviders(ui: React.ReactElement, initialPath = '/') {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -36,9 +35,7 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/') {
 
   return renderToString(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        {ui}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -100,4 +97,3 @@ describe('Commission Management Frontend Components & API Compatibility', () => 
     expect(mockApiFetch).toHaveBeenCalledWith('/v1/recalculation-proposals');
   });
 });
-

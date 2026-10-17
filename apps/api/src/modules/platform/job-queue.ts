@@ -88,7 +88,11 @@ export class JobQueue {
     `.execute(tx);
 
     try {
-      await handler(tx, job.tenant_id, typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload);
+      await handler(
+        tx,
+        job.tenant_id,
+        typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload,
+      );
 
       // Mark COMPLETED
       await sql`

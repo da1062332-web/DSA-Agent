@@ -11,9 +11,11 @@ import { createAuditPort, createAuthz, createIdGenerator, createUserDirectory } 
 import type { Kysely } from 'kysely';
 import pg from 'pg';
 import { parse } from 'yaml';
+import { assertThrowawayDatabase } from '../guard/verify-local-db';
 import { createApp } from '../../apps/api/src/app';
 import { createDb } from '../../apps/api/src/kernel-min/db';
 import { createTxRunner } from '../../apps/api/src/kernel-min/tx-runner';
+import { PgApiClientRepository } from '../../apps/api/src/modules/partner-api/api-client-repository';
 import { createApplicationSubjectPort } from '../../apps/api/src/modules/origination/applications/subject-port';
 import { createLenderPort } from '../../apps/api/src/modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from '../../apps/api/src/modules/origination/catalogue/product-version-port';
@@ -51,7 +53,9 @@ export interface IsolationEnv {
 export const ALL_ADMIN: PermissionCode[] = ['config.manage', 'user.manage'];
 
 export async function startIsolationEnv(): Promise<IsolationEnv> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer('postgres:16').start();
+  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
+    process.env.DSA_PG_IMAGE ?? 'postgres:16',
+  ).start();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
 
@@ -69,6 +73,8 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
   const url = new URL(container.getConnectionUri());
   url.username = 'dsa_api';
   url.password = 'isolation';
+  // The tests are about to write to this database: it must be the container started above, on this machine.
+  await assertThrowawayDatabase(container, admin, [url.toString()]);
   const db = createDb(url.toString(), { poolMax: 4 });
   const ids = createIdGenerator();
   const deps = {
@@ -80,6 +86,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     complaintSubjectPort: createApplicationSubjectPort(),
     productVersionPort: createProductVersionPort(),
     lenderPort: createLenderPort(),
+    apiClientRepository: new PgApiClientRepository(createTxRunner(db), createAuditPort(ids)),
   };
 
   const principalOf = (t: TenantFixture, codes: PermissionCode[], userIndex: 0 | 1): Principal =>
@@ -87,6 +94,9 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
       id: t.userIds[userIndex],
       tenantId: t.tenantId,
       primaryBranchId: t.branchId,
+      // A session that has passed the authenticator check recently, so step-up routes (role edits, rule approval) are reached and the
+      // case under test is isolation (404), not "needs step-up" (401).
+      authTime: new Date().toISOString(),
       grants: codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
     });
 

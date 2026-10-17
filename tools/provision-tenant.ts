@@ -244,9 +244,12 @@ async function main() {
   const host = new URL(SUPABASE_URL).hostname;
   const isLocal = LOCAL_HOSTS.has(host);
   const hosted = values.target === 'hosted' || (!isLocal && host.endsWith('.supabase.co'));
-  if (values.target !== 'local' && values.target !== 'hosted') throw new Error('--target must be local or hosted');
+  if (values.target !== 'local' && values.target !== 'hosted')
+    throw new Error('--target must be local or hosted');
   if (!hosted && !isLocal)
-    throw new Error('demo provisioning runs only against the local or development Supabase stack (use --target hosted)');
+    throw new Error(
+      'demo provisioning runs only against the local or development Supabase stack (use --target hosted)',
+    );
   if (hosted && values.target === 'hosted') {
     if (isLocal) throw new Error('--target hosted needs a hosted SUPABASE_URL');
     if (process.env.ALLOW_HOSTED_DEMO_SEED !== 'yes')

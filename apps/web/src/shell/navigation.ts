@@ -44,9 +44,7 @@ export const OPERATIONAL_NAV: NavItem[] = [
     to: '/verifications',
     label: 'Verifications',
     testId: 'shell.nav.verifications',
-    isAllowed: (me) =>
-      hasPermission(me, 'verification.read') ||
-      hasPermission(me, 'verification.perform'),
+    isAllowed: (me) => hasPermission(me, 'verification.read') || hasPermission(me, 'verification.perform'),
   },
   {
     to: '/connectors',
@@ -71,9 +69,7 @@ export const OPERATIONAL_NAV: NavItem[] = [
     to: '/messaging',
     label: 'Messaging',
     testId: 'shell.nav.messaging',
-    isAllowed: (me) =>
-      hasPermission(me, 'message.send') ||
-      hasPermission(me, 'config.manage'),
+    isAllowed: (me) => hasPermission(me, 'message.send') || hasPermission(me, 'config.manage'),
   },
 ];
 
@@ -126,9 +122,7 @@ export const ADMINISTRATIVE_NAV: NavItem[] = [
     to: '/admin',
     label: 'Platform Admin',
     testId: 'shell.nav.admin',
-    isAllowed: (me) =>
-      hasPermission(me, 'config.manage') ||
-      hasPermission(me, 'user.manage'),
+    isAllowed: (me) => hasPermission(me, 'config.manage') || hasPermission(me, 'user.manage'),
   },
 ];
 

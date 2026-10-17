@@ -1,10 +1,9 @@
 import { describe, expect, it, afterAll, beforeAll } from 'vitest';
 import pg from 'pg';
+import { requireLocalTestDatabaseUrl } from './support/test-db-url';
 
 describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () => {
-  const connectionString =
-    process.env.VERIFY_DATABASE_URL ||
-    'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+  const connectionString = requireLocalTestDatabaseUrl('VERIFY_DATABASE_URL');
 
   const tenantA = 'ten_01JTESTTENANT00000000000000';
   const tenantB = 'ten_01JOTHERTENANT0000000000000';
@@ -19,9 +18,7 @@ describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () =
     await adminClient.connect();
 
     // App client connecting as dsa_api via DATABASE_URL
-    const apiDbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://dsa_api.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres';
+    const apiDbUrl = requireLocalTestDatabaseUrl('DATABASE_URL');
     apiClient = new pg.Client({ connectionString: apiDbUrl });
     await apiClient.connect();
   });
@@ -36,7 +33,7 @@ describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () =
     try {
       await adminClient.query('SET LOCAL search_path = app, public');
       const testId = `lead_test_err_${Date.now()}`;
-      
+
       // Attempt inserting invalid phone format (missing + or non-numeric)
       await expect(
         adminClient.query(
@@ -137,7 +134,9 @@ describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () =
       // Attempting UPDATE on lead_status_history must fail
       await adminClient.query('SAVEPOINT sp1');
       await expect(
-        adminClient.query(`UPDATE app.lead_status_history SET to_state = 'IN_PROGRESS' WHERE id = $1`, [historyId]),
+        adminClient.query(`UPDATE app.lead_status_history SET to_state = 'IN_PROGRESS' WHERE id = $1`, [
+          historyId,
+        ]),
       ).rejects.toThrow(/append-only/i);
       await adminClient.query('ROLLBACK TO SAVEPOINT sp1');
 
@@ -219,7 +218,17 @@ describe('Module 7 — Leads PostgreSQL Integration (Real Database & RLS)', () =
         qual_applicant_type, qual_requested_amount,
         created_at, created_by, updated_at, updated_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'QUALIFIED', $8, $9, 0, 'SALARIED', 500000.00, now(), 'tester', now(), 'tester')`,
-      [leadId, tenantA, branchA, 'Rollback Test', '+919876543210', Buffer.from('hash'), 'PL', ownerUserA, 'WALK_IN'],
+      [
+        leadId,
+        tenantA,
+        branchA,
+        'Rollback Test',
+        '+919876543210',
+        Buffer.from('hash'),
+        'PL',
+        ownerUserA,
+        'WALK_IN',
+      ],
     );
 
     // Simulate multi-table atomic conversion in transaction that fails midway

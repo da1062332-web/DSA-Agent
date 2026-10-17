@@ -152,9 +152,10 @@ export function formatScheduledTrigger(row: RawScheduledTriggerRow): ScheduledTr
         : String(row.last_run_at)
       : null,
     status: row.status as ScheduledTrigger['status'],
-    payload: (typeof row.payload === 'object' && row.payload !== null
-      ? row.payload
-      : {}) as Record<string, unknown>,
+    payload: (typeof row.payload === 'object' && row.payload !== null ? row.payload : {}) as Record<
+      string,
+      unknown
+    >,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }
@@ -214,7 +215,10 @@ export function formatExecution(row: RawExecutionRow): AutomationExecution {
     subjectId: row.subject_id,
     status: row.status as AutomationExecution['status'],
     currentStepIndex: Number(row.current_step_index ?? 0),
-    context: (typeof row.context === 'object' && row.context !== null ? row.context : {}) as Record<string, unknown>,
+    context: (typeof row.context === 'object' && row.context !== null ? row.context : {}) as Record<
+      string,
+      unknown
+    >,
     dryRun: Boolean(row.dry_run),
     workerId: row.worker_id ?? null,
     leaseExpiresAt: row.lease_expires_at ? new Date(row.lease_expires_at).toISOString() : null,
@@ -697,10 +701,7 @@ export class AutomationRepository {
 
     const row = res.rows[0];
     if (!row) {
-      throw AppError.of(
-        'INVALID_STATE',
-        `Dead letter '${deadLetterId}' is already resolved or not found.`,
-      );
+      throw AppError.of('INVALID_STATE', `Dead letter '${deadLetterId}' is already resolved or not found.`);
     }
     return formatDeadLetter(row);
   }
@@ -795,11 +796,7 @@ export class AutomationRepository {
   /**
    * Retrieves an automation definition by id.
    */
-  async getDefinitionById(
-    tx: Tx,
-    tenantId: string,
-    definitionId: string,
-  ): Promise<AutomationDefinition> {
+  async getDefinitionById(tx: Tx, tenantId: string, definitionId: string): Promise<AutomationDefinition> {
     const res = await sql<RawDefinitionRow>`
       SELECT * FROM app.automation_definition
       WHERE id = ${definitionId}
@@ -871,11 +868,7 @@ export class AutomationRepository {
   /**
    * Lists all versions of an automation definition.
    */
-  async listVersions(
-    tx: Tx,
-    tenantId: string,
-    definitionId: string,
-  ): Promise<AutomationVersion[]> {
+  async listVersions(tx: Tx, tenantId: string, definitionId: string): Promise<AutomationVersion[]> {
     const res = await sql<RawVersionRow>`
       SELECT * FROM app.automation_version
       WHERE definition_id = ${definitionId}
@@ -888,11 +881,7 @@ export class AutomationRepository {
   /**
    * Retrieves a specific version by id.
    */
-  async getVersionById(
-    tx: Tx,
-    tenantId: string,
-    versionId: string,
-  ): Promise<AutomationVersion> {
+  async getVersionById(tx: Tx, tenantId: string, versionId: string): Promise<AutomationVersion> {
     const res = await sql<RawVersionRow>`
       SELECT * FROM app.automation_version
       WHERE id = ${versionId}
@@ -1055,11 +1044,7 @@ export class AutomationRepository {
   /**
    * Finds due active scheduled triggers.
    */
-  async findDueScheduledTriggers(
-    tx: Tx,
-    nowIso: string,
-    limit: number = 20,
-  ): Promise<ScheduledTrigger[]> {
+  async findDueScheduledTriggers(tx: Tx, nowIso: string, limit: number = 20): Promise<ScheduledTrigger[]> {
     const res = await sql<RawScheduledTriggerRow>`
       SELECT * FROM app.scheduled_trigger
       WHERE status = 'ACTIVE'
@@ -1202,11 +1187,7 @@ export class AutomationRepository {
   /**
    * Finds executions in WAITING status that are ready to be resumed by timer.
    */
-  async findWaitingExecutionsDue(
-    tx: Tx,
-    nowIso: string,
-    limit: number = 20,
-  ): Promise<AutomationExecution[]> {
+  async findWaitingExecutionsDue(tx: Tx, nowIso: string, limit: number = 20): Promise<AutomationExecution[]> {
     const res = await sql<RawExecutionRow>`
       SELECT * FROM app.automation_execution
       WHERE status = 'WAITING'
@@ -1253,11 +1234,7 @@ export class AutomationRepository {
   /**
    * Resets worker lease on an execution (used by lease recovery).
    */
-  async resetExecutionWorkerLease(
-    tx: Tx,
-    tenantId: string,
-    executionId: string,
-  ): Promise<void> {
+  async resetExecutionWorkerLease(tx: Tx, tenantId: string, executionId: string): Promise<void> {
     await sql`
       UPDATE app.automation_execution
       SET worker_id = NULL,
@@ -1269,6 +1246,3 @@ export class AutomationRepository {
     `.execute(tx);
   }
 }
-
-
-

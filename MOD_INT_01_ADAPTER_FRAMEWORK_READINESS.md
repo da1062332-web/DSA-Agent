@@ -1,4 +1,5 @@
 # DSA CRM — Module 28: Integration Management (MOD-INT)
+
 ## Submodule SUB-INT.01: Adapter Framework — Implementation Readiness Assessment & Architectural Blueprint
 
 **Document Reference:** `MOD_INT_01_ADAPTER_FRAMEWORK_READINESS.md`  
@@ -11,15 +12,16 @@
 **Priority:** P0 / Release R1  
 **Status:** **INSPECTION AND PLANNING ONLY (Deferred under TASK-419)**  
 **Author:** Senior Backend Engineer, Integration Architect, Security Engineer & QA Engineer  
-**Date:** October 14, 2026  
+**Date:** October 14, 2026
 
 ---
 
 ## 1. Executive Summary
 
-Module 28 (**Integration Management — MOD-INT**) provides the centralized infrastructure for connecting the DSA CRM platform to external service providers across all functional domains, including messaging gateways (SMS/WhatsApp/Email), identity and fraud verification APIs (PAN, GSTIN, Aadhaar Vault, Bureau), document extraction, and banking APIs. 
+Module 28 (**Integration Management — MOD-INT**) provides the centralized infrastructure for connecting the DSA CRM platform to external service providers across all functional domains, including messaging gateways (SMS/WhatsApp/Email), identity and fraud verification APIs (PAN, GSTIN, Aadhaar Vault, Bureau), document extraction, and banking APIs.
 
 Submodule **SUB-INT.01 (Adapter Framework)** is designed to establish a standardized, provider-independent abstraction layer. Its goals are:
+
 1. Decoupling core business logic from vendor-specific REST/SOAP/RPC schemas.
 2. Managing provider capability descriptors so that unsupported operations fail cleanly without runtime surprises.
 3. Enforcing rigorous tenant isolation and Separation of Duties (SOD).
@@ -27,6 +29,7 @@ Submodule **SUB-INT.01 (Adapter Framework)** is designed to establish a standard
 5. Securing third-party credentials by storing only opaque references (`credential_ref`), never plaintext secrets, within application databases.
 
 ### 1.1 Key Inspection Findings
+
 - **Implementation Status:** `SUB-INT.01` is **completely deferred under TASK-419**. Neither `API-INT-001` (`GET /v1/integrations`), `API-INT-002` (`PUT /v1/integrations/{provider}`), nor the underlying entity `ENT-103` (`app.integration_connection`) exists in the repository.
 - **Foundation Reuse:** The repository contains robust foundational substrate that must be reused:
   - Multi-tenant RLS helpers in [`supabase/migrations/20261001000000_roles_and_helpers.sql`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/supabase/migrations/20261001000000_roles_and_helpers.sql) (`app_tenant()`, `enable_tenant_rls()`).
@@ -67,7 +70,9 @@ Secrets Vault Client       supabase/config.toml                                 
 ```
 
 ### 2.1 Monorepo Structure and Workspace Organization
+
 The project uses `npm` workspaces:
+
 - `apps/api`: Express 4 TypeScript backend application running under Node.js 22+.
 - `apps/web`: React 18 single-page application using Vite, Material UI (MUI 6), and React Router 6.
 - `packages/contracts`: Pure TypeScript shared types, Zod schemas, error models, and permission constants.
@@ -76,10 +81,12 @@ The project uses `npm` workspaces:
 - `tools`: Tenant provisioning, migration verification, and OpenAPI generation scripts.
 
 ### 2.2 Backend Module Registration
+
 Module routers are declared in [`apps/api/src/modules/index.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/index.ts). The `apiModules` array registers routers mounted under `/v1`.  
 **Finding:** No router or entry exists for `integrations`.
 
 ### 2.3 Shared Contracts and Identifiers
+
 - File: [`packages/contracts/src/ids.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/ids.ts)
   - Defines `ID_PREFIXES` array of Crockford ULID prefixes.
   - **Finding:** No prefix for integration connections (e.g., `itc_` or `inc_`) exists.
@@ -93,30 +100,31 @@ Module routers are declared in [`apps/api/src/modules/index.ts`](file:///Users/p
 
 ### 3.1 API-INT-001 — List Integrations (`GET /v1/integrations`)
 
-| Attribute | Canonical Requirement | Current Codebase Status | Evidence / Gap |
-| :--- | :--- | :--- | :--- |
-| **Endpoint** | `GET /v1/integrations` | **Missing** | No route registered in [`apps/api/src/modules/index.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/index.ts) or any submodule. |
-| **Permission** | `config.manage` | **Ready for wiring** | Permission `config.manage` is defined in [`packages/contracts/src/permissions.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/permissions.ts). |
-| **Tenant Scoping** | Derived strictly from authenticated JWT (`req.ctx.principal.tenantId`) | **Ready for wiring** | Established pattern in `requireCtx(req)` prevents cross-tenant access. |
-| **Step-Up MFA** | `aal2` required because user holds `config.manage` | **Existing** | Gateway in [`apps/api/src/http/supabase-auth.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/supabase-auth.ts#L21-L26) enforces `401 STEP_UP_REQUIRED`. |
-| **Response Schema** | Array of integration connections with safe metadata | **Missing** | No contract defined in `packages/contracts`. |
-| **Credential Redaction**| Absolute redaction: zero plaintext secrets | **Design Required** | `credential_ref` must be returned as opaque string handle only; no API keys/tokens exposed. |
-| **Pagination** | Keyset pagination using base64url cursor | **Ready for wiring** | `encodeCursor` / `decodeCursor` available in [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts). |
+| Attribute                | Canonical Requirement                                                  | Current Codebase Status | Evidence / Gap                                                                                                                                                                                           |
+| :----------------------- | :--------------------------------------------------------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Endpoint**             | `GET /v1/integrations`                                                 | **Missing**             | No route registered in [`apps/api/src/modules/index.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/modules/index.ts) or any submodule.                      |
+| **Permission**           | `config.manage`                                                        | **Ready for wiring**    | Permission `config.manage` is defined in [`packages/contracts/src/permissions.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/permissions.ts).     |
+| **Tenant Scoping**       | Derived strictly from authenticated JWT (`req.ctx.principal.tenantId`) | **Ready for wiring**    | Established pattern in `requireCtx(req)` prevents cross-tenant access.                                                                                                                                   |
+| **Step-Up MFA**          | `aal2` required because user holds `config.manage`                     | **Existing**            | Gateway in [`apps/api/src/http/supabase-auth.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/supabase-auth.ts#L21-L26) enforces `401 STEP_UP_REQUIRED`. |
+| **Response Schema**      | Array of integration connections with safe metadata                    | **Missing**             | No contract defined in `packages/contracts`.                                                                                                                                                             |
+| **Credential Redaction** | Absolute redaction: zero plaintext secrets                             | **Design Required**     | `credential_ref` must be returned as opaque string handle only; no API keys/tokens exposed.                                                                                                              |
+| **Pagination**           | Keyset pagination using base64url cursor                               | **Ready for wiring**    | `encodeCursor` / `decodeCursor` available in [`apps/api/src/http/request.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/api/src/http/request.ts).                   |
 
 ### 3.2 API-INT-002 — Configure an Integration (`PUT /v1/integrations/{provider}`)
 
-| Attribute | Canonical Requirement | Current Codebase Status | Evidence / Gap |
-| :--- | :--- | :--- | :--- |
-| **Endpoint** | `PUT /v1/integrations/{provider}` | **Missing** | Route does not exist. |
-| **Permission** | `config.manage` | **Ready for wiring** | Evaluated via `authz.requirePermission(ctx, 'config.manage')`. |
-| **Optimistic Concurrency** | Mandatory `If-Match` header matching `lock_version` | **Ready for wiring** | Supported via `ifMatchVersion(req)`. Throws `400 MALFORMED_REQUEST` if missing; returns `409 VERSION_CONFLICT` on mismatch. |
-| **Audit Logging** | Transactional audit record in `app.audit_event` | **Ready for wiring** | `AuditPort.record()` writes atomically with before/after state. |
-| **Payload Validation**| Strict provider-specific schema with unknown-key rejection | **Missing** | Requires Zod schemas for supported providers and capabilities. |
-| **Idempotency** | Optional on PUT, but supported via `Idempotency-Key` | **Ready for wiring** | `withIdempotency` is available in `@dsa/kernel`. |
+| Attribute                  | Canonical Requirement                                      | Current Codebase Status | Evidence / Gap                                                                                                              |
+| :------------------------- | :--------------------------------------------------------- | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| **Endpoint**               | `PUT /v1/integrations/{provider}`                          | **Missing**             | Route does not exist.                                                                                                       |
+| **Permission**             | `config.manage`                                            | **Ready for wiring**    | Evaluated via `authz.requirePermission(ctx, 'config.manage')`.                                                              |
+| **Optimistic Concurrency** | Mandatory `If-Match` header matching `lock_version`        | **Ready for wiring**    | Supported via `ifMatchVersion(req)`. Throws `400 MALFORMED_REQUEST` if missing; returns `409 VERSION_CONFLICT` on mismatch. |
+| **Audit Logging**          | Transactional audit record in `app.audit_event`            | **Ready for wiring**    | `AuditPort.record()` writes atomically with before/after state.                                                             |
+| **Payload Validation**     | Strict provider-specific schema with unknown-key rejection | **Missing**             | Requires Zod schemas for supported providers and capabilities.                                                              |
+| **Idempotency**            | Optional on PUT, but supported via `Idempotency-Key`       | **Ready for wiring**    | `withIdempotency` is available in `@dsa/kernel`.                                                                            |
 
 ### 3.3 ENT-103 — Integration Connection (`app.integration_connection`)
 
 The canonical entity specification defines the following requirements:
+
 - `id`: ULID prefixed identifier (e.g., `itc_<ULID>`).
 - `tenant_id`: Mandatory foreign key referencing `app.tenant(id)`.
 - `provider`: Text string identifying the vendor (e.g., `TWILIO`, `KARZA`, `SUREPASS`, `CIBIL`).
@@ -170,6 +178,7 @@ The adapter framework must decouple core platform business logic from external t
 ```
 
 ### 4.1 Proposed Base Adapter Interface
+
 An adapter must satisfy a contract defining its identity, environment support, health check, and execution protocol:
 
 ```typescript
@@ -210,27 +219,30 @@ export interface BaseAdapter<TConfig = unknown> {
     input: TInput,
     config: TConfig,
     credentials: ResolvedCredentials,
-    metadata: { correlationId: string; tenantId: string }
+    metadata: { correlationId: string; tenantId: string },
   ): Promise<AdapterResult<TOutput>>;
 }
 ```
 
 ### 4.2 Capability Descriptors
+
 Rather than assuming every vendor supports all operations, capabilities are explicitly declared:
 
-| Capability Identifier | Description | Required Config Fields | Data Classification |
-| :--- | :--- | :--- | :--- |
-| `MESSAGING.SMS` | Outbound transactional SMS | `senderId`, `dltTemplateId` | S2 (PII) |
-| `MESSAGING.WHATSAPP` | WhatsApp Business template messaging | `businessAccountId`, `phoneNumberId` | S2 (PII) |
-| `VERIFICATION.PAN` | Instant PAN verification & name match | `apiEndpoint`, `minMatchScore` | S3 (Financial/ID) |
-| `VERIFICATION.GST` | Business GSTIN status & return check | `apiEndpoint`, `filingMonths` | S2 (Commercial) |
-| `VERIFICATION.BANK` | Penny-drop account verification | `pennyAmountPaise`, `webhookUrl` | S3 (Financial) |
-| `STORAGE.DOC_SCAN` | Antivirus & malware stream scan | `maxSizeBytes`, `quarantineBucket` | S1 (System) |
+| Capability Identifier | Description                           | Required Config Fields               | Data Classification |
+| :-------------------- | :------------------------------------ | :----------------------------------- | :------------------ |
+| `MESSAGING.SMS`       | Outbound transactional SMS            | `senderId`, `dltTemplateId`          | S2 (PII)            |
+| `MESSAGING.WHATSAPP`  | WhatsApp Business template messaging  | `businessAccountId`, `phoneNumberId` | S2 (PII)            |
+| `VERIFICATION.PAN`    | Instant PAN verification & name match | `apiEndpoint`, `minMatchScore`       | S3 (Financial/ID)   |
+| `VERIFICATION.GST`    | Business GSTIN status & return check  | `apiEndpoint`, `filingMonths`        | S2 (Commercial)     |
+| `VERIFICATION.BANK`   | Penny-drop account verification       | `pennyAmountPaise`, `webhookUrl`     | S3 (Financial)      |
+| `STORAGE.DOC_SCAN`    | Antivirus & malware stream scan       | `maxSizeBytes`, `quarantineBucket`   | S1 (System)         |
 
 Attempting to execute an unlisted capability on an adapter must fail closed with error code `VALIDATION_ERROR` or `DEPENDENCY_UNAVAILABLE` before making any network call.
 
 ### 4.3 Sandbox and Production Isolation Design
+
 To guarantee that development/testing cannot trigger real financial or customer-facing operations:
+
 1. **Header & Context Validation:**
    - The execution runtime checks `ENT-103.environment`.
    - If `environment === 'SANDBOX'`, the adapter URL must match a pre-registered sandbox domain or mock fixture endpoint.
@@ -244,20 +256,23 @@ To guarantee that development/testing cannot trigger real financial or customer-
 ### 4.4 Standardized Errors and Redaction
 
 #### Error Normalization Mapping
+
 External vendor errors must map directly into existing canonical `ErrorCode` definitions ([`packages/contracts/src/errors.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/errors.ts)):
 
-| External HTTP / Error Condition | Canonical ErrorCode | HTTP Status | Retryable? |
-| :--- | :--- | :--- | :--- |
-| Network Timeout / DNS failure | `DEPENDENCY_UNAVAILABLE` | 503 | **Yes** |
-| Provider 429 Rate Limit | `RATE_LIMITED` | 429 | **Yes** |
-| Provider 500 / 502 / 504 | `DEPENDENCY_UNAVAILABLE` | 503 | **Yes** |
-| Invalid API Key / Auth failure | `INTERNAL_ERROR` (masked) | 500 | No |
-| Malformed Request / Validation | `VALIDATION_ERROR` | 422 | No |
-| Capability Not Supported | `VALIDATION_ERROR` | 422 | No |
-| Target Resource Not Found | `NOT_FOUND` | 404 | No |
+| External HTTP / Error Condition | Canonical ErrorCode       | HTTP Status | Retryable? |
+| :------------------------------ | :------------------------ | :---------- | :--------- |
+| Network Timeout / DNS failure   | `DEPENDENCY_UNAVAILABLE`  | 503         | **Yes**    |
+| Provider 429 Rate Limit         | `RATE_LIMITED`            | 429         | **Yes**    |
+| Provider 500 / 502 / 504        | `DEPENDENCY_UNAVAILABLE`  | 503         | **Yes**    |
+| Invalid API Key / Auth failure  | `INTERNAL_ERROR` (masked) | 500         | No         |
+| Malformed Request / Validation  | `VALIDATION_ERROR`        | 422         | No         |
+| Capability Not Supported        | `VALIDATION_ERROR`        | 422         | No         |
+| Target Resource Not Found       | `NOT_FOUND`               | 404         | No         |
 
 #### Mandatory Logging Redaction Rules
+
 Before writing to `app.provider_call_log` (ENT-104) or application logger:
+
 1. Strip all `Authorization`, `x-api-key`, and `Cookie` request headers.
 2. Scan payloads using `containsS2SensitiveData()` ([`packages/contracts/src/activity.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/contracts/src/activity.ts#L26-L35)) to mask:
    - 12-digit Aadhaar numbers (`\b\d{12}\b`).
@@ -270,11 +285,13 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
 ## 5. Security Architecture & Threat Review
 
 ### 5.1 Authentication, RBAC, and Step-Up Verification
+
 - **Permission Check:** `API-INT-001` and `API-INT-002` require `config.manage`.
 - **Tenant Context:** Derivation occurs exclusively through verified JWT claims (`req.ctx.principal.tenantId`). A caller cannot manipulate `{provider}` or payload to target another tenant's integration.
 - **Mandatory Step-Up (MFA):** In [`packages/kernel/src/authz/mfa.ts`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/packages/kernel/src/authz/mfa.ts#L8), `config.manage` is explicitly registered in `MFA_REQUIRED_PERMISSIONS`. Any user attempting `PUT /v1/integrations/{provider}` without an `aal2` session is rejected with `401 STEP_UP_REQUIRED`.
 
 ### 5.2 Multi-Tenant Isolation & RLS Guarantees
+
 - Table `app.integration_connection` must use `enable_tenant_rls('integration_connection')`.
 - All queries must be executed through `TxRunner.withTenantTx(ctx, ...)`.
 - Even if application logic fails to include `WHERE tenant_id = ...`, PostgreSQL RLS enforces:
@@ -287,6 +304,7 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
 - Application role `dsa_api` has `NOBYPASSRLS` and cannot delete or bypass tenant constraints.
 
 ### 5.3 Credential Protection (Classification S4)
+
 - **Zero Secrets in Database:** Table `app.integration_connection` must store only `credential_ref text NOT NULL`. Storing raw API keys, passwords, or private keys in PostgreSQL is strictly forbidden.
 - **Vault Interface (`IVaultPort`):**
   ```typescript
@@ -297,6 +315,7 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
 - **Redaction in Responses:** `GET /v1/integrations` and `PUT /v1/integrations/{provider}` return the `credential_ref` name (e.g., `"vault://tenants/demo-alpha/twilio-prod"`), never secret contents.
 
 ### 5.4 Configuration Validation
+
 - Payloads for `PUT /v1/integrations/{provider}` must be validated with Zod:
   - `.strict()` mode to reject unknown keys.
   - Rejection of keys resembling credentials (e.g., `secret`, `apiKey`, `password`, `token`).
@@ -304,6 +323,7 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
   - Validation of capability against approved capability registry.
 
 ### 5.5 Auditability
+
 - Updating an integration connection must emit an audit event via `AuditPort.record`:
   - `action: 'integration.configure'`
   - `entityType: 'integration_connection'`
@@ -316,6 +336,7 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
 ## 6. Frontend Readiness Assessment
 
 ### 6.1 Current UI State
+
 - File: [`apps/web/src/shell/Sidebar.tsx`](file:///Users/prathameshnavangul/Piyush%20Qloxa/Qloax%20Project/DSA-Agent/apps/web/src/shell/Sidebar.tsx#L119)
   ```tsx
   {
@@ -329,7 +350,9 @@ Before writing to `app.provider_call_log` (ENT-104) or application logger:
   Item is disabled, lacks a route, and displays a `"Soon"` badge. No pages, components, or API clients exist in `apps/web/src/features/`.
 
 ### 6.2 Proposed Minimal Frontend Architecture
+
 When unblocked, the frontend should implement:
+
 1. **Route:** `/admin/integrations` registered in `apps/web/src/features/integrations/routes.tsx`.
 2. **Page Component:** `IntegrationsPage.tsx` using Material UI:
    - Header with Environment toggle (`Sandbox` / `Production`).
@@ -375,6 +398,7 @@ TASK-424      Customer Portal & Upload Scope      DEFERRED                      
 A concrete test plan for the future implementation of `SUB-INT.01` has been designed:
 
 ### 8.1 Unit Tests (`apps/api/test/integrations/`)
+
 1. **UT-INT-001 (Adapter Contract Validation):** Verify that every adapter class implements `BaseAdapter`, exports supported capabilities, and rejects unsupported capability names.
 2. **UT-INT-002 (Config Schema Validation):** Verify that invalid timeout, malformed URLs, and injected secret strings in configuration objects throw `VALIDATION_ERROR`.
 3. **UT-INT-003 (Sandbox Isolation):** Verify that calling an adapter configured in `SANDBOX` mode throws if given a production endpoint.
@@ -382,6 +406,7 @@ A concrete test plan for the future implementation of `SUB-INT.01` has been desi
 5. **UT-INT-005 (Sensitive Data Redaction):** Verify that logs generated from adapter calls mask PAN, Aadhaar, and authorization headers.
 
 ### 8.2 API Integration Tests (`apps/api/test/integrations.int.spec.ts`)
+
 1. **IT-INT-001 (Authorized Listing):** `GET /v1/integrations` with `config.manage` and `aal2` returns 200 with tenant's configured integrations.
 2. **IT-INT-002 (Missing Step-Up Authentication):** `PUT /v1/integrations/TWILIO` with valid `config.manage` but `aal1` token returns `401 STEP_UP_REQUIRED`.
 3. **IT-INT-003 (Missing Permission):** `GET /v1/integrations` with user lacking `config.manage` returns `403 FORBIDDEN`.
@@ -390,12 +415,14 @@ A concrete test plan for the future implementation of `SUB-INT.01` has been desi
 6. **IT-INT-006 (Tenant Isolation):** Verify Tenant A cannot read or mutate Tenant B's integration configuration.
 
 ### 8.3 Database & Security Tests (`tests/isolation/cases/integrations.spec.ts`)
+
 1. **DB-INT-001 (Uniqueness Constraint):** Inserting `(tenant_id, provider, capability)` duplicate throws PostgreSQL unique violation `23505`.
 2. **DB-INT-002 (Direct RLS Enforcement):** Querying `app.integration_connection` as `dsa_api` without `SET LOCAL app.tenant_id` returns 0 rows.
 3. **DB-INT-003 (Audit Atomicity):** Verify that a failed configuration update rolls back the audit event record.
 4. **DB-INT-004 (No Secret Persistence):** SQL assertions verifying zero occurrences of bearer tokens or private keys in the `config` column.
 
 ### 8.4 Frontend Tests (`apps/web/src/features/integrations/`)
+
 1. **FE-INT-001 (List Rendering):** Integration cards render correct status chips and environment badges.
 2. **FE-INT-002 (Step-Up Interception):** Clicking configure without `aal2` triggers `StepUpDialog`.
 3. **FE-INT-003 (No Plaintext Secrets in DOM):** Inspect DOM tree to guarantee zero secret inputs or exposed credentials.
@@ -406,15 +433,15 @@ A concrete test plan for the future implementation of `SUB-INT.01` has been desi
 
 All available repository quality-gate commands were executed directly. Results are recorded below:
 
-| Quality Gate Command | Exit Code | Result Summary | Details / Output |
-| :--- | :---: | :--- | :--- |
-| `npm run typecheck` | **0** | **PASS** | 0 TypeScript errors across all 6 workspaces (`@dsa/api`, `@dsa/web`, `@dsa/bre-core`, `@dsa/contracts`, `@dsa/kernel`, `@dsa/tools`). |
-| `npm test` | **0** | **PASS** | 434 total tests passed across 4 test suites (322 API, 66 Web, 28 Contracts, 18 Kernel). |
-| `npm run db:verify` | **0** | **PASS** | Passed all 5 database security audits: RLS lint (NFR-SEC-003), No DELETE grants for dsa_app, Tenant allow-list check, Supabase exposure check, and Fail-closed zero-count check. |
-| `npm run gen:openapi` | **0** | **PASS** | OpenAPI 3.1 specification generated successfully (`wrote ../openapi/openapi.yaml`). |
-| `npm run build` | **0** | **PASS** | Backend built cleanly via `tsup` (dist/server.js 619 KB); Frontend bundle built cleanly via `vite` (dist/assets/index 1.2 MB). |
-| `npm run lint` | **1** | **FAIL (Pre-existing)** | 140 lint problems (138 errors, 2 warnings) related to `@typescript-eslint/no-explicit-any` and unused variables in older test suites and UI forms. |
-| `npm run test:isolation` | **1** | **SKIPPED / FAIL** | Requires Docker / Testcontainers runtime to spawn ephemeral PostgreSQL containers (Docker daemon not running in local environment). |
+| Quality Gate Command     | Exit Code | Result Summary          | Details / Output                                                                                                                                                                 |
+| :----------------------- | :-------: | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`      |   **0**   | **PASS**                | 0 TypeScript errors across all 6 workspaces (`@dsa/api`, `@dsa/web`, `@dsa/bre-core`, `@dsa/contracts`, `@dsa/kernel`, `@dsa/tools`).                                            |
+| `npm test`               |   **0**   | **PASS**                | 434 total tests passed across 4 test suites (322 API, 66 Web, 28 Contracts, 18 Kernel).                                                                                          |
+| `npm run db:verify`      |   **0**   | **PASS**                | Passed all 5 database security audits: RLS lint (NFR-SEC-003), No DELETE grants for dsa_app, Tenant allow-list check, Supabase exposure check, and Fail-closed zero-count check. |
+| `npm run gen:openapi`    |   **0**   | **PASS**                | OpenAPI 3.1 specification generated successfully (`wrote ../openapi/openapi.yaml`).                                                                                              |
+| `npm run build`          |   **0**   | **PASS**                | Backend built cleanly via `tsup` (dist/server.js 619 KB); Frontend bundle built cleanly via `vite` (dist/assets/index 1.2 MB).                                                   |
+| `npm run lint`           |   **1**   | **FAIL (Pre-existing)** | 140 lint problems (138 errors, 2 warnings) related to `@typescript-eslint/no-explicit-any` and unused variables in older test suites and UI forms.                               |
+| `npm run test:isolation` |   **1**   | **SKIPPED / FAIL**      | Requires Docker / Testcontainers runtime to spawn ephemeral PostgreSQL containers (Docker daemon not running in local environment).                                              |
 
 ---
 
@@ -423,6 +450,7 @@ All available repository quality-gate commands were executed directly. Results a
 Before implementation of `SUB-INT.01` can begin, the following open decisions must be formally resolved by the Platform Squad and Security Architect:
 
 ### Open Decision OD-INT-001: Enterprise Secrets Management & Vault Strategy
+
 - **Issue:** `credential_ref` cannot be resolved at runtime because no vault client exists in the codebase.
 - **Options:**
   - Option A: Integrate AWS Secrets Manager / KMS using tenant-partitioned keys.
@@ -431,6 +459,7 @@ Before implementation of `SUB-INT.01` can begin, the following open decisions mu
 - **Current Status:** **BLOCKER**. Must be approved prior to activating live integrations.
 
 ### Open Decision OD-INT-002: Outbound Relay Architecture (TASK-403)
+
 - **Issue:** Outbox rows are written to `app.outbox_event`, but no polling worker or CDC processor exists to deliver them to external provider webhooks.
 - **Options:**
   - Option A: In-process NodeJS background polling loop with advisory locks (`pg_try_advisory_xact_lock`).
@@ -438,6 +467,7 @@ Before implementation of `SUB-INT.01` can begin, the following open decisions mu
 - **Current Status:** Deferred under `TASK-403`.
 
 ### Open Decision OD-INT-003: Provider Call Logging Storage Policy
+
 - **Issue:** Should `app.provider_call_log` (ENT-104) be stored in PostgreSQL or forwarded to an external observability platform (e.g., Datadog, CloudWatch) to prevent database bloat?
 - **Current Status:** Awaiting platform storage sizing review.
 
@@ -489,24 +519,25 @@ Once `TASK-419` is formally unblocked by the Product and Security teams, impleme
 
 ## 12. Final Synthesis & Classification Matrix
 
-| Subsystem Component | Category | Status Classification | Action Required |
-| :--- | :--- | :--- | :--- |
-| **`GET /v1/integrations`** | API Endpoint | **Missing** | To be implemented in Phase 3. |
-| **`PUT /v1/integrations/{p}`** | API Endpoint | **Missing** | To be implemented in Phase 3. |
-| **`app.integration_connection`** | Database Entity (ENT-103) | **Missing** | Write migration in Phase 1. |
-| **`itc` Prefix** | ID Registry | **Missing** | Add to `packages/contracts/src/ids.ts`. |
-| **`config.manage`** | Authorization | **Existing & Verified** | Reused directly from `permissions.ts`. |
-| **Step-Up MFA (`aal2`)** | Security Gateway | **Existing & Verified** | Reused directly from `supabase-auth.ts`. |
-| **BaseAdapter Interface** | Architecture | **Proposed** | Formally defined in this document. |
-| **Capability Descriptors** | Architecture | **Proposed** | Formally defined in this document. |
-| **Sandbox / Prod Separation** | Architecture | **Proposed** | Formally defined in this document. |
-| **Vault / Secrets Manager** | Infrastructure | **Blocked by Approval** | Resolve Open Decision `OD-INT-001`. |
-| **Outbox Relay Dispatcher** | Infrastructure | **Deferred (TASK-403)** | Separate task; outbox rows only in MVP. |
-| **Frontend UI** | User Interface | **Missing** | Build minimal page in Phase 4. |
+| Subsystem Component              | Category                  | Status Classification   | Action Required                          |
+| :------------------------------- | :------------------------ | :---------------------- | :--------------------------------------- |
+| **`GET /v1/integrations`**       | API Endpoint              | **Missing**             | To be implemented in Phase 3.            |
+| **`PUT /v1/integrations/{p}`**   | API Endpoint              | **Missing**             | To be implemented in Phase 3.            |
+| **`app.integration_connection`** | Database Entity (ENT-103) | **Missing**             | Write migration in Phase 1.              |
+| **`itc` Prefix**                 | ID Registry               | **Missing**             | Add to `packages/contracts/src/ids.ts`.  |
+| **`config.manage`**              | Authorization             | **Existing & Verified** | Reused directly from `permissions.ts`.   |
+| **Step-Up MFA (`aal2`)**         | Security Gateway          | **Existing & Verified** | Reused directly from `supabase-auth.ts`. |
+| **BaseAdapter Interface**        | Architecture              | **Proposed**            | Formally defined in this document.       |
+| **Capability Descriptors**       | Architecture              | **Proposed**            | Formally defined in this document.       |
+| **Sandbox / Prod Separation**    | Architecture              | **Proposed**            | Formally defined in this document.       |
+| **Vault / Secrets Manager**      | Infrastructure            | **Blocked by Approval** | Resolve Open Decision `OD-INT-001`.      |
+| **Outbox Relay Dispatcher**      | Infrastructure            | **Deferred (TASK-403)** | Separate task; outbox rows only in MVP.  |
+| **Frontend UI**                  | User Interface            | **Missing**             | Build minimal page in Phase 4.           |
 
 ---
 
 ### Concise Summary
+
 - **What already exists:** Multi-tenant RLS helpers, `config.manage` RBAC, mandatory `aal2` step-up MFA gateway, transaction runner, idempotency engine, audit logger, `If-Match` concurrency parser, `outbox_event` table, and ad-hoc message adapter mocks.
 - **What is missing:** `API-INT-001`, `API-INT-002`, `ENT-103` schema migration, adapter contracts, capability descriptors, and frontend configuration workbench.
 - **What is blocked:** Live external provider credentials cannot be stored until an approved Secrets Vault strategy (`OD-INT-001`) is adopted.

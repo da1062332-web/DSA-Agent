@@ -191,4 +191,3 @@ export const RecalculationProposalResponseSchema = z.object({
   createdBy: z.string(),
 });
 export type RecalculationProposalResponse = z.infer<typeof RecalculationProposalResponseSchema>;
-

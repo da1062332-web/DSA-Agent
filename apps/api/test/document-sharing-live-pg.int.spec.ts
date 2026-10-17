@@ -2,23 +2,17 @@
 // Direct live PostgreSQL verification for Module 25 (Document Sharing / MOD-DSH).
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
 import { createAuditPort, createAuthz, createIdGenerator } from '@dsa/kernel';
 import { DocumentSharingService } from '../src/modules/origination/document-sharing/document-sharing-service';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 const nextUlid = monotonicFactory();
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -105,14 +99,18 @@ describeLivePg('Module 25 (MOD-DSH): Live PostgreSQL & RLS Verification', () => 
 
     // 2. Query in Tenant A -> Visible
     const visibleInA = await txRunner.withTenantTx(ctxA, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(
+        tx,
+      );
       return res.rows.length;
     });
     expect(visibleInA).toBe(1);
 
     // 3. Query in Tenant B -> Invisible (RLS isolation)
     const visibleInB = await txRunner.withTenantTx(ctxB, async (tx) => {
-      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(tx);
+      const res = await sql<{ id: string }>`SELECT id FROM app.upload_link WHERE id = ${testLinkId}`.execute(
+        tx,
+      );
       return res.rows.length;
     });
     expect(visibleInB).toBe(0);

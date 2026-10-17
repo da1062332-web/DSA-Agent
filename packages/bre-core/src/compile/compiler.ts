@@ -1,9 +1,5 @@
 // packages/bre-core/src/compile/compiler.ts — owner: Dev 2 (pure functions, no I/O)
-import type {
-  HitPolicy,
-  RuleCondition,
-  RuleSetDefinition,
-} from '../ast/types';
+import type { HitPolicy, RuleCondition, RuleSetDefinition } from '../ast/types';
 
 export interface CompiledCondition {
   field: string;
@@ -33,7 +29,7 @@ export interface CompiledRuleSet {
 
 export function compileRuleSet(
   definition: RuleSetDefinition,
-  fallbackHitPolicy: HitPolicy = 'FIRST'
+  fallbackHitPolicy: HitPolicy = 'FIRST',
 ): CompiledRuleSet {
   const hitPolicy = definition.hitPolicy ?? fallbackHitPolicy;
 

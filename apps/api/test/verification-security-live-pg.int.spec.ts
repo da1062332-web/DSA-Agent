@@ -4,18 +4,12 @@
 // verifier role grants, and read-only permissions for Compliance and RM.
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import path from 'node:path';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already loaded
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_demo_01';
@@ -51,6 +45,30 @@ describeLivePg('Module 22 (MOD-VER): Live PostgreSQL Security & Isolation Verifi
     if (!dbUrl) return;
     db = createDb(dbUrl, { poolMax: 5 });
     txRunner = createTxRunner(db);
+
+    // The tests below attach verifications to this application and consent record, so they have to exist. They are created
+    // here as synthetic data in the throwaway database (tests/guard refuses any non-local connection), not taken from hosted.
+    const admin = createDb(resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || dbUrl, { poolMax: 1 });
+    try {
+      await sql`
+        INSERT INTO app.customer (id, tenant_id, party_type, full_name, home_branch_id, created_by, updated_by)
+        VALUES ('cus_vrf_sec_synthetic', ${TENANT_A}, 'INDIVIDUAL', 'Synthetic Verification Customer', ${BRANCH_A}, ${USER_A}, ${USER_A})
+        ON CONFLICT (id) DO NOTHING
+      `.execute(admin);
+      await sql`
+        INSERT INTO app.loan_application (id, tenant_id, branch_id, customer_id, product_category, requested_amount,
+                                          applicant_type, sales_owner_id, created_by, updated_by)
+        VALUES (${APP_A}, ${TENANT_A}, ${BRANCH_A}, 'cus_vrf_sec_synthetic', 'PL', 100000, 'SALARIED', ${USER_A}, ${USER_A}, ${USER_A})
+        ON CONFLICT (id) DO NOTHING
+      `.execute(admin);
+      await sql`
+        INSERT INTO app.consent_record (id, tenant_id, subject_type, subject_id, purpose, notice_version, channel, captured_by, captured_at)
+        VALUES (${CONSENT_A}, ${TENANT_A}, 'CUSTOMER', 'cus_vrf_sec_synthetic', 'LOAN_PROCESSING', 'V1', 'IN_PERSON', ${USER_A}, now())
+        ON CONFLICT (id) DO NOTHING
+      `.execute(admin);
+    } finally {
+      await admin.destroy();
+    }
   });
 
   afterAll(async () => {

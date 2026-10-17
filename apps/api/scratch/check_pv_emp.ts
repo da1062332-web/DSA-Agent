@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 
 async function main() {
   const db = createDb(process.env.VERIFY_DATABASE_URL!);
-  
+
   const pv = await sql`SELECT id, tenant_id FROM app.product_version LIMIT 5`.execute(db);
   console.log('product_version:', pv.rows);
 

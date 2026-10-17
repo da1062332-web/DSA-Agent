@@ -4,21 +4,15 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
 import request from 'supertest';
-import path from 'node:path';
 import { createDb } from '../src/kernel-min/db';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import { createApp } from '../src/app';
 import { fakeAuth, testPrincipal, createTestDeps } from './support/fake-auth';
 import type { Database, RequestContext } from '@dsa/contracts';
+import { resolveLocalTestDatabaseUrl } from './support/test-db-url';
 
 // Load .env from root if not already loaded
-try {
-  process.loadEnvFile(path.resolve(__dirname, '../.env'));
-} catch {
-  // Ignore if already set in environment
-}
-
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = resolveLocalTestDatabaseUrl('DATABASE_URL');
 const describeLivePg = dbUrl ? describe : describe.skip;
 
 const TENANT_A = 'ten_01JTESTTENANT00000000000000';
@@ -34,6 +28,20 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     if (!dbUrl) return;
     db = createDb(dbUrl, { poolMax: 5 });
     txRunner = createTxRunner(db);
+
+    // The HTTP tests below log activities against this lead, so it has to exist. It is created here, as synthetic data, in the
+    // throwaway database (the guard in tests/guard refuses any non-local connection), instead of relying on a row from hosted.
+    const admin = createDb(resolveLocalTestDatabaseUrl('VERIFY_DATABASE_URL') || dbUrl, { poolMax: 1 });
+    try {
+      await sql`
+        INSERT INTO app.lead (id, tenant_id, branch_id, full_name, mobile_e164, mobile_hash, product_category, source, owner_user_id, created_by, updated_by)
+        VALUES ('lead_test_live_http', ${TENANT_A}, ${BRANCH_A}, 'Synthetic Live Lead', '+919876500001',
+                decode('00000000000000000000000000000001', 'hex'), 'PL', 'PHONE', ${USER_A}, ${USER_A}, ${USER_A})
+        ON CONFLICT (id) DO NOTHING
+      `.execute(admin);
+    } finally {
+      await admin.destroy();
+    }
   });
 
   afterAll(async () => {
@@ -310,7 +318,9 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     // Confirm neither row exists
     await txRunner.withTenantTx(ctxA, async (tx) => {
       const act = await sql<{ id: string }>`SELECT id FROM app.activity WHERE id = ${failActId}`.execute(tx);
-      const aud = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${failAudId}`.execute(tx);
+      const aud = await sql<{ id: string }>`SELECT id FROM app.audit_event WHERE id = ${failAudId}`.execute(
+        tx,
+      );
       expect(act.rows).toHaveLength(0);
       expect(aud.rows).toHaveLength(0);
     });
@@ -428,13 +438,10 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     expect(createRes.headers.etag).toBe('"0"');
 
     // 2. PATCH with valid If-Match "0"
-    const patchRes = await request(app)
-      .patch(`/v1/activities/${actId}`)
-      .set('If-Match', '"0"')
-      .send({
-        outcomeCode: 'CONNECTED',
-        note: 'Live PG test after update',
-      });
+    const patchRes = await request(app).patch(`/v1/activities/${actId}`).set('If-Match', '"0"').send({
+      outcomeCode: 'CONNECTED',
+      note: 'Live PG test after update',
+    });
 
     expect(patchRes.status).toBe(200);
     expect(patchRes.headers.etag).toBe('"1"');
@@ -489,4 +496,3 @@ describeLivePg('Module 10 (MOD-ACT): Live PostgreSQL Verification', () => {
     expect(getRes.status).toBe(404);
   });
 });
-

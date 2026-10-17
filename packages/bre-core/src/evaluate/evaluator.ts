@@ -27,7 +27,7 @@ function matchCondition(
   cond: CompiledCondition,
   facts: Record<string, unknown>,
   unknownPolicy: 'IGNORE' | 'UNDETERMINED',
-  missingFields: Set<string>
+  missingFields: Set<string>,
 ): boolean {
   const { found, value } = getFactValue(facts, cond.fieldParts);
 
@@ -103,7 +103,7 @@ function matchCondition(
 export function evaluateRuleSet(
   compiled: CompiledRuleSet,
   facts: Record<string, unknown>,
-  options: EvaluationOptions = {}
+  options: EvaluationOptions = {},
 ): EvaluationResult {
   const startTime = Date.now();
   const fallbackPolicy = options.fallbackPolicy ?? 'DEFAULT_OUTPUT';

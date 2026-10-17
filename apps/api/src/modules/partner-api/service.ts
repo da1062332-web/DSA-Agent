@@ -21,6 +21,7 @@ import {
   type RequestContext,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../types';
+import { InMemoryApiClientRepository, type ApiClientRepository } from './api-client-repository';
 import { hashApiKey, InMemoryApiKeyStore, type ApiKeyRecord, type ApiKeyStore } from './auth-middleware';
 
 export interface ApiClientRecord {
@@ -47,7 +48,8 @@ export interface PartnerLeadRecord {
   tenantId: string;
   partnerId: string;
   externalReferenceId: string;
-  status: 'RECEIVED' | 'DUPLICATE_SUSPECTED' | 'QUALIFIED' | 'CONVERTED' | 'CONTACTED' | 'DROPPED' | 'REJECTED';
+  status:
+    'RECEIVED' | 'DUPLICATE_SUSPECTED' | 'QUALIFIED' | 'CONVERTED' | 'CONTACTED' | 'DROPPED' | 'REJECTED';
   loanProductCode: string;
   requestedAmount: { amount: string; currency: string };
   applicant: {
@@ -73,7 +75,16 @@ export interface PartnerApplicationRecord {
   productId: string;
   appliedAmount: { amount: string; currency: string };
   tenureMonths: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'UNDERWRITING' | 'LENDER_PROCESSING' | 'APPROVED' | 'SANCTIONED' | 'DISBURSED' | 'REJECTED' | 'CANCELLED';
+  status:
+    | 'DRAFT'
+    | 'SUBMITTED'
+    | 'UNDERWRITING'
+    | 'LENDER_PROCESSING'
+    | 'APPROVED'
+    | 'SANCTIONED'
+    | 'DISBURSED'
+    | 'REJECTED'
+    | 'CANCELLED';
   currentStage: string;
   sanctionCount: number;
   createdAt: string;
@@ -84,12 +95,18 @@ export class PartnerApiService {
   private leadsMap = new Map<string, PartnerLeadRecord>();
   private applicationsMap = new Map<string, PartnerApplicationRecord>();
   private idempotencyStore = new Map<string, { body: unknown; statusCode: number }>();
-  private apiClientsMap = new Map<string, ApiClientRecord>();
+  private readonly apiClients: ApiClientRepository;
 
   constructor(
     private deps: ApiDeps,
     private apiKeyStore: ApiKeyStore,
-  ) {}
+    apiClients?: ApiClientRepository,
+  ) {
+    this.apiClients =
+      apiClients ??
+      (deps.apiClientRepository as ApiClientRepository | undefined) ??
+      new InMemoryApiClientRepository();
+  }
 
   // Helper for masking
   private maskMobile(m: string): string {
@@ -115,15 +132,19 @@ export class PartnerApiService {
     const str = typeof val === 'string' ? val : JSON.stringify(val);
     // PAN: [A-Z]{5}[0-9]{4}[A-Z]{1}
     if (/[A-Za-z]{5}\d{4}[A-Za-z]/.test(str)) {
-      throw AppError.of('VALIDATION_ERROR', 'Plaintext PAN detected. S3-class identity data is prohibited in Partner API.', [
-        { field: 'metadata', issue: 'S3_PAN_PROHIBITED' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Plaintext PAN detected. S3-class identity data is prohibited in Partner API.',
+        [{ field: 'metadata', issue: 'S3_PAN_PROHIBITED' }],
+      );
     }
     // Aadhaar: 12 digits
     if (/\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b/.test(str)) {
-      throw AppError.of('VALIDATION_ERROR', 'Plaintext Aadhaar detected. S3-class identity data is prohibited in Partner API.', [
-        { field: 'metadata', issue: 'S3_AADHAAR_PROHIBITED' },
-      ]);
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Plaintext Aadhaar detected. S3-class identity data is prohibited in Partner API.',
+        [{ field: 'metadata', issue: 'S3_AADHAAR_PROHIBITED' }],
+      );
     }
   }
 
@@ -203,7 +224,9 @@ export class PartnerApiService {
     }
 
     // 2. Authorization
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.create');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.create',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -280,7 +303,9 @@ export class PartnerApiService {
 
   async getLead(ctx: RequestContext, id: string): Promise<PartnerLeadResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -310,7 +335,9 @@ export class PartnerApiService {
 
   async listLeads(ctx: RequestContext, query: PartnerListLeadsQuery): Promise<PartnerListLeadsResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'lead.read' || g.code === 'api.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -367,7 +394,9 @@ export class PartnerApiService {
       return { application: cached.body as PartnerApplicationResponse, isReplayed: true };
     }
 
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'application.create');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'application.create',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -419,7 +448,9 @@ export class PartnerApiService {
 
   async getApplication(ctx: RequestContext, id: string): Promise<PartnerApplicationResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.application_read' || g.code === 'application.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.application_read' || g.code === 'application.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.application_read required.');
     }
@@ -445,7 +476,9 @@ export class PartnerApiService {
 
   async getApplicationOffers(ctx: RequestContext, id: string): Promise<PartnerSanctionOffersResponse> {
     const { principal } = ctx;
-    const hasRead = principal.grants.some((g) => g.code === 'partner.application_read' || g.code === 'application.read');
+    const hasRead = principal.grants.some(
+      (g) => g.code === 'partner.application_read' || g.code === 'application.read',
+    );
     if (!hasRead) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.application_read required.');
     }
@@ -487,7 +520,9 @@ export class PartnerApiService {
     _idemKey: string,
   ): Promise<PartnerUploadSessionResponse> {
     const { principal } = ctx;
-    const hasIngest = principal.grants.some((g) => g.code === 'partner.lead_ingest' || g.code === 'document.upload');
+    const hasIngest = principal.grants.some(
+      (g) => g.code === 'partner.lead_ingest' || g.code === 'document.upload',
+    );
     if (!hasIngest) {
       throw AppError.of('FORBIDDEN', 'Permission denied: partner.lead_ingest required.');
     }
@@ -514,86 +549,58 @@ export class PartnerApiService {
   // API Management (MOD-API)
   // ==========================================================================
 
-  async listApiClients(ctx: RequestContext): Promise<{ data: ApiClientResponse[] }> {
-    const { principal } = ctx;
-    const hasAccess = principal.grants.some((g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasAccess && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.read or api.manage required.');
-    }
-
-    try {
-      const db = (this.deps as unknown as { db?: any }).db;
-      if (db) {
-        const rows = await db
-          .selectFrom('app.api_client')
-          .selectAll()
-          .where('tenant_id', '=', principal.tenantId)
-          .orderBy('created_at', 'desc')
-          .execute();
-        return {
-          data: rows.map((r: any) => ({
-            id: r.id,
-            clientId: r.client_id,
-            tenantId: r.tenant_id,
-            name: r.name,
-            partnerName: r.partner_name,
-            status: r.status,
-            scopes: Array.isArray(r.scopes) ? r.scopes : [],
-            rateLimitRpm: Number(r.rate_limit_rpm),
-            allowedIps: r.allowed_ips ?? null,
-            lastUsedAt: r.last_used_at ? new Date(r.last_used_at).toISOString() : null,
-            lockVersion: Number(r.lock_version ?? 1),
-            createdAt: new Date(r.created_at).toISOString(),
-            updatedAt: new Date(r.updated_at).toISOString(),
-          })),
-        };
-      }
-    } catch {
-      // In-memory fallback
-    }
-
-    const clients = Array.from(this.apiClientsMap.values())
-      .filter((c) => c.tenantId === principal.tenantId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
+  private toClientResponse(r: ApiClientRecord): ApiClientResponse {
     return {
-      data: clients.map((c) => ({
-        id: c.id,
-        clientId: c.clientId,
-        tenantId: c.tenantId,
-        name: c.name,
-        partnerName: c.partnerName,
-        status: c.status,
-        scopes: c.scopes,
-        rateLimitRpm: c.rateLimitRpm,
-        allowedIps: c.allowedIps ?? null,
-        lastUsedAt: c.lastUsedAt ?? null,
-        lockVersion: c.lockVersion,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      })),
+      id: r.id,
+      clientId: r.clientId,
+      tenantId: r.tenantId,
+      name: r.name,
+      partnerName: r.partnerName,
+      status: r.status,
+      scopes: r.scopes,
+      rateLimitRpm: r.rateLimitRpm,
+      allowedIps: r.allowedIps ?? null,
+      lastUsedAt: r.lastUsedAt ?? null,
+      lockVersion: r.lockVersion,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
     };
   }
 
-  async createApiClient(ctx: RequestContext, input: CreateApiClientInput): Promise<ApiClientResponse> {
-    const { principal } = ctx;
+  private requireApiRead(principal: RequestContext['principal']): void {
+    const hasAccess = principal.grants.some(
+      (g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage',
+    );
+    if (!hasAccess && principal.kind !== 'SERVICE') {
+      throw AppError.of('FORBIDDEN', 'Permission denied: api.read or api.manage required.');
+    }
+  }
+
+  private requireApiManage(principal: RequestContext['principal']): void {
     const hasManage = principal.grants.some((g) => g.code === 'api.manage' || g.code === 'config.manage');
     if (!hasManage && principal.kind !== 'SERVICE') {
       throw AppError.of('FORBIDDEN', 'Permission denied: api.manage required.');
     }
+  }
 
-    const id = this.nextId('clt');
-    const clientId = `clt_${crypto.randomBytes(12).toString('hex')}`;
+  async listApiClients(ctx: RequestContext): Promise<{ data: ApiClientResponse[] }> {
+    this.requireApiRead(ctx.principal);
+    const clients = await this.apiClients.list(ctx);
+    return { data: clients.map((c) => this.toClientResponse(c)) };
+  }
+
+  async createApiClient(ctx: RequestContext, input: CreateApiClientInput): Promise<ApiClientResponse> {
+    const { principal } = ctx;
+    this.requireApiManage(principal);
+
     const secretRandom = crypto.randomBytes(24).toString('hex');
     const clientSecret = `sec_${secretRandom}`;
-    const clientSecretHash = crypto.createHash('sha256').update(clientSecret).digest('hex');
     const nowIso = ctx.now.toISOString();
-
     const record: ApiClientRecord = {
-      id,
+      id: this.nextId('clt'),
       tenantId: principal.tenantId,
-      clientId,
-      clientSecretHash,
+      clientId: `clt_${crypto.randomBytes(12).toString('hex')}`,
+      clientSecretHash: crypto.createHash('sha256').update(clientSecret).digest('hex'),
       name: input.name,
       partnerName: input.partnerName,
       status: 'ACTIVE',
@@ -607,166 +614,44 @@ export class PartnerApiService {
       createdBy: principal.id,
       updatedBy: principal.id,
     };
-
-    try {
-      const db = (this.deps as unknown as { db?: any }).db;
-      if (db) {
-        await db
-          .insertInto('app.api_client')
-          .values({
-            id: record.id,
-            tenant_id: record.tenantId,
-            client_id: record.clientId,
-            client_secret_hash: record.clientSecretHash,
-            name: record.name,
-            partner_name: record.partnerName,
-            status: record.status,
-            scopes: record.scopes,
-            rate_limit_rpm: record.rateLimitRpm,
-            allowed_ips: record.allowedIps,
-            last_used_at: null,
-            lock_version: 1,
-            created_at: record.createdAt,
-            updated_at: record.updatedAt,
-            created_by: record.createdBy,
-            updated_by: record.updatedBy,
-          })
-          .execute();
-      }
-    } catch {
-      // In-memory fallback
-    }
-
-    this.apiClientsMap.set(record.id, record);
-
-    return {
-      id: record.id,
-      clientId: record.clientId,
-      tenantId: record.tenantId,
-      name: record.name,
-      partnerName: record.partnerName,
-      status: record.status,
-      scopes: record.scopes,
-      rateLimitRpm: record.rateLimitRpm,
-      allowedIps: record.allowedIps ?? null,
-      lastUsedAt: null,
-      lockVersion: record.lockVersion,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-      clientSecret,
-    };
+    // A failure here is an error to the caller. It used to be swallowed, which left a client that existed only in memory.
+    await this.apiClients.create(ctx, record);
+    return { ...this.toClientResponse(record), clientSecret };
   }
 
   async getApiClient(ctx: RequestContext, id: string): Promise<ApiClientResponse> {
-    const { principal } = ctx;
-    const hasAccess = principal.grants.some((g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasAccess && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.read or api.manage required.');
-    }
-
-    const record = this.apiClientsMap.get(id);
-    if (!record || record.tenantId !== principal.tenantId) {
-      throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    }
-
-    return {
-      id: record.id,
-      clientId: record.clientId,
-      tenantId: record.tenantId,
-      name: record.name,
-      partnerName: record.partnerName,
-      status: record.status,
-      scopes: record.scopes,
-      rateLimitRpm: record.rateLimitRpm,
-      allowedIps: record.allowedIps ?? null,
-      lastUsedAt: record.lastUsedAt ?? null,
-      lockVersion: record.lockVersion,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    };
+    this.requireApiRead(ctx.principal);
+    const record = await this.apiClients.get(ctx, id);
+    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
+    return this.toClientResponse(record);
   }
 
-  async updateApiClient(ctx: RequestContext, id: string, input: UpdateApiClientInput): Promise<ApiClientResponse> {
-    const { principal } = ctx;
-    const hasManage = principal.grants.some((g) => g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasManage && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.manage required.');
-    }
-
-    const record = this.apiClientsMap.get(id);
-    if (!record || record.tenantId !== principal.tenantId) {
-      throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    }
-
-    if (input.name !== undefined) record.name = input.name;
-    if (input.partnerName !== undefined) record.partnerName = input.partnerName;
-    if (input.status !== undefined) record.status = input.status;
-    if (input.scopes !== undefined) record.scopes = input.scopes;
-    if (input.rateLimitRpm !== undefined) record.rateLimitRpm = input.rateLimitRpm;
-    if (input.allowedIps !== undefined) record.allowedIps = input.allowedIps;
-    record.lockVersion += 1;
-    record.updatedAt = ctx.now.toISOString();
-    record.updatedBy = principal.id;
-
-    return {
-      id: record.id,
-      clientId: record.clientId,
-      tenantId: record.tenantId,
-      name: record.name,
-      partnerName: record.partnerName,
-      status: record.status,
-      scopes: record.scopes,
-      rateLimitRpm: record.rateLimitRpm,
-      allowedIps: record.allowedIps ?? null,
-      lastUsedAt: record.lastUsedAt ?? null,
-      lockVersion: record.lockVersion,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    };
+  async updateApiClient(
+    ctx: RequestContext,
+    id: string,
+    input: UpdateApiClientInput,
+  ): Promise<ApiClientResponse> {
+    this.requireApiManage(ctx.principal);
+    const record = await this.apiClients.update(ctx, id, input);
+    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
+    return this.toClientResponse(record);
   }
 
   async deleteApiClient(ctx: RequestContext, id: string): Promise<void> {
-    const { principal } = ctx;
-    const hasManage = principal.grants.some((g) => g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasManage && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.manage required.');
-    }
-
-    const record = this.apiClientsMap.get(id);
-    if (!record || record.tenantId !== principal.tenantId) {
+    this.requireApiManage(ctx.principal);
+    if (!(await this.apiClients.revoke(ctx, id)))
       throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    }
-
-    record.status = 'REVOKED';
-    record.updatedAt = ctx.now.toISOString();
-    record.updatedBy = principal.id;
-    this.apiClientsMap.delete(id);
   }
 
   async rotateClientSecret(ctx: RequestContext, id: string): Promise<RotateClientSecretResponse> {
-    const { principal } = ctx;
-    const hasManage = principal.grants.some((g) => g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasManage && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.manage required.');
-    }
-
-    const record = this.apiClientsMap.get(id);
-    if (!record || record.tenantId !== principal.tenantId) {
-      throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    }
-
-    const secretRandom = crypto.randomBytes(24).toString('hex');
-    const clientSecret = `sec_${secretRandom}`;
-    record.clientSecretHash = crypto.createHash('sha256').update(clientSecret).digest('hex');
-    record.lockVersion += 1;
-    record.updatedAt = ctx.now.toISOString();
-    record.updatedBy = principal.id;
-
-    return {
-      clientId: record.clientId,
-      clientSecret,
-      rotatedAt: record.updatedAt,
-    };
+    this.requireApiManage(ctx.principal);
+    const clientSecret = `sec_${crypto.randomBytes(24).toString('hex')}`;
+    const record = await this.apiClients.rotateSecret(
+      ctx,
+      id,
+      crypto.createHash('sha256').update(clientSecret).digest('hex'),
+    );
+    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
+    return { clientId: record.clientId, clientSecret, rotatedAt: record.updatedAt };
   }
 }
-

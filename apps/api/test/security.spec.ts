@@ -1,12 +1,17 @@
 // apps/api/test/security.spec.ts — Module 39: Security (MOD-SEC, DOM-N) Integration & Route Tests
 import crypto from 'node:crypto';
+import type { RequestContext } from '@dsa/contracts';
 import { describe, expect, it, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createTestApp, fakeAuth, testPrincipal, testDeps } from './support/fake-auth';
 import { createMockSecurityStore } from './support/mock-security-db';
 import { BufferedSiemClient, type SiemPort, type SiemEvent } from '../src/modules/security/siem';
 import { EnvelopeEncryptionService, DeferredKmsPort, type KmsPort } from '../src/modules/security/kms';
-import { validateRetentionPurge, assertRetentionCompliance, RETENTION_RULES } from '../src/modules/security/retention';
+import {
+  validateRetentionPurge,
+  assertRetentionCompliance,
+  RETENTION_RULES,
+} from '../src/modules/security/retention';
 import { SecurityService } from '../src/modules/security/service';
 
 describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
@@ -73,10 +78,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         },
       };
 
-      const res = await request(app)
-        .post('/v1/security/events')
-        .send(payload)
-        .expect(201);
+      const res = await request(app).post('/v1/security/events').send(payload).expect(201);
 
       expect(res.body.id).toMatch(/^sec_[0-9A-HJKMNP-TV-Z]{26}$/);
       expect(res.body.type).toBe('AUTH_FAILURE');
@@ -212,7 +214,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
 
       // Verify audit trail recorded
       expect(store.auditEvents.length).toBeGreaterThan(0);
-      expect(store.auditEvents[0]?.action).toBe('CREATE');
+      expect(store.auditEvents[0]?.action).toBe('incident.created');
     });
 
     it('API-SEC-001: replays stored response when identical Idempotency-Key is reused', async () => {
@@ -262,10 +264,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
 
     it('API-SEC-001: requires Idempotency-Key header (400 MALFORMED_REQUEST)', async () => {
       const app = getApp(compliancePrincipal);
-      await request(app)
-        .post('/v1/incidents')
-        .send(validIncidentPayload)
-        .expect(400);
+      await request(app).post('/v1/incidents').send(validIncidentPayload).expect(400);
     });
 
     it('API-SEC-002: updates incident assessment and notification timestamps with If-Match', async () => {
@@ -302,7 +301,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       expect(updateRes.body.notifications.authority.notified).toBe(true); // preserved merged
 
       // Verify audit update event
-      const updateAuditEvent = store.auditEvents.find((e) => e.action === 'UPDATE');
+      const updateAuditEvent = store.auditEvents.find((e) => e.action === 'incident.updated');
       expect(updateAuditEvent).toBeDefined();
     });
 
@@ -338,10 +337,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         .send(validIncidentPayload)
         .expect(201);
 
-      await request(app)
-        .patch(`/v1/incidents/${createRes.body.id}`)
-        .send({ status: 'RESOLVED' })
-        .expect(400);
+      await request(app).patch(`/v1/incidents/${createRes.body.id}`).send({ status: 'RESOLVED' }).expect(400);
     });
 
     it('API-SEC-002: validates notification evidence requires notifiedAt when notified=true', async () => {
@@ -438,10 +434,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
   // SUB-SEC.04: Encryption, Blind Indexing & Tamper Detection
   // ==========================================================================
   describe('SUB-SEC.04 — Field-Level Encryption & Cryptographic Integrity', () => {
-    const ENCRYPTION_KEY = crypto
-      .createHash('sha256')
-      .update('dev_dsa_encryption_key_32_bytes!')
-      .digest();
+    const ENCRYPTION_KEY = crypto.createHash('sha256').update('dev_dsa_encryption_key_32_bytes!').digest();
 
     function encryptAesGcm(plaintext: string): Buffer {
       const iv = crypto.randomBytes(12);
@@ -495,21 +488,12 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       const pan = 'ABCDE1234F';
       const hmacSecret = 'test_hmac_secret_key';
 
-      const hashTenantA = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantA}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantA = crypto.createHmac('sha256', `${hmacSecret}:${tenantA}`).update(pan).digest('hex');
 
-      const hashTenantB = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantB}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantB = crypto.createHmac('sha256', `${hmacSecret}:${tenantB}`).update(pan).digest('hex');
 
       // Matching within same tenant is deterministic
-      const hashTenantA2 = crypto
-        .createHmac('sha256', `${hmacSecret}:${tenantA}`)
-        .update(pan)
-        .digest('hex');
+      const hashTenantA2 = crypto.createHmac('sha256', `${hmacSecret}:${tenantA}`).update(pan).digest('hex');
 
       expect(hashTenantA).toBe(hashTenantA2);
       // Blind index across different tenants must NOT match
@@ -599,7 +583,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
         requestId: 'req-siem-01',
       };
 
-      const event = await secService.recordSecurityEvent(ctx as any, {
+      const event = await secService.recordSecurityEvent(ctx as unknown as RequestContext, {
         type: 'SUSPICIOUS_ACCESS',
         principal: 'usr_target_01',
         ip: '198.51.100.42',

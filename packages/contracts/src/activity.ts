@@ -54,7 +54,8 @@ export const CreateActivitySchema = z
       .string()
       .max(4000)
       .refine((n) => !containsS2SensitiveData(n), {
-        message: 'Free-text fields must not contain PAN, Aadhaar, or account number patterns (S2 protection).',
+        message:
+          'Free-text fields must not contain PAN, Aadhaar, or account number patterns (S2 protection).',
       })
       .optional()
       .nullable(),
@@ -92,7 +93,8 @@ export const UpdateActivitySchema = z
       .string()
       .max(4000)
       .refine((n) => !containsS2SensitiveData(n), {
-        message: 'Free-text fields must not contain PAN, Aadhaar, or account number patterns (S2 protection).',
+        message:
+          'Free-text fields must not contain PAN, Aadhaar, or account number patterns (S2 protection).',
       })
       .optional()
       .nullable(),

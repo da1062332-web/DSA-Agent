@@ -251,7 +251,9 @@ describe('Module 39 — Security Enhancements (TASK-421, TASK-431 & Regulatory C
       expect(notice.plainText).toContain('Rajesh Kumar');
       expect(notice.plainText).toContain('Section 8(6) of the Digital Personal Data Protection Act, 2023');
       expect(notice.plainText).toContain('1800-111-2222');
-      expect(notice.bodyHtml).toContain('<h2 style="color: #c62828; margin-top: 0;">Notice of Data Security Incident</h2>');
+      expect(notice.bodyHtml).toContain(
+        '<h2 style="color: #c62828; margin-top: 0;">Notice of Data Security Incident</h2>',
+      );
     });
   });
 });

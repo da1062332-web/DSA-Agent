@@ -36,10 +36,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
-import type {
-  ExternalShareRecord,
-  UploadLinkRecord,
-} from '@dsa/contracts';
+import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 
 const APPROVED_CHECKLIST_REQUIREMENTS = [
   { id: 'chk_pan_card', label: 'PAN Card (Identity Proof)' },
@@ -68,7 +65,10 @@ export function DocumentSharingPage() {
   const [createdLinkResult, setCreatedLinkResult] = useState<any | null>(null);
 
   const toggleChecklistItem = (itemId: string) => {
-    const current = linkItems.split(',').map((s) => s.trim()).filter(Boolean);
+    const current = linkItems
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (current.includes(itemId)) {
       setLinkItems(current.filter((id) => id !== itemId).join(', '));
     } else {
@@ -117,8 +117,7 @@ export function DocumentSharingPage() {
 
   const revokeLinkMutation = useMutation({
     meta: { successMessage: 'Upload link revoked.' },
-    mutationFn: (id: string) =>
-      apiFetch(`/v1/upload-links/${id}/revocation`, { method: 'POST' }),
+    mutationFn: (id: string) => apiFetch(`/v1/upload-links/${id}/revocation`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['upload-links'] });
       setFeedback({ message: 'Upload link revoked successfully.', severity: 'success' });
@@ -139,7 +138,10 @@ export function DocumentSharingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shares'] });
       setIsShareModalOpen(false);
-      setFeedback({ message: 'Case share package created and logged in ENT-100 inventory.', severity: 'success' });
+      setFeedback({
+        message: 'Case share package created and logged in ENT-100 inventory.',
+        severity: 'success',
+      });
     },
     onError: (err: any) => {
       setFeedback({ message: errorText(err), severity: 'error' });
@@ -148,8 +150,7 @@ export function DocumentSharingPage() {
 
   const revokeShareMutation = useMutation({
     meta: { successMessage: 'Share revoked.' },
-    mutationFn: (id: string) =>
-      apiFetch(`/v1/shares/${id}/revocation`, { method: 'POST' }),
+    mutationFn: (id: string) => apiFetch(`/v1/shares/${id}/revocation`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shares'] });
       setFeedback({ message: 'Case share package revoked.', severity: 'success' });
@@ -161,7 +162,10 @@ export function DocumentSharingPage() {
 
   const handleCreateLink = (e: React.FormEvent) => {
     e.preventDefault();
-    const items = linkItems.split(',').map((s) => s.trim()).filter(Boolean);
+    const items = linkItems
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     createLinkMutation.mutate({
       applicationId: linkAppId.trim(),
       checklistItemIds: items,
@@ -194,7 +198,13 @@ export function DocumentSharingPage() {
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1300, mx: 'auto' }}>
       {/* Header */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 3 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems="flex-start"
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
         <Box>
           <Typography variant="h4" fontWeight={700}>
             Document Sharing
@@ -207,7 +217,13 @@ export function DocumentSharingPage() {
           <Button variant="outlined" onClick={() => setIsShareModalOpen(true)}>
             + Create Share Package
           </Button>
-          <Button variant="contained" onClick={() => { setCreatedLinkResult(null); setIsLinkModalOpen(true); }}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setCreatedLinkResult(null);
+              setIsLinkModalOpen(true);
+            }}
+          >
             + Generate Upload Link
           </Button>
         </Stack>
@@ -247,13 +263,27 @@ export function DocumentSharingPage() {
                 <Table>
                   <TableHead sx={{ bgcolor: '#fafafa' }}>
                     <TableRow>
-                      <TableCell><strong>Link ID</strong></TableCell>
-                      <TableCell><strong>Application ID</strong></TableCell>
-                      <TableCell><strong>Items Requested</strong></TableCell>
-                      <TableCell><strong>Uses / Max</strong></TableCell>
-                      <TableCell><strong>Expires At</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell align="right"><strong>Actions</strong></TableCell>
+                      <TableCell>
+                        <strong>Link ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Application ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Items Requested</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Uses / Max</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Expires At</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Status</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>Actions</strong>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -272,7 +302,9 @@ export function DocumentSharingPage() {
                           <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</TableCell>
                           <TableCell sx={{ fontFamily: 'monospace' }}>{link.applicationId}</TableCell>
                           <TableCell>{link.items.length} items</TableCell>
-                          <TableCell>{link.uses} / {link.maxUses}</TableCell>
+                          <TableCell>
+                            {link.uses} / {link.maxUses}
+                          </TableCell>
                           <TableCell>{new Date(link.expiresAt).toLocaleString()}</TableCell>
                           <TableCell>{statusBadge}</TableCell>
                           <TableCell align="right">
@@ -317,14 +349,30 @@ export function DocumentSharingPage() {
                 <Table>
                   <TableHead sx={{ bgcolor: '#fafafa' }}>
                     <TableRow>
-                      <TableCell><strong>Share ID</strong></TableCell>
-                      <TableCell><strong>Application ID</strong></TableCell>
-                      <TableCell><strong>Recipient</strong></TableCell>
-                      <TableCell><strong>Purpose</strong></TableCell>
-                      <TableCell><strong>Consent Verified</strong></TableCell>
-                      <TableCell><strong>Expires At</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell align="right"><strong>Actions</strong></TableCell>
+                      <TableCell>
+                        <strong>Share ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Application ID</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Recipient</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Purpose</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Consent Verified</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Expires At</strong>
+                      </TableCell>
+                      <TableCell>
+                        <strong>Status</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>Actions</strong>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -341,11 +389,19 @@ export function DocumentSharingPage() {
                           <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</TableCell>
                           <TableCell sx={{ fontFamily: 'monospace' }}>{share.applicationId}</TableCell>
                           <TableCell>
-                            <Typography variant="body2" fontWeight={600}>{share.recipientContact.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">{share.recipientContact.email}</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              {share.recipientContact.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {share.recipientContact.email}
+                            </Typography>
                           </TableCell>
-                          <TableCell><Chip label={share.purpose} size="small" variant="outlined" /></TableCell>
-                          <TableCell><Chip label={`${share.consentIds.length} Active`} color="info" size="small" /></TableCell>
+                          <TableCell>
+                            <Chip label={share.purpose} size="small" variant="outlined" />
+                          </TableCell>
+                          <TableCell>
+                            <Chip label={`${share.consentIds.length} Active`} color="info" size="small" />
+                          </TableCell>
                           <TableCell>{new Date(share.expiresAt).toLocaleDateString()}</TableCell>
                           <TableCell>{statusBadge}</TableCell>
                           <TableCell align="right">
@@ -380,12 +436,22 @@ export function DocumentSharingPage() {
                 Customer upload link generated successfully! Share this link with the applicant.
               </Alert>
               <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">Public Upload URL</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Public Upload URL
+                </Typography>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                  <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all', flexGrow: 1 }}>
-                    {window.location.origin}{createdLinkResult.uploadUrl}
+                  <Typography
+                    variant="body2"
+                    sx={{ fontFamily: 'monospace', wordBreak: 'break-all', flexGrow: 1 }}
+                  >
+                    {window.location.origin}
+                    {createdLinkResult.uploadUrl}
                   </Typography>
-                  <Button size="small" variant="contained" onClick={() => copyToClipboard(`${window.location.origin}${createdLinkResult.uploadUrl}`)}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => copyToClipboard(`${window.location.origin}${createdLinkResult.uploadUrl}`)}
+                  >
                     Copy
                   </Button>
                 </Stack>
@@ -393,7 +459,9 @@ export function DocumentSharingPage() {
 
               {createdLinkResult.generatedOtp && (
                 <Box sx={{ p: 2, bgcolor: '#e8f4fd', borderRadius: 1.5 }}>
-                  <Typography variant="caption" color="text.secondary">Demonstration OTP (Simulated via MOD-MSG)</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Demonstration OTP (Simulated via MOD-MSG)
+                  </Typography>
                   <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: 2, mt: 0.5 }}>
                     {createdLinkResult.generatedOtp}
                   </Typography>
@@ -417,7 +485,11 @@ export function DocumentSharingPage() {
                 />
 
                 <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mb: 1, fontWeight: 600 }}
+                  >
                     Approved Document Requirements (Click to select/deselect):
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
@@ -452,7 +524,11 @@ export function DocumentSharingPage() {
                 <Stack direction="row" spacing={2}>
                   <FormControl fullWidth>
                     <InputLabel>Expires In</InputLabel>
-                    <Select value={linkHours} label="Expires In" onChange={(e) => setLinkHours(Number(e.target.value))}>
+                    <Select
+                      value={linkHours}
+                      label="Expires In"
+                      onChange={(e) => setLinkHours(Number(e.target.value))}
+                    >
                       <MenuItem value={24}>24 Hours</MenuItem>
                       <MenuItem value={48}>48 Hours (2 Days)</MenuItem>
                       <MenuItem value={72}>72 Hours (3 Days)</MenuItem>
@@ -470,7 +546,12 @@ export function DocumentSharingPage() {
                 </Stack>
 
                 <FormControlLabel
-                  control={<Switch checked={linkOtpRequired} onChange={(e) => setLinkOtpRequired(e.target.checked)} />}
+                  control={
+                    <Switch
+                      checked={linkOtpRequired}
+                      onChange={(e) => setLinkOtpRequired(e.target.checked)}
+                    />
+                  }
                   label="Mandatory 6-digit OTP Verification before document upload"
                 />
               </Stack>
@@ -494,7 +575,8 @@ export function DocumentSharingPage() {
           <Box component="form" onSubmit={handleCreateShare}>
             <Stack spacing={2.5}>
               <Alert severity="info">
-                Case sharing enforces verified active customer consent. An ENT-100 data sharing inventory record will be created atomically.
+                Case sharing enforces verified active customer consent. An ENT-100 data sharing inventory
+                record will be created atomically.
               </Alert>
 
               <TextField
@@ -509,7 +591,11 @@ export function DocumentSharingPage() {
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
                   <InputLabel>Recipient Type</InputLabel>
-                  <Select value={shareRecipientType} label="Recipient Type" onChange={(e) => setShareRecipientType(e.target.value)}>
+                  <Select
+                    value={shareRecipientType}
+                    label="Recipient Type"
+                    onChange={(e) => setShareRecipientType(e.target.value)}
+                  >
                     <MenuItem value="LENDER">Lender</MenuItem>
                     <MenuItem value="CO_LENDER">Co-Lender</MenuItem>
                     <MenuItem value="PARTNER">Partner</MenuItem>
@@ -547,7 +633,11 @@ export function DocumentSharingPage() {
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
                   <InputLabel>Purpose</InputLabel>
-                  <Select value={sharePurpose} label="Purpose" onChange={(e) => setSharePurpose(e.target.value)}>
+                  <Select
+                    value={sharePurpose}
+                    label="Purpose"
+                    onChange={(e) => setSharePurpose(e.target.value)}
+                  >
                     <MenuItem value="LENDER_SUBMISSION">Lender Submission</MenuItem>
                     <MenuItem value="PORTFOLIO_REVIEW">Portfolio Review</MenuItem>
                     <MenuItem value="AUDIT_INSPECTION">Audit Inspection</MenuItem>

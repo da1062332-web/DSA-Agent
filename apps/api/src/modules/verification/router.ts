@@ -190,24 +190,27 @@ export function createRouter(deps: ApiDeps): Router {
    * POST /verifications/:id/checklist-review
    * Review and attest a document checklist item
    */
-  router.post('/verifications/:id/checklist-review', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'document.review');
+  router.post(
+    '/verifications/:id/checklist-review',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const ctx = getContext(req);
+        requirePermission(ctx, 'document.review');
 
-      const id = extractId(req);
+        const id = extractId(req);
 
-      const body = ChecklistAttestationRequestSchema.parse(req.body);
+        const body = ChecklistAttestationRequestSchema.parse(req.body);
 
-      const reviewed = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        return reviewChecklistItem(tx, ctx, id, body);
-      });
+        const reviewed = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+          return reviewChecklistItem(tx, ctx, id, body);
+        });
 
-      res.status(200).json(reviewed);
-    } catch (err) {
-      next(err);
-    }
-  });
+        res.status(200).json(reviewed);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   return router;
 }

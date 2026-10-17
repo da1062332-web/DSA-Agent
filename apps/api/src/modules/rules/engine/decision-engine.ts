@@ -30,7 +30,7 @@ export class LiveDecisionEngine implements DecisionPort {
   async decide<K extends DecisionKey>(
     tx: Tx,
     ctx: RequestContext,
-    req: DecisionRequest<K>
+    req: DecisionRequest<K>,
   ): Promise<DecisionResult<K>> {
     if (!ctx.principal || !ctx.principal.tenantId) {
       throw AppError.of('TENANT_CONTEXT_MISSING', 'Tenant context is required for decision evaluation.');
@@ -77,7 +77,13 @@ export class LiveDecisionEngine implements DecisionPort {
     const inputHash = computeContentHash(req.facts);
 
     // Resolve active version along the scope chain (e.g. BRANCH -> TENANT_DEFAULT)
-    let activeVersion: { id: string; ruleSetId: string; definition: RuleSetDefinition; hitPolicy: string; contentHash: string } | null = null;
+    let activeVersion: {
+      id: string;
+      ruleSetId: string;
+      definition: RuleSetDefinition;
+      hitPolicy: string;
+      contentHash: string;
+    } | null = null;
 
     for (const scopeType of definition.scopeChain) {
       let scopeRef: string | null = null;

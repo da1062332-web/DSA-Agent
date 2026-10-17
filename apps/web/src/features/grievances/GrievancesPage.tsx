@@ -124,8 +124,8 @@ export function GrievancesPage({ initialTab = 0 }: { initialTab?: number } = {})
         <strong>Canonical Scope Notice:</strong> In accordance with the canonical Notion specification for{' '}
         <strong>MODULE 13 — Grievances (MOD-GRV)</strong>, this subsystem has an MVP owner of{' '}
         <em>"none (deferred, TASK-427)"</em> with target priority <strong>P1 / R2</strong> (Release 2).
-        Backend endpoints (<code>POST /v1/complaints</code>, <code>GET /v1/complaints</code>) are scheduled for
-        R2 implementation once CRM Customers (MOD-CUST) and Tasks (MOD-TASK) are fully unified.
+        Backend endpoints (<code>POST /v1/complaints</code>, <code>GET /v1/complaints</code>) are scheduled
+        for R2 implementation once CRM Customers (MOD-CUST) and Tasks (MOD-TASK) are fully unified.
       </Alert>
 
       <Paper sx={{ mb: 3 }}>
@@ -146,20 +146,38 @@ export function GrievancesPage({ initialTab = 0 }: { initialTab?: number } = {})
             <Table>
               <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell><strong>Ack Ref</strong></TableCell>
-                  <TableCell><strong>Complainant</strong></TableCell>
-                  <TableCell><strong>Type</strong></TableCell>
-                  <TableCell><strong>Channel</strong></TableCell>
-                  <TableCell><strong>Category</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
-                  <TableCell><strong>SLA Due Date</strong></TableCell>
-                  <TableCell align="right"><strong>Action</strong></TableCell>
+                  <TableCell>
+                    <strong>Ack Ref</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Complainant</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Type</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Channel</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Category</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Status</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>SLA Due Date</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Action</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {queue.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell><strong>{c.ackRef}</strong></TableCell>
+                    <TableCell>
+                      <strong>{c.ackRef}</strong>
+                    </TableCell>
                     <TableCell>{c.complainantName}</TableCell>
                     <TableCell>
                       <Chip label={c.complainantType} size="small" variant="outlined" />

@@ -17,7 +17,8 @@ export const PlatformTenantSummarySchema = z.object({
   createdBy: z.string(),
   healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'ACTION_REQUIRED']),
   activeUsersCount: z.number().int().nonnegative(),
-  applicationsCount: z.number().int().nonnegative(),
+  /** Business counts are not shown in the platform console. Always null. */
+  applicationsCount: z.number().int().nonnegative().nullable(),
   entitlements: z.array(z.string()),
 });
 
@@ -175,13 +176,7 @@ export type SystemHealthReport = z.infer<typeof SystemHealthReportSchema>;
 // SUB-ADM.06: Support Access (CMP-ADM.06.1 / API-ADM-006 / API-ADM-007)
 // ==========================================
 
-export const SupportAccessGrantStatusSchema = z.enum([
-  'PENDING',
-  'APPROVED',
-  'DENIED',
-  'EXPIRED',
-  'REVOKED',
-]);
+export const SupportAccessGrantStatusSchema = z.enum(['PENDING', 'APPROVED', 'DENIED', 'EXPIRED', 'REVOKED']);
 
 export type SupportAccessGrantStatus = z.infer<typeof SupportAccessGrantStatusSchema>;
 
@@ -220,17 +215,18 @@ export const ApproveSupportAccessRequestSchema = z.object({
 
 export type ApproveSupportAccessRequest = z.infer<typeof ApproveSupportAccessRequestSchema>;
 
+/** The target tenant ends an approved access early (a tenant-realm action). */
+export const RevokeSupportAccessRequestSchema = z.object({
+  comments: z.string().max(500).optional(),
+});
+
+export type RevokeSupportAccessRequest = z.infer<typeof RevokeSupportAccessRequestSchema>;
+
 // ==========================================
 // SUB-ADM.07: Data Correction (CMP-ADM.07.1 / API-ADM-008 / API-ADM-009)
 // ==========================================
 
-export const DataCorrectionStatusSchema = z.enum([
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'EXECUTED',
-  'FAILED',
-]);
+export const DataCorrectionStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'FAILED']);
 
 export type DataCorrectionStatus = z.infer<typeof DataCorrectionStatusSchema>;
 
@@ -239,12 +235,17 @@ export const DataCorrectionRequestSchema = z.object({
   tenantId: z.string(),
   justification: z.string(),
   scriptRef: z.string(),
-  dryRunDiffKey: z.string(),
-  dryRunDiff: z.string(),
+  /** Set when the correction executor attaches a real dry-run diff. Null until then; never made up by the API. */
+  dryRunDiffKey: z.string().nullable(),
+  dryRunDiff: z.string().nullable(),
+  targetEntity: z.string().nullable().optional(),
+  changeDescription: z.string().nullable().optional(),
   requestedBy: z.string(),
   approvedBy: z.string().nullable().optional(),
   status: DataCorrectionStatusSchema,
   executedAt: z.string().nullable().optional(),
+  /** Why the executor could not carry the correction out; set only when status is FAILED. */
+  failureReason: z.string().nullable().optional(),
   executorIdentity: z.string().default('SERVICE:data-correction-executor'),
   createdAt: z.string(),
 });
@@ -252,7 +253,8 @@ export const DataCorrectionRequestSchema = z.object({
 export type DataCorrectionRequest = z.infer<typeof DataCorrectionRequestSchema>;
 
 export const CreateDataCorrectionRequestSchema = z.object({
-  tenantId: z.string().min(1),
+  /** Never trusted: a correction belongs to the caller's own tenant. Accepted only if it equals that tenant. */
+  tenantId: z.string().min(1).optional(),
   justification: z.string().min(10, 'Justification required (min 10 characters)'),
   scriptRef: z.string().min(3, 'Script reference required (e.g. SCR-2026-001)'),
   targetEntity: z.string().min(2),
@@ -283,6 +285,8 @@ export type ReleaseGateStatus = z.infer<typeof ReleaseGateStatusSchema>;
 
 export const ReleaseRegisterItemSchema = z.object({
   version: z.string(),
+  /** Optimistic-concurrency version (ETag). Absent on items from older servers. */
+  lockVersion: z.number().int().positive().optional(),
   status: z.enum(['CANDIDATE', 'STAGING', 'PUBLISHED', 'ARCHIVED']),
   targetDate: z.string(),
   gitTag: z.string().nullable(),
@@ -294,3 +298,15 @@ export const ReleaseRegisterItemSchema = z.object({
 });
 
 export type ReleaseRegisterItem = z.infer<typeof ReleaseRegisterItemSchema>;
+
+/** PUT /platform/v1/releases/{version}: an operator records what was verified or published. Only what is sent changes. */
+export const UpdateReleaseRequestSchema = z
+  .object({
+    status: z.enum(['CANDIDATE', 'STAGING', 'PUBLISHED', 'ARCHIVED']).optional(),
+    gitTag: z.string().min(1).max(100).nullable().optional(),
+    gates: ReleaseGateStatusSchema.partial().optional(),
+    notesSummary: z.string().max(2000).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Send at least one field to change.' });
+
+export type UpdateReleaseRequest = z.infer<typeof UpdateReleaseRequestSchema>;

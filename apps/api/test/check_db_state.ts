@@ -14,7 +14,10 @@ async function main() {
     WHERE table_schema = 'app'
     ORDER BY table_name ASC
   `.execute(db);
-  console.log('App tables:', tables.rows.map((r: any) => r.table_name));
+  console.log(
+    'App tables:',
+    tables.rows.map((r: any) => r.table_name),
+  );
 
   const branches = await sql`
     SELECT b.id, b.tenant_id, b.name, b.code

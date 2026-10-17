@@ -28,10 +28,7 @@ export interface MessagingPageProps {
   apiBaseUrl?: string;
 }
 
-export function MessagingPage({
-  defaultTab = 0,
-  apiBaseUrl = '/v1',
-}: MessagingPageProps) {
+export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingPageProps) {
   const [tabIndex, setTabIndex] = useState(defaultTab);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -177,11 +174,7 @@ export function MessagingPage({
 
       {/* Tab 1: Dispatch */}
       {tabIndex === 1 && (
-        <MessageComposer
-          templates={templates}
-          onMessageSent={handleMessageSent}
-          apiBaseUrl={apiBaseUrl}
-        />
+        <MessageComposer templates={templates} onMessageSent={handleMessageSent} apiBaseUrl={apiBaseUrl} />
       )}
 
       {/* Tab 2: History */}

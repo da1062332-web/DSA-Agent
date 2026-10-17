@@ -21,7 +21,12 @@ export interface FinancialStoragePort {
 export class InMemoryFinancialStorage implements FinancialStoragePort {
   private files = new Map<string, { buffer: Buffer; sha256: string }>();
 
-  async save(tenantId: string, objectKey: string, buffer: Buffer, _mimeType: string): Promise<StoredFinancialFile> {
+  async save(
+    tenantId: string,
+    objectKey: string,
+    buffer: Buffer,
+    _mimeType: string,
+  ): Promise<StoredFinancialFile> {
     const key = `${tenantId}/${objectKey}`;
     const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
     this.files.set(key, { buffer, sha256 });
@@ -54,7 +59,12 @@ export class LocalFinancialStorage implements FinancialStoragePort {
     this.baseDir = path.resolve(baseDir);
   }
 
-  async save(tenantId: string, objectKey: string, buffer: Buffer, _mimeType: string): Promise<StoredFinancialFile> {
+  async save(
+    tenantId: string,
+    objectKey: string,
+    buffer: Buffer,
+    _mimeType: string,
+  ): Promise<StoredFinancialFile> {
     const tenantDir = path.join(this.baseDir, tenantId);
     await fs.mkdir(tenantDir, { recursive: true });
 

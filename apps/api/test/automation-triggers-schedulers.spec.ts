@@ -196,9 +196,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Triggers & Schedulers (Phase 
     });
 
     it('TEST-WFA-TRG-002 skips workflow when event payload does not satisfy filter', async () => {
-      setupActiveEventWorkflow('lead.created', [
-        { field: 'loanType', op: 'EQ', value: 'PERSONAL_LOAN' },
-      ]);
+      setupActiveEventWorkflow('lead.created', [{ field: 'loanType', op: 'EQ', value: 'PERSONAL_LOAN' }]);
 
       const event: DomainEventEnvelope = {
         id: 'evt_01JTESTEVT0000000000000002',
