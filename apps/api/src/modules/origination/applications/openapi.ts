@@ -2,6 +2,7 @@
 import { listResponse } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { type ZodTypeAny } from 'zod';
+import { ChecklistResponseSchema } from './checklist-schemas';
 import { EligibilityAssessment, EligibilityListQuery, OverrideRequest } from './eligibility-schemas';
 import {
   Application,
@@ -161,6 +162,20 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       404: { description: 'NOT_FOUND (also when outside the caller scope)' },
       409: { description: 'INVALID_STATE (only a FAIL result can be overridden)' },
       422: { description: 'VALIDATION_ERROR (unknown product version, or reason too short)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/checklist',
+    tags: tag,
+    operationId: 'API-APP-007',
+    summary: 'Document checklist of the application with a completeness summary (application.read)',
+    responses: {
+      200: { description: 'Checklist items and summary', content: json(ChecklistResponseSchema) },
+      401: { description: 'UNAUTHENTICATED' },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
     },
   });
 }
