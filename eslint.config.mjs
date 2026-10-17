@@ -40,6 +40,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/scratch/**',
+      'scratch/**',
       'openapi/**',
       'supabase/**',
       'playwright-report/**',
@@ -50,6 +52,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
+      'no-redeclare': 'off',
+      '@typescript-eslint/no-redeclare': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -70,6 +74,9 @@ export default tseslint.config(
       '**/*.mjs',
     ],
     languageOptions: { globals: { ...globals.node } },
+    rules: {
+      'no-redeclare': 'off',
+    },
   },
   {
     files: ['apps/web/**/*.{ts,tsx}'],
