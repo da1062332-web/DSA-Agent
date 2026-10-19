@@ -20,6 +20,7 @@ import {
   ResumeQueueRequestSchema,
   UpdateFeatureFlagRequestSchema,
   UpdateReleaseRequestSchema,
+  UpdateTenantFeatureFlagRequestSchema,
   isPlatformRealm,
   type AuditEventInput,
   type PermissionCode,
@@ -126,6 +127,22 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
+  // One tenant's overview: the same metadata as the list, no business data. Reading it across tenants is audited.
+  router.get(
+    ['/v1/tenants/:tenantId', '/platform/v1/tenants/:tenantId'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.console');
+      const tenant = await service.getTenant(ctx, getParam(req, 'tenantId'));
+      await audit(ctx, {
+        action: 'platform.tenant_viewed',
+        entityType: 'TENANT',
+        entityId: tenant.id,
+        permissionUsed: 'platform.console',
+      });
+      res.json(tenant);
+    }),
+  );
+
   // ==========================================
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================
@@ -161,6 +178,33 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
         after: { scope: updated.scope, value: updated.value },
         permissionUsed: 'platform.flags',
       });
+      res.set('ETag', `"${updated.lockVersion}"`);
+      res.json(updated);
+    }),
+  );
+
+  // Per-tenant overrides of TENANT-scope flags. The tenant is in the path and the body may carry nothing but the value (a body that names a
+  // scope or a tenant is a 422), so a call made for one tenant cannot be turned into a change to a GLOBAL flag or to another tenant.
+  router.get(
+    ['/v1/tenants/:tenantId/flags', '/platform/v1/tenants/:tenantId/flags'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.flags');
+      res.json(await service.listTenantFeatureFlags(ctx, getParam(req, 'tenantId')));
+    }),
+  );
+
+  router.put(
+    ['/v1/tenants/:tenantId/flags/:key', '/platform/v1/tenants/:tenantId/flags/:key'],
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.flags');
+      const input = UpdateTenantFeatureFlagRequestSchema.parse(req.body);
+      const updated = await service.putTenantFeatureFlag(
+        ctx,
+        getParam(req, 'tenantId'),
+        getParam(req, 'key'),
+        input,
+        req.get('if-match'),
+      );
       res.set('ETag', `"${updated.lockVersion}"`);
       res.json(updated);
     }),

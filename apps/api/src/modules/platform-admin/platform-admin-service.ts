@@ -20,8 +20,10 @@ import {
   type ResumeQueueRequest,
   type SupportAccessGrant,
   type SystemHealthReport,
+  type TenantFeatureFlag,
   type UpdateFeatureFlagRequest,
   type UpdateReleaseRequest,
+  type UpdateTenantFeatureFlagRequest,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiDeps } from '../types';
@@ -156,6 +158,13 @@ export class PlatformAdminService {
     return { data: filtered, meta: { total: filtered.length } };
   }
 
+  /** One customer tenant's metadata. An unknown id and the platform tenant itself are both NOT_FOUND. */
+  async getTenant(ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary> {
+    const tenant = await this.store.getTenant(ctx, tenantId);
+    if (!tenant) throw AppError.of('NOT_FOUND', `Tenant '${tenantId}' was not found.`);
+    return tenant;
+  }
+
   // ==========================================
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================
@@ -180,6 +189,37 @@ export class PlatformAdminService {
     ifMatchHeader: string | undefined,
   ): Promise<FeatureFlag> {
     return this.store.putFlag(ctx, key, input, ifMatchHeader);
+  }
+
+  // Per-tenant overrides of TENANT-scope flags. The tenant comes from the URL and is checked to exist; the write goes to the override
+  // table only, so it cannot reach a GLOBAL flag or the TENANT default (see migration 0066).
+  async listTenantFeatureFlags(
+    ctx: RequestContext,
+    tenantId: string,
+  ): Promise<{ data: TenantFeatureFlag[]; meta: { total: number } }> {
+    await this.getTenant(ctx, tenantId);
+    const data = await this.store.listTenantFlags(ctx, tenantId);
+    return { data, meta: { total: data.length } };
+  }
+
+  async putTenantFeatureFlag(
+    ctx: RequestContext,
+    tenantId: string,
+    key: string,
+    input: UpdateTenantFeatureFlagRequest,
+    ifMatchHeader: string | undefined,
+  ): Promise<TenantFeatureFlag> {
+    // Strict: a tenant override is always written against the version the operator saw (0 = no override yet).
+    const expected = ifMatchHeader === undefined ? NaN : parseInt(ifMatchHeader.replace(/"/g, ''), 10);
+    if (Number.isNaN(expected) || expected < 0) {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'If-Match is required for a tenant flag: send the version you read (0 when the tenant has no override yet).',
+        [{ field: 'If-Match', issue: 'REQUIRED' }],
+      );
+    }
+    await this.getTenant(ctx, tenantId);
+    return this.store.putTenantFlag(ctx, tenantId, key, input.value, expected);
   }
 
   // ==========================================

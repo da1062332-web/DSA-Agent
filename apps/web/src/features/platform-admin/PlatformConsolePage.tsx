@@ -1,6 +1,7 @@
 // apps/web/src/features/platform-admin/PlatformConsolePage.tsx
 // Module 30: Administration and Platform Operations (MOD-ADM) UI Console
 import React, { useState } from 'react';
+import type { FeatureFlag } from '@dsa/contracts';
 import {
   Alert,
   Box,
@@ -140,6 +141,7 @@ function WarningAmberIcon(props: React.ComponentProps<typeof SvgIcon>) {
   );
 }
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   createSupportAccessRequest,
   discardDeadLetter,
@@ -200,8 +202,10 @@ export function PlatformConsolePage() {
   // Mutations
   const toggleFlagMutation = useMutation({
     meta: { successMessage: 'Flag updated.' },
-    mutationFn: async ({ key, value }: { key: string; value: boolean }) => {
-      return updateFeatureFlag(key, { value, scope: 'GLOBAL' });
+    // The flag's OWN scope and version go with the change (it used to send GLOBAL for every row, and no version). A TENANT-scope row here is
+    // the platform default for tenants without an override; a change for one tenant is made on that tenant's page, never from this list.
+    mutationFn: async ({ flag, value }: { flag: FeatureFlag; value: boolean }) => {
+      return updateFeatureFlag(flag.key, { value, scope: flag.scope }, `"${flag.lockVersion}"`);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['platform-flags'] }),
   });
@@ -396,13 +400,22 @@ export function PlatformConsolePage() {
                         <TableCell>
                           <strong>Status</strong>
                         </TableCell>
+                        <TableCell align="right">
+                          <strong>Manage</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {tenantsQuery.data?.data.map((t) => (
                         <TableRow key={t.id} hover>
                           <TableCell>
-                            <Typography variant="subtitle2" fontWeight={600}>
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={600}
+                              component={RouterLink}
+                              to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
+                              sx={{ textDecoration: 'none', color: 'primary.main' }}
+                            >
                               {t.slug}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -444,6 +457,16 @@ export function PlatformConsolePage() {
                               size="small"
                               color={t.status === 'ACTIVE' ? 'primary' : 'default'}
                             />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              component={RouterLink}
+                              to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
+                            >
+                              Manage
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -493,9 +516,7 @@ export function PlatformConsolePage() {
                       </Box>
                       <Switch
                         checked={Boolean(flag.value)}
-                        onChange={(e) =>
-                          toggleFlagMutation.mutate({ key: flag.key, value: e.target.checked })
-                        }
+                        onChange={(e) => toggleFlagMutation.mutate({ flag, value: e.target.checked })}
                         disabled={toggleFlagMutation.isPending}
                         color="success"
                       />
@@ -503,6 +524,12 @@ export function PlatformConsolePage() {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                       {flag.description || 'No description provided.'}
                     </Typography>
+                    {flag.scope === 'TENANT' && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        Default for tenants without their own value. To change it for one tenant, open that
+                        tenant in the Tenants tab.
+                      </Typography>
+                    )}
                     <Divider sx={{ my: 1.5 }} />
                     <Box
                       sx={{

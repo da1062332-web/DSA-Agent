@@ -21,10 +21,12 @@ function renderWithProviders(ui: React.ReactElement, initialPath = '/platform-ad
 }
 
 describe('PlatformConsolePage Frontend Component Rendering', () => {
-  it('registers /platform-admin and /platform-console routes in feature routes table', () => {
-    expect(routes).toHaveLength(2);
+  it('registers /platform-admin and /platform-console routes in feature routes table, plus the tenant page under each', () => {
+    expect(routes).toHaveLength(4);
     expect(routes[0]?.path).toBe('/platform-admin');
     expect(routes[1]?.path).toBe('/platform-console');
+    expect(routes[2]?.path).toBe('/platform-admin/tenants/:tenantId');
+    expect(routes[3]?.path).toBe('/platform-console/tenants/:tenantId');
   });
 
   it('renders PlatformConsolePage header, badge, and zero business data security callout', () => {

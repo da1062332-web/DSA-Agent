@@ -19,8 +19,10 @@ import {
   RevokeSupportAccessRequestSchema,
   SupportAccessGrantSchema,
   SystemHealthReportSchema,
+  TenantFeatureFlagSchema,
   UpdateFeatureFlagRequestSchema,
   UpdateReleaseRequestSchema,
+  UpdateTenantFeatureFlagRequestSchema,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 
@@ -29,6 +31,8 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('ListPlatformTenantsQuery', ListPlatformTenantsQuerySchema);
   registry.register('FeatureFlag', FeatureFlagSchema);
   registry.register('UpdateFeatureFlagRequest', UpdateFeatureFlagRequestSchema);
+  registry.register('TenantFeatureFlag', TenantFeatureFlagSchema);
+  registry.register('UpdateTenantFeatureFlagRequest', UpdateTenantFeatureFlagRequestSchema);
   registry.register('MasterDataItem', MasterDataItemSchema);
   registry.register('MasterDataImportRequest', MasterDataImportRequestSchema);
   registry.register('JobQueueInfo', JobQueueInfoSchema);

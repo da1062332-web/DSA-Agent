@@ -1,0 +1,321 @@
+// apps/web/src/features/platform-admin/TenantDetailPage.tsx
+// One tenant, opened from a row of the Tenants directory in the platform console: its overview and its own feature flags.
+// The tenant id comes from the URL and is passed on every call; the flags written here are this tenant's overrides only (migration 0066),
+// never the platform-wide flags on the Feature Flags tab of the console.
+import React, { useState } from 'react';
+import {
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  Paper,
+  Switch,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Typography,
+} from '@mui/material';
+import type { TenantFeatureFlag } from '@dsa/contracts';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
+import { ApiError } from '../../api/client';
+import {
+  fetchFeatureFlags,
+  fetchPlatformTenant,
+  fetchTenantFeatureFlags,
+  updateTenantFeatureFlag,
+} from './api';
+import { confirmMessage, flagState, onOff, updateRequest } from './tenant-flags-model';
+
+const notFound = (error: unknown) => error instanceof ApiError && error.httpStatus === 404;
+const forbidden = (error: unknown) => error instanceof ApiError && error.httpStatus === 403;
+
+export function TenantDetailPage() {
+  const { tenantId = '' } = useParams<{ tenantId: string }>();
+  // The tab is in the URL (?tab=flags) so a link can open the flags directly and a reload keeps the place.
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'flags' ? 1 : 0;
+  const setTab = (i: number) => setParams(i === 1 ? { tab: 'flags' } : {}, { replace: true });
+  const [pending, setPending] = useState<{ flag: TenantFeatureFlag; next: boolean } | null>(null);
+  const queryClient = useQueryClient();
+
+  const tenantQuery = useQuery({
+    queryKey: ['platform-tenant', tenantId],
+    queryFn: () => fetchPlatformTenant(tenantId),
+    enabled: tenantId !== '',
+    retry: false,
+  });
+  // The flag queries wait for the tab: an operator who may see the overview but not manage flags (support) is not shown an error up front.
+  const flagsQuery = useQuery({
+    queryKey: ['platform-tenant-flags', tenantId],
+    queryFn: () => fetchTenantFeatureFlags(tenantId),
+    enabled: tenantId !== '' && tab === 1 && tenantQuery.isSuccess,
+    retry: false,
+  });
+  const globalQuery = useQuery({
+    queryKey: ['platform-flags'],
+    queryFn: fetchFeatureFlags,
+    enabled: tab === 1 && flagsQuery.isSuccess,
+    retry: false,
+  });
+
+  const toggleMutation = useMutation({
+    meta: { successMessage: 'Tenant flag updated.' },
+    mutationFn: ({ flag, next }: { flag: TenantFeatureFlag; next: boolean }) => {
+      const r = updateRequest(tenantId, flag, next);
+      return updateTenantFeatureFlag(r.tenantId, r.key, r.value, r.version);
+    },
+    onSuccess: () => setPending(null),
+    // A refused or stale save (409) closes the dialog and reloads, so the operator sees what is really stored.
+    onSettled: () => {
+      setPending(null);
+      return queryClient.invalidateQueries({ queryKey: ['platform-tenant-flags', tenantId] });
+    },
+  });
+
+  const tenant = tenantQuery.data;
+  const tenantName = tenant?.legalName ?? tenantId;
+  const globals = (globalQuery.data?.data ?? []).filter((f) => f.scope === 'GLOBAL');
+
+  return (
+    <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
+      <Breadcrumbs sx={{ mb: 1 }}>
+        <RouterLink to="/platform-admin">Platform console</RouterLink>
+        <Typography color="text.primary">Tenants</Typography>
+        <Typography color="text.primary">{tenant?.slug ?? tenantId}</Typography>
+      </Breadcrumbs>
+
+      {tenantQuery.isLoading && (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <CircularProgress size={32} />
+        </Box>
+      )}
+
+      {tenantQuery.isError && (
+        <Alert
+          severity={notFound(tenantQuery.error) ? 'warning' : 'error'}
+          data-testid="platform.tenant.error"
+        >
+          {notFound(tenantQuery.error)
+            ? `Tenant ${tenantId} was not found. It may not exist, or it is not a customer tenant.`
+            : forbidden(tenantQuery.error)
+              ? 'You do not have permission to open tenants.'
+              : 'The tenant could not be loaded.'}{' '}
+          <RouterLink to="/platform-admin">Back to the tenants directory</RouterLink>
+        </Alert>
+      )}
+
+      {tenant && (
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
+              {tenant.legalName}
+            </Typography>
+            <Chip
+              label={tenant.status}
+              size="small"
+              color={tenant.status === 'ACTIVE' ? 'primary' : 'default'}
+            />
+            <Chip
+              label={tenant.healthStatus}
+              size="small"
+              color={tenant.healthStatus === 'HEALTHY' ? 'success' : 'warning'}
+            />
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <code>{tenant.id}</code>
+          </Typography>
+
+          <Paper elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, borderRadius: 2 }}>
+            <Tabs
+              value={tab}
+              onChange={(_, i) => setTab(i)}
+              sx={{ '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, minHeight: 48 } }}
+            >
+              <Tab label="Overview" />
+              <Tab label="Feature Flags" />
+            </Tabs>
+          </Paper>
+
+          {tab === 0 && (
+            <Box>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <strong>Zero Business Data Projection:</strong> this page shows organisational metadata only.
+                No leads, loans or customer financial records of the tenant are read or shown.
+              </Alert>
+              <Grid container spacing={2}>
+                {[
+                  ['Slug', tenant.slug],
+                  ['Legal name', tenant.legalName],
+                  ['Type', tenant.tenantType],
+                  ['Region / timezone', `${tenant.dataRegion} / ${tenant.timezone}`],
+                  ['Active users', String(tenant.activeUsersCount)],
+                  ['Created', new Date(tenant.createdAt).toLocaleDateString()],
+                  ['Created by', tenant.createdBy],
+                  [
+                    'Entitlements',
+                    tenant.entitlements.length ? tenant.entitlements.join(', ') : 'None recorded',
+                  ],
+                ].map(([label, value]) => (
+                  <Grid item xs={12} sm={6} md={3} key={label}>
+                    <Card variant="outlined" sx={{ borderRadius: 2, height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="caption" color="text.secondary">
+                          {label}
+                        </Typography>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {value}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {tab === 1 && (
+            <Box>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Flags changed here apply to <strong>{tenant.legalName}</strong> only. They override the
+                platform default for this tenant; the global flags and the other tenants are never touched
+                from this page.
+              </Alert>
+
+              {flagsQuery.isLoading && <CircularProgress size={28} />}
+              {flagsQuery.isError && (
+                <Alert severity="error" data-testid="platform.tenant.flags-error">
+                  {forbidden(flagsQuery.error)
+                    ? 'You do not have permission to manage feature flags.'
+                    : 'The tenant flags could not be loaded.'}
+                </Alert>
+              )}
+
+              {flagsQuery.data && (
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
+                  <Table>
+                    <TableHead sx={{ bgcolor: 'grey.50' }}>
+                      <TableRow>
+                        <TableCell>Flag</TableCell>
+                        <TableCell>Platform default</TableCell>
+                        <TableCell>This tenant</TableCell>
+                        <TableCell>State</TableCell>
+                        <TableCell>Version</TableCell>
+                        <TableCell>Last change</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {flagsQuery.data.data.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6}>No tenant-scoped flags are defined.</TableCell>
+                        </TableRow>
+                      )}
+                      {flagsQuery.data.data.map((flag) => {
+                        const state = flagState(flag);
+                        return (
+                          <TableRow key={flag.key} hover>
+                            <TableCell>
+                              <Typography variant="subtitle2" fontWeight={700}>
+                                {flag.key}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {flag.description || 'No description provided.'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={onOff(flag.defaultValue)} size="small" variant="outlined" />
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={flag.value}
+                                color="success"
+                                disabled={toggleMutation.isPending}
+                                inputProps={{ 'aria-label': `${flag.key} for ${tenantName}` }}
+                                onChange={(e) => setPending({ flag, next: e.target.checked })}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={state.label}
+                                size="small"
+                                color={state.overridden ? 'secondary' : 'default'}
+                                variant={state.overridden ? 'filled' : 'outlined'}
+                              />
+                            </TableCell>
+                            <TableCell>v{flag.lockVersion}</TableCell>
+                            <TableCell>
+                              {flag.updatedAt
+                                ? `${new Date(flag.updatedAt).toLocaleString()} by ${flag.updatedBy}`
+                                : '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              {globals.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                    Global flags (same for every tenant, read-only here)
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                    {globals.map((f) => (
+                      <Chip
+                        key={f.key}
+                        size="small"
+                        variant="outlined"
+                        label={`${f.key}: ${onOff(Boolean(f.value))}`}
+                      />
+                    ))}
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Change a global flag on the Feature Flags tab of the platform console.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </>
+      )}
+
+      <Dialog open={pending !== null} onClose={() => setPending(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {pending ? `Turn ${pending.flag.key} ${onOff(pending.next)} for ${tenantName}?` : ''}
+        </DialogTitle>
+        <DialogContent>
+          {pending && (
+            <Typography variant="body2">{confirmMessage(tenantName, pending.flag, pending.next)}</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPending(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={toggleMutation.isPending}
+            onClick={() => pending && toggleMutation.mutate(pending)}
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}

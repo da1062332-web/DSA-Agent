@@ -16,6 +16,7 @@ import type {
   ReleaseRegisterItem,
   SupportAccessGrant,
   SystemHealthReport,
+  TenantFeatureFlag,
   UpdateFeatureFlagRequest,
 } from '@dsa/contracts';
 import { apiFetch } from '../../api/client';
@@ -27,6 +28,46 @@ export async function fetchPlatformTenants(
   return apiFetch<{ data: PlatformTenantSummary[]; meta: { total: number } }>('/platform/v1/tenants', {
     query: query as Record<string, string | number | undefined>,
   });
+}
+
+const needTenant = (tenantId: string): string => {
+  // A per-tenant call without a tenant would otherwise look like a call for "all": refuse it before it is sent.
+  if (!tenantId) throw new Error('A tenant id is required.');
+  return encodeURIComponent(tenantId);
+};
+
+/** One customer tenant's overview (the tenant page). */
+export async function fetchPlatformTenant(tenantId: string): Promise<PlatformTenantSummary> {
+  return apiFetch<PlatformTenantSummary>(`/platform/v1/tenants/${needTenant(tenantId)}`);
+}
+
+/** The TENANT-scope flags as this one tenant sees them: platform default plus its own override. */
+export async function fetchTenantFeatureFlags(
+  tenantId: string,
+): Promise<{ data: TenantFeatureFlag[]; meta: { total: number } }> {
+  return apiFetch<{ data: TenantFeatureFlag[]; meta: { total: number } }>(
+    `/platform/v1/tenants/${needTenant(tenantId)}/flags`,
+  );
+}
+
+/**
+ * Sets this tenant's override. The tenant is in the path, the body is only the value, and `version` is the override version the page
+ * read (0 = none yet), sent as If-Match. The platform-wide flags are not reachable from here.
+ */
+export async function updateTenantFeatureFlag(
+  tenantId: string,
+  key: string,
+  value: boolean,
+  version: number,
+): Promise<TenantFeatureFlag> {
+  return apiFetch<TenantFeatureFlag>(
+    `/platform/v1/tenants/${needTenant(tenantId)}/flags/${encodeURIComponent(key)}`,
+    {
+      method: 'PUT',
+      body: { value },
+      version,
+    },
+  );
 }
 
 // SUB-ADM.02: Feature Flags

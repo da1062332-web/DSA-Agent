@@ -21,6 +21,7 @@ import {
   type ReleaseRegisterItem,
   type RequestContext,
   type SupportAccessGrant,
+  type TenantFeatureFlag,
   type UpdateFeatureFlagRequest,
   type UpdateReleaseRequest,
 } from '@dsa/contracts';
@@ -30,6 +31,8 @@ import type { ApiDeps } from '../types';
 export interface PlatformStore {
   /** Customer tenants only, as metadata. Requires a platform session. */
   listTenants(ctx: RequestContext): Promise<PlatformTenantSummary[]>;
+  /** One customer tenant's metadata, or null (an unknown id and the platform tenant itself look the same). */
+  getTenant(ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary | null>;
   /** A platform operator files a request against another tenant. */
   createSupportGrant(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant>;
   /** Platform session: all requests (optionally one tenant). Tenant session: only its own tenant's. */
@@ -53,6 +56,23 @@ export interface PlatformStore {
     input: UpdateFeatureFlagRequest,
     ifMatch: string | undefined,
   ): Promise<FeatureFlag>;
+
+  /**
+   * Every TENANT-scope flag as ONE tenant sees it (default plus that tenant's override). Reads app.feature_flag and
+   * app.tenant_feature_flag; it never returns another tenant's override.
+   */
+  listTenantFlags(ctx: RequestContext, tenantId: string): Promise<TenantFeatureFlag[]>;
+  /**
+   * Sets one tenant's override of a TENANT-scope flag, in the override table only: app.feature_flag is not written. `expectedVersion` is
+   * the override version the caller saw (0 = none yet); any other current version is a VERSION_CONFLICT. An unknown or GLOBAL key is NOT_FOUND.
+   */
+  putTenantFlag(
+    ctx: RequestContext,
+    tenantId: string,
+    key: string,
+    value: boolean,
+    expectedVersion: number,
+  ): Promise<TenantFeatureFlag>;
 
   /** Master data lists, readable by every session; written by the platform realm only. Dataset names are stored lower case, list codes are upper case. */
   listMasterData(ctx: RequestContext, listCode?: string): Promise<Record<string, MasterDataItem[]>>;
@@ -154,6 +174,47 @@ const toFlag = (r: FlagRow): FeatureFlag => ({
   updatedBy: r.updated_by,
 });
 
+const toTenantSummary = (x: Row): PlatformTenantSummary => ({
+  id: String(x.id),
+  slug: String(x.slug),
+  legalName: String(x.legal_name),
+  tenantType: x.tenant_type as PlatformTenantSummary['tenantType'],
+  dataRegion: String(x.data_region),
+  timezone: String(x.timezone),
+  status: x.status as PlatformTenantSummary['status'],
+  createdAt: iso(x.created_at),
+  createdBy: String(x.created_by),
+  healthStatus: x.status === 'ACTIVE' ? ('HEALTHY' as const) : ('DEGRADED' as const),
+  activeUsersCount: Number(x.active_users),
+  // Business counts are not shown in the platform console, and no entitlement store exists yet (SUB-TEN.03).
+  applicationsCount: null,
+  entitlements: [],
+});
+
+/** What the tenant page shows for one flag: the platform default, and the tenant's override when it has one. */
+const toTenantFlag = (
+  tenantId: string,
+  def: { key: string; description: string | null; owner: string; value: boolean },
+  override: {
+    value: boolean;
+    lock_version: number | string;
+    updated_at: string | Date;
+    updated_by: string;
+  } | null,
+): TenantFeatureFlag => ({
+  tenantId,
+  key: def.key,
+  scope: 'TENANT',
+  description: def.description ?? '',
+  owner: def.owner,
+  defaultValue: def.value,
+  value: override ? override.value : def.value,
+  overridden: override !== null,
+  lockVersion: override ? Number(override.lock_version) : 0,
+  updatedAt: override ? new Date(override.updated_at).toISOString() : null,
+  updatedBy: override ? override.updated_by : null,
+});
+
 export interface MasterDataImportResult {
   dryRun: boolean;
   listCode: string;
@@ -234,22 +295,19 @@ export class PgPlatformStore implements PlatformStore {
         after: { count: r.rows.length },
         permissionUsed: 'platform.console',
       });
-      return r.rows.map((x) => ({
-        id: String(x.id),
-        slug: String(x.slug),
-        legalName: String(x.legal_name),
-        tenantType: x.tenant_type as PlatformTenantSummary['tenantType'],
-        dataRegion: String(x.data_region),
-        timezone: String(x.timezone),
-        status: x.status as PlatformTenantSummary['status'],
-        createdAt: iso(x.created_at),
-        createdBy: String(x.created_by),
-        healthStatus: x.status === 'ACTIVE' ? ('HEALTHY' as const) : ('DEGRADED' as const),
-        activeUsersCount: Number(x.active_users),
-        // Business counts are not shown in the platform console, and no entitlement store exists yet (SUB-TEN.03).
-        applicationsCount: null,
-        entitlements: [],
-      }));
+      return r.rows.map(toTenantSummary);
+    });
+  }
+
+  async getTenant(ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary | null> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const r = await sql<Row>`
+        SELECT t.id, t.slug, t.legal_name, t.tenant_type, t.data_region, t.timezone, t.status, t.created_at, t.created_by,
+               COALESCE(c.active_users, 0) AS active_users
+          FROM tenant t
+          LEFT JOIN platform_tenant_user_counts() c ON c.tenant_id = t.id
+         WHERE t.id = ${tenantId} AND t.tenant_type <> 'PLATFORM'`.execute(tx);
+      return r.rows[0] ? toTenantSummary(r.rows[0]) : null;
     });
   }
 
@@ -476,6 +534,104 @@ export class PgPlatformStore implements PlatformStore {
         tx,
       );
       return toFlag(created.rows[0]!);
+    });
+  }
+
+  async listTenantFlags(ctx: RequestContext, tenantId: string): Promise<TenantFeatureFlag[]> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const r = await sql<Row>`
+        SELECT f.key, f.description, f.owner, f.value AS default_value,
+               o.value AS override_value, o.lock_version AS override_version, o.updated_at AS override_updated_at, o.updated_by AS override_updated_by
+          FROM feature_flag f
+          LEFT JOIN tenant_feature_flag o ON o.key = f.key AND o.tenant_id = ${tenantId}
+         WHERE f.scope = 'TENANT'
+         ORDER BY f.key`.execute(tx);
+      return r.rows.map((x) =>
+        toTenantFlag(
+          tenantId,
+          {
+            key: String(x.key),
+            description: (x.description as string | null) ?? null,
+            owner: String(x.owner),
+            value: Boolean(x.default_value),
+          },
+          x.override_version === null
+            ? null
+            : {
+                value: Boolean(x.override_value),
+                lock_version: x.override_version as number | string,
+                updated_at: x.override_updated_at as string | Date,
+                updated_by: String(x.override_updated_by),
+              },
+        ),
+      );
+    });
+  }
+
+  async putTenantFlag(
+    ctx: RequestContext,
+    tenantId: string,
+    key: string,
+    value: boolean,
+    expectedVersion: number,
+  ): Promise<TenantFeatureFlag> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      // The definition must be a TENANT-scope flag. A GLOBAL flag (or a typo) is not found here, whatever the caller sends.
+      const def = (
+        await sql<Row>`SELECT key, description, owner, value FROM feature_flag WHERE key = ${key} AND scope = 'TENANT'`.execute(
+          tx,
+        )
+      ).rows[0];
+      if (!def) throw AppError.of('NOT_FOUND', `Feature flag '${key}' is not a tenant-scoped flag.`);
+      const definition = {
+        key: String(def.key),
+        description: (def.description as string | null) ?? null,
+        owner: String(def.owner),
+        value: Boolean(def.value),
+      };
+
+      const existing = (
+        await sql<Row>`SELECT value, lock_version, updated_at, updated_by FROM tenant_feature_flag
+                        WHERE tenant_id = ${tenantId} AND key = ${key} FOR UPDATE`.execute(tx)
+      ).rows[0];
+      const current = existing ? Number(existing.lock_version) : 0;
+      if (current !== expectedVersion) {
+        throw AppError.of(
+          'VERSION_CONFLICT',
+          `Feature flag '${key}' for this tenant has been modified by another process. Current version: ${current}.`,
+        );
+      }
+
+      let saved: Row;
+      if (existing) {
+        const updated = await sql<Row>`
+          UPDATE tenant_feature_flag SET value = ${value}, lock_version = lock_version + 1, updated_at = now(), updated_by = ${ctx.principal.id}
+           WHERE tenant_id = ${tenantId} AND key = ${key}
+           RETURNING value, lock_version, updated_at, updated_by`.execute(tx);
+        // Row-level security lets only the platform realm update an override: no row back means this session may not.
+        if (!updated.rows[0])
+          throw AppError.of('FORBIDDEN', 'Only the platform realm can change tenant feature flags.');
+        saved = updated.rows[0];
+      } else {
+        const created = await sql<Row>`
+          INSERT INTO tenant_feature_flag (tenant_id, key, scope, value, lock_version, updated_by)
+          VALUES (${tenantId}, ${key}, 'TENANT', ${value}, 1, ${ctx.principal.id})
+          RETURNING value, lock_version, updated_at, updated_by`.execute(tx);
+        saved = created.rows[0]!;
+      }
+      await this.deps.audit.record(tx, ctx, {
+        action: 'platform.tenant_flag_set',
+        entityType: 'TENANT_FEATURE_FLAG',
+        entityId: `${tenantId}:${key}`,
+        after: { tenantId, key, value, defaultValue: definition.value },
+        permissionUsed: 'platform.flags',
+      });
+      return toTenantFlag(tenantId, definition, {
+        value: Boolean(saved.value),
+        lock_version: saved.lock_version as number | string,
+        updated_at: saved.updated_at as string | Date,
+        updated_by: String(saved.updated_by),
+      });
     });
   }
 
@@ -965,6 +1121,68 @@ export class InMemoryPlatformStore implements PlatformStore {
   async listTenants(): Promise<PlatformTenantSummary[]> {
     this.audit.push('platform.tenants_listed');
     return [...this.tenants];
+  }
+
+  async getTenant(_ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary | null> {
+    return this.tenants.find((t) => t.id === tenantId) ?? null;
+  }
+
+  /** Per-tenant overrides, keyed by tenant then flag, like the table behind them. */
+  private tenantFlags = new Map<
+    string,
+    { value: boolean; lockVersion: number; updatedAt: string; updatedBy: string }
+  >();
+
+  private tenantFlagView(tenantId: string, def: FeatureFlag): TenantFeatureFlag {
+    const o = this.tenantFlags.get(`${tenantId}:${def.key}`);
+    return {
+      tenantId,
+      key: def.key,
+      scope: 'TENANT',
+      description: def.description ?? '',
+      owner: def.owner,
+      defaultValue: def.value === true,
+      value: o ? o.value : def.value === true,
+      overridden: o !== undefined,
+      lockVersion: o ? o.lockVersion : 0,
+      updatedAt: o ? o.updatedAt : null,
+      updatedBy: o ? o.updatedBy : null,
+    };
+  }
+
+  async listTenantFlags(_ctx: RequestContext, tenantId: string): Promise<TenantFeatureFlag[]> {
+    return [...this.flags.values()]
+      .filter((f) => f.scope === 'TENANT')
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((f) => this.tenantFlagView(tenantId, f));
+  }
+
+  async putTenantFlag(
+    ctx: RequestContext,
+    tenantId: string,
+    key: string,
+    value: boolean,
+    expectedVersion: number,
+  ): Promise<TenantFeatureFlag> {
+    const def = this.flags.get(`${key}:TENANT`);
+    if (!def) throw AppError.of('NOT_FOUND', `Feature flag '${key}' is not a tenant-scoped flag.`);
+    const id = `${tenantId}:${key}`;
+    const existing = this.tenantFlags.get(id);
+    const current = existing ? existing.lockVersion : 0;
+    if (current !== expectedVersion) {
+      throw AppError.of(
+        'VERSION_CONFLICT',
+        `Feature flag '${key}' for this tenant has been modified by another process. Current version: ${current}.`,
+      );
+    }
+    this.tenantFlags.set(id, {
+      value,
+      lockVersion: current + 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: ctx.principal.id,
+    });
+    this.audit.push('platform.tenant_flag_set');
+    return this.tenantFlagView(tenantId, def);
   }
 
   async createSupportGrant(

@@ -64,6 +64,32 @@ export const UpdateFeatureFlagRequestSchema = z.object({
 
 export type UpdateFeatureFlagRequest = z.infer<typeof UpdateFeatureFlagRequestSchema>;
 
+/**
+ * One TENANT-scope flag as one tenant sees it: the platform-wide default (the TENANT row of the flag table) and, when the operator set
+ * one, that tenant's own override. `value` is the effective value. The tenant is named in the URL, never chosen by the body.
+ */
+export const TenantFeatureFlagSchema = z.object({
+  tenantId: z.string(),
+  key: z.string(),
+  scope: z.literal('TENANT'),
+  description: z.string(),
+  owner: z.string(),
+  defaultValue: z.boolean(),
+  value: z.boolean(),
+  overridden: z.boolean(),
+  /** Version of the override (the ETag); 0 while the tenant has no override. */
+  lockVersion: z.number().int().nonnegative(),
+  updatedAt: z.string().nullable(),
+  updatedBy: z.string().nullable(),
+});
+
+export type TenantFeatureFlag = z.infer<typeof TenantFeatureFlagSchema>;
+
+/** Strict on purpose: a body that names a scope or a tenant is refused, so it cannot be mistaken for a global change. */
+export const UpdateTenantFeatureFlagRequestSchema = z.object({ value: z.boolean() }).strict();
+
+export type UpdateTenantFeatureFlagRequest = z.infer<typeof UpdateTenantFeatureFlagRequestSchema>;
+
 // ==========================================
 // SUB-ADM.03: Master Data (CMP-ADM.03.1 / API-ADM-003)
 // ==========================================

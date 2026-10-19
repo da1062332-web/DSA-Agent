@@ -24,15 +24,14 @@ let container: StartedPostgreSqlContainer;
 let db: pg.Client;
 const work = mkdtempSync(path.join(os.tmpdir(), 'dsa-0050-'));
 
-// 0061 needs the platform realm that this rehearsal is about to apply, so it is not part of the pre-0050 state.
+// 0061 and 0066 need the platform realm that this rehearsal is about to apply, so they are not part of the pre-0050 state.
+const NEEDS_PLATFORM_REALM = ['0050_platform_realm', '0061_master_data', '0066_tenant_feature_flag'];
 beforeAll(async () => {
   container = await startPostgres();
   db = new pg.Client({ connectionString: container.getConnectionUri() });
   await db.connect();
   for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter(
-      (f) => f.endsWith('.sql') && !f.includes('0050_platform_realm') && !f.includes('0061_master_data'),
-    )
+    .filter((f) => f.endsWith('.sql') && !NEEDS_PLATFORM_REALM.some((n) => f.includes(n)))
     .sort()) {
     await db.query(readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'));
   }
