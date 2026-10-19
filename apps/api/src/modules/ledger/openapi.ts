@@ -62,12 +62,12 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
-  // API-LED-002: GET /v1/ledger/journals
+  // API-LED-003: GET /v1/ledger/journals
   registry.registerPath({
     method: 'get',
     path: '/v1/ledger/journals',
-    operationId: 'API-LED-002',
-    summary: 'List ledger journals with cursor pagination (API-LED-002)',
+    operationId: 'API-LED-003',
+    summary: 'List ledger journals with cursor pagination (API-LED-003)',
     tags: ['MOD-LED Ledger Management'],
     responses: {
       200: {
@@ -88,7 +88,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.registerPath({
     method: 'post',
     path: '/v1/ledger/journals',
-    operationId: 'API-LED-002-POST',
+    operationId: 'API-LED-003-POST',
     summary: 'Post balanced double-entry journal',
     tags: ['MOD-LED Ledger Management'],
     request: {
@@ -102,12 +102,12 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
-  // API-LED-003: POST /v1/ledger/periods/{period}/close
+  // API-LED-006: POST /v1/ledger/periods/{period}/close
   registry.registerPath({
     method: 'post',
     path: '/v1/ledger/periods/{period}/close',
-    operationId: 'API-LED-003',
-    summary: 'Close ledger accounting period with step-up MFA and maker-checker validation (API-LED-003)',
+    operationId: 'API-LED-006',
+    summary: 'Close ledger accounting period with step-up MFA and maker-checker validation (API-LED-006)',
     tags: ['MOD-LED Ledger Management'],
     request: {
       params: z.object({ period: z.string() }),
@@ -121,12 +121,12 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
-  // API-LED-004: GET /v1/ledger/accounts/{id}/balance
+  // API-LED-002: GET /v1/ledger/accounts/{id}/balance
   registry.registerPath({
     method: 'get',
     path: '/v1/ledger/accounts/{id}/balance',
-    operationId: 'API-LED-004',
-    summary: 'Get account balance with as-of-date calculation (API-LED-004)',
+    operationId: 'API-LED-002',
+    summary: 'Get account balance with as-of-date calculation (API-LED-002)',
     tags: ['MOD-LED Ledger Management'],
     request: {
       params: z.object({ id: z.string() }),
@@ -139,12 +139,12 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
-  // API-LED-005: GET /v1/connectors/{id}/statements
+  // API-LED-004: GET /v1/connectors/{id}/statements
   registry.registerPath({
     method: 'get',
     path: '/v1/connectors/{id}/statements',
-    operationId: 'API-LED-005',
-    summary: 'Get connector sub-ledger statement (API-LED-005)',
+    operationId: 'API-LED-004',
+    summary: 'Get connector sub-ledger statement (API-LED-004)',
     tags: ['MOD-LED Ledger Management'],
     request: {
       params: z.object({ id: z.string() }),
@@ -157,12 +157,12 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
-  // API-LED-006: POST /v1/ledger/exports
+  // API-LED-005: POST /v1/ledger/exports
   registry.registerPath({
     method: 'post',
     path: '/v1/ledger/exports',
-    operationId: 'API-LED-006',
-    summary: 'Queue accounting ledger export job (API-LED-006)',
+    operationId: 'API-LED-005',
+    summary: 'Queue accounting ledger export job (API-LED-005)',
     tags: ['MOD-LED Ledger Management'],
     request: {
       body: { content: { 'application/json': { schema: CreateLedgerExportInputSchema } } },

@@ -1,6 +1,7 @@
 // Error envelope (Contracts §6). Messages never contain S2/S3 values and never reveal out-of-scope records.
 // PostgreSQL errors (TASK-101): 23505 → INVALID_STATE (constraint name only, never the row), 23514/23503/22xxx →
-// VALIDATION_ERROR, 42501 from append-only triggers → INVALID_STATE, exclusion on rule_set_version →
+// VALIDATION_ERROR, 42501 raised by our triggers (append-only, frozen rows) → INVALID_STATE, 42501 from a missing GRANT or a
+// row-level-security check → INTERNAL_ERROR (a server bug, logged; never shown as a business conflict), exclusion on rule_set_version →
 // EFFECTIVE_OVERLAP, other exclusions (overlapping memberships) → INVALID_STATE.
 import { AppError, type ErrorEnvelope } from '@dsa/contracts';
 import type { ErrorRequestHandler } from 'express';
@@ -37,7 +38,12 @@ export function toAppError(err: unknown): AppError {
 
 function fromPostgres(err: unknown): AppError | null {
   if (typeof err !== 'object' || err === null) return null;
-  const { code, constraint, table } = err as { code?: unknown; constraint?: unknown; table?: unknown };
+  const { code, constraint, table, message } = err as {
+    code?: unknown;
+    constraint?: unknown;
+    table?: unknown;
+    message?: unknown;
+  };
   if (typeof code !== 'string' || !/^[0-9A-Z]{5}$/.test(code)) return null;
   const meta = typeof constraint === 'string' ? { constraint } : undefined;
   switch (true) {
@@ -53,6 +59,10 @@ function fromPostgres(err: unknown): AppError | null {
       return AppError.of('VALIDATION_ERROR', 'The request breaks a data rule.', [
         { issue: 'CONSTRAINT', meta },
       ]);
+    case code === '42501' &&
+      typeof message === 'string' &&
+      (/^permission denied/i.test(message) || /row-level security/i.test(message)):
+      return null;
     case code === '42501':
       return AppError.of('INVALID_STATE', 'This record cannot be changed.');
     default:

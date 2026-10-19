@@ -128,10 +128,11 @@ export function AutomationDetailPage() {
 
   const handleToggleStatus = async () => {
     if (!definition || !id) return;
-    const newStatus = definition.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
+    // Statuses of an automation definition: DRAFT, ACTIVE, INACTIVE, ARCHIVED.
+    const newStatus = definition.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       setLoading(true);
-      const updated = await updateAutomation(id, { status: newStatus });
+      const updated = await updateAutomation(id, { status: newStatus }, definition.lockVersion);
       setDefinition(updated);
       setSuccessMsg(`Rule status updated to ${newStatus}`);
     } catch (err: unknown) {

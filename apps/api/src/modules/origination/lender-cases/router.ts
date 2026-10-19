@@ -72,6 +72,7 @@ export function createRouter(deps: ApiDeps): Router {
   const service = new LenderCaseService({
     repository,
     consentPort: deps.consentPort,
+    applicationPort: deps.applicationPort,
     taskPort: deps.taskPort,
   });
 

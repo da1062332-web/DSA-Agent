@@ -1,4 +1,7 @@
-// apps/api/src/modules/verification/router.ts — owner: Developer 2 (Module 19: Verification)
+// apps/api/src/modules/verification/router.ts — owner: Developer 2
+// Verification requests: the verifier work queue and the interim checklist attestation (PA-03, MOD-DOC SUB-DOC.05).
+// Served at /v1/verification-requests. /v1/verifications belongs to the verification records of MOD-VER (Module 22,
+// API-VER-001/002), implemented in origination/verifications; the two used to share that path and this router shadowed it.
 import {
   AppError,
   ChecklistAttestationRequestSchema,
@@ -71,7 +74,7 @@ export function createRouter(deps: ApiDeps): Router {
    * GET /verifications
    * List verification cases with filtering and pagination
    */
-  router.get('/verifications', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/verification-requests', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'verification.read');
@@ -92,7 +95,7 @@ export function createRouter(deps: ApiDeps): Router {
    * GET /verifications/:id
    * Get verification case details
    */
-  router.get('/verifications/:id', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/verification-requests/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'verification.read');
@@ -114,7 +117,7 @@ export function createRouter(deps: ApiDeps): Router {
    * POST /verifications
    * Initiate a new verification request
    */
-  router.post('/verifications', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/verification-requests', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'verification.create');
@@ -137,7 +140,7 @@ export function createRouter(deps: ApiDeps): Router {
    * PATCH /verifications/:id
    * Update verification details (schedule, assignee, notes) with optimistic concurrency
    */
-  router.patch('/verifications/:id', async (req: Request, res: Response, next: NextFunction) => {
+  router.patch('/verification-requests/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'verification.update');
@@ -161,7 +164,7 @@ export function createRouter(deps: ApiDeps): Router {
    * POST /verifications/:id/complete
    * Complete verification assessment (positive/negative outcome)
    */
-  router.post('/verifications/:id/complete', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/verification-requests/:id/complete', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
       requirePermission(ctx, 'verification.complete');
@@ -191,7 +194,7 @@ export function createRouter(deps: ApiDeps): Router {
    * Review and attest a document checklist item
    */
   router.post(
-    '/verifications/:id/checklist-review',
+    '/verification-requests/:id/checklist-review',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);

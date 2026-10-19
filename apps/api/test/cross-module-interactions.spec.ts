@@ -76,6 +76,7 @@ describe('Cross-Module Interactions & Regression Suite (MOD-ACT, MOD-MSG, MOD-NT
       tenantId: tenantA,
       grants: [
         { code: 'activity.create', scope: 'TENANT', branchIds: [] },
+        { code: 'lead.read', scope: 'TENANT', branchIds: [] },
         { code: 'message.send', scope: 'TENANT', branchIds: [] },
         { code: 'config.manage', scope: 'TENANT', branchIds: [] },
       ],
@@ -94,10 +95,9 @@ describe('Cross-Module Interactions & Regression Suite (MOD-ACT, MOD-MSG, MOD-NT
     const resNtf = await request(app).get('/v1/notifications');
     expect(resNtf.status).toBe(200);
 
-    // 4. GET /v1/me
+    // 4. GET /v1/me is not answered by these modules: the profile is the platform module's (API-USR-010)
     const resMe = await request(app).get('/v1/me');
-    expect(resMe.status).toBe(200);
-    expect(resMe.body.id).toBe(userA);
+    expect(resMe.status).toBe(404);
   });
 
   it('CMI-002: cross-tenant isolation holds across all three modules', async () => {

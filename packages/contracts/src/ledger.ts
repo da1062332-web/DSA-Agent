@@ -117,7 +117,7 @@ export const LedgerJournalSchema = z.object({
 });
 export type LedgerJournal = z.infer<typeof LedgerJournalSchema>;
 
-// API-LED-002: GET /v1/ledger/journals
+// API-LED-003: GET /v1/ledger/journals
 export const ListLedgerJournalsQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(100).optional().default(20),
@@ -164,7 +164,7 @@ export const PostJournalInputSchema = z
   );
 export type PostJournalInput = z.input<typeof PostJournalInputSchema>;
 
-// API-LED-003: POST /v1/ledger/periods/{period}/close
+// API-LED-006: POST /v1/ledger/periods/{period}/close
 export const CloseLedgerPeriodInputSchema = z.object({
   note: z.string().optional(),
 });
@@ -181,7 +181,7 @@ export const PeriodCloseResponseSchema = z.object({
 });
 export type PeriodCloseResponse = z.infer<typeof PeriodCloseResponseSchema>;
 
-// API-LED-004: GET /v1/ledger/accounts/{id}/balance
+// API-LED-002: GET /v1/ledger/accounts/{id}/balance
 export const GetAccountBalanceQuerySchema = z.object({
   asOfDate: z
     .string()
@@ -204,7 +204,7 @@ export const AccountBalanceResponseSchema = z.object({
 });
 export type AccountBalanceResponse = z.infer<typeof AccountBalanceResponseSchema>;
 
-// API-LED-005: GET /v1/connectors/{id}/statements
+// API-LED-004: GET /v1/connectors/{id}/statements
 export const GetConnectorStatementsQuerySchema = z.object({
   fromPeriod: z
     .string()
@@ -243,7 +243,7 @@ export const ConnectorStatementResponseSchema = z.object({
 });
 export type ConnectorStatementResponse = z.infer<typeof ConnectorStatementResponseSchema>;
 
-// API-LED-006: POST /v1/ledger/exports
+// API-LED-005: POST /v1/ledger/exports
 export const CreateLedgerExportInputSchema = z.object({
   period: z
     .string()

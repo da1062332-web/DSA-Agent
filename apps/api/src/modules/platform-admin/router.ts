@@ -31,9 +31,23 @@ import { PlatformAdminService } from './platform-admin-service';
 
 export { PlatformAdminService };
 
+/** Tenant-realm routes (support-access approvals, data corrections), mounted under /v1 with the other modules. */
 export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminService): Router {
+  return buildRouter(deps, 'tenant', serviceOverride);
+}
+
+/** Platform-realm routes (console, flags, master data, jobs, health, releases, support requests), mounted at /platform. */
+export function createPlatformRouter(deps: ApiDeps, serviceOverride?: PlatformAdminService): Router {
+  return buildRouter(deps, 'platform', serviceOverride);
+}
+
+// Each route is registered on exactly one surface, once: platform routes as /v1/... under the /platform mount (so
+// /platform/v1/...), tenant routes as bare paths under the /v1 mount. The listing of support-access requests answers both
+// realms, so it is on both surfaces.
+function buildRouter(deps: ApiDeps, surface: 'platform' | 'tenant', serviceOverride?: PlatformAdminService): Router {
   const router = Router();
   const service = serviceOverride ?? new PlatformAdminService(deps);
+  const on = (where: 'platform' | 'tenant') => (where === surface ? router : Router());
 
   const getContext = (req: Request): RequestContext => {
     const ctx = req.ctx as RequestContext | undefined;
@@ -117,8 +131,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.01: Platform Console (API-TEN-002)
   // ==========================================
-  router.get(
-    ['/v1/tenants', '/platform/v1/tenants'],
+  on('platform').get(
+    '/v1/tenants',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.console');
       const query = ListPlatformTenantsQuerySchema.parse(req.query);
@@ -129,16 +143,16 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================
-  router.get(
-    ['/v1/flags', '/platform/v1/flags'],
+  on('platform').get(
+    '/v1/flags',
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.flags');
       res.json(await service.listFeatureFlags(ctx));
     }),
   );
 
-  router.get(
-    ['/v1/flags/:key', '/platform/v1/flags/:key'],
+  on('platform').get(
+    '/v1/flags/:key',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.flags');
       const scope = (req.query.scope as string) || 'GLOBAL';
@@ -148,8 +162,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.put(
-    ['/v1/flags/:key', '/platform/v1/flags/:key'],
+  on('platform').put(
+    '/v1/flags/:key',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.flags');
       const input = UpdateFeatureFlagRequestSchema.parse(req.body);
@@ -169,16 +183,16 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.03: Master Data (API-ADM-003)
   // ==========================================
-  router.get(
-    ['/v1/master-data', '/platform/v1/master-data'],
+  on('platform').get(
+    '/v1/master-data',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.master_data');
       res.json(await service.getMasterData(ctx, req.query.listCode as string | undefined));
     }),
   );
 
-  router.post(
-    ['/v1/master-data/imports', '/platform/v1/master-data/imports'],
+  on('platform').post(
+    '/v1/master-data/imports',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.master_data');
       const body = MasterDataImportRequestSchema.parse(req.body);
@@ -199,16 +213,16 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
-  router.get(
-    ['/v1/jobs', '/platform/v1/jobs'],
+  on('platform').get(
+    '/v1/jobs',
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       res.json(await service.getJobsAndQueues());
     }),
   );
 
-  router.post(
-    ['/v1/queues/:queue/pause', '/platform/v1/queues/:queue/pause'],
+  on('platform').post(
+    '/v1/queues/:queue/pause',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const input = PauseQueueRequestSchema.parse(req.body);
@@ -224,8 +238,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/queues/:queue/resume', '/platform/v1/queues/:queue/resume'],
+  on('platform').post(
+    '/v1/queues/:queue/resume',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const input = ResumeQueueRequestSchema.parse(req.body);
@@ -241,8 +255,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/dead-letters/:id/replay', '/platform/v1/dead-letters/:id/replay'],
+  on('platform').post(
+    '/v1/dead-letters/:id/replay',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const result = await service.replayDeadLetter(getParam(req, 'id'));
@@ -256,8 +270,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/dead-letters/:id/discard', '/platform/v1/dead-letters/:id/discard'],
+  on('platform').post(
+    '/v1/dead-letters/:id/discard',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const result = await service.discardDeadLetter(getParam(req, 'id'));
@@ -274,8 +288,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.05: System Health (platform operators)
   // ==========================================
-  router.get(
-    ['/v1/health', '/platform/v1/health'],
+  on('platform').get(
+    '/v1/health',
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.console');
       res.json(await service.getSystemHealth());
@@ -287,9 +301,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // The operator asks (platform realm). The target tenant's administrator decides (tenant realm). A tenant administrator
   // listing here sees only their own tenant's requests, so they can find the ones waiting for them.
   // ==========================================
-  // The app mounts this router under /platform and under /v1, so the bare path is what a tenant reaches as /v1/support-access-requests.
   router.get(
-    ['/v1/support-access-requests', '/platform/v1/support-access-requests', '/support-access-requests'],
+    surface === 'platform' ? '/v1/support-access-requests' : '/support-access-requests',
     handle(async (ctx, req, res) => {
       const tenantId = req.query.tenantId as string | undefined;
       if (isPlatformRealm(ctx.principal)) {
@@ -305,8 +318,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/support-access-requests', '/platform/v1/support-access-requests'],
+  on('platform').post(
+    '/v1/support-access-requests',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.support_access');
       const input = CreateSupportAccessRequestSchema.parse(req.body);
@@ -314,8 +327,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/support-access-requests/:id/approval', '/support-access-requests/:id/approval'],
+  on('tenant').post(
+    '/support-access-requests/:id/approval',
     handle(async (ctx, req, res) => {
       await requireTenant(ctx, 'config.manage');
       const input = ApproveSupportAccessRequestSchema.parse(req.body);
@@ -323,8 +336,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/support-access-requests/:id/revocation', '/support-access-requests/:id/revocation'],
+  on('tenant').post(
+    '/support-access-requests/:id/revocation',
     handle(async (ctx, req, res) => {
       await requireTenant(ctx, 'config.manage');
       RevokeSupportAccessRequestSchema.parse(req.body ?? {});
@@ -335,16 +348,16 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009) — tenant realm
   // ==========================================
-  router.get(
-    ['/v1/data-corrections', '/data-corrections'],
+  on('tenant').get(
+    '/data-corrections',
     handle(async (ctx, _req, res) => {
       await requireTenant(ctx, 'data_correction.request');
       res.json(await service.listDataCorrections(ctx));
     }),
   );
 
-  router.post(
-    ['/v1/data-corrections', '/data-corrections'],
+  on('tenant').post(
+    '/data-corrections',
     handle(async (ctx, req, res) => {
       await requireTenant(ctx, 'data_correction.request');
       const input = CreateDataCorrectionRequestSchema.parse(req.body);
@@ -352,8 +365,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
     }),
   );
 
-  router.post(
-    ['/v1/data-corrections/:id/approval', '/data-corrections/:id/approval'],
+  on('tenant').post(
+    '/data-corrections/:id/approval',
     handle(async (ctx, req, res) => {
       await requireTenant(ctx, 'data_correction.approve');
       const input = ApproveDataCorrectionRequestSchema.parse(req.body);
@@ -362,8 +375,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   );
 
   // Executed by the correction executor (a service identity), never by a person. The executor carries the tenant in its token.
-  router.post(
-    ['/v1/data-corrections/:id/execute', '/data-corrections/:id/execute'],
+  on('tenant').post(
+    '/data-corrections/:id/execute',
     handle(async (ctx, req, res) => {
       requireExecutor(ctx);
       res.json(await service.executeDataCorrection(ctx, getParam(req, 'id')));
@@ -373,16 +386,16 @@ export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminServi
   // ==========================================
   // SUB-ADM.08: Release Management (Release Register)
   // ==========================================
-  router.get(
-    ['/v1/releases', '/platform/v1/releases'],
+  on('platform').get(
+    '/v1/releases',
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.release');
       res.json(await service.getReleases(ctx));
     }),
   );
 
-  router.put(
-    ['/v1/releases/:version', '/platform/v1/releases/:version'],
+  on('platform').put(
+    '/v1/releases/:version',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.release');
       // Recording that a release passed its gates, or was published, is a decision of record: it needs a recent authenticator check.

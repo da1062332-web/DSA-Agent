@@ -843,6 +843,8 @@ export class AutomationRepository {
       status?: AutomationDefinition['status'];
       pinnedVersionId?: string | null;
       updatedBy: string;
+      /** When given, the update applies only at this version (If-Match); otherwise 409 VERSION_CONFLICT. */
+      expectedLockVersion?: number;
     },
   ): Promise<AutomationDefinition> {
     const res = await sql<RawDefinitionRow>`
@@ -856,10 +858,14 @@ export class AutomationRepository {
           lock_version = lock_version + 1
       WHERE id = ${definitionId}
         AND tenant_id = ${tenantId}
+        AND (${update.expectedLockVersion ?? null}::int IS NULL OR lock_version = ${update.expectedLockVersion ?? null})
       RETURNING *
     `.execute(tx);
     const row = res.rows[0];
     if (!row) {
+      if (update.expectedLockVersion !== undefined) {
+        throw AppError.of('VERSION_CONFLICT', 'The automation was changed by someone else. Reload and try again.');
+      }
       throw AppError.of('NOT_FOUND', `Automation definition '${definitionId}' not found.`);
     }
     return formatDefinition(row);

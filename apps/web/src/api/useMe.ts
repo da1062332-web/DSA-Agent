@@ -12,6 +12,8 @@ export interface Me {
   queueIds: string[];
   grants: { code: string; scope: string; branchIds: string[] }[];
   mfaVerifiedAt: string | null;
+  /** app_user.lock_version; sent as If-Match on PATCH /v1/me (API-USR-009). */
+  lockVersion?: number;
 }
 
 export interface Tenant {

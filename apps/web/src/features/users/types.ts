@@ -14,6 +14,12 @@ export interface UserSummary {
   updatedAt: string;
 }
 
+/** A row of GET /v1/users for a user.manage holder: contact data is masked in lists (Contracts §12). */
+export type UserListItem = Omit<UserSummary, 'email' | 'mobileE164'> & {
+  emailMasked: string | null;
+  mobileMasked: string | null;
+};
+
 export interface Branch {
   id: string;
   organisationId: string;

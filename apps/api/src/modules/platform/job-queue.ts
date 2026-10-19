@@ -26,6 +26,16 @@ export class JobQueue {
     this.handlers.set(jobType, handler);
   }
 
+  /** The worker only polls when some job type has a handler. */
+  hasHandlers(): boolean {
+    return this.handlers.size > 0;
+  }
+
+  /** Runs one job found by app.runnable_jobs (M-067), inside that job's tenant. */
+  async processJob(tx: Tx, jobId: string): Promise<boolean> {
+    return this.processNextJob(tx, undefined, jobId);
+  }
+
   async enqueue(
     tx: Tx,
     jobId: string,
@@ -49,8 +59,9 @@ export class JobQueue {
   /**
    * Atomically claims and executes one pending job using SELECT ... FOR UPDATE SKIP LOCKED.
    */
-  async processNextJob(tx: Tx, tenantId?: string): Promise<boolean> {
+  async processNextJob(tx: Tx, tenantId?: string, jobId?: string): Promise<boolean> {
     const tenantFilter = tenantId ? sql`AND tenant_id = ${tenantId}` : sql``;
+    const idFilter = jobId ? sql`AND id = ${jobId}` : sql``;
 
     const selectResult = await sql<JobRow>`
       SELECT * FROM job_queue
@@ -58,6 +69,7 @@ export class JobQueue {
          AND run_at <= now()
          AND attempts < max_attempts
          ${tenantFilter}
+         ${idFilter}
        ORDER BY run_at ASC
        LIMIT 1
        FOR UPDATE SKIP LOCKED
@@ -87,6 +99,8 @@ export class JobQueue {
        WHERE id = ${job.id}
     `.execute(tx);
 
+    // A savepoint keeps the transaction usable when the handler fails, so the failure can still be recorded.
+    await sql`SAVEPOINT job_handler`.execute(tx);
     try {
       await handler(
         tx,
@@ -105,7 +119,8 @@ export class JobQueue {
 
       return true;
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      await sql`ROLLBACK TO SAVEPOINT job_handler`.execute(tx);
+      const errMsg = (err instanceof Error ? err.message : String(err)).slice(0, 500);
       // Exponential backoff for retry: next attempt in (attempts * 30) seconds
       const nextDelaySeconds = (job.attempts + 1) * 30;
 

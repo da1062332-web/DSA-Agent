@@ -1,6 +1,4 @@
-import { apiFetch } from '../../api/client';
-import { readConfig } from '../../config';
-import { getStoredAuthToken } from '../../auth/token';
+import { apiFetch, apiRequest } from '../../api/client';
 import type {
   CreateRoleInput,
   Permission,
@@ -10,83 +8,26 @@ import type {
   UserRoleAssignment,
 } from './types';
 
-function getApiBaseUrl(): string {
-  const config = readConfig();
-  return config.success ? config.data.VITE_API_BASE_URL : 'http://localhost:3000';
-}
-
-function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token = getStoredAuthToken() ?? '';
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...extraHeaders,
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let errorMessage = `Request failed with status ${res.status}`;
-    try {
-      const errorJson = await res.json();
-      if (errorJson?.error?.message) {
-        errorMessage = errorJson.error.message;
-      }
-    } catch {
-      // ignore
-    }
-    throw new Error(errorMessage);
-  }
-  return res.json() as Promise<T>;
-}
+// Every call goes through the shared client (session token, error envelope, step-up dialog on 401 STEP_UP_REQUIRED).
 
 export async function fetchRoles(): Promise<{ data: Role[] }> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/roles`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(res);
+  return apiFetch<{ data: Role[] }>('/v1/roles');
 }
 
 export async function fetchRoleById(roleId: string): Promise<{ data: Role; etag: string | null }> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/roles/${roleId}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  const data = await handleResponse<Role>(res);
-  const etag = res.headers.get('etag');
-  return { data, etag };
+  const { data, etag } = await apiRequest<Role>(`/v1/roles/${encodeURIComponent(roleId)}`);
+  return { data, etag: etag ?? null };
 }
 
 export async function fetchPermissions(): Promise<{ data: Permission[] }> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/permissions`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(res);
+  return apiFetch<{ data: Permission[] }>('/v1/permissions');
 }
 
 export async function createRole(input: CreateRoleInput): Promise<Role> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/roles`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(input),
-  });
-  return handleResponse(res);
+  return apiFetch<Role>('/v1/roles', { method: 'POST', body: input });
 }
 
-// Editing and deleting a role need step-up (API-ACL-004: an authenticator code within the last 15 minutes). apiFetch opens the step-up
-// dialog on 401 STEP_UP_REQUIRED and retries; the plain fetch used by the read calls above would just fail with "401".
+// Editing and deleting a role need step-up (API-ACL-004: an authenticator code within the last 15 minutes).
 export async function updateRole(roleId: string, input: UpdateRoleInput, etag?: string): Promise<Role> {
   const version = etag ? Number.parseInt(etag.replace(/"/g, ''), 10) : Number.NaN;
   return apiFetch<Role>(`/v1/roles/${encodeURIComponent(roleId)}`, {
@@ -101,19 +42,9 @@ export async function deleteRole(roleId: string): Promise<{ status: string }> {
 }
 
 export async function fetchUserRoles(userId: string): Promise<{ data: UserRoleAssignment[] }> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/users/${userId}/roles`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(res);
+  return apiFetch<{ data: UserRoleAssignment[] }>(`/v1/users/${encodeURIComponent(userId)}/roles`);
 }
 
 export async function fetchUserPermissions(userId: string): Promise<UserEffectiveGrants> {
-  const baseUrl = getApiBaseUrl();
-  const res = await fetch(`${baseUrl}/v1/users/${userId}/permissions`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  return handleResponse(res);
+  return apiFetch<UserEffectiveGrants>(`/v1/users/${encodeURIComponent(userId)}/permissions`);
 }

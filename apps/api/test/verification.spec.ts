@@ -37,7 +37,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     const store = createMockVerificationStore();
     const app = createTestApp({ deps: { txRunner: store.runner } });
 
-    const res = await request(app).get('/v1/verifications');
+    const res = await request(app).get('/v1/verification-requests');
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });
@@ -49,7 +49,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).get('/v1/verifications');
+    const res = await request(app).get('/v1/verification-requests');
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
@@ -61,14 +61,14 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).get('/v1/verifications');
+    const res = await request(app).get('/v1/verification-requests');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBe(2);
     expect(res.body.data[0].tenantId).toBe(verifierPrincipal.tenantId);
 
     // Filter by verificationType
-    const filteredRes = await request(app).get('/v1/verifications?verificationType=RESIDENCE_FI');
+    const filteredRes = await request(app).get('/v1/verification-requests?verificationType=RESIDENCE_FI');
     expect(filteredRes.status).toBe(200);
     expect(filteredRes.body.data.length).toBe(1);
     expect(filteredRes.body.data[0].verificationType).toBe('RESIDENCE_FI');
@@ -81,7 +81,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).get('/v1/verifications/vrf_01JTESTVRF0000000000000001');
+    const res = await request(app).get('/v1/verification-requests/vrf_01JTESTVRF0000000000000001');
     expect(res.status).toBe(200);
     expect(res.body.id).toBe('vrf_01JTESTVRF0000000000000001');
     expect(res.body.verificationType).toBe('DOCUMENT_REVIEW');
@@ -96,7 +96,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     // Foreign record belonging to ten_OTHER
-    const res = await request(app).get('/v1/verifications/vrf_01JOTHERTENANT0000000000000');
+    const res = await request(app).get('/v1/verification-requests/vrf_01JOTHERTENANT0000000000000');
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
 
@@ -105,7 +105,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       auth: fakeAuth(otherTenantVerifier),
       deps: { txRunner: store.runner },
     });
-    const otherRes = await request(otherApp).get('/v1/verifications/vrf_01JOTHERTENANT0000000000000');
+    const otherRes = await request(otherApp).get('/v1/verification-requests/vrf_01JOTHERTENANT0000000000000');
     expect(otherRes.status).toBe(200);
     expect(otherRes.body.id).toBe('vrf_01JOTHERTENANT0000000000000');
   });
@@ -126,7 +126,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       checklistItmIds: ['chk_salary_slip'],
     };
 
-    const res = await request(app).post('/v1/verifications').send(payload);
+    const res = await request(app).post('/v1/verification-requests').send(payload);
     expect(res.status).toBe(201);
     expect(res.body.id).toMatch(/^vrf_[0-9A-HJKMNP-TV-Z]{26}$/);
     expect(res.body.status).toBe('INITIATED');
@@ -144,11 +144,11 @@ describe('Module 19: Verification API & Integration Tests', () => {
     const targetId = 'vrf_01JTESTVRF0000000000000001';
 
     // Without If-Match -> 422 VALIDATION_ERROR
-    const failRes = await request(app).patch(`/v1/verifications/${targetId}`).send({ priority: 'LOW' });
+    const failRes = await request(app).patch(`/v1/verification-requests/${targetId}`).send({ priority: 'LOW' });
     expect(failRes.status).toBe(422);
 
     // With valid If-Match -> 200
-    const successRes = await request(app).patch(`/v1/verifications/${targetId}`).set('If-Match', '"0"').send({
+    const successRes = await request(app).patch(`/v1/verification-requests/${targetId}`).set('If-Match', '"0"').send({
       status: 'IN_PROGRESS',
       findingsSummary: 'Document analysis started by underwriters',
     });
@@ -171,7 +171,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       markStatus: 'VERIFIED',
     };
 
-    const res = await request(app).post(`/v1/verifications/${targetId}/complete`).send(completePayload);
+    const res = await request(app).post(`/v1/verification-requests/${targetId}/complete`).send(completePayload);
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('VERIFIED');
@@ -196,7 +196,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       // rejectionReason missing
     };
 
-    const res = await request(app).post(`/v1/verifications/${targetId}/complete`).send(invalidPayload);
+    const res = await request(app).post(`/v1/verification-requests/${targetId}/complete`).send(invalidPayload);
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -218,7 +218,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     };
 
     const res = await request(app)
-      .post(`/v1/verifications/${targetVrfId}/checklist-review`)
+      .post(`/v1/verification-requests/${targetVrfId}/checklist-review`)
       .send(reviewPayload);
 
     expect(res.status).toBe(200);
@@ -235,13 +235,13 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     // Missing applicationId and branchId
-    const res = await request(app).post('/v1/verifications').send({ verificationType: 'DOCUMENT_REVIEW' });
+    const res = await request(app).post('/v1/verification-requests').send({ verificationType: 'DOCUMENT_REVIEW' });
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
 
     // Invalid verificationType enum
-    const res2 = await request(app).post('/v1/verifications').send({
+    const res2 = await request(app).post('/v1/verification-requests').send({
       applicationId: 'app_1',
       branchId: 'br_mumbai',
       verificationType: 'INVALID_TYPE',
@@ -259,7 +259,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     // Client supplies malicious foreign tenantId and created_by
-    const res = await request(app).post('/v1/verifications').send({
+    const res = await request(app).post('/v1/verification-requests').send({
       applicationId: 'app_1',
       branchId: 'br_mumbai',
       verificationType: 'IDENTITY_KYC',
@@ -272,19 +272,19 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.createdBy).toBe(verifierPrincipal.id);
   });
 
-  it('TEST-VRF-013 returns 404 NOT_FOUND for nonexistent ID on GET /v1/verifications/:id', async () => {
+  it('TEST-VRF-013 returns 404 NOT_FOUND for nonexistent ID on GET /v1/verification-requests/:id', async () => {
     const store = createMockVerificationStore();
     const app = createTestApp({
       auth: fakeAuth(verifierPrincipal),
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).get('/v1/verifications/vrf_NONEXISTENT_9999999');
+    const res = await request(app).get('/v1/verification-requests/vrf_NONEXISTENT_9999999');
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('TEST-VRF-014 returns 404 NOT_FOUND for nonexistent ID on PATCH /v1/verifications/:id', async () => {
+  it('TEST-VRF-014 returns 404 NOT_FOUND for nonexistent ID on PATCH /v1/verification-requests/:id', async () => {
     const store = createMockVerificationStore();
     const app = createTestApp({
       auth: fakeAuth(verifierPrincipal),
@@ -292,7 +292,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     const res = await request(app)
-      .patch('/v1/verifications/vrf_NONEXISTENT_9999999')
+      .patch('/v1/verification-requests/vrf_NONEXISTENT_9999999')
       .set('If-Match', '"0"')
       .send({ priority: 'LOW' });
 
@@ -309,7 +309,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
 
     // Record vrf_01JTESTVRF0000000000000001 has lockVersion 0, provide stale 99
     const res = await request(app)
-      .patch('/v1/verifications/vrf_01JTESTVRF0000000000000001')
+      .patch('/v1/verification-requests/vrf_01JTESTVRF0000000000000001')
       .set('If-Match', '"99"')
       .send({ priority: 'LOW' });
 
@@ -334,7 +334,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000001/complete').send({
+    const res = await request(app).post('/v1/verification-requests/vrf_01JTESTVRF0000000000000001/complete').send({
       outcome: 'POSITIVE',
       findingsSummary: 'Self check attempt by submitter',
       markStatus: 'VERIFIED',
@@ -345,14 +345,14 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.error.message).toContain('Separation of duties');
   });
 
-  it('TEST-VRF-017 returns 404 NOT_FOUND for nonexistent ID on POST /v1/verifications/:id/complete', async () => {
+  it('TEST-VRF-017 returns 404 NOT_FOUND for nonexistent ID on POST /v1/verification-requests/:id/complete', async () => {
     const store = createMockVerificationStore();
     const app = createTestApp({
       auth: fakeAuth(verifierPrincipal),
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications/vrf_NONEXISTENT_9999999/complete').send({
+    const res = await request(app).post('/v1/verification-requests/vrf_NONEXISTENT_9999999/complete').send({
       outcome: 'POSITIVE',
       findingsSummary: 'Valid findings for nonexistent',
       markStatus: 'VERIFIED',
@@ -369,7 +369,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete').send({
+    const res = await request(app).post('/v1/verification-requests/vrf_01JTESTVRF0000000000000002/complete').send({
       outcome: 'POSITIVE',
       findingsSummary: 'Tiny', // < 5 chars
       markStatus: 'VERIFIED',
@@ -386,7 +386,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications/vrf_NONEXISTENT_9999999/checklist-review').send({
+    const res = await request(app).post('/v1/verification-requests/vrf_NONEXISTENT_9999999/checklist-review').send({
       checklistItemId: 'chk_pan_01',
       status: 'ACCEPTED',
     });
@@ -403,7 +403,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000001/checklist-review')
+      .post('/v1/verification-requests/vrf_01JTESTVRF0000000000000001/checklist-review')
       .send({
         checklistItemId: 'chk_DOES_NOT_EXIST',
         status: 'ACCEPTED',
@@ -421,7 +421,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000001/checklist-review')
+      .post('/v1/verification-requests/vrf_01JTESTVRF0000000000000001/checklist-review')
       .send({
         checklistItemId: 'chk_pan_01',
         status: 'REJECTED',
@@ -432,7 +432,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('TEST-VRF-022 authorization guard: denies POST /v1/verifications without verification.create', async () => {
+  it('TEST-VRF-022 authorization guard: denies POST /v1/verification-requests without verification.create', async () => {
     const store = createMockVerificationStore();
     const readOnlyUser = testPrincipal({
       id: 'usr_readonly',
@@ -445,7 +445,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications').send({
+    const res = await request(app).post('/v1/verification-requests').send({
       applicationId: 'app_1',
       branchId: 'br_mumbai',
       verificationType: 'DOCUMENT_REVIEW',
@@ -455,7 +455,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('TEST-VRF-023 authorization guard: denies PATCH /v1/verifications/:id without verification.update', async () => {
+  it('TEST-VRF-023 authorization guard: denies PATCH /v1/verification-requests/:id without verification.update', async () => {
     const store = createMockVerificationStore();
     const readOnlyUser = testPrincipal({
       id: 'usr_readonly',
@@ -469,7 +469,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     const res = await request(app)
-      .patch('/v1/verifications/vrf_01JTESTVRF0000000000000001')
+      .patch('/v1/verification-requests/vrf_01JTESTVRF0000000000000001')
       .set('If-Match', '"0"')
       .send({ priority: 'LOW' });
 
@@ -477,7 +477,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('TEST-VRF-024 authorization guard: denies POST /v1/verifications/:id/complete without verification.complete', async () => {
+  it('TEST-VRF-024 authorization guard: denies POST /v1/verification-requests/:id/complete without verification.complete', async () => {
     const store = createMockVerificationStore();
     const updaterUser = testPrincipal({
       id: 'usr_updater',
@@ -493,7 +493,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).post('/v1/verifications/vrf_01JTESTVRF0000000000000002/complete').send({
+    const res = await request(app).post('/v1/verification-requests/vrf_01JTESTVRF0000000000000002/complete').send({
       outcome: 'POSITIVE',
       findingsSummary: 'Completed investigation notes',
       markStatus: 'VERIFIED',
@@ -520,7 +520,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
     });
 
     const res = await request(app)
-      .post('/v1/verifications/vrf_01JTESTVRF0000000000000001/checklist-review')
+      .post('/v1/verification-requests/vrf_01JTESTVRF0000000000000001/checklist-review')
       .send({
         checklistItemId: 'chk_pan_01',
         status: 'ACCEPTED',
@@ -543,7 +543,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: store.runner },
     });
 
-    const res = await request(app).get('/v1/verifications');
+    const res = await request(app).get('/v1/verification-requests');
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBe(1);
     expect(res.body.data[0].branchId).toBe('br_mumbai');
@@ -562,7 +562,7 @@ describe('Module 19: Verification API & Integration Tests', () => {
       deps: { txRunner: failingRunner },
     });
 
-    const res = await request(app).get('/v1/verifications');
+    const res = await request(app).get('/v1/verification-requests');
     expect(res.status).toBe(500);
     // Crucial security check: Error response must NOT leak database host or password
     expect(JSON.stringify(res.body)).not.toContain('secretpass');

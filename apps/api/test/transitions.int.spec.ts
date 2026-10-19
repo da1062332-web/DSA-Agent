@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
 import { createProductVersionPort } from '../src/modules/origination/catalogue/product-version-port';
+import { LiveDecisionEngine } from '../src/modules/rules/engine/decision-engine';
 import { fakeAuth, testPrincipal } from './support/fake-auth';
 import { startIsolationEnv, type IsolationEnv, type TenantFixture } from '../../../tests/isolation/harness';
 
@@ -33,6 +34,8 @@ function scopedApp(t: TenantFixture, grants: PermissionGrant[], userId = t.userI
       ids,
       userDirectory: createUserDirectory(),
       productVersionPort: createProductVersionPort(),
+      // T-APP-01 generates the document checklist through DK-document.requirements (SUB-DOC.02).
+      decisionPort: new LiveDecisionEngine(),
     },
     corsAllowedOrigins: [],
     auth: fakeAuth(testPrincipal({ tenantId: t.tenantId, id: userId, primaryBranchId: t.branchId, grants })),
@@ -110,6 +113,11 @@ async function seedApp(
       t.userIds[0],
     ],
   );
+  await env.admin.query(
+    `insert into app.application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
+     values ($1, $2, $3, $4, 'PRIMARY', 'INDIVIDUAL', $5)`,
+    [`pty_trn_int_${seq}`, t.tenantId, id, customer, t.userIds[0]],
+  );
   return id;
 }
 
@@ -178,6 +186,23 @@ describe('TEST-APP-TRN loan application transitions against the database', () =>
       action: 'application.state_changed',
       permission_used: 'application.update',
     });
+
+    // SUB-DOC.02: the checklist is generated from DK-document.requirements (no rule set published, so the registry's
+    // default output applies: one mandatory PAN card for the primary party), and the decision is kept on the application.
+    const checklist = await env.admin.query(
+      `select document_type_code, mandatory, status, source_decision_id from app.checklist_item where application_id = $1`,
+      [id],
+    );
+    expect(checklist.rows).toEqual([
+      expect.objectContaining({ document_type_code: 'PAN_CARD', mandatory: true, status: 'PENDING' }),
+    ]);
+    const app = await env.admin.query(`select last_checklist_decision_ids from app.loan_application where id = $1`, [id]);
+    expect(app.rows[0].last_checklist_decision_ids).toEqual([checklist.rows[0].source_decision_id]);
+    const changed = await env.admin.query(
+      `select count(*)::int as n from app.outbox_event where subject_id = $1 and event_type = 'checklist.changed'`,
+      [id],
+    );
+    expect(changed.rows[0].n).toBe(1);
   });
 
   it('TEST-APP-TRN-INT-02 T-APP-01 refuses an unknown product version, and a version of another category (422)', async () => {

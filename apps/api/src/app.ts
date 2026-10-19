@@ -14,6 +14,7 @@ import swaggerUi from 'swagger-ui-express';
 import { apiModules } from './modules';
 import { createPublicMessagingRouter } from './modules/crm/messaging/router';
 import { createPublicDocumentSharingRouter } from './modules/origination/document-sharing/router';
+import { createPlatformRouter } from './modules/platform-admin/router';
 import type { ApiDeps } from './modules/types';
 import { buildOpenApiDocument } from './openapi';
 
@@ -26,8 +27,23 @@ export interface CreateAppOptions {
   logger?: Logger;
 }
 
+/** ApiDeps carries some ports under two names (audit/auditPort, ids/idGenerator, userDirectory/userDirectoryPort) and modules
+ *  read either. Fill each alias from the other so every module sees the same port, whichever name it reads. */
+export function withDepAliases(deps: ApiDeps): ApiDeps {
+  return {
+    ...deps,
+    audit: deps.audit ?? deps.auditPort,
+    auditPort: deps.auditPort ?? deps.audit,
+    ids: deps.ids ?? deps.idGenerator,
+    idGenerator: deps.idGenerator ?? deps.ids,
+    userDirectory: deps.userDirectory ?? deps.userDirectoryPort,
+    userDirectoryPort: deps.userDirectoryPort ?? deps.userDirectory,
+  };
+}
+
 export function createApp(opts: CreateAppOptions): Express {
   const app = express();
+  opts = { ...opts, deps: withDepAliases(opts.deps) };
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
@@ -83,26 +99,28 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
-  // Platform Admin routes (API-TEN-002, API-ADM-001..API-ADM-009)
-  const platformAdminMod = apiModules.find((m) => m.name === 'platform-admin');
-  if (platformAdminMod) {
-    const platformRouter = express.Router();
-    platformRouter.use(opts.auth ?? authPlaceholder);
-    platformRouter.use(rateLimit());
-    platformRouter.use(express.json({ limit: '10mb' }));
-    platformRouter.use(platformAdminMod.createRouter(opts.deps));
-    app.use('/platform', platformRouter);
-  }
-  const v1 = express.Router();
-  // Authenticated responses are per user and must never come from a cache. ETags are record versions ("0" for many
-  // records and users), so a browser revalidating with If-None-Match would get 304 and show the previous user's data.
-  // If-Match (optimistic concurrency) is unaffected.
-  v1.use((req, res, next) => {
+  // Platform realm (API-TEN-002, API-ADM-001..API-ADM-009) at /platform/v1. The tenant-realm part of platform-admin
+  // (support-access approvals, data corrections) is an ordinary module under /v1.
+  const noStore: RequestHandler = (req, res, next) => {
     delete req.headers['if-none-match'];
     res.set('Cache-Control', 'no-store');
     res.vary('Authorization');
     next();
-  });
+  };
+  const platformRouter = express.Router();
+  platformRouter.use(noStore);
+  platformRouter.use(opts.auth ?? authPlaceholder);
+  platformRouter.use(rateLimit());
+  platformRouter.use(express.json({ limit: '10mb' }));
+  platformRouter.use(createPlatformRouter(opts.deps));
+  platformRouter.use(notFound);
+  app.use('/platform', platformRouter);
+
+  const v1 = express.Router();
+  // Authenticated responses are per user and must never come from a cache. ETags are record versions ("0" for many
+  // records and users), so a browser revalidating with If-None-Match would get 304 and show the previous user's data.
+  // If-Match (optimistic concurrency) is unaffected.
+  v1.use(noStore);
   v1.use(opts.auth ?? authPlaceholder);
   v1.use(rateLimit());
   v1.use(express.json({ limit: '1mb' }));

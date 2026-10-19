@@ -471,10 +471,11 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
   });
 
   it('TC-ACT-015 GET /v1/activities lists activities filtered by subject', async () => {
+    // Reading a subject's activities needs read permission on the subject (MODULE 10: visibility inherits from it).
     const principal = testPrincipal({
       tenantId: TENANT_1,
       id: USER_1,
-      grants: createGrants,
+      grants: [...createGrants, { code: 'lead.read', scope: 'TENANT', branchIds: [] }],
     });
     const app = createTestApp({ auth: fakeAuth(principal) });
 
@@ -501,5 +502,51 @@ describe('Module 10: Activity (MOD-ACT) API & Integration Tests', () => {
     expect(listRes.status).toBe(200);
     expect(listRes.body.data).toHaveLength(2);
     expect(listRes.body.meta.limit).toBe(50);
+  });
+  describe('TEST-ACT-AUD-2026-10-19: list visibility follows the subject', () => {
+    const author = testPrincipal({ tenantId: TENANT_1, id: USER_1, grants: createGrants });
+    const colleague = testPrincipal({
+      tenantId: TENANT_1,
+      id: USER_2,
+      grants: [{ code: 'activity.create', scope: 'TENANT', branchIds: [] }],
+    });
+
+    async function logNote(key: string) {
+      const res = await request(createTestApp({ auth: fakeAuth(author) }))
+        .post('/v1/activities')
+        .set('Idempotency-Key', key)
+        .send({ kind: 'NOTE', subjectType: 'LEAD', subjectId: LEAD_1, occurredAt: '2026-10-12T09:00:00.000Z', note: 'n' });
+      expect(res.status).toBe(201);
+    }
+
+    it('TEST-ACT-AUD-01 without a subject a user sees only their own activities', async () => {
+      await logNote('idem_aud_own_01');
+      const res = await request(createTestApp({ auth: fakeAuth(colleague) })).get('/v1/activities');
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([]);
+      const mine = await request(createTestApp({ auth: fakeAuth(author) })).get('/v1/activities');
+      expect(mine.body.data).toHaveLength(1);
+    });
+
+    it('TEST-ACT-AUD-02 an unknown subjectType is a 422, not a filter that silently drops the scope check', async () => {
+      await logNote('idem_aud_type_01');
+      const res = await request(createTestApp({ auth: fakeAuth(colleague) }))
+        .get('/v1/activities')
+        .query({ subjectType: 'NOT_A_TYPE', subjectId: LEAD_1 });
+      expect(res.status).toBe(422);
+    });
+
+    it('TEST-ACT-AUD-03 a subject the caller cannot read answers 404 on the list and on the timeline', async () => {
+      await logNote('idem_aud_read_01');
+      const app = createTestApp({ auth: fakeAuth(colleague) });
+      expect((await request(app).get('/v1/activities').query({ subjectType: 'LEAD', subjectId: LEAD_1 })).status).toBe(404);
+      expect((await request(app).get('/v1/timeline').query({ subjectType: 'LEAD', subjectId: LEAD_1 })).status).toBe(404);
+    });
+
+    it('TEST-ACT-AUD-04 a non-numeric limit is a 422 and the timeline needs a subject', async () => {
+      const app = createTestApp({ auth: fakeAuth(author) });
+      expect((await request(app).get('/v1/activities').query({ limit: 'abc' })).status).toBe(422);
+      expect((await request(app).get('/v1/timeline')).status).toBe(422);
+    });
   });
 });

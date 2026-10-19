@@ -323,10 +323,13 @@ export function createMockAutomationStore() {
 
       // 2c. UPDATE app.automation_definition
       if (sqlLower.includes('update app.automation_definition')) {
-        const defId = String(params[params.length - 2]);
-        const tenantId = String(params[params.length - 1]);
+        // Params: name, description, status, pinnedVersionId, updatedBy, id, tenantId, expectedLockVersion (twice).
+        const defId = String(params[5]);
+        const tenantId = String(params[6]);
+        const expected = params[7] as number | null;
         const found = definitions.find((d) => d.id === defId && d.tenant_id === tenantId);
         if (!found) return { rows: [] };
+        if (expected !== null && expected !== undefined && found.lock_version !== Number(expected)) return { rows: [] };
         if (params[0] !== null) found.name = String(params[0]);
         if (params[1] !== null) found.description = (params[1] as string) ?? null;
         if (params[2] !== null) found.status = String(params[2]);

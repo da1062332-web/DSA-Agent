@@ -32,12 +32,12 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { fetchBranches, fetchUsers, updateUser } from './api';
-import type { Branch, UserSummary } from './types';
+import type { Branch, UserListItem } from './types';
 
 export function UserListPage() {
   const navigate = useNavigate();
 
-  const [users, setUsers] = useState<UserSummary[]>([]);
+  const [users, setUsers] = useState<UserListItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export function UserListPage() {
   const [branchFilter, setBranchFilter] = useState<string>('');
 
   // Status toggle dialog
-  const [statusDialogUser, setStatusDialogUser] = useState<UserSummary | null>(null);
+  const [statusDialogUser, setStatusDialogUser] = useState<UserListItem | null>(null);
   const [targetStatus, setTargetStatus] = useState<'ACTIVE' | 'DEACTIVATED' | 'SUSPENDED'>('ACTIVE');
   const [actionLoading, setActionLoading] = useState<boolean>(false);
 
@@ -334,10 +334,10 @@ export function UserListPage() {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{user.email}</Typography>
-                    {user.mobileE164 && (
+                    <Typography variant="body2">{user.emailMasked}</Typography>
+                    {user.mobileMasked && (
                       <Typography variant="caption" color="text.secondary">
-                        {user.mobileE164}
+                        {user.mobileMasked}
                       </Typography>
                     )}
                   </TableCell>
@@ -421,7 +421,7 @@ export function UserListPage() {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to change the account status for{' '}
-            <strong>{statusDialogUser?.displayName}</strong> ({statusDialogUser?.email}) to{' '}
+            <strong>{statusDialogUser?.displayName}</strong> ({statusDialogUser?.emailMasked}) to{' '}
             <strong>{targetStatus}</strong>?
           </DialogContentText>
           {targetStatus === 'DEACTIVATED' && (

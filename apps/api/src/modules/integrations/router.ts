@@ -38,7 +38,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: IntegrationService
 
   // 1. GET /v1/integrations/capabilities (Catalog of supported operations)
   router.get(
-    ['/v1/integrations/capabilities', '/integrations/capabilities'],
+    '/integrations/capabilities',
     async (_req: Request, res: Response, next: NextFunction) => {
       try {
         const capabilities = service.listCapabilities();
@@ -51,7 +51,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: IntegrationService
 
   // 2. GET /v1/integrations (API-INT-001)
   router.get(
-    ['/v1/integrations', '/integrations'],
+    '/integrations',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);
@@ -67,7 +67,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: IntegrationService
 
   // 3. GET /v1/integrations/:provider
   router.get(
-    ['/v1/integrations/:provider', '/integrations/:provider'],
+    '/integrations/:provider',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);
@@ -91,7 +91,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: IntegrationService
 
   // 4. PUT /v1/integrations/:provider (API-INT-002)
   router.put(
-    ['/v1/integrations/:provider', '/integrations/:provider'],
+    '/integrations/:provider',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);
@@ -111,7 +111,7 @@ export function createRouter(deps: ApiDeps, serviceOverride?: IntegrationService
 
   // 5. POST /v1/integrations/:provider/ping (Manual Health Check probe)
   router.post(
-    ['/v1/integrations/:provider/ping', '/integrations/:provider/ping'],
+    '/integrations/:provider/ping',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);

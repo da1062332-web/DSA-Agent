@@ -27,10 +27,13 @@ import {
   UpdateRoleRequest,
   UpdateTenantConfigRequest,
   UpdateUserRequest,
+  maskEmail,
+  maskMobile,
 } from '@dsa/contracts';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
+import { decodeCursor, encodeCursor } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
@@ -1316,99 +1319,75 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // GET /v1/users — List users in caller's tenant with pagination & search
+  // GET /v1/users — List users in caller's tenant with pagination & search. Filters, search and the keyset page run in SQL.
+  // A user.manage holder gets the admin list, with email and mobile masked (Contracts §12; GET /v1/users/:id has them in
+  // full). Any other signed-in user gets the picker projection used by the team, queue and assignment screens: id, name,
+  // branch, status and availability only.
   router.get('/users', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
+      const admin = ctx.principal.grants.some((g) => g.code === 'user.manage');
 
-      const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 200);
-      const cursor =
-        typeof req.query.cursor === 'string' && req.query.cursor.trim() ? req.query.cursor.trim() : undefined;
-      const statusFilter =
-        typeof req.query.status === 'string' && req.query.status.trim() ? req.query.status.trim() : undefined;
-      // Filter by the user's primary branch. It was accepted by the schema but never applied, so every branch's users came back.
-      const branchFilter =
-        typeof req.query.branchId === 'string' && req.query.branchId.trim()
-          ? req.query.branchId.trim()
-          : undefined;
-      const searchFilter =
-        typeof req.query.search === 'string' && req.query.search.trim()
-          ? req.query.search.trim().toLowerCase()
-          : undefined;
-
-      let cursorCreatedAt: Date | null = null;
-      let cursorId: string | null = null;
-      if (cursor) {
-        try {
-          const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-          if (decoded && decoded.k && decoded.id) {
-            cursorCreatedAt = new Date(decoded.k);
-            cursorId = String(decoded.id);
-          }
-        } catch {
-          // Ignore invalid cursor format and start from beginning
-        }
+      const limitRaw = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+      if (limitRaw !== undefined && !/^\d{1,3}$/.test(limitRaw)) {
+        throw AppError.of('VALIDATION_ERROR', 'limit must be an integer from 1 to 200.', [
+          { field: 'limit', issue: 'INVALID' },
+        ]);
       }
+      const limit = Math.min(Math.max(Number(limitRaw ?? 50), 1), 200);
+      const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+      const statusFilter = str(req.query.status);
+      const branchFilter = str(req.query.branchId);
+      const search = (str(req.query.search) ?? str(req.query.q))?.toLowerCase();
+      const after = decodeCursor(str(req.query.cursor));
 
       const { users, nextCursor } = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        // LIKE wildcards in the search text are matched literally.
+        const like = search ? `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
         const result = await sql<RawUserRow>`
           SELECT u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
                  u.user_type, u.status, u.availability, u.primary_branch_id,
                  u.lock_version, u.created_at, u.updated_at,
                  COALESCE(
-                   array_agg(r.name) FILTER (WHERE r.name IS NOT NULL),
+                   (SELECT array_agg(r.name ORDER BY r.name)
+                      FROM app.user_role_assignment ura
+                      JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
+                     WHERE ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()),
                    '{}'
-                 ) as assigned_roles
+                 ) AS assigned_roles
           FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
-          LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
           WHERE u.tenant_id = ${ctx.principal.tenantId}
-          GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
-                   u.user_type, u.status, u.availability, u.primary_branch_id,
-                   u.lock_version, u.created_at, u.updated_at
+            ${statusFilter ? sql`AND u.status = ${statusFilter}` : sql``}
+            ${branchFilter ? sql`AND u.primary_branch_id = ${branchFilter}` : sql``}
+            ${
+              like && admin
+                ? sql`AND (lower(u.display_name) LIKE ${like} OR lower(u.email::text) LIKE ${like} OR u.mobile_e164 LIKE ${like})`
+                : like
+                  ? sql`AND lower(u.display_name) LIKE ${like}`
+                  : sql``
+            }
+            ${after ? sql`AND (u.created_at, u.id) < (${after.k}::timestamptz, ${after.id})` : sql``}
           ORDER BY u.created_at DESC, u.id DESC
+          LIMIT ${limit + 1}
         `.execute(tx);
-
-        let rows = result.rows.map(formatUserRow);
-
-        if (statusFilter) {
-          rows = rows.filter((u) => u.status === statusFilter);
-        }
-        if (branchFilter) {
-          rows = rows.filter((u) => u.primaryBranchId === branchFilter);
-        }
-        if (searchFilter) {
-          rows = rows.filter(
-            (u) =>
-              u.displayName.toLowerCase().includes(searchFilter) ||
-              u.email.toLowerCase().includes(searchFilter) ||
-              (u.mobileE164 && u.mobileE164.includes(searchFilter)),
-          );
-        }
-
-        if (cursorCreatedAt && cursorId) {
-          const cTime = cursorCreatedAt.getTime();
-          rows = rows.filter((u) => {
-            const uTime = new Date(u.createdAt).getTime();
-            if (uTime < cTime) return true;
-            if (uTime === cTime && u.id < cursorId!) return true;
-            return false;
-          });
-        }
-
-        let computedNextCursor: string | null = null;
-        if (rows.length > limit) {
-          const lastItem = rows[limit - 1];
-          if (lastItem) {
-            computedNextCursor = Buffer.from(
-              JSON.stringify({ k: lastItem.createdAt, id: lastItem.id }),
-            ).toString('base64url');
-          }
-          rows = rows.slice(0, limit);
-        }
-
-        return { users: rows, nextCursor: computedNextCursor };
+        const rows = result.rows.slice(0, limit).map(formatUserRow);
+        const last = rows[rows.length - 1];
+        return {
+          users: admin
+            ? rows.map(({ email, mobileE164, ...rest }) => ({
+                ...rest,
+                emailMasked: maskEmail(email),
+                mobileMasked: maskMobile(mobileE164),
+              }))
+            : rows.map((u) => ({
+                id: u.id,
+                displayName: u.displayName,
+                primaryBranchId: u.primaryBranchId,
+                status: u.status,
+                availability: u.availability,
+              })),
+          nextCursor: result.rows.length > limit && last ? encodeCursor(last.createdAt, last.id) : null,
+        };
       });
 
       res.json({

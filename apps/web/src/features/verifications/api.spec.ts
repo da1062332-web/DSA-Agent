@@ -1,5 +1,32 @@
 // apps/web/src/features/verification/api.spec.ts — owner: Developer 2
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as TokenModule from '../../auth/token';
+
+// The feature client goes through api/client.ts: give it a web config and a Supabase session whose token is the one the
+// test sets with setAuthToken.
+vi.mock('../../config', () => ({
+  readConfig: () => ({
+    success: true,
+    data: {
+      VITE_API_BASE_URL: 'http://api.test',
+      VITE_SUPABASE_URL: 'http://supabase.test',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+    },
+  }),
+}));
+vi.mock('../../auth/supabase', async () => {
+  const { getStoredAuthToken } = await vi.importActual<typeof TokenModule>('../../auth/token');
+  return {
+    getSupabase: () => ({
+      auth: {
+        getSession: async () => {
+          const token = getStoredAuthToken();
+          return { data: { session: token ? { access_token: token } : null } };
+        },
+      },
+    }),
+  };
+});
 import {
   attestChecklistItem,
   completeVerification,
@@ -21,7 +48,7 @@ describe('Module 19 — Verification Frontend API Client', () => {
     fetchMock.mockReset();
   });
 
-  it('fetchVerifications calls GET /v1/verifications with query params', async () => {
+  it('fetchVerifications calls GET /v1/verification-requests with query params', async () => {
     const mockResponse = { data: [], meta: { limit: 50, nextCursor: null } };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -32,11 +59,11 @@ describe('Module 19 — Verification Frontend API Client', () => {
     expect(result).toEqual(mockResponse);
 
     const callArgs = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(callArgs[0]).toContain('/v1/verifications?status=INITIATED&limit=20');
+    expect(callArgs[0]).toContain('/v1/verification-requests?status=INITIATED&limit=20');
     expect(callArgs[1].method).toBe('GET');
   });
 
-  it('fetchVerification calls GET /v1/verifications/:id', async () => {
+  it('fetchVerification calls GET /v1/verification-requests/:id', async () => {
     const mockRecord = { id: 'vrf_123', status: 'INITIATED' };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -47,10 +74,10 @@ describe('Module 19 — Verification Frontend API Client', () => {
     expect(result).toEqual(mockRecord);
 
     const callArgs = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(callArgs[0]).toContain('/v1/verifications/vrf_123');
+    expect(callArgs[0]).toContain('/v1/verification-requests/vrf_123');
   });
 
-  it('createVerification sends POST /v1/verifications with payload', async () => {
+  it('createVerification sends POST /v1/verification-requests with payload', async () => {
     const mockCreated = { id: 'vrf_new', status: 'INITIATED' };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -82,10 +109,10 @@ describe('Module 19 — Verification Frontend API Client', () => {
 
     const callArgs = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(callArgs[1].method).toBe('PATCH');
-    expect((callArgs[1].headers as Record<string, string>)['If-Match']).toBe('"0"');
+    expect(new Headers(callArgs[1].headers).get('If-Match')).toBe('"0"');
   });
 
-  it('completeVerification sends POST /v1/verifications/:id/complete', async () => {
+  it('completeVerification sends POST /v1/verification-requests/:id/complete', async () => {
     const mockCompleted = { id: 'vrf_123', status: 'VERIFIED', outcome: 'POSITIVE' };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -100,11 +127,11 @@ describe('Module 19 — Verification Frontend API Client', () => {
     expect(result).toEqual(mockCompleted);
 
     const callArgs = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(callArgs[0]).toContain('/v1/verifications/vrf_123/complete');
-    expect((callArgs[1].headers as Record<string, string>)['If-Match']).toBe('"1"');
+    expect(callArgs[0]).toContain('/v1/verification-requests/vrf_123/complete');
+    expect(new Headers(callArgs[1].headers).get('If-Match')).toBe('"1"');
   });
 
-  it('attestChecklistItem sends POST /v1/verifications/:id/checklist-review', async () => {
+  it('attestChecklistItem sends POST /v1/verification-requests/:id/checklist-review', async () => {
     const mockAttest = { checklistItemId: 'chk_1', status: 'ACCEPTED' };
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -119,7 +146,7 @@ describe('Module 19 — Verification Frontend API Client', () => {
     expect(result).toEqual(mockAttest);
 
     const callArgs = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(callArgs[0]).toContain('/v1/verifications/vrf_123/checklist-review');
+    expect(callArgs[0]).toContain('/v1/verification-requests/vrf_123/checklist-review');
     expect(callArgs[1].method).toBe('POST');
   });
 });

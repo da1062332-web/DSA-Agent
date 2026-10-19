@@ -48,7 +48,7 @@ describe('Module 28 — Integration Management (MOD-INT: SUB-INT.01 Adapter Fram
     app.use(express.json());
     app.use(fakeAuth(principal));
     const deps = createTestDeps({ txRunner: dummyTxRunner });
-    app.use(createRouter(deps, sharedService));
+    app.use('/v1', createRouter(deps, sharedService));
     app.use(errorHandler());
     return app;
   };

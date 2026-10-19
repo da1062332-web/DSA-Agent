@@ -604,6 +604,7 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     // Make an evaluation to create a record
     const evalRes = await request(app)
       .post('/v1/decisions/DK-sla.target/evaluations')
+      .set('Idempotency-Key', 'idem_sla_eval_01')
       .send({
         subject: { type: 'TASK', id: 'task_01' },
         facts: { sla: { class: 'CUSTOMER_FIRST_CONTACT' }, record: { type: 'TASK' } },
@@ -1120,6 +1121,7 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
 
     const res = await request(app)
       .post('/v1/decisions/DK-lead.assignment/evaluations')
+      .set('Idempotency-Key', 'idem_lead_fallback_01')
       .send({
         subject: { type: 'LEAD', id: 'lead_unknown_99' },
         facts: {
@@ -1167,6 +1169,7 @@ describe('Module 23: Business Rule Engine (BRE) API & Integration Tests', () => 
     // Evaluate completeness when consent is missing
     const incompleteRes = await request(app)
       .post('/v1/decisions/DK-application.completeness/evaluations')
+      .set('Idempotency-Key', 'idem_app_complete_01')
       .send({
         subject: { type: 'LOAN_APPLICATION', id: 'app_01JTEST0001' },
         facts: {

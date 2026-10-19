@@ -138,32 +138,9 @@ export function createRouter(deps: ApiDeps, serviceOverride?: MessagingService):
     }
   });
 
-  /**
-   * API-MSG-005: Delivery Webhook Callback
-   * POST /webhooks/messaging/:provider/:connectionPathId
-   * (Resolves connection via ENT-115 public_entry_index, deduplicates via ENT-116)
-   */
-  const handleWebhookCallback = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const provider = String(req.params.provider ?? '');
-      const connectionPathId = String(req.params.connectionPathId ?? '');
-      const signature = req.get('x-provider-signature');
-
-      const result = await messagingService.handlePublicWebhook(
-        provider,
-        connectionPathId,
-        req.body ?? {},
-        signature,
-      );
-
-      res.status(200).json(result);
-    } catch (err) {
-      next(err);
-    }
-  };
-
-  router.post('/webhooks/messaging/:provider/:connectionPathId', handleWebhookCallback);
-  router.post('/public/v1/webhooks/messaging/:provider/:connectionPathId', handleWebhookCallback);
+  // API-MSG-005 delivery callbacks (ENT-115 public_entry_index, ENT-116 dedupe) are unauthenticated and arrive only at
+  // /public/v1 (createPublicMessagingRouter below): providers hold no user token, so an authenticated copy under /v1 could
+  // never be called.
 
   return router;
 }

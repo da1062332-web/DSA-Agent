@@ -1,5 +1,5 @@
 // apps/web/src/features/invoices/api.ts — Module 33: Invoices API client
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
 import type {
   ConnectorStatement,
   CreateInvoiceInput,
@@ -7,7 +7,6 @@ import type {
   UpdateInvoiceStatusInput,
 } from './types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
 export class ApiError extends Error {
   constructor(
@@ -21,62 +20,25 @@ export class ApiError extends Error {
   }
 }
 
+// Goes through the shared client (api/client.ts): the Supabase session token, no-store, the step-up (TOTP) dialog and the
+// error envelope. Errors are re-thrown as this feature's ApiError so the screens keep their handling.
 async function request<T>(
   path: string,
   options: RequestInit & { ifMatch?: string; idempotencyKey?: string } = {},
 ): Promise<{ data: T; etag?: string }> {
-  const headers = new Headers(options.headers || {});
-  headers.set('Accept', 'application/json');
-
-  if (options.body && typeof options.body === 'string') {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  if (options.ifMatch) {
-    headers.set('If-Match', options.ifMatch);
-  }
-
-  if (options.idempotencyKey) {
-    headers.set('Idempotency-Key', options.idempotencyKey);
-  }
-
-  const token = getStoredAuthToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
-  const res = await fetch(url, { ...options, headers });
-
-  const etag = res.headers.get('ETag') || undefined;
-
-  if (!res.ok) {
-    let code = 'HTTP_ERROR';
-    let message = `Request failed with status ${res.status}`;
-    let details: unknown[] = [];
-
-    try {
-      const errJson = await res.json();
-      if (errJson && errJson.error) {
-        code = errJson.error.code || code;
-        message = errJson.error.message || message;
-        details = errJson.error.details || [];
-      } else if (errJson && errJson.message) {
-        message = errJson.message;
-      }
-    } catch {
-      // Non-json error
+  try {
+    return await apiRequest<T>(path, {
+      method: (options.method ?? 'GET') as ApiRequest['method'],
+      body: typeof options.body === 'string' ? options.body : undefined,
+      ifMatch: options.ifMatch,
+      idempotencyKey: options.idempotencyKey,
+    });
+  } catch (err) {
+    if (err instanceof SharedApiError) {
+      throw new ApiError(err.code, err.message, err.httpStatus, err.details);
     }
-
-    throw new ApiError(code, message, res.status, details);
+    throw err;
   }
-
-  if (res.status === 204) {
-    return { data: undefined as unknown as T, etag };
-  }
-
-  const data = await res.json();
-  return { data, etag };
 }
 
 export async function getInvoices(

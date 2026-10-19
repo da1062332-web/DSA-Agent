@@ -25,6 +25,8 @@ export interface ApiRequest {
   headers?: Record<string, string>;
   /** The ETag version the edit is based on; sent as If-Match. */
   version?: number;
+  /** A raw If-Match value, for callers that hold the ETag string as the API sent it. */
+  ifMatch?: string;
   /** Reuse the same key when retrying the same submit. Generated for POSTs when omitted. */
   idempotencyKey?: string;
   query?: Record<string, string | number | undefined>;
@@ -41,6 +43,11 @@ export function registerStepUpHandler(handler: StepUpHandler | null): void {
 export const newIdempotencyKey = () => crypto.randomUUID();
 
 export async function apiFetch<T>(path: string, req: ApiRequest = {}): Promise<T> {
+  return (await apiRequest<T>(path, req)).data;
+}
+
+/** Like apiFetch, and also returns the ETag the API sent (for the next If-Match). */
+export async function apiRequest<T>(path: string, req: ApiRequest = {}): Promise<{ data: T; etag?: string }> {
   const method = req.method ?? 'GET';
   const key = req.idempotencyKey ?? (method === 'POST' ? newIdempotencyKey() : undefined);
   try {
@@ -58,7 +65,7 @@ export async function apiFetch<T>(path: string, req: ApiRequest = {}): Promise<T
   }
 }
 
-async function send<T>(path: string, req: ApiRequest): Promise<T> {
+async function send<T>(path: string, req: ApiRequest): Promise<{ data: T; etag?: string }> {
   const config = readConfig();
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
 
@@ -74,6 +81,7 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
   if (req.body !== undefined) headers.set('Content-Type', 'application/json');
   if (req.idempotencyKey) headers.set('Idempotency-Key', req.idempotencyKey);
   if (req.version !== undefined) headers.set('If-Match', `"${req.version}"`);
+  else if (req.ifMatch) headers.set('If-Match', req.ifMatch);
 
   const url = new URL(`${config.data.VITE_API_BASE_URL}${path}`);
   for (const [k, v] of Object.entries(req.query ?? {}))
@@ -81,7 +89,7 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(url.toString(), {
       method: req.method,
       headers,
       body:
@@ -105,9 +113,20 @@ async function send<T>(path: string, req: ApiRequest): Promise<T> {
       const e = env.data.error;
       throw new ApiError(e.code, e.httpStatus, e.message, e.correlationId, e.details ?? []);
     }
+    // A partial envelope (a proxy or an older handler) still carries a code and message worth showing.
+    const partial = (body as { error?: { code?: unknown; message?: unknown; details?: unknown } } | undefined)?.error;
+    if (partial && typeof partial.code === 'string') {
+      throw new ApiError(
+        partial.code,
+        res.status,
+        typeof partial.message === 'string' ? partial.message : `Request failed (${res.status}).`,
+        undefined,
+        Array.isArray(partial.details) ? (partial.details as ErrorDetail[]) : [],
+      );
+    }
     throw new ApiError('INTERNAL_ERROR', res.status, `Request failed (${res.status}).`);
   }
-  return body as T;
+  return { data: body as T, etag: res.headers?.get('ETag') ?? undefined };
 }
 
 /** Shown wherever the API refuses a request for lack of permission. */

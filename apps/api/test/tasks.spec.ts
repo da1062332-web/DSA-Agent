@@ -165,7 +165,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(res.body.status).toBe('OPEN');
       expect(res.body.slaClass).toBe('CUSTOMER_FIRST_CONTACT');
       expect(res.body.dueAt).toBeDefined();
-      expect(res.headers.etag).toMatch(/^W\/"task_[^:]+:0"/);
+      expect(res.headers.etag).toBe('"0"');
 
       // Verify outbox & audit events persisted
       expect(repository.outboxEvents.length).toBe(1);
@@ -348,7 +348,8 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
         .set('Idempotency-Key', 'idem_task_replay')
         .send(validTaskPayload);
 
-      expect(second.status).toBe(200);
+      expect(second.status).toBe(201);
+      expect(second.headers['idempotent-replayed']).toBe('true');
       expect(second.headers['idempotent-replayed']).toBe('true');
       expect(second.body.id).toBe(first.body.id);
       expect(repository.outboxEvents.length).toBe(1);
@@ -368,7 +369,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(getRes.status).toBe(200);
       expect(getRes.body.id).toBe(taskId);
       expect(getRes.body.title).toBe(validTaskPayload.title);
-      expect(getRes.headers.etag).toBe(`W/"${taskId}:0"`);
+      expect(getRes.headers.etag).toBe('"0"');
     });
 
     it('returns 404 for non-existent task ID', async () => {
@@ -503,7 +504,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       expect(updateRes.body.priority).toBe('LOW');
       expect(updateRes.body.status).toBe('IN_PROGRESS');
       expect(updateRes.body.lockVersion).toBe(1);
-      expect(updateRes.headers.etag).toBe(`W/"${taskId}:1"`);
+      expect(updateRes.headers.etag).toBe('"1"');
     });
 
     it('reassigns task from user to an active queue', async () => {
@@ -570,7 +571,7 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
 
       const conflictRes = await request(app)
         .patch(`/v1/tasks/${taskId}`)
-        .set('If-Match', `W/"${taskId}:999"`)
+        .set('If-Match', '"999"')
         .send({ priority: 'LOW' });
 
       expect(conflictRes.status).toBe(409);
@@ -781,14 +782,14 @@ describe('Module 9 — Tasks and SLA (MOD-TASK)', () => {
       // Tenant B attempts to complete Tenant A's task -> 404 NOT_FOUND
       const completeResB = await request(appB)
         .post(`/v1/tasks/${taskId}/completion`)
-        .set('If-Match', `W/"${taskId}:0"`)
+        .set('If-Match', '"0"')
         .send({ outcomeCode: 'CONNECTED' });
       expect(completeResB.status).toBe(404);
 
       // Tenant B attempts to reassign Tenant A's task -> 404 NOT_FOUND
       const assignResB = await request(appB)
         .post(`/v1/tasks/${taskId}/assignment`)
-        .set('If-Match', `W/"${taskId}:0"`)
+        .set('If-Match', '"0"')
         .send({ toUserId: 'usr_tenant_b_user', reasonCode: 'MANUAL' });
       expect(assignResB.status).toBe(404);
     });

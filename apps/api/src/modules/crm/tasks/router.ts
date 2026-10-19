@@ -83,13 +83,6 @@ export function createRouter(deps: ApiDeps): Router {
     idGenerator: deps.idGenerator,
   });
 
-  // Register real TaskPort on deps if not provided
-  if (!deps.taskPort) {
-    deps.taskPort = {
-      createTask: (tx, ctx, cmd) => service.createTaskPort(tx, ctx, cmd),
-    };
-  }
-
   /**
    * API-TASK-001: Create Task
    * POST /tasks
@@ -110,8 +103,9 @@ export function createRouter(deps: ApiDeps): Router {
     if (isReplayed) {
       res.setHeader('Idempotent-Replayed', 'true');
     }
-    res.setHeader('ETag', `W/"${resource.id}:${resource.lockVersion}"`);
-    res.status(isReplayed ? 200 : 201).json(resource);
+    res.setHeader('ETag', `"${resource.lockVersion}"`);
+    // A replay answers like the original request (201), marked Idempotent-Replayed (Contracts §5).
+    res.status(201).json(resource);
   });
 
   /**
@@ -150,7 +144,7 @@ export function createRouter(deps: ApiDeps): Router {
       return service.getTask(tx, ctx, id);
     });
 
-    res.setHeader('ETag', `W/"${resource.id}:${resource.lockVersion}"`);
+    res.setHeader('ETag', `"${resource.lockVersion}"`);
     res.status(200).json(resource);
   });
 
@@ -173,7 +167,7 @@ export function createRouter(deps: ApiDeps): Router {
       return service.updateTask(tx, ctx, id, expectedLockVersion, parseResult.data);
     });
 
-    res.setHeader('ETag', `W/"${resource.id}:${resource.lockVersion}"`);
+    res.setHeader('ETag', `"${resource.lockVersion}"`);
     res.status(200).json(resource);
   });
 
@@ -200,7 +194,7 @@ export function createRouter(deps: ApiDeps): Router {
     if (isReplayed) {
       res.setHeader('Idempotent-Replayed', 'true');
     }
-    res.setHeader('ETag', `W/"${resource.id}:${resource.lockVersion}"`);
+    res.setHeader('ETag', `"${resource.lockVersion}"`);
     res.status(200).json({
       task: resource,
       followUpTask: followUpTask ?? null,

@@ -82,7 +82,10 @@ import { createRouter as createIntegrationsRouter } from '../src/modules/integra
 // Module 33: Platform Admin
 import { PlatformAdminService } from '../src/modules/platform-admin/platform-admin-service';
 import { InMemoryPlatformStore } from '../src/modules/platform-admin/platform-store';
-import { createRouter as createPlatformAdminRouter } from '../src/modules/platform-admin/router';
+import {
+  createPlatformRouter as createPlatformRealmRouter,
+  createRouter as createPlatformAdminRouter,
+} from '../src/modules/platform-admin/router';
 
 // Module 26/35: Verifications
 import { VerificationService } from '../src/modules/origination/verifications/verification-service';
@@ -838,13 +841,13 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       expect(readRes.body.newlyMarkedRead).toBe(1);
 
       // Query profile and update notification preferences via PATCH /v1/me
-      const meRes = await request(notifApp).get('/v1/me');
-      expect(meRes.status).toBe(200);
-      expect(meRes.body.notificationPreferences).toBeDefined();
+      // GET /v1/me belongs to the platform module; the preference profile comes from the service directly here.
+      const me = await notifService.getProfile({ principal: salesPrincipal, correlationId: 'corr_demo_me', now: new Date() });
+      expect(me.profile.notificationPreferences).toBeDefined();
 
       const prefRes = await request(notifApp)
         .patch('/v1/me')
-        .set('If-Match', String(meRes.headers['etag']))
+        .set('If-Match', `"${me.lockVersion}"`)
         .send({
           preferences: {
             channels: { inApp: true, email: true, sms: false, whatsapp: false },
@@ -1137,7 +1140,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         ],
       });
       intApp.use(fakeAuth(adminPrincipal));
-      intApp.use(createIntegrationsRouter(createTestDeps({ txRunner: dummyTxRunner }), intService));
+      intApp.use('/v1', createIntegrationsRouter(createTestDeps({ txRunner: dummyTxRunner }), intService));
       intApp.use(errorHandler());
 
       // Query Capabilities
@@ -1181,7 +1184,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         ],
       });
       adminApp.use(fakeAuth(superAdminPrincipal));
-      adminApp.use(createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      adminApp.use('/v1', createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
       adminApp.use(errorHandler());
 
       // Feature flags belong to the platform realm: they are read by a platform principal, not by a customer tenant user
@@ -1197,7 +1200,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
           }),
         ),
       );
-      platformApp.use(createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      platformApp.use('/platform', createPlatformRealmRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
       platformApp.use(errorHandler());
 
       // List Feature Flags
@@ -1231,7 +1234,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       const checkerApp = express();
       checkerApp.use(express.json());
       checkerApp.use(fakeAuth(checkerAdminPrincipal));
-      checkerApp.use(createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      checkerApp.use('/v1', createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
       checkerApp.use(errorHandler());
 
       const approveRes = await request(checkerApp)

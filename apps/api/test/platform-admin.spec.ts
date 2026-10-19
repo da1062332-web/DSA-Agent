@@ -19,7 +19,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../src/http/error-handler';
 import { PlatformAdminService } from '../src/modules/platform-admin/platform-admin-service';
 import { InMemoryPlatformStore } from '../src/modules/platform-admin/platform-store';
-import { createRouter } from '../src/modules/platform-admin/router';
+import { createPlatformRouter, createRouter } from '../src/modules/platform-admin/router';
 import { createTestDeps, fakeAuth, testPrincipal } from './support/fake-auth';
 
 describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () => {
@@ -144,7 +144,8 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     const app = express();
     app.use(express.json());
     app.use(fakeAuth(principal));
-    app.use(createRouter(testDeps(), sharedService));
+    app.use('/platform', createPlatformRouter(testDeps(), sharedService));
+    app.use('/v1', createRouter(testDeps(), sharedService));
     app.use(errorHandler());
     return app;
   };
@@ -411,11 +412,12 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       const app = express();
       app.use(express.json());
       app.use(fakeAuth(platformAdmin));
+      const auditedDeps = createTestDeps({ txRunner, audit: recordingAudit });
+      const auditedService = new PlatformAdminService(auditedDeps, store);
+      app.use('/platform', createPlatformRouter(auditedDeps, auditedService));
       app.use(
-        createRouter(
-          createTestDeps({ txRunner, audit: recordingAudit }),
-          new PlatformAdminService(createTestDeps({ txRunner, audit: recordingAudit }), store),
-        ),
+        '/v1',
+        createRouter(auditedDeps, auditedService),
       );
       app.use(errorHandler());
       return app;

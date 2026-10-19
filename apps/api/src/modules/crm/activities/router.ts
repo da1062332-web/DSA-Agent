@@ -4,9 +4,10 @@
 //   API-ACT-001: POST /v1/activities (interaction logging)
 //   API-ACT-002: PATCH /v1/activities/:id (update or hide)
 //   GET /v1/activities/:id
-//   GET /v1/activities
+//   GET /v1/activities (a subject's activities, or without a subject the caller's own)
+//   API-ACT-003: GET /v1/timeline?subjectType=&subjectId= (the subject's activity timeline; read permission on the subject)
 // Free-text fields reject PAN/Aadhaar/account-number patterns (Contracts §12).
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import {
   AppError,
   CreateActivitySchema,
@@ -16,11 +17,11 @@ import {
   type RequestContext,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../../types';
-import { ActivityService } from './activity-service';
+import { ActivityService, type ActivityFilter } from './activity-service';
 
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
-  const activityService = new ActivityService(deps.txRunner);
+  const activityService = new ActivityService(deps.txRunner, deps.audit);
 
   /**
    * API-ACT-001 — Create Activity
@@ -109,6 +110,26 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
+  const listQuery = (req: Request): ActivityFilter => {
+    const raw = req.query;
+    const subjectType = typeof raw.subjectType === 'string' ? raw.subjectType : undefined;
+    if (subjectType !== undefined && !SUBJECT_TYPES.includes(subjectType as SubjectType)) {
+      throw AppError.of('VALIDATION_ERROR', 'Unknown subjectType.', [{ field: 'subjectType', issue: 'INVALID' }]);
+    }
+    const limitRaw = typeof raw.limit === 'string' ? raw.limit : undefined;
+    if (limitRaw !== undefined && !/^\d{1,3}$/.test(limitRaw)) {
+      throw AppError.of('VALIDATION_ERROR', 'limit must be an integer from 1 to 200.', [
+        { field: 'limit', issue: 'INVALID' },
+      ]);
+    }
+    return {
+      subjectType: subjectType as SubjectType | undefined,
+      subjectId: typeof raw.subjectId === 'string' ? raw.subjectId : undefined,
+      limit: limitRaw !== undefined ? Number(limitRaw) : undefined,
+      cursor: typeof raw.cursor === 'string' ? raw.cursor : undefined,
+    };
+  };
+
   /**
    * GET /v1/activities
    */
@@ -118,24 +139,28 @@ export function createRouter(deps: ApiDeps): Router {
       if (!ctx || !ctx.principal) {
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
+      res.status(200).json(await activityService.listActivities(ctx, listQuery(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
 
-      const rawSubjectType = typeof req.query.subjectType === 'string' ? req.query.subjectType : undefined;
-      const subjectType =
-        rawSubjectType && SUBJECT_TYPES.includes(rawSubjectType as SubjectType)
-          ? (rawSubjectType as SubjectType)
-          : undefined;
-      const subjectId = typeof req.query.subjectId === 'string' ? req.query.subjectId : undefined;
-      const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
-
-      const result = await activityService.listActivities(ctx, {
-        subjectType,
-        subjectId,
-        limit,
-        cursor,
-      });
-
-      res.status(200).json(result);
+  /**
+   * API-ACT-003: GET /v1/timeline — the subject's timeline. The subject is required.
+   */
+  router.get('/timeline', async (req, res, next) => {
+    try {
+      const ctx = req.ctx as RequestContext | undefined;
+      if (!ctx || !ctx.principal) {
+        throw AppError.of('UNAUTHENTICATED', 'Authentication required');
+      }
+      const filter = listQuery(req);
+      if (!filter.subjectType || !filter.subjectId) {
+        throw AppError.of('VALIDATION_ERROR', 'subjectType and subjectId are required.', [
+          { field: filter.subjectType ? 'subjectId' : 'subjectType', issue: 'REQUIRED' },
+        ]);
+      }
+      res.status(200).json(await activityService.listActivities(ctx, filter));
     } catch (err) {
       next(err);
     }

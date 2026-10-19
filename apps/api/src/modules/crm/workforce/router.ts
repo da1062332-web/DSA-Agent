@@ -30,7 +30,11 @@ export function createRouter(deps: ApiDeps): Router {
         throw AppError.of('VALIDATION_ERROR', 'Invalid availability status', toDetails(parsed.error.issues));
       }
 
+      // API-USR-009: If-Match is required, so a stale screen cannot overwrite a newer change to the profile.
       const ifMatch = req.header('If-Match');
+      if (!ifMatch) {
+        throw AppError.of('VALIDATION_ERROR', 'If-Match header is required.', [{ field: 'If-Match', issue: 'REQUIRED' }]);
+      }
       const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         return service.updateMyAvailability(tx, ctx, ifMatch, parsed.data.availability);
       });

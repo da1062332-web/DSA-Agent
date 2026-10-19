@@ -89,7 +89,7 @@ export const StatementQuerySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'toDate must be YYYY-MM-DD')
     .optional(),
-  limit: z.coerce.number().int().min(1).max(500).default(100),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
 });
 export type StatementQuery = z.infer<typeof StatementQuerySchema>;
 

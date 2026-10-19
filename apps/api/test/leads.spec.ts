@@ -1,6 +1,6 @@
 // apps/api/test/leads.spec.ts — owner: Dev 5 (MOD-04 Leads test suite)
 import type { RequestContext, Tx, TxRunner } from '@dsa/contracts';
-import { FakeUserDirectoryPort } from '@dsa/contracts/fakes';
+import { FakeApplicationPort, FakeDecisionPort, FakeTaskPort, FakeUserDirectoryPort } from '@dsa/contracts/fakes';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryLeadRepository } from '../src/modules/crm/leads/repository';
@@ -14,6 +14,10 @@ const inMemoryTxRunner: TxRunner = {
 
 describe('Module 7 — Leads (MOD-LEAD)', () => {
   let repository: InMemoryLeadRepository;
+  let applicationPort: FakeApplicationPort;
+  let decisionPort: FakeDecisionPort;
+  let taskPort: FakeTaskPort;
+  let directory: FakeUserDirectoryPort;
 
   const tenantA = 'ten_01JTESTTENANTA0000000000000';
   const tenantB = 'ten_01JTESTTENANTB0000000000000';
@@ -44,6 +48,19 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
 
   beforeEach(() => {
     repository = new InMemoryLeadRepository();
+    applicationPort = new FakeApplicationPort();
+    decisionPort = new FakeDecisionPort();
+    taskPort = new FakeTaskPort();
+    directory = new FakeUserDirectoryPort();
+    for (const userId of ['usr_new_owner_01', 'usr_01JROUTEDUSER000000000001']) {
+      directory.users.set(userId, {
+        userId,
+        status: 'ACTIVE',
+        availability: 'AVAILABLE',
+        primaryBranchId: 'br_blr_01',
+        branchIds: ['br_blr_01'],
+      });
+    }
   });
 
   function getApp(principal = principalA, userDirectoryPort?: FakeUserDirectoryPort) {
@@ -52,7 +69,10 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       deps: {
         txRunner: inMemoryTxRunner,
         leadRepository: repository,
-        userDirectoryPort,
+        applicationPort,
+        decisionPort,
+        taskPort,
+        userDirectoryPort: userDirectoryPort ?? directory,
       },
     });
   }
@@ -535,30 +555,23 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       expect(customer?.party_type).toBe('INDIVIDUAL');
       expect(repository.contactPoints.size).toBeGreaterThanOrEqual(1);
 
-      // 3. Verify Loan Application
-      const application = repository.applications.get(res.body.applicationId);
-      expect(application).not.toBeUndefined();
-      expect(application?.status).toBe('DRAFT');
-      expect(application?.customer_id).toBe(res.body.customerId);
-      expect(application?.lead_id).toBe(leadId);
-      expect(application?.requested_amount).toBe('450000.00');
+      // 3. The application is created through the applications module's port, never by leads directly
+      expect(applicationPort.commands).toHaveLength(1);
+      const command = applicationPort.commands[0];
+      expect(command?.leadId).toBe(leadId);
+      expect(command?.customerId).toBe(res.body.customerId);
+      expect(command?.requestedAmount).toEqual({ amount: '450000.00', currency: 'INR' });
+      expect(command?.partyType).toBe('INDIVIDUAL');
 
-      // 4. Verify Application Party link
-      expect(repository.applicationParties.size).toBe(1);
-      const party = Array.from(repository.applicationParties.values())[0];
-      expect(party?.role).toBe('PRIMARY');
-      expect(party?.customer_id).toBe(res.body.customerId);
-
-      // 5. Verify status history (T-LEAD-07)
+      // 4. Verify status history (T-LEAD-07)
       expect(
         repository.statusHistories.some((h) => h.lead_id === leadId && h.transition_code === 'T-LEAD-07'),
       ).toBe(true);
 
-      // 6. Verify Outbox events (lead.converted + application.created)
+      // 5. Verify the lead.converted outbox event (application.created is emitted by the applications module)
       expect(repository.outboxEvents.some((e) => e.event_type === 'lead.converted')).toBe(true);
-      expect(repository.outboxEvents.some((e) => e.event_type === 'application.created')).toBe(true);
 
-      // 7. Verify Audit event
+      // 6. Verify Audit event
       expect(repository.auditEvents.some((e) => e.action === 'lead.converted')).toBe(true);
     });
 
@@ -584,7 +597,7 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       expect(replay.body.customerId).toBe(first.body.customerId);
       expect(replay.body.applicationId).toBe(first.body.applicationId);
       expect(repository.customers.size).toBe(1);
-      expect(repository.applications.size).toBe(1);
+      expect(applicationPort.commands).toHaveLength(1);
     });
 
     it('TC-LEAD-022 rejects conversion of non-qualified lead with 409 INVALID_STATE', async () => {
@@ -828,6 +841,49 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       // Subject does not exist for non-existent or other tenant lead
       const existsNonExistent = await subjectPort.exists({} as Tx, 'LEAD', 'lead_nonexistent');
       expect(existsNonExistent).toBe(false);
+    });
+  });
+  describe('TEST-LEAD-AUD-2026-10-19: routing, first-contact task and conversion wiring', () => {
+    it('TEST-LEAD-AUD-01 routes a new lead through DK-lead.assignment and records the decision', async () => {
+      decisionPort.defaultOutputs['DK-lead.assignment'] = {
+        pool: { userId: 'usr_01JROUTEDUSER000000000001' },
+        strategy: 'SPECIFIC_USER',
+        reasonText: 'Rule picked the PL specialist',
+      };
+      const res = await request(getApp()).post('/v1/leads').set('Idempotency-Key', 'route_01').send(validLeadPayload);
+      expect(res.status).toBe(201);
+      expect(decisionPort.decisions.map((d) => d.decisionKey)).toContain('DK-lead.assignment');
+      const saved = await repository.findLeadById({} as Tx, tenantA, res.body.id);
+      expect(saved?.owner_user_id).toBe('usr_01JROUTEDUSER000000000001');
+      expect(saved?.last_routing_decision_id).toMatch(/^dr_/);
+    });
+
+    it('TEST-LEAD-AUD-02 creates the first-contact task in the same request, owned by the lead owner', async () => {
+      const res = await request(getApp()).post('/v1/leads').set('Idempotency-Key', 'first_task_01').send(validLeadPayload);
+      expect(res.status).toBe(201);
+      expect(taskPort.commands).toHaveLength(1);
+      expect(taskPort.commands[0]).toMatchObject({
+        type: 'CALL',
+        slaClass: 'CUSTOMER_FIRST_CONTACT',
+        owner: { userId: principalA.id },
+        linked: { type: 'LEAD', id: res.body.id },
+      });
+    });
+
+    it('TEST-LEAD-AUD-03 conversion fails closed (503) when no ApplicationPort is wired, and the lead stays QUALIFIED', async () => {
+      const app = getApp();
+      const { id, etag } = await createQualifiedLead(app);
+      const noPortApp = createTestApp({
+        auth: fakeAuth(principalA),
+        deps: { txRunner: inMemoryTxRunner, leadRepository: repository, decisionPort, taskPort },
+      });
+      const res = await request(noPortApp)
+        .post(`/v1/leads/${id}/conversion`)
+        .set('If-Match', etag)
+        .set('Idempotency-Key', 'conv_noport')
+        .send({});
+      expect(res.status).toBe(503);
+      expect(res.body.error.code).toBe('DEPENDENCY_UNAVAILABLE');
     });
   });
 });

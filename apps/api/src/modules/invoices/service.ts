@@ -220,7 +220,7 @@ export class InvoiceService {
   }
 
   /**
-   * API-LED-004 & API-CPT-004: GET /v1/connectors/:id/statements
+   * SUB-INV.02 GET /v1/connectors/:id/invoice-statements and API-CPT-004 GET /v1/portal/connectors/:id/statements
    * Generates periodic statement derived from ENT-081 ledger_entry and ENT-078 commission_payable
    */
   async generateConnectorStatement(

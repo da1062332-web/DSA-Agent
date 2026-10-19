@@ -108,6 +108,89 @@ export class LeadService {
   }
 
   /**
+   * SUB-LEAD.05 routing for a new lead. With the rule engine, DK-lead.assignment picks the pool and strategy (its default
+   * output sends the lead to the branch UNASSIGNED queue). Without it, the branch INTAKE queue is used with round-robin.
+   * A branch without the queue it needs leaves the lead with the creator. Only that expected refusal is handled here;
+   * a database error propagates, because the transaction can no longer be used.
+   */
+  private async routeNewLead(
+    tx: Tx,
+    ctx: RequestContext,
+    input: CreateLeadInput,
+  ): Promise<{ ownerUserId: string | null; ownerQueueId: string | null; decisionRecordId: string | null }> {
+    const directory = this.deps.userDirectoryPort;
+    const queueOf = async (kind: 'INTAKE' | 'UNASSIGNED'): Promise<string | null> => {
+      if (!directory) return null;
+      try {
+        return (await directory.findBranchQueue(tx, input.branchId, kind)).queueId;
+      } catch (err) {
+        if (err instanceof AppError && (err.code === 'INVALID_STATE' || err.code === 'NOT_FOUND')) return null;
+        throw err;
+      }
+    };
+    const roundRobin = async (queueId: string) => (directory ? await directory.pickRoundRobin(tx, queueId) : null);
+
+    if (this.deps.decisionPort) {
+      const local = new Date(ctx.now.getTime() + 330 * 60_000); // IST, the tenants' business timezone
+      const weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+      const decision = await this.deps.decisionPort.decide(tx, ctx, {
+        decisionKey: 'DK-lead.assignment',
+        scope: { branchId: input.branchId },
+        subject: { type: 'LEAD', id: 'new' },
+        facts: {
+          lead: {
+            branch_id: input.branchId,
+            product_category: input.productCategory,
+            source: input.source,
+            indicative_amount: input.indicativeAmount ?? undefined,
+            pincode: input.pincode ?? undefined,
+          },
+          context: { local_hour: local.getUTCHours(), local_weekday: weekdays[local.getUTCDay()]! },
+        },
+        evaluationTime: ctx.now.toISOString(),
+        idempotencyKey: `lead_route:${ctx.correlationId}`,
+      });
+      const out = decision.outputs;
+      if (out) {
+        const pool = out.pool;
+        if ('userId' in pool) {
+          const user = directory ? await directory.getUser(tx, pool.userId) : null;
+          if (!directory || (user && user.status === 'ACTIVE')) {
+            return { ownerUserId: pool.userId, ownerQueueId: null, decisionRecordId: decision.decisionRecordId };
+          }
+        } else {
+          const queueId = 'queueId' in pool ? pool.queueId : ((await queueOf('UNASSIGNED')) ?? (await queueOf('INTAKE')));
+          if (queueId) {
+            const picked = out.strategy === 'ROUND_ROBIN' ? await roundRobin(queueId) : null;
+            return picked
+              ? { ownerUserId: picked.userId, ownerQueueId: null, decisionRecordId: decision.decisionRecordId }
+              : { ownerUserId: null, ownerQueueId: queueId, decisionRecordId: decision.decisionRecordId };
+          }
+        }
+      }
+      return { ownerUserId: ctx.principal.id, ownerQueueId: null, decisionRecordId: decision.decisionRecordId };
+    }
+
+    const intake = await queueOf('INTAKE');
+    if (intake) {
+      const picked = await roundRobin(intake);
+      return picked
+        ? { ownerUserId: picked.userId, ownerQueueId: null, decisionRecordId: null }
+        : { ownerUserId: null, ownerQueueId: intake, decisionRecordId: null };
+    }
+    return { ownerUserId: ctx.principal.id, ownerQueueId: null, decisionRecordId: null };
+  }
+
+  /** A first-contact task needs an owner who can hold tasks: a user, or an active queue whose record types include TASK. */
+  private async canOwnTasks(tx: Tx, lead: LeadRow): Promise<boolean> {
+    if (lead.owner_user_id) return true;
+    if (!lead.owner_queue_id) return false;
+    if (!this.deps.userDirectoryPort) return true;
+    const queue = await this.deps.userDirectoryPort.getQueue(tx, lead.owner_queue_id);
+    return Boolean(queue && queue.active && queue.recordTypes.includes('TASK'));
+  }
+
+  /**
    * API-LEAD-001: Create Lead
    */
   async createLead(
@@ -178,8 +261,10 @@ export class LeadService {
     let duplicateFlag: MaskedLeadResource['duplicateFlag'] = 'NONE';
     const duplicateCandidateIds: string[] = [];
 
+    let duplicateDecisionId: string | null = null;
     if (this.deps.decisionPort) {
-      try {
+      // decide() never throws for business outcomes; a throw means the transaction is unusable, so it propagates.
+      {
         const decision = await this.deps.decisionPort.decide(tx, ctx, {
           decisionKey: 'DK-lead.duplicate',
           scope: { branchId: input.branchId },
@@ -203,12 +288,11 @@ export class LeadService {
           evaluationTime: ctx.now.toISOString(),
           idempotencyKey: `lead_dup:${idempotencyKey}`,
         });
+        duplicateDecisionId = decision.decisionRecordId;
         if (decision.outputs?.classification) {
           duplicateFlag = decision.outputs.classification;
           for (const m of existingMatches) duplicateCandidateIds.push(m.id);
         }
-      } catch {
-        // Fallback duplicate evaluation
       }
     }
 
@@ -227,23 +311,15 @@ export class LeadService {
     let ownerQueueId: string | null = null;
 
     // Check if user has OWN scope grant exclusively
+    let routingDecisionId: string | null = null;
     const isOwnOnly = ctx.principal.grants.every((g) => g.code !== 'lead.create' || g.scope === 'OWN');
     if (isOwnOnly) {
       ownerUserId = ctx.principal.id;
-    } else if (this.deps.userDirectoryPort) {
-      try {
-        const branchQueue = await this.deps.userDirectoryPort.findBranchQueue(tx, input.branchId, 'INTAKE');
-        if (branchQueue?.queueId) {
-          ownerQueueId = branchQueue.queueId;
-          const rrPick = await this.deps.userDirectoryPort.pickRoundRobin(tx, branchQueue.queueId);
-          if (rrPick?.userId) {
-            ownerUserId = rrPick.userId;
-            ownerQueueId = null;
-          }
-        }
-      } catch {
-        ownerUserId = ctx.principal.id;
-      }
+    } else {
+      const routed = await this.routeNewLead(tx, ctx, input);
+      ownerUserId = routed.ownerUserId;
+      ownerQueueId = routed.ownerQueueId;
+      routingDecisionId = routed.decisionRecordId;
     }
 
     // Default fallback to ensure owner_present constraint
@@ -286,8 +362,8 @@ export class LeadService {
       application_id: null,
       duplicate_flag: duplicateFlag,
       duplicate_candidate_ids: duplicateCandidateIds,
-      last_duplicate_decision_id: null,
-      last_routing_decision_id: null,
+      last_duplicate_decision_id: duplicateDecisionId,
+      last_routing_decision_id: routingDecisionId,
       contact_attempts: 0,
       tags: input.tags ?? [],
       next_follow_up_at: null,
@@ -395,27 +471,21 @@ export class LeadService {
       occurred_at: now,
     });
 
-    // 5b. First contact task generation (TASK-110 / Workflow A)
-    if (this.deps.taskPort && (leadRow.owner_user_id || leadRow.owner_queue_id)) {
-      try {
-        await this.deps.taskPort.createTask(tx, ctx, {
-          type: 'CALL',
-          title: `First contact: ${leadRow.full_name}`,
-          owner: leadRow.owner_user_id
-            ? { userId: leadRow.owner_user_id }
-            : { queueId: leadRow.owner_queue_id! },
-          linked: {
-            type: 'LEAD',
-            id: leadId,
-            branchId: leadRow.branch_id,
-          },
-          priority: 'MEDIUM',
-          slaClass: 'CUSTOMER_FIRST_CONTACT',
-          idempotencyKey: `lead_${leadId}:first-contact`,
-        });
-      } catch {
-        // Non-blocking if task/SLA resolution unavailable in unit testing
-      }
+    // 5b. First contact task generation (TASK-110 / Workflow A), in the same transaction as the lead.
+    if (this.deps.taskPort && (await this.canOwnTasks(tx, leadRow))) {
+      await this.deps.taskPort.createTask(tx, ctx, {
+        type: 'CALL',
+        title: `First contact: ${leadRow.full_name}`,
+        owner: leadRow.owner_user_id ? { userId: leadRow.owner_user_id } : { queueId: leadRow.owner_queue_id! },
+        linked: {
+          type: 'LEAD',
+          id: leadId,
+          branchId: leadRow.branch_id,
+        },
+        priority: 'MEDIUM',
+        slaClass: 'CUSTOMER_FIRST_CONTACT',
+        idempotencyKey: `lead_${leadId}:first-contact`,
+      });
     }
 
     // 6. Save Idempotency
@@ -989,76 +1059,28 @@ export class LeadService {
       }
     }
 
-    // 2. Application creation
-    let applicationId: string;
+    // 2. Application creation, through the applications module (Contracts §4.3). Leads never write loan_application rows.
+    if (!this.deps.applicationPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Applications cannot be created right now, so the lead was not converted.');
+    }
     const salesOwnerId = lead.owner_user_id ?? ctx.principal.id;
     const partyType = lead.qual_applicant_type === 'NON_INDIVIDUAL' ? 'ENTITY' : 'INDIVIDUAL';
-
-    if (this.deps.applicationPort) {
-      const appDraft = await this.deps.applicationPort.createDraftFromConversion(tx, ctx, {
-        leadId: lead.id,
-        customerId,
-        branchId: lead.branch_id,
-        partyType,
-        productCategory: lead.product_category,
-        requestedAmount: {
-          amount: lead.qual_requested_amount,
-          currency: lead.amount_currency,
-        },
-        tenureMonths: lead.qual_tenure_months ?? undefined,
-        purposeCode: (lead.qual_purpose_code as 'PERSONAL_NEEDS' | 'OTHER') ?? undefined,
-        applicantType: lead.qual_applicant_type,
-        salesOwnerUserId: salesOwnerId,
-      });
-      applicationId = appDraft.applicationId;
-    } else {
-      applicationId = this.nextId('app');
-      await this.deps.repository.insertLoanApplication(tx, {
-        id: applicationId,
-        tenant_id: tenantId,
-        branch_id: lead.branch_id,
-        customer_id: customerId,
-        lead_id: lead.id,
-        product_category: lead.product_category,
-        requested_amount: lead.qual_requested_amount,
+    const appDraft = await this.deps.applicationPort.createDraftFromConversion(tx, ctx, {
+      leadId: lead.id,
+      customerId,
+      branchId: lead.branch_id,
+      partyType,
+      productCategory: lead.product_category,
+      requestedAmount: {
+        amount: lead.qual_requested_amount,
         currency: lead.amount_currency,
-        tenure_months: lead.qual_tenure_months,
-        purpose_code: lead.qual_purpose_code,
-        applicant_type: lead.qual_applicant_type,
-        status: 'DRAFT',
-        sales_owner_id: salesOwnerId,
-        lock_version: 0,
-        created_at: now,
-        created_by: ctx.principal.id,
-        updated_at: now,
-        updated_by: ctx.principal.id,
-      });
-
-      // Application Party (PRIMARY)
-      await this.deps.repository.insertApplicationParty(tx, {
-        id: this.nextId('pty'),
-        tenant_id: tenantId,
-        application_id: applicationId,
-        customer_id: customerId,
-        role: 'PRIMARY',
-        party_type: partyType,
-        created_at: now,
-        created_by: ctx.principal.id,
-      });
-
-      // Application Status History
-      await this.deps.repository.insertApplicationStatusHistory(tx, {
-        id: this.nextId('ash'),
-        tenant_id: tenantId,
-        application_id: applicationId,
-        from_status: null,
-        to_status: 'DRAFT',
-        transition_code: 'CREATE',
-        reason_code: 'CONVERSION',
-        actor: ctx.principal.id,
-        occurred_at: now,
-      });
-    }
+      },
+      tenureMonths: lead.qual_tenure_months ?? undefined,
+      purposeCode: (lead.qual_purpose_code as 'PERSONAL_NEEDS' | 'OTHER') ?? undefined,
+      applicantType: lead.qual_applicant_type,
+      salesOwnerUserId: salesOwnerId,
+    });
+    const applicationId = appDraft.applicationId;
 
     // 3. Update Lead to CONVERTED
     const updatedLead = await this.deps.repository.updateLead(tx, tenantId, id, expectedLockVersion, {
@@ -1102,22 +1124,6 @@ export class LeadService {
       created_at: now,
     });
 
-    await this.deps.repository.insertOutboxEvent(tx, {
-      id: this.nextId('evt'),
-      tenant_id: tenantId,
-      event_type: 'application.created',
-      event_version: 1,
-      subject_type: 'LOAN_APPLICATION',
-      subject_id: applicationId,
-      payload: {
-        applicationId,
-        customerId,
-        leadId: id,
-      },
-      correlation_id: ctx.correlationId,
-      chain_depth: 0,
-      created_at: now,
-    });
 
     // 6. Audit event
     await this.deps.repository.insertAuditEvent(tx, {

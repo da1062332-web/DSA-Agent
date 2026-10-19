@@ -288,6 +288,58 @@ export function createMockPlatformStore() {
   const handleQuery = (sqlText: string, params: readonly unknown[]): QueryResult<any> => {
     const sqlLower = sqlText.toLowerCase();
 
+    // 0. List users query (checked first: its role subquery would match the assignment branches below): tenant, then optional status, branch, search (3 LIKE params), cursor (k, id), then the limit.
+    if (sqlLower.includes('from app.app_user u') && sqlLower.includes('order by u.created_at desc')) {
+      let i = 0;
+      const tid = params[i++] as string;
+      const status = sqlLower.includes('and u.status =') ? (params[i++] as string) : undefined;
+      const branch = sqlLower.includes('and u.primary_branch_id =') ? (params[i++] as string) : undefined;
+      let like: string | undefined;
+      if (sqlLower.includes('like')) {
+        like = String(params[i]).replace(/^%|%$/g, '').toLowerCase();
+        i += sqlLower.includes('u.mobile_e164 like') ? 3 : 1;
+      }
+      const after = sqlLower.includes('(u.created_at, u.id) <')
+        ? { k: new Date(String(params[i++])).getTime(), id: String(params[i++]) }
+        : undefined;
+      const limit = Number(params[i++]);
+      const matching = users
+        .filter((x) => x.tenant_id === tid)
+        .filter((x) => !status || x.status === status)
+        .filter((x) => !branch || x.primary_branch_id === branch)
+        .filter(
+          (x) =>
+            !like ||
+            x.display_name.toLowerCase().includes(like) ||
+            x.email.toLowerCase().includes(like) ||
+            (x.mobile_e164 ?? '').includes(like),
+        )
+        .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id))
+        .filter(
+          (x) =>
+            !after ||
+            x.created_at.getTime() < after.k ||
+            (x.created_at.getTime() === after.k && x.id.localeCompare(after.id) < 0),
+        )
+        .slice(0, limit)
+        .map((u) => ({
+          id: u.id,
+          tenant_id: u.tenant_id,
+          email: u.email,
+          mobile_e164: u.mobile_e164,
+          display_name: u.display_name,
+          user_type: u.user_type,
+          status: u.status,
+          availability: u.availability,
+          primary_branch_id: u.primary_branch_id,
+          lock_version: u.lock_version,
+          created_at: u.created_at,
+          updated_at: u.updated_at,
+          assigned_roles: u.assigned_roles,
+        }));
+      return { rows: matching };
+    }
+
     // 1. SELECT branches list
     if (
       sqlLower.includes('from app.branch') &&
@@ -840,29 +892,6 @@ export function createMockPlatformStore() {
       };
     }
 
-    // 17. List users query (GROUP BY u.id ...)
-    if (sqlLower.includes('from app.app_user') && sqlLower.includes('group by u.id')) {
-      const tid = params[0] as string;
-      const matching = users
-        .filter((x) => x.tenant_id === tid)
-        .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id))
-        .map((u) => ({
-          id: u.id,
-          tenant_id: u.tenant_id,
-          email: u.email,
-          mobile_e164: u.mobile_e164,
-          display_name: u.display_name,
-          user_type: u.user_type,
-          status: u.status,
-          availability: u.availability,
-          primary_branch_id: u.primary_branch_id,
-          lock_version: u.lock_version,
-          created_at: u.created_at,
-          updated_at: u.updated_at,
-          assigned_roles: u.assigned_roles,
-        }));
-      return { rows: matching };
-    }
 
     return { rows: [] };
   };

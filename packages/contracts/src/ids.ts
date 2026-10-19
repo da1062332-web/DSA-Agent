@@ -106,6 +106,8 @@ export const ID_PREFIXES = [
   'acc',
   'jrn',
   'ent',
+  // MOD-DOC checklist items (SUB-DOC.02, ENT-048).
+  'chk',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
