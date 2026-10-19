@@ -1,5 +1,5 @@
 // apps/api/src/modules/crm/leads/repository.ts — owner: Dev 5 (ENT-020 persistence)
-import type { Tx } from '@dsa/contracts';
+import { AppError, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApplicantType, DuplicateFlag, LeadPriority, LeadState, ProductCategory } from './types';
 
@@ -122,50 +122,6 @@ export interface CustomerContactPointRow {
   created_by: string;
 }
 
-export interface LoanApplicationRow {
-  id: string;
-  tenant_id: string;
-  branch_id: string;
-  customer_id: string;
-  lead_id: string | null;
-  product_category: ProductCategory;
-  requested_amount: string;
-  currency: string;
-  tenure_months: number | null;
-  purpose_code: string | null;
-  applicant_type: ApplicantType;
-  status: 'DRAFT';
-  sales_owner_id: string;
-  lock_version: number;
-  created_at: Date;
-  created_by: string;
-  updated_at: Date;
-  updated_by: string;
-}
-
-export interface ApplicationPartyRow {
-  id: string;
-  tenant_id: string;
-  application_id: string;
-  customer_id: string;
-  role: 'PRIMARY' | 'CO_APPLICANT' | 'GUARANTOR';
-  party_type: 'INDIVIDUAL' | 'ENTITY';
-  created_at: Date;
-  created_by: string;
-}
-
-export interface ApplicationStatusHistoryRow {
-  id: string;
-  tenant_id: string;
-  application_id: string;
-  from_status: string | null;
-  to_status: string;
-  transition_code: string;
-  reason_code?: string | null;
-  actor: string;
-  occurred_at?: Date;
-}
-
 export interface OutboxEventRow {
   id: string;
   tenant_id: string;
@@ -246,9 +202,6 @@ export interface LeadRepository {
   insertCustomer(tx: Tx, customer: CustomerRow): Promise<void>;
   findCustomerById(tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null>;
   insertCustomerContactPoint(tx: Tx, cp: CustomerContactPointRow): Promise<void>;
-  insertLoanApplication(tx: Tx, app: LoanApplicationRow): Promise<void>;
-  insertApplicationParty(tx: Tx, party: ApplicationPartyRow): Promise<void>;
-  insertApplicationStatusHistory(tx: Tx, ash: ApplicationStatusHistoryRow): Promise<void>;
   insertOutboxEvent(tx: Tx, event: OutboxEventRow): Promise<void>;
   insertAuditEvent(tx: Tx, audit: AuditEventRow): Promise<void>;
   getIdempotency(tx: Tx, tenantId: string, principalId: string, key: string): Promise<IdempotencyRow | null>;
@@ -263,8 +216,8 @@ export class SqlLeadRepository implements LeadRepository {
         id, tenant_id, branch_id, full_name, mobile_e164, mobile_hash, email, email_hash,
         product_category, indicative_amount, amount_currency, pincode, source, sub_source,
         campaign, utm, connector_id, state, owner_user_id, owner_queue_id, priority,
-        duplicate_flag, duplicate_candidate_ids, contact_attempts, tags, lock_version,
-        created_at, created_by, updated_at, updated_by
+        duplicate_flag, duplicate_candidate_ids, last_duplicate_decision_id, last_routing_decision_id,
+        contact_attempts, tags, lock_version, created_at, created_by, updated_at, updated_by
       ) VALUES (
         ${lead.id}, ${lead.tenant_id}, ${lead.branch_id}, ${lead.full_name}, ${lead.mobile_e164},
         ${lead.mobile_hash}, ${lead.email}, ${lead.email_hash}, ${lead.product_category},
@@ -272,6 +225,7 @@ export class SqlLeadRepository implements LeadRepository {
         ${lead.sub_source}, ${lead.campaign}, ${lead.utm ? JSON.stringify(lead.utm) : null}::jsonb,
         ${lead.connector_id}, ${lead.state}, ${lead.owner_user_id}, ${lead.owner_queue_id},
         ${lead.priority}, ${lead.duplicate_flag}, ${lead.duplicate_candidate_ids},
+        ${lead.last_duplicate_decision_id}, ${lead.last_routing_decision_id},
         ${lead.contact_attempts}, ${lead.tags}, ${lead.lock_version}, ${lead.created_at},
         ${lead.created_by}, ${lead.updated_at}, ${lead.updated_by}
       )
@@ -307,13 +261,18 @@ export class SqlLeadRepository implements LeadRepository {
     let cursorCreatedAt: string | null = null;
     let cursorId: string | null = null;
     if (params.cursor) {
+      let decoded: { k?: unknown; id?: unknown } | null = null;
       try {
-        const decoded = JSON.parse(Buffer.from(params.cursor, 'base64url').toString('utf8'));
-        cursorCreatedAt = decoded.k;
-        cursorId = decoded.id;
+        decoded = JSON.parse(Buffer.from(params.cursor, 'base64url').toString('utf8'));
       } catch {
-        // invalid cursor, ignore
+        decoded = null;
       }
+      if (!decoded || typeof decoded.k !== 'string' || typeof decoded.id !== 'string') {
+        // A malformed cursor is the caller's mistake: 422, never a silent restart at page one.
+        throw AppError.of('VALIDATION_ERROR', 'Invalid pagination cursor', [{ field: 'cursor', issue: 'INVALID_CURSOR' }]);
+      }
+      cursorCreatedAt = decoded.k;
+      cursorId = decoded.id;
     }
 
     const stateFilter = params.state ? params.state.split(',') : null;
@@ -499,45 +458,6 @@ export class SqlLeadRepository implements LeadRepository {
     `.execute(tx);
   }
 
-  async insertLoanApplication(tx: Tx, app: LoanApplicationRow): Promise<void> {
-    await sql`
-      INSERT INTO loan_application (
-        id, tenant_id, branch_id, customer_id, lead_id, product_category,
-        requested_amount, currency, tenure_months, purpose_code, applicant_type,
-        status, sales_owner_id, lock_version, created_at, created_by, updated_at, updated_by
-      ) VALUES (
-        ${app.id}, ${app.tenant_id}, ${app.branch_id}, ${app.customer_id}, ${app.lead_id},
-        ${app.product_category}, ${app.requested_amount}, ${app.currency}, ${app.tenure_months},
-        ${app.purpose_code}, ${app.applicant_type}, ${app.status}, ${app.sales_owner_id},
-        ${app.lock_version}, ${app.created_at}, ${app.created_by}, ${app.updated_at}, ${app.updated_by}
-      )
-    `.execute(tx);
-  }
-
-  async insertApplicationParty(tx: Tx, party: ApplicationPartyRow): Promise<void> {
-    await sql`
-      INSERT INTO application_party (
-        id, tenant_id, application_id, customer_id, role, party_type, created_at, created_by
-      ) VALUES (
-        ${party.id}, ${party.tenant_id}, ${party.application_id}, ${party.customer_id},
-        ${party.role}, ${party.party_type}, ${party.created_at}, ${party.created_by}
-      )
-    `.execute(tx);
-  }
-
-  async insertApplicationStatusHistory(tx: Tx, ash: ApplicationStatusHistoryRow): Promise<void> {
-    await sql`
-      INSERT INTO application_status_history (
-        id, tenant_id, application_id, from_status, to_status, transition_code,
-        reason_code, actor, occurred_at
-      ) VALUES (
-        ${ash.id}, ${ash.tenant_id}, ${ash.application_id}, ${ash.from_status},
-        ${ash.to_status}, ${ash.transition_code}, ${ash.reason_code ?? null},
-        ${ash.actor}, ${ash.occurred_at ?? new Date()}
-      )
-    `.execute(tx);
-  }
-
   async insertOutboxEvent(tx: Tx, event: OutboxEventRow): Promise<void> {
     await sql`
       INSERT INTO outbox_event (
@@ -605,9 +525,6 @@ export class InMemoryLeadRepository implements LeadRepository {
   readonly assignments: LeadAssignmentRow[] = [];
   readonly customers = new Map<string, CustomerRow>();
   readonly contactPoints = new Map<string, CustomerContactPointRow>();
-  readonly applications = new Map<string, LoanApplicationRow>();
-  readonly applicationParties = new Map<string, ApplicationPartyRow>();
-  readonly applicationStatusHistories: ApplicationStatusHistoryRow[] = [];
   readonly outboxEvents: OutboxEventRow[] = [];
   readonly auditEvents: AuditEventRow[] = [];
   readonly idempotencyRecords = new Map<string, IdempotencyRow>();
@@ -757,18 +674,6 @@ export class InMemoryLeadRepository implements LeadRepository {
 
   async insertCustomerContactPoint(_tx: Tx, cp: CustomerContactPointRow): Promise<void> {
     this.contactPoints.set(cp.id, { ...cp });
-  }
-
-  async insertLoanApplication(_tx: Tx, app: LoanApplicationRow): Promise<void> {
-    this.applications.set(app.id, { ...app });
-  }
-
-  async insertApplicationParty(_tx: Tx, party: ApplicationPartyRow): Promise<void> {
-    this.applicationParties.set(party.id, { ...party });
-  }
-
-  async insertApplicationStatusHistory(_tx: Tx, ash: ApplicationStatusHistoryRow): Promise<void> {
-    this.applicationStatusHistories.push({ ...ash });
   }
 
   async insertOutboxEvent(_tx: Tx, event: OutboxEventRow): Promise<void> {

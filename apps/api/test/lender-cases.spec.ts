@@ -1,6 +1,6 @@
 // apps/api/test/lender-cases.spec.ts — owner: Dev 4 (MOD-LCS Test Suite)
 import type { RequestContext, Tx, TxRunner } from '@dsa/contracts';
-import { FakeConsentPort, FakeTaskPort } from '@dsa/contracts/fakes';
+import { FakeApplicationPort, FakeConsentPort, FakeTaskPort } from '@dsa/contracts/fakes';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryLenderCaseRepository } from '../src/modules/origination/lender-cases/repository';
@@ -17,6 +17,7 @@ const inMemoryTxRunner: TxRunner = {
 describe('Module 18 — Lender Cases (MOD-LCS)', () => {
   let repository: InMemoryLenderCaseRepository;
   let consentPort: FakeConsentPort;
+  let applicationPort: FakeApplicationPort;
   let taskPort: FakeTaskPort;
 
   const tenantA = 'ten_01JTESTTENANTA0000000000000';
@@ -80,12 +81,32 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
     consentPort = new FakeConsentPort();
     taskPort = new FakeTaskPort();
 
-    // Seed active consent for customer
-    consentPort.consents.set('cnst_01JTESTCONSENT00000000001', {
-      consentId: 'cnst_01JTESTCONSENT00000000001',
-      customerId,
-      purpose: 'SHARE_WITH_LENDER',
-      status: 'ACTIVE',
+    // Seed active SHARE_WITH_LENDER consent for the customer, one per lender (purpose_target is the lender id)
+    for (const [n, lender] of [lenderId1, lenderId2, pausedLenderId].entries()) {
+      consentPort.consents.set(`cnst_01JTESTCONSENT0000000000${n}`, {
+        consentId: `cnst_01JTESTCONSENT0000000000${n}`,
+        customerId,
+        purpose: 'SHARE_WITH_LENDER',
+        purposeTarget: lender,
+        status: 'ACTIVE',
+      });
+    }
+
+    // Seed a complete checklist with one accepted, uploaded document
+    applicationPort = new FakeApplicationPort();
+    applicationPort.submissionDocuments.set(appId, {
+      complete: true,
+      documents: [
+        {
+          checklistItemId: 'chk_01JTESTCHK0000000000001',
+          partyId: 'pty_01JTESTPARTY000000000001',
+          documentTypeCode: 'PAN_CARD',
+          mandatory: true,
+          status: 'ACCEPTED',
+          documentId: 'doc_01JTESTDOC00000000000001',
+          sha256: 'a'.repeat(64),
+        },
+      ],
     });
 
     // Seed application
@@ -162,6 +183,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       deps: {
         txRunner: inMemoryTxRunner,
         consentPort,
+        applicationPort,
         taskPort,
         lenderCaseRepository: repository,
       } as any,
@@ -588,6 +610,96 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
       const appAfterResp = await repository.findApplication({} as Tx, tenantA, appId);
       expect(appAfterResp?.sub_status).toBeNull();
+    });
+  });
+
+  describe('TEST-LCS-AUD-2026-10-19: consent, completeness and the package manifest', () => {
+    async function newCase(app: ReturnType<typeof getApp>) {
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
+      return createRes.body.id as string;
+    }
+
+    it('TEST-LCS-AUD-01 fails closed with 503 when no ConsentPort is wired, and builds nothing', async () => {
+      const app = createTestApp({
+        auth: fakeAuth(principalA),
+        deps: { txRunner: inMemoryTxRunner, applicationPort, taskPort, lenderCaseRepository: repository } as any,
+      });
+      const caseId = await newCase(app);
+      const pkgRes = await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      expect(pkgRes.status).toBe(503);
+      expect(pkgRes.body.error.code).toBe('DEPENDENCY_UNAVAILABLE');
+      expect(repository.packages.size).toBe(0);
+    });
+
+    it('TEST-LCS-AUD-02 a consent for another lender does not allow sharing with this one', async () => {
+      for (const [key, c] of consentPort.consents) if (c.purposeTarget === lenderId1) consentPort.consents.delete(key);
+      const app = getApp();
+      const caseId = await newCase(app);
+      const pkgRes = await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      expect(pkgRes.status).toBe(422);
+      expect(pkgRes.body.error.code).toBe('CONSENT_REQUIRED');
+    });
+
+    it('TEST-LCS-AUD-03 refuses a package while a mandatory document is outstanding (422 COMPLETENESS_FAILED)', async () => {
+      applicationPort.submissionDocuments.set(appId, {
+        complete: false,
+        documents: [
+          {
+            checklistItemId: 'chk_01JTESTCHK0000000000002',
+            partyId: 'pty_01JTESTPARTY000000000001',
+            documentTypeCode: 'BANK_STATEMENT',
+            mandatory: true,
+            status: 'PENDING',
+            documentId: null,
+            sha256: null,
+          },
+        ],
+      });
+      const app = getApp();
+      const caseId = await newCase(app);
+      const pkgRes = await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      expect(pkgRes.status).toBe(422);
+      expect(pkgRes.body.error.code).toBe('COMPLETENESS_FAILED');
+      expect(pkgRes.body.error.details[0].meta.checklistItemId).toBe('chk_01JTESTCHK0000000000002');
+    });
+
+    it('TEST-LCS-AUD-04 the manifest carries the real document hashes, and no S3 field is recorded as shared', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      const pkg = [...repository.packages.values()][0]!;
+      const manifest = pkg.manifest as { documents: { sha256: string; checklistItemId: string }[] };
+      expect(manifest.documents).toEqual([
+        expect.objectContaining({ checklistItemId: 'chk_01JTESTCHK0000000000001', sha256: 'a'.repeat(64) }),
+      ]);
+      expect(JSON.stringify(pkg.manifest)).not.toContain('dummy');
+      expect(pkg.consent_ids).toEqual(['cnst_01JTESTCONSENT00000000000']);
+
+      await request(app).post(`/v1/lender-cases/${caseId}/submission`).send({ channel: 'PORTAL' });
+      const dsr = [...repository.dataSharingRecords.values()][0]!;
+      expect(dsr.items.fields).not.toContain('pan');
+      expect(dsr.items.checklistItemIds).toEqual(['chk_01JTESTCHK0000000000001']);
+      expect(dsr.consent_ids).toEqual(['cnst_01JTESTCONSENT00000000000']);
+    });
+
+    it('TEST-LCS-AUD-05 a lender query can be answered once; the response package uses the real consent', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      await request(app).post(`/v1/lender-cases/${caseId}/submission`).send({ channel: 'PORTAL' });
+      const queryRes = await request(app)
+        .post(`/v1/lender-cases/${caseId}/queries`)
+        .send({ text: 'Latest salary slip please', requestedItems: ['SALARY_SLIP'] });
+      const queryId = queryRes.body.query.id;
+      const answer = { text: 'Uploaded', documentReferences: ['doc_01JTESTDOC00000000000002'] };
+
+      const first = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
+      expect(first.status).toBe(200);
+      const responsePkg = [...repository.packages.values()].find((p) => p.kind === 'QUERY_RESPONSE')!;
+      expect(responsePkg.consent_ids).toEqual(['cnst_01JTESTCONSENT00000000000']);
+
+      const second = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
+      expect(second.status).toBe(409);
     });
   });
 

@@ -1,4 +1,4 @@
--- Verify migration 0066 (per-tenant feature flag overrides). Read-only. Expect every row PASS.
+-- Verify migration 0068 (per-tenant feature flag overrides). Read-only. Expect every row PASS.
 SELECT 'app.tenant_feature_flag exists with row-level security enabled and forced' AS check,
        CASE WHEN EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('app.tenant_feature_flag') AND relrowsecurity AND relforcerowsecurity)
             THEN 'PASS' ELSE 'FAIL' END AS result

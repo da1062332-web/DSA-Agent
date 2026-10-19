@@ -6,6 +6,7 @@
 import {
   PLATFORM_TENANT_ID,
   type AuditEventInput,
+  type PermissionCode,
   type PlatformTenantSummary,
   type RequestContext,
   type Tx,
@@ -17,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { errorHandler } from '../src/http/error-handler';
 import { PlatformAdminService } from '../src/modules/platform-admin/platform-admin-service';
 import { InMemoryPlatformStore } from '../src/modules/platform-admin/platform-store';
-import { createRouter } from '../src/modules/platform-admin/router';
+import { createPlatformRouter, createRouter } from '../src/modules/platform-admin/router';
 import { createTestDeps, fakeAuth, testPrincipal } from './support/fake-auth';
 
 const tenant = (id: string, slug: string): PlatformTenantSummary => ({
@@ -36,12 +37,12 @@ const tenant = (id: string, slug: string): PlatformTenantSummary => ({
   entitlements: [],
 });
 
-const grant = (code: string) => ({ code, scope: 'TENANT' as const, branchIds: [] });
+const grant = (code: PermissionCode) => ({ code, scope: 'TENANT' as const, branchIds: [] });
 
 const operator = testPrincipal({
   id: 'usr_operator_01',
   tenantId: PLATFORM_TENANT_ID,
-  grants: ['platform.console', 'platform.flags'].map(grant),
+  grants: (['platform.console', 'platform.flags'] as const).map(grant),
 });
 /** A support operator: may look at a tenant, may not touch flags. */
 const supportOnly = testPrincipal({
@@ -53,7 +54,7 @@ const supportOnly = testPrincipal({
 const tenantAdminWithPlatformCodes = testPrincipal({
   id: 'usr_tenant_admin_98',
   tenantId: 'ten_alpha',
-  grants: ['platform.console', 'platform.flags', 'config.manage'].map(grant),
+  grants: (['platform.console', 'platform.flags', 'config.manage'] as const).map(grant),
 });
 const salesUser = testPrincipal({ id: 'usr_sales_01', tenantId: 'ten_alpha', grants: [grant('lead.read')] });
 
@@ -81,7 +82,8 @@ function setup(principal = operator) {
     const app = express();
     app.use(express.json());
     app.use(fakeAuth(p));
-    app.use(createRouter(deps, service));
+    app.use('/platform', createPlatformRouter(deps, service));
+    app.use('/v1', createRouter(deps, service));
     app.use(errorHandler());
     return app;
   };
@@ -288,7 +290,10 @@ describe('TEST-TFLAG per-tenant feature flags', () => {
     // No session at all.
     const anonymous = express();
     anonymous.use(express.json());
-    anonymous.use(createRouter(createTestDeps({}), new PlatformAdminService(createTestDeps({}), store)));
+    anonymous.use(
+      '/platform',
+      createPlatformRouter(createTestDeps({}), new PlatformAdminService(createTestDeps({}), store)),
+    );
     anonymous.use(errorHandler());
     for (const call of calls) expect((await send(anonymous, call)).status, call[1]).toBe(401);
 

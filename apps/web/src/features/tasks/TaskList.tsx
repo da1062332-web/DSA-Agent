@@ -169,7 +169,7 @@ export function TaskList(): React.ReactElement {
   const handleCompleteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
-    const etag = `W/"${selectedTask.id}:${selectedTask.lockVersion}"`;
+    const etag = `"${selectedTask.lockVersion}"`;
     completeMutation.mutate({
       id: selectedTask.id,
       etag,

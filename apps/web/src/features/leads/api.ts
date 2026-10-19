@@ -1,7 +1,6 @@
+import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
 import type { ConversionResponse, CreateLeadPayload, LeadListResponse, LeadResource } from './types';
-import { getStoredAuthToken } from '../../auth/token';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
 export class ApiError extends Error {
   constructor(
@@ -15,59 +14,25 @@ export class ApiError extends Error {
   }
 }
 
+// Goes through the shared client (api/client.ts): the Supabase session token, no-store, the step-up (TOTP) dialog and the
+// error envelope. Errors are re-thrown as this feature's ApiError so the screens keep their handling.
 async function request<T>(
   path: string,
   options: RequestInit & { ifMatch?: string; idempotencyKey?: string } = {},
 ): Promise<{ data: T; etag?: string }> {
-  const headers = new Headers(options.headers || {});
-  headers.set('Accept', 'application/json');
-
-  if (options.body && typeof options.body === 'string') {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  if (options.ifMatch) {
-    headers.set('If-Match', options.ifMatch);
-  }
-
-  if (options.idempotencyKey) {
-    headers.set('Idempotency-Key', options.idempotencyKey);
-  }
-
-  const token = getStoredAuthToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const url = `${API_BASE_URL}${path}`;
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  const etag = response.headers.get('ETag') || undefined;
-
-  if (!response.ok) {
-    let errCode = 'UNKNOWN_ERROR';
-    let errMessage = `HTTP error ${response.status}`;
-    let errDetails: unknown[] = [];
-
-    try {
-      const errBody = await response.json();
-      if (errBody?.error) {
-        errCode = errBody.error.code || errCode;
-        errMessage = errBody.error.message || errMessage;
-        errDetails = errBody.error.details || [];
-      }
-    } catch {
-      // ignore JSON parse error
+  try {
+    return await apiRequest<T>(path, {
+      method: (options.method ?? 'GET') as ApiRequest['method'],
+      body: typeof options.body === 'string' ? options.body : undefined,
+      ifMatch: options.ifMatch,
+      idempotencyKey: options.idempotencyKey,
+    });
+  } catch (err) {
+    if (err instanceof SharedApiError) {
+      throw new ApiError(err.code, err.message, err.httpStatus, err.details);
     }
-
-    throw new ApiError(errCode, errMessage, response.status, errDetails);
+    throw err;
   }
-
-  const data = (await response.json()) as T;
-  return { data, etag };
 }
 
 export async function fetchLeads(params: {

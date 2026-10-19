@@ -1,6 +1,6 @@
 # Per-tenant feature flags in the platform console
 
-Status: **implemented and tested locally; migration 0066 NOT applied to hosted; nothing pushed.** Owner: Platform squad (Module 1 / MOD-ADM, SUB-ADM.02).
+Status: **implemented and tested locally; migration 0068 NOT applied to hosted; nothing pushed.** Owner: Platform squad (Module 1 / MOD-ADM, SUB-ADM.02).
 
 ## What was missing
 
@@ -14,7 +14,7 @@ Reading the code turned up three more things:
 
 ## Design
 
-- **Migration 0066** adds `app.tenant_feature_flag (tenant_id, key, scope='TENANT', value, lock_version, updated_at, updated_by)`. Primary key `(tenant_id, key)`; foreign key `(key, scope)` → `feature_flag`, so only a flag that is *defined* with scope TENANT can be overridden (a GLOBAL flag or a typo is refused by the database).
+- **migration 0068** adds `app.tenant_feature_flag (tenant_id, key, scope='TENANT', value, lock_version, updated_at, updated_by)`. Primary key `(tenant_id, key)`; foreign key `(key, scope)` → `feature_flag`, so only a flag that is *defined* with scope TENANT can be overridden (a GLOBAL flag or a typo is refused by the database).
 - `feature_flag` itself is **unchanged** (no column, key, policy or grant). The `TENANT` row there is the platform-wide default; a tenant's row in the new table overrides it. GLOBAL flags have no override.
 - Row-level security (forced): the platform realm reads and writes everything; a customer tenant reads **its own rows only** and can never write. `dsa_app` has no DELETE (NFR-SEC-003), so "back to default" means setting the override equal to the default.
 - The tenant is in the **URL path** and the body may contain only `value` (strict schema), so a call made for one tenant cannot name a scope or another tenant, and cannot reach a GLOBAL flag or the default. The tenant routes write the new table only.
@@ -38,21 +38,21 @@ Errors: unknown tenant or the platform tenant → 404; GLOBAL or unknown flag on
 
 ## Deploy order (this matters)
 
-**Apply 0066 before the API code is deployed.** Until it is applied on a database:
+**Apply 0068 before the API code is deployed.** Until it is applied on a database:
 
 - `GET /platform/v1/tenants/:tenantId`, the directory and every GLOBAL flag route keep working (they do not read the new table);
 - the two tenant **flag** routes fail with a server error (missing table), and the tenant page's Feature Flags tab shows "The tenant flags could not be loaded".
 
-Hosted does not have 0066. The prepared steps, **all yours to run after you approve** (nothing here has been run against hosted):
+Hosted does not have 0068. The prepared steps, **all yours to run after you approve** (nothing here has been run against hosted):
 
 ```
-node tools/sql/make-apply-run.mjs supabase/migrations/20261001000066_tenant_feature_flag_overrides.sql ~/dsa-backups/66/
-npx supabase db query --linked -f ~/dsa-backups/66/apply-run.sql      # WRITES TO HOSTED
-npx supabase db query --linked -f tools/sql/0066/verify.sql           # read-only; every row PASS
-npx supabase db query --linked -f tools/sql/0066/rollback.sql         # only to back out; refuses while overrides exist
+node tools/sql/make-apply-run.mjs supabase/migrations/20261001000068_tenant_feature_flag_overrides.sql ~/dsa-backups/68/
+npx supabase db query --linked -f ~/dsa-backups/68/apply-run.sql      # WRITES TO HOSTED
+npx supabase db query --linked -f tools/sql/0068/verify.sql           # read-only; every row PASS
+npx supabase db query --linked -f tools/sql/0068/rollback.sql         # only to back out; refuses while overrides exist
 ```
 
-0066 creates one new table and touches no existing one; it is idempotent. Rollback drops the table and refuses while any override exists (those rows are operator decisions). It was not added to the hosted batch runbook (`tools/sql/batch`), which describes a batch that is already applied.
+0068 creates one new table and touches no existing one; it is idempotent. Rollback drops the table and refuses while any override exists (those rows are operator decisions). It was not added to the hosted batch runbook (`tools/sql/batch`), which describes a batch that is already applied.
 
 ## Tests
 
@@ -61,7 +61,7 @@ npx supabase db query --linked -f tools/sql/0066/rollback.sql         # only to 
 | `apps/api/test/platform-tenant-flags.spec.ts` (7) | tenant selection and 404, TENANT-only listing, update changes that tenant only, global-vs-tenant separation, body cannot choose scope/tenant, If-Match required / stale 409 / current wins, refusals (tenant admin with platform codes, tenant user, support-only, anonymous) |
 | `apps/api/test/platform-tenant-flags.int.spec.ts` (5, real PostgreSQL) | the same on real tables, `feature_flag` byte-for-byte unchanged, survives a restart, foreign key and check refuse a GLOBAL flag, customer tenant sees only its rows and cannot write or delete as the API role, verify/rollback scripts |
 | `apps/web/src/features/platform-admin/TenantDetailPage.spec.tsx` (10) | routes, a link per directory row, overview and flags rendering, every call carries the tenant id in the path with only `{value}` and `If-Match`, empty tenant id refused before sending, API refusals reach the screen |
-| `platform-realm-ops.int.spec.ts` | its pre-0050 base now also leaves out 0066 (it needs the platform realm), as it already did for 0061 |
+| `platform-realm-ops.int.spec.ts` | its pre-0050 base now also leaves out 0068 (it needs the platform realm), as it already did for 0061 |
 
 ## Known limits
 

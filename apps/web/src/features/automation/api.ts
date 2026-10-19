@@ -38,15 +38,17 @@ export async function getAutomation(
   return apiFetch<{ definition: AutomationDefinition; version?: AutomationVersion }>(`/v1/automations/${id}`);
 }
 
+/** PATCH /v1/automations/{id}: If-Match carries the definition's lockVersion; the updated definition comes back bare. */
 export async function updateAutomation(
   id: string,
   patch: { name?: string; description?: string; status?: string },
+  lockVersion: number,
 ): Promise<AutomationDefinition> {
-  const res = await apiFetch<{ definition: AutomationDefinition }>(`/v1/automations/${id}`, {
+  return apiFetch<AutomationDefinition>(`/v1/automations/${id}`, {
     method: 'PATCH',
     body: patch,
+    version: lockVersion,
   });
-  return res.definition;
 }
 
 export async function listAutomationVersions(id: string): Promise<AutomationVersion[]> {
@@ -58,22 +60,24 @@ export async function createAutomationVersion(
   id: string,
   input: CreateAutomationVersionInput,
 ): Promise<AutomationVersion> {
-  const res = await apiFetch<{ version: AutomationVersion }>(`/v1/automations/${id}/versions`, {
+  return apiFetch<AutomationVersion>(`/v1/automations/${id}/versions`, {
     method: 'POST',
     body: input,
   });
-  return res.version;
 }
 
 export async function reviewAutomationVersion(
   id: string,
   versionId: string,
   input: ReviewVersionActionInput,
-): Promise<{ version: AutomationVersion }> {
-  return apiFetch<{ version: AutomationVersion }>(`/v1/automations/${id}/versions/${versionId}/review`, {
-    method: 'POST',
-    body: input,
-  });
+): Promise<{ version: AutomationVersion; definition?: AutomationDefinition }> {
+  return apiFetch<{ version: AutomationVersion; definition?: AutomationDefinition }>(
+    `/v1/automations/${id}/versions/${versionId}/review`,
+    {
+      method: 'POST',
+      body: input,
+    },
+  );
 }
 
 export async function executeAutomation(

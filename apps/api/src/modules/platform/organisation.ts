@@ -1,24 +1,13 @@
 // MOD-TEN read model and MOD-ORG organisation (owner: Dev 1).
-// API-TEN (caller's tenant, read-only) · API-ORG-001 GET /v1/organisations · API-ORG-002 PATCH /v1/organisations/{id}.
-// /v1/tenant: any signed-in user. Organisations (read and write): config.manage — the profile is S2/S3 data.
+// API-ORG-001 GET /v1/organisations · API-ORG-002 PATCH /v1/organisations/{id}. GET /v1/tenant is served by router.ts.
+// Organisations (read and write): config.manage — the profile is S2/S3 data.
 import { AppError } from '@dsa/contracts';
 import type { Router } from 'express';
 import { sql } from 'kysely';
 import { ifMatchVersion, requireCtx, sendResource } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { iso, loadForUpdate, updateVersioned, type Row } from './db';
-import { OrganisationPatch, type Organisation, type Tenant } from './schemas';
-
-const toTenant = (r: Row): Tenant => ({
-  id: String(r.id),
-  slug: String(r.slug),
-  legalName: String(r.legal_name),
-  tenantType: String(r.tenant_type),
-  dataRegion: String(r.data_region),
-  timezone: String(r.timezone),
-  status: String(r.status),
-  createdAt: iso(r.created_at),
-});
+import { OrganisationPatch, type Organisation } from './schemas';
 
 const toOrganisation = (r: Row): Organisation => ({
   id: String(r.id),
@@ -31,16 +20,6 @@ const toOrganisation = (r: Row): Organisation => ({
 });
 
 export function registerOrganisationRoutes(router: Router, deps: ApiDeps): void {
-  router.get('/tenant', async (req, res) => {
-    const ctx = requireCtx(req);
-    const tenant = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<Row>`select * from tenant where id = ${ctx.principal.tenantId}`.execute(tx);
-      return r.rows[0];
-    });
-    if (!tenant) throw AppError.of('NOT_FOUND', 'Tenant not found.');
-    res.json(toTenant(tenant));
-  });
-
   router.get('/organisations', async (req, res) => {
     const ctx = requireCtx(req);
     deps.authz.requirePermission(ctx, 'config.manage');

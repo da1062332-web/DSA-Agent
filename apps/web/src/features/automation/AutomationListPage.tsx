@@ -318,7 +318,7 @@ export function AutomationListPage() {
                   <MenuItem value="ALL">All Statuses</MenuItem>
                   <MenuItem value="ACTIVE">ACTIVE</MenuItem>
                   <MenuItem value="DRAFT">DRAFT</MenuItem>
-                  <MenuItem value="DISABLED">DISABLED</MenuItem>
+                  <MenuItem value="INACTIVE">INACTIVE</MenuItem>
                   <MenuItem value="SUSPENDED">SUSPENDED</MenuItem>
                 </Select>
               </FormControl>

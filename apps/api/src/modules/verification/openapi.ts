@@ -22,7 +22,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'get',
-    path: '/v1/verifications',
+    path: '/v1/verification-requests',
     operationId: 'API-VRF-001',
     summary: 'List verification requests with filtering and cursor pagination',
     tags: [TAG],
@@ -51,7 +51,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'get',
-    path: '/v1/verifications/{id}',
+    path: '/v1/verification-requests/{id}',
     operationId: 'API-VRF-002',
     summary: 'Get verification request details',
     tags: [TAG],
@@ -72,7 +72,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'post',
-    path: '/v1/verifications',
+    path: '/v1/verification-requests',
     operationId: 'API-VRF-003',
     summary: 'Initiate a new verification request',
     tags: [TAG],
@@ -93,7 +93,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'patch',
-    path: '/v1/verifications/{id}',
+    path: '/v1/verification-requests/{id}',
     operationId: 'API-VRF-004',
     summary: 'Update verification request (assign verifier, schedule, notes)',
     tags: [TAG],
@@ -118,7 +118,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'post',
-    path: '/v1/verifications/{id}/complete',
+    path: '/v1/verification-requests/{id}/complete',
     operationId: 'API-VRF-005',
     summary: 'Complete verification case (verdict and findings)',
     tags: [TAG],
@@ -141,7 +141,7 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'post',
-    path: '/v1/verifications/{id}/checklist-review',
+    path: '/v1/verification-requests/{id}/checklist-review',
     operationId: 'API-VRF-006',
     summary: 'Review and attest a document checklist item',
     tags: [TAG],

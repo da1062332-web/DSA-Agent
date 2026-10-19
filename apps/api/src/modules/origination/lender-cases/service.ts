@@ -3,6 +3,7 @@ import {
   AppError,
   isValidLenderCaseTransition,
   type BuildPackageInput,
+  type ApplicationPort,
   type ConsentPort,
   type CreateLenderCaseInput,
   type LenderCaseResource,
@@ -32,12 +33,34 @@ export function newId(prefix: string): string {
 
 export interface LenderCaseServiceDeps {
   repository: LenderCaseRepository;
+  /** Required for packages and submissions; without it they fail closed (503), never share without consent. */
   consentPort?: ConsentPort;
+  /** Required for packages: the checklist and document hashes come from the applications module (MOD-DOC). */
+  applicationPort?: ApplicationPort;
   taskPort?: TaskPort;
 }
 
+/** Fields that leave the DSA in a lender package. No S3 data (PAN, Aadhaar, DOB, bank details) in the MVP. */
+const SHARED_FIELDS = ['applicant_name', 'requested_amount', 'product_category'];
+
 export class LenderCaseService {
   constructor(private readonly deps: LenderCaseServiceDeps) {}
+
+  /** FR-PRV: data goes to a lender only under an ACTIVE SHARE_WITH_LENDER consent naming that lender. */
+  private async requireShareConsent(tx: Tx, customerId: string, lenderId: string): Promise<string> {
+    if (!this.deps.consentPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Consent cannot be checked, so nothing is shared with the lender.');
+    }
+    const active = await this.deps.consentPort.findActive(tx, {
+      customerId,
+      purpose: 'SHARE_WITH_LENDER',
+      purposeTarget: lenderId,
+    });
+    if (!active) {
+      throw AppError.of('CONSENT_REQUIRED', 'Active SHARE_WITH_LENDER consent for this lender is required.');
+    }
+    return active.consentId;
+  }
 
   private requirePermission(ctx: RequestContext, code: PermissionCode): void {
     const { principal } = ctx;
@@ -399,21 +422,26 @@ export class LenderCaseService {
       throw AppError.of('NOT_FOUND', `Application '${row.application_id}' not found.`);
     }
     this.checkBranchScope(ctx, 'lender_case.submit', app.branch_id);
+    const consentId = await this.requireShareConsent(tx, app.customer_id, row.lender_id);
 
-    // Validate SHARE_WITH_LENDER consent
-    let consentId = 'cnst_active_lead';
-    if (this.deps.consentPort) {
-      const activeConsent = await this.deps.consentPort.findActive(tx, {
-        customerId: app.customer_id,
-        purpose: 'SHARE_WITH_LENDER',
-      });
-      if (!activeConsent) {
-        throw AppError.of(
-          'CONSENT_REQUIRED',
-          'Active SHARE_WITH_LENDER consent is required to build submission package.',
-        );
-      }
-      consentId = activeConsent.consentId;
+    if (!this.deps.applicationPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The document checklist is not available to build the package.');
+    }
+    const checklist = await this.deps.applicationPort.getSubmissionDocuments(tx, ctx, row.application_id);
+    const waived = new Set(input.waivers);
+    const outstanding = checklist.documents.filter(
+      (d) => d.mandatory && !['ACCEPTED', 'WAIVED', 'NOT_APPLICABLE'].includes(d.status) && !waived.has(d.documentTypeCode) && !waived.has(d.checklistItemId),
+    );
+    if (checklist.documents.length === 0 || outstanding.length > 0) {
+      throw AppError.of(
+        'COMPLETENESS_FAILED',
+        'Mandatory documents are still outstanding.',
+        outstanding.map((d) => ({
+          field: 'checklist',
+          issue: 'DOCUMENT_OUTSTANDING',
+          meta: { checklistItemId: d.checklistItemId, documentTypeCode: d.documentTypeCode, status: d.status },
+        })),
+      );
     }
 
     const now = ctx.now ?? new Date();
@@ -422,10 +450,14 @@ export class LenderCaseService {
       lenderId: row.lender_id,
       productVersionId: row.product_version_id,
       attemptNo: row.attempt_no,
-      documentVersions: [
-        { type: 'PAN', versionId: 'ver_01', hash: 'sha256_dummy_pan_verification' },
-        { type: 'INCOME_PROOF', versionId: 'ver_02', hash: 'sha256_dummy_income_statement' },
-      ],
+      documents: checklist.documents
+        .filter((d) => d.documentId !== null)
+        .map((d) => ({
+          checklistItemId: d.checklistItemId,
+          documentTypeCode: d.documentTypeCode,
+          documentId: d.documentId,
+          sha256: d.sha256,
+        })),
       waivers: [...input.waivers],
       builtAt: now.toISOString(),
     };
@@ -526,21 +558,8 @@ export class LenderCaseService {
     }
     this.checkBranchScope(ctx, 'lender_case.submit', app.branch_id);
 
-    // Revalidate consent at submission time!
-    let consentId = pkg.consent_ids[0] ?? 'cnst_active';
-    if (this.deps.consentPort) {
-      const activeConsent = await this.deps.consentPort.findActive(tx, {
-        customerId: app.customer_id,
-        purpose: 'SHARE_WITH_LENDER',
-      });
-      if (!activeConsent) {
-        throw AppError.of(
-          'CONSENT_REQUIRED',
-          'Consent SHARE_WITH_LENDER is no longer active at submission time.',
-        );
-      }
-      consentId = activeConsent.consentId;
-    }
+    // Consent is checked again at submission: it may have been withdrawn since the package was built.
+    const consentId = await this.requireShareConsent(tx, app.customer_id, row.lender_id);
 
     // Revalidate lender and empanelment
     const lender = await this.deps.repository.findLender(tx, tenantId, row.lender_id);
@@ -582,7 +601,12 @@ export class LenderCaseService {
       recipient_id: row.lender_id,
       purpose: 'LENDER_SUBMISSION',
       consent_ids: [consentId],
-      items: { fields: ['applicant_name', 'requested_amount', 'pan'], checklistItemIds: [] },
+      items: {
+        fields: [...SHARED_FIELDS],
+        checklistItemIds: ((pkg.manifest as { documents?: { checklistItemId: string }[] }).documents ?? []).map(
+          (d) => d.checklistItemId,
+        ),
+      },
       channel: input.channel,
       source_ref: pkg.id,
       actor_id: ctx.principal.id,
@@ -1008,6 +1032,9 @@ export class LenderCaseService {
     if (!query) {
       throw AppError.of('NOT_FOUND', `Lender query '${queryId}' not found.`);
     }
+    if (query.responded_at) {
+      throw AppError.of('INVALID_STATE', 'This lender query has already been answered.');
+    }
 
     const row = await this.deps.repository.findCaseByIdForUpdate(tx, tenantId, query.lender_case_id);
     if (!row) {
@@ -1019,9 +1046,12 @@ export class LenderCaseService {
     }
 
     const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
-    if (app) {
-      this.checkBranchScope(ctx, 'lender_case.update_status', app.branch_id);
+    if (!app) {
+      throw AppError.of('NOT_FOUND', `Application '${row.application_id}' not found.`);
     }
+    this.checkBranchScope(ctx, 'lender_case.update_status', app.branch_id);
+    // The response goes to the same lender, so it needs the same consent, checked again now.
+    const consentId = await this.requireShareConsent(tx, app.customer_id, row.lender_id);
 
     const now = ctx.now ?? new Date();
 
@@ -1042,7 +1072,7 @@ export class LenderCaseService {
       kind: 'QUERY_RESPONSE',
       manifest,
       manifest_sha256: manifestSha256,
-      consent_ids: ['cnst_active'],
+      consent_ids: [consentId],
       built_by: ctx.principal.id,
       built_at: now,
       frozen_at: now,

@@ -364,14 +364,19 @@ describe('Module 12: Notifications (MOD-NTF) Unit & Route Tests', () => {
   });
 
   describe('SUB-NTF.02: Notification Preferences & Profile API (API-USR-009 & API-USR-010)', () => {
-    it('gets current profile with default preferences and ETag', async () => {
+    it('gets current profile with default preferences and version', async () => {
+      // GET /v1/me is served by the platform module (API-USR-010); this module only owns the preference part.
       const app = makeApp(testPrincipal({ id: userA, tenantId: tenantA }));
+      expect((await request(app).get('/v1/me')).status).toBe(404);
 
-      const res = await request(app).get('/v1/me');
-      expect(res.status).toBe(200);
-      expect(res.headers['etag']).toBe('"0"');
-      expect(res.body.id).toBe(userA);
-      expect(res.body.notificationPreferences).toEqual({
+      const { profile, lockVersion } = await notificationService.getProfile({
+        principal: testPrincipal({ id: userA, tenantId: tenantA }),
+        correlationId: 'corr_profile',
+        now: new Date(),
+      });
+      expect(lockVersion).toBe(0);
+      expect(profile.id).toBe(userA);
+      expect(profile.notificationPreferences).toEqual({
         channels: {
           inApp: true,
           email: false,

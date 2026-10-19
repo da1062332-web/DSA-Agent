@@ -1,4 +1,4 @@
--- Migration: 20261001000066_tenant_feature_flag_overrides.sql
+-- Migration: 20261001000068_tenant_feature_flag_overrides.sql
 -- Module 1 / 30 (MOD-ADM, SUB-ADM.02): per-tenant feature flag overrides (owner: Platform squad)
 --
 -- app.feature_flag is keyed by (key, scope) and has no tenant column, so a TENANT-scoped flag could only ever be ONE row shared by every

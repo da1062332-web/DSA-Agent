@@ -78,7 +78,7 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // API-LED-002: GET /ledger/journals
+  // API-LED-003: GET /ledger/journals
   router.get('/ledger/journals', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
@@ -140,7 +140,7 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // API-LED-003: POST /ledger/periods/:period/close
+  // API-LED-006: POST /ledger/periods/:period/close
   router.post('/ledger/periods/:period/close', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
@@ -185,7 +185,7 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // API-LED-004: GET /ledger/accounts/:id/balance
+  // API-LED-002: GET /ledger/accounts/:id/balance
   router.get('/ledger/accounts/:id/balance', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
@@ -204,7 +204,7 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // API-LED-005: GET /connectors/:id/statements
+  // API-LED-004: GET /connectors/:id/statements
   router.get('/connectors/:id/statements', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
@@ -226,7 +226,7 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // API-LED-006: POST /ledger/exports
+  // API-LED-005: POST /ledger/exports
   router.post('/ledger/exports', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);

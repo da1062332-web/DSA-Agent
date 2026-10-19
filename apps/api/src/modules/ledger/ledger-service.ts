@@ -366,7 +366,7 @@ export class LedgerService {
     return { data: journals, nextCursor };
   }
 
-  // --- Period Close (API-LED-003) ---
+  // --- Period Close (API-LED-006) ---
 
   async closePeriod(
     tx: Tx,

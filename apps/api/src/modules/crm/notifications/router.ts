@@ -106,26 +106,6 @@ export function createRouter(
   });
 
   /**
-   * API-USR-010: Get current authenticated user profile
-   * GET /v1/me
-   */
-  router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = req.ctx as RequestContext | undefined;
-      if (!ctx || !ctx.principal) {
-        throw AppError.of('UNAUTHENTICATED', 'Authentication required');
-      }
-
-      const { profile, lockVersion } = await notificationService.getProfile(ctx);
-
-      res.setHeader('ETag', `"${lockVersion}"`);
-      res.status(200).json(profile);
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  /**
    * API-USR-009: Update user profile preferences (with If-Match concurrency)
    * PATCH /v1/me
    */
@@ -136,9 +116,16 @@ export function createRouter(
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
 
+      // API-USR-009 is one resource. Preferences are handled here; availability by the workforce module (next handler).
+      // A body with both would lose one of them, so it is refused rather than half-applied.
       const hasPref = Boolean(req.body?.notificationPreferences || req.body?.preferences);
       if (!hasPref) {
         return next();
+      }
+      if (req.body && 'availability' in req.body) {
+        throw AppError.of('VALIDATION_ERROR', 'Update preferences and availability in separate requests.', [
+          { field: 'availability', issue: 'NOT_ALLOWED_WITH_PREFERENCES' },
+        ]);
       }
 
       const ifMatch = req.get('If-Match');

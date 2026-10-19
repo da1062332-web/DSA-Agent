@@ -1,6 +1,6 @@
 // apps/web/src/features/platform-admin/TenantDetailPage.tsx
 // One tenant, opened from a row of the Tenants directory in the platform console: its overview and its own feature flags.
-// The tenant id comes from the URL and is passed on every call; the flags written here are this tenant's overrides only (migration 0066),
+// The tenant id comes from the URL and is passed on every call; the flags written here are this tenant's overrides only (migration 0068),
 // never the platform-wide flags on the Feature Flags tab of the console.
 import React, { useState } from 'react';
 import {

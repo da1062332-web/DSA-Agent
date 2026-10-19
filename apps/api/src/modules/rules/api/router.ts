@@ -678,7 +678,13 @@ export function createRouter(deps: ApiDeps): Router {
         const decisionKey = paramStr(req.params.decisionKey) as DecisionKey;
 
         const body = EvaluateDecisionRequestSchema.parse(req.body);
-        const idempotencyKey = (req.header('Idempotency-Key') || nextUlid()).trim();
+        // Idempotency-Key is required (Contracts §5): a made-up key would make every retry a new decision record.
+        const idempotencyKey = req.header('Idempotency-Key')?.trim();
+        if (!idempotencyKey || !/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
+          throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header (8–128 chars, A-Z a-z 0-9 _ -) is required.', [
+            { field: 'Idempotency-Key', issue: 'REQUIRED' },
+          ]);
+        }
 
         if (!decisionEngine) {
           throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Decision engine port is not configured.');

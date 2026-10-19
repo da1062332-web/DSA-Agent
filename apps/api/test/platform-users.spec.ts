@@ -46,15 +46,18 @@ describe('Module 4: Users (User Management API)', () => {
     expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });
 
-  it('TEST-USR-007 requires user.manage permission to list users', async () => {
+  it('TEST-USR-007 without user.manage, the list is the picker projection: no contact data and no roles', async () => {
     const store = createMockPlatformStore();
     const app = createTestApp({
       auth: fakeAuth(staffPrincipalWithoutManage),
       deps: { txRunner: store.runner },
     });
     const res = await request(app).get('/v1/users');
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBeGreaterThan(0);
+    for (const u of res.body.data) {
+      expect(Object.keys(u).sort()).toEqual(['availability', 'displayName', 'id', 'primaryBranchId', 'status']);
+    }
   });
 
   it('TEST-USR-001 lists users for tenant with search, filtering, and pagination', async () => {
@@ -88,6 +91,22 @@ describe('Module 4: Users (User Management API)', () => {
     expect(pagedRes.status).toBe(200);
     expect(pagedRes.body.data.length).toBe(1);
     expect(pagedRes.body.meta.nextCursor).not.toBeNull();
+
+    // The next page continues after the cursor
+    const page2 = await request(app).get(`/v1/users?limit=1&cursor=${pagedRes.body.meta.nextCursor}`);
+    expect(page2.body.data.length).toBe(1);
+    expect(page2.body.data[0].id).not.toBe(pagedRes.body.data[0].id);
+
+    // Lists mask email and mobile (Contracts §12); the full values are only on GET /v1/users/:id
+    for (const u of res.body.data) {
+      expect(u.email).toBeUndefined();
+      expect(u.mobileE164).toBeUndefined();
+      expect(u.emailMasked).toMatch(/\*\*\*/);
+    }
+
+    // A malformed cursor or limit is a 422, not page one
+    expect((await request(app).get('/v1/users?cursor=not-a-cursor')).status).toBe(422);
+    expect((await request(app).get('/v1/users?limit=abc')).status).toBe(422);
   });
 
   it('TEST-USR-002 views user details with ETag header and allows self-view', async () => {

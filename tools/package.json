@@ -11,6 +11,7 @@
     "provision:platform-admin": "tsx --env-file-if-exists=../apps/api/.env provision-platform-admin.ts",
     "test-token": "tsx --env-file-if-exists=../apps/api/.env test-token.ts",
     "gen:registry-sql": "tsx gen-registry-sql.ts",
+    "check:migrations": "tsx check-migrations-immutable.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },

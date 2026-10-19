@@ -179,12 +179,12 @@ describe('TEST-SEC-001 coverage registry (non-Docker isolation coverage)', () =>
     // ── Ledger Management (MOD-LED) ────────────────────────────────────────
     // API-LED-001 — covered by ledger.spec.ts
     // API-LED-001-CREATE — covered by ledger.spec.ts
-    // API-LED-002 — covered by ledger.spec.ts
-    // API-LED-002-POST — covered by ledger.spec.ts
     // API-LED-003 — covered by ledger.spec.ts
+    // API-LED-003-POST — covered by ledger.spec.ts
+    // API-LED-006 — covered by ledger.spec.ts
+    // API-LED-002 — covered by ledger.spec.ts
     // API-LED-004 — covered by ledger.spec.ts
     // API-LED-005 — covered by ledger.spec.ts
-    // API-LED-006 — covered by ledger.spec.ts
     // ── API Clients (MOD-API / MOD-DEV) ───────────────────────────────────
     // get /v1/api-clients — covered by partner-api.spec.ts
     // post /v1/api-clients — covered by partner-api.spec.ts

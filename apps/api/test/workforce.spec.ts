@@ -120,7 +120,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows signed-in user to toggle their own availability via PATCH /v1/me/availability', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app).patch('/v1/me/availability').send({ availability: 'BUSY' });
+      const res = await request(app).patch('/v1/me/availability').set('If-Match', '"0"').send({ availability: 'BUSY' });
 
       expect(res.status).toBe(200);
       expect(res.body.availability).toBe('BUSY');
@@ -136,7 +136,7 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('allows signed-in user to toggle their own availability via PATCH /v1/me', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app).patch('/v1/me').send({ availability: 'ON_LEAVE' });
+      const res = await request(app).patch('/v1/me').set('If-Match', '"0"').send({ availability: 'ON_LEAVE' });
 
       expect(res.status).toBe(200);
       expect(res.body.availability).toBe('ON_LEAVE');
@@ -145,10 +145,26 @@ describe('Module 26 — Workforce (MOD-WRK)', () => {
     it('rejects invalid availability status with 422 validation error', async () => {
       const app = getApp(userAgentA1);
 
-      const res = await request(app).patch('/v1/me/availability').send({ availability: 'SLEEPING' });
+      const res = await request(app).patch('/v1/me/availability').set('If-Match', '"0"').send({ availability: 'SLEEPING' });
 
       expect(res.status).toBe(422);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('TEST-WRK-AUD-01 availability changes require If-Match (API-USR-009)', async () => {
+      const res = await request(getApp(userAgentA1)).patch('/v1/me/availability').send({ availability: 'BUSY' });
+      expect(res.status).toBe(422);
+      expect(res.body.error.details[0].field).toBe('If-Match');
+    });
+
+    it('TEST-WRK-AUD-02 a PATCH /v1/me mixing preferences and availability is refused, not half-applied', async () => {
+      const res = await request(getApp(userAgentA1))
+        .patch('/v1/me')
+        .set('If-Match', '"0"')
+        .send({ availability: 'BUSY', notificationPreferences: { channels: { IN_APP: true } } });
+      expect(res.status).toBe(422);
+      const user = await repository.findUserById({} as any, tenantA, userAgentA1.id);
+      expect(user?.lock_version).toBe(0);
     });
 
     it('honours optimistic concurrency via If-Match header', async () => {

@@ -115,7 +115,8 @@ export function WorkforcePage() {
 
   // 2. Mutations
   const availabilityMutation = useMutation({
-    mutationFn: (newStatus: AvailabilityStatus) => updateMyAvailability(newStatus),
+    mutationFn: (newStatus: AvailabilityStatus) =>
+      updateMyAvailability(newStatus, me?.lockVersion !== undefined ? `"${me.lockVersion}"` : undefined),
     onMutate: (newStatus) => {
       setOptimisticAvailability(newStatus);
     },

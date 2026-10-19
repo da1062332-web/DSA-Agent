@@ -30,6 +30,33 @@ export interface CreateDraftFromConversionCommand {
   salesOwnerUserId: string;
 }
 
+export type ChecklistItemStatus =
+  | 'PENDING'
+  | 'SUBMITTED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'WAIVED'
+  | 'NOT_APPLICABLE'
+  | 'EXPIRED';
+
+/** One checklist row as a lender submission package sees it (MOD-DOC SUB-DOC.02, ENT-048). */
+export interface SubmissionDocument {
+  checklistItemId: string;
+  partyId: string;
+  documentTypeCode: string;
+  mandatory: boolean;
+  status: ChecklistItemStatus;
+  documentId: string | null;
+  /** sha256 of the stored document file; null when nothing is uploaded for the item. */
+  sha256: string | null;
+}
+
+export interface SubmissionDocuments {
+  /** Every mandatory item is ACCEPTED, WAIVED or NOT_APPLICABLE, and the checklist is not empty. */
+  complete: boolean;
+  documents: SubmissionDocument[];
+}
+
 export interface ApplicationPort {
   /** Inside caller tx (FR-LEAD-015 atomic conversion). Creates loan_application DRAFT + PRIMARY application_party
    *  + status history + application.created event + audit. Throws VALIDATION_ERROR on invalid input. */
@@ -38,4 +65,8 @@ export interface ApplicationPort {
     ctx: RequestContext,
     cmd: CreateDraftFromConversionCommand,
   ): Promise<{ applicationId: string; status: 'DRAFT' }>;
+
+  /** Inside caller tx. The application's checklist and stored document hashes, for lender packages (MOD-LCS).
+   *  Added 2026-10-19 (additive, Contracts §15). NOT_FOUND when the application is not visible in the tenant. */
+  getSubmissionDocuments(tx: Tx, ctx: RequestContext, applicationId: string): Promise<SubmissionDocuments>;
 }

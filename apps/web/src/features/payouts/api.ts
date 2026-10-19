@@ -1,6 +1,4 @@
-import { apiFetch } from '../../api/client';
-import { readConfig } from '../../config';
-import { getSupabase } from '../../auth/supabase';
+import { apiDownload, apiFetch } from '../../api/client';
 import type {
   ApprovePayoutRequestInput,
   CreatePayoutBatchInput,
@@ -86,29 +84,7 @@ export async function createPayoutBatch(input: CreatePayoutBatchInput): Promise<
 }
 
 export async function downloadBankFile(batchId: string): Promise<void> {
-  const config = readConfig();
-  if (!config.success) throw new Error('Web configuration invalid.');
-  const { data } = await getSupabase().auth.getSession();
-  const token = data.session?.access_token;
-
-  const url = `${config.data.VITE_API_BASE_URL}/v1/payout-batches/${batchId}/bank-file`;
-  const res = await fetch(url, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to download bank file (${res.status})`);
-  }
-  const blob = await res.blob();
-  const blobUrl = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = `payout_batch_${batchId}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(blobUrl);
+  await apiDownload(`/v1/payout-batches/${encodeURIComponent(batchId)}/bank-file`, `payout_batch_${batchId}.csv`);
 }
 
 // Automated Direct Net-Banking / Payment Gateway Integration (MOD-PAY / TASK-418)

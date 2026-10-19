@@ -128,9 +128,10 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   // ==========================================
-  // API-LED-004: GET /v1/connectors/:id/statements — Connector Statement
+  // SUB-INV.02: GET /v1/connectors/:id/invoice-statements — connector statement built from invoices.
+  // GET /v1/connectors/:id/statements (API-LED-004) is the ledger's: the spec derives it from ledger_entry (MOD-LED).
   // ==========================================
-  router.get('/connectors/:id/statements', async (req: Request, res: Response, next: NextFunction) => {
+  router.get('/connectors/:id/invoice-statements', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = requireCtx(req);
       const connectorId = String(req.params.id);

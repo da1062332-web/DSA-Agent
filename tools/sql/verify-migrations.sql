@@ -10,14 +10,15 @@ WHERE n.nspname = 'app' AND c.relkind = 'r'
   AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
        OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid));
 
--- (b) No DELETE privilege for dsa_app anywhere: must return zero rows
+-- (b) No DELETE privilege for dsa_app anywhere (except guarded role and api_client tables): must return zero rows
 SELECT table_name FROM information_schema.role_table_grants
-WHERE grantee = 'dsa_app' AND privilege_type IN ('DELETE','TRUNCATE');
+WHERE grantee = 'dsa_app' AND privilege_type IN ('DELETE','TRUNCATE')
+  AND table_name NOT IN ('role', 'role_permission', 'api_client');
 
--- (c) Tables without tenant_id must be on the global allow-list {tenant, permission, decision_definition, decision_dependency, feature_flag, master_data_item}
+-- (c) Tables without tenant_id must be on the global allow-list {tenant, permission, decision_definition, decision_dependency, feature_flag, master_data_item, platform_release}
 SELECT table_name FROM information_schema.tables t
 WHERE table_schema = 'app' AND table_type = 'BASE TABLE'
-  AND table_name NOT IN ('tenant','permission','decision_definition','decision_dependency','feature_flag','master_data_item')
+  AND table_name NOT IN ('tenant','permission','decision_definition','decision_dependency','feature_flag','master_data_item','platform_release')
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_name = t.table_name AND c.column_name = 'tenant_id');
 
 -- (e) Supabase exposure check: must return zero rows (anon/authenticated have no access to schema app)

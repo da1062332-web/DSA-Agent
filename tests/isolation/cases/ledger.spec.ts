@@ -1,7 +1,7 @@
 // TEST-SEC-001 cases for module ledger (owner: Dev 5, MOD-LED; Release 3 scope, built early).
 // Tenant B holds every ledger permission and still must not see or change tenant A accounts, journals or lines.
-// Named operationIds: API-LED-001, API-LED-001-CREATE, API-LED-002, API-LED-002-POST, API-LED-003, API-LED-004,
-// API-LED-005, API-LED-006. The table level (row-level security for the real dsa_api role) is proven directly in the last case.
+// Named operationIds: API-LED-001, API-LED-001-CREATE, API-LED-003, API-LED-003-POST, API-LED-006, API-LED-002,
+// API-LED-004, API-LED-005. The table level (row-level security for the real dsa_api role) is proven directly in the last case.
 import type { PermissionCode } from '@dsa/contracts';
 import pg from 'pg';
 import request from 'supertest';
@@ -42,7 +42,7 @@ afterAll(async () => {
 const LED: PermissionCode[] = ['finance.view', 'finance.period_close', 'export.run'];
 
 describe('TEST-SEC-001 ledger: tenants never cross', () => {
-  it('API-LED-001 API-LED-002: tenant B lists none of tenant A accounts or journals, tenant A sees its own', async () => {
+  it('API-LED-001 API-LED-003: tenant B lists none of tenant A accounts or journals, tenant A sees its own', async () => {
     const own = await request(env.appAs(env.A, LED)).get('/v1/ledger/accounts');
     expect(own.status, JSON.stringify(own.body)).toBe(200);
     expect(JSON.stringify(own.body)).toContain(ACC_BANK);
@@ -57,7 +57,7 @@ describe('TEST-SEC-001 ledger: tenants never cross', () => {
     expect(JSON.stringify(journals.body)).not.toContain(JOURNAL);
   });
 
-  it('API-LED-004: tenant B cannot read the balance of a tenant A account', async () => {
+  it('API-LED-002: tenant B cannot read the balance of a tenant A account', async () => {
     const res = await request(env.appAs(env.B, LED)).get(`/v1/ledger/accounts/${ACC_BANK}/balance`);
     expect(res.status).toBe(404);
   });
@@ -74,7 +74,7 @@ describe('TEST-SEC-001 ledger: tenants never cross', () => {
     expect(count.rows.map((r) => r.tenant_id).sort()).toEqual([env.A.tenantId, env.B.tenantId].sort());
   });
 
-  it('API-LED-002-POST: tenant B cannot post to a tenant A account code it does not own', async () => {
+  it('API-LED-003-POST: tenant B cannot post to a tenant A account code it does not own', async () => {
     const res = await request(env.appAs(env.B, LED))
       .post('/v1/ledger/journals')
       .set('Idempotency-Key', 'iso-led-post-1')
@@ -95,7 +95,7 @@ describe('TEST-SEC-001 ledger: tenants never cross', () => {
     expect(lines.rows[0].n).toBe(0);
   });
 
-  it('API-LED-003 API-LED-005 API-LED-006: tenant B period close, statements and export touch only its own tenant', async () => {
+  it('API-LED-006 API-LED-004 API-LED-005: tenant B period close, statements and export touch only its own tenant', async () => {
     const close = await request(env.appAs(env.B, LED))
       .post('/v1/ledger/periods/2026-10/close')
       .set('Idempotency-Key', 'iso-led-close-1')

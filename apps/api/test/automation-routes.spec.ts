@@ -114,7 +114,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     // But CAN access system global definition
     const sysRes = await request(app).get('/v1/automations/wfd_01JTESTSYSTEM0000000000001');
     expect(sysRes.status).toBe(200);
-    expect(sysRes.body.data.definition.code).toBe('system_global_audit');
+    expect(sysRes.body.definition.code).toBe('system_global_audit');
   });
 
   // 3. Creating Definitions & Draft Versions
@@ -175,14 +175,26 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
 
     const res = await request(app)
       .patch('/v1/automations/wfd_01JTESTWFD0000000000000001')
+      .set('If-Match', '"1"')
       .send({ name: 'Updated Lead Pipeline Name', description: 'Updated description note' });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.name).toBe('Updated Lead Pipeline Name');
+    expect(res.body.name).toBe('Updated Lead Pipeline Name');
+    expect(res.headers.etag).toBe('"2"');
+
+    // A stale version is refused, and a missing If-Match is a malformed request
+    const stale = await request(app)
+      .patch('/v1/automations/wfd_01JTESTWFD0000000000000001')
+      .set('If-Match', '"1"')
+      .send({ name: 'Stale edit' });
+    expect(stale.status).toBe(409);
+    const missing = await request(app).patch('/v1/automations/wfd_01JTESTWFD0000000000000001').send({ name: 'No header' });
+    expect(missing.status).toBe(400);
 
     // Reject updating system workflow
     const sysUpdate = await request(app)
       .patch('/v1/automations/wfd_01JTESTSYSTEM0000000000001')
+      .set('If-Match', '"0"')
       .send({ name: 'Hacked System Name' });
 
     expect(sysUpdate.status).toBe(403);
@@ -223,9 +235,9 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .send(newVersionPayload);
 
     expect(res.status).toBe(201);
-    expect(res.body.data.versionNo).toBe(2);
-    expect(res.body.data.status).toBe('DRAFT');
-    expect(res.body.data.authorId).toBe(authorPrincipal.id);
+    expect(res.body.versionNo).toBe(2);
+    expect(res.body.status).toBe('DRAFT');
+    expect(res.body.authorId).toBe(authorPrincipal.id);
   });
 
   // 6. Maker-Checker Segregation of Duties (SOD)
@@ -254,7 +266,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
         changeReason: 'Self-approval test',
       });
 
-    const versionId = createRes.body.data.id;
+    const versionId = createRes.body.id;
 
     // 2. Author attempts to self-approve with automation.approve grant
     const authorWithApproveGrant = testPrincipal({
@@ -286,8 +298,8 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .send({ action: 'APPROVE', reason: 'Reviewed and verified valid' });
 
     expect(checkerRes.status).toBe(200);
-    expect(checkerRes.body.data.version.status).toBe('ACTIVE');
-    expect(checkerRes.body.data.definition.pinnedVersionId).toBe(versionId);
+    expect(checkerRes.body.version.status).toBe('ACTIVE');
+    expect(checkerRes.body.definition.pinnedVersionId).toBe(versionId);
   });
 
   // 7. Dry-Run Simulation Mode
@@ -310,9 +322,9 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.simulation).toBe(true);
-    expect(res.body.data.execution.dryRun).toBe(true);
-    expect(res.body.data.execution.status).toBe('SUCCEEDED');
+    expect(res.body.simulation).toBe(true);
+    expect(res.body.execution.dryRun).toBe(true);
+    expect(res.body.execution.status).toBe('SUCCEEDED');
 
     // No persistent executions or outbox records created
     expect(store.executions.length).toBe(initialExecCount);
@@ -340,10 +352,10 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       });
 
     expect(res1.status).toBe(200);
-    expect(res1.body.data.replayed).toBe(false);
-    expect(res1.body.data.execution.id).toMatch(/^wfe_/);
+    expect(res1.body.replayed).toBe(false);
+    expect(res1.body.execution.id).toMatch(/^wfe_/);
 
-    const execId = res1.body.data.execution.id;
+    const execId = res1.body.execution.id;
 
     // Second trigger with duplicate idempotency key
     const res2 = await request(app)
@@ -357,8 +369,8 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
 
     expect(res2.status).toBe(200);
     expect(res2.header['idempotent-replayed']).toBe('true');
-    expect(res2.body.data.replayed).toBe(true);
-    expect(res2.body.data.execution.id).toBe(execId);
+    expect(res2.body.replayed).toBe(true);
+    expect(res2.body.execution.id).toBe(execId);
   });
 
   // 9. Execution History & Step Details
@@ -378,7 +390,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
         triggerPayload: { score: 100 },
       });
 
-    const execId = execRes.body.data.execution.id;
+    const execId = execRes.body.execution.id;
 
     // List executions
     const listRes = await request(app).get('/v1/automations/executions');
@@ -388,7 +400,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     // Get execution detail
     const detailRes = await request(app).get(`/v1/automations/executions/${execId}`);
     expect(detailRes.status).toBe(200);
-    expect(detailRes.body.data.id).toBe(execId);
+    expect(detailRes.body.id).toBe(execId);
 
     // Get step executions
     const stepsRes = await request(app).get(`/v1/automations/executions/${execId}/steps`);
@@ -450,8 +462,8 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .send({ reason: 'Customer requested loan cancellation' });
 
     expect(cancelRes.status).toBe(200);
-    expect(cancelRes.body.data.status).toBe('CANCELLED');
-    expect(cancelRes.body.data.errorMessage).toBe('Customer requested loan cancellation');
+    expect(cancelRes.body.status).toBe('CANCELLED');
+    expect(cancelRes.body.errorMessage).toBe('Customer requested loan cancellation');
   });
 
   // 11. Operator Step Skipping
@@ -527,9 +539,9 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .send({ reason: 'Task already completed out-of-band by manager' });
 
     expect(skipRes.status).toBe(200);
-    expect(skipRes.body.data.stepExecution.status).toBe('SKIPPED');
-    expect(skipRes.body.data.stepExecution.skipReason).toBe('Task already completed out-of-band by manager');
-    expect(skipRes.body.data.execution.currentStepIndex).toBe(3);
+    expect(skipRes.body.stepExecution.status).toBe('SKIPPED');
+    expect(skipRes.body.stepExecution.skipReason).toBe('Task already completed out-of-band by manager');
+    expect(skipRes.body.execution.currentStepIndex).toBe(3);
   });
 
   // 12. Dead Letter Retrieval and Resolution
@@ -615,7 +627,7 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     // 2. Get dead letter detail
     const getDl = await request(app).get(`/v1/automations/dead-letters/${dlId}`);
     expect(getDl.status).toBe(200);
-    expect(getDl.body.data.id).toBe(dlId);
+    expect(getDl.body.id).toBe(dlId);
 
     // 3. Resolve via RETRY
     const resolveRes = await request(app)
@@ -623,8 +635,8 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .send({ action: 'RETRY', reason: 'Downstream outage resolved, retrying' });
 
     expect(resolveRes.status).toBe(200);
-    expect(resolveRes.body.data.deadLetter.resolutionStatus).toBe('RESOLVED');
-    expect(resolveRes.body.data.deadLetter.resolutionAction).toBe('RETRY');
-    expect(resolveRes.body.data.execution.status).toBe('RETRYING');
+    expect(resolveRes.body.deadLetter.resolutionStatus).toBe('RESOLVED');
+    expect(resolveRes.body.deadLetter.resolutionAction).toBe('RETRY');
+    expect(resolveRes.body.execution.status).toBe('RETRYING');
   });
 });

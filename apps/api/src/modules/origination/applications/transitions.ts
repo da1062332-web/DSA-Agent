@@ -12,6 +12,7 @@ import type { Router } from 'express';
 import { sql } from 'kysely';
 import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
+import { generateChecklist } from './application-port';
 import { loadScopedForUpdate, toApplication } from './applications';
 import { assertVersion, updateVersioned, type Row } from './db';
 import { ApplicationTransition, type ApplicationStatus } from './schemas';
@@ -65,6 +66,12 @@ export function registerTransitionRoutes(router: Router, deps: ApiDeps): void {
               current,
               input.productVersionId,
             );
+            // SUB-DOC.02: the checklist is generated as the application starts collecting documents.
+            const checklist = await generateChecklist(tx, ctx, deps, {
+              ...current,
+              product_version_id: changes.product_version_id,
+            });
+            changes.last_checklist_decision_ids = checklist.decisionIds;
           }
           if (input.transitionCode === 'T-APP-10') changes.cancel_reason = input.cancelReason;
 

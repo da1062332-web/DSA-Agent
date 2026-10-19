@@ -135,7 +135,7 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
         ${row.status}, ${row.lender_reference}, ${row.submission_channel},
         ${row.submitted_at}, ${row.package_id}, ${row.status_source},
         ${row.last_status_at}, ${row.decline_reason_code}, ${row.staleness_flag},
-        ${sql.raw(`ARRAY[${row.tags.map((t) => `'${t.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+        ${row.tags}::text[],
         ${row.lock_version}, ${row.created_at}, ${row.created_by},
         ${row.updated_at}, ${row.updated_by}
       )
@@ -289,7 +289,7 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
       ) VALUES (
         ${row.id}, ${row.tenant_id}, ${row.lender_case_id}, ${row.kind},
         ${JSON.stringify(row.manifest)}, ${row.manifest_sha256},
-        ${sql.raw(`ARRAY[${row.consent_ids.map((c) => `'${c.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+        ${row.consent_ids}::text[],
         ${row.built_by}, ${row.built_at}, ${row.frozen_at}
       )
     `.execute(tx);
@@ -311,7 +311,7 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
       ) VALUES (
         ${row.id}, ${row.tenant_id}, ${row.subject_type}, ${row.subject_id},
         ${row.recipient_type}, ${row.recipient_id}, ${row.purpose},
-        ${sql.raw(`ARRAY[${row.consent_ids.map((c) => `'${c.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+        ${row.consent_ids}::text[],
         ${JSON.stringify(row.items)}, ${row.channel}, ${row.source_ref},
         ${row.actor_id}, ${row.shared_at}
       )
@@ -319,39 +319,51 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
   }
 
   async insertQuery(tx: Tx, row: LenderQueryRow): Promise<void> {
-    // In-memory/table query storage fallback if table exists or through task linkage
-    try {
-      await sql`
-        INSERT INTO lender_query (
-          id, tenant_id, lender_case_id, text, requested_items, lender_due_date,
-          task_id, response_manifest_id, responded_at, created_at, created_by
-        ) VALUES (
-          ${row.id}, ${row.tenant_id}, ${row.lender_case_id}, ${row.text},
-          ${sql.raw(`ARRAY[${row.requested_items.map((i) => `'${i.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
-          ${row.lender_due_date}, ${row.task_id}, ${row.response_manifest_id},
-          ${row.responded_at}, ${row.created_at}, ${row.created_by}
-        )
-      `.execute(tx);
-    } catch {
-      // Table lender_query is optional per TASK-402 scope
-    }
+    await sql`
+      INSERT INTO lender_query (
+        id, tenant_id, lender_case_id, text, requested_items, lender_due_date,
+        task_id, response_manifest_id, responded_at, created_at, created_by
+      ) VALUES (
+        ${row.id}, ${row.tenant_id}, ${row.lender_case_id}, ${row.text},
+        ${JSON.stringify(row.requested_items)}::jsonb, ${row.lender_due_date},
+        ${row.task_id}, ${row.response_manifest_id}, ${row.responded_at},
+        ${row.created_at}, ${row.created_by}
+      )
+    `.execute(tx);
   }
 
-  async findQueryById(_tx: Tx, _tenantId: string, _queryId: string): Promise<LenderQueryRow | null> {
-    return null;
+  async findQueryById(tx: Tx, tenantId: string, queryId: string): Promise<LenderQueryRow | null> {
+    const res = await sql<LenderQueryRow>`
+      SELECT * FROM lender_query WHERE tenant_id = ${tenantId} AND id = ${queryId}
+    `.execute(tx);
+    return res.rows[0] ?? null;
   }
 
   async updateQuery(
-    _tx: Tx,
-    _tenantId: string,
-    _queryId: string,
-    _updates: Partial<LenderQueryRow>,
+    tx: Tx,
+    tenantId: string,
+    queryId: string,
+    updates: Partial<LenderQueryRow>,
   ): Promise<LenderQueryRow | null> {
-    return null;
+    // Only the answer fields change after a query is raised (ENT-053); the row is frozen once answered.
+    const res = await sql<LenderQueryRow>`
+      UPDATE lender_query
+         SET response_manifest_id = COALESCE(${updates.response_manifest_id ?? null}, response_manifest_id),
+             responded_at = COALESCE(${updates.responded_at ?? null}, responded_at),
+             task_id = COALESCE(${updates.task_id ?? null}, task_id)
+       WHERE tenant_id = ${tenantId} AND id = ${queryId}
+      RETURNING *
+    `.execute(tx);
+    return res.rows[0] ?? null;
   }
 
-  async listQueriesByCase(_tx: Tx, _tenantId: string, _caseId: string): Promise<LenderQueryRow[]> {
-    return [];
+  async listQueriesByCase(tx: Tx, tenantId: string, caseId: string): Promise<LenderQueryRow[]> {
+    const res = await sql<LenderQueryRow>`
+      SELECT * FROM lender_query
+       WHERE tenant_id = ${tenantId} AND lender_case_id = ${caseId}
+       ORDER BY created_at, id
+    `.execute(tx);
+    return res.rows;
   }
 
   async findApplication(

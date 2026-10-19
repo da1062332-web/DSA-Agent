@@ -2,6 +2,7 @@
 // A type used by more than one module lives here, owned by the provider of the concept.
 export * from './errors';
 export * from './money';
+export * from './masking';
 export * from './ids';
 export * from './pagination';
 export * from './events';

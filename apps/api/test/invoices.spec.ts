@@ -369,7 +369,7 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
       });
 
       const res = await request(app).get(
-        `/v1/connectors/${connectorUserA.id}/statements?fromDate=2026-10-01&toDate=2026-10-31`,
+        `/v1/connectors/${connectorUserA.id}/invoice-statements?fromDate=2026-10-01&toDate=2026-10-31`,
       );
 
       expect(res.status).toBe(200);
@@ -408,7 +408,7 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
       });
 
       const res = await request(app).get(
-        `/v1/connectors/${connectorUserA.id}/statements?fromDate=2026-10-01`,
+        `/v1/connectors/${connectorUserA.id}/invoice-statements?fromDate=2026-10-01`,
       );
 
       expect(res.status).toBe(403);

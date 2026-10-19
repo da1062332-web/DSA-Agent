@@ -58,6 +58,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+      # A merged migration is never edited (MANIFEST rule 1): supabase/migrations.lock.json holds each file's hash.
+      - run: npm run check:migrations -w @dsa/tools
       - run: npx --no-install supabase start
       - run: npx --no-install supabase db reset
       - run: npm run db:verify

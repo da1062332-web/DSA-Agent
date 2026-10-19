@@ -17,6 +17,7 @@ import {
 } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
+import { ifMatchVersion } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { AutomationEngine } from './engine';
 import { AutomationRepository } from './repository';
@@ -228,7 +229,7 @@ export function createRouter(deps: ApiDeps): Router {
       return repository.getExecutionById(tx, ctx.principal.tenantId, executionId);
     });
 
-    res.json({ data: execution });
+    res.json(execution);
   });
 
   /**
@@ -259,7 +260,7 @@ export function createRouter(deps: ApiDeps): Router {
     const reason = typeof req.body.reason === 'string' ? req.body.reason : 'Cancelled by operator';
 
     const cancelled = await engine.cancelExecution(ctx, executionId, reason);
-    res.json({ data: cancelled });
+    res.json(cancelled);
   });
 
   /**
@@ -273,7 +274,7 @@ export function createRouter(deps: ApiDeps): Router {
     const payload = typeof req.body.payload === 'object' && req.body.payload !== null ? req.body.payload : {};
 
     const resumed = await engine.resumeExecution(ctx, executionId, payload);
-    res.json({ data: resumed });
+    res.json(resumed);
   });
 
   /**
@@ -335,7 +336,7 @@ export function createRouter(deps: ApiDeps): Router {
         return { stepExecution: updatedStep, execution: updatedExec };
       });
 
-      res.json({ data: result });
+      res.json(result);
     },
   );
 
@@ -368,7 +369,7 @@ export function createRouter(deps: ApiDeps): Router {
       return repository.getDeadLetterById(tx, ctx.principal.tenantId, id);
     });
 
-    res.json({ data: deadLetter });
+    res.json(deadLetter);
   });
 
   /**
@@ -388,7 +389,7 @@ export function createRouter(deps: ApiDeps): Router {
 
     const { action, reason } = parseResult.data;
     const result = await engine.resolveDeadLetter(ctx, id, action, reason);
-    res.json({ data: result });
+    res.json(result);
   });
 
   /**
@@ -403,7 +404,8 @@ export function createRouter(deps: ApiDeps): Router {
       return repository.getDefinitionAndVersion(tx, ctx.principal.tenantId, definitionId);
     });
 
-    res.json({ data: result });
+    res.setHeader('ETag', `"${result.definition.lockVersion}"`);
+    res.json(result);
   });
 
   /**
@@ -422,10 +424,16 @@ export function createRouter(deps: ApiDeps): Router {
     }
 
     const update = parseResult.data;
+    const expectedVersion = ifMatchVersion(req);
     const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const existing = await repository.getDefinitionById(tx, ctx.principal.tenantId, definitionId);
       if (existing.isSystem) {
         throw AppError.of('FORBIDDEN', 'System automation definitions cannot be updated.');
+      }
+      if (existing.lockVersion !== expectedVersion) {
+        throw AppError.of('VERSION_CONFLICT', 'The automation was changed by someone else. Reload and try again.', [
+          { field: 'If-Match', issue: 'STALE', meta: { currentVersion: existing.lockVersion } },
+        ]);
       }
 
       const updated = await repository.updateDefinition(tx, ctx.principal.tenantId, definitionId, {
@@ -433,6 +441,7 @@ export function createRouter(deps: ApiDeps): Router {
         description: update.description,
         status: update.status,
         updatedBy: ctx.principal.id,
+        expectedLockVersion: expectedVersion,
       });
 
       const audit = deps.auditPort || deps.audit;
@@ -449,7 +458,8 @@ export function createRouter(deps: ApiDeps): Router {
       return updated;
     });
 
-    res.json({ data: result });
+    res.setHeader('ETag', `"${result.lockVersion}"`);
+    res.json(result);
   });
 
   /**
@@ -535,7 +545,7 @@ export function createRouter(deps: ApiDeps): Router {
       return created;
     });
 
-    res.status(201).json({ data: createdVersion });
+    res.status(201).json(createdVersion);
   });
 
   /**
@@ -550,7 +560,7 @@ export function createRouter(deps: ApiDeps): Router {
       return repository.getVersionById(tx, ctx.principal.tenantId, versionId);
     });
 
-    res.json({ data: version });
+    res.json(version);
   });
 
   /**
@@ -640,7 +650,7 @@ export function createRouter(deps: ApiDeps): Router {
       return { version: updatedVer, definition: updatedDef };
     });
 
-    res.json({ data: result });
+    res.json(result);
   });
 
   /**
@@ -699,11 +709,11 @@ export function createRouter(deps: ApiDeps): Router {
       };
 
       return res.json({
-        data: {
-          execution: simulatedExec,
-          simulation: true,
-          replayed: false,
-        },
+        executionId: simulatedExec.id,
+        status: simulatedExec.status,
+        execution: simulatedExec,
+        simulation: true,
+        replayed: false,
       });
     }
 
@@ -723,18 +733,14 @@ export function createRouter(deps: ApiDeps): Router {
 
     if (replayed) {
       res.setHeader('Idempotent-Replayed', 'true');
-      return res.json({ data: { execution, replayed: true } });
+      return res.json({ executionId: execution.id, status: execution.status, execution, replayed: true });
     }
 
     // Claim and execute steps immediately
     const executed = await engine.claimAndRun(ctx, execution.id);
 
-    res.status(200).json({
-      data: {
-        execution: executed || execution,
-        replayed: false,
-      },
-    });
+    const result = executed || execution;
+    res.status(200).json({ executionId: result.id, status: result.status, execution: result, replayed: false });
   });
 
   return router;

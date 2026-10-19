@@ -1,4 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as TokenModule from '../../auth/token';
+
+// The feature client goes through api/client.ts: give it a web config and a Supabase session whose token is the one the
+// test sets with setAuthToken.
+vi.mock('../../config', () => ({
+  readConfig: () => ({
+    success: true,
+    data: {
+      VITE_API_BASE_URL: 'http://api.test',
+      VITE_SUPABASE_URL: 'http://supabase.test',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+    },
+  }),
+}));
+vi.mock('../../auth/supabase', async () => {
+  const { getStoredAuthToken } = await vi.importActual<typeof TokenModule>('../../auth/token');
+  return {
+    getSupabase: () => ({
+      auth: {
+        getSession: async () => {
+          const token = getStoredAuthToken();
+          return { data: { session: token ? { access_token: token } : null } };
+        },
+      },
+    }),
+  };
+});
 import { setAuthToken } from '../../auth/token';
 import { sanctionsApi } from './api';
 

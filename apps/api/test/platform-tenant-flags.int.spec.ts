@@ -1,5 +1,5 @@
 // Per-tenant feature flags against a REAL PostgreSQL (owner: Platform squad; Module 1 / MOD-ADM SUB-ADM.02). The real server process runs
-// against one throwaway database that has every migration (0066 included). The unit spec (platform-tenant-flags.spec.ts) covers the API rules
+// against one throwaway database that has every migration (0068 included). The unit spec (platform-tenant-flags.spec.ts) covers the API rules
 // with a test double; this one proves the same things on the real tables and policies: the override goes to its own table, the shared flag
 // table is untouched, a customer tenant can read its own rows but never write, and the foreign key refuses a flag that is not TENANT scope.
 import { readFileSync } from 'node:fs';
@@ -357,15 +357,15 @@ describe('per-tenant feature flags on a real database', () => {
 
   it('TEST-TFLAG-INT-05 the verify script passes, the rollback refuses while overrides exist and removes the table once empty, and re-applying restores it', async () => {
     const verify = async () =>
-      (await env.admin.query(sqlFile('tools/sql/0066/verify.sql'))).rows as {
+      (await env.admin.query(sqlFile('tools/sql/0068/verify.sql'))).rows as {
         check: string;
         result: string;
       }[];
     expect((await verify()).filter((r) => r.result !== 'PASS')).toEqual([]);
     expect(await verify()).toHaveLength(6);
 
-    await expect(env.admin.query(sqlFile('tools/sql/0066/rollback.sql'))).rejects.toThrow(
-      /rollback 0066 refused: \d+ tenant flag override/,
+    await expect(env.admin.query(sqlFile('tools/sql/0068/rollback.sql'))).rejects.toThrow(
+      /rollback 0068 refused: \d+ tenant flag override/,
     );
     await env.admin.query('ROLLBACK').catch(() => undefined);
     expect(
@@ -373,7 +373,7 @@ describe('per-tenant feature flags on a real database', () => {
     ).toBeGreaterThan(0);
 
     await env.admin.query(`DELETE FROM app.tenant_feature_flag`);
-    await env.admin.query(sqlFile('tools/sql/0066/rollback.sql'));
+    await env.admin.query(sqlFile('tools/sql/0068/rollback.sql'));
     expect(
       (await env.admin.query(`SELECT to_regclass('app.tenant_feature_flag') AS t`)).rows[0].t,
     ).toBeNull();
@@ -386,8 +386,8 @@ describe('per-tenant feature flags on a real database', () => {
       ).rows[0].n,
     ).toBe(3);
 
-    await env.admin.query(sqlFile('supabase/migrations/20261001000066_tenant_feature_flag_overrides.sql'));
-    await env.admin.query(sqlFile('supabase/migrations/20261001000066_tenant_feature_flag_overrides.sql')); // idempotent
+    await env.admin.query(sqlFile('supabase/migrations/20261001000068_tenant_feature_flag_overrides.sql'));
+    await env.admin.query(sqlFile('supabase/migrations/20261001000068_tenant_feature_flag_overrides.sql')); // idempotent
     expect((await verify()).filter((r) => r.result !== 'PASS')).toEqual([]);
   }, 200_000);
 });

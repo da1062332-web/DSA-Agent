@@ -192,7 +192,7 @@ export class PlatformAdminService {
   }
 
   // Per-tenant overrides of TENANT-scope flags. The tenant comes from the URL and is checked to exist; the write goes to the override
-  // table only, so it cannot reach a GLOBAL flag or the TENANT default (see migration 0066).
+  // table only, so it cannot reach a GLOBAL flag or the TENANT default (see migration 0068).
   async listTenantFeatureFlags(
     ctx: RequestContext,
     tenantId: string,

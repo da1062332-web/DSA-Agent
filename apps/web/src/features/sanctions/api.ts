@@ -8,39 +8,23 @@ import type {
   VerifyTrancheInput,
   VoidTrancheInput,
 } from './types';
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError, apiFetch, type ApiRequest } from '../../api/client';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
-
+// Goes through the shared client (session token, error envelope, step-up dialog). The thrown error keeps the shape the
+// screens read: message, code, status and details.
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
-
-  const token = getStoredAuthToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-
-  if (!res.ok) {
-    let errBody: any;
-    try {
-      errBody = await res.json();
-    } catch {
-      errBody = { error: { code: 'UNKNOWN_ERROR', message: res.statusText } };
+  try {
+    return await apiFetch<T>(path, {
+      method: (options.method ?? 'GET') as ApiRequest['method'],
+      body: typeof options.body === 'string' ? options.body : undefined,
+      headers: options.headers ? Object.fromEntries(new Headers(options.headers).entries()) : undefined,
+    });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      throw Object.assign(err, { status: err.httpStatus });
     }
-    const err = new Error(errBody?.error?.message ?? `Request failed with status ${res.status}`);
-    (err as any).code = errBody?.error?.code ?? 'HTTP_ERROR';
-    (err as any).status = res.status;
-    (err as any).details = errBody?.error?.details;
     throw err;
   }
-
-  return res.json();
 }
 
 export const sanctionsApi = {
