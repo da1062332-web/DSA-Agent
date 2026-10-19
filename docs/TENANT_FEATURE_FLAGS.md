@@ -1,6 +1,6 @@
 # Per-tenant feature flags in the platform console
 
-Status: **implemented and tested locally; migration 0068 NOT applied to hosted; nothing pushed.** Owner: Platform squad (Module 1 / MOD-ADM, SUB-ADM.02).
+Status: **implemented, tested and pushed; migration 0068 APPLIED to the hosted development project on 2026-10-19 and verified (6 of 6 PASS, `feature_flag` unchanged, no override rows yet).** Owner: Platform squad (Module 1 / MOD-ADM, SUB-ADM.02).
 
 ## What was missing
 
@@ -36,23 +36,11 @@ Errors: unknown tenant or the platform tenant → 404; GLOBAL or unknown flag on
 
 `/platform-admin/tenants/:tenantId` (also under `/platform-console`), reached from the slug or the **Manage** button on each directory row. Tabs: **Overview** and **Feature Flags** (`?tab=flags` opens it directly). The flags tab shows platform default, this tenant's value, state (default or overridden), version and last change; a switch opens a confirmation that names the tenant and states that the default, the global flags and other tenants are not changed. GLOBAL flags appear as read-only chips. A stale save (409) closes the dialog and reloads the real value.
 
-## Deploy order (this matters)
+## Deploy order and hosted state
 
-**Apply 0068 before the API code is deployed.** Until it is applied on a database:
+**Migration 0068 was applied to hosted (`mlpkwwhnagxzinaohdxg`) on 2026-10-19** with the wrapper from `tools/sql/make-apply-run.mjs` (source SHA-256 `cd8b671c...032e`, one transaction), then checked with `tools/sql/0068/verify.sql`: 6 of 6 PASS. Afterwards `feature_flag` still had 13 GLOBAL and 1 TENANT rows and its 3 policies, `app.tenant_feature_flag` had 0 rows, and `dsa_api` could read it but not delete.
 
-- `GET /platform/v1/tenants/:tenantId`, the directory and every GLOBAL flag route keep working (they do not read the new table);
-- the two tenant **flag** routes fail with a server error (missing table), and the tenant page's Feature Flags tab shows "The tenant flags could not be loaded".
-
-Hosted does not have 0068. The prepared steps, **all yours to run after you approve** (nothing here has been run against hosted):
-
-```
-node tools/sql/make-apply-run.mjs supabase/migrations/20261001000068_tenant_feature_flag_overrides.sql ~/dsa-backups/68/
-npx supabase db query --linked -f ~/dsa-backups/68/apply-run.sql      # WRITES TO HOSTED
-npx supabase db query --linked -f tools/sql/0068/verify.sql           # read-only; every row PASS
-npx supabase db query --linked -f tools/sql/0068/rollback.sql         # only to back out; refuses while overrides exist
-```
-
-0068 creates one new table and touches no existing one; it is idempotent. Rollback drops the table and refuses while any override exists (those rows are operator decisions). It was not added to the hosted batch runbook (`tools/sql/batch`), which describes a batch that is already applied.
+The tenant flag routes need this table, so a database without 0068 answers them with a server error while the overview, the directory and the global flag routes keep working. Rollback (`tools/sql/0068/rollback.sql`) drops the table and refuses while any override exists. It is not part of the hosted batch runbook (`tools/sql/batch`), which describes a batch that was already applied.
 
 ## Tests
 
