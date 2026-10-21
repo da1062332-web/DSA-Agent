@@ -52,7 +52,7 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
       // A database without migration 0069 has no pause table: a warning, once, not a failure on every tick.
       if ((err as { code?: string })?.code === '42P01') {
         if (!pauseTableMissingReported)
-          warn('app.worker_queue_state is missing (apply migration 0069); queues run unpaused');
+          warn('pause switches unavailable until migration 0069 is applied; all queues keep running');
         pauseTableMissingReported = true;
       } else {
         report('outbox', err);

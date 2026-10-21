@@ -5,6 +5,7 @@ import { createApp } from './app';
 import { loadConfig, type ApiConfig } from './config';
 import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
+import { checkDatabase } from './startup-check';
 import { createTxRunner } from './kernel-min/tx-runner';
 import { registeredCorrectionScripts } from './modules/platform-admin/correction-scripts';
 import {
@@ -30,7 +31,18 @@ try {
   process.exit(1);
 }
 
-const logger = pino({ level: config.LOG_LEVEL });
+// Development prints one readable line per message; other environments keep JSON for the log collector.
+const logger = pino({
+  level: config.LOG_LEVEL,
+  ...(config.NODE_ENV === 'development'
+    ? {
+        transport: {
+          target: 'pino-pretty',
+          options: { colorize: true, translateTime: 'HH:MM:ss', ignore: 'pid,hostname' },
+        },
+      }
+    : {}),
+});
 if (config.DISABLE_MFA) logger.warn('DISABLE_MFA is on: MFA is skipped. This is for local development only.');
 const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
@@ -54,7 +66,19 @@ const app = createApp({
 });
 
 const server = app.listen(config.PORT, () => {
-  logger.info({ port: config.PORT, env: config.NODE_ENV }, 'api listening');
+  logger.info(`API listening on http://localhost:${config.PORT} (${config.NODE_ENV})`);
+  void checkDatabase(db, config.DATABASE_URL).then((status) => {
+    if (!status.connected) {
+      logger.error(`Database NOT connected (${status.host}): ${status.reason}`);
+      return;
+    }
+    logger.info(`Database connected: ${status.database} on ${status.host}`);
+    if (status.missingMigrations.length > 0) {
+      logger.warn(
+        `Database is missing migrations ${status.missingMigrations.join(', ')}: the features that need them will fail until they are applied (tools/sql/audit-batch/README.md)`,
+      );
+    }
+  });
 });
 
 // Carries out APPROVED data corrections. Off unless DATA_CORRECTION_EXECUTOR=true, because it changes tenant data.
@@ -84,13 +108,15 @@ if (config.DATA_CORRECTION_EXECUTOR) {
 const worker = startBackgroundWorker({
   txRunner,
   outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
-  onWarning: (message) => logger.warn({ stage: 'worker' }, message),
+  onWarning: (message) => logger.warn(`Background worker: ${message}`),
   onError: (stage, err) =>
     logger.error(
       { stage, error: err instanceof Error ? err.message : 'unknown' },
       'background worker tick failed',
     ),
 });
+
+logger.info('Background worker started (outbox relay and jobs, every 2 seconds)');
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
