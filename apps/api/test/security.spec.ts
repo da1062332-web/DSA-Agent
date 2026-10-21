@@ -65,7 +65,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       const app = getApp(compliancePrincipal);
 
       const payload = {
-        type: 'AUTH_FAILURE',
+        type: 'SUSPICIOUS_ACCESS',
         principal: 'usr_target_01',
         ip: '203.0.113.42',
         severity: 'HIGH',
@@ -81,8 +81,9 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       const res = await request(app).post('/v1/security/events').send(payload).expect(201);
 
       expect(res.body.id).toMatch(/^sec_[0-9A-HJKMNP-TV-Z]{26}$/);
-      expect(res.body.type).toBe('AUTH_FAILURE');
-      expect(res.body.severity).toBe('HIGH');
+      expect(res.body.type).toBe('SUSPICIOUS_ACCESS');
+      expect(res.body.severity).toBe('MEDIUM');
+      expect(res.body.principal).toBe(compliancePrincipal.id); // the filer, not the payload's usr_target_01
 
       // Assert credentials are redacted
       expect(res.body.details.password).toBe('[REDACTED]');
@@ -118,7 +119,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       await request(app)
         .post('/v1/security/events')
         .send({
-          type: 'AUTH_FAILURE',
+          type: 'SUSPICIOUS_ACCESS',
           principal: 'usr_01',
           ip: '10.0.0.1',
           severity: 'MEDIUM',
@@ -129,7 +130,7 @@ describe('Module 39: Security (MOD-SEC) Integration & Security Tests', () => {
       await request(app)
         .post('/v1/security/events')
         .send({
-          type: 'RATE_LIMIT_EXCEEDED',
+          type: 'SUSPICIOUS_ACCESS',
           principal: 'usr_02',
           ip: '10.0.0.2',
           severity: 'LOW',

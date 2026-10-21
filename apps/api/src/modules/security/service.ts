@@ -10,14 +10,34 @@ import {
   type SecurityEvent,
   type SecurityEventListQuery,
   type SecurityEventListResponse,
+  type SecurityEventSeverity,
+  type SecurityEventType,
   type UpdateIncidentRequest,
 } from '@dsa/contracts';
 import { redactSensitivePayload, withIdempotency } from '@dsa/kernel';
 import { sql } from 'kysely';
 import { decodeCursor, encodeCursor } from '../../http/request';
 import { type SiemPort, toSiemEvent } from './siem';
+import {
+  isReportableEventType,
+  MAX_CLAIMED_VALUE_CHARS,
+  MAX_REPORT_DETAILS_CHARS,
+  REPORTED_SEVERITY,
+} from './report-policy';
 import type { ApiDeps } from '../types';
 import type { IncidentRecordRow, SecurityEventRow } from './types';
+
+/** What a caller files over HTTP. Only the type and the details are used as given (see reportSecurityEvent). */
+export interface ReportSecurityEventInput {
+  type: SecurityEventType;
+  /** Claimed only: kept under details.claimed, never stored as the event's principal. */
+  principal?: string;
+  /** Claimed only: kept under details.claimed, never stored as the event's address. */
+  ip?: string;
+  /** Claimed only: kept under details.claimed, never used as the event's severity. */
+  severity?: SecurityEventSeverity;
+  details?: Record<string, unknown>;
+}
 
 export interface SecurityServiceOptions {
   siemPort?: SiemPort;
@@ -77,13 +97,87 @@ export class SecurityService {
 
   /**
    * ENT-096: Record a security event with automatic credential/secret redaction.
+   *
+   * TRUSTED PATH: the principal, address, type and severity are stored exactly as given, so this is for server code that detected the
+   * event itself. No HTTP route calls it. Events filed by a caller go through reportSecurityEvent.
    */
   async recordSecurityEvent(ctx: RequestContext, input: CreateSecurityEventRequest): Promise<SecurityEvent> {
-    const id = this.deps.ids.next('sec');
-    const tenantId = ctx.principal.tenantId;
-
     // Strict sanitization: ensure passwords, tokens, API keys, credentials are never written
     const sanitizedDetails = redactSensitivePayload(input.details) as Record<string, unknown>;
+    return this.persistEvent(ctx, {
+      type: input.type,
+      principal: input.principal,
+      ip: input.ip,
+      severity: input.severity,
+      details: sanitizedDetails,
+    });
+  }
+
+  /**
+   * ENT-096: Record a security event FILED BY A CALLER (POST /v1/security/events).
+   *
+   * Nothing the caller says about who, where or how serious is trusted (see report-policy.ts):
+   *  - type: only the types a person can observe may be reported; the rest are 422 NOT_REPORTABLE;
+   *  - principal: the signed-in principal that filed it, from the request context;
+   *  - ip: the address the server saw the request come from;
+   *  - severity: chosen by the server from the type, so a caller cannot raise the critical-event alert;
+   *  - tenant: always the caller's own tenant;
+   *  - details: redacted, size-limited, and stamped with the reporter after the caller's keys so they cannot be overwritten.
+   * What the caller claimed is kept under details.claimed for the investigator.
+   */
+  async reportSecurityEvent(ctx: RequestContext, input: ReportSecurityEventInput): Promise<SecurityEvent> {
+    if (!isReportableEventType(input.type)) {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'This event type is detected by the system and cannot be reported over the API.',
+        [{ field: 'type', issue: 'NOT_REPORTABLE' }],
+      );
+    }
+
+    const redacted = redactSensitivePayload(input.details ?? {}) as Record<string, unknown>;
+    if (JSON.stringify(redacted).length > MAX_REPORT_DETAILS_CHARS) {
+      throw AppError.of('VALIDATION_ERROR', 'The event details are too large.', [
+        { field: 'details', issue: 'TOO_LARGE' },
+      ]);
+    }
+
+    const clip = (v: string | undefined): string | null =>
+      v === undefined ? null : v.slice(0, MAX_CLAIMED_VALUE_CHARS);
+    const claimed = {
+      principal: clip(input.principal),
+      ip: clip(input.ip),
+      severity: input.severity ?? null,
+    };
+
+    return this.persistEvent(ctx, {
+      type: input.type,
+      principal: ctx.principal.id,
+      ip: ctx.ip ?? 'unknown',
+      severity: REPORTED_SEVERITY[input.type],
+      // The server's keys come last: a caller's own "reportedBy", "source" or "claimed" cannot replace them.
+      details: {
+        ...redacted,
+        claimed,
+        reportedBy: ctx.principal.id,
+        reporterKind: ctx.principal.kind,
+        source: 'API_REPORT',
+      },
+    });
+  }
+
+  /** Inserts one event for the caller's tenant, then raises the alert and forwards to the SIEM. `details` must already be redacted. */
+  private async persistEvent(
+    ctx: RequestContext,
+    e: {
+      type: SecurityEventType;
+      principal: string;
+      ip: string;
+      severity: SecurityEventSeverity;
+      details: Record<string, unknown>;
+    },
+  ): Promise<SecurityEvent> {
+    const id = this.deps.ids.next('sec');
+    const tenantId = ctx.principal.tenantId;
 
     const event = await this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const result = await sql<SecurityEventRow>`
@@ -92,11 +186,11 @@ export class SecurityService {
         ) VALUES (
           ${id},
           ${tenantId},
-          ${input.type},
-          ${input.principal},
-          ${input.ip},
-          ${input.severity},
-          ${JSON.stringify(sanitizedDetails)}::jsonb,
+          ${e.type},
+          ${e.principal},
+          ${e.ip},
+          ${e.severity},
+          ${JSON.stringify(e.details)}::jsonb,
           now()
         )
         RETURNING id, tenant_id, type, principal, ip, severity, details, created_at

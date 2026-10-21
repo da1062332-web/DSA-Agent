@@ -101,6 +101,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/ledger/journals', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      // Before the body is read, so a refused caller learns nothing from validation messages.
+      service.assertManualPostingAllowed(ctx);
       const parsed = PostJournalInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
 

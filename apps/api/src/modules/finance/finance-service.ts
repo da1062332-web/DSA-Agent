@@ -140,6 +140,18 @@ export class FinanceService {
     }
   }
 
+  /** Passes with any one of the permissions (the Commission screen in the web app shows with the same set). */
+  private assertAnyPermission(ctx: RequestContext, permissions: PermissionCode[]): void {
+    if (!ctx.principal.grants.some((g) => permissions.includes(g.code as PermissionCode))) {
+      throw AppError.of('FORBIDDEN', `One of these permissions is required: ${permissions.join(', ')}.`);
+    }
+  }
+
+  /** Reading commission plans, calculations and payables. Checked before any lookup, so an id cannot be probed without it. */
+  private assertCommissionRead(ctx: RequestContext): void {
+    this.assertAnyPermission(ctx, ['finance.view', 'commission.plan.edit', 'commission.plan.approve']);
+  }
+
   // --- COMMISSION PLANS ---
 
   async createCommissionPlan(
@@ -185,6 +197,7 @@ export class FinanceService {
   }
 
   async getCommissionPlan(tx: Tx, ctx: RequestContext, id: string): Promise<CommissionPlanResponse> {
+    this.assertCommissionRead(ctx);
     const row = await this.deps.repository.findCommissionPlanById(tx, ctx.principal.tenantId, id);
     if (!row) {
       throw AppError.of('NOT_FOUND', `Commission plan ${id} not found.`);
@@ -197,6 +210,7 @@ export class FinanceService {
     ctx: RequestContext,
     lenderId?: string,
   ): Promise<CommissionPlanResponse[]> {
+    this.assertCommissionRead(ctx);
     const rows = await this.deps.repository.listCommissionPlans(tx, ctx.principal.tenantId, lenderId);
     return rows.map((r) => this.toPlanResponse(r));
   }
@@ -367,6 +381,7 @@ export class FinanceService {
   }
 
   async getCalculation(tx: Tx, ctx: RequestContext, id: string): Promise<CommissionCalculationResponse> {
+    this.assertCommissionRead(ctx);
     const row = await this.deps.repository.findCommissionCalculationById(tx, ctx.principal.tenantId, id);
     if (!row) {
       throw AppError.of('NOT_FOUND', `Commission calculation ${id} not found.`);
@@ -379,6 +394,7 @@ export class FinanceService {
     ctx: RequestContext,
     filters: { lenderId?: string; status?: string; cursor?: string; limit: number },
   ): Promise<{ data: CommissionCalculationResponse[]; meta: { nextCursor: string | null; limit: number } }> {
+    this.assertCommissionRead(ctx);
     const { rows, nextCursor } = await this.deps.repository.listCommissionCalculations(
       tx,
       ctx.principal.tenantId,
@@ -395,6 +411,7 @@ export class FinanceService {
     ctx: RequestContext,
     filters: { connectorId?: string; state?: string; cursor?: string; limit: number },
   ): Promise<{ data: CommissionPayableResponse[]; meta: { nextCursor: string | null; limit: number } }> {
+    this.assertCommissionRead(ctx);
     const { rows, nextCursor } = await this.deps.repository.listCommissionPayables(
       tx,
       ctx.principal.tenantId,

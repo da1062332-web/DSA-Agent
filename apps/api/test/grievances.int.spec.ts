@@ -123,8 +123,9 @@ describe('TEST-GRV-INT grievances against the database', () => {
       category: 'OTHER',
       description: COMPLAINT_TEXT,
     });
-    expect(lead.status).toBe(422);
-    expect(lead.body.error.details[0].issue).toBe('SUBJECT_UNSUPPORTED');
+    // The lead provider is wired (crm/leads/subject-port.ts), so an unknown lead is refused as not found, not as unsupported.
+    expect(lead.status).toBe(404);
+    expect(lead.body.error.code).toBe('NOT_FOUND');
   });
 
   it('TEST-GRV-INT-04 the queue filters by status and pages with a cursor', async () => {

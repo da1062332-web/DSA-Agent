@@ -25,12 +25,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { hasPermission, useMe } from '../../api/useMe';
 import { fetchLeadById, transitionLead, assignLead, convertLead, ApiError } from './api';
+import { leadActions } from './lead-actions';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const me = useMe();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -147,6 +150,8 @@ export function LeadDetail() {
 
   const isTransitionPending =
     transitionMutation.isPending || convertMutation.isPending || assignMutation.isPending;
+  // The state decides which actions apply; the user's permissions decide which of those are offered (audit F-12).
+  const actions = leadActions(lead.state, (code) => hasPermission(me.data, code));
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -185,7 +190,7 @@ export function LeadDetail() {
 
           {/* Action Buttons */}
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {lead.state === 'NEW' && (
+            {actions.attemptContact && (
               <Button
                 variant="outlined"
                 color="primary"
@@ -197,7 +202,7 @@ export function LeadDetail() {
               </Button>
             )}
 
-            {(lead.state === 'NEW' || lead.state === 'CONTACT_ATTEMPTED') && (
+            {actions.markInProgress && (
               <Button
                 variant="outlined"
                 color="info"
@@ -209,30 +214,30 @@ export function LeadDetail() {
               </Button>
             )}
 
-            {lead.state === 'IN_PROGRESS' && (
-              <>
-                <Button
-                  variant="contained"
-                  color="success"
-                  disabled={isTransitionPending}
-                  onClick={() => setQualifyOpen(true)}
-                  data-testid="lead.action.qualify"
-                >
-                  Qualify Lead
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  disabled={isTransitionPending}
-                  onClick={() => setDisqualifyOpen(true)}
-                  data-testid="lead.action.disqualify"
-                >
-                  Disqualify
-                </Button>
-              </>
+            {actions.qualify && (
+              <Button
+                variant="contained"
+                color="success"
+                disabled={isTransitionPending}
+                onClick={() => setQualifyOpen(true)}
+                data-testid="lead.action.qualify"
+              >
+                Qualify Lead
+              </Button>
+            )}
+            {actions.disqualify && (
+              <Button
+                variant="outlined"
+                color="error"
+                disabled={isTransitionPending}
+                onClick={() => setDisqualifyOpen(true)}
+                data-testid="lead.action.disqualify"
+              >
+                Disqualify
+              </Button>
             )}
 
-            {lead.state === 'QUALIFIED' && (
+            {actions.convert && (
               <Button
                 variant="contained"
                 color="primary"
@@ -244,7 +249,7 @@ export function LeadDetail() {
               </Button>
             )}
 
-            {lead.state !== 'CONVERTED' && lead.state !== 'ARCHIVED' && (
+            {actions.assign && (
               <Button
                 variant="outlined"
                 color="inherit"

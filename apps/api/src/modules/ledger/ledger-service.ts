@@ -22,6 +22,17 @@ import type {
 } from './types';
 import type { LedgerRepository } from './repository';
 
+/**
+ * Audit action names. audit_event.action must match ^[a-z_]+\.[a-z_]+$ (one dot), so the earlier three-part names
+ * (ledger.journal.post, ledger.period.close, ledger.export.run) were rejected by the database and every journal post,
+ * period close and export failed on a database built from the migrations. Same shape as platform.flag_set, platform.queue_paused.
+ */
+export const LEDGER_AUDIT_ACTIONS = {
+  journalPosted: 'ledger.journal_posted',
+  periodClosed: 'ledger.period_closed',
+  exportRun: 'ledger.export_run',
+} as const;
+
 export interface LedgerServiceDeps {
   repository: LedgerRepository;
   audit?: AuditPort;
@@ -35,6 +46,24 @@ export class LedgerService {
     const has = ctx.principal.grants.some((g) => g.code === code);
     if (!has) {
       throw AppError.of('FORBIDDEN', message ?? `Permission ${code} required`);
+    }
+  }
+
+  /**
+   * Manual journal posting over the HTTP API (POST /v1/ledger/journals).
+   *
+   * No permission code expresses "post a manual journal": finance.view is read-only, adjustment.create only proposes (SOD-07) and
+   * finance.period_close is not in the hosted catalogue. Until the business names one (audit decision D-03), the route fails
+   * closed for every human session and accepts only a system identity (kind SERVICE), which is how the settlement adapter
+   * already posts (adapter.ts). This is a deliberate interim, not a permission: allowing a role later is a one-line change here.
+   * The check is on the route, not in postJournal, because the settlement adapter and internal callers use postJournal directly.
+   */
+  assertManualPostingAllowed(ctx: RequestContext): void {
+    if (ctx.principal.kind !== 'SERVICE') {
+      throw AppError.of(
+        'FORBIDDEN',
+        'Manual ledger posting over the API is restricted to system identities until a posting permission is defined.',
+      );
     }
   }
 
@@ -272,7 +301,7 @@ export class LedgerService {
     // 7. Audit log
     if (this.deps.audit) {
       await this.deps.audit.record(tx, ctx, {
-        action: 'ledger.journal.post',
+        action: LEDGER_AUDIT_ACTIONS.journalPosted,
         entityType: 'ledger_journal',
         entityId: journalId,
         after: {
@@ -404,7 +433,7 @@ export class LedgerService {
 
     if (this.deps.audit) {
       await this.deps.audit.record(tx, ctx, {
-        action: 'ledger.period.close',
+        action: LEDGER_AUDIT_ACTIONS.periodClosed,
         entityType: 'ledger_period',
         entityId: closed.id,
         after: {
@@ -556,7 +585,7 @@ export class LedgerService {
 
     if (this.deps.audit) {
       await this.deps.audit.record(tx, ctx, {
-        action: 'ledger.export.run',
+        action: LEDGER_AUDIT_ACTIONS.exportRun,
         entityType: 'export_job',
         entityId: exportId,
         after: {

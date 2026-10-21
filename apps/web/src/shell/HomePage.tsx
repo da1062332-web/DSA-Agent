@@ -1,7 +1,8 @@
 import { Box, Button, Card, CardContent, Container, Grid, Typography } from '@mui/material';
 import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { Link as RouterLink } from 'react-router-dom';
-import { useMe } from '../api/useMe';
+import { hasPermission, useMe } from '../api/useMe';
+import { routeAllowed } from './access';
 
 export function HomePage() {
   const me = useMe();
@@ -115,10 +116,12 @@ export function HomePage() {
       badge: 'Configuration',
     },
   ];
-  // Same realm test as the sidebar: a platform operator is offered only the Platform Console, and customer-tenant users
-  // are not offered it (the API refuses them anyway).
+  // Same rules as the sidebar and the route guard (shell/access.ts): a card is offered only where the page would open for this user.
+  // A platform operator is offered only the Platform Console, and customer-tenant users are never offered it (audit F-07).
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
-  const shownCards = cards.filter((c) => (c.to === '/platform-admin') === platformRealm);
+  const shownCards = cards.filter((c) =>
+    routeAllowed(c.to, (code) => hasPermission(me.data, code), platformRealm),
+  );
 
   return (
     <Container maxWidth="lg" sx={{ py: 5 }}>

@@ -12,6 +12,13 @@ import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../
 import type { ApiDeps } from '../types';
 import { SecurityService } from './service';
 
+/** The contract body with principal, ip and severity made optional: they are claims, not trusted fields (see reportSecurityEvent). */
+const ReportSecurityEventBodySchema = CreateSecurityEventRequestSchema.partial({
+  principal: true,
+  ip: true,
+  severity: true,
+});
+
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   const service = new SecurityService(deps);
@@ -22,12 +29,16 @@ export function createRouter(deps: ApiDeps): Router {
 
   /**
    * POST /v1/security/events
-   * Record security monitoring event with automatic credential/secret redaction.
+   * File a security event. Requires security.incident (provisional, audit F-04). The server, not the caller, decides the event's
+   * principal, address and severity, and only reportable types are accepted (report-policy.ts): principal, ip and severity in the
+   * body are optional and kept only as claims. Events the system detects itself are recorded in-process, not through this route.
    */
   router.post('/security/events', async (req, res, next) => {
     try {
       const ctx = requireCtx(req);
-      const parsed = CreateSecurityEventRequestSchema.safeParse(req.body);
+      // The log is evidence: only a holder of security.incident may add to it (reading it needs the same permission, below).
+      deps.authz.requirePermission(ctx, 'security.incident');
+      const parsed = ReportSecurityEventBodySchema.safeParse(req.body);
       if (!parsed.success) {
         throw AppError.of(
           'VALIDATION_ERROR',
@@ -36,7 +47,7 @@ export function createRouter(deps: ApiDeps): Router {
         );
       }
 
-      const event = await service.recordSecurityEvent(ctx, parsed.data);
+      const event = await service.reportSecurityEvent(ctx, parsed.data);
       res.status(201).json(event);
     } catch (err) {
       next(err);

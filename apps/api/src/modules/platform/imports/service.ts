@@ -24,6 +24,41 @@ export class ImportService {
     private readonly storage: ObjectStoragePort = globalStorage,
   ) {}
 
+  /** Whether the caller may work with imports of this target: import.run or config.manage for any, else the target's create permission. */
+  private canUseTarget(ctx: RequestContext, targetEntity: string): boolean {
+    const grants = ctx.principal.grants.map((g) => g.code);
+    const required = targetEntity === 'CUSTOMER' ? 'customer.create' : 'lead.create';
+    return (
+      grants.includes(required as any) || grants.includes('import.run') || grants.includes('config.manage')
+    );
+  }
+
+  /** import.run and config.manage see every batch of the tenant; anyone else (a holder of only a create permission) sees their own. */
+  private seesAllBatches(ctx: RequestContext): boolean {
+    return ctx.principal.grants.some((g) => g.code === 'import.run' || g.code === 'config.manage');
+  }
+
+  /** Whether this caller may see this batch: the target rule, and for a non-administrator only their own uploads (audit F-06). */
+  private canSeeBatch(ctx: RequestContext, batch: { target_entity: string; requester_id: string }): boolean {
+    return (
+      this.canUseTarget(ctx, batch.target_entity) &&
+      (this.seesAllBatches(ctx) || batch.requester_id === ctx.principal.id)
+    );
+  }
+
+  /**
+   * Reading batches (audit F-06): refused before any lookup for a caller who can use no import target at all, so batch ids and
+   * metadata cannot be probed without an import permission. Per-batch checks (requireTargetPermission) still apply after the lookup.
+   */
+  private requireAnyImportAccess(ctx: RequestContext): void {
+    if (!this.canUseTarget(ctx, 'CUSTOMER') && !this.canUseTarget(ctx, 'LEAD')) {
+      throw AppError.of(
+        'FORBIDDEN',
+        'Import access requires import.run, config.manage, customer.create or lead.create.',
+      );
+    }
+  }
+
   private requireTargetPermission(ctx: RequestContext, targetEntity: string): void {
     const grants = ctx.principal.grants.map((g) => g.code);
     const required = targetEntity === 'CUSTOMER' ? 'customer.create' : 'lead.create';
@@ -441,25 +476,32 @@ export class ImportService {
   }
 
   async getImportBatch(tx: Tx, ctx: RequestContext, id: string): Promise<ImportBatch> {
+    this.requireAnyImportAccess(ctx);
     const batch = await this.repo.findBatchById(tx, ctx.principal.tenantId, id);
     if (!batch) {
       throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
     }
     this.requireTargetPermission(ctx, batch.target_entity);
+    // Someone else's upload is not visible to a caller without import.run or config.manage: the same answer as an unknown id.
+    if (!this.canSeeBatch(ctx, batch)) throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
     return toImportBatchDto(batch);
   }
 
   async listBatches(tx: Tx, ctx: RequestContext): Promise<ImportBatch[]> {
+    this.requireAnyImportAccess(ctx);
     const rows = await this.repo.listBatches(tx, ctx.principal.tenantId);
-    return rows.map(toImportBatchDto);
+    // Only the batches this caller may see: the target rule, and for a non-administrator only their own uploads.
+    return rows.filter((r) => this.canSeeBatch(ctx, r)).map(toImportBatchDto);
   }
 
   async getReport(tx: Tx, ctx: RequestContext, id: string): Promise<Buffer> {
+    this.requireAnyImportAccess(ctx);
     const batch = await this.repo.findBatchById(tx, ctx.principal.tenantId, id);
     if (!batch) {
       throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
     }
     this.requireTargetPermission(ctx, batch.target_entity);
+    if (!this.canSeeBatch(ctx, batch)) throw AppError.of('NOT_FOUND', `Import batch ${id} not found.`);
 
     if (!batch.report_file_key) {
       throw AppError.of('NOT_FOUND', 'No validation report was generated for this batch.');

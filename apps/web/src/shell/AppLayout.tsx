@@ -26,6 +26,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
 
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
+import { routeAllowed } from './access';
+import { Forbidden } from './Forbidden';
 import { SidebarContent } from './Sidebar';
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
@@ -89,6 +91,10 @@ export function AppLayout() {
     return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
 
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
+  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
+  // Route guard (audit F-08): by this point the profile and its grants are loaded (the spinner above covers the wait), and a missing
+  // profile has no grants, so the check fails closed. The same rules drive the sidebar and the Home cards.
+  const pageAllowed = routeAllowed(location.pathname, (code) => hasPermission(me.data, code), platformRealm);
 
   return (
     <StepUpProvider>
@@ -169,12 +175,12 @@ export function AppLayout() {
             <SidebarContent
               isAdmin={isAdmin}
               can={(code) => hasPermission(me.data, code)}
-              platformRealm={me.data?.tenantId === PLATFORM_TENANT_ID}
+              platformRealm={platformRealm}
               onNavigate={() => setDrawerOpen(false)}
             />
           </Drawer>
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>
-            <Outlet />
+            {pageAllowed ? <Outlet /> : <Forbidden />}
           </Box>
         </Box>
       </Box>

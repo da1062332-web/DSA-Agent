@@ -675,15 +675,21 @@ export function createRouter(deps: ApiDeps): Router {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);
+        // Audit F-05: this route writes a decision record (and replays by Idempotency-Key, which the caller chooses), and the records
+        // are readable only with rule.simulate. In-process callers (leads, tasks, applications, automation, eligibility) call the engine
+        // directly, not through this route, and nothing in the web app calls it. Pending business decision D-08 on who else may call it.
+        requirePermission(ctx, 'rule.simulate');
         const decisionKey = paramStr(req.params.decisionKey) as DecisionKey;
 
         const body = EvaluateDecisionRequestSchema.parse(req.body);
         // Idempotency-Key is required (Contracts §5): a made-up key would make every retry a new decision record.
         const idempotencyKey = req.header('Idempotency-Key')?.trim();
         if (!idempotencyKey || !/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
-          throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header (8–128 chars, A-Z a-z 0-9 _ -) is required.', [
-            { field: 'Idempotency-Key', issue: 'REQUIRED' },
-          ]);
+          throw AppError.of(
+            'MALFORMED_REQUEST',
+            'Idempotency-Key header (8–128 chars, A-Z a-z 0-9 _ -) is required.',
+            [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
+          );
         }
 
         if (!decisionEngine) {

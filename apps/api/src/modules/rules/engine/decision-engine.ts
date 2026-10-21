@@ -124,7 +124,15 @@ export class LiveDecisionEngine implements DecisionPort {
       }
     }
 
-    const decisionRecordId = `dr_${inputHash.slice(7, 33)}`;
+    // Audit F-23: the id must identify this evaluation, not only its facts. Two evaluations with identical facts (another key, subject or
+    // tenant) previously produced the same id and collided on the primary key. The replay lookup above still works on the idempotency key.
+    const decisionRecordId = `dr_${computeContentHash({
+      tenantId,
+      decisionKey: req.decisionKey,
+      idempotencyKey: req.idempotencyKey,
+      subject: req.subject,
+      inputHash,
+    }).slice(7, 33)}`;
 
     if (!activeVersion) {
       // NO_VERSION active

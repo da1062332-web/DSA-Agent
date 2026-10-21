@@ -31,6 +31,23 @@ export class SanctionService {
     }
   }
 
+  /**
+   * Reading sanctions and disbursement tranches: any of the permissions the Sanction and disbursement screen is shown for
+   * (docs/PERMISSION_UI_VISIBILITY_AUDIT.md F-02). Checked before any lookup, so an id cannot be probed without it. There is no
+   * separate read permission; widening this to application.read is decision D-02.
+   */
+  private checkReadAccess(ctx: RequestContext): void {
+    const allowed = [
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'disbursement.exception_approve',
+    ];
+    if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
+      throw AppError.of('FORBIDDEN', `One of these permissions is required: ${allowed.join(', ')}`);
+    }
+  }
+
   async recordSanction(
     ctx: RequestContext,
     lenderCaseId: string,
@@ -145,6 +162,7 @@ export class SanctionService {
   }
 
   async getSanction(ctx: RequestContext, id: string): Promise<SanctionDto> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const sanction = await this.repo.findSanctionById(tx, tenantId, id);
@@ -156,6 +174,7 @@ export class SanctionService {
   }
 
   async listSanctionsForCase(ctx: RequestContext, lenderCaseId: string): Promise<SanctionDto[]> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const lenderCase = await this.repo.findLenderCase(tx, tenantId, lenderCaseId);
@@ -171,6 +190,7 @@ export class SanctionService {
     ctx: RequestContext,
     filter?: { status?: string; limit?: number },
   ): Promise<SanctionDto[]> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllSanctions(tx, tenantId, filter);
@@ -182,6 +202,7 @@ export class SanctionService {
     ctx: RequestContext,
     filter?: { status?: string; limit?: number },
   ): Promise<DisbursementTrancheDto[]> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllTranches(tx, tenantId, filter);
@@ -391,6 +412,7 @@ export class SanctionService {
   }
 
   async getTranche(ctx: RequestContext, id: string): Promise<DisbursementTrancheDto> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const tranche = await this.repo.findTrancheById(tx, tenantId, id);
@@ -402,6 +424,7 @@ export class SanctionService {
   }
 
   async listTranchesForSanction(ctx: RequestContext, sanctionId: string): Promise<DisbursementTrancheDto[]> {
+    this.checkReadAccess(ctx);
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const sanction = await this.repo.findSanctionById(tx, tenantId, sanctionId);
