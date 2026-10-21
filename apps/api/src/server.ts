@@ -84,6 +84,7 @@ if (config.DATA_CORRECTION_EXECUTOR) {
 const worker = startBackgroundWorker({
   txRunner,
   outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
+  onWarning: (message) => logger.warn({ stage: 'worker' }, message),
   onError: (stage, err) =>
     logger.error(
       { stage, error: err instanceof Error ? err.message : 'unknown' },
