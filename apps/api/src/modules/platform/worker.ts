@@ -29,25 +29,55 @@ export interface BackgroundWorkerOptions {
   outboxRelay?: OutboxRelay;
   intervalMs?: number;
   onError?: (stage: 'outbox' | 'jobs' | 'storage', err: unknown) => void;
+  /** Conditions the worker works around (for example a migration not applied yet); nothing failed. */
+  onWarning?: (message: string) => void;
 }
 
 export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: () => void } {
   let isRunning = false;
   let lastCleanup = Date.now();
+  let pauseTableMissingReported = false;
   const report = opts.onError ?? (() => undefined);
+  const warn = opts.onWarning ?? (() => undefined);
+
+  // Pause flags set from the platform console (app.worker_queue_state, M-069). Unknown or unreadable means not paused.
+  const pausedQueues = async (): Promise<Set<string>> => {
+    try {
+      const r = await opts.txRunner.withTenantTx(
+        serviceContext(WORKER_DISCOVERY_TENANT, 'worker_pause_flags'),
+        (tx) => sql<{ queue: string }>`SELECT queue FROM app.worker_queue_state WHERE paused`.execute(tx),
+      );
+      return new Set(r.rows.map((row) => row.queue));
+    } catch (err) {
+      // A database without migration 0069 has no pause table: a warning, once, not a failure on every tick.
+      if ((err as { code?: string })?.code === '42P01') {
+        if (!pauseTableMissingReported)
+          warn('pause switches unavailable until migration 0069 is applied; all queues keep running');
+        pauseTableMissingReported = true;
+      } else {
+        report('outbox', err);
+      }
+      return new Set();
+    }
+  };
 
   const tick = async () => {
-    if (opts.outboxRelay) {
+    const paused = await pausedQueues();
+    if (opts.outboxRelay && !paused.has('outbox-relay')) {
       await opts.outboxRelay.drain().catch((err) => report('outbox', err));
     }
 
-    if (globalJobQueue.hasHandlers()) {
+    if (globalJobQueue.hasHandlers() && !paused.has('job-queue')) {
       try {
         const jobs = await opts.txRunner.withTenantTx(
           serviceContext(WORKER_DISCOVERY_TENANT, 'worker_job_discovery'),
           async (tx) =>
-            (await sql<{ tenant_id: string; id: string }>`SELECT tenant_id, id FROM app.runnable_jobs(20)`.execute(tx))
-              .rows,
+            (
+              await sql<{
+                tenant_id: string;
+                id: string;
+              }>`SELECT tenant_id, id FROM app.runnable_jobs(20)`.execute(tx)
+            ).rows,
         );
         for (const job of jobs) {
           await opts.txRunner.withTenantTx(serviceContext(job.tenant_id, `worker_job_${job.id}`), (tx) =>

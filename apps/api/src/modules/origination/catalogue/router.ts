@@ -3,6 +3,7 @@
 import { Router } from 'express';
 import type { ApiDeps } from '../../types';
 import { registerContactRoutes } from './contacts';
+import { registerReasonMapRoutes } from './reason-map';
 import { registerLenderRoutes } from './lenders';
 import { registerProductRoutes } from './products';
 
@@ -10,6 +11,7 @@ export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   registerLenderRoutes(router, deps);
   registerContactRoutes(router, deps);
+  registerReasonMapRoutes(router, deps);
   registerProductRoutes(router, deps);
   return router;
 }

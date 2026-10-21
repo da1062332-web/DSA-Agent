@@ -18,7 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { getStoredAuthToken } from '../../auth/token';
+import { apiFetch, errorText } from '../../api/client';
 import {
   MESSAGE_CHANNELS,
   TEMPLATE_CATEGORIES,
@@ -32,10 +32,9 @@ export interface TemplateEditorProps {
   open: boolean;
   onClose: () => void;
   onSuccess: (template: MessageTemplate) => void;
-  apiBaseUrl?: string;
 }
 
-export function TemplateEditor({ open, onClose, onSuccess, apiBaseUrl = '/v1' }: TemplateEditorProps) {
+export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps) {
   const [code, setCode] = useState('');
   const [channel, setChannel] = useState<MessageChannel>('EMAIL');
   const [category, setCategory] = useState<TemplateCategory>('TRANSACTIONAL');
@@ -77,17 +76,9 @@ export function TemplateEditor({ open, onClose, onSuccess, apiBaseUrl = '/v1' }:
     setLoading(true);
 
     try {
-      const token = getStoredAuthToken();
-      const idemKey = `idem_tmpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-
-      const res = await fetch(`${apiBaseUrl}/message-templates`, {
+      const data = await apiFetch<MessageTemplate>('/v1/message-templates', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idemKey,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+        body: {
           code: code.trim(),
           channel,
           category,
@@ -95,18 +86,13 @@ export function TemplateEditor({ open, onClose, onSuccess, apiBaseUrl = '/v1' }:
           body: body.trim(),
           variables,
           status: 'APPROVED',
-        }),
+        },
       });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(data?.error?.message || `Failed to create message template (HTTP ${res.status})`);
-      }
 
       onSuccess(data);
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error creating template');
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }

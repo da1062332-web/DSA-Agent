@@ -8,6 +8,7 @@
 //   - the target tenant's own session approves, denies or revokes;
 //   - data corrections are tenant-isolated: the platform realm cannot read them, and a tenant sees only its own.
 // Every call records an audit event in the same transaction as the change. InMemoryPlatformStore backs unit tests only.
+import { PgQueueOps, type QueueOps } from './queue-ops';
 import {
   AppError,
   PLATFORM_TENANT_ID,
@@ -29,6 +30,8 @@ import { sql } from 'kysely';
 import type { ApiDeps } from '../types';
 
 export interface PlatformStore {
+  /** SUB-ADM.04 background queues. A store without them (the in-memory test store) shows sample data instead. */
+  readonly queueOps?: QueueOps;
   /** Customer tenants only, as metadata. Requires a platform session. */
   listTenants(ctx: RequestContext): Promise<PlatformTenantSummary[]>;
   /** One customer tenant's metadata, or null (an unknown id and the platform tenant itself look the same). */
@@ -276,7 +279,11 @@ const RELEASE_COLUMNS = sql.raw(
 );
 
 export class PgPlatformStore implements PlatformStore {
-  constructor(private readonly deps: Pick<ApiDeps, 'txRunner' | 'audit' | 'ids'>) {}
+  readonly queueOps: QueueOps;
+
+  constructor(private readonly deps: Pick<ApiDeps, 'txRunner' | 'audit' | 'ids'>) {
+    this.queueOps = new PgQueueOps(deps.txRunner);
+  }
 
   // ---- tenant list ----------------------------------------------------------------------------------------------
   async listTenants(ctx: RequestContext): Promise<PlatformTenantSummary[]> {

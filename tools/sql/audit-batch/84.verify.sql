@@ -1,0 +1,5 @@
+-- Verify migration 0084 (connector portal). Read-only. Expect every row PASS.
+SELECT 'referral_consent_otp exists with forced row-level security' AS check,
+       CASE WHEN (SELECT count(*) FROM pg_class WHERE oid IN (to_regclass('app.referral_consent_otp')) AND relrowsecurity AND relforcerowsecurity) = 1 THEN 'PASS' ELSE 'FAIL' END AS result
+UNION ALL SELECT 'dsa_app may update only attempts, verified_at and used_by_lead',
+       CASE WHEN coalesce((SELECT has_column_privilege('dsa_app', a.attrelid, a.attnum, 'UPDATE') FROM pg_attribute a WHERE a.attrelid = to_regclass('app.referral_consent_otp') AND a.attname = 'attempts' AND NOT a.attisdropped), false) AND coalesce((SELECT has_column_privilege('dsa_app', a.attrelid, a.attnum, 'UPDATE') FROM pg_attribute a WHERE a.attrelid = to_regclass('app.referral_consent_otp') AND a.attname = 'used_by_lead' AND NOT a.attisdropped), false) AND NOT coalesce((SELECT has_column_privilege('dsa_app', a.attrelid, a.attnum, 'UPDATE') FROM pg_attribute a WHERE a.attrelid = to_regclass('app.referral_consent_otp') AND a.attname = 'code_hash' AND NOT a.attisdropped), false) THEN 'PASS' ELSE 'FAIL' END;

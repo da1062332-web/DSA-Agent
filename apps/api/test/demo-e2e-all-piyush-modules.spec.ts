@@ -842,7 +842,11 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
 
       // Query profile and update notification preferences via PATCH /v1/me
       // GET /v1/me belongs to the platform module; the preference profile comes from the service directly here.
-      const me = await notifService.getProfile({ principal: salesPrincipal, correlationId: 'corr_demo_me', now: new Date() });
+      const me = await notifService.getProfile({
+        principal: salesPrincipal,
+        correlationId: 'corr_demo_me',
+        now: new Date(),
+      });
       expect(me.profile.notificationPreferences).toBeDefined();
 
       const prefRes = await request(notifApp)
@@ -1128,7 +1132,13 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
   // =========================================================================
   describe('7. Module 28: Integration Management (MOD-INT)', () => {
     it('DEMO-INT-01: Discovers capabilities, lists adapters, and tests connectivity health', async () => {
-      const intService = new IntegrationService(createTestDeps({ txRunner: dummyTxRunner }));
+      // No database here: the integration service uses its in-memory store with the seeded demo connections.
+      const noDatabase: TxRunner = {
+        withTenantTx: async () => {
+          throw new Error('No TxRunner in unit tests');
+        },
+      };
+      const intService = new IntegrationService(createTestDeps({ txRunner: noDatabase }));
       const intApp = express();
       intApp.use(express.json());
       const adminPrincipal = testPrincipal({
@@ -1184,7 +1194,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         ],
       });
       adminApp.use(fakeAuth(superAdminPrincipal));
-      adminApp.use('/v1', createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      adminApp.use(
+        '/v1',
+        createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService),
+      );
       adminApp.use(errorHandler());
 
       // Feature flags belong to the platform realm: they are read by a platform principal, not by a customer tenant user
@@ -1200,7 +1213,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
           }),
         ),
       );
-      platformApp.use('/platform', createPlatformRealmRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      platformApp.use(
+        '/platform',
+        createPlatformRealmRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService),
+      );
       platformApp.use(errorHandler());
 
       // List Feature Flags
@@ -1234,7 +1250,10 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       const checkerApp = express();
       checkerApp.use(express.json());
       checkerApp.use(fakeAuth(checkerAdminPrincipal));
-      checkerApp.use('/v1', createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService));
+      checkerApp.use(
+        '/v1',
+        createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService),
+      );
       checkerApp.use(errorHandler());
 
       const approveRes = await request(checkerApp)

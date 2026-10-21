@@ -7,6 +7,7 @@
 //   - Tenant routes (approving support access, data corrections) need the permission AND a user of a customer tenant. A platform
 //     operator cannot approve their own request.
 // Service identities get no shortcut in either realm. Every platform action and every cross-tenant read is written to the audit trail.
+import { registerTenantLifecycleRoutes } from './tenant-lifecycle';
 import {
   AppError,
   ApproveDataCorrectionRequestSchema,
@@ -265,7 +266,7 @@ function buildRouter(
     '/v1/jobs',
     handle(async (ctx, _req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
-      res.json(await service.getJobsAndQueues());
+      res.json(await service.getJobsAndQueues(ctx));
     }),
   );
 
@@ -274,7 +275,7 @@ function buildRouter(
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const input = PauseQueueRequestSchema.parse(req.body);
-      const result = await service.pauseQueue(getParam(req, 'queue'), input, ctx.principal.id);
+      const result = await service.pauseQueue(ctx, getParam(req, 'queue'), input);
       await audit(ctx, {
         action: 'platform.queue_paused',
         entityType: 'JOB_QUEUE',
@@ -291,7 +292,7 @@ function buildRouter(
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
       const input = ResumeQueueRequestSchema.parse(req.body);
-      const result = await service.resumeQueue(getParam(req, 'queue'), input, ctx.principal.id);
+      const result = await service.resumeQueue(ctx, getParam(req, 'queue'), input);
       await audit(ctx, {
         action: 'platform.queue_resumed',
         entityType: 'JOB_QUEUE',
@@ -307,7 +308,7 @@ function buildRouter(
     '/v1/dead-letters/:id/replay',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
-      const result = await service.replayDeadLetter(getParam(req, 'id'));
+      const result = await service.replayDeadLetter(ctx, getParam(req, 'id'));
       await audit(ctx, {
         action: 'platform.dead_letter_replayed',
         entityType: 'DEAD_LETTER',
@@ -322,7 +323,7 @@ function buildRouter(
     '/v1/dead-letters/:id/discard',
     handle(async (ctx, req, res) => {
       await requirePlatform(ctx, 'platform.jobs');
-      const result = await service.discardDeadLetter(getParam(req, 'id'));
+      const result = await service.discardDeadLetter(ctx, getParam(req, 'id'));
       await audit(ctx, {
         action: 'platform.dead_letter_discarded',
         entityType: 'DEAD_LETTER',
@@ -454,6 +455,9 @@ function buildRouter(
       res.json(updated);
     }),
   );
+
+  // MOD-TEN lifecycle (API-TEN-001, 003..006).
+  if (surface === 'platform') registerTenantLifecycleRoutes(router, deps, requirePlatform);
 
   return router;
 }

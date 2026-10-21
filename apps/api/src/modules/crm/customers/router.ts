@@ -6,6 +6,7 @@ import { AppError, type RequestContext } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
 import type { ApiDeps } from '../../types';
+import { registerCustomerExtraRoutes } from './customer-extras';
 import { CustomerService } from './customer-service';
 import { SqlCustomerRepository, type CustomerRepository } from './repository';
 import {
@@ -72,6 +73,8 @@ export function createRouter(
     repository,
     idGenerator: deps.idGenerator,
   });
+  // API-CUST-007 contact points and API-CUST-008 merge (customer-extras.ts).
+  registerCustomerExtraRoutes(router, deps, repository);
 
   // API-CUST-001: POST /v1/customers — Create Customer
   router.post('/customers', async (req: Request, res: Response) => {

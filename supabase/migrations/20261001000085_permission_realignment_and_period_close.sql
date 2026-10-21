@@ -1,4 +1,4 @@
--- Migration: 20261001000069_permission_realignment_and_period_close.sql
+-- Migration: 20261001000085_permission_realignment_and_period_close.sql
 -- Modules: Access Control (RBAC realignment for tenant qloax-dsa)
 -- Adds finance.period_close to app.permission catalogue and applies approved grants (Decisions A-H)
 -- Limited to tenant 'qloax-dsa' and idempotent (ON CONFLICT DO NOTHING).

@@ -7,7 +7,10 @@ import type { PermissionCode } from '@dsa/contracts';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
+import { ConfiguredTestAdapter } from '../src/modules/crm/messaging/channel-adapter';
+import { SendEligibilityGuard } from '../src/modules/crm/messaging/send-guard';
 import { MAX_ATTEMPTS, OutboxRelay } from '../src/modules/platform/outbox-relay';
+import { testPrincipal } from './support/fake-auth';
 import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/harness';
 
 let env: IsolationEnv;
@@ -103,7 +106,11 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
       [leadId],
     );
     expect(tasks.rows).toEqual([
-      expect.objectContaining({ type: 'CALL', owner_queue_id: env.A.queueId, sla_class: 'CUSTOMER_FIRST_CONTACT' }),
+      expect.objectContaining({
+        type: 'CALL',
+        owner_queue_id: env.A.queueId,
+        sla_class: 'CUSTOMER_FIRST_CONTACT',
+      }),
     ]);
     expect(tasks.rows[0].sla_decision_record_id).toMatch(/^dr_/);
   });
@@ -158,20 +165,19 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
 
     const checklist = await request(app).get(`/v1/applications/${applicationId}/checklist`);
     expect(checklist.status).toBe(200);
-    expect(checklist.body.data.map((i: { documentTypeCode: string }) => i.documentTypeCode)).toEqual(['PAN_CARD']);
+    expect(checklist.body.data.map((i: { documentTypeCode: string }) => i.documentTypeCode)).toEqual([
+      'PAN_CARD',
+    ]);
     expect(checklist.body.summary.complete).toBe(false);
     checklistItemId = checklist.body.data[0].id;
 
-    const activity = await request(app)
-      .post('/v1/activities')
-      .set('Idempotency-Key', key('activity'))
-      .send({
-        kind: 'NOTE',
-        subjectType: 'LOAN_APPLICATION',
-        subjectId: applicationId,
-        occurredAt: '2026-10-19T09:00:00.000Z',
-        note: 'Collected the PAN card copy',
-      });
+    const activity = await request(app).post('/v1/activities').set('Idempotency-Key', key('activity')).send({
+      kind: 'NOTE',
+      subjectType: 'LOAN_APPLICATION',
+      subjectId: applicationId,
+      occurredAt: '2026-10-19T09:00:00.000Z',
+      note: 'Collected the PAN card copy',
+    });
     expect(activity.status, JSON.stringify(activity.body)).toBe(201);
   });
 
@@ -214,9 +220,10 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
 
     const built = await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
     expect(built.status, JSON.stringify(built.body)).toBe(200);
-    const pkg = await env.admin.query(`select manifest, consent_ids from app.submission_package where id = $1`, [
-      built.body.package.id,
-    ]);
+    const pkg = await env.admin.query(
+      `select manifest, consent_ids from app.submission_package where id = $1`,
+      [built.body.package.id],
+    );
     expect(pkg.rows[0].consent_ids).toEqual(['cnst_wfa_int_share']);
     expect(pkg.rows[0].manifest.documents).toEqual([
       expect.objectContaining({ checklistItemId, documentId: 'doc_wfa_int_1', sha256: 'b'.repeat(64) }),
@@ -243,9 +250,10 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
       .send({ text: 'Please share the latest salary slip', requestedItems: ['SALARY_SLIP'] });
     expect(raised.status, JSON.stringify(raised.body)).toBe(201);
     const queryId = raised.body.query.id;
-    const stored = await env.admin.query(`select requested_items, responded_at from app.lender_query where id = $1`, [
-      queryId,
-    ]);
+    const stored = await env.admin.query(
+      `select requested_items, responded_at from app.lender_query where id = $1`,
+      [queryId],
+    );
     expect(stored.rows).toEqual([{ requested_items: ['SALARY_SLIP'], responded_at: null }]);
 
     const answer = { text: 'Salary slip uploaded', documentReferences: ['doc_wfa_int_1'] };
@@ -262,6 +270,66 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
     expect(second.status).toBe(409);
   });
 
+  it('TEST-WFA-INT-06b a message about the application uses the CONTACT consent captured on its lead; another branch cannot send', async () => {
+    const guard = new SendEligibilityGuard({ bypassQuietHoursForTest: true });
+    const template = {
+      id: 'tmpl_wfa_int',
+      code: 'APP_UPDATE',
+      channel: 'SMS',
+      category: 'TRANSACTIONAL',
+      body: 'Your application is in progress',
+      variables: [],
+      status: 'APPROVED',
+    } as never;
+    const input = {
+      subjectType: 'LOAN_APPLICATION',
+      subjectId: applicationId,
+      channel: 'SMS',
+      templateCode: 'APP_UPDATE',
+      recipient: { mobile: '+919000000001' },
+      variables: {},
+    } as never;
+    const run = (grants: { code: 'message.send'; scope: 'TENANT' | 'BRANCH'; branchIds: string[] }[]) =>
+      createTxRunner(env.db).withTenantTx(
+        {
+          principal: testPrincipal({
+            tenantId: env.A.tenantId,
+            id: env.A.userIds[0],
+            primaryBranchId: null,
+            grants,
+          }),
+          correlationId: 'corr_wfa_msg',
+          now: new Date(),
+        },
+        (tx) =>
+          guard.evaluate(
+            {
+              principal: testPrincipal({
+                tenantId: env.A.tenantId,
+                id: env.A.userIds[0],
+                primaryBranchId: null,
+                grants,
+              }),
+              correlationId: 'corr_wfa_msg',
+              now: new Date(),
+            },
+            input,
+            new ConfiguredTestAdapter('SMS', 'TEST', true),
+            tx,
+            template,
+          ),
+      );
+    const allowed = await run([{ code: 'message.send', scope: 'TENANT', branchIds: [] }]);
+    expect(allowed.blockedReason ?? null).toBeNull();
+    expect(allowed.eligible).toBe(true);
+
+    const otherBranch = await run([
+      { code: 'message.send', scope: 'BRANCH', branchIds: ['br_somewhere_else'] },
+    ]);
+    expect(otherBranch.eligible).toBe(false);
+    expect(otherBranch.blockedReason).toBe('SUBJECT_NOT_FOUND');
+  });
+
   it('TEST-WFA-INT-07 the outbox relay publishes every waiting event exactly once', async () => {
     const seen: string[] = [];
     const relay = new OutboxRelay({
@@ -275,8 +343,12 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
     const outcomes = await relay.drain(500);
     expect(outcomes.length).toBeGreaterThan(0);
     expect(outcomes.every((o) => o.outcome === 'PUBLISHED')).toBe(true);
-    expect(seen).toEqual(expect.arrayContaining(['lead.created', 'lead.converted', 'application.created', 'checklist.changed']));
-    const waiting = await env.admin.query(`select count(*)::int as n from app.outbox_event where published_at is null`);
+    expect(seen).toEqual(
+      expect.arrayContaining(['lead.created', 'lead.converted', 'application.created', 'checklist.changed']),
+    );
+    const waiting = await env.admin.query(
+      `select count(*)::int as n from app.outbox_event where published_at is null`,
+    );
     expect(waiting.rows[0].n).toBe(0);
     expect(await relay.drain(500)).toEqual([]);
   });

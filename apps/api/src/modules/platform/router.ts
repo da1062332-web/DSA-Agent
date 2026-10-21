@@ -38,6 +38,10 @@ import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
+import { registerUserLifecycleRoutes } from './user-lifecycle';
+import { registerDeadLetterRoutes } from './dead-letters';
+import { registerOrgChartAndReviewRoutes } from './org-chart';
+import { registerConfigurationRoutes } from './configuration';
 import {
   assertAdministratorRemains,
   assertCanGrantPermissions,
@@ -1972,6 +1976,10 @@ export function createRouter(deps: ApiDeps): Router {
 
   registerOrganisationRoutes(router, deps);
   registerTeamRoutes(router, deps);
+  registerUserLifecycleRoutes(router, deps);
+  registerDeadLetterRoutes(router, deps);
+  registerOrgChartAndReviewRoutes(router, deps);
+  registerConfigurationRoutes(router, deps);
   registerQueueRoutes(router, deps);
 
   return router;

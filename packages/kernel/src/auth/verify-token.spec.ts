@@ -25,7 +25,7 @@ async function errorCode(p: Promise<unknown>): Promise<string> {
 describe('createTokenVerifier', () => {
   it('TEST-KRN-102-01 accepts a valid HS256 token and reads sub, tenant and aal', async () => {
     const t = await verifier.verify(await mint());
-    expect(t).toEqual({ subject: SUB, tenantId: TENANT, aal: 'aal1', mfaVerifiedAt: null });
+    expect(t).toEqual({ subject: SUB, tenantId: TENANT, aal: 'aal1', mfaVerifiedAt: null, email: null });
   });
 
   it('TEST-KRN-102-02 reports the TOTP time for an aal2 token', async () => {

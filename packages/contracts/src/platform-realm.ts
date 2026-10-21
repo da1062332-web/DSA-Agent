@@ -17,6 +17,11 @@ export const PLATFORM_PERMISSIONS: readonly PermissionCode[] = [
   'platform.jobs',
   'platform.support_access',
   'platform.release',
+  // MOD-TEN lifecycle (M-083)
+  'platform.tenant.create',
+  'platform.tenant.suspend',
+  'platform.tenant.offboard',
+  'platform.tenant.entitlements',
 ];
 
 /** True for a signed-in user of the platform tenant. Service identities are never platform operators. */

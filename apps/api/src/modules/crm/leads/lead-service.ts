@@ -64,7 +64,7 @@ export class LeadService {
     return `${prefix}_${ulid()}`;
   }
 
-  private toResource(lead: LeadRow): MaskedLeadResource {
+  toResource(lead: LeadRow): MaskedLeadResource {
     return {
       id: lead.id,
       tenantId: lead.tenant_id,
@@ -113,7 +113,7 @@ export class LeadService {
    * A branch without the queue it needs leaves the lead with the creator. Only that expected refusal is handled here;
    * a database error propagates, because the transaction can no longer be used.
    */
-  private async routeNewLead(
+  async routeNewLead(
     tx: Tx,
     ctx: RequestContext,
     input: CreateLeadInput,
@@ -124,11 +124,13 @@ export class LeadService {
       try {
         return (await directory.findBranchQueue(tx, input.branchId, kind)).queueId;
       } catch (err) {
-        if (err instanceof AppError && (err.code === 'INVALID_STATE' || err.code === 'NOT_FOUND')) return null;
+        if (err instanceof AppError && (err.code === 'INVALID_STATE' || err.code === 'NOT_FOUND'))
+          return null;
         throw err;
       }
     };
-    const roundRobin = async (queueId: string) => (directory ? await directory.pickRoundRobin(tx, queueId) : null);
+    const roundRobin = async (queueId: string) =>
+      directory ? await directory.pickRoundRobin(tx, queueId) : null;
 
     if (this.deps.decisionPort) {
       const local = new Date(ctx.now.getTime() + 330 * 60_000); // IST, the tenants' business timezone
@@ -156,19 +158,32 @@ export class LeadService {
         if ('userId' in pool) {
           const user = directory ? await directory.getUser(tx, pool.userId) : null;
           if (!directory || (user && user.status === 'ACTIVE')) {
-            return { ownerUserId: pool.userId, ownerQueueId: null, decisionRecordId: decision.decisionRecordId };
+            return {
+              ownerUserId: pool.userId,
+              ownerQueueId: null,
+              decisionRecordId: decision.decisionRecordId,
+            };
           }
         } else {
-          const queueId = 'queueId' in pool ? pool.queueId : ((await queueOf('UNASSIGNED')) ?? (await queueOf('INTAKE')));
+          const queueId =
+            'queueId' in pool ? pool.queueId : ((await queueOf('UNASSIGNED')) ?? (await queueOf('INTAKE')));
           if (queueId) {
             const picked = out.strategy === 'ROUND_ROBIN' ? await roundRobin(queueId) : null;
             return picked
-              ? { ownerUserId: picked.userId, ownerQueueId: null, decisionRecordId: decision.decisionRecordId }
+              ? {
+                  ownerUserId: picked.userId,
+                  ownerQueueId: null,
+                  decisionRecordId: decision.decisionRecordId,
+                }
               : { ownerUserId: null, ownerQueueId: queueId, decisionRecordId: decision.decisionRecordId };
           }
         }
       }
-      return { ownerUserId: ctx.principal.id, ownerQueueId: null, decisionRecordId: decision.decisionRecordId };
+      return {
+        ownerUserId: ctx.principal.id,
+        ownerQueueId: null,
+        decisionRecordId: decision.decisionRecordId,
+      };
     }
 
     const intake = await queueOf('INTAKE');
@@ -377,6 +392,22 @@ export class LeadService {
     // 1. Insert Lead
     await this.deps.repository.insertLead(tx, leadRow);
 
+    // 1b. SUB-LEAD.04: each duplicate pair waits for a merge-or-dismiss decision (API-LEAD-008).
+    if (duplicateFlag !== 'NONE' && this.deps.repository.insertDuplicateReviews) {
+      await this.deps.repository.insertDuplicateReviews(
+        tx,
+        [...new Set(duplicateCandidateIds)].map((existingId) => ({
+          id: this.nextId('dup'),
+          tenant_id: tenantId,
+          left_id: existingId,
+          right_id: leadId,
+          classification: duplicateFlag as 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT',
+          decision_record_id: duplicateDecisionId,
+          created_by: ctx.principal.id,
+        })),
+      );
+    }
+
     // 2. Insert Consent Record
     const consentId = this.nextId('cnst');
     await this.deps.repository.insertConsentRecord(tx, {
@@ -476,7 +507,9 @@ export class LeadService {
       await this.deps.taskPort.createTask(tx, ctx, {
         type: 'CALL',
         title: `First contact: ${leadRow.full_name}`,
-        owner: leadRow.owner_user_id ? { userId: leadRow.owner_user_id } : { queueId: leadRow.owner_queue_id! },
+        owner: leadRow.owner_user_id
+          ? { userId: leadRow.owner_user_id }
+          : { queueId: leadRow.owner_queue_id! },
         linked: {
           type: 'LEAD',
           id: leadId,
@@ -1061,7 +1094,10 @@ export class LeadService {
 
     // 2. Application creation, through the applications module (Contracts §4.3). Leads never write loan_application rows.
     if (!this.deps.applicationPort) {
-      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Applications cannot be created right now, so the lead was not converted.');
+      throw AppError.of(
+        'DEPENDENCY_UNAVAILABLE',
+        'Applications cannot be created right now, so the lead was not converted.',
+      );
     }
     const salesOwnerId = lead.owner_user_id ?? ctx.principal.id;
     const partyType = lead.qual_applicant_type === 'NON_INDIVIDUAL' ? 'ENTITY' : 'INDIVIDUAL';
@@ -1123,7 +1159,6 @@ export class LeadService {
       chain_depth: 0,
       created_at: now,
     });
-
 
     // 6. Audit event
     await this.deps.repository.insertAuditEvent(tx, {

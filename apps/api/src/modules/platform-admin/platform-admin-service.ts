@@ -242,14 +242,20 @@ export class PlatformAdminService {
   // SUB-ADM.04: Background Jobs (API-ADM-004 / API-ADM-005)
   // ==========================================
 
-  async getJobsAndQueues(): Promise<{
-    sampleData: true;
-    notice: string;
+  /**
+   * SUB-ADM.04: the real background queues (the outbox relay and the job queue) with their pause flags and the items parked
+   * after their last attempt, from the store's queue operations (M-069). A store without them (the in-memory store of the
+   * unit tests) shows the labelled sample data.
+   */
+  async getJobsAndQueues(ctx: RequestContext): Promise<{
+    sampleData: boolean;
+    notice: string | null;
     queues: JobQueueInfo[];
     deadLetters: DeadLetterItem[];
   }> {
+    const ops = this.store.queueOps;
+    if (ops) return { sampleData: false, notice: null, ...(await ops.overview(ctx)) };
     return {
-      // Honest labelling: these figures are not read from any real queue. The console for background jobs is Release 2 (SUB-ADM.04).
       sampleData: true,
       notice: SAMPLE_JOBS_NOTICE,
       queues: Array.from(this.queues.values()),
@@ -257,60 +263,75 @@ export class PlatformAdminService {
     };
   }
 
-  async pauseQueue(queueName: string, req: PauseQueueRequest, actorId: string): Promise<JobQueueInfo> {
-    const q = this.queues.get(queueName);
-    if (!q) {
-      throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
-    }
-    if (!req.reason || req.reason.trim().length < 5) {
+  private async setPaused(
+    ctx: RequestContext,
+    queueName: string,
+    paused: boolean,
+    reason: string,
+  ): Promise<JobQueueInfo> {
+    if (!reason || reason.trim().length < 5) {
       throw AppError.of(
         'VALIDATION_ERROR',
-        'A reason is required when pausing a queue (minimum 5 characters).',
+        `A reason is required when ${paused ? 'pausing' : 'resuming'} a queue (minimum 5 characters).`,
       );
     }
-
-    q.paused = true;
-    q.pausedReason = req.reason.trim();
-    q.pausedAt = new Date().toISOString();
-    q.pausedBy = actorId;
+    const ops = this.store.queueOps;
+    if (ops) {
+      await ops.setPaused(ctx, queueName, paused, reason.trim());
+      return (await ops.overview(ctx)).queues.find((q) => q.queue === queueName)!;
+    }
+    const q = this.queues.get(queueName);
+    if (!q) throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
+    q.paused = paused;
+    q.pausedReason = paused ? reason.trim() : null;
+    q.pausedAt = paused ? ctx.now.toISOString() : null;
+    q.pausedBy = paused ? ctx.principal.id : null;
     return q;
   }
 
-  async resumeQueue(queueName: string, req: ResumeQueueRequest, _actorId: string): Promise<JobQueueInfo> {
-    const q = this.queues.get(queueName);
-    if (!q) {
-      throw AppError.of('NOT_FOUND', `Queue '${queueName}' not found.`);
-    }
-    if (!req.reason || req.reason.trim().length < 5) {
-      throw AppError.of(
-        'VALIDATION_ERROR',
-        'A reason is required when resuming a queue (minimum 5 characters).',
-      );
-    }
-
-    q.paused = false;
-    q.pausedReason = null;
-    q.pausedAt = null;
-    q.pausedBy = null;
-    return q;
+  async pauseQueue(ctx: RequestContext, queueName: string, req: PauseQueueRequest): Promise<JobQueueInfo> {
+    return this.setPaused(ctx, queueName, true, req.reason);
   }
 
-  async replayDeadLetter(id: string): Promise<DeadLetterItem> {
-    const dl = this.deadLetters.get(id);
-    if (!dl) {
-      throw AppError.of('NOT_FOUND', `Dead letter record '${id}' not found.`);
+  async resumeQueue(ctx: RequestContext, queueName: string, req: ResumeQueueRequest): Promise<JobQueueInfo> {
+    return this.setPaused(ctx, queueName, false, req.reason);
+  }
+
+  private async deadLetterAction(
+    ctx: RequestContext,
+    id: string,
+    action: 'REPLAY' | 'DISCARD',
+  ): Promise<DeadLetterItem> {
+    const status: DeadLetterItem['status'] = action === 'REPLAY' ? 'REPLAYED' : 'DISCARDED';
+    const ops = this.store.queueOps;
+    if (ops) {
+      const before = (await ops.overview(ctx)).deadLetters.find((d) => d.id === id);
+      await ops.deadLetterAction(ctx, id, action);
+      return {
+        ...(before ?? {
+          id,
+          queue: 'unknown',
+          originalJobId: id,
+          payload: {},
+          errorReason: '',
+          failedAt: ctx.now.toISOString(),
+          retryCount: 0,
+        }),
+        status,
+      };
     }
-    dl.status = 'REPLAYED';
+    const dl = this.deadLetters.get(id);
+    if (!dl) throw AppError.of('NOT_FOUND', `Dead letter record '${id}' not found.`);
+    dl.status = status;
     return dl;
   }
 
-  async discardDeadLetter(id: string): Promise<DeadLetterItem> {
-    const dl = this.deadLetters.get(id);
-    if (!dl) {
-      throw AppError.of('NOT_FOUND', `Dead letter record '${id}' not found.`);
-    }
-    dl.status = 'DISCARDED';
-    return dl;
+  async replayDeadLetter(ctx: RequestContext, id: string): Promise<DeadLetterItem> {
+    return this.deadLetterAction(ctx, id, 'REPLAY');
+  }
+
+  async discardDeadLetter(ctx: RequestContext, id: string): Promise<DeadLetterItem> {
+    return this.deadLetterAction(ctx, id, 'DISCARD');
   }
 
   // ==========================================

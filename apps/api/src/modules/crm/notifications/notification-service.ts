@@ -18,6 +18,10 @@ import { monotonicFactory } from 'ulid';
 import { PreferenceResolver } from './preference-resolver';
 import { NotificationStreamHub } from './stream-hub';
 
+/** The unit-test TxRunners reject with "No TxRunner …": no database, so the in-memory store stands in. Anything else is a
+ *  real failure and propagates; a notification is never reported as stored when it was not. */
+const isNoDatabase = (err: unknown): boolean => err instanceof Error && /^No TxRunner/.test(err.message);
+
 const nextUlid = monotonicFactory();
 
 export class NotificationService {
@@ -146,9 +150,7 @@ export class NotificationService {
           return { data, meta: { nextCursor, limit, unreadCount } };
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.message !== 'No TxRunner in unit tests') {
-          throw err;
-        }
+        if (!isNoDatabase(err)) throw err;
       }
     }
 
@@ -217,9 +219,7 @@ export class NotificationService {
           return { updatedCount: res.rows.length };
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.message !== 'No TxRunner in unit tests') {
-          throw err;
-        }
+        if (!isNoDatabase(err)) throw err;
       }
     }
 
@@ -287,9 +287,7 @@ export class NotificationService {
           `.execute(tx);
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.message !== 'No TxRunner in unit tests') {
-          throw err;
-        }
+        if (!isNoDatabase(err)) throw err;
         // In-memory fallback
         NotificationService.memoryNotifications.set(record.id, record);
       }
@@ -323,8 +321,8 @@ export class NotificationService {
           const row = res.rows[0];
           return PreferenceResolver.normalizePreferences(row?.notification_preferences);
         });
-      } catch {
-        // Fall back to memory
+      } catch (err: unknown) {
+        if (!isNoDatabase(err)) throw err;
       }
     }
 
@@ -386,9 +384,7 @@ export class NotificationService {
           return { profile, lockVersion: row.lock_version };
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.message !== 'No TxRunner in unit tests') {
-          throw err;
-        }
+        if (!isNoDatabase(err)) throw err;
       }
     }
 
@@ -512,9 +508,7 @@ export class NotificationService {
           return { profile, lockVersion: updated.lock_version };
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.message !== 'No TxRunner in unit tests') {
-          throw err;
-        }
+        if (!isNoDatabase(err)) throw err;
       }
     }
 

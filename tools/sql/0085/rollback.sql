@@ -1,4 +1,4 @@
--- Rollback migration 0069 (permission realignment & finance.period_close).
+-- Rollback migration 0085 (permission realignment & finance.period_close).
 -- WRITES: deletes exactly the 45 rows added to app.role_permission for tenant qloax-dsa.
 -- Keeps catalogue row in app.permission to preserve FK constraints if any.
 BEGIN;

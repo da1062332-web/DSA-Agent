@@ -11,7 +11,9 @@ import type {
   DecisionPort,
   IdGenerator,
   OutboxPort,
+  PartyPort,
   TaskPort,
+  Tx,
   TxRunner,
   UserDirectoryPort,
 } from '@dsa/contracts';
@@ -44,7 +46,7 @@ export interface ApiDeps {
   leadRepository?: unknown;
   customerRepository?: unknown;
   taskRepository?: unknown;
-  partyPort?: unknown;
+  partyPort?: PartyPort;
   sanctionRepository?: unknown;
   apiKeyStore?: unknown;
   partnerService?: unknown;
@@ -56,6 +58,18 @@ export interface ApiDeps {
   importRepository?: unknown;
   workforceRepository?: unknown;
   invoiceRepository?: unknown;
+  /** Where document bytes are stored (MOD-DOC). Local folder when absent. */
+  documentStore?: unknown;
+  /** Secret behind signed document links and archive encryption (derived keys). A per-process secret when absent. */
+  documentLinkSecret?: string;
+  /** Queues background work in the caller's transaction (platform job queue, run per tenant by the worker). */
+  enqueueJob?: (
+    tx: Tx,
+    tenantId: string,
+    jobType: string,
+    payload: Record<string, unknown>,
+    runAt?: Date,
+  ) => Promise<string>;
 }
 
 export interface ApiModule {

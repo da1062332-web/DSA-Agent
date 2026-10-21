@@ -1,9 +1,11 @@
 // apps/api/src/modules/crm/leads/router.ts — owner: Dev 5 (MOD-04 Leads). Tasks: TASK-107..110
 // APIs: API-LEAD-001 (create) · 002 (list) · 003 (detail) · 004 (patch) · 005 (transitions) · 006 (assignments) · 007 (atomic conversion)
+// and, in lead-extras.ts, 008/009 (duplicate reviews) · 010/011 (apply links) · 012 (reroute) · 013 (bulk) · 014 (restore)
 import { AppError, type RequestContext } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
 import type { ApiDeps } from '../../types';
+import { registerLeadExtraRoutes } from './lead-extras';
 import { LeadService } from './lead-service';
 import { SqlLeadRepository, type LeadRepository } from './repository';
 import {
@@ -58,13 +60,12 @@ function handleZodError(err: ZodError): never {
   throw AppError.of('VALIDATION_ERROR', 'Request validation failed', details);
 }
 
-export function createRouter(
-  deps: ApiDeps & { leadRepository?: LeadRepository },
-  repoOverride?: LeadRepository,
-): Router {
-  const router = Router();
-  const repository = repoOverride ?? deps.leadRepository ?? new SqlLeadRepository();
-  const service = new LeadService({
+/** The lead service with the API's ports; also used by the public Apply Link form (lead-extras.ts). */
+export function createLeadService(
+  deps: ApiDeps,
+  repository: LeadRepository = new SqlLeadRepository(),
+): LeadService {
+  return new LeadService({
     repository,
     decisionPort: deps.decisionPort,
     applicationPort: deps.applicationPort,
@@ -74,6 +75,16 @@ export function createRouter(
     outboxPort: deps.outboxPort,
     idGenerator: deps.idGenerator,
   });
+}
+
+export function createRouter(
+  deps: ApiDeps & { leadRepository?: LeadRepository },
+  repoOverride?: LeadRepository,
+): Router {
+  const router = Router();
+  const repository = repoOverride ?? deps.leadRepository ?? new SqlLeadRepository();
+  const service = createLeadService(deps, repository);
+  registerLeadExtraRoutes(router, deps, service, repository);
 
   // API-LEAD-001: POST /v1/leads — Create Lead
   router.post('/leads', async (req: Request, res: Response) => {

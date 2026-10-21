@@ -111,7 +111,7 @@ export class OutboxRelay {
 async function lock(tx: Tx, id: string): Promise<OutboxRow | null> {
   const r = await sql<OutboxRow>`
     SELECT * FROM app.outbox_event
-     WHERE id = ${id} AND published_at IS NULL AND dead_lettered_at IS NULL
+     WHERE id = ${id} AND published_at IS NULL AND dead_lettered_at IS NULL AND discarded_at IS NULL
      FOR UPDATE SKIP LOCKED`.execute(tx);
   return r.rows[0] ?? null;
 }

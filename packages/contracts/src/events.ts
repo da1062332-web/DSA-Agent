@@ -22,6 +22,22 @@ export const DOMAIN_EVENT_TYPES = [
   'data.shared',
   'rule_set.published',
   'rule_set.suspended',
+  // Added 2026-10-19 (audit follow-up; Contracts §15): lead/customer merge, application parties and owners, user lifecycle,
+  // inbound provider webhooks.
+  'lead.merged',
+  'duplicate_review.resolved',
+  'customer.merged',
+  'application.party_added',
+  'application.party_removed',
+  'application.assigned',
+  'user.invited',
+  'user.deactivated',
+  'user.suspended',
+  'user.reactivated',
+  'user.roles_changed',
+  'user.transfer_scheduled',
+  'user.transferred',
+  'integration.webhook_received',
 ] as const;
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
 

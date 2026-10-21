@@ -32,7 +32,6 @@ import {
   Paper,
 } from '@mui/material';
 import { createTask, completeTask, listTasks } from './api';
-import { getStoredAuthToken } from '../../auth/token';
 import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import type {
@@ -44,45 +43,6 @@ import type {
   TaskResource,
   TaskType,
 } from './types';
-
-function parseJwtPayload(token: string | undefined): any {
-  if (!token) return null;
-  try {
-    const parts = token.split('.');
-    if (parts.length >= 2 && parts[1]) {
-      const base64Url = parts[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join(''),
-      );
-      return JSON.parse(jsonPayload);
-    }
-  } catch {
-    // Ignore parse error and fallback
-  }
-  return null;
-}
-
-function getInitialUserId(): string {
-  const token = getStoredAuthToken();
-  const payload = parseJwtPayload(token);
-  if (payload?.sub) return payload.sub;
-  if (payload?.user_id) return payload.user_id;
-  if (payload?.id) return payload.id;
-  return 'usr_demo_01';
-}
-
-function getInitialBranchId(): string {
-  const token = getStoredAuthToken();
-  const payload = parseJwtPayload(token);
-  if (payload?.primaryBranchId) return payload.primaryBranchId;
-  if (payload?.branch_id) return payload.branch_id;
-  if (payload?.app_metadata?.primaryBranchId) return payload.app_metadata.primaryBranchId;
-  return 'br_demo_01';
-}
 
 export function TaskList(): React.ReactElement {
   const queryClient = useQueryClient();
@@ -101,7 +61,8 @@ export function TaskList(): React.ReactElement {
   const [title, setTitle] = useState('');
   const [linkedType, setLinkedType] = useState<TaskLinkedType>('LEAD');
   const [linkedId, setLinkedId] = useState('');
-  const [branchId, setBranchId] = useState(getInitialBranchId);
+  // The task's branch defaults to the signed-in user's primary branch (GET /v1/me).
+  const [branchId, setBranchId] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [dueAt] = useState('');
   const [slaClass, setSlaClass] = useState<string>('CUSTOMER_FIRST_CONTACT');
@@ -123,7 +84,7 @@ export function TaskList(): React.ReactElement {
       setActionError(null);
       setTitle('');
       setLinkedId('');
-      setBranchId(getInitialBranchId());
+      setBranchId(me?.primaryBranchId ?? '');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (err: Error) => {
@@ -148,7 +109,7 @@ export function TaskList(): React.ReactElement {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const effectiveBranch = branchId.trim() || me?.primaryBranchId || getInitialBranchId();
+    const effectiveBranch = branchId.trim() || me?.primaryBranchId || '';
     const effectiveLinkedId = linkedId.trim() || 'lead_01M4V6DFJWWB25K8X7QNAXTSC0';
     if (!title.trim()) {
       setActionError('Title is required.');
@@ -157,7 +118,7 @@ export function TaskList(): React.ReactElement {
     createMutation.mutate({
       type,
       title: title.trim(),
-      ownerUserId: me?.id || getInitialUserId(),
+      ownerUserId: me?.id,
       linkedType,
       linkedId: effectiveLinkedId,
       branchId: effectiveBranch,

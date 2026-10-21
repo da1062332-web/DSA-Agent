@@ -14,6 +14,7 @@ import {
   UpdateFeatureFlagRequestSchema,
   UpdateReleaseRequestSchema,
 } from '@dsa/contracts';
+import { TenantEntitlementsPut, TenantProvision, TenantStatusChange } from './tenant-lifecycle';
 import { registerOperation } from '../../http/openapi-op';
 
 const tag = 'MOD-ADM Administration';
@@ -194,5 +195,55 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     operationId: 'ADM-POST-DATA-CORRECTIONS-BY-ID-EXECUTE',
     summary: 'POST /v1/data-corrections/:id/execute',
     tag,
+  });
+  const ten = 'MOD-TEN Tenants';
+  registerOperation(registry, {
+    method: 'post',
+    path: '/platform/v1/tenants',
+    operationId: 'API-TEN-001',
+    summary:
+      'Provision a tenant with its first administrator (INVITED) (platform.tenant.create; step-up); 409 TENANT_SLUG_TAKEN',
+    tag: ten,
+    body: TenantProvision,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/platform/v1/tenants/:id/suspension',
+    operationId: 'API-TEN-003',
+    summary: 'Suspend a tenant with a reason (platform.tenant.suspend; step-up)',
+    tag: ten,
+    body: TenantStatusChange,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/platform/v1/tenants/:id/reactivation',
+    operationId: 'API-TEN-004',
+    summary: 'Reactivate a suspended tenant (platform.tenant.suspend; step-up)',
+    tag: ten,
+    body: TenantStatusChange,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/platform/v1/tenants/:id/offboarding',
+    operationId: 'API-TEN-005',
+    summary:
+      'Request (202) or, as a second operator, approve (200) offboarding (platform.tenant.offboard; step-up)',
+    tag: ten,
+    body: TenantStatusChange,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'put',
+    path: '/platform/v1/tenants/:id/entitlements',
+    operationId: 'API-TEN-006',
+    summary:
+      'Set the modules a tenant may use; others answer 403 MODULE_NOT_ENABLED (platform.tenant.entitlements; step-up)',
+    tag: ten,
+    body: TenantEntitlementsPut,
+    ifMatch: true,
   });
 }

@@ -49,7 +49,24 @@ export function createPrincipalResolver(txRunner: TxRunner): PrincipalResolver {
           select u.id, u.primary_branch_id, u.status, t.status as tenant_status
             from app_user u join tenant t on t.id = u.tenant_id
            where u.idp_subject = ${token.subject}`.execute(tx);
-        const row = user.rows[0];
+        let row = user.rows[0];
+        // First sign-in of an invited user (API-USR-001): the invitation holds a placeholder subject. The token's tenant comes
+        // from app_metadata, which only the server sets, so the invitation is bound only inside that tenant, by email.
+        if (!row && token.email) {
+          const bound = await sql<{
+            id: string;
+            primary_branch_id: string;
+            status: string;
+            tenant_status: string;
+          }>`
+            update app_user u set idp_subject = ${token.subject}, status = 'ACTIVE', availability = 'AVAILABLE',
+                                  updated_by = 'SYSTEM:auth'
+              from tenant t
+             where t.id = u.tenant_id and u.status = 'INVITED' and u.idp_subject like 'invite:%'
+               and lower(u.email::text) = ${token.email}
+            returning u.id, u.primary_branch_id, u.status, t.status as tenant_status`.execute(tx);
+          row = bound.rows[0];
+        }
         // Unknown subject, inactive user or suspended tenant: the token is not usable here.
         if (!row || row.status !== 'ACTIVE' || row.tenant_status !== 'ACTIVE') {
           throw AppError.of('UNAUTHENTICATED', 'Missing or invalid access token.');

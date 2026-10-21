@@ -19,17 +19,16 @@ import {
   Typography,
 } from '@mui/material';
 import type { MessageRecord, MessageTemplate } from '@dsa/contracts';
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError, apiFetch } from '../../api/client';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 import { Can } from '../../shell/Can';
 
 export interface MessagingPageProps {
   defaultTab?: number;
-  apiBaseUrl?: string;
 }
 
-export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingPageProps) {
+export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
   const [tabIndex, setTabIndex] = useState(defaultTab);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -38,35 +37,19 @@ export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingP
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/message-templates`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.status === 403) setDenied(true);
-      if (res.ok) {
-        const body = await res.json().catch(() => null);
-        setTemplates(body?.data || []);
-      }
-    } catch {
-      // ignore
+      setTemplates((await apiFetch<{ data: MessageTemplate[] }>('/v1/message-templates')).data ?? []);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'FORBIDDEN') setDenied(true);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   const fetchMessages = useCallback(async () => {
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/messages`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.status === 403) setDenied(true);
-      if (res.ok) {
-        const body = await res.json().catch(() => null);
-        setMessages(body?.data || []);
-      }
-    } catch {
-      // ignore
+      setMessages((await apiFetch<{ data: MessageRecord[] }>('/v1/messages')).data ?? []);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'FORBIDDEN') setDenied(true);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     fetchTemplates();
@@ -176,9 +159,7 @@ export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingP
       )}
 
       {/* Tab 1: Dispatch */}
-      {tabIndex === 1 && (
-        <MessageComposer templates={templates} onMessageSent={handleMessageSent} apiBaseUrl={apiBaseUrl} />
-      )}
+      {tabIndex === 1 && <MessageComposer templates={templates} onMessageSent={handleMessageSent} />}
 
       {/* Tab 2: History */}
       {tabIndex === 2 && (
@@ -245,7 +226,6 @@ export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingP
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         onSuccess={handleTemplateCreated}
-        apiBaseUrl={apiBaseUrl}
       />
     </Container>
   );

@@ -5,8 +5,8 @@ import type { LeadTransitionInput } from './types';
 
 export interface TransitionOutcome {
   targetState: LeadRow['state'];
-  transitionCode: 'T-LEAD-01' | 'T-LEAD-02' | 'T-LEAD-04' | 'T-LEAD-05' | 'T-LEAD-06';
-  requiredPermission: 'lead.update' | 'lead.qualify' | 'lead.reopen' | 'application.create';
+  transitionCode: 'T-LEAD-01' | 'T-LEAD-02' | 'T-LEAD-04' | 'T-LEAD-05' | 'T-LEAD-06' | 'T-LEAD-07';
+  requiredPermission: 'lead.update' | 'lead.qualify' | 'lead.reopen' | 'lead.archive' | 'application.create';
   updates: Partial<LeadRow>;
 }
 
@@ -152,6 +152,19 @@ export function validateLeadTransition(lead: LeadRow, input: LeadTransitionInput
           state: 'NEW',
           disqualification_reason: null,
         },
+      };
+    }
+
+    case 'T-LEAD-07': {
+      // T-LEAD-07: Archive an inactive lead (SUB-LEAD.10). Restore is API-LEAD-014, back to the state it was archived from.
+      if (['CONVERTED', 'MERGED', 'ARCHIVED'].includes(currentState)) {
+        throw AppError.of('INVALID_TRANSITION', `Cannot execute T-LEAD-07 from state '${currentState}'.`);
+      }
+      return {
+        targetState: 'ARCHIVED',
+        transitionCode: 'T-LEAD-07',
+        requiredPermission: 'lead.archive',
+        updates: { state: 'ARCHIVED', archived_at: new Date() },
       };
     }
 

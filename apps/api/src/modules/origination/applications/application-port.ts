@@ -29,38 +29,7 @@ const SECURED_CATEGORIES = new Set(['LAP', 'HL', 'VL', 'GL']);
 export function createApplicationPort(deps: ApplicationPortDeps): ApplicationPort {
   return {
     async createDraftFromConversion(tx: Tx, ctx: RequestContext, cmd: CreateDraftFromConversionCommand) {
-      const tenantId = ctx.principal.tenantId;
-      const applicationId = deps.ids.next('app');
-      await sql`
-        insert into loan_application (id, tenant_id, branch_id, customer_id, lead_id, product_category,
-                                      requested_amount, currency, tenure_months, purpose_code, applicant_type,
-                                      status, sales_owner_id, created_by, updated_by)
-        values (${applicationId}, ${tenantId}, ${cmd.branchId}, ${cmd.customerId}, ${cmd.leadId},
-                ${cmd.productCategory}, ${cmd.requestedAmount.amount}, ${cmd.requestedAmount.currency},
-                ${cmd.tenureMonths ?? null}, ${cmd.purposeCode ?? null}, ${cmd.applicantType}, 'DRAFT',
-                ${cmd.salesOwnerUserId}, ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
-      await sql`
-        insert into application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
-        values (${deps.ids.next('pty')}, ${tenantId}, ${applicationId}, ${cmd.customerId}, 'PRIMARY',
-                ${cmd.partyType}, ${ctx.principal.id})`.execute(tx);
-      await sql`
-        insert into application_status_history (id, tenant_id, application_id, from_status, to_status,
-                                                transition_code, reason_code, actor, occurred_at)
-        values (${deps.ids.next('ash')}, ${tenantId}, ${applicationId}, null, 'DRAFT', 'CREATE', 'CONVERSION',
-                ${ctx.principal.id}, ${ctx.now})`.execute(tx);
-      await sql`
-        insert into outbox_event (id, tenant_id, event_type, event_version, subject_type, subject_id, payload,
-                                  correlation_id, chain_depth, created_at)
-        values (${deps.ids.next('evt')}, ${tenantId}, 'application.created', 1, 'LOAN_APPLICATION', ${applicationId},
-                ${JSON.stringify({ applicationId, customerId: cmd.customerId, leadId: cmd.leadId })}::jsonb,
-                ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
-      await deps.audit.record(tx, ctx, {
-        action: 'application.created',
-        entityType: 'LOAN_APPLICATION',
-        entityId: applicationId,
-        after: { status: 'DRAFT', leadId: cmd.leadId, productCategory: cmd.productCategory },
-        permissionUsed: 'application.create',
-      });
+      const applicationId = await insertDraftApplication(tx, ctx, deps, cmd);
       return { applicationId, status: 'DRAFT' as const };
     },
 
@@ -92,11 +61,55 @@ export function createApplicationPort(deps: ApplicationPortDeps): ApplicationPor
   };
 }
 
+/**
+ * A DRAFT application with its PRIMARY party, history, application.created event and audit, in the caller's transaction.
+ * Used by lead conversion (leadId set) and by API-APP-001 (created from an existing customer, no lead).
+ */
+export async function insertDraftApplication(
+  tx: Tx,
+  ctx: RequestContext,
+  deps: ApplicationPortDeps,
+  cmd: Omit<CreateDraftFromConversionCommand, 'leadId'> & { leadId: string | null },
+): Promise<string> {
+  const tenantId = ctx.principal.tenantId;
+  const applicationId = deps.ids.next('app');
+  await sql`
+    insert into loan_application (id, tenant_id, branch_id, customer_id, lead_id, product_category,
+                                  requested_amount, currency, tenure_months, purpose_code, applicant_type,
+                                  status, sales_owner_id, created_by, updated_by)
+    values (${applicationId}, ${tenantId}, ${cmd.branchId}, ${cmd.customerId}, ${cmd.leadId},
+            ${cmd.productCategory}, ${cmd.requestedAmount.amount}, ${cmd.requestedAmount.currency},
+            ${cmd.tenureMonths ?? null}, ${cmd.purposeCode ?? null}, ${cmd.applicantType}, 'DRAFT',
+            ${cmd.salesOwnerUserId}, ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
+  await sql`
+    insert into application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
+    values (${deps.ids.next('pty')}, ${tenantId}, ${applicationId}, ${cmd.customerId}, 'PRIMARY',
+            ${cmd.partyType}, ${ctx.principal.id})`.execute(tx);
+  await sql`
+    insert into application_status_history (id, tenant_id, application_id, from_status, to_status,
+                                            transition_code, reason_code, actor, occurred_at)
+    values (${deps.ids.next('ash')}, ${tenantId}, ${applicationId}, null, 'DRAFT', 'CREATE',
+            ${cmd.leadId ? 'CONVERSION' : 'DIRECT'}, ${ctx.principal.id}, ${ctx.now})`.execute(tx);
+  await sql`
+    insert into outbox_event (id, tenant_id, event_type, event_version, subject_type, subject_id, payload,
+                              correlation_id, chain_depth, created_at)
+    values (${deps.ids.next('evt')}, ${tenantId}, 'application.created', 1, 'LOAN_APPLICATION', ${applicationId},
+            ${JSON.stringify({ applicationId, customerId: cmd.customerId, leadId: cmd.leadId })}::jsonb,
+            ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
+  await deps.audit.record(tx, ctx, {
+    action: 'application.created',
+    entityType: 'LOAN_APPLICATION',
+    entityId: applicationId,
+    after: { status: 'DRAFT', leadId: cmd.leadId, productCategory: cmd.productCategory },
+    permissionUsed: 'application.create',
+  });
+  return applicationId;
+}
+
 /** Same rule as the checklist summary: no open mandatory item, and the checklist is not empty. */
 export function isComplete(documents: Pick<SubmissionDocument, 'mandatory' | 'status'>[]): boolean {
   return (
-    documents.length > 0 &&
-    documents.every((d) => !d.mandatory || CHECKLIST_DONE_STATUSES.includes(d.status))
+    documents.length > 0 && documents.every((d) => !d.mandatory || CHECKLIST_DONE_STATUSES.includes(d.status))
   );
 }
 
@@ -112,12 +125,15 @@ export async function generateChecklist(
   application: Row,
 ): Promise<{ written: number; decisionIds: string[] }> {
   if (!deps.decisionPort) {
-    throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The rule engine is not available to build the document checklist.');
+    throw AppError.of(
+      'DEPENDENCY_UNAVAILABLE',
+      'The rule engine is not available to build the document checklist.',
+    );
   }
   const applicationId = String(application.id);
   const parties = await sql<Row>`
     select id, role, party_type from application_party
-     where application_id = ${applicationId} order by created_at, id`.execute(tx);
+     where application_id = ${applicationId} and removed_at is null order by created_at, id`.execute(tx);
   let written = 0;
   const decisionIds: string[] = [];
   for (const party of parties.rows) {
@@ -139,7 +155,10 @@ export async function generateChecklist(
           applicant_type: application.applicant_type as never,
         },
         application: {
-          requested_amount: { amount: String(application.requested_amount), currency: String(application.currency) },
+          requested_amount: {
+            amount: String(application.requested_amount),
+            currency: String(application.currency),
+          },
           secured: SECURED_CATEGORIES.has(String(application.product_category)),
         },
       },

@@ -31,6 +31,11 @@ const PLATFORM_CODES: PermissionCode[] = [
   'platform.jobs',
   'platform.support_access',
   'platform.release',
+  // MOD-TEN lifecycle (M-083)
+  'platform.tenant.create',
+  'platform.tenant.suspend',
+  'platform.tenant.offboard',
+  'platform.tenant.entitlements',
 ];
 
 /** The API as one user of a tenant (a customer tenant, or the platform tenant by id). */
@@ -113,7 +118,8 @@ describe('TEST-REALM-INT the platform realm is enforced by the database', () => 
         `insert into app.role (id, tenant_id, code, name, is_template, created_by) values ($1, $2, $3, $3, false, 'test') on conflict do nothing`,
         [`role_realm_${code}`, t.tenantId, code],
       );
-      for (const perm of [...PLATFORM_CODES, 'data_correction.request', 'data_correction.approve']) {
+      // Migration 0046 granted the six operator codes of its time; the MOD-TEN codes (M-083) came later.
+      for (const perm of [...PLATFORM_CODES.slice(0, 6), 'data_correction.request', 'data_correction.approve']) {
         await env.admin.query(
           `insert into app.role_permission (tenant_id, role_id, permission_code) values ($1, $2, $3) on conflict do nothing`,
           [t.tenantId, `role_realm_${code}`, perm],

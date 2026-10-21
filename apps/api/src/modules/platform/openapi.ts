@@ -12,6 +12,12 @@ import {
   UpdateRoleRequest,
   PermissionSummary,
   UserSummary as FullUserSummary,
+  DeactivateUserRequest,
+  InviteUserRequest,
+  ReplaceRoleAssignmentsRequest,
+  SuspendUserRequest,
+  TransferUserRequest,
+  UserTransferResponse,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z, type ZodTypeAny } from 'zod';
@@ -115,6 +121,62 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       summary: 'Update user profile, status, or availability',
       body: UpdateUserRequest,
       response: FullUserSummary,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users/invitations',
+      id: 'API-USR-001',
+      summary:
+        'Invite a user (user.manage). The user is INVITED until the first sign-in with the invited email',
+      body: InviteUserRequest,
+      response: FullUserSummary,
+      status: 201,
+      idem: true,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users/{id}/deactivation',
+      id: 'API-USR-004',
+      summary:
+        'Deactivate a user, handing over open leads, live applications and open tasks in the same transaction (user.manage; SOD-05)',
+      body: DeactivateUserRequest,
+      response: FullUserSummary,
+      idem: true,
+      ifMatch: true,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users/{id}/suspension',
+      id: 'API-USR-005',
+      summary: 'Suspend an active user or reactivate a suspended one, with a reason (user.manage; SOD-05)',
+      body: SuspendUserRequest,
+      response: FullUserSummary,
+      ifMatch: true,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'put',
+      path: '/v1/users/{id}/role-assignments',
+      id: 'API-USR-006',
+      summary:
+        'Replace the role assignments and scopes of a user (role.manage; step-up; SOD-05; an administrator must remain)',
+      body: ReplaceRoleAssignmentsRequest,
+      response: FullUserSummary,
+      ifMatch: true,
+      tags: ['MOD-USR Users'],
+    },
+    {
+      method: 'post',
+      path: '/v1/users/{id}/transfers',
+      id: 'API-USR-008',
+      summary:
+        'Move the user to another primary branch now (200 APPLIED) or at effectiveAt (202 SCHEDULED) (user.manage)',
+      body: TransferUserRequest,
+      response: UserTransferResponse,
+      idem: true,
       tags: ['MOD-USR Users'],
     },
     {

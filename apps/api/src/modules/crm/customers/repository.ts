@@ -354,10 +354,15 @@ export class SqlCustomerRepository implements CustomerRepository {
       SELECT * FROM consent_record
       WHERE tenant_id = ${tenantId}
         AND subject_type = ${subjectType}
-        AND subject_id = ${subjectId}
+        AND (subject_id = ${subjectId}
+             -- M-075: consents of customers merged into this one keep counting.
+             OR (subject_type = 'CUSTOMER'
+                 AND subject_id IN (SELECT id FROM customer WHERE merged_into_id = ${subjectId})))
         AND purpose = ${purpose}
         AND status = 'ACTIVE'
+        AND (expires_at IS NULL OR expires_at > now())
         ${purposeTarget ? sql`AND purpose_target = ${purposeTarget}` : sql``}
+      ORDER BY captured_at DESC
       LIMIT 1
     `.execute(tx);
     return result.rows[0] ?? null;
@@ -381,7 +386,9 @@ export class SqlCustomerRepository implements CustomerRepository {
         AND l.customer_id = ${customerId}
         AND c.purpose = ${purpose}
         AND c.status = 'ACTIVE'
+        AND (c.expires_at IS NULL OR c.expires_at > now())
         ${purposeTarget ? sql`AND c.purpose_target = ${purposeTarget}` : sql``}
+      ORDER BY c.captured_at DESC
       LIMIT 1
     `.execute(tx);
     return result.rows[0] ?? null;

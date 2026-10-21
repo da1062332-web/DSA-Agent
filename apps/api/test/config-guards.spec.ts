@@ -53,4 +53,16 @@ describe('startup configuration guards', () => {
     expect(text).not.toContain('s3cretvalue');
     expect(text).not.toContain('mlpkwwhnagxzinaohdxg');
   });
+
+  it('TEST-CFGG-SIGN the signing secret: empty values mean unset, a short one is refused, production requires one', () => {
+    expect(
+      loadConfig({ ...base, SUPABASE_JWT_SECRET: '', APP_SIGNING_SECRET: '' }).APP_SIGNING_SECRET,
+    ).toBeUndefined();
+    expect(loadConfig({ ...base, SUPABASE_JWT_SECRET: '' }).SUPABASE_JWT_SECRET).toBeUndefined();
+    expect(message({ APP_SIGNING_SECRET: 'too-short' })).toMatch(/APP_SIGNING_SECRET/);
+    expect(message({ APP_SIGNING_SECRET: '<64-hex-characters>' })).toMatch(/APP_SIGNING_SECRET/);
+    expect(message({ NODE_ENV: 'production' })).toMatch(/APP_SIGNING_SECRET/);
+    expect(message({ NODE_ENV: 'production', APP_SIGNING_SECRET: 'a'.repeat(64) })).toBe('');
+    expect(message({ APP_SIGNING_SECRET: 'a'.repeat(64) })).not.toContain('a'.repeat(64));
+  });
 });

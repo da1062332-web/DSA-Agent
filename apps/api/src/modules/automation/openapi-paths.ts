@@ -9,6 +9,12 @@ import {
   SkipStepSchema,
 } from '@dsa/contracts';
 import { registerOperation } from '../../http/openapi-op';
+import {
+  AutomationDryRun,
+  AutomationEnable,
+  AutomationExecutionQuery,
+  AutomationIntervention,
+} from './spec-routes';
 
 const tag = 'MOD-WFA Workflow Automation';
 
@@ -145,6 +151,48 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'POST /v1/automations/:id/execute',
     tag,
     body: ExecuteAutomationSchema,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/automation-versions/:id/dry-runs',
+    operationId: 'API-WFA-004',
+    summary: 'Dry-run a version on a record: the steps it would run, no side effects (automation.manage)',
+    tag,
+    body: AutomationDryRun,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/automation-versions/:id/approval',
+    operationId: 'API-WFA-005',
+    summary: 'Approve (pins the version) or reject a version; the author cannot approve (automation.approve)',
+    tag,
+    body: ReviewVersionActionSchema,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/automation-versions/:id/enable',
+    operationId: 'API-WFA-006',
+    summary:
+      'Enable or disable the automation whose pinned version this is, with a reason (automation.manage)',
+    tag,
+    body: AutomationEnable,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/automation-executions',
+    operationId: 'API-WFA-007',
+    summary: 'Execution history, newest first (automation.read)',
+    tag,
+    query: AutomationExecutionQuery,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/automation-executions/:id/interventions',
+    operationId: 'API-WFA-008',
+    summary: 'Retry, skip a step or cancel an execution, with a reason (automation.operate)',
+    tag,
+    body: AutomationIntervention,
     idempotent: true,
   });
 }

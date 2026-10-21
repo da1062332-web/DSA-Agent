@@ -35,9 +35,10 @@ describe('Module 28 — Integration Management (MOD-INT: SUB-INT.01 Adapter Fram
     grants: [{ code: 'lead.read', scope: 'TENANT', branchIds: [] }],
   });
 
+  // No database in unit tests: the service uses its in-memory store with the seeded demo connections.
   const dummyTxRunner: TxRunner = {
-    async withTenantTx<T>(_ctx: RequestContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
-      return fn({} as Tx);
+    async withTenantTx<T>(_ctx: RequestContext, _fn: (tx: Tx) => Promise<T>): Promise<T> {
+      throw new Error('No TxRunner in unit tests');
     },
   };
 

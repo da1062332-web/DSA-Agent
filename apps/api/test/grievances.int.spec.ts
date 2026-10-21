@@ -103,7 +103,7 @@ describe('TEST-GRV-INT grievances against the database', () => {
     expect(again.body.ackRef).toBe(first.body.ackRef);
   });
 
-  it('TEST-GRV-INT-03 an unknown application is 404; a lead complaint is refused until the lead provider exists', async () => {
+  it('TEST-GRV-INT-03 an unknown application or lead is 404 (production wires both subject providers)', async () => {
     await ensureSeeded();
     const a = env.appAs(env.A, GRV);
     const unknown = await request(a).post('/v1/complaints').set('Idempotency-Key', key('unknown')).send({

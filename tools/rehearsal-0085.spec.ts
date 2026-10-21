@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 import proposedDiff from '../docs/PROPOSED_PERMISSION_GRANTS_DIFF.json';
 import { QLOAX_ROLE_GRANTS } from '../apps/web/src/shell/role-grants.fixture';
 
-describe('Rehearsal for Migration 0069: Permission Realignment & Period Close', () => {
+describe('Rehearsal for Migration 0085: Permission Realignment & Period Close', () => {
   const root = path.resolve(import.meta.dirname, '..');
-  const migrationPath = path.join(root, 'supabase/migrations/20261001000069_permission_realignment_and_period_close.sql');
-  const verifyPath = path.join(root, 'tools/sql/0069/verify.sql');
-  const rollbackPath = path.join(root, 'tools/sql/0069/rollback.sql');
+  const migrationPath = path.join(root, 'supabase/migrations/20261001000085_permission_realignment_and_period_close.sql');
+  const verifyPath = path.join(root, 'tools/sql/0085/verify.sql');
+  const rollbackPath = path.join(root, 'tools/sql/0085/rollback.sql');
 
   const migrationSql = readFileSync(migrationPath, 'utf8');
   const verifySql = readFileSync(verifyPath, 'utf8');

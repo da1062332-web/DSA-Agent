@@ -19,35 +19,30 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { getStoredAuthToken } from '../../auth/token';
+import Alert from '@mui/material/Alert';
+import { apiFetch, errorText } from '../../api/client';
 import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
 
-export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) {
+// Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
+export function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchActivities = useCallback(async () => {
     try {
       setLoading(true);
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/activities`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setActivities(json.data ?? json ?? []);
-      }
-    } catch {
-      // ignore
+      setError(null);
+      const json = await apiFetch<{ data: Activity[] }>('/v1/activities');
+      setActivities(json.data ?? []);
+    } catch (err) {
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     fetchActivities();
@@ -60,21 +55,14 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
 
   const handleHideActivity = async (activity: Activity) => {
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/activities/${activity.id}`, {
+      await apiFetch<Activity>(`/v1/activities/${encodeURIComponent(activity.id)}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'If-Match': `"${activity.lockVersion}"`,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ isHidden: true }),
+        body: { isHidden: true },
+        version: activity.lockVersion,
       });
-      if (res.ok) {
-        setActivities((prev) => prev.filter((a) => a.id !== activity.id));
-      }
-    } catch {
-      // ignore
+      setActivities((prev) => prev.filter((a) => a.id !== activity.id));
+    } catch (err) {
+      setError(errorText(err));
     }
   };
 
@@ -97,6 +85,11 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} data-testid="activities.error">
+          {error}
+        </Alert>
+      )}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h4" fontWeight={700}>
@@ -207,8 +200,6 @@ export function ActivitiesPage({ apiBaseUrl = '/v1' }: { apiBaseUrl?: string }) 
         onClose={() => setFormOpen(false)}
         onSuccess={handleActivityLogged}
         defaultSubjectType="LEAD"
-        defaultSubjectId="lead_demo_01"
-        apiBaseUrl={apiBaseUrl}
       />
     </Container>
   );

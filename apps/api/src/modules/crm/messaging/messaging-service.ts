@@ -718,6 +718,12 @@ export class MessagingService {
     if (this.txRunner) {
       try {
         return await this.txRunner.withTenantTx(ctx, async (tx) => {
+          // API-MSG-004: a subject's history needs read permission on the subject; without a subject, a user sees the
+          // messages they sent, and a config.manage holder (messaging administrator) sees the tenant's.
+          const admin = ctx.principal.grants.some((g) => g.code === 'config.manage' && g.scope === 'TENANT');
+          if (query.subjectType && query.subjectId) {
+            await this.requireSubjectRead(tx, ctx, query.subjectType, query.subjectId);
+          }
           const res = await sql<{
             id: string;
             tenant_id: string;
@@ -744,6 +750,7 @@ export class MessagingService {
             WHERE tenant_id = ${tenantId}
               ${query.subjectType ? sql`AND subject_type = ${query.subjectType}` : sql``}
               ${query.subjectId ? sql`AND subject_id = ${query.subjectId}` : sql``}
+              ${!query.subjectId && !admin ? sql`AND created_by = ${ctx.principal.id}` : sql``}
               ${query.channel ? sql`AND channel = ${query.channel}` : sql``}
               ${query.status ? sql`AND status = ${query.status}` : sql``}
               ${query.cursor ? sql`AND id < ${query.cursor}` : sql``}
@@ -817,6 +824,47 @@ export class MessagingService {
     return { data: resultRows, meta: { nextCursor, limit } };
   }
 
+  /** 404 unless the subject exists and the caller holds its read permission (or message.send) with a covering scope. */
+  private async requireSubjectRead(tx: Tx, ctx: RequestContext, type: string, id: string): Promise<void> {
+    const codes: Record<string, string> = {
+      LEAD: 'lead.read',
+      CUSTOMER: 'customer.read',
+      LOAN_APPLICATION: 'application.read',
+    };
+    const r =
+      type === 'LEAD'
+        ? await sql<{
+            b: string;
+            o: string | null;
+          }>`SELECT branch_id AS b, owner_user_id AS o FROM app.lead WHERE id = ${id}`.execute(tx)
+        : type === 'CUSTOMER'
+          ? await sql<{
+              b: string;
+              o: string | null;
+            }>`SELECT home_branch_id AS b, NULL::text AS o FROM app.customer WHERE id = ${id}`.execute(tx)
+          : await sql<{
+              b: string;
+              o: string | null;
+            }>`SELECT branch_id AS b, sales_owner_id AS o FROM app.loan_application WHERE id = ${id}`.execute(
+              tx,
+            );
+    const row = r.rows[0];
+    const p = ctx.principal;
+    const covers = (code: string) =>
+      p.grants
+        .filter((g) => g.code === code)
+        .some(
+          (g) =>
+            g.scope === 'TENANT' ||
+            (g.scope === 'BRANCH' && !!row && [...g.branchIds, p.primaryBranchId].includes(row.b)) ||
+            (g.scope === 'TEAM' && !!row?.o && [p.id, ...p.managedTeamMemberIds].includes(row.o)) ||
+            (g.scope === 'OWN' && row?.o === p.id),
+        );
+    if (!row || !(covers(codes[type] ?? '') || covers('message.send') || covers('config.manage'))) {
+      throw AppError.of('NOT_FOUND', 'Subject not found');
+    }
+  }
+
   /**
    * Resolves a public webhook connection path to its configured tenant and provider (ENT-115).
    * Does NOT trust caller-supplied tenant identifiers.
@@ -863,11 +911,14 @@ export class MessagingService {
           return null;
         });
 
-        if (resolved) return resolved;
-      } catch {
-        // Fall back to memory registry
+        // With a database, the database is the only registry: an unknown path is unknown.
+        return resolved;
+      } catch (err: unknown) {
+        if (!(err instanceof Error && err.message === 'No TxRunner configured for this test')) throw err;
       }
     }
+
+    // Unit-test seam only (no database configured): the in-memory registry and the default test connection.
 
     const mem = MessagingService.memoryPublicEntries.get(connectionPathId);
     if (mem && mem.provider.toUpperCase() === provider.toUpperCase() && mem.status === 'ACTIVE') {

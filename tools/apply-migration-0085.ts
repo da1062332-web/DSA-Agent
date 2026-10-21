@@ -17,13 +17,13 @@ const migrationPath = path.resolve(
   '..',
   'supabase',
   'migrations',
-  '20261001000069_permission_realignment_and_period_close.sql',
+  '20261001000085_permission_realignment_and_period_close.sql',
 );
 
 const verifyPath = path.resolve(
   import.meta.dirname,
   'sql',
-  '0069',
+  '0085',
   'verify.sql',
 );
 
@@ -34,11 +34,11 @@ const client = new pg.Client({ connectionString: url });
 await client.connect();
 
 try {
-  console.log('Applying migration 20261001000069_permission_realignment_and_period_close.sql to hosted...');
+  console.log('Applying migration 20261001000085_permission_realignment_and_period_close.sql to hosted...');
   await client.query('BEGIN');
   await client.query(sql);
   await client.query('COMMIT');
-  console.log('Migration 20261001000069 applied successfully!\n');
+  console.log('Migration 20261001000085 applied successfully!\n');
 
   console.log('Running verification checks (read-only)...');
   const result = await client.query(verifySql);

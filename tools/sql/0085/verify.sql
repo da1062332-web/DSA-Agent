@@ -1,4 +1,4 @@
--- Verify migration 0069 (permission realignment & finance.period_close). Read-only.
+-- Verify migration 0085 (permission realignment & finance.period_close). Read-only.
 -- Expect every row to return PASS.
 SET search_path = app, extensions, public;
 

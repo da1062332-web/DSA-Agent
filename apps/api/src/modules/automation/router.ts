@@ -21,6 +21,7 @@ import { ifMatchVersion } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { AutomationEngine } from './engine';
 import { AutomationRepository } from './repository';
+import { registerAutomationSpecRoutes } from './spec-routes';
 
 function getContext(req: Request): RequestContext {
   if (!req.ctx || !req.ctx.principal) {
@@ -80,6 +81,8 @@ export function createRouter(deps: ApiDeps): Router {
     userDirectoryPort: deps.userDirectoryPort || deps.userDirectory,
     outboxPort: deps.outboxPort,
   });
+  // The spec paths (API-WFA-004..008) share this router's repository and engine.
+  registerAutomationSpecRoutes(router, deps, repository, engine);
 
   // ---------------------------------------------------------------------------
   // 1. Definition Endpoints
@@ -431,9 +434,11 @@ export function createRouter(deps: ApiDeps): Router {
         throw AppError.of('FORBIDDEN', 'System automation definitions cannot be updated.');
       }
       if (existing.lockVersion !== expectedVersion) {
-        throw AppError.of('VERSION_CONFLICT', 'The automation was changed by someone else. Reload and try again.', [
-          { field: 'If-Match', issue: 'STALE', meta: { currentVersion: existing.lockVersion } },
-        ]);
+        throw AppError.of(
+          'VERSION_CONFLICT',
+          'The automation was changed by someone else. Reload and try again.',
+          [{ field: 'If-Match', issue: 'STALE', meta: { currentVersion: existing.lockVersion } }],
+        );
       }
 
       const updated = await repository.updateDefinition(tx, ctx.principal.tenantId, definitionId, {
@@ -581,74 +586,10 @@ export function createRouter(deps: ApiDeps): Router {
     }
 
     const { action, reason } = parseResult.data;
-    const now = new Date().toISOString();
 
-    const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const def = await repository.getDefinitionById(tx, ctx.principal.tenantId, definitionId);
-      const ver = await repository.getVersionById(tx, ctx.principal.tenantId, versionId);
-
-      if (ver.status !== 'DRAFT' && ver.status !== 'PENDING_APPROVAL') {
-        throw AppError.of(
-          'INVALID_STATE',
-          `Automation version '${versionId}' cannot be reviewed because it is in '${ver.status}' status.`,
-        );
-      }
-
-      // Maker-Checker enforcement: author cannot approve their own automation version
-      if (action === 'APPROVE' && ver.authorId === ctx.principal.id) {
-        throw AppError.of(
-          'SOD_VIOLATION',
-          'Maker-checker violation: automation version author cannot approve their own automation.',
-        );
-      }
-
-      let updatedVer: AutomationVersion;
-      let updatedDef: AutomationDefinition = def;
-
-      if (action === 'APPROVE') {
-        // Supersede current pinned version if active
-        if (def.pinnedVersionId && def.pinnedVersionId !== ver.id) {
-          try {
-            await repository.updateVersion(tx, ctx.principal.tenantId, def.pinnedVersionId, {
-              status: 'SUPERSEDED',
-            });
-          } catch {
-            // Ignore if already superseded
-          }
-        }
-
-        updatedVer = await repository.updateVersion(tx, ctx.principal.tenantId, ver.id, {
-          status: 'ACTIVE',
-          approvedBy: ctx.principal.id,
-          approvedAt: now,
-        });
-
-        updatedDef = await repository.updateDefinition(tx, ctx.principal.tenantId, def.id, {
-          status: 'ACTIVE',
-          pinnedVersionId: ver.id,
-          updatedBy: ctx.principal.id,
-        });
-      } else {
-        // REJECT
-        updatedVer = await repository.updateVersion(tx, ctx.principal.tenantId, ver.id, {
-          status: 'REJECTED',
-          rejectionReason: reason || 'Rejected by reviewer',
-        });
-      }
-
-      const audit = deps.auditPort || deps.audit;
-      if (audit) {
-        await audit.record(tx, ctx, {
-          action: action === 'APPROVE' ? 'automation.version_approved' : 'automation.version_rejected',
-          entityType: 'AUTOMATION_VERSION',
-          entityId: ver.id,
-          reason,
-          after: { status: updatedVer.status, pinned: action === 'APPROVE' },
-        });
-      }
-
-      return { version: updatedVer, definition: updatedDef };
-    });
+    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
+      reviewAutomationVersion(deps, repository, tx, ctx, definitionId, versionId, action, reason),
+    );
 
     res.json(result);
   });
@@ -740,8 +681,85 @@ export function createRouter(deps: ApiDeps): Router {
     const executed = await engine.claimAndRun(ctx, execution.id);
 
     const result = executed || execution;
-    res.status(200).json({ executionId: result.id, status: result.status, execution: result, replayed: false });
+    res
+      .status(200)
+      .json({ executionId: result.id, status: result.status, execution: result, replayed: false });
   });
 
   return router;
+}
+
+/** Maker-checker review of an automation version (approve pins it, reject records the reason). Runs in the caller's tx. */
+export async function reviewAutomationVersion(
+  deps: ApiDeps,
+  repository: AutomationRepository,
+  tx: Tx,
+  ctx: RequestContext,
+  definitionId: string,
+  versionId: string,
+  action: 'APPROVE' | 'REJECT',
+  reason: string | undefined,
+): Promise<{ version: AutomationVersion; definition: AutomationDefinition }> {
+  const now = new Date().toISOString();
+  const def = await repository.getDefinitionById(tx, ctx.principal.tenantId, definitionId);
+  const ver = await repository.getVersionById(tx, ctx.principal.tenantId, versionId);
+
+  if (ver.status !== 'DRAFT' && ver.status !== 'PENDING_APPROVAL') {
+    throw AppError.of(
+      'INVALID_STATE',
+      `Automation version '${versionId}' cannot be reviewed because it is in '${ver.status}' status.`,
+    );
+  }
+
+  // Maker-Checker enforcement: author cannot approve their own automation version
+  if (action === 'APPROVE' && ver.authorId === ctx.principal.id) {
+    throw AppError.of(
+      'SOD_VIOLATION',
+      'Maker-checker violation: automation version author cannot approve their own automation.',
+    );
+  }
+
+  let updatedVer: AutomationVersion;
+  let updatedDef: AutomationDefinition = def;
+
+  if (action === 'APPROVE') {
+    // Supersede current pinned version if active
+    // No try/catch here: a failed statement aborts the transaction, so an error must propagate.
+    if (def.pinnedVersionId && def.pinnedVersionId !== ver.id) {
+      await repository.updateVersion(tx, ctx.principal.tenantId, def.pinnedVersionId, {
+        status: 'SUPERSEDED',
+      });
+    }
+
+    updatedVer = await repository.updateVersion(tx, ctx.principal.tenantId, ver.id, {
+      status: 'ACTIVE',
+      approvedBy: ctx.principal.id,
+      approvedAt: now,
+    });
+
+    updatedDef = await repository.updateDefinition(tx, ctx.principal.tenantId, def.id, {
+      status: 'ACTIVE',
+      pinnedVersionId: ver.id,
+      updatedBy: ctx.principal.id,
+    });
+  } else {
+    // REJECT
+    updatedVer = await repository.updateVersion(tx, ctx.principal.tenantId, ver.id, {
+      status: 'REJECTED',
+      rejectionReason: reason || 'Rejected by reviewer',
+    });
+  }
+
+  const audit = deps.auditPort || deps.audit;
+  if (audit) {
+    await audit.record(tx, ctx, {
+      action: action === 'APPROVE' ? 'automation.version_approved' : 'automation.version_rejected',
+      entityType: 'AUTOMATION_VERSION',
+      entityId: ver.id,
+      reason,
+      after: { status: updatedVer.status, pinned: action === 'APPROVE' },
+    });
+  }
+
+  return { version: updatedVer, definition: updatedDef };
 }

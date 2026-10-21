@@ -2,6 +2,7 @@
 // validate with. Every /v1 operation here needs an isolation case naming its operationId (tests/isolation/cases).
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { CalculateCommissionInputSchema, DisbursePayoutGatewayInputSchema } from '@dsa/contracts';
+import { ConsentOtpRequest, PortalDispute, PortalPayoutRequest, ReferralCreate } from './connector-portal';
 import { registerOperation } from '../../http/openapi-op';
 
 const tag = 'MOD-COM Commission and Payouts';
@@ -101,5 +102,65 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     operationId: 'COM-POST-PAYOUT-BATCHES-BY-ID-DISPATCH-GATEWAY',
     summary: 'POST /v1/payout-batches/:id/dispatch-gateway',
     tag,
+  });
+  const cpt = 'MOD-CPT Connector Portal';
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/referrals',
+    operationId: 'API-CPT-001',
+    summary: 'My referrals: masked name and a coarse status (connector users)',
+    tag: cpt,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/referrals',
+    operationId: 'API-CPT-002',
+    summary: 'Refer a customer; needs a verified consent code for that mobile',
+    tag: cpt,
+    body: ReferralCreate,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/referrals/consent-otp',
+    operationId: 'API-CPT-003',
+    summary: 'Send a consent code to the customer, or verify it (5 attempts, 10 minutes)',
+    tag: cpt,
+    body: ConsentOtpRequest,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/statements',
+    operationId: 'API-CPT-004',
+    summary: 'My earnings: expected, approved, paid, held and disputed, with lines',
+    tag: cpt,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/payout-requests',
+    operationId: 'API-CPT-005',
+    summary: 'Request payout of my payable lines (step-up)',
+    tag: cpt,
+    body: PortalPayoutRequest,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/disputes',
+    operationId: 'API-CPT-006',
+    summary: 'Dispute one of my statement lines or payouts',
+    tag: cpt,
+    body: PortalDispute,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/rate-card',
+    operationId: 'API-CPT-007',
+    summary: 'My active agreement terms',
+    tag: cpt,
   });
 }

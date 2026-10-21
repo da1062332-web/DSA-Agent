@@ -1,0 +1,11 @@
+-- Verify migration 0083 (tenant lifecycle). Read-only. Expect every row PASS.
+SELECT 'tenant has entitlements, entitlements_version, status_reason and status_changed_at' AS check,
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'tenant' AND column_name = 'entitlements') AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'tenant' AND column_name = 'entitlements_version') AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'tenant' AND column_name = 'status_reason') AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'tenant' AND column_name = 'status_changed_at') THEN 'PASS' ELSE 'FAIL' END AS result
+UNION ALL SELECT 'the four platform.tenant permissions are defined',
+       CASE WHEN (SELECT count(*) FROM app.permission WHERE code LIKE 'platform.tenant.%') = 4 THEN 'PASS' ELSE 'FAIL' END
+UNION ALL SELECT 'the platform super admin holds them, and no customer role does',
+       CASE WHEN (SELECT count(*) FROM app.role_permission WHERE role_id = 'role_01M4ZG67WYKTMHNAX6RB8RYQYQ' AND permission_code LIKE 'platform.tenant.%') = 4 AND NOT EXISTS (SELECT 1 FROM app.role_permission WHERE permission_code LIKE 'platform.tenant.%' AND tenant_id <> 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG') THEN 'PASS' ELSE 'FAIL' END
+UNION ALL SELECT 'tenant_offboarding exists with forced row-level security',
+       CASE WHEN (SELECT count(*) FROM pg_class WHERE oid IN (to_regclass('app.tenant_offboarding')) AND relrowsecurity AND relforcerowsecurity) = 1 THEN 'PASS' ELSE 'FAIL' END
+UNION ALL SELECT 'the lifecycle functions run as their owner',
+       CASE WHEN coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_provision_tenant(text, text, text, text, text, text, text, text)')), false) AND coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_set_tenant_status(text, text, text, text)')), false) AND coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_request_offboarding(text, text, text)')), false) AND coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_set_entitlements(text, jsonb, integer, text)')), false) THEN 'PASS' ELSE 'FAIL' END;

@@ -2,6 +2,8 @@
 // tools/gen-openapi.ts writes openapi/openapi.yaml.
 import { listResponse } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
+import { registerOperation } from '../../../http/openapi-op';
+import { ReasonMapPut } from './reason-map';
 import { z, type ZodTypeAny } from 'zod';
 import {
   ContactsPut,
@@ -320,5 +322,21 @@ function registerProductOpenApi(registry: OpenAPIRegistry): void {
       200: { description: 'Version', content: json(ProductVersion) },
       404: { description: 'NOT_FOUND' },
     },
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/lenders/:id/reason-map',
+    operationId: 'API-LND-007-GET',
+    summary: 'Lender decline wording mapped to normalised decline reason codes',
+    tag: 'MOD-LND Lenders',
+  });
+  registerOperation(registry, {
+    method: 'put',
+    path: '/v1/lenders/:id/reason-map',
+    operationId: 'API-LND-007',
+    summary: 'Replace the lender reason map (config.manage; If-Match on the lender version)',
+    tag: 'MOD-LND Lenders',
+    body: ReasonMapPut,
+    ifMatch: true,
   });
 }
