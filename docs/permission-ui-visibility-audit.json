@@ -1466,8 +1466,8 @@
       "what": "ROLE-TENANT-ADMIN of qloax-dsa holds platform.console, flags, jobs, master_data, release and support_access, as demo-alpha does. The platform realm refuses tenant users and the menu is hidden, but the grants should not exist (Module 1 check 16).",
       "evidence": "read-only hosted query of app.role_permission on 2026-10-19: demo-alpha and qloax-dsa each have the six; no other customer tenant has any.",
       "fix": "Same prepared removal as demo-alpha (tools/sql/fixes), after approval; make the provisioning script stop copying them.",
-      "status": "PARTIALLY FIXED",
-      "remediation": "correction v2 and restore written and rehearsed (operator-grants-fix-v2 4/4); NOT applied to hosted (needs approval)"
+      "status": "FIXED ON HOSTED AND VERIFIED",
+      "remediation": "tools/sql/fixes/remove-operator-grants-from-customer-roles.v2.sql applied 2026-10-21 (approved by the owner). Customer-tenant operator grants 0 (was 12); platform tenant's own 8 untouched; other admin grants kept. tools/sql/0050/verify.sql check 16 PASS."
     },
     {
       "id": "F-10",
@@ -18856,10 +18856,10 @@
   "remediation": {
     "updated": "2026-10-21",
     "openHostedApprovals": [
-      "F-09 correction",
       "finance.period_close catalogue row",
       "admin MFA reset and password rotation (dashboard)"
     ],
-    "openIsolation": "TEST-SEC-001-INV-02: 137 /v1 operations lack named isolation cases (pre-existing)"
+    "openIsolation": "TEST-SEC-001-INV-02: 137 /v1 operations lack named isolation cases (pre-existing)",
+    "verify0050": "30 of 32 PASS; the 2 FAILs are count checks from 2026-10-15 hosted state (data_correction grant counts on other tenants), not caused by F-09"
   }
 }

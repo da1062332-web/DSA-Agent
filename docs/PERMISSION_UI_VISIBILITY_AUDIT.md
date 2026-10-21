@@ -1264,3 +1264,9 @@ Still open, because they change hosted data or the catalogue, and nothing in thi
 - `finance.period_close` is in the contracts but not in the hosted catalogue. Period close on hosted cannot succeed until a catalogue row is added through an approved hosted write.
 - The F-09 correction for stray `platform.*` grants is prepared and rehearsed; it has not been applied to hosted.
 - The isolation inventory (137 `/v1` operations without a named isolation case) remains; closing it needs a per-module proof pass, not a registry entry.
+
+## 20. F-09 applied to hosted (2026-10-21)
+
+The reviewed correction (tools/sql/fixes/remove-operator-grants-from-customer-roles.v2.sql) was applied to the hosted development project after a read-only pre-check matched the reviewed roles. Afterwards: customer-tenant operator grants 0 (was 12); the platform tenant keeps its 8; the qloax-dsa and demo-alpha tenant admin roles keep all other grants. tools/sql/0050/verify.sql: 30 of 32 PASS. Check 16 (no operator grants on customer roles) now passes. The two remaining FAILs are count checks written for the 15 October hosted state (data_correction grant counts on other tenants) and are not caused by F-09.
+
+Still not applied: the finance.period_close catalogue row on hosted (not part of the approval given).
