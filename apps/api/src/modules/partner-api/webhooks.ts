@@ -199,8 +199,9 @@ export function registerWebhookRoutes(router: Router, deps: ApiDeps): void {
 export function createWebhookOutboxSubscriber(deps: ApiDeps) {
   return async (ctx: RequestContext, event: DomainEventEnvelope): Promise<void> => {
     if (!deps.enqueueJob) return;
-    await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const created = await sql<{ id: string }>`
+    await deps.txRunner
+      .withTenantTx(ctx, async (tx) => {
+        const created = await sql<{ id: string }>`
         insert into webhook_delivery_log (id, tenant_id, subscription_id, event_id, event_type, payload, attempt, status, next_retry_at)
         select 'whd_' || new_ulid(), s.tenant_id, s.id, ${event.id}, ${event.type},
                ${JSON.stringify({ id: event.id, type: event.type, occurredAt: event.occurredAt, subject: event.subject, data: event.data })}::jsonb,
@@ -209,10 +210,16 @@ export function createWebhookOutboxSubscriber(deps: ApiDeps) {
          where s.status = 'ACTIVE' and ${event.type} = any(s.subscribed_events)
         on conflict (subscription_id, event_id) do nothing
         returning id`.execute(tx);
-      for (const d of created.rows) {
-        await deps.enqueueJob!(tx, ctx.principal.tenantId, WEBHOOK_DELIVERY_JOB, { deliveryId: d.id });
-      }
-    });
+        for (const d of created.rows) {
+          await deps.enqueueJob!(tx, ctx.principal.tenantId, WEBHOOK_DELIVERY_JOB, { deliveryId: d.id });
+        }
+      })
+      // A database without M-074/M-076 (new_ulid, the delivery columns) cannot record deliveries yet. That must not fail the
+      // event for every other subscriber, so the subscription is skipped; any other error still fails the delivery.
+      .catch((err: { code?: string }) => {
+        if (err?.code === '42883' || err?.code === '42P01' || err?.code === '42703') return;
+        throw err;
+      });
   };
 }
 

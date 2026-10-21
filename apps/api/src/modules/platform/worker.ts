@@ -34,6 +34,7 @@ export interface BackgroundWorkerOptions {
 export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: () => void } {
   let isRunning = false;
   let lastCleanup = Date.now();
+  let pauseTableMissingReported = false;
   const report = opts.onError ?? (() => undefined);
 
   // Pause flags set from the platform console (app.worker_queue_state, M-069). Unknown or unreadable means not paused.
@@ -45,7 +46,17 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
       );
       return new Set(r.rows.map((row) => row.queue));
     } catch (err) {
-      report('outbox', err);
+      // A database without migration 0069 has no pause table: say so once, not on every tick.
+      const missingTable = (err as { code?: string })?.code === '42P01';
+      if (!missingTable || !pauseTableMissingReported) {
+        report(
+          'outbox',
+          missingTable
+            ? new Error('app.worker_queue_state is missing: apply migration 0069. Queues run unpaused.')
+            : err,
+        );
+      }
+      if (missingTable) pauseTableMissingReported = true;
       return new Set();
     }
   };
