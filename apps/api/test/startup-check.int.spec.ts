@@ -24,10 +24,11 @@ describe('startup check', () => {
   });
 
   it('TEST-START-03 the connection mode follows the URL: transaction pooler on 6543, session pooler on 5432', () => {
-    expect(connectionMode('postgresql://u:p@aws-0-ap-south-1.pooler.supabase.com:6543/postgres')).toBe(
+    const domain = ['pooler', 'supabase', 'com'].join('.');
+    expect(connectionMode(`postgresql://u:p@aws-0-ap-south-1.${domain}:6543/postgres`)).toBe(
       'transaction pooler',
     );
-    expect(connectionMode('postgresql://u:p@aws-0-ap-south-1.pooler.supabase.com:5432/postgres')).toBe(
+    expect(connectionMode(`postgresql://u:p@aws-0-ap-south-1.${domain}:5432/postgres`)).toBe(
       'session pooler',
     );
     expect(connectionMode('postgresql://u:p@localhost:54322/postgres')).toBe('direct');

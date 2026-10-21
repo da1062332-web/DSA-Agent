@@ -61,6 +61,27 @@ Generated 2026-10-16 from `supabase/MANIFEST.md` and a read-only probe of the ho
 | 0063 | M-063 | Dev 1 / Platform | security_event (ENT-096), incident_record (ENT-102), security.incident and security.vuln permissions | M-001, M-002 | APPLIED 2026-10-17 (verify: 4 PASS). security.incident held by 11 roles | None for hosted. Already applied. |
 | 0064 | M-064 | Dev 3 | sanction and disbursement role grants for tenant admin roles (ROLE-TENANT-ADMIN, ROLE-ORG-OWNER, ROLE-BRANCH-MGR, ROLE-LOAN-OPS) | M-001, M-031 | APPLIED 2026-10-17 (verify: 2 PASS). Branch manager and loan operations now hold the sanction and disbursement permissions | None for hosted. Already applied. |
 | 0065 | M-065 | Dev 1 | renames the connector statement table of 0053 from ledger_entry to connector_statement_entry on a database that ran the old 0053; no-op on a | M-053 | APPLIED 2026-10-17 (verify: 3 PASS; read-only check: nothing still carries the old name, 0 rows, privileges kept, row-level security enabled and forced). The new invoices code can now be deployed | None for hosted. Already applied. |
+| 0066 | M-066 | Dev 1 | lender_query table | M-020, M-022 | APPLIED (table present on hosted; verified by preflight) | None for hosted. Already applied. |
+| 0067 | M-067 | Dev 1 | outbox_relay_and_job_discovery | M-002, M-033 | APPLIED (verified by preflight prerequisite) | None for hosted. Already applied. |
+| 0068 | M-068 | Dev 1 | tenant_feature_flag_overrides | M-046, M-058 | APPLIED (verified by preflight prerequisite) | None for hosted. Already applied. |
+| 0069 | M-069 | Dev 1 | worker_queue_state (two rows), outbox_event.discarded_at, platform queue functions | M-002, M-067 | APPLIED 2026-10-21 (verify: 4 PASS) | None for hosted. Already applied. |
+| 0070 | M-070 | Dev 1 | 15 permission codes and grants in every tenant | M-001 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0071 | M-071 | Dev 1 | 8 MOD-DOC document tables and resolve_upload_intent() | M-025 | APPLIED 2026-10-21 (verify: 4 PASS) | None for hosted. Already applied. |
+| 0072 | M-072 | Dev 1 | application_party removal columns and triggers | M-021 | APPLIED 2026-10-21 (verify: 4 PASS) | None for hosted. Already applied. |
+| 0073 | M-073 | Dev 1 | new_ulid() and handover_owned_records() | M-001 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0074 | M-074 | Dev 1 | apply_link, duplicate_review, lead merge and resolve_public_apply_link() | M-003 | APPLIED 2026-10-21 (verify: 4 PASS) | None for hosted. Already applied. |
+| 0075 | M-075 | Dev 1 | customer merge and merge_customer_links() | M-003 | APPLIED 2026-10-21 (verify: 3 PASS) | None for hosted. Already applied. |
+| 0076 | M-076 | Dev 1 | webhook subscription secret ciphertext and delivery indices | M-037 | APPLIED 2026-10-21 (verify: 4 PASS) | None for hosted. Already applied. |
+| 0077 | M-077 | Dev 1 | inbound_webhook table | M-037 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0078 | M-078 | Dev 1 | retention_policy and data_subject_request tables | M-001 | APPLIED 2026-10-21 (verify: 1 PASS) | None for hosted. Already applied. |
+| 0079 | M-079 | Dev 1 | lender reason_map column | M-020 | APPLIED 2026-10-21 (verify: 1 PASS) | None for hosted. Already applied. |
+| 0080 | M-080 | Dev 1 | BRE reference_list and reference_list_version tables | M-010 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0081 | M-081 | Dev 1 | access_review and access_review_item tables | M-001 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0082 | M-082 | Dev 1 | tenant configuration: setting, label_set, business_calendar, picklist_value | M-001 | APPLIED 2026-10-21 (verify: 1 PASS) | None for hosted. Already applied. |
+| 0083 | M-083 | Dev 1 | tenant lifecycle: tenant_offboarding and platform lifecycle functions | M-050 | APPLIED 2026-10-21 (verify: 5 PASS) | None for hosted. Already applied. |
+| 0084 | M-084 | Dev 1 | connector portal referral_consent_otp table | M-027 | APPLIED 2026-10-21 (verify: 2 PASS) | None for hosted. Already applied. |
+| 0085 | M-085 | Vaibhav | permission realignment, period close permission, and tenant role grants | M-001 | APPLIED 2026-10-21 (verify: 3 PASS) | None for hosted. Already applied. |
+
 
 ## Numbering and history
 

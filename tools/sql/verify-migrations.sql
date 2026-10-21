@@ -15,10 +15,10 @@ SELECT table_name FROM information_schema.role_table_grants
 WHERE grantee = 'dsa_app' AND privilege_type IN ('DELETE','TRUNCATE')
   AND table_name NOT IN ('role', 'role_permission', 'api_client');
 
--- (c) Tables without tenant_id must be on the global allow-list {tenant, permission, decision_definition, decision_dependency, feature_flag, master_data_item, platform_release}
+-- (c) Tables without tenant_id must be on the global allow-list {tenant, permission, decision_definition, decision_dependency, feature_flag, master_data_item, platform_release, worker_queue_state}
 SELECT table_name FROM information_schema.tables t
 WHERE table_schema = 'app' AND table_type = 'BASE TABLE'
-  AND table_name NOT IN ('tenant','permission','decision_definition','decision_dependency','feature_flag','master_data_item','platform_release')
+  AND table_name NOT IN ('tenant','permission','decision_definition','decision_dependency','feature_flag','master_data_item','platform_release','worker_queue_state')
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_name = t.table_name AND c.column_name = 'tenant_id');
 
 -- (e) Supabase exposure check: must return zero rows (anon/authenticated have no access to schema app)

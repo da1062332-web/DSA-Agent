@@ -11,7 +11,11 @@ import { createTestApp, testPrincipal } from './support/fake-auth';
 
 const LOCAL = 'http://127.0.0.1:54321';
 const HOSTED = 'https://abcdefghijklmnop.supabase.co';
-const base = { DATABASE_URL: 'postgresql://dsa_api:x@localhost:5432/postgres', LOG_LEVEL: 'silent' };
+const base = {
+  DATABASE_URL: 'postgresql://dsa_api:x@localhost:5432/postgres',
+  LOG_LEVEL: 'silent',
+  APP_SIGNING_SECRET: '01234567890123456789012345678901',
+};
 
 describe('which environments may switch MFA off', () => {
   it('TEST-MFASW-01 a developer on a local Supabase stack outside production can switch it off', () => {
