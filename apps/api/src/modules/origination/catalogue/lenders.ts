@@ -64,6 +64,14 @@ async function activeOrganisationId(tx: Tx): Promise<string> {
   return id;
 }
 
+function requireAnyPermission(ctx: any, ...codes: string[]): void {
+  if (ctx.principal.kind === 'SERVICE') return;
+  const has = ctx.principal.grants.some((g: any) => codes.includes(g.code));
+  if (!has) {
+    throw AppError.of('FORBIDDEN', `One of these permissions is required: ${codes.join(', ')}.`);
+  }
+}
+
 export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
   router.get('/lenders', async (req, res) => {
     const ctx = requireCtx(req);
@@ -97,7 +105,7 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
 
   router.post('/lenders', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const key = idempotencyKey(req);
     const input = LenderCreate.parse(req.body);
 
@@ -125,7 +133,7 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
 
   router.patch('/lenders/:id', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const version = ifMatchVersion(req);
     const input = LenderPatch.parse(req.body);
 
@@ -157,7 +165,7 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
 
   router.post('/lenders/:id/empanelments', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const key = idempotencyKey(req);
     const input = EmpanelmentCreate.parse(req.body);
 
@@ -220,7 +228,7 @@ export function registerLenderRoutes(router: Router, deps: ApiDeps): void {
 
   router.patch('/empanelments/:id', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const version = ifMatchVersion(req);
     const input = EmpanelmentPatch.parse(req.body);
 

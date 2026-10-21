@@ -11,6 +11,7 @@ export interface Me {
   primaryBranchId: string | null;
   queueIds: string[];
   grants: { code: string; scope: string; branchIds: string[] }[];
+  roles?: string[];
   mfaVerifiedAt: string | null;
   /** app_user.lock_version; sent as If-Match on PATCH /v1/me (API-USR-009). */
   lockVersion?: number;
@@ -37,6 +38,7 @@ export function useMe() {
       return {
         ...unwrapped,
         grants: Array.isArray(unwrapped?.grants) ? unwrapped.grants : [],
+        roles: Array.isArray(unwrapped?.roles) ? unwrapped.roles : [],
       } as Me;
     },
     enabled: !!session,

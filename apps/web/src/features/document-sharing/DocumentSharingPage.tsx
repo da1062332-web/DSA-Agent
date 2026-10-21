@@ -36,6 +36,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
+import { Can } from '../../shell/Can';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 
 const APPROVED_CHECKLIST_REQUIREMENTS = [
@@ -214,18 +215,22 @@ export function DocumentSharingPage() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
-          <Button variant="outlined" onClick={() => setIsShareModalOpen(true)}>
-            + Create Share Package
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setCreatedLinkResult(null);
-              setIsLinkModalOpen(true);
-            }}
-          >
-            + Generate Upload Link
-          </Button>
+          <Can action="share.create">
+            <Button variant="outlined" onClick={() => setIsShareModalOpen(true)}>
+              + Create Share Package
+            </Button>
+          </Can>
+          <Can action="document.upload">
+            <Button
+              variant="contained"
+              onClick={() => {
+                setCreatedLinkResult(null);
+                setIsLinkModalOpen(true);
+              }}
+            >
+              + Generate Upload Link
+            </Button>
+          </Can>
         </Stack>
       </Stack>
 
@@ -309,13 +314,15 @@ export function DocumentSharingPage() {
                           <TableCell>{statusBadge}</TableCell>
                           <TableCell align="right">
                             {!isRevoked && !isExpired && !isLocked && (
-                              <Button
-                                size="small"
-                                color="error"
-                                onClick={() => revokeLinkMutation.mutate(link.id)}
-                              >
-                                Revoke
-                              </Button>
+                              <Can action="document.upload">
+                                <Button
+                                  size="small"
+                                  color="error"
+                                  onClick={() => revokeLinkMutation.mutate(link.id)}
+                                >
+                                  Revoke
+                                </Button>
+                              </Can>
                             )}
                           </TableCell>
                         </TableRow>
@@ -406,13 +413,15 @@ export function DocumentSharingPage() {
                           <TableCell>{statusBadge}</TableCell>
                           <TableCell align="right">
                             {!isRevoked && !isExpired && (
-                              <Button
-                                size="small"
-                                color="error"
-                                onClick={() => revokeShareMutation.mutate(share.id)}
-                              >
-                                Revoke
-                              </Button>
+                              <Can action="share.create">
+                                <Button
+                                  size="small"
+                                  color="error"
+                                  onClick={() => revokeShareMutation.mutate(share.id)}
+                                >
+                                  Revoke
+                                </Button>
+                              </Can>
                             )}
                           </TableCell>
                         </TableRow>

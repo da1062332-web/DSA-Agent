@@ -3,9 +3,18 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setAuthToken } from '../../auth/token';
 import { TaskList } from './TaskList';
+import * as useMeModule from '../../api/useMe';
+
+vi.mock('../../api/useMe', async () => {
+  const actual = await vi.importActual<typeof useMeModule>('../../api/useMe');
+  return {
+    ...actual,
+    useMe: vi.fn(),
+  };
+});
 
 function renderTaskList(initialPath = '/tasks') {
   const queryClient = new QueryClient({
@@ -22,17 +31,50 @@ function renderTaskList(initialPath = '/tasks') {
 }
 
 describe('Module 9 — TaskList Frontend Component Rendering (UI-TASK-001)', () => {
-  it('renders TaskList container with header and view controls in SSR / Memory context', () => {
+  const mockUseMe = vi.mocked(useMeModule.useMe);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mockGrants(grants: string[]) {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_test',
+        tenantId: 'ten_test',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        primaryBranchId: null,
+        queueIds: [],
+        grants: grants.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
+        mfaVerifiedAt: null,
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+  }
+
+  it('renders TaskList container with header and view controls and hides + Create Task for view-only users', () => {
+    mockGrants(['task.read']);
     const html = renderTaskList();
 
     expect(html).toContain('Task Management (UI-TASK-001)');
-    expect(html).toContain('+ Create Task');
+    expect(html).not.toContain('+ Create Task');
     expect(html).toContain('Mine');
     expect(html).toContain('Queues');
     expect(html).toContain('All Visible');
   });
 
+  it('renders + Create Task when user possesses task.create', () => {
+    mockGrants(['task.read', 'task.create']);
+    const html = renderTaskList();
+
+    expect(html).toContain('Task Management (UI-TASK-001)');
+    expect(html).toContain('+ Create Task');
+  });
+
   it('renders filter dropdown control with Status label', () => {
+    mockGrants(['task.read']);
     const html = renderTaskList();
 
     expect(html).toContain('Status');
@@ -40,17 +82,9 @@ describe('Module 9 — TaskList Frontend Component Rendering (UI-TASK-001)', () 
   });
 
   it('renders initial loading indicator when query is loading', () => {
+    mockGrants(['task.read']);
     const html = renderTaskList();
 
-    // Query is initially in loading state before client hydration
     expect(html).toContain('MuiCircularProgress-root');
-  });
-
-  it('renders correctly when Supabase session token is present via setAuthToken', () => {
-    setAuthToken('header.eyJzdWIiOiJ1c3JfdGVzdF85OSIsInByaW1hcnlCcmFuY2hJZCI6ImJybl90ZXN0Xzk5In0.sig');
-    const html = renderTaskList();
-
-    expect(html).toContain('Task Management (UI-TASK-001)');
-    setAuthToken(undefined);
   });
 });

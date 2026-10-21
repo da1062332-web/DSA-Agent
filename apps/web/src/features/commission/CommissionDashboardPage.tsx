@@ -34,6 +34,7 @@ import {
 } from '@mui/material';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { Can } from '../../shell/Can';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import {
@@ -333,15 +334,17 @@ export function CommissionDashboardPage() {
             </Button>
           )}
           {activeTab === 1 && (
-            <Button
-              variant="contained"
-              onClick={() => {
-                setCalcError(null);
-                setCalcDialogOpen(true);
-              }}
-            >
-              Calculate Commission
-            </Button>
+            <Can action="commission.calculate">
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setCalcError(null);
+                  setCalcDialogOpen(true);
+                }}
+              >
+                Calculate Commission
+              </Button>
+            </Can>
           )}
           {activeTab === 2 && canEditPlan && (
             <Button

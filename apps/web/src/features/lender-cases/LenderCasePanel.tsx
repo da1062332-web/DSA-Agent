@@ -28,6 +28,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { Can } from '../../shell/Can';
 import {
   buildPackage,
   createLenderCase,
@@ -243,14 +244,16 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               {applicationId ? ` · Application: ${applicationId}` : ''}
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!applicationId}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            + New Lender Attempt
-          </Button>
+          <Can action="lender_case.submit">
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={!applicationId}
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              + New Lender Attempt
+            </Button>
+          </Can>
         </Stack>
 
         {errorMessage && (
@@ -347,80 +350,90 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
                         {c.status === 'DRAFT' && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => packageMutation.mutate(c)}
-                            disabled={packageMutation.isPending}
-                          >
-                            Build Package
-                          </Button>
+                          <Can action="lender_case.submit">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => packageMutation.mutate(c)}
+                              disabled={packageMutation.isPending}
+                            >
+                              Build Package
+                            </Button>
+                          </Can>
                         )}
                         {c.status === 'PACKAGE_READY' && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            onClick={() => {
-                              setActiveCase(c);
-                              setSubmitDialogOpen(true);
-                            }}
-                          >
-                            Submit
-                          </Button>
+                          <Can action="lender_case.submit">
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              onClick={() => {
+                                setActiveCase(c);
+                                setSubmitDialogOpen(true);
+                              }}
+                            >
+                              Submit
+                            </Button>
+                          </Can>
                         )}
                         {['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status) && (
                           <>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                setActiveCase(c);
-                                setNewStatus('UNDER_PROCESSING');
-                                setStatusDialogOpen(true);
-                              }}
-                            >
-                              Update Status
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="warning"
-                              onClick={() => {
-                                setActiveCase(c);
-                                setQueryDialogOpen(true);
-                              }}
-                            >
-                              Query
-                            </Button>
+                            <Can action="lender_case.update_status">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  setActiveCase(c);
+                                  setNewStatus('UNDER_PROCESSING');
+                                  setStatusDialogOpen(true);
+                                }}
+                              >
+                                Update Status
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => {
+                                  setActiveCase(c);
+                                  setQueryDialogOpen(true);
+                                }}
+                              >
+                                Query
+                              </Button>
+                            </Can>
                           </>
                         )}
                         {c.status === 'QUERY_RAISED' && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="warning"
-                            onClick={() => {
-                              setActiveCase(c);
-                              setResponseDialogOpen(true);
-                            }}
-                          >
-                            Respond to Query
-                          </Button>
+                          <Can action="lender_case.update_status">
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="warning"
+                              onClick={() => {
+                                setActiveCase(c);
+                                setResponseDialogOpen(true);
+                              }}
+                            >
+                              Respond to Query
+                            </Button>
+                          </Can>
                         )}
                         {c.status === 'SANCTIONED' && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="success"
-                            onClick={() => {
-                              setActiveCase(c);
-                              setNewStatus('DISBURSED');
-                              setStatusDialogOpen(true);
-                            }}
-                          >
-                            Disbursement
-                          </Button>
+                          <Can action="disbursement.record">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              onClick={() => {
+                                setActiveCase(c);
+                                setNewStatus('DISBURSED');
+                                setStatusDialogOpen(true);
+                              }}
+                            >
+                              Disbursement
+                            </Button>
+                          </Can>
                         )}
                       </Stack>
                     </TableCell>

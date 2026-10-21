@@ -98,12 +98,12 @@ describe('F-02 sanction and disbursement reads need a sanction or disbursement p
 
 describe('F-03 manual ledger posting is closed to human sessions; the ledger audit actions are valid', () => {
   const body = () => ({
-    referenceType: 'MANUAL',
+    referenceType: 'MANUAL' as const,
     referenceId: 'p1-manual-1',
     period: '2026-10',
     lines: [
-      { accountCode: '1010-P1-BANK', entryType: 'DEBIT', amount: '100.00' },
-      { accountCode: '2100-P1-PAYABLE', entryType: 'CREDIT', amount: '100.00' },
+      { accountCode: '1010-P1-BANK', entryType: 'DEBIT' as const, amount: '100.00' },
+      { accountCode: '2100-P1-PAYABLE', entryType: 'CREDIT' as const, amount: '100.00' },
     ],
   });
 

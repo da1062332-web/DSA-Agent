@@ -35,6 +35,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import { useMe } from '../../api/useMe';
+import { Can } from '../../shell/Can';
 import type {
   AttributionChangeRequestResource,
   AttributionDisputeResource,
@@ -389,14 +390,16 @@ export function ConnectorPage() {
               Workbench
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setCreateModalOpen(true)}
-            sx={{ fontWeight: 600, px: 3 }}
-          >
-            + Onboard Connector
-          </Button>
+          <Can action="connector.manage">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setCreateModalOpen(true)}
+              sx={{ fontWeight: 600, px: 3 }}
+            >
+              + Onboard Connector
+            </Button>
+          </Can>
         </Stack>
       </Box>
 
@@ -500,45 +503,51 @@ export function ConnectorPage() {
                               Manage Details
                             </Button>
                             {con.status === 'DRAFT' && (
-                              <Button
-                                size="small"
-                                color="success"
-                                variant="contained"
-                                onClick={() => {
-                                  setSelectedConnector(con);
-                                  setActivateModalOpen(true);
-                                }}
-                              >
-                                Activate
-                              </Button>
+                              <Can action="connector.manage">
+                                <Button
+                                  size="small"
+                                  color="success"
+                                  variant="contained"
+                                  onClick={() => {
+                                    setSelectedConnector(con);
+                                    setActivateModalOpen(true);
+                                  }}
+                                >
+                                  Activate
+                                </Button>
+                              </Can>
                             )}
                             {con.status === 'ACTIVE' && (
-                              <Button
-                                size="small"
-                                color="warning"
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedConnector(con);
-                                  setTargetStatus('SUSPENDED');
-                                  setStatusModalOpen(true);
-                                }}
-                              >
-                                Suspend
-                              </Button>
+                              <Can action="connector.manage">
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setSelectedConnector(con);
+                                    setTargetStatus('SUSPENDED');
+                                    setStatusModalOpen(true);
+                                  }}
+                                >
+                                  Suspend
+                                </Button>
+                              </Can>
                             )}
                             {con.status === 'SUSPENDED' && (
-                              <Button
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedConnector(con);
-                                  setTargetStatus('ACTIVE');
-                                  setStatusModalOpen(true);
-                                }}
-                              >
-                                Reinstate
-                              </Button>
+                              <Can action="connector.manage">
+                                <Button
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setSelectedConnector(con);
+                                    setTargetStatus('ACTIVE');
+                                    setStatusModalOpen(true);
+                                  }}
+                                >
+                                  Reinstate
+                                </Button>
+                              </Can>
                             )}
                           </Stack>
                         </TableCell>
@@ -570,14 +579,16 @@ export function ConnectorPage() {
                       period applies after activation.
                     </Typography>
                   </Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    onClick={() => setBankModalOpen(true)}
-                  >
-                    + Add Bank Account
-                  </Button>
+                  <Can action="connector.manage">
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => setBankModalOpen(true)}
+                    >
+                      + Add Bank Account
+                    </Button>
+                  </Can>
                 </Stack>
 
                 {selectedBankAccountsQuery.isLoading ? (
@@ -697,14 +708,16 @@ export function ConnectorPage() {
                       engine calculations.
                     </Typography>
                   </Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    onClick={() => setAgreementModalOpen(true)}
-                  >
-                    + Create Agreement
-                  </Button>
+                  <Can action="connector.manage">
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => setAgreementModalOpen(true)}
+                    >
+                      + Create Agreement
+                    </Button>
+                  </Can>
                 </Stack>
 
                 {selectedAgreementsQuery.isLoading ? (
@@ -776,14 +789,16 @@ export function ConnectorPage() {
                   through security-definer function.
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setReassignModalOpen(true)}
-              >
-                + Request Reattribution
-              </Button>
+              <Can action="connector.manage">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => setReassignModalOpen(true)}
+                >
+                  + Request Reattribution
+                </Button>
+              </Can>
             </Stack>
 
             {attributionRequestsQuery.isLoading ? (
@@ -900,17 +915,19 @@ export function ConnectorPage() {
                         </TableCell>
                         <TableCell align="right">
                           {disp.status !== 'RESOLVED' && (
-                            <Button
-                              size="small"
-                              color="primary"
-                              variant="contained"
-                              onClick={() => {
-                                setSelectedDispute(disp);
-                                setDisputeModalOpen(true);
-                              }}
-                            >
-                              Adjudicate
-                            </Button>
+                            <Can action="connector.manage">
+                              <Button
+                                size="small"
+                                color="primary"
+                                variant="contained"
+                                onClick={() => {
+                                  setSelectedDispute(disp);
+                                  setDisputeModalOpen(true);
+                                }}
+                              >
+                                Adjudicate
+                              </Button>
+                            </Can>
                           )}
                         </TableCell>
                       </TableRow>

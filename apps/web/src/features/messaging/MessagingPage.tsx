@@ -22,6 +22,7 @@ import type { MessageRecord, MessageTemplate } from '@dsa/contracts';
 import { getStoredAuthToken } from '../../auth/token';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
+import { Can } from '../../shell/Can';
 
 export interface MessagingPageProps {
   defaultTab?: number;
@@ -102,9 +103,11 @@ export function MessagingPage({ defaultTab = 0, apiBaseUrl = '/v1' }: MessagingP
             Templates &bull; Dispatch &bull; Delivery Tracking &bull; Consent & Quiet Hours Guard
           </Typography>
         </Box>
-        <Button variant="contained" onClick={() => setEditorOpen(true)}>
-          New Template
-        </Button>
+        <Can action="config.manage">
+          <Button variant="contained" onClick={() => setEditorOpen(true)}>
+            New Template
+          </Button>
+        </Can>
       </Box>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>

@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import { getCustomer, updateCustomer, ApiError } from './api';
+import { Can } from '../../shell/Can';
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -136,9 +137,11 @@ export function CustomerDetailPage() {
           </Box>
 
           <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" onClick={handleOpenEdit}>
-              Edit Profile
-            </Button>
+            <Can action="customer.update">
+              <Button variant="outlined" onClick={handleOpenEdit}>
+                Edit Profile
+              </Button>
+            </Can>
             <Button
               variant="contained"
               color="secondary"

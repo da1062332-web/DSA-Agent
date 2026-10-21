@@ -32,8 +32,8 @@ const version = {
   effectiveFrom: '2026-01-01T00:00:00Z',
 };
 
-describe('products: permissions (MOD-PRD, config.manage)', () => {
-  it('TEST-PRD-001 every write is 403 without config.manage', async () => {
+describe('products: permissions (MOD-PRD, config.manage / product.manage)', () => {
+  it('TEST-PRD-001 every write is 403 without config.manage or product.manage', async () => {
     const app = as('lead.read');
     const calls = [
       request(app).post('/v1/products').set(IDEM).send(product),
@@ -44,6 +44,13 @@ describe('products: permissions (MOD-PRD, config.manage)', () => {
       expect(res.status).toBe(403);
       expect(code(res)).toBe('FORBIDDEN');
     }
+  });
+
+  it('TEST-PRD-001b writes accept product.manage as well as config.manage', async () => {
+    const app = as('product.manage');
+    const create = await request(app).post('/v1/products').send(product);
+    expect(create.status).toBe(400);
+    expect(code(create)).toBe('MALFORMED_REQUEST');
   });
 });
 

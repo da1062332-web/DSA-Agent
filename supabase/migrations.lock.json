@@ -56,5 +56,6 @@
   "20261001000065_rename_ledger_entry_to_connector_statement_entry.sql": "5bfa50cd98098c4bf0df1c3be70aed1604332a87613c56db60ddcb0e92c5c02b",
   "20261001000066_lender_query.sql": "2e5728b07f372b0964283e72ad200c1548d4900f267bc448ee44d771a75934de",
   "20261001000067_outbox_relay_and_job_discovery.sql": "aa646461c840606aa19f6ef482a80a61cd81adcf38fbc71d2176a0d98fa8036d",
-  "20261001000068_tenant_feature_flag_overrides.sql": "cd8b671ce6955879a2fb130e7d9120370facbe57d12aec4d07475afad94d032e"
+  "20261001000068_tenant_feature_flag_overrides.sql": "cd8b671ce6955879a2fb130e7d9120370facbe57d12aec4d07475afad94d032e",
+  "20261001000069_permission_realignment_and_period_close.sql": "5ac530bafe51810e8c0b28bba59e01fda6348a169a503723e7bad68af574e3a5"
 }

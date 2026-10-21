@@ -109,6 +109,14 @@ async function requireLenderOpen(tx: Tx, lenderId: string): Promise<void> {
   }
 }
 
+function requireAnyPermission(ctx: any, ...codes: string[]): void {
+  if (ctx.principal.kind === 'SERVICE') return;
+  const has = ctx.principal.grants.some((g: any) => codes.includes(g.code));
+  if (!has) {
+    throw AppError.of('FORBIDDEN', `One of these permissions is required: ${codes.join(', ')}.`);
+  }
+}
+
 export function registerProductRoutes(router: Router, deps: ApiDeps): void {
   router.get('/products', async (req, res) => {
     const ctx = requireCtx(req);
@@ -158,7 +166,7 @@ export function registerProductRoutes(router: Router, deps: ApiDeps): void {
 
   router.post('/products', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'product.manage', 'config.manage');
     const key = idempotencyKey(req);
     const input = ProductCreate.parse(req.body);
 
@@ -191,7 +199,7 @@ export function registerProductRoutes(router: Router, deps: ApiDeps): void {
   // Basic details only. Versions are untouched: their terms are fixed, and a product has no delete route.
   router.patch('/products/:id', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'product.manage', 'config.manage');
     const version = ifMatchVersion(req);
     const input = ProductPatch.parse(req.body);
 
@@ -221,7 +229,7 @@ export function registerProductRoutes(router: Router, deps: ApiDeps): void {
 
   router.post('/products/:id/status', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'product.manage', 'config.manage');
     const version = ifMatchVersion(req);
     const input = ProductStatusChange.parse(req.body);
 
@@ -249,7 +257,7 @@ export function registerProductRoutes(router: Router, deps: ApiDeps): void {
 
   router.post('/products/:id/versions', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'product.manage', 'config.manage');
     const key = idempotencyKey(req);
     const input = ProductVersionCreate.parse(req.body);
 

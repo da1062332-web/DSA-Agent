@@ -282,7 +282,7 @@ export class FinanceService {
     ctx: RequestContext,
     input: CalculateCommissionInput,
   ): Promise<{ calculation: CommissionCalculationResponse; payable: CommissionPayableResponse | null }> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertAnyPermission(ctx, ['commission.calculate', 'finance.view']);
 
     const tenantId = ctx.principal.tenantId;
     const plan = await this.deps.repository.findActiveCommissionPlan(tx, tenantId, input.lenderId);

@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Can } from '../../shell/Can';
 import {
   fetchRuleSetVersion,
   publishVersion,
@@ -354,46 +355,58 @@ export function RuleVersionDetailPage() {
 
         {/* Action Toolbar */}
         <Stack direction="row" spacing={1.5} flexWrap="wrap">
-          <Button variant="outlined" onClick={() => setSimOpen(true)}>
-            Simulate / Test
-          </Button>
+          <Can action="rule.simulate">
+            <Button variant="outlined" onClick={() => setSimOpen(true)}>
+              Simulate / Test
+            </Button>
+          </Can>
           <Button variant="outlined" onClick={handleValidate} disabled={validating}>
             {validating ? 'Validating...' : 'Validate'}
           </Button>
 
           {isDraft && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setSubmitOpen(true)}
-              disabled={!validationReport || validationReport.result !== 'PASS'}
-            >
-              Submit for Review
-            </Button>
+            <Can action="rule.author">
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setSubmitOpen(true)}
+                disabled={!validationReport || validationReport.result !== 'PASS'}
+              >
+                Submit for Review
+              </Button>
+            </Can>
           )}
 
           {isReview && (
-            <Button variant="contained" color="warning" onClick={() => setReviewOpen(true)}>
-              Review / Approve (SOD-01)
-            </Button>
+            <Can action="rule.approve">
+              <Button variant="contained" color="warning" onClick={() => setReviewOpen(true)}>
+                Review / Approve (SOD-01)
+              </Button>
+            </Can>
           )}
 
           {isApproved && (
-            <Button variant="contained" color="success" onClick={() => setPublishOpen(true)}>
-              Publish to Production
-            </Button>
+            <Can action="rule.publish">
+              <Button variant="contained" color="success" onClick={() => setPublishOpen(true)}>
+                Publish to Production
+              </Button>
+            </Can>
           )}
 
           {isActive && (
-            <Button variant="contained" color="error" onClick={() => setSuspendOpen(true)}>
-              Emergency Suspend
-            </Button>
+            <Can action="rule.suspend">
+              <Button variant="contained" color="error" onClick={() => setSuspendOpen(true)}>
+                Emergency Suspend
+              </Button>
+            </Can>
           )}
 
           {isSuspended && (
-            <Button variant="contained" color="primary" onClick={() => setReinstateOpen(true)}>
-              Reinstate Version
-            </Button>
+            <Can action="rule.publish">
+              <Button variant="contained" color="primary" onClick={() => setReinstateOpen(true)}>
+                Reinstate Version
+              </Button>
+            </Can>
           )}
         </Stack>
       </Stack>
@@ -440,9 +453,11 @@ export function RuleVersionDetailPage() {
                   {isDraft ? 'Draft Rule Definition' : 'Locked Rule Definition (Read-Only)'}
                 </Typography>
                 {isDraft && (
-                  <Button variant="contained" size="small" onClick={handleSaveDraft} disabled={savingDraft}>
-                    {savingDraft ? 'Saving...' : 'Save Draft'}
-                  </Button>
+                  <Can action="rule.author">
+                    <Button variant="contained" size="small" onClick={handleSaveDraft} disabled={savingDraft}>
+                      {savingDraft ? 'Saving...' : 'Save Draft'}
+                    </Button>
+                  </Can>
                 )}
               </Stack>
 

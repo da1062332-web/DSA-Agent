@@ -26,6 +26,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { Can } from '../../shell/Can';
 import { sanctionsApi } from './api';
 import type {
   DisbursementTranche,
@@ -230,14 +231,16 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   sx={{ mr: 1 }}
                 />
               )}
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => setSanctionDialogOpen(true)}
-                data-testid="record-sanction-btn"
-              >
-                {activeSanction ? 'Revise Sanction Terms' : 'Record Sanction'}
-              </Button>
+              <Can action="sanction.record">
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => setSanctionDialogOpen(true)}
+                  data-testid="record-sanction-btn"
+                >
+                  {activeSanction ? 'Revise Sanction Terms' : 'Record Sanction'}
+                </Button>
+              </Can>
             </Box>
           </Box>
 
@@ -290,21 +293,23 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
               <Typography variant="h6" fontWeight="bold">
                 Disbursement Tranches
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                disabled={activeSanction.status !== 'ACTIVE' || remainingSanctionLimit <= 0}
-                onClick={() => {
-                  setTrancheForm({
-                    ...trancheForm,
-                    amount: Math.min(500000, remainingSanctionLimit),
-                  });
-                  setTrancheDialogOpen(true);
-                }}
-                data-testid="record-tranche-btn"
-              >
-                Record Tranche
-              </Button>
+              <Can action="disbursement.record">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={activeSanction.status !== 'ACTIVE' || remainingSanctionLimit <= 0}
+                  onClick={() => {
+                    setTrancheForm({
+                      ...trancheForm,
+                      amount: Math.min(500000, remainingSanctionLimit),
+                    });
+                    setTrancheDialogOpen(true);
+                  }}
+                  data-testid="record-tranche-btn"
+                >
+                  Record Tranche
+                </Button>
+              </Can>
             </Box>
 
             {tranches.length === 0 ? (
@@ -354,24 +359,26 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                           <TableCell>{t.loanAccountMasked ?? '—'}</TableCell>
                           <TableCell align="right">
                             {t.status === 'RECORDED' && (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="primary"
-                                disabled={Boolean(isRecorder)}
-                                title={
-                                  isRecorder
-                                    ? 'Segregation of duties: Creator cannot verify'
-                                    : 'Verify Tranche'
-                                }
-                                onClick={() => {
-                                  setSelectedTranche(t);
-                                  setVerifyDialogOpen(true);
-                                }}
-                                data-testid={`verify-tranche-btn-${t.id}`}
-                              >
-                                {isRecorder ? 'SOD Lock' : 'Verify'}
-                              </Button>
+                              <Can action="disbursement.verify">
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                  disabled={Boolean(isRecorder)}
+                                  title={
+                                    isRecorder
+                                      ? 'Segregation of duties: Creator cannot verify'
+                                      : 'Verify Tranche'
+                                  }
+                                  onClick={() => {
+                                    setSelectedTranche(t);
+                                    setVerifyDialogOpen(true);
+                                  }}
+                                  data-testid={`verify-tranche-btn-${t.id}`}
+                                >
+                                  {isRecorder ? 'SOD Lock' : 'Verify'}
+                                </Button>
+                              </Can>
                             )}
                           </TableCell>
                         </TableRow>

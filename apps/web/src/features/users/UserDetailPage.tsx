@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { assignUserRole, fetchBranches, fetchRoles, fetchUserById, removeUserRole, updateUser } from './api';
+import { Can } from '../../shell/Can';
 import type { Branch, Role, UserSummary } from './types';
 
 export function UserDetailPage() {
@@ -355,15 +356,17 @@ export function UserDetailPage() {
               </Grid>
 
               <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  size="large"
-                  disabled={isUpdating}
-                  data-testid="users.detail.saveProfile"
-                >
-                  {isUpdating ? <CircularProgress size={24} /> : 'Save Profile Changes'}
-                </Button>
+                <Can action="user.manage">
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    disabled={isUpdating}
+                    data-testid="users.detail.saveProfile"
+                  >
+                    {isUpdating ? <CircularProgress size={24} /> : 'Save Profile Changes'}
+                  </Button>
+                </Can>
               </Box>
             </Box>
           </CardContent>
@@ -411,45 +414,47 @@ export function UserDetailPage() {
             </Paper>
 
             <Stack direction="row" spacing={2} flexWrap="wrap">
-              {user.status !== 'ACTIVE' && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={() => {
-                    setPendingStatus('ACTIVE');
-                    setStatusConfirmOpen(true);
-                  }}
-                  disabled={isSelf}
-                >
-                  Activate Account
-                </Button>
-              )}
-              {user.status !== 'SUSPENDED' && (
-                <Button
-                  variant="contained"
-                  color="warning"
-                  onClick={() => {
-                    setPendingStatus('SUSPENDED');
-                    setStatusConfirmOpen(true);
-                  }}
-                  disabled={isSelf}
-                >
-                  Suspend Account
-                </Button>
-              )}
-              {user.status !== 'DEACTIVATED' && (
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={() => {
-                    setPendingStatus('DEACTIVATED');
-                    setStatusConfirmOpen(true);
-                  }}
-                  disabled={isSelf}
-                >
-                  Deactivate Account
-                </Button>
-              )}
+              <Can action="user.manage">
+                {user.status !== 'ACTIVE' && (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={() => {
+                      setPendingStatus('ACTIVE');
+                      setStatusConfirmOpen(true);
+                    }}
+                    disabled={isSelf}
+                  >
+                    Activate Account
+                  </Button>
+                )}
+                {user.status !== 'SUSPENDED' && (
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    onClick={() => {
+                      setPendingStatus('SUSPENDED');
+                      setStatusConfirmOpen(true);
+                    }}
+                    disabled={isSelf}
+                  >
+                    Suspend Account
+                  </Button>
+                )}
+                {user.status !== 'DEACTIVATED' && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => {
+                      setPendingStatus('DEACTIVATED');
+                      setStatusConfirmOpen(true);
+                    }}
+                    disabled={isSelf}
+                  >
+                    Deactivate Account
+                  </Button>
+                )}
+              </Can>
             </Stack>
           </CardContent>
         </Card>
@@ -468,14 +473,16 @@ export function UserDetailPage() {
                   Roles define what operations this staff member is authorized to perform.
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                onClick={() => setRoleDialogOpen(true)}
-                disabled={isSelf}
-                data-testid="users.detail.addRole"
-              >
-                + Assign Role
-              </Button>
+              <Can action="role.manage">
+                <Button
+                  variant="contained"
+                  onClick={() => setRoleDialogOpen(true)}
+                  disabled={isSelf}
+                  data-testid="users.detail.addRole"
+                >
+                  + Assign Role
+                </Button>
+              </Can>
             </Box>
 
             {isSelf && (
@@ -513,14 +520,16 @@ export function UserDetailPage() {
                           Active Role Assignment
                         </Typography>
                       </Box>
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleRemoveRole(roleName)}
-                        disabled={isSelf}
-                      >
-                        Remove
-                      </Button>
+                      <Can action="role.manage">
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => handleRemoveRole(roleName)}
+                          disabled={isSelf}
+                        >
+                          Remove
+                        </Button>
+                      </Can>
                     </Paper>
                   </Grid>
                 ))}

@@ -10,6 +10,26 @@ vi.mock('../../auth/AuthProvider', () => ({
   useAuth: () => ({
     session: { user: { id: 'usr_test' } },
   }),
+  useOptionalAuth: () => ({
+    session: { user: { id: 'usr_test' } },
+  }),
+}));
+
+vi.mock('../../api/useMe', () => ({
+  useMe: () => ({
+    data: {
+      id: 'usr_test',
+      tenantId: 'ten_default',
+      displayName: 'Test User',
+      grants: [
+        { code: 'import.run', scope: 'TENANT', branchIds: [] },
+        { code: 'export.run', scope: 'TENANT', branchIds: [] },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+  }),
+  hasPermission: () => true,
 }));
 
 vi.mock('./api', () => ({

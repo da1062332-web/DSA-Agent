@@ -471,6 +471,48 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
+  it('TC-COM-004b calculateCommission accepts commission.calculate and finance.view, rejects others with 403', async () => {
+    const repo = new InMemoryFinanceRepository();
+    const service = new FinanceService({ repository: repo });
+    const tx = {} as Tx;
+    const forbiddenCtx: RequestContext = {
+      principal: testPrincipal({ grants: [{ code: 'lead.read', scope: 'TENANT', branchIds: [] }] }),
+      correlationId: 'c1',
+      now: new Date(),
+    };
+    const validCalc = {
+      lenderId: 'lnd_01J00000000000000000000000',
+      trancheId: 'tranche_01J0000000000000001',
+      eventDate: '2026-10-13',
+      currency: 'INR' as const,
+      basisAmount: '100000.00',
+    };
+
+    await expect(service.calculateCommission(tx, forbiddenCtx, validCalc)).rejects.toThrowError(
+      /commission\.calculate, finance\.view/,
+    );
+
+    const calcCtx: RequestContext = {
+      principal: testPrincipal({ grants: [{ code: 'commission.calculate', scope: 'TENANT', branchIds: [] }] }),
+      correlationId: 'c2',
+      now: new Date(),
+    };
+    // With commission.calculate, authz passes (reaches repo logic, which throws because no active plan exists)
+    await expect(service.calculateCommission(tx, calcCtx, validCalc)).rejects.toThrowError(
+      /No active commission plan/,
+    );
+
+    const viewCtx: RequestContext = {
+      principal: testPrincipal({ grants: [{ code: 'finance.view', scope: 'TENANT', branchIds: [] }] }),
+      correlationId: 'c3',
+      now: new Date(),
+    };
+    // With finance.view, authz also passes (backward compatible)
+    await expect(service.calculateCommission(tx, viewCtx, validCalc)).rejects.toThrowError(
+      /No active commission plan/,
+    );
+  });
+
   it('TC-COM-005 Full Commission Workflow: plan creation, SOD-02 approval, disbursement calculation and clawback', async () => {
     const repo = new InMemoryFinanceRepository();
     const service = new FinanceService({ repository: repo });

@@ -23,6 +23,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { Can } from '../../shell/Can';
 import { fetchLeads } from './api';
 import type { LeadResource } from './types';
 
@@ -106,15 +107,17 @@ export function LeadList() {
             Manage, qualify, and convert loan enquiry leads
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          component={RouterLink}
-          to="/leads/new"
-          data-testid="leads.create-button"
-        >
-          Create Lead
-        </Button>
+        <Can action="lead.create">
+          <Button
+            variant="contained"
+            color="primary"
+            component={RouterLink}
+            to="/leads/new"
+            data-testid="leads.create-button"
+          >
+            Create Lead
+          </Button>
+        </Can>
       </Stack>
 
       {/* Filter Bar */}

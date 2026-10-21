@@ -32,6 +32,7 @@ import type {
   VerificationStatus,
 } from './types';
 import { VerificationCreateDialog } from './VerificationCreateDialog';
+import { Can } from '../../shell/Can';
 
 function getStatusColor(
   status: VerificationStatus,
@@ -143,14 +144,16 @@ export function VerificationListPage() {
           >
             Workbench View
           </Button>
-          <Button
-            variant="contained"
-            onClick={() => setCreateOpen(true)}
-            data-testid="verification.btn.create"
-            sx={{ fontWeight: 600 }}
-          >
-            + New Verification
-          </Button>
+          <Can action="verification.perform">
+            <Button
+              variant="contained"
+              onClick={() => setCreateOpen(true)}
+              data-testid="verification.btn.create"
+              sx={{ fontWeight: 600 }}
+            >
+              + New Verification
+            </Button>
+          </Can>
         </Stack>
       </Box>
 

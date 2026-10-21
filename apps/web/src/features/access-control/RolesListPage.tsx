@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { createRole, deleteRole, fetchPermissions, fetchRoles } from './api';
+import { Can } from '../../shell/Can';
 import type { Permission, Role } from './types';
 
 export function RolesListPage() {
@@ -164,9 +165,11 @@ export function RolesListPage() {
           <Button variant="outlined" component={RouterLink} to="/permissions">
             View Permissions Catalog
           </Button>
-          <Button variant="contained" onClick={handleOpenCreate}>
-            + Create Role
-          </Button>
+          <Can action="role.manage">
+            <Button variant="contained" onClick={handleOpenCreate}>
+              + Create Role
+            </Button>
+          </Can>
         </Stack>
       </Stack>
 
@@ -273,14 +276,16 @@ export function RolesListPage() {
                           Configure
                         </Button>
                         {!role.isTemplate && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteRoleTarget(role)}
-                          >
-                            Delete
-                          </Button>
+                          <Can action="role.manage">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="error"
+                              onClick={() => setDeleteRoleTarget(role)}
+                            >
+                              Delete
+                            </Button>
+                          </Can>
                         )}
                       </Stack>
                     </TableCell>

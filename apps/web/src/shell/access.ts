@@ -267,3 +267,156 @@ export function routeAllowed(
   if (!rule) return true; // the not-found page
   return !rule.anyOf || rule.anyOf.some(can);
 }
+
+export type ActionId =
+  // Leads
+  | 'lead.create'
+  | 'lead.update'
+  | 'lead.assign'
+  | 'lead.reopen'
+  | 'lead.convert'
+  // Lender cases
+  | 'lender_case.submit'
+  | 'lender_case.update_status'
+  | 'lender_case.package'
+  // Verifications & Documents
+  | 'verification.perform'
+  | 'verification.complete'
+  | 'document.review'
+  | 'document.upload'
+  | 'share.create'
+  // Business Rules
+  | 'rule.author'
+  | 'rule.approve'
+  | 'rule.publish'
+  | 'rule.suspend'
+  | 'rule.simulate'
+  // Sanctions & Disbursements
+  | 'sanction.record'
+  | 'disbursement.record'
+  | 'disbursement.verify'
+  // Connectors
+  | 'connector.manage'
+  // Finance & Payouts
+  | 'finance.reconcile'
+  | 'finance.period_close'
+  | 'payout.request'
+  | 'payout.approve'
+  | 'payout.record_payment'
+  | 'commission.plan.edit'
+  | 'commission.plan.approve'
+  | 'commission.calculate'
+  | 'invoice.manage'
+  // Tasks & Applications
+  | 'task.create'
+  | 'task.update'
+  | 'application.create'
+  | 'application.review'
+  // Customers & Complaints
+  | 'customer.update'
+  | 'customer.reveal_sensitive'
+  | 'complaint.create'
+  | 'complaint.manage'
+  // Administration & Platform
+  | 'user.manage'
+  | 'role.manage'
+  | 'config.manage'
+  | 'lender.manage'
+  | 'product.manage'
+  | 'import.run'
+  | 'export.run'
+  | 'audit.export_evidence'
+  | 'security.incident'
+  | 'target.manage'
+  | 'message.send';
+
+/**
+ * Standard mapping from Action IDs to the permission codes required to execute them.
+ * Evaluated with anyOf semantics (holding ANY of the listed permissions authorizes the action).
+ */
+export const ACTION_RULES: Record<ActionId, string[]> = {
+  // Leads
+  'lead.create': ['lead.create'],
+  'lead.update': ['lead.update'],
+  'lead.assign': ['lead.assign'],
+  'lead.reopen': ['lead.reopen', 'lead.update'], // fallback to lead.update supported
+  'lead.convert': ['lead.convert'],
+
+  // Lender cases
+  'lender_case.submit': ['lender_case.submit'],
+  'lender_case.update_status': ['lender_case.update_status'],
+  'lender_case.package': ['lender_case.submit', 'application.read'],
+
+  // Verifications & Documents
+  'verification.perform': ['verification.perform'],
+  'verification.complete': ['verification.complete'],
+  'document.review': ['document.review'],
+  'document.upload': ['document.upload'],
+  'share.create': ['share.create'],
+
+  // Business Rules
+  'rule.author': ['rule.author'],
+  'rule.approve': ['rule.approve'],
+  'rule.publish': ['rule.publish'],
+  'rule.suspend': ['rule.suspend'],
+  'rule.simulate': ['rule.simulate'],
+
+  // Sanctions & Disbursements
+  'sanction.record': ['sanction.record'],
+  'disbursement.record': ['disbursement.record'],
+  'disbursement.verify': ['disbursement.verify'],
+
+  // Connectors
+  'connector.manage': ['connector.manage'],
+
+  // Finance & Payouts
+  'finance.reconcile': ['finance.reconcile'],
+  'finance.period_close': ['finance.period_close'],
+  'payout.request': ['payout.request'],
+  'payout.approve': ['payout.approve'],
+  'payout.record_payment': ['payout.record_payment'],
+  'commission.plan.edit': ['commission.plan.edit'],
+  'commission.plan.approve': ['commission.plan.approve'],
+  'commission.calculate': ['commission.calculate', 'finance.view'],
+  'invoice.manage': ['invoice.manage'],
+
+  // Tasks & Applications
+  'task.create': ['task.create'],
+  'task.update': ['task.update'],
+  'application.create': ['application.create'],
+  'application.review': ['application.review'],
+
+  // Customers & Complaints
+  'customer.update': ['customer.update'],
+  'customer.reveal_sensitive': ['customer.reveal_sensitive'],
+  'complaint.create': ['complaint.create'],
+  'complaint.manage': ['complaint.manage'],
+
+  // Administration & Platform
+  'user.manage': ['user.manage'],
+  'role.manage': ['role.manage', 'user.manage'],
+  'config.manage': ['config.manage'],
+  'lender.manage': ['lender.manage', 'config.manage'],
+  'product.manage': ['product.manage', 'config.manage'],
+  'import.run': ['import.run'],
+  'export.run': ['export.run'],
+  'audit.export_evidence': ['audit.export_evidence'],
+  'security.incident': ['security.incident'],
+  'target.manage': ['target.manage'],
+  'message.send': ['message.send'],
+};
+
+/**
+ * Checks whether a user holding a given permission tester can perform an action.
+ * Evaluates anyOf semantics against ACTION_RULES, or falls back to testing the code directly.
+ */
+export function canPerformAction(
+  action: ActionId | string,
+  can: (code: string) => boolean,
+): boolean {
+  const allowedCodes = (ACTION_RULES as Record<string, string[]>)[action];
+  if (!allowedCodes || allowedCodes.length === 0) {
+    return can(action);
+  }
+  return allowedCodes.some((code) => can(code));
+}

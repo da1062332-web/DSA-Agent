@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material';
 import { getStoredAuthToken } from '../../auth/token';
+import { Can } from '../../shell/Can';
 import {
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -252,14 +253,16 @@ export function MessageComposer({ templates, onMessageSent, apiBaseUrl = '/v1' }
             )}
 
             <Grid item xs={12}>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading || !selectedTemplateCode || !subjectId}
-                sx={{ px: 4, py: 1 }}
-              >
-                {loading ? 'Evaluating Eligibility & Sending...' : 'Dispatch Message'}
-              </Button>
+              <Can action="message.send">
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={loading || !selectedTemplateCode || !subjectId}
+                  sx={{ px: 4, py: 1 }}
+                >
+                  {loading ? 'Evaluating Eligibility & Sending...' : 'Dispatch Message'}
+                </Button>
+              </Can>
             </Grid>
           </Grid>
         </form>

@@ -1,0 +1,182 @@
+[
+  {
+    "role": "BRANCH-MGR",
+    "perm": "lender.read"
+  },
+  {
+    "role": "COMMISSION-APPROVER",
+    "perm": "lender.read"
+  },
+  {
+    "role": "COMPLIANCE",
+    "perm": "lender.read"
+  },
+  {
+    "role": "DOC-VERIFIER",
+    "perm": "lender.read"
+  },
+  {
+    "role": "FINANCE-EXEC",
+    "perm": "lender.read"
+  },
+  {
+    "role": "LOAN-OPS",
+    "perm": "lender.read"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "lender.read"
+  },
+  {
+    "role": "RM",
+    "perm": "lender.read"
+  },
+  {
+    "role": "RULE-APPROVER",
+    "perm": "lender.read"
+  },
+  {
+    "role": "RULE-AUTHOR",
+    "perm": "lender.read"
+  },
+  {
+    "role": "SALES-EXEC",
+    "perm": "lender.read"
+  },
+  {
+    "role": "TEAM-MGR",
+    "perm": "lender.read"
+  },
+  {
+    "role": "TENANT-ADMIN",
+    "perm": "lender.read"
+  },
+  {
+    "role": "BRANCH-MGR",
+    "perm": "product.read"
+  },
+  {
+    "role": "COMMISSION-APPROVER",
+    "perm": "product.read"
+  },
+  {
+    "role": "COMPLIANCE",
+    "perm": "product.read"
+  },
+  {
+    "role": "DOC-VERIFIER",
+    "perm": "product.read"
+  },
+  {
+    "role": "FINANCE-EXEC",
+    "perm": "product.read"
+  },
+  {
+    "role": "LOAN-OPS",
+    "perm": "product.read"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "product.read"
+  },
+  {
+    "role": "RM",
+    "perm": "product.read"
+  },
+  {
+    "role": "RULE-APPROVER",
+    "perm": "product.read"
+  },
+  {
+    "role": "RULE-AUTHOR",
+    "perm": "product.read"
+  },
+  {
+    "role": "SALES-EXEC",
+    "perm": "product.read"
+  },
+  {
+    "role": "TEAM-MGR",
+    "perm": "product.read"
+  },
+  {
+    "role": "TENANT-ADMIN",
+    "perm": "product.read"
+  },
+  {
+    "role": "TENANT-ADMIN",
+    "perm": "lender.manage"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "lender.manage"
+  },
+  {
+    "role": "TENANT-ADMIN",
+    "perm": "product.manage"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "product.manage"
+  },
+  {
+    "role": "FINANCE-EXEC",
+    "perm": "commission.plan.edit"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "commission.plan.edit"
+  },
+  {
+    "role": "TENANT-ADMIN",
+    "perm": "commission.plan.edit"
+  },
+  {
+    "role": "COMMISSION-APPROVER",
+    "perm": "commission.plan.approve"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "commission.plan.approve"
+  },
+  {
+    "role": "FINANCE-EXEC",
+    "perm": "commission.calculate"
+  },
+  {
+    "role": "COMMISSION-APPROVER",
+    "perm": "commission.calculate"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "commission.calculate"
+  },
+  {
+    "role": "TEAM-MGR",
+    "perm": "lead.reopen"
+  },
+  {
+    "role": "BRANCH-MGR",
+    "perm": "lead.reopen"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "lead.reopen"
+  },
+  {
+    "role": "COMPLIANCE",
+    "perm": "customer.reveal_sensitive"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "customer.reveal_sensitive"
+  },
+  {
+    "role": "FINANCE-EXEC",
+    "perm": "finance.period_close"
+  },
+  {
+    "role": "ORG-OWNER",
+    "perm": "finance.period_close"
+  }
+]

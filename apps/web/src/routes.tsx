@@ -9,6 +9,7 @@ import { SecurityPage } from './auth/SecurityPage';
 import { PublicUploadPage } from './features/document-sharing/PublicUploadPage';
 import { AppLayout } from './shell/AppLayout';
 import { HomePage } from './shell/HomePage';
+import { RoleDashboardRouter } from './features/dashboard/RoleDashboardRouter';
 import { Placeholder } from './shell/Placeholder';
 import { RouteErrorBoundary } from './shell/RouteErrorBoundary';
 
@@ -38,7 +39,7 @@ export const routes: RouteObject[] = [
     element: <AppLayout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      { path: '/', element: <HomePage /> },
+      { path: '/', element: <RoleDashboardRouter /> },
       { path: '/account/security', element: <SecurityPage /> },
       ...featureRoutes,
       { path: '*', element: <Placeholder name="Page not found" owner="Dev 1" /> },

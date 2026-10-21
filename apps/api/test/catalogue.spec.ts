@@ -15,21 +15,27 @@ const code = (res: request.Response) => ErrorEnvelope.parse(res.body).error.code
 const IDEM = { 'Idempotency-Key': 'lender-key-00001' };
 
 describe('lenders: permissions (MOD-LND, config.manage)', () => {
-  it('TEST-LND-001 writes are 403 without config.manage', async () => {
-    const app = as('lead.read');
+  it('TEST-LND-001 writes accept lender.manage as well as config.manage', async () => {
+    const appWithout = as('lead.read');
     const calls = [
-      request(app).post('/v1/lenders').set(IDEM).send({ name: 'HDFC Bank', lenderType: 'BANK' }),
-      request(app).patch('/v1/lenders/lnd_1').set('If-Match', '"0"').send({ name: 'X Bank' }),
-      request(app)
+      request(appWithout).post('/v1/lenders').set(IDEM).send({ name: 'HDFC Bank', lenderType: 'BANK' }),
+      request(appWithout).patch('/v1/lenders/lnd_1').set('If-Match', '"0"').send({ name: 'X Bank' }),
+      request(appWithout)
         .post('/v1/lenders/lnd_1/empanelments')
         .set(IDEM)
         .send({ dsaCode: 'DSA001', validFrom: '2026-01-01', permittedCategories: ['PL'] }),
-      request(app).patch('/v1/empanelments/emp_1').set('If-Match', '"0"').send({ status: 'SUSPENDED' }),
+      request(appWithout).patch('/v1/empanelments/emp_1').set('If-Match', '"0"').send({ status: 'SUSPENDED' }),
     ];
     for (const res of await Promise.all(calls)) {
       expect(res.status).toBe(403);
       expect(code(res)).toBe('FORBIDDEN');
     }
+
+    // Both lender.manage and config.manage are permitted to pass the permission check
+    const resLenderManage = await request(as('lender.manage'))
+      .post('/v1/lenders')
+      .send({ name: 'HDFC Bank', lenderType: 'BANK' });
+    expect(resLenderManage.status).toBe(400); // passed authz gate, stopped by missing Idempotency-Key
   });
 
   it('TEST-LND-002 writes without an Idempotency-Key are 400 MALFORMED_REQUEST', async () => {

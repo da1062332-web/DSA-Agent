@@ -33,6 +33,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../auth/AuthProvider';
 import { apiDownload } from '../../api/client';
+import { Can } from '../../shell/Can';
 import {
   useCommitImport,
   useConfigureMapping,
@@ -251,13 +252,15 @@ export function ImportExportPage() {
                   retained for 7 days.
                 </Alert>
 
-                <Button
-                  variant="contained"
-                  disabled={!fileContentBase64 || createImportMutation.isPending}
-                  onClick={handleCreateBatch}
-                >
-                  {createImportMutation.isPending ? <CircularProgress size={20} /> : 'Upload & Parse Headers'}
-                </Button>
+                <Can action="import.run">
+                  <Button
+                    variant="contained"
+                    disabled={!fileContentBase64 || createImportMutation.isPending}
+                    onClick={handleCreateBatch}
+                  >
+                    {createImportMutation.isPending ? <CircularProgress size={20} /> : 'Upload & Parse Headers'}
+                  </Button>
+                </Can>
               </CardContent>
             </Card>
 
@@ -318,25 +321,27 @@ export function ImportExportPage() {
                   )}
 
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={handleSaveMapping}
-                      disabled={configureMappingMutation.isPending}
-                    >
-                      Save Mapping
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleCommit}
-                      disabled={commitImportMutation.isPending || selectedBatch.status === 'COMPLETED'}
-                    >
-                      {commitImportMutation.isPending ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        'Commit Import Batch'
-                      )}
-                    </Button>
+                    <Can action="import.run">
+                      <Button
+                        variant="outlined"
+                        onClick={handleSaveMapping}
+                        disabled={configureMappingMutation.isPending}
+                      >
+                        Save Mapping
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleCommit}
+                        disabled={commitImportMutation.isPending || selectedBatch.status === 'COMPLETED'}
+                      >
+                        {commitImportMutation.isPending ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          'Commit Import Batch'
+                        )}
+                      </Button>
+                    </Can>
                   </Box>
                 </CardContent>
               </Card>
@@ -398,9 +403,11 @@ export function ImportExportPage() {
                         Download Error Report
                       </Button>
                     )}
-                    <Button variant="outlined" color="error" onClick={() => setRollbackDialogOpen(true)}>
-                      Roll Back Batch (24h Window)
-                    </Button>
+                    <Can action="import.run">
+                      <Button variant="outlined" color="error" onClick={() => setRollbackDialogOpen(true)}>
+                        Roll Back Batch (24h Window)
+                      </Button>
+                    </Can>
                   </Box>
                 </CardContent>
               </Card>
@@ -520,14 +527,16 @@ export function ImportExportPage() {
                   </Select>
                 </FormControl>
 
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={handleRunExport}
-                  disabled={createExportMutation.isPending}
-                >
-                  {createExportMutation.isPending ? <CircularProgress size={20} /> : 'Generate Export File'}
-                </Button>
+                <Can action="export.run">
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={handleRunExport}
+                    disabled={createExportMutation.isPending}
+                  >
+                    {createExportMutation.isPending ? <CircularProgress size={20} /> : 'Generate Export File'}
+                  </Button>
+                </Can>
               </CardContent>
             </Card>
           </Grid>

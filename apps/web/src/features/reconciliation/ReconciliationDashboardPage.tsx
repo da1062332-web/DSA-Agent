@@ -36,6 +36,7 @@ import {
 } from '@mui/material';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { Can } from '../../shell/Can';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -417,33 +418,39 @@ export function ReconciliationDashboardPage() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setImportDialogOpen(true)}
-              data-testid="rec.btn.import-modal"
-              sx={{ px: 3, fontWeight: 600, borderRadius: 2 }}
-            >
-              + Ingest Lender Statement
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={() => setAdjustmentDialogOpen(true)}
-              data-testid="rec.btn.propose-adj-modal"
-              sx={{ fontWeight: 600, borderRadius: 2 }}
-            >
-              Propose Adjustment
-            </Button>
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={() => setDisputeDialogOpen(true)}
-              data-testid="rec.btn.raise-dispute-modal"
-              sx={{ fontWeight: 600, borderRadius: 2 }}
-            >
-              Raise Dispute
-            </Button>
+            <Can action="finance.reconcile">
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setImportDialogOpen(true)}
+                data-testid="rec.btn.import-modal"
+                sx={{ px: 3, fontWeight: 600, borderRadius: 2 }}
+              >
+                + Ingest Lender Statement
+              </Button>
+            </Can>
+            <Can action="finance.reconcile">
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => setAdjustmentDialogOpen(true)}
+                data-testid="rec.btn.propose-adj-modal"
+                sx={{ fontWeight: 600, borderRadius: 2 }}
+              >
+                Propose Adjustment
+              </Button>
+            </Can>
+            <Can action="finance.reconcile">
+              <Button
+                variant="outlined"
+                color="warning"
+                onClick={() => setDisputeDialogOpen(true)}
+                data-testid="rec.btn.raise-dispute-modal"
+                sx={{ fontWeight: 600, borderRadius: 2 }}
+              >
+                Raise Dispute
+              </Button>
+            </Can>
           </Stack>
         </Stack>
       </Box>
@@ -617,16 +624,18 @@ export function ReconciliationDashboardPage() {
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleRunMatching(stmt.id)}
-                              disabled={loading}
-                              data-testid={`rec.btn.match-${stmt.id}`}
-                            >
-                              Run Match
-                            </Button>
+                            <Can action="finance.reconcile">
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                onClick={() => handleRunMatching(stmt.id)}
+                                disabled={loading}
+                                data-testid={`rec.btn.match-${stmt.id}`}
+                              >
+                                Run Match
+                              </Button>
+                            </Can>
                             <Button
                               size="small"
                               variant="outlined"
@@ -770,18 +779,20 @@ export function ReconciliationDashboardPage() {
                         </TableCell>
                         <TableCell>
                           {exc.status !== 'RESOLVED' && exc.status !== 'WRITTEN_OFF' && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="primary"
-                              onClick={() => {
-                                setSelectedException(exc);
-                                setResolveDialogOpen(true);
-                              }}
-                              data-testid={`rec.btn.resolve-${exc.id}`}
-                            >
-                              Resolve
-                            </Button>
+                            <Can action="finance.reconcile">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => {
+                                  setSelectedException(exc);
+                                  setResolveDialogOpen(true);
+                                }}
+                                data-testid={`rec.btn.resolve-${exc.id}`}
+                              >
+                                Resolve
+                              </Button>
+                            </Can>
                           )}
                         </TableCell>
                       </TableRow>

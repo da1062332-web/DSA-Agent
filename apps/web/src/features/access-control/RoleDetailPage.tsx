@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { deleteRole, fetchPermissions, fetchRoleById, updateRole } from './api';
+import { Can } from '../../shell/Can';
 import type { Permission, Role } from './types';
 
 export function RoleDetailPage() {
@@ -173,13 +174,17 @@ export function RoleDetailPage() {
             &larr; Back to Roles
           </Button>
           {!role.isTemplate && (
-            <Button variant="outlined" color="error" onClick={handleDelete} disabled={saving}>
-              Delete Role
-            </Button>
+            <Can action="role.manage">
+              <Button variant="outlined" color="error" onClick={handleDelete} disabled={saving}>
+                Delete Role
+              </Button>
+            </Can>
           )}
-          <Button variant="contained" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <Can action="role.manage">
+            <Button variant="contained" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </Can>
         </Stack>
       </Stack>
 

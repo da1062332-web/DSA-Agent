@@ -130,6 +130,7 @@ export function createRouter(deps: ApiDeps): Router {
       let displayName = (p as { displayName?: string }).displayName || '';
       let lockVersion = 0;
       let notificationPreferences: unknown = null;
+      let roles: string[] = [];
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
           const r = await sql<{
@@ -146,6 +147,16 @@ export function createRouter(deps: ApiDeps): Router {
             lockVersion = Number(r.rows[0].lock_version ?? 0);
             notificationPreferences = r.rows[0].notification_preferences;
           }
+
+          const rRoles = await sql<{ code: string }>`
+            SELECT r.code
+            FROM app.user_role_assignment ura
+            JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = ura.tenant_id
+            WHERE ura.user_id = ${p.id} AND ura.tenant_id = ${p.tenantId}
+              AND ura.effective_range @> now()
+            ORDER BY r.code
+          `.execute(tx);
+          roles = rRoles.rows.map((row) => row.code);
         });
       } catch {
         // tx fallback
@@ -186,6 +197,7 @@ export function createRouter(deps: ApiDeps): Router {
         primaryBranchId: p.primaryBranchId,
         queueIds: p.queueIds || [],
         grants: p.grants || [],
+        roles,
         authTime: p.authTime,
         mfaVerifiedAt: p.authTime,
         lockVersion,

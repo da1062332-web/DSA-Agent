@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Can } from '../../shell/Can';
 import {
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
@@ -142,9 +143,11 @@ function IncidentsTab() {
         />
         <SelectFilter label="Type" value={type} onChange={setType} options={INCIDENT_TYPES} width={220} />
         <Box sx={{ flexGrow: 1 }} />
-        <Button variant="contained" onClick={() => setCreating(true)}>
-          Record incident
-        </Button>
+        <Can action="security.incident">
+          <Button variant="contained" onClick={() => setCreating(true)}>
+            Record incident
+          </Button>
+        </Can>
       </Stack>
 
       <ErrorAlert error={list.error} />
@@ -191,21 +194,23 @@ function IncidentsTab() {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      {i.personalDataInvolved && i.status !== 'CLOSED' && (
-                        <Button size="small" onClick={() => setNoticeFor(i)}>
-                          Record notice
-                        </Button>
-                      )}
-                      {nextStatuses(i.status).map((s) => (
-                        <Button
-                          key={s}
-                          size="small"
-                          disabled={change.isPending}
-                          onClick={() => change.mutate({ incident: i, status: s })}
-                        >
-                          {label(s)}
-                        </Button>
-                      ))}
+                      <Can action="security.incident">
+                        {i.personalDataInvolved && i.status !== 'CLOSED' && (
+                          <Button size="small" onClick={() => setNoticeFor(i)}>
+                            Record notice
+                          </Button>
+                        )}
+                        {nextStatuses(i.status).map((s) => (
+                          <Button
+                            key={s}
+                            size="small"
+                            disabled={change.isPending}
+                            onClick={() => change.mutate({ incident: i, status: s })}
+                          >
+                            {label(s)}
+                          </Button>
+                        ))}
+                      </Can>
                     </Stack>
                   </TableCell>
                 </TableRow>

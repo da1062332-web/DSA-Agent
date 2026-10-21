@@ -34,6 +34,7 @@ import {
 import { createTask, completeTask, listTasks } from './api';
 import { getStoredAuthToken } from '../../auth/token';
 import { useMe } from '../../api/useMe';
+import { Can } from '../../shell/Can';
 import type {
   CompleteTaskPayload,
   CreateTaskPayload,
@@ -190,9 +191,11 @@ export function TaskList(): React.ReactElement {
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             Task Management (UI-TASK-001)
           </Typography>
-          <Button variant="contained" onClick={() => setOpenCreateDialog(true)}>
-            + Create Task
-          </Button>
+          <Can action="task.create">
+            <Button variant="contained" onClick={() => setOpenCreateDialog(true)}>
+              + Create Task
+            </Button>
+          </Can>
         </Stack>
 
         {actionError && <Alert severity="error">{actionError}</Alert>}
@@ -287,16 +290,18 @@ export function TaskList(): React.ReactElement {
                           </TableCell>
                           <TableCell align="right">
                             {task.status !== 'COMPLETED' && task.status !== 'CANCELLED' && (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedTask(task);
-                                  setOpenCompleteDialog(true);
-                                }}
-                              >
-                                Complete
-                              </Button>
+                              <Can action="task.update">
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setSelectedTask(task);
+                                    setOpenCompleteDialog(true);
+                                  }}
+                                >
+                                  Complete
+                                </Button>
+                              </Can>
                             )}
                           </TableCell>
                         </TableRow>

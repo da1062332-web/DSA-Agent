@@ -47,6 +47,7 @@ import {
   createEvidencePack,
   listEvidencePacks,
 } from './api';
+import { Can } from '../../shell/Can';
 
 export function AuditSearchPage() {
   const [loading, setLoading] = useState(false);
@@ -167,9 +168,11 @@ export function AuditSearchPage() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
-            Seal Chain
-          </Button>
+          <Can action="config.manage">
+            <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
+              Seal Chain
+            </Button>
+          </Can>
           <Button
             variant="outlined"
             color="success"
@@ -179,9 +182,11 @@ export function AuditSearchPage() {
           >
             {verifyingChain ? 'Verifying...' : 'Verify Chain Integrity'}
           </Button>
-          <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => setEvidenceModalOpen(true)}>
-            Export Evidence Pack
-          </Button>
+          <Can action="audit.export_evidence">
+            <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => setEvidenceModalOpen(true)}>
+              Export Evidence Pack
+            </Button>
+          </Can>
         </Box>
       </Box>
 

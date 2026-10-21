@@ -23,6 +23,14 @@ export const toContact = (r: Row): LenderContact => ({
   since: iso(r.created_at),
 });
 
+function requireAnyPermission(ctx: any, ...codes: string[]): void {
+  if (ctx.principal.kind === 'SERVICE') return;
+  const has = ctx.principal.grants.some((g: any) => codes.includes(g.code));
+  if (!has) {
+    throw AppError.of('FORBIDDEN', `One of these permissions is required: ${codes.join(', ')}.`);
+  }
+}
+
 export function registerContactRoutes(router: Router, deps: ApiDeps): void {
   router.get('/lenders/:id/contacts', async (req, res) => {
     const ctx = requireCtx(req);
@@ -40,7 +48,7 @@ export function registerContactRoutes(router: Router, deps: ApiDeps): void {
 
   router.put('/lenders/:id/contacts', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const version = ifMatchVersion(req);
     const input = ContactsPut.parse(req.body);
 
@@ -87,7 +95,7 @@ export function registerContactRoutes(router: Router, deps: ApiDeps): void {
   // Removes one contact. The row is kept with removed_at set, so the history stays (no hard delete).
   router.delete('/lenders/:id/contacts/:contactId', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'config.manage');
+    requireAnyPermission(ctx, 'lender.manage', 'config.manage');
     const version = ifMatchVersion(req);
 
     const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {

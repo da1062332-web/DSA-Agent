@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { Can } from '../../shell/Can';
 import { attestChecklistItem, completeVerification, fetchVerification, updateVerification } from './api';
 import type {
   ChecklistAttestationInput,
@@ -221,23 +222,27 @@ export function VerificationDetailPage() {
         </Box>
 
         <Stack direction="row" spacing={1.5}>
-          <Button
-            variant="outlined"
-            onClick={() => setAssignOpen(true)}
-            disabled={isFinalized}
-            data-testid="verification.btn.assign"
-          >
-            Update / Assign
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={() => setCompleteOpen(true)}
-            disabled={isFinalized}
-            data-testid="verification.btn.complete"
-          >
-            Complete Assessment
-          </Button>
+          <Can action="verification.perform">
+            <Button
+              variant="outlined"
+              onClick={() => setAssignOpen(true)}
+              disabled={isFinalized}
+              data-testid="verification.btn.assign"
+            >
+              Update / Assign
+            </Button>
+          </Can>
+          <Can action="verification.complete">
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => setCompleteOpen(true)}
+              disabled={isFinalized}
+              data-testid="verification.btn.complete"
+            >
+              Complete Assessment
+            </Button>
+          </Can>
         </Stack>
       </Box>
 
@@ -374,17 +379,19 @@ export function VerificationDetailPage() {
                       Linked checklist document requirement
                     </Typography>
                   </Box>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setSelectedChecklistId(itemId);
-                      setAttestOpen(true);
-                    }}
-                    data-testid={`verification.attest.${itemId}`}
-                  >
-                    Attest / Review
-                  </Button>
+                  <Can action="verification.perform">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setSelectedChecklistId(itemId);
+                        setAttestOpen(true);
+                      }}
+                      data-testid={`verification.attest.${itemId}`}
+                    >
+                      Attest / Review
+                    </Button>
+                  </Can>
                 </Paper>
               ))}
             </Stack>

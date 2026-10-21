@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { fetchBranches, fetchUsers, updateUser } from './api';
+import { Can } from '../../shell/Can';
 import type { Branch, UserListItem } from './types';
 
 export function UserListPage() {
@@ -156,16 +157,18 @@ export function UserListPage() {
             Manage NBFC staff directory, branch allocations, account credentials, and permissions.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          size="large"
-          component={RouterLink}
-          to="/users/new"
-          sx={{ borderRadius: 2, px: 3, fontWeight: 600 }}
-          data-testid="users.add-button"
-        >
-          + Add New User
-        </Button>
+        <Can action="user.manage">
+          <Button
+            variant="contained"
+            size="large"
+            component={RouterLink}
+            to="/users/new"
+            sx={{ borderRadius: 2, px: 3, fontWeight: 600 }}
+            data-testid="users.add-button"
+          >
+            + Add New User
+          </Button>
+        </Can>
       </Box>
 
       {/* Metrics Row */}
@@ -383,29 +386,31 @@ export function UserListPage() {
                       >
                         View & Edit
                       </Button>
-                      {user.status === 'ACTIVE' ? (
-                        <Button
-                          size="small"
-                          color="warning"
-                          onClick={() => {
-                            setStatusDialogUser(user);
-                            setTargetStatus('SUSPENDED');
-                          }}
-                        >
-                          Suspend
-                        </Button>
-                      ) : (
-                        <Button
-                          size="small"
-                          color="success"
-                          onClick={() => {
-                            setStatusDialogUser(user);
-                            setTargetStatus('ACTIVE');
-                          }}
-                        >
-                          Activate
-                        </Button>
-                      )}
+                      <Can action="user.manage">
+                        {user.status === 'ACTIVE' ? (
+                          <Button
+                            size="small"
+                            color="warning"
+                            onClick={() => {
+                              setStatusDialogUser(user);
+                              setTargetStatus('SUSPENDED');
+                            }}
+                          >
+                            Suspend
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            color="success"
+                            onClick={() => {
+                              setStatusDialogUser(user);
+                              setTargetStatus('ACTIVE');
+                            }}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                      </Can>
                     </Stack>
                   </TableCell>
                 </TableRow>

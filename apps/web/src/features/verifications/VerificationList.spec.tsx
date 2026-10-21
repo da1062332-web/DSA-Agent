@@ -2,8 +2,17 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VerificationListPage } from './VerificationListPage';
+import * as useMeModule from '../../api/useMe';
+
+vi.mock('../../api/useMe', async () => {
+  const actual = await vi.importActual<typeof useMeModule>('../../api/useMe');
+  return {
+    ...actual,
+    useMe: vi.fn(),
+  };
+});
 
 function renderVerificationList(initialPath = '/verifications') {
   return renderToString(
@@ -14,12 +23,45 @@ function renderVerificationList(initialPath = '/verifications') {
 }
 
 describe('Module 19 — VerificationListPage Component Rendering', () => {
-  it('renders page header and action buttons', () => {
+  const mockUseMe = vi.mocked(useMeModule.useMe);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mockGrants(grants: string[]) {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_test',
+        tenantId: 'ten_test',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        primaryBranchId: null,
+        queueIds: [],
+        grants: grants.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
+        mfaVerifiedAt: null,
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+  }
+
+  it('renders page header and hides + New Verification for view-only users', () => {
+    mockGrants(['verification.read']);
+    const html = renderVerificationList();
+
+    expect(html).toContain('Verification Cases (Module 19)');
+    expect(html).not.toContain('+ New Verification');
+    expect(html).toContain('Workbench View');
+    expect(html).toContain('Manage document attestation, identity KYC, and field investigation workflows');
+  });
+
+  it('renders + New Verification when user possesses verification.perform', () => {
+    mockGrants(['verification.read', 'verification.perform']);
     const html = renderVerificationList();
 
     expect(html).toContain('Verification Cases (Module 19)');
     expect(html).toContain('+ New Verification');
-    expect(html).toContain('Manage document attestation, identity KYC, and field investigation workflows');
   });
 
   it('renders KPI summary cards', () => {
