@@ -1377,7 +1377,9 @@
       "title": "Commission read APIs have no permission check",
       "what": "GET /v1/commission-plans, /commission-plans/:id, /commission-calculations(/:id), /commission-payables answer any signed-in user of the tenant. The sidebar hides Commission unless the user holds finance.view, commission.plan.edit or commission.plan.approve.",
       "evidence": "finance/finance-service.ts:195 listCommissionPlans reads by tenant with no assertPermission, while updateCommissionPlan (line 211) does assert; real-database probe as a zero-permission user: 200 on all three lists, 404 (lookup first) on the by-id routes.",
-      "fix": "Add assertPermission(ctx, \"finance.view\") (or a dedicated commission.read) to the read methods; add 403 tests for a zero-grant user and a sales role."
+      "fix": "Add assertPermission(ctx, \"finance.view\") (or a dedicated commission.read) to the read methods; add 403 tests for a zero-grant user and a sales role.",
+      "status": "FIXED AND TESTED",
+      "remediation": "finance-service assertCommissionRead; permission-phase1 F01"
     },
     {
       "id": "F-02",
@@ -1386,7 +1388,9 @@
       "title": "Sanction and disbursement read APIs have no permission check",
       "what": "GET /v1/sanctions, /sanctions/:id, /sanctions/:id/tranches, /tranches/:id, /disbursements and /lender-cases/:id/sanctions answer any signed-in user. The sidebar shows Sanction and disbursement only to sanction.record, disbursement.record or disbursement.verify holders.",
       "evidence": "origination/sanctions/repository.ts:113 listAllSanctions filters by tenant only; real-database probe: 200 on /sanctions and /disbursements, 404 on by-id routes (lookup before any check).",
-      "fix": "Require the sanction/disbursement read permission used by the screen (or application.read for the case-scoped list) in the service; add zero-grant and sales-role tests."
+      "fix": "Require the sanction/disbursement read permission used by the screen (or application.read for the case-scoped list) in the service; add zero-grant and sales-role tests.",
+      "status": "FIXED AND TESTED",
+      "remediation": "sanctions checkReadAccess; permission-phase1 F02; D-02 default kept stricter"
     },
     {
       "id": "F-03",
@@ -1395,7 +1399,9 @@
       "title": "Manual ledger journal posting has no permission check, and the ledger audit actions are invalid",
       "what": "POST /v1/ledger/journals has no authorization (the read GET /v1/ledger/journals needs finance.view). Separately, the audit actions ledger.journal.post, ledger.period.close and ledger.export.run have two dots and violate the audit_event CHECK (action ~ ^[a-z_]+\\.[a-z_]+$), so those three operations fail on a database built from the migrations.",
       "evidence": "ledger/ledger-service.ts:122 postJournal goes straight to the period check; probe on a throwaway database: a zero-permission user reached the audit insert and was stopped by audit_event_action_check (422, nothing committed). Severity becomes CRITICAL the moment the audit action is fixed without adding the check.",
-      "fix": "Add a finance posting permission check to postJournal; rename the three audit actions to the allowed shape (for example ledger.journal_posted); add tests for both."
+      "fix": "Add a finance posting permission check to postJournal; rename the three audit actions to the allowed shape (for example ledger.journal_posted); add tests for both.",
+      "status": "FIXED AND TESTED",
+      "remediation": "audit names fixed; ledger-hardening.int (5/5); manual posting system-only (D-03 default)"
     },
     {
       "id": "F-04",
@@ -1404,7 +1410,9 @@
       "title": "Any signed-in user can write forged security events",
       "what": "POST /v1/security/events records an event with caller-chosen type, principal, IP and severity. The list endpoints need security.incident.",
       "evidence": "security/service.ts:81 recordSecurityEvent has no check; probe on a throwaway database: zero-permission user got 201 and a security_event row was written.",
-      "fix": "Restrict the endpoint to a service identity or security.incident; derive principal and IP from the request instead of the body."
+      "fix": "Restrict the endpoint to a service identity or security.incident; derive principal and IP from the request instead of the body.",
+      "status": "FIXED AND TESTED",
+      "remediation": "reportSecurityEvent; security-report.int (6/6); security.spec (29/29)"
     },
     {
       "id": "F-05",
@@ -1413,7 +1421,9 @@
       "title": "Decision evaluation endpoint has no authorization found",
       "what": "POST /v1/decisions/:decisionKey/evaluations calls the decision engine without a permission check in the router or the engine; simulation routes in the same file require rule.simulate.",
       "evidence": "rules/api/router.ts:673 and rules/engine/decision-engine.ts:30 (decide). Static trace only: not exercised with a valid payload.",
-      "fix": "Confirm the intended callers; require rule.simulate (or a service identity) and test."
+      "fix": "Confirm the intended callers; require rule.simulate (or a service identity) and test.",
+      "status": "FIXED AND TESTED",
+      "remediation": "rule.simulate on HTTP route; decision-import-authz F05"
     },
     {
       "id": "F-06",
@@ -1422,7 +1432,9 @@
       "title": "Import batch list has no permission check",
       "what": "GET /v1/imports lists every import batch of the tenant to any signed-in user, while report download and commit are gated by requireTargetPermission.",
       "evidence": "platform/imports/service.ts:452 listBatches; probe: 200 for a zero-permission user.",
-      "fix": "Apply the same import.run / config.manage / target-create check to the list and detail reads."
+      "fix": "Apply the same import.run / config.manage / target-create check to the list and detail reads.",
+      "status": "FIXED AND TESTED",
+      "remediation": "import permission on list and detail; decision-import-authz F06"
     },
     {
       "id": "F-07",
@@ -1431,7 +1443,9 @@
       "title": "Home page offers 18 module cards to every customer-tenant user",
       "what": "The cards (Leads, Decision Rules, User Management, Access Control, Commissions, Payouts, Tenant Configuration and others) are filtered only by realm, not by permission. A Sales Executive sees links that lead to refusals or, for Commissions and Sanctions, to open data.",
       "evidence": "web shell/HomePage.tsx:7-111 (cards) and :121 (filter).",
-      "fix": "Filter cards with the same anyOf rules as the sidebar (reuse NAV_GROUPS)."
+      "fix": "Filter cards with the same anyOf rules as the sidebar (reuse NAV_GROUPS).",
+      "status": "FIXED AND TESTED",
+      "remediation": "shell/access.ts used by Home; HomePage.spec; access.spec"
     },
     {
       "id": "F-08",
@@ -1440,7 +1454,9 @@
       "title": "No route-level permission guard anywhere in the web app",
       "what": "AppLayout checks the session and MFA only. A user who types /commission, /roles or /payouts gets the page shell and then API errors; 52 of 76 feature files contain no permission check at all.",
       "evidence": "web shell/AppLayout.tsx:60,89; routes.tsx:34-40; fe inventory (52/76).",
-      "fix": "Add a route wrapper that takes the matching anyOf from NAV_GROUPS and renders a \"not permitted\" page."
+      "fix": "Add a route wrapper that takes the matching anyOf from NAV_GROUPS and renders a \"not permitted\" page.",
+      "status": "FIXED AND TESTED",
+      "remediation": "AppLayout route guard with Forbidden state; access.spec"
     },
     {
       "id": "F-09",
@@ -1449,7 +1465,9 @@
       "title": "Qloax tenant admin role holds the six platform operator permissions",
       "what": "ROLE-TENANT-ADMIN of qloax-dsa holds platform.console, flags, jobs, master_data, release and support_access, as demo-alpha does. The platform realm refuses tenant users and the menu is hidden, but the grants should not exist (Module 1 check 16).",
       "evidence": "read-only hosted query of app.role_permission on 2026-10-19: demo-alpha and qloax-dsa each have the six; no other customer tenant has any.",
-      "fix": "Same prepared removal as demo-alpha (tools/sql/fixes), after approval; make the provisioning script stop copying them."
+      "fix": "Same prepared removal as demo-alpha (tools/sql/fixes), after approval; make the provisioning script stop copying them.",
+      "status": "PARTIALLY FIXED",
+      "remediation": "correction v2 and restore written and rehearsed (operator-grants-fix-v2 4/4); NOT applied to hosted (needs approval)"
     },
     {
       "id": "F-10",
@@ -1458,7 +1476,9 @@
       "title": "Nine permissions are defined but granted to no role",
       "what": "commission.calculate, commission.plan.edit, commission.plan.approve, customer.reveal_sensitive, lead.reopen, lender.read, lender.manage, product.read, product.manage. Features that need them cannot be used by any role: commission plan edit/approval, revealing sensitive customer data, reopening a lead.",
       "evidence": "hosted catalogue and role_permission (99 permissions); migration 0060 defines them and grants none; docs/PERMISSION_RECONCILIATION.md.",
-      "fix": "Business decision on which roles hold each; then a grant migration (needs approval)."
+      "fix": "Business decision on which roles hold each; then a grant migration (needs approval).",
+      "status": "REQUIRES BUSINESS APPROVAL",
+      "remediation": "not granted by default (D-05); mapping decision table in audit section 5"
     },
     {
       "id": "F-11",
@@ -1467,7 +1487,9 @@
       "title": "Staff email and workload visible to every signed-in user",
       "what": "GET /v1/workforce/agents returns displayName, email, availability, capacity and live lead/application counts to any signed-in user. Workforce has no permission rule in the sidebar by design.",
       "evidence": "probe on a throwaway database: fields id, displayName, email, primaryBranchId, availability, capacity, activeLeadCount, activeApplicationCount.",
-      "fix": "Decide whether all staff should see this; if not, require workforce.read or restrict to managers."
+      "fix": "Decide whether all staff should see this; if not, require workforce.read or restrict to managers.",
+      "status": "REQUIRES BUSINESS APPROVAL",
+      "remediation": "unchanged by default (D-06)"
     },
     {
       "id": "F-12",
@@ -1476,7 +1498,9 @@
       "title": "Lead action buttons ignore permissions",
       "what": "Qualify, Disqualify, Convert and Assign appear by lead state only. A user with lead.read but without lead.qualify, lead.assign or application.create sees them and gets a refusal.",
       "evidence": "web features/leads/LeadDetail.tsx:192-255 (no permission test); API checks per action (lead-service.ts:232,518,814,957).",
-      "fix": "Hide or disable each button with the permission its endpoint requires."
+      "fix": "Hide or disable each button with the permission its endpoint requires.",
+      "status": "FIXED AND TESTED",
+      "remediation": "features/leads/lead-actions.ts; access.spec TEST-ACC-10..12"
     },
     {
       "id": "F-13",
@@ -1485,7 +1509,9 @@
       "title": "Access control menu omits role.manage",
       "what": "The sidebar item needs user.manage; the API accepts user.manage or role.manage. ROLE-ORG-OWNER holds role.manage but not user.manage and cannot see the screen.",
       "evidence": "web shell/Sidebar.tsx (Access control anyOf) versus sweep: GET /v1/roles opens with user.manage | role.manage.",
-      "fix": "Use anyOf [user.manage, role.manage] (the dead navigation.ts already does)."
+      "fix": "Use anyOf [user.manage, role.manage] (the dead navigation.ts already does).",
+      "status": "FIXED AND TESTED",
+      "remediation": "Access control accepts user.manage or role.manage; access.spec TEST-ACC-08"
     },
     {
       "id": "F-14",
@@ -1494,7 +1520,9 @@
       "title": "Dead duplicate navigation config",
       "what": "shell/navigation.ts defines a second, different set of visibility rules that nothing in the app imports (only its spec does).",
       "evidence": "grep: imported only by navigation.spec.ts.",
-      "fix": "Delete it and its spec or make it the single source for sidebar, Home and route guards."
+      "fix": "Delete it and its spec or make it the single source for sidebar, Home and route guards.",
+      "status": "FIXED AND TESTED",
+      "remediation": "navigation.ts and its spec removed; single access.ts"
     },
     {
       "id": "F-15",
@@ -1503,7 +1531,9 @@
       "title": "Duplicate sidebar entry",
       "what": "\"Performance Dashboard\" (Team and performance) and \"Performance Dashboards\" (Reporting) both link to /performance.",
       "evidence": "web shell/Sidebar.tsx.",
-      "fix": "Remove one."
+      "fix": "Remove one.",
+      "status": "FIXED AND TESTED",
+      "remediation": "duplicate Performance Dashboards entry removed; access.spec TEST-ACC-09"
     },
     {
       "id": "F-16",
@@ -1512,7 +1542,9 @@
       "title": "Tenant directory reads are open to every signed-in user",
       "what": "GET /v1/users (id, display name, branch, status, availability), /branches, /teams, /work-queues, /delegations and /tenant answer any signed-in user. Needed for pickers, but the sidebar lists the matching admin screens as admin-only.",
       "evidence": "probe on a throwaway database.",
-      "fix": "Decision: keep reads open and say so, or require config.manage/user.manage for the admin screens' data."
+      "fix": "Decision: keep reads open and say so, or require config.manage/user.manage for the admin screens' data.",
+      "status": "REQUIRES BUSINESS APPROVAL",
+      "remediation": "directory reads left open to staff by default (D-06)"
     },
     {
       "id": "F-17",
@@ -1521,7 +1553,9 @@
       "title": "Same role code, different grants in different tenants",
       "what": "ROLE-COMPLIANCE lacks audit.read, customer.read, lead.read, application.read, audit.export_evidence in demo-dsa and the three test tenants; ROLE-RM in demo-dsa lacks application.* and lead.qualify; BRANCH-MGR and RM in demo-beta lack customer.create/update.",
       "evidence": "hosted role_permission comparison against qloax-dsa.",
-      "fix": "Align or document; test tenants are fixtures."
+      "fix": "Align or document; test tenants are fixtures.",
+      "status": "NOT FIXED",
+      "remediation": "role grants differ between tenants; needs canonical role set decision"
     },
     {
       "id": "F-18",
@@ -1530,7 +1564,9 @@
       "title": "Catalogue mismatches",
       "what": "finance.period_close exists in the contracts but not in the hosted catalogue; eligibility.override is listed twice in PERMISSION_CODES; security.vuln is granted but never used by API or web.",
       "evidence": "packages/contracts/src/permissions.ts; hosted app.permission.",
-      "fix": "Remove the duplicate; decide on finance.period_close and security.vuln."
+      "fix": "Remove the duplicate; decide on finance.period_close and security.vuln.",
+      "status": "FIXED AND TESTED",
+      "remediation": "duplicate eligibility.override removed; finance.period_close missing on hosted: REQUIRES hosted approval"
     },
     {
       "id": "F-19",
@@ -1539,7 +1575,9 @@
       "title": "Role navigation tests cover 9 of 14 roles",
       "what": "shell/role-navigation.spec.ts covers Commission Approver, Compliance, Doc Verifier, Finance Exec, Loan Ops, RM, Rule Approver, Rule Author, Sales Exec. Missing: Org Owner, Tenant Admin, Branch Manager, Team Manager, Verifier.",
       "evidence": "file read.",
-      "fix": "Add the five roles using the live grant sets."
+      "fix": "Add the five roles using the live grant sets.",
+      "status": "FIXED AND TESTED",
+      "remediation": "fixture of all 14 live roles; role-grants.fixture.ts; access.spec"
     },
     {
       "id": "F-20",
@@ -1548,7 +1586,9 @@
       "title": "Deferred endpoints answer 409 to everyone",
       "what": "POST /v1/tasks/:id/snooze, /tasks/bulk-reassignment and PUT /v1/customers/:id/preferences always throw INVALID_STATE (deferred to later releases).",
       "evidence": "crm/tasks/router.ts:208,216; crm/customers/router.ts:208.",
-      "fix": "None until built; add the permission check when implemented."
+      "fix": "None until built; add the permission check when implemented.",
+      "status": "UNCHANGED BY DESIGN",
+      "remediation": "deferred stubs answer 409 until built"
     },
     {
       "id": "F-21",
@@ -1557,7 +1597,9 @@
       "title": "Lender and product catalogue reads are open; their permissions are unused",
       "what": "GET /v1/lenders and /v1/products (and sub-resources) have no check; lender.read/lender.manage/product.read/product.manage exist, are granted to no role and are not referenced by the API.",
       "evidence": "probe: 200 for zero-permission user; permission reconciliation.",
-      "fix": "Decision: keep catalogue read open to all staff (and drop the unused codes) or wire the codes and grant them."
+      "fix": "Decision: keep catalogue read open to all staff (and drop the unused codes) or wire the codes and grant them.",
+      "status": "REQUIRES BUSINESS APPROVAL",
+      "remediation": "catalogue reads left open to staff by default (D-07)"
     },
     {
       "id": "F-22",
@@ -1566,7 +1608,20 @@
       "title": "Platform routes are correctly realm-gated",
       "what": "All 19 /platform/v1 routes refused a tenant user with every permission (the new tenant flag routes included).",
       "evidence": "permission sweep and platform tests.",
-      "fix": "None."
+      "fix": "None.",
+      "status": "VERIFIED UNCHANGED",
+      "remediation": "platform realm specs pass"
+    },
+    {
+      "id": "F-23",
+      "sev": "MEDIUM",
+      "cls": "D",
+      "title": "Decision record id collides for identical facts",
+      "what": "Record id derived from facts only; primary key collision (409) for identical facts across keys or tenants.",
+      "evidence": "found while writing decision-import-authz",
+      "fix": "id derived from tenant, decision key, idempotency key, subject and input hash",
+      "status": "FIXED AND TESTED",
+      "remediation": "decision record id includes tenant, key, subject; decision-import-authz F23-01"
     }
   ],
   "sidebar": [
@@ -18797,5 +18852,14 @@
         }
       }
     }
-  ]
+  ],
+  "remediation": {
+    "updated": "2026-10-21",
+    "openHostedApprovals": [
+      "F-09 correction",
+      "finance.period_close catalogue row",
+      "admin MFA reset and password rotation (dashboard)"
+    ],
+    "openIsolation": "TEST-SEC-001-INV-02: 137 /v1 operations lack named isolation cases (pre-existing)"
+  }
 }
