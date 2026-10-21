@@ -20,8 +20,20 @@ const SENTINELS: [string, string][] = [
 ];
 
 export type DatabaseStatus =
-  | { connected: true; host: string; database: string; missingMigrations: string[] }
-  | { connected: false; host: string; reason: string };
+  | { connected: true; host: string; mode: string; database: string; missingMigrations: string[] }
+  | { connected: false; host: string; mode: string; reason: string };
+
+/** How the API reaches Postgres. Hosted uses the Supavisor transaction pooler (port 6543), which the code is built for. */
+export function connectionMode(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname.endsWith('.pooler.supabase.com'))
+      return u.port === '6543' ? 'transaction pooler' : 'session pooler';
+    return 'direct';
+  } catch {
+    return 'unknown';
+  }
+}
 
 export async function checkDatabase(db: Kysely<Database>, url: string): Promise<DatabaseStatus> {
   const host = (() => {
@@ -40,10 +52,16 @@ export async function checkDatabase(db: Kysely<Database>, url: string): Promise<
     return {
       connected: true,
       host,
+      mode: connectionMode(url),
       database: String(row.db),
       missingMigrations: SENTINELS.filter(([n]) => row[`m${n}`] !== true).map(([n]) => n),
     };
   } catch (err) {
-    return { connected: false, host, reason: err instanceof Error ? err.message : 'unknown error' };
+    return {
+      connected: false,
+      host,
+      mode: connectionMode(url),
+      reason: err instanceof Error ? err.message : 'unknown error',
+    };
   }
 }

@@ -69,10 +69,10 @@ const server = app.listen(config.PORT, () => {
   logger.info(`API listening on http://localhost:${config.PORT} (${config.NODE_ENV})`);
   void checkDatabase(db, config.DATABASE_URL).then((status) => {
     if (!status.connected) {
-      logger.error(`Database NOT connected (${status.host}): ${status.reason}`);
+      logger.error(`Database NOT connected (${status.host}, ${status.mode}): ${status.reason}`);
       return;
     }
-    logger.info(`Database connected: ${status.database} on ${status.host}`);
+    logger.info(`Database connected: ${status.database} on ${status.host} (${status.mode})`);
     if (status.missingMigrations.length > 0) {
       logger.warn(
         `Database is missing migrations ${status.missingMigrations.join(', ')}: the features that need them will fail until they are applied (tools/sql/audit-batch/README.md)`,
