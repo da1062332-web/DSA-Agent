@@ -18,7 +18,7 @@ import {
   Typography,
   Chip,
 } from '@mui/material';
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError, apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import {
   ACTIVITY_KINDS,
   ACTIVITY_OUTCOME_CODES,
@@ -37,7 +37,6 @@ export interface LogActivityFormProps {
   defaultSubjectType?: SubjectType;
   defaultSubjectId?: string;
   lockSubject?: boolean;
-  apiBaseUrl?: string;
 }
 
 export function LogActivityForm({
@@ -47,7 +46,6 @@ export function LogActivityForm({
   defaultSubjectType = 'LEAD',
   defaultSubjectId = '',
   lockSubject = false,
-  apiBaseUrl = '/v1',
 }: LogActivityFormProps) {
   const [kind, setKind] = useState<ActivityKind>('CALL');
   const [subjectType, setSubjectType] = useState<SubjectType>(defaultSubjectType);
@@ -111,8 +109,7 @@ export function LogActivityForm({
     setLoading(true);
 
     try {
-      const idempotencyKey = `idem_act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const token = getStoredAuthToken() || 'test-token';
+      const idempotencyKey = newIdempotencyKey();
 
       // Format timestamp as UTC ISO 8601
       const occurredDate = new Date(occurredAt);
@@ -130,29 +127,11 @@ export function LogActivityForm({
         note: note.trim() || undefined,
       };
 
-      const res = await fetch(`${apiBaseUrl}/activities`, {
+      const data = await apiFetch<Activity>('/v1/activities', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify(payload),
+        body: payload,
+        idempotencyKey,
       });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        if (res.status === 403) {
-          throw new Error('You do not have permission (activity.create) to log activities.');
-        } else if (res.status === 404) {
-          throw new Error('The linked subject was not found or is outside your permitted scope.');
-        } else if (res.status === 409) {
-          throw new Error(data.error?.message || 'Conflict occurred while logging activity.');
-        } else {
-          throw new Error(data.error?.message || `Request failed with status ${res.status}`);
-        }
-      }
 
       setSuccessNotice('Activity successfully recorded!');
       if (onSuccess) {
@@ -162,8 +141,11 @@ export function LogActivityForm({
         if (onClose) onClose();
       }, 700);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'An error occurred while saving activity.';
-      setErrorMessage(msg);
+      setErrorMessage(
+        err instanceof ApiError && err.code === 'NOT_FOUND'
+          ? 'The linked subject was not found or is outside your permitted scope.'
+          : errorText(err),
+      );
     } finally {
       setLoading(false);
     }

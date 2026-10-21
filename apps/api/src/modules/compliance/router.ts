@@ -1,5 +1,6 @@
 // apps/api/src/modules/compliance/router.ts
 // Module: compliance — owner: Dev 5 (MOD-PRV Privacy and Consent: SUB-PRV.01 to SUB-PRV.05)
+import { registerPrivacyControlRoutes } from './privacy-controls';
 import { Router, type Request, type Response } from 'express';
 import {
   AppError,
@@ -16,6 +17,8 @@ export { PostgresDataSharingPort, ComplianceService };
 export function createRouter(deps: ApiDeps, serviceOverride?: ComplianceService): Router {
   const router = Router();
   const service = serviceOverride ?? new ComplianceService(deps);
+  // API-PRV-001..003 and 005..006 (privacy-controls.ts).
+  registerPrivacyControlRoutes(router, deps);
 
   /**
    * Helper to extract authenticated request context

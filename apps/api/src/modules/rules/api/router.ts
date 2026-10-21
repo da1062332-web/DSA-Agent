@@ -1,4 +1,5 @@
 // apps/api/src/modules/rules/api/router.ts — owner: Developer 6 & 2 (Module 23: Business Rule Engine)
+import { registerReferenceListRoutes } from './reference-lists';
 import {
   AppError,
   CreateRuleSetRequestSchema,
@@ -123,6 +124,8 @@ function parseIfMatch(req: Request): number {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   const decisionEngine = deps.decisionPort;
+  // API-BRE-028/029 (reference-lists.ts).
+  registerReferenceListRoutes(router, deps);
 
   // ---------------- Phase 2: Decision Definition Registry ----------------
   router.get('/decision-definitions', async (req: Request, res: Response, next: NextFunction) => {

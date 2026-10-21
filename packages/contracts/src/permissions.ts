@@ -94,6 +94,10 @@ export const PERMISSION_CODES = [
   'platform.jobs',
   'platform.support_access',
   'platform.release',
+  'platform.tenant.create',
+  'platform.tenant.suspend',
+  'platform.tenant.offboard',
+  'platform.tenant.entitlements',
   'data_correction.request',
   'data_correction.approve',
   'integration.read',
@@ -102,6 +106,22 @@ export const PERMISSION_CODES = [
   'security.vuln',
   'attendance.manage',
   'invoice.manage',
+  // Added 2026-10-19 (additive; migration M-069): codes the DSA module pages name for endpoints built since.
+  'document.view',
+  'document.download',
+  'document.waive',
+  'privacy.manage',
+  'lead.merge',
+  'lead.archive',
+  'application.assign',
+  'application.close',
+  'application.withdraw',
+  'application.reopen',
+  'task.assign',
+  'integration.dlq_manage',
+  'automation.manage',
+  'automation.operate',
+  'decision.evaluate',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

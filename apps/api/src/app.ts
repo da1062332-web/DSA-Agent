@@ -9,11 +9,17 @@ import { authPlaceholder } from './http/auth-placeholder';
 import { CORRELATION_HEADER, correlation } from './http/correlation';
 import { errorHandler } from './http/error-handler';
 import { notFound } from './http/not-found';
+import { moduleGate } from './http/module-gate';
 import { rateLimit } from './http/rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { apiModules } from './modules';
 import { createPublicMessagingRouter } from './modules/crm/messaging/router';
 import { createPublicDocumentSharingRouter } from './modules/origination/document-sharing/router';
+import { createPublicDocumentRouter } from './modules/origination/applications/documents';
+import { createPublicApplyRouter } from './modules/crm/leads/lead-extras';
+import { createConnectorPortalRouter } from './modules/finance/connector-portal';
+import { createPublicIntegrationWebhookRouter } from './modules/integrations/inbound-webhooks';
+import { createLeadService } from './modules/crm/leads/router';
 import { createPlatformRouter } from './modules/platform-admin/router';
 import type { ApiDeps } from './modules/types';
 import { buildOpenApiDocument } from './openapi';
@@ -94,9 +100,20 @@ export function createApp(opts: CreateAppOptions): Express {
   // Public routes (API-MSG-005, API-DSH-003..005)
   const publicV1 = express.Router();
   publicV1.use(rateLimit());
-  publicV1.use(express.json({ limit: '25mb' }));
+  // The raw body is kept for signature checks over the exact bytes received (API-INT-006).
+  publicV1.use(
+    express.json({
+      limit: '25mb',
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   publicV1.use(createPublicMessagingRouter(opts.deps));
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
+  publicV1.use(createPublicDocumentRouter(opts.deps));
+  publicV1.use(createPublicApplyRouter(opts.deps, () => createLeadService(opts.deps)));
+  publicV1.use(createPublicIntegrationWebhookRouter(opts.deps));
   app.use('/public/v1', publicV1);
 
   // Platform realm (API-TEN-002, API-ADM-001..API-ADM-009) at /platform/v1. The tenant-realm part of platform-admin
@@ -116,6 +133,16 @@ export function createApp(opts: CreateAppOptions): Express {
   platformRouter.use(notFound);
   app.use('/platform', platformRouter);
 
+  // Connector portal (MOD-CPT, API-CPT-001..007) at /portal/v1: connector users only, CONNECTOR_SELF scope.
+  const portalV1 = express.Router();
+  portalV1.use(noStore);
+  portalV1.use(opts.auth ?? authPlaceholder);
+  portalV1.use(rateLimit());
+  portalV1.use(express.json({ limit: '1mb' }));
+  portalV1.use(createConnectorPortalRouter(opts.deps));
+  portalV1.use(notFound);
+  app.use('/portal/v1', portalV1);
+
   const v1 = express.Router();
   // Authenticated responses are per user and must never come from a cache. ETags are record versions ("0" for many
   // records and users), so a browser revalidating with If-None-Match would get 304 and show the previous user's data.
@@ -124,6 +151,8 @@ export function createApp(opts: CreateAppOptions): Express {
   v1.use(opts.auth ?? authPlaceholder);
   v1.use(rateLimit());
   v1.use(express.json({ limit: '1mb' }));
+  // MOD-TEN entitlements: a module the tenant is not entitled to answers 403 MODULE_NOT_ENABLED.
+  v1.use(moduleGate(opts.deps.txRunner));
   for (const mod of apiModules) v1.use(mod.createRouter(opts.deps));
   v1.use(notFound);
   app.use('/v1', v1);

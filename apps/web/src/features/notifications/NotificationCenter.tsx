@@ -21,12 +21,11 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
-import { getStoredAuthToken } from '../../auth/token';
+import { apiFetch, apiStream, errorText } from '../../api/client';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
-export interface NotificationCenterProps {
-  apiBaseUrl?: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface NotificationCenterProps {}
 
 function BellIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
@@ -63,7 +62,7 @@ const CATEGORY_COLORS: Record<
   ALERT: 'error',
 };
 
-export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterProps) {
+export function NotificationCenter(_props: NotificationCenterProps) {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
@@ -85,31 +84,18 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
     setLoading(true);
     setError(null);
     try {
-      const token = getStoredAuthToken();
-      if (!token) {
-        setNotifications([]);
-        setUnreadCount(0);
-        return;
-      }
-
-      const statusQuery = filterTab === 'UNREAD' ? '&status=UNREAD' : '';
-      const res = await fetch(`${apiBaseUrl}/notifications?limit=25${statusQuery}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to load notifications: HTTP ${res.status}`);
-      }
-
-      const body = await res.json().catch(() => null);
-      setNotifications(body?.data || []);
-      setUnreadCount(body?.meta?.unreadCount ?? 0);
+      const body = await apiFetch<{ data: NotificationRecord[]; meta?: { unreadCount?: number } }>(
+        '/v1/notifications',
+        { query: { limit: 25, status: filterTab === 'UNREAD' ? 'UNREAD' : undefined } },
+      );
+      setNotifications(body.data ?? []);
+      setUnreadCount(body.meta?.unreadCount ?? 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error fetching inbox');
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, filterTab]);
+  }, [filterTab]);
 
   useEffect(() => {
     fetchNotifications();
@@ -120,25 +106,12 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
     let isSubscribed = true;
 
     const connectSse = async () => {
-      const token = getStoredAuthToken();
-      if (!token) {
-        setStreamStatus('disconnected');
-        return;
-      }
-
       try {
         setStreamStatus('reconnecting');
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        const res = await fetch(`${apiBaseUrl}/notifications/stream`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          throw new Error(`SSE stream failed: HTTP ${res.status}`);
-        }
+        const res = await apiStream('/v1/notifications/stream', controller.signal);
 
         setStreamStatus('connected');
 
@@ -205,30 +178,19 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [apiBaseUrl]);
+  }, []);
 
   const handleMarkAsRead = async (notificationIds: string[]) => {
     if (notificationIds.length === 0) return;
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/notifications/read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ notificationIds }),
-      });
-
-      if (res.ok) {
-        const nowIso = new Date().toISOString();
-        setNotifications((prev) =>
-          prev.map((n) => (notificationIds.includes(n.id) ? { ...n, readAt: nowIso } : n)),
-        );
-        setUnreadCount((c) => Math.max(0, c - notificationIds.length));
-      }
-    } catch {
-      // Ignore
+      await apiFetch('/v1/notifications/read', { method: 'POST', body: { notificationIds } });
+      const nowIso = new Date().toISOString();
+      setNotifications((prev) =>
+        prev.map((n) => (notificationIds.includes(n.id) ? { ...n, readAt: nowIso } : n)),
+      );
+      setUnreadCount((c) => Math.max(0, c - notificationIds.length));
+    } catch (err) {
+      setError(errorText(err));
     }
   };
 
@@ -425,11 +387,7 @@ export function NotificationCenter({ apiBaseUrl = '/v1' }: NotificationCenterPro
         </Box>
       </Popover>
 
-      <NotificationPreferencesDialog
-        open={preferencesOpen}
-        onClose={() => setPreferencesOpen(false)}
-        apiBaseUrl={apiBaseUrl}
-      />
+      <NotificationPreferencesDialog open={preferencesOpen} onClose={() => setPreferencesOpen(false)} />
     </>
   );
 }

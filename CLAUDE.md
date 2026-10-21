@@ -112,11 +112,9 @@ These are in scope and never dropped, whatever the slip (LR-1.6).
 - Never commit `.env` files or secrets; only `*.env.example` placeholders.
 - Commit `package-lock.json`. CI installs with `npm ci`, so the lockfile must match the `package.json` files.
 
-## Known gaps in the Gate 0 skeleton
+## Known gaps (updated 2026-10-21)
 
-- Fakes still to deliver by Gate 1: `FakeDecisionPort` and no-op `RulesSeederPort` (Dev 2), `FakeApplicationPort` (Dev 3), `FakeTaskPort` (Dev 6).
-- `ids.ts` has only the prefixes named in the docs; complete it in TASK-101.
 - `db.ts` `Database` is empty; generate Kysely types from the migrations in TASK-101/103.
-- Migration M-011 (decision registry rows) is added by Dev 2 in TASK-204.
-- Migration number ranges for Dev 4–6 are not allocated yet (`supabase/MANIFEST.md`).
-- API-AUD-001 (audit search, Dev 6) has no module folder yet; agree its location before TASK-435.
+- Migration number ranges for Dev 4–6 are still not allocated (`supabase/MANIFEST.md`); migrations take the next free number and are recorded in `supabase/migrations.lock.json`.
+- MOD-AUTH is served by Supabase Auth (mapping in `DEFERRED_MODULES_TRACKING.md` §4); `GET`/`DELETE /v1/me/sessions` (API-AUTH-005/006) have no implementation.
+- Every /v1 operation is swept for tenant isolation by `tests/isolation/cases/sweep.spec.ts`; a new path parameter must be mapped in `tests/isolation/sweep-map.ts`.

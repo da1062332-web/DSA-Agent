@@ -5,6 +5,10 @@ import type { ApplicantType, DuplicateFlag, LeadPriority, LeadState, ProductCate
 
 export interface LeadRow {
   id: string;
+  /** M-073: set with state ARCHIVED (T-LEAD-07), cleared on restore. */
+  archived_at?: Date | null;
+  /** M-073: the surviving lead once this one is MERGED (API-LEAD-009). */
+  merged_into_id?: string | null;
   tenant_id: string;
   branch_id: string;
   full_name: string;
@@ -206,10 +210,36 @@ export interface LeadRepository {
   insertAuditEvent(tx: Tx, audit: AuditEventRow): Promise<void>;
   getIdempotency(tx: Tx, tenantId: string, principalId: string, key: string): Promise<IdempotencyRow | null>;
   saveIdempotency(tx: Tx, row: IdempotencyRow): Promise<void>;
+  /** SUB-LEAD.04: queue duplicate pairs for review (M-073). Optional: the in-memory test repository has no queue. */
+  insertDuplicateReviews?(tx: Tx, rows: DuplicateReviewRow[]): Promise<void>;
+}
+
+export interface DuplicateReviewRow {
+  id: string;
+  tenant_id: string;
+  left_id: string;
+  right_id: string;
+  classification: 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT';
+  decision_record_id: string | null;
+  created_by: string;
 }
 
 /** Real SQL implementation of LeadRepository using Kysely SQL against PostgreSQL. */
 export class SqlLeadRepository implements LeadRepository {
+  async insertDuplicateReviews(tx: Tx, rows: DuplicateReviewRow[]): Promise<void> {
+    for (const r of rows) {
+      // One open review per pair, whichever lead came first; a pair already queued is left as it is.
+      const pairHash = [r.left_id, r.right_id].sort().join(':');
+      await sql`
+        INSERT INTO duplicate_review (id, tenant_id, left_id, right_id, classification, pair_hash, decision_record_id,
+                                      created_by, updated_by)
+        VALUES (${r.id}, ${r.tenant_id}, ${r.left_id}, ${r.right_id}, ${r.classification}, ${pairHash},
+                ${r.decision_record_id}, ${r.created_by}, ${r.created_by})
+        ON CONFLICT (tenant_id, pair_hash) WHERE status = 'OPEN' DO NOTHING
+      `.execute(tx);
+    }
+  }
+
   async insertLead(tx: Tx, lead: LeadRow): Promise<void> {
     await sql`
       INSERT INTO lead (
@@ -269,7 +299,9 @@ export class SqlLeadRepository implements LeadRepository {
       }
       if (!decoded || typeof decoded.k !== 'string' || typeof decoded.id !== 'string') {
         // A malformed cursor is the caller's mistake: 422, never a silent restart at page one.
-        throw AppError.of('VALIDATION_ERROR', 'Invalid pagination cursor', [{ field: 'cursor', issue: 'INVALID_CURSOR' }]);
+        throw AppError.of('VALIDATION_ERROR', 'Invalid pagination cursor', [
+          { field: 'cursor', issue: 'INVALID_CURSOR' },
+        ]);
       }
       cursorCreatedAt = decoded.k;
       cursorId = decoded.id;
@@ -359,6 +391,8 @@ export class SqlLeadRepository implements LeadRepository {
         contact_attempts = ${updates.contact_attempts !== undefined ? updates.contact_attempts : existing.contact_attempts},
         tags = ${updates.tags !== undefined ? updates.tags : existing.tags},
         next_follow_up_at = ${updates.next_follow_up_at !== undefined ? updates.next_follow_up_at : existing.next_follow_up_at},
+        archived_at = ${updates.archived_at !== undefined ? updates.archived_at : (existing.archived_at ?? null)},
+        merged_into_id = ${updates.merged_into_id !== undefined ? updates.merged_into_id : (existing.merged_into_id ?? null)},
         lock_version = ${nextLockVersion},
         updated_at = ${now},
         updated_by = ${updates.updated_by ?? existing.updated_by}

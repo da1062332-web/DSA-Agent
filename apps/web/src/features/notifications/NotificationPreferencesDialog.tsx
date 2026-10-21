@@ -22,7 +22,7 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError, apiRequest, errorText } from '../../api/client';
 import {
   NOTIFICATION_CATEGORIES,
   type NotificationCategory,
@@ -33,7 +33,6 @@ import {
 export interface NotificationPreferencesDialogProps {
   open: boolean;
   onClose: () => void;
-  apiBaseUrl?: string;
 }
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
@@ -55,11 +54,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   mutedCategories: [],
 };
 
-export function NotificationPreferencesDialog({
-  open,
-  onClose,
-  apiBaseUrl = '/v1',
-}: NotificationPreferencesDialogProps) {
+export function NotificationPreferencesDialog({ open, onClose }: NotificationPreferencesDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,17 +68,8 @@ export function NotificationPreferencesDialog({
     setError(null);
     setSuccess(false);
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/me`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to load profile preferences: HTTP ${res.status}`);
-      }
-
-      const etag = res.headers.get('ETag');
-      const data: any = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, etag }: { data: any; etag?: string } = await apiRequest('/v1/me');
 
       const rawPrefs = data?.notificationPreferences ?? data?.data?.notificationPreferences;
       if (rawPrefs && typeof rawPrefs === 'object') {
@@ -112,11 +98,11 @@ export function NotificationPreferencesDialog({
         setLockVersion(0);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(errorText(err));
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -131,32 +117,12 @@ export function NotificationPreferencesDialog({
     setSuccess(false);
 
     try {
-      const token = getStoredAuthToken();
-      const res = await fetch(`${apiBaseUrl}/me`, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updated, etag: newEtag }: { data: any; etag?: string } = await apiRequest('/v1/me', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'If-Match': `"${versionToSend}"`,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ preferences }),
+        body: { preferences },
+        version: versionToSend,
       });
-
-      if (res.status === 412) {
-        setError(
-          'Preferences were modified concurrently in another tab or session. Reloading latest preferences...',
-        );
-        await fetchProfile();
-        return;
-      }
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error?.message || `Failed to save preferences: HTTP ${res.status}`);
-      }
-
-      const updated: any = await res.json();
-      const newEtag = res.headers.get('ETag');
       if (newEtag) {
         const parsed = parseInt(newEtag.replace(/["']/g, ''), 10);
         setLockVersion(isNaN(parsed) ? (updated?.lockVersion ?? 0) : parsed);
@@ -168,7 +134,15 @@ export function NotificationPreferencesDialog({
         onClose();
       }, 800);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      // The API answers a stale If-Match with 409 VERSION_CONFLICT: reload the current preferences.
+      if (err instanceof ApiError && err.code === 'VERSION_CONFLICT') {
+        setError(
+          'Preferences were changed in another tab or session. The latest preferences are loaded again.',
+        );
+        await fetchProfile();
+        return;
+      }
+      setError(errorText(err));
     } finally {
       setSaving(false);
     }

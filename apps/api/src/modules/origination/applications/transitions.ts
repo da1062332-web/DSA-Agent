@@ -1,8 +1,15 @@
 // MOD-APP transitions (owner: Dev 3; DSA Notion MODULE 16, API-APP-005). Built here: T-APP-01 (draft to documents pending,
-// selecting a product version), T-APP-02 (documents pending to under review) and T-APP-10 (cancel with a reason).
+// selecting a product version), T-APP-02 (documents pending to under review), T-APP-04 (ready for submission), T-APP-08
+// (withdraw), T-APP-09 (reopen) and T-APP-10 (cancel with a reason).
 // The T-APP table in the spec was not available, so the from/to states and permissions below are the agreed assumptions:
 //   T-APP-01  DRAFT -> DOCUMENTS_PENDING   needs application.update; the product version must be active and in force
 //   T-APP-02  DOCUMENTS_PENDING -> UNDER_REVIEW   needs application.review
+//   T-APP-04  UNDER_REVIEW -> READY_FOR_SUBMISSION   needs application.review; every mandatory checklist item must be
+//             ACCEPTED, WAIVED or NOT_APPLICABLE, else 422 COMPLETENESS_FAILED
+//   T-APP-08  DOCUMENTS_PENDING, UNDER_REVIEW or READY_FOR_SUBMISSION -> WITHDRAWN   needs application.withdraw; a reason
+//             is required. A lender has the application only once the lender-case roll-up has moved it to SUBMITTED, so
+//             no lender case is active here. A draft is cancelled (T-APP-10), not withdrawn.
+//   T-APP-09  CANCELLED or WITHDRAWN -> DRAFT   needs application.reopen; a reason is required; the cancel reason is cleared
 //   T-APP-10  DRAFT, DOCUMENTS_PENDING or UNDER_REVIEW -> CANCELLED   needs application.cancel; a reason is required
 // Every transition writes the status history, an outbox event and an audit event in the same transaction, and uses
 // If-Match and Idempotency-Key.
@@ -12,7 +19,7 @@ import type { Router } from 'express';
 import { sql } from 'kysely';
 import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
-import { generateChecklist } from './application-port';
+import { generateChecklist, isComplete } from './application-port';
 import { loadScopedForUpdate, toApplication } from './applications';
 import { assertVersion, updateVersioned, type Row } from './db';
 import { ApplicationTransition, type ApplicationStatus } from './schemas';
@@ -26,6 +33,15 @@ interface Rule {
 export const TRANSITION_RULES: Record<ApplicationTransition['transitionCode'], Rule> = {
   'T-APP-01': { permission: 'application.update', from: ['DRAFT'], to: 'DOCUMENTS_PENDING' },
   'T-APP-02': { permission: 'application.review', from: ['DOCUMENTS_PENDING'], to: 'UNDER_REVIEW' },
+  // Spec MVP: ready for submission once the checklist is complete (SUB-APP.05).
+  'T-APP-04': { permission: 'application.review', from: ['UNDER_REVIEW'], to: 'READY_FOR_SUBMISSION' },
+  // SUB-APP.06 (assumed codes): withdraw before any lender has it; reopen a cancelled or withdrawn application as a draft.
+  'T-APP-08': {
+    permission: 'application.withdraw',
+    from: ['DOCUMENTS_PENDING', 'UNDER_REVIEW', 'READY_FOR_SUBMISSION'],
+    to: 'WITHDRAWN',
+  },
+  'T-APP-09': { permission: 'application.reopen', from: ['CANCELLED', 'WITHDRAWN'], to: 'DRAFT' },
   'T-APP-10': {
     permission: 'application.cancel',
     from: ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'],
@@ -74,6 +90,21 @@ export function registerTransitionRoutes(router: Router, deps: ApiDeps): void {
             changes.last_checklist_decision_ids = checklist.decisionIds;
           }
           if (input.transitionCode === 'T-APP-10') changes.cancel_reason = input.cancelReason;
+          if (input.transitionCode === 'T-APP-09') changes.cancel_reason = null;
+          if (input.transitionCode === 'T-APP-04') {
+            const items = await sql<{ mandatory: boolean; status: string }>`
+              select mandatory, status from checklist_item where application_id = ${current.id}`.execute(tx);
+            if (
+              !isComplete(
+                items.rows.map((i) => ({ mandatory: Boolean(i.mandatory), status: i.status as never })),
+              )
+            ) {
+              throw AppError.of('COMPLETENESS_FAILED', 'Mandatory documents are still outstanding.', [
+                { issue: 'DOCUMENTS_OUTSTANDING' },
+              ]);
+            }
+            changes.last_completeness_result = 'COMPLETE';
+          }
 
           const row = await updateVersioned(
             tx,
@@ -134,7 +165,12 @@ async function writeTransition(
 ): Promise<void> {
   const tenantId = ctx.principal.tenantId;
   const applicationId = String(after.id);
-  const reason = input.transitionCode === 'T-APP-10' ? input.cancelReason : null;
+  const reason =
+    input.transitionCode === 'T-APP-10'
+      ? input.cancelReason
+      : input.transitionCode === 'T-APP-08' || input.transitionCode === 'T-APP-09'
+        ? input.reason
+        : null;
 
   await sql`
     insert into application_status_history (id, tenant_id, application_id, from_status, to_status,

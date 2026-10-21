@@ -188,7 +188,9 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
       .set('If-Match', '"1"')
       .send({ name: 'Stale edit' });
     expect(stale.status).toBe(409);
-    const missing = await request(app).patch('/v1/automations/wfd_01JTESTWFD0000000000000001').send({ name: 'No header' });
+    const missing = await request(app)
+      .patch('/v1/automations/wfd_01JTESTWFD0000000000000001')
+      .send({ name: 'No header' });
     expect(missing.status).toBe(400);
 
     // Reject updating system workflow
@@ -638,5 +640,112 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     expect(resolveRes.body.deadLetter.resolutionStatus).toBe('RESOLVED');
     expect(resolveRes.body.deadLetter.resolutionAction).toBe('RETRY');
     expect(resolveRes.body.execution.status).toBe('RETRYING');
+  });
+
+  // Spec paths (API-WFA-004..008), sharing the logic of the /automations routes.
+  it('TEST-WFA-API-016 API-WFA-005 approval by version id keeps SOD; API-WFA-006 enables only the pinned version', async () => {
+    const store = createMockAutomationStore();
+    const authorApp = createTestApp({ auth: fakeAuth(authorPrincipal), deps: { txRunner: store.runner } });
+    const created = await request(authorApp)
+      .post('/v1/automations/wfd_01JTESTWFD0000000000000001/versions')
+      .send({
+        triggerConfig: {},
+        steps: [
+          {
+            id: 'step_v2',
+            name: 'V2 Step',
+            type: 'END',
+            isSkippable: false,
+            config: { outcomeStatus: 'SUCCEEDED' },
+          },
+        ],
+        changeReason: 'Spec path test',
+      });
+    const versionId = created.body.id;
+
+    const selfApprove = await request(
+      createTestApp({
+        auth: fakeAuth(
+          testPrincipal({
+            id: authorPrincipal.id,
+            tenantId: authorPrincipal.tenantId,
+            grants: [{ code: 'automation.approve', scope: 'TENANT', branchIds: [] }],
+          }),
+        ),
+        deps: { txRunner: store.runner },
+      }),
+    )
+      .post(`/v1/automation-versions/${versionId}/approval`)
+      .send({ action: 'APPROVE', reason: 'Self approving' });
+    expect(selfApprove.status).toBe(403);
+
+    const checkerApp = createTestApp({ auth: fakeAuth(checkerPrincipal), deps: { txRunner: store.runner } });
+    const approved = await request(checkerApp)
+      .post(`/v1/automation-versions/${versionId}/approval`)
+      .send({ action: 'APPROVE', reason: 'Independent review' });
+    expect(approved.status).toBe(200);
+    expect(approved.body.definition.pinnedVersionId).toBe(versionId);
+
+    const disabled = await request(authorApp)
+      .post(`/v1/automation-versions/${versionId}/enable`)
+      .send({ enabled: false, reason: 'Pause during audit' });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.status).toBe('INACTIVE');
+  });
+
+  it('TEST-WFA-API-017 API-WFA-004 dry-run lists the steps without side effects; API-WFA-007 lists executions', async () => {
+    const store = createMockAutomationStore();
+    const app = createTestApp({ auth: fakeAuth(authorPrincipal), deps: { txRunner: store.runner } });
+    const before = store.executions.length;
+    const dry = await request(app)
+      .post('/v1/automation-versions/wfv_01JTESTWFV0000000000000001/dry-runs')
+      .send({ subjectType: 'LEAD', subjectId: 'lead_dry_01' });
+    expect(dry.status).toBe(200);
+    expect(dry.body.simulation).toBe(true);
+    expect(store.executions.length).toBe(before);
+    const list = await request(app).get('/v1/automation-executions');
+    expect(list.status).toBe(200);
+    expect(Array.isArray(list.body.data)).toBe(true);
+  });
+
+  it('TEST-WFA-API-018 API-WFA-008 cancels through interventions with a reason and Idempotency-Key', async () => {
+    const store = createMockAutomationStore();
+    store.executions.push({
+      id: 'wfe_intervene_01',
+      tenant_id: authorPrincipal.tenantId,
+      definition_id: 'wfd_01JTESTWFD0000000000000001',
+      version_id: 'wfv_01JTESTWFV0000000000000001',
+      trigger_type: 'EVENT',
+      trigger_event_id: null,
+      subject_type: 'LEAD',
+      subject_id: 'lead_intervene_01',
+      status: 'PENDING',
+      current_step_index: 0,
+      context: {},
+      dry_run: false,
+      worker_id: null,
+      lease_expires_at: null,
+      error_code: null,
+      error_message: null,
+      idempotency_key: null,
+      correlation_id: 'corr_i1',
+      causation_id: null,
+      chain_depth: 0,
+      started_at: null,
+      completed_at: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    const app = createTestApp({ auth: fakeAuth(operatorPrincipal), deps: { txRunner: store.runner } });
+    const noKey = await request(app)
+      .post('/v1/automation-executions/wfe_intervene_01/interventions')
+      .send({ action: 'CANCEL', reason: 'Customer withdrew' });
+    expect(noKey.status).toBe(400);
+    const res = await request(app)
+      .post('/v1/automation-executions/wfe_intervene_01/interventions')
+      .set('Idempotency-Key', 'wfa_intervene_key_01')
+      .send({ action: 'CANCEL', reason: 'Customer withdrew' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('CANCELLED');
   });
 });

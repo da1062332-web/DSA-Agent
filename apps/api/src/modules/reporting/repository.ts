@@ -681,16 +681,17 @@ export class SqlReportingRepository implements ReportingRepository {
   async listReportSchedules(tx: Tx, tenantId: string): Promise<ReportScheduleRow[]> {
     const res = await sql<ReportScheduleRow>`
       SELECT * FROM report_schedule
-      WHERE tenant_id = ${tenantId}
+      WHERE tenant_id = ${tenantId} AND is_active
       ORDER BY created_at DESC
     `.execute(tx);
     return res.rows;
   }
 
+  // Schedules are never deleted (M-051 revokes DELETE, NFR-SEC-003): removing one deactivates it.
   async deleteReportSchedule(tx: Tx, tenantId: string, id: string): Promise<boolean> {
     const res = await sql`
-      DELETE FROM report_schedule
-      WHERE tenant_id = ${tenantId} AND id = ${id}
+      UPDATE report_schedule SET is_active = false
+      WHERE tenant_id = ${tenantId} AND id = ${id} AND is_active
     `.execute(tx);
     return (res.numAffectedRows ?? 0n) > 0n;
   }
@@ -1238,11 +1239,14 @@ export class InMemoryReportingRepository implements ReportingRepository {
 
   async listReportSchedules(_tx: Tx, tenantId: string): Promise<ReportScheduleRow[]> {
     return Array.from(this.reportSchedules.values())
-      .filter((s) => s.tenant_id === tenantId)
+      .filter((s) => s.tenant_id === tenantId && s.is_active !== false)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   }
 
   async deleteReportSchedule(_tx: Tx, tenantId: string, id: string): Promise<boolean> {
-    return this.reportSchedules.delete(`${tenantId}:${id}`);
+    const row = this.reportSchedules.get(`${tenantId}:${id}`);
+    if (!row || row.is_active === false) return false;
+    row.is_active = false;
+    return true;
   }
 }

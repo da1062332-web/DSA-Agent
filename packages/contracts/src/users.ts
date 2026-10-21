@@ -64,6 +64,56 @@ export const AssignRoleRequest = z.object({
 });
 export type AssignRoleRequest = z.infer<typeof AssignRoleRequest>;
 
+// ---- Lifecycle (MOD-USR SUB-USR.01, SUB-USR.02; added 2026-10-19) ----
+// Reasons are free text: they reject PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12).
+const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
+const Reason = z
+  .string()
+  .trim()
+  .min(3)
+  .max(200)
+  .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+
+/** API-USR-001: the user starts INVITED and becomes ACTIVE on first sign-in. */
+export const InviteUserRequest = CreateUserRequest.omit({ status: true, availability: true }).strict();
+export type InviteUserRequest = z.infer<typeof InviteUserRequest>;
+
+/** API-USR-004: deactivate, handing over open leads, live applications and open tasks in the same transaction. */
+export const DeactivateUserRequest = z
+  .object({ handoverToUserId: z.string().min(3).max(64), reason: Reason })
+  .strict();
+export type DeactivateUserRequest = z.infer<typeof DeactivateUserRequest>;
+
+/** API-USR-005: suspend (keeps ownership) or reactivate. */
+export const SuspendUserRequest = z
+  .object({ action: z.enum(['SUSPEND', 'REACTIVATE']), reason: Reason })
+  .strict();
+export type SuspendUserRequest = z.infer<typeof SuspendUserRequest>;
+
+/** API-USR-006: the complete set of role assignments; anything not listed is ended. */
+export const ReplaceRoleAssignmentsRequest = z
+  .object({ assignments: z.array(AssignRoleRequest).max(20) })
+  .strict();
+export type ReplaceRoleAssignmentsRequest = z.infer<typeof ReplaceRoleAssignmentsRequest>;
+
+/** API-USR-008: move the user's primary branch now, or at effectiveAt. */
+export const TransferUserRequest = z
+  .object({
+    toBranchId: z.string().min(3).max(64),
+    effectiveAt: z.string().datetime().optional(),
+    reason: Reason,
+  })
+  .strict();
+export type TransferUserRequest = z.infer<typeof TransferUserRequest>;
+
+export const UserTransferResponse = z.object({
+  userId: z.string(),
+  toBranchId: z.string(),
+  effectiveAt: z.string(),
+  status: z.enum(['APPLIED', 'SCHEDULED']),
+});
+export type UserTransferResponse = z.infer<typeof UserTransferResponse>;
+
 export const RoleSummary = z.object({
   id: z.string(),
   tenantId: z.string(),

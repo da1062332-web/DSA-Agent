@@ -24,8 +24,15 @@ let container: StartedPostgreSqlContainer;
 let db: pg.Client;
 const work = mkdtempSync(path.join(os.tmpdir(), 'dsa-0050-'));
 
-// 0061 and 0068 need the platform realm that this rehearsal is about to apply, so they are not part of the pre-0050 state.
-const NEEDS_PLATFORM_REALM = ['0050_platform_realm', '0061_master_data', '0068_tenant_feature_flag'];
+// 0061, 0068 and the platform-queue and tenant-lifecycle migrations need the platform realm that this rehearsal is about
+// to apply, so they are not part of the pre-0050 state.
+const NEEDS_PLATFORM_REALM = [
+  '0050_platform_realm',
+  '0061_master_data',
+  '0068_tenant_feature_flag',
+  'platform_queue_operations',
+  'tenant_lifecycle',
+];
 beforeAll(async () => {
   container = await startPostgres();
   db = new pg.Client({ connectionString: container.getConnectionUri() });

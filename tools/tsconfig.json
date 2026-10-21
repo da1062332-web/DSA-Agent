@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "../apps/api/src/types/**/*.d.ts"]
 }

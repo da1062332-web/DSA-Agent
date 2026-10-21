@@ -36,18 +36,37 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
   let lastCleanup = Date.now();
   const report = opts.onError ?? (() => undefined);
 
+  // Pause flags set from the platform console (app.worker_queue_state, M-068). Unknown or unreadable means not paused.
+  const pausedQueues = async (): Promise<Set<string>> => {
+    try {
+      const r = await opts.txRunner.withTenantTx(
+        serviceContext(WORKER_DISCOVERY_TENANT, 'worker_pause_flags'),
+        (tx) => sql<{ queue: string }>`SELECT queue FROM app.worker_queue_state WHERE paused`.execute(tx),
+      );
+      return new Set(r.rows.map((row) => row.queue));
+    } catch (err) {
+      report('outbox', err);
+      return new Set();
+    }
+  };
+
   const tick = async () => {
-    if (opts.outboxRelay) {
+    const paused = await pausedQueues();
+    if (opts.outboxRelay && !paused.has('outbox-relay')) {
       await opts.outboxRelay.drain().catch((err) => report('outbox', err));
     }
 
-    if (globalJobQueue.hasHandlers()) {
+    if (globalJobQueue.hasHandlers() && !paused.has('job-queue')) {
       try {
         const jobs = await opts.txRunner.withTenantTx(
           serviceContext(WORKER_DISCOVERY_TENANT, 'worker_job_discovery'),
           async (tx) =>
-            (await sql<{ tenant_id: string; id: string }>`SELECT tenant_id, id FROM app.runnable_jobs(20)`.execute(tx))
-              .rows,
+            (
+              await sql<{
+                tenant_id: string;
+                id: string;
+              }>`SELECT tenant_id, id FROM app.runnable_jobs(20)`.execute(tx)
+            ).rows,
         );
         for (const job of jobs) {
           await opts.txRunner.withTenantTx(serviceContext(job.tenant_id, `worker_job_${job.id}`), (tx) =>

@@ -45,4 +45,13 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'POST /v1/integrations/:provider/ping',
     tag,
   });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/public/v1/webhooks/:provider/:connectionPathId',
+    operationId: 'API-INT-006',
+    summary:
+      'Inbound provider webhook: X-Webhook-Signature v1=HMAC(secret, timestamp.body), timestamp within 5 minutes, de-duplicated by X-Webhook-Id',
+    tag,
+    public: true,
+  });
 }

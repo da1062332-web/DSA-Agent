@@ -22,6 +22,8 @@ export interface VerifiedToken {
   aal: 'aal1' | 'aal2';
   /** Time of the most recent TOTP verification when aal = aal2, else null. Drives step-up (Contracts §7). */
   mfaVerifiedAt: Date | null;
+  /** The `email` claim, used once to bind an invited user (API-USR-001) to this subject on first sign-in. */
+  email?: string | null;
 }
 
 export interface TokenVerifier {
@@ -81,6 +83,7 @@ function readClaims(payload: JWTPayload): VerifiedToken {
     tenantId,
     aal,
     mfaVerifiedAt: aal === 'aal2' ? latestTotp(payload.amr) : null,
+    email: typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : null,
   };
 }
 

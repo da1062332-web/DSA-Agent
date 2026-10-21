@@ -119,7 +119,7 @@ export const UpdateLeadInputSchema = z.object({
 export type UpdateLeadInput = z.infer<typeof UpdateLeadInputSchema>;
 
 export const LeadTransitionInputSchema = z.object({
-  transitionCode: z.enum(['T-LEAD-01', 'T-LEAD-02', 'T-LEAD-04', 'T-LEAD-05', 'T-LEAD-06']),
+  transitionCode: z.enum(['T-LEAD-01', 'T-LEAD-02', 'T-LEAD-04', 'T-LEAD-05', 'T-LEAD-06', 'T-LEAD-07']),
   reasonCode: z.string().nullable().optional(),
   disqualificationReason: DisqualificationReasonSchema.nullable().optional(),
   nextFollowUpAt: z.string().datetime().nullable().optional(),

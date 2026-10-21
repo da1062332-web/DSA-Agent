@@ -22,10 +22,14 @@ describe('the production wiring provides what the routes require', () => {
     ['lenderPort', 'complaint referrals to a lender (503 DEPENDENCY_UNAVAILABLE without it)'],
     ['dataSharingPort', 'document sharing and consent'],
     ['apiClientRepository', 'API clients (kept in memory without it)'],
-    ['decisionPort', 'BRE lead routing and duplicates, SLA targets, the document checklist (503 on evaluations without it)'],
+    [
+      'decisionPort',
+      'BRE lead routing and duplicates, SLA targets, the document checklist (503 on evaluations without it)',
+    ],
     ['taskPort', 'the first-contact and lender-query tasks'],
     ['applicationPort', 'lead conversion and lender package documents (503 without it)'],
     ['consentPort', 'lender packages and submissions (503 without it: nothing is shared without consent)'],
+    ['partyPort', 'applications created from a customer and added parties (503 without it)'],
     ['outboxPort', 'domain events from finance, ledger, reconciliation and automation'],
   ])('TEST-WIRING-%# createProductionDeps provides %s (%s)', (key) => {
     expect(depsBlock).toMatch(new RegExp(String.raw`\b${key}\b`));
@@ -34,23 +38,26 @@ describe('the production wiring provides what the routes require', () => {
   it.each([
     ['server.ts', server],
     ['wiring.ts', wiring],
-  ])('TEST-WIRING-99 nothing imported by %s is left unused (an unused import usually means a port was dropped)', (_file, src) => {
-    const imports = [...src.matchAll(/import \{([^}]+)\} from/g)].flatMap((m) =>
-      m[1]!
-        .split(',')
-        .map((n) => n.trim().replace(/^type /, ''))
-        .filter(Boolean),
-    );
-    const body = src.replace(/import [^;]+;/g, '');
-    expect(imports.filter((name) => !new RegExp(String.raw`\b${name}\b`).test(body))).toEqual([]);
-  });
+  ])(
+    'TEST-WIRING-99 nothing imported by %s is left unused (an unused import usually means a port was dropped)',
+    (_file, src) => {
+      const imports = [...src.matchAll(/import \{([^}]+)\} from/g)].flatMap((m) =>
+        m[1]!
+          .split(',')
+          .map((n) => n.trim().replace(/^type /, ''))
+          .filter(Boolean),
+      );
+      const body = src.replace(/import [^;]+;/g, '');
+      expect(imports.filter((name) => !new RegExp(String.raw`\b${name}\b`).test(body))).toEqual([]);
+    },
+  );
 
   it('TEST-WIRING-98 the background worker runs the outbox relay, so events are delivered', () => {
     expect(server).toMatch(/startBackgroundWorker\(\{[\s\S]*outboxRelay: new OutboxRelay/);
   });
 
   it('TEST-WIRING-97 server.ts builds the app from the production wiring', () => {
-    expect(server).toMatch(/const deps = createProductionDeps\(txRunner\)/);
+    expect(server).toMatch(/const deps = createProductionDeps\(txRunner[,)]/);
     expect(server).toMatch(/createApp\(\{\s*deps,/);
   });
 });

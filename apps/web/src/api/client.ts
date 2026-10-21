@@ -114,7 +114,8 @@ async function send<T>(path: string, req: ApiRequest): Promise<{ data: T; etag?:
       throw new ApiError(e.code, e.httpStatus, e.message, e.correlationId, e.details ?? []);
     }
     // A partial envelope (a proxy or an older handler) still carries a code and message worth showing.
-    const partial = (body as { error?: { code?: unknown; message?: unknown; details?: unknown } } | undefined)?.error;
+    const partial = (body as { error?: { code?: unknown; message?: unknown; details?: unknown } } | undefined)
+      ?.error;
     if (partial && typeof partial.code === 'string') {
       throw new ApiError(
         partial.code,
@@ -140,6 +141,22 @@ export function errorText(err: unknown): string {
   const fields = err.details.filter((d) => d.field).map((d) => `${d.field}: ${d.issue.toLowerCase()}`);
   const ref = err.correlationId ? ` (ref ${err.correlationId})` : '';
   return `${err.message}${fields.length ? ` — ${fields.join(', ')}` : ''}${ref}`;
+}
+
+/** Opens a streaming response (server-sent events) with the session token; the caller reads res.body. */
+export async function apiStream(path: string, signal: AbortSignal): Promise<Response> {
+  const config = readConfig();
+  if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
+  const { data } = await getSupabase().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new ApiError('UNAUTHENTICATED', 401, 'Not signed in.');
+  const res = await fetch(`${config.data.VITE_API_BASE_URL}${path}`, {
+    headers: { Accept: 'text/event-stream', Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+    signal,
+  });
+  if (!res.ok) throw new ApiError('INTERNAL_ERROR', res.status, `Stream failed (${res.status}).`);
+  return res;
 }
 
 export async function apiDownload(path: string, defaultFilename: string): Promise<void> {

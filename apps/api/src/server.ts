@@ -12,8 +12,15 @@ import {
   startDataCorrectionExecutor,
 } from './modules/platform-admin/data-correction-executor';
 import { OutboxRelay } from './modules/platform/outbox-relay';
+import { createWebhookDeliveryHandler, WEBHOOK_DELIVERY_JOB } from './modules/partner-api/webhooks';
+import { createUserTransferHandler, USER_TRANSFER_JOB } from './modules/platform/user-lifecycle';
 import { startBackgroundWorker } from './modules/platform/worker';
 import { createOutboxSubscribers, createProductionDeps } from './wiring';
+import {
+  createDocumentArchiveHandler,
+  DOCUMENT_ARCHIVE_JOB,
+} from './modules/origination/applications/documents';
+import { globalJobQueue } from './modules/platform/job-queue';
 
 let config: ApiConfig;
 try {
@@ -27,7 +34,11 @@ const logger = pino({ level: config.LOG_LEVEL });
 if (config.DISABLE_MFA) logger.warn('DISABLE_MFA is on: MFA is skipped. This is for local development only.');
 const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
-const deps = createProductionDeps(txRunner);
+// Signed document links and archive encryption use keys derived from the deployment's JWT secret.
+const deps = createProductionDeps(txRunner, { documentLinkSecret: config.SUPABASE_JWT_SECRET });
+globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
+globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
+globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));
 
 const app = createApp({
   deps,
@@ -74,7 +85,10 @@ const worker = startBackgroundWorker({
   txRunner,
   outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
   onError: (stage, err) =>
-    logger.error({ stage, error: err instanceof Error ? err.message : 'unknown' }, 'background worker tick failed'),
+    logger.error(
+      { stage, error: err instanceof Error ? err.message : 'unknown' },
+      'background worker tick failed',
+    ),
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

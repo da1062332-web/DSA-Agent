@@ -30,6 +30,8 @@ import {
   VersionComparisonResponseSchema,
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
+import { registerOperation } from '../../../http/openapi-op';
+import { ReferenceListVersionCreate } from './reference-lists';
 import { z } from 'zod';
 
 export const tags = [
@@ -624,5 +626,23 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       401: { description: 'Unauthenticated' },
       404: { description: 'Decision record not found' },
     },
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/reference-lists',
+    operationId: 'API-BRE-028',
+    summary: 'Reference lists and their versions (rule.author)',
+    tag: 'MOD-BRE Rules',
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/reference-lists/:listId/versions',
+    operationId: 'API-BRE-029',
+    summary:
+      'Publish the next version of a list (a new list: its code in the path, name and valueType in the body); up to 1,000 typed values (config.manage)',
+    tag: 'MOD-BRE Rules',
+    body: ReferenceListVersionCreate,
+    status: 201,
+    idempotent: true,
   });
 }

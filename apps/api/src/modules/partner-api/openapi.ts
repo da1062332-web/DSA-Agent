@@ -24,6 +24,7 @@ import {
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
+import { WebhookDeliveryQuery } from './webhooks';
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   // 1. API Keys
@@ -323,6 +324,53 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     },
   });
 
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/api-clients/{id}/rotation',
+    operationId: 'API-API-003',
+    summary: 'Rotate the client secret (config.manage; step-up). The new secret is shown once',
+    tags: ['MOD-API API Management'],
+    request: { params: z.object({ id: z.string() }) },
+    responses: {
+      200: {
+        description: 'Rotated client secret',
+        content: { 'application/json': { schema: RotateClientSecretResponseSchema } },
+      },
+      401: { description: 'STEP_UP_REQUIRED' },
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/webhook-subscriptions',
+    operationId: 'API-API-005',
+    summary:
+      'Subscribe a URL to domain events (config.manage; finance events also need finance.view). The secret is shown once',
+    tags: ['MOD-API API Management'],
+    parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
+    request: { body: { content: { 'application/json': { schema: CreateWebhookSubscriptionSchema } } } },
+    responses: {
+      201: { description: 'Subscribed' },
+      403: { description: 'FORBIDDEN' },
+      422: { description: 'VALIDATION_ERROR' },
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/webhook-subscriptions',
+    operationId: 'API-API-005-LIST',
+    summary: 'Webhook subscriptions of the tenant, without secrets (config.manage)',
+    tags: ['MOD-API API Management'],
+    responses: { 200: { description: 'Subscriptions' } },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/webhook-deliveries',
+    operationId: 'API-API-006',
+    summary: 'Webhook delivery log, newest first (config.manage; cursor)',
+    tags: ['MOD-API API Management'],
+    request: { query: WebhookDeliveryQuery },
+    responses: { 200: { description: 'Deliveries' } },
+  });
   registry.registerPath({
     method: 'post',
     path: '/v1/api-clients/{id}/rotate-secret',

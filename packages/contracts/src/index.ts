@@ -37,6 +37,7 @@ export * from './platform-realm';
 export * from './integrations';
 export * from './security';
 export * from './invoice';
+export * from './documents';
 export type { Database } from './db';
 
 export type * from './ports/crm-ports';

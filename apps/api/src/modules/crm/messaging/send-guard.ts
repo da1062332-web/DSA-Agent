@@ -47,6 +47,74 @@ export class SendEligibilityGuard {
     this.tenantCalendars.set(tenantId, config);
   }
 
+  /** The subject with what scope and consent need: its branch and owner, and the lead and customer behind it. */
+  private async findSubject(
+    tx: Tx,
+    type: string,
+    id: string,
+  ): Promise<{
+    branchId: string;
+    ownerUserId: string | null;
+    leadId: string | null;
+    customerId: string | null;
+  } | null> {
+    if (type === 'LEAD') {
+      const r = await sql<{ branch_id: string; owner_user_id: string | null; customer_id: string | null }>`
+        SELECT branch_id, owner_user_id, customer_id FROM app.lead WHERE id = ${id}`.execute(tx);
+      const row = r.rows[0];
+      return row
+        ? { branchId: row.branch_id, ownerUserId: row.owner_user_id, leadId: id, customerId: row.customer_id }
+        : null;
+    }
+    if (type === 'CUSTOMER') {
+      const r = await sql<{
+        home_branch_id: string;
+      }>`SELECT home_branch_id FROM app.customer WHERE id = ${id}`.execute(tx);
+      const row = r.rows[0];
+      return row ? { branchId: row.home_branch_id, ownerUserId: null, leadId: null, customerId: id } : null;
+    }
+    if (type === 'LOAN_APPLICATION') {
+      const r = await sql<{
+        branch_id: string;
+        sales_owner_id: string;
+        customer_id: string;
+        lead_id: string | null;
+      }>`
+        SELECT branch_id, sales_owner_id, customer_id, lead_id FROM app.loan_application WHERE id = ${id}`.execute(
+        tx,
+      );
+      const row = r.rows[0];
+      return row
+        ? {
+            branchId: row.branch_id,
+            ownerUserId: row.sales_owner_id,
+            leadId: row.lead_id,
+            customerId: row.customer_id,
+          }
+        : null;
+    }
+    return null;
+  }
+
+  /** message.send (or config.manage) at TENANT scope, or BRANCH covering the subject's branch, or TEAM/OWN covering its owner. */
+  private sendScopeCovers(
+    ctx: RequestContext,
+    subject: { branchId: string; ownerUserId: string | null },
+  ): boolean {
+    const p = ctx.principal;
+    if (p.kind === 'SERVICE') return true;
+    return p.grants
+      .filter((g) => g.code === 'message.send' || g.code === 'config.manage')
+      .some((g) => {
+        if (g.scope === 'TENANT') return true;
+        if (g.scope === 'BRANCH') return [...g.branchIds, p.primaryBranchId].includes(subject.branchId);
+        if (g.scope === 'TEAM')
+          return !!subject.ownerUserId && [p.id, ...p.managedTeamMemberIds].includes(subject.ownerUserId);
+        if (g.scope === 'OWN') return subject.ownerUserId === p.id;
+        return false;
+      });
+  }
+
   static resetMemorySlots(): void {
     SendEligibilityGuard.memoryClaimedSlots.clear();
   }
@@ -361,106 +429,50 @@ export class SendEligibilityGuard {
       }
     }
 
-    // 7. Subject existence and consent check (via database if tx is active)
+    // 7. The subject must exist in the tenant and be within the sender's message.send scope (404 semantics: blocked as
+    // SUBJECT_NOT_FOUND, never revealing that it exists elsewhere).
     if (tx) {
-      if (input.subjectType === 'LEAD') {
-        const leadRes = await sql<{ id: string; state: string }>`
-          SELECT id, state FROM app.lead WHERE tenant_id = ${tenantId} AND id = ${input.subjectId} LIMIT 1
-        `.execute(tx);
-        if (leadRes.rows.length === 0) {
-          return {
-            eligible: false,
-            blockedReason: 'SUBJECT_NOT_FOUND',
-            blockedMessage: `Lead ${input.subjectId} not found in tenant`,
-            template,
-            recipientHash,
-            recipientMasked,
-            redactedVariables,
-            evaluatedTime,
-          };
-        }
-      } else if (input.subjectType === 'CUSTOMER') {
-        const custRes = await sql<{ id: string; status: string }>`
-          SELECT id, status FROM app.customer WHERE tenant_id = ${tenantId} AND id = ${input.subjectId} LIMIT 1
-        `.execute(tx);
-        if (custRes.rows.length === 0) {
-          return {
-            eligible: false,
-            blockedReason: 'SUBJECT_NOT_FOUND',
-            blockedMessage: `Customer ${input.subjectId} not found in tenant`,
-            template,
-            recipientHash,
-            recipientMasked,
-            redactedVariables,
-            evaluatedTime,
-          };
-        }
-      } else if (input.subjectType === 'LOAN_APPLICATION') {
-        const appRes = await sql<{ id: string }>`
-          SELECT id FROM app.loan_application WHERE tenant_id = ${tenantId} AND id = ${input.subjectId} LIMIT 1
-        `.execute(tx);
-        if (appRes.rows.length === 0) {
-          return {
-            eligible: false,
-            blockedReason: 'SUBJECT_NOT_FOUND',
-            blockedMessage: `Loan application ${input.subjectId} not found in tenant`,
-            template,
-            recipientHash,
-            recipientMasked,
-            redactedVariables,
-            evaluatedTime,
-          };
-        }
+      const blocked = (blockedReason: BlockedReason, blockedMessage: string): EligibilityResult => ({
+        eligible: false,
+        blockedReason,
+        blockedMessage,
+        template,
+        recipientHash,
+        recipientMasked,
+        redactedVariables,
+        evaluatedTime,
+      });
+      const subject = await this.findSubject(tx, input.subjectType, input.subjectId);
+      if (!subject || !this.sendScopeCovers(ctx, subject)) {
+        return blocked('SUBJECT_NOT_FOUND', `${input.subjectType} ${input.subjectId} was not found`);
       }
 
-      // 8. Consent verification in app.consent_record
+      // 8. Consent: an ACTIVE, unexpired consent for the purpose, held by the lead itself, or for a customer or application by
+      // the customer or by a lead that converted into it (consents captured before conversion stay valid).
       const purpose = template.category === 'MARKETING' ? 'MARKETING' : 'CONTACT';
       const consentRes = await sql<{ id: string; status: string; expires_at: Date | null }>`
-        SELECT id, status, expires_at FROM app.consent_record
-        WHERE tenant_id = ${tenantId}
-          AND subject_type = ${input.subjectType === 'LOAN_APPLICATION' ? 'CUSTOMER' : input.subjectType}
-          AND subject_id = ${input.subjectId}
-          AND purpose = ${purpose}
-        ORDER BY created_at DESC
-        LIMIT 1
+        SELECT c.id, c.status, c.expires_at FROM app.consent_record c
+         WHERE c.tenant_id = ${tenantId}
+           AND c.purpose = ${purpose}
+           AND (
+             (c.subject_type = 'LEAD' AND c.subject_id = ${subject.leadId ?? null})
+             OR (c.subject_type = 'CUSTOMER' AND c.subject_id = ${subject.customerId ?? null})
+             OR (c.subject_type = 'LEAD' AND ${subject.customerId ?? null}::text IS NOT NULL
+                 AND c.subject_id IN (SELECT l.id FROM app.lead l WHERE l.customer_id = ${subject.customerId ?? null}))
+           )
+         ORDER BY (c.status = 'ACTIVE') DESC, c.captured_at DESC
+         LIMIT 1
       `.execute(tx);
 
       const consent = consentRes.rows[0];
       if (!consent) {
-        return {
-          eligible: false,
-          blockedReason: 'CONSENT_REQUIRED',
-          blockedMessage: `Active consent record for purpose ${purpose} is required`,
-          template,
-          recipientHash,
-          recipientMasked,
-          redactedVariables,
-          evaluatedTime,
-        };
+        return blocked('CONSENT_REQUIRED', `Active consent record for purpose ${purpose} is required`);
       }
       if (consent.status === 'WITHDRAWN') {
-        return {
-          eligible: false,
-          blockedReason: 'CONSENT_WITHDRAWN',
-          blockedMessage: `Consent for purpose ${purpose} has been withdrawn`,
-          template,
-          recipientHash,
-          recipientMasked,
-          redactedVariables,
-          evaluatedTime,
-        };
+        return blocked('CONSENT_WITHDRAWN', `Consent for purpose ${purpose} has been withdrawn`);
       }
-      if (consent.expires_at && new Date(consent.expires_at) < ctx.now) {
-        return {
-          eligible: false,
-          blockedReason: 'CONSENT_REQUIRED',
-          blockedMessage: `Consent for purpose ${purpose} has expired`,
-          template,
-          recipientHash,
-          recipientMasked,
-          redactedVariables,
-          evaluatedTime,
-        };
+      if (consent.status !== 'ACTIVE' || (consent.expires_at && new Date(consent.expires_at) < ctx.now)) {
+        return blocked('CONSENT_REQUIRED', `Consent for purpose ${purpose} has expired`);
       }
     }
 
@@ -473,19 +485,16 @@ export class SendEligibilityGuard {
     if (tx) {
       for (let slot = 1; slot <= capPerHour; slot++) {
         const slotKey = `freq:${recipientHash}:${hourBucket}:s${slot}`;
-        try {
-          const insertRes = await sql`
-            INSERT INTO app.dedupe_registry (tenant_id, namespace, key, ref_id, expires_at)
-            VALUES (${tenantId}, 'MESSAGE_FREQ', ${slotKey}, ${input.subjectId}, ${expiresAt})
-            ON CONFLICT (tenant_id, namespace, key) DO NOTHING
-            RETURNING key
-          `.execute(tx);
-          if (insertRes.rows.length > 0) {
-            slotClaimed = true;
-            break;
-          }
-        } catch {
-          // Conflict or collision
+        // ON CONFLICT DO NOTHING never throws for a taken slot; any other error leaves the transaction unusable and propagates.
+        const insertRes = await sql`
+          INSERT INTO app.dedupe_registry (tenant_id, namespace, key, ref_id, expires_at)
+          VALUES (${tenantId}, 'MESSAGE_FREQ', ${slotKey}, ${input.subjectId}, ${expiresAt})
+          ON CONFLICT (tenant_id, namespace, key) DO NOTHING
+          RETURNING key
+        `.execute(tx);
+        if (insertRes.rows.length > 0) {
+          slotClaimed = true;
+          break;
         }
       }
     } else {

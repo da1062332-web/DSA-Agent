@@ -17,7 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { getStoredAuthToken } from '../../auth/token';
+import { ApiError, apiFetch } from '../../api/client';
 import {
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -28,10 +28,9 @@ import {
 export interface MessageComposerProps {
   templates: MessageTemplate[];
   onMessageSent?: (msg: MessageRecord) => void;
-  apiBaseUrl?: string;
 }
 
-export function MessageComposer({ templates, onMessageSent, apiBaseUrl = '/v1' }: MessageComposerProps) {
+export function MessageComposer({ templates, onMessageSent }: MessageComposerProps) {
   const [subjectType, setSubjectType] = useState<'LEAD' | 'CUSTOMER' | 'LOAN_APPLICATION'>('LEAD');
   const [subjectId, setSubjectId] = useState('');
   const [channel, setChannel] = useState<MessageChannel>('EMAIL');
@@ -70,17 +69,9 @@ export function MessageComposer({ templates, onMessageSent, apiBaseUrl = '/v1' }
     setSendResult(null);
 
     try {
-      const token = getStoredAuthToken();
-      const idemKey = `idem_send_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-
-      const res = await fetch(`${apiBaseUrl}/messages`, {
+      const data = await apiFetch<MessageRecord>('/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idemKey,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+        body: {
           subjectType,
           subjectId: subjectId.trim(),
           channel,
@@ -90,32 +81,21 @@ export function MessageComposer({ templates, onMessageSent, apiBaseUrl = '/v1' }
             ...(channel === 'SMS' || channel === 'WHATSAPP' ? { mobile: recipientMobile.trim() } : {}),
           },
           variables,
-        }),
+        },
       });
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        const issue = data?.error?.details?.[0]?.issue;
-        setSendResult({
-          success: false,
-          error: {
-            code: data?.error?.code || 'ERROR',
-            message: data?.error?.message || `Failed to dispatch message (HTTP ${res.status})`,
-            issue,
-            details: data?.error?.details,
-          },
-        });
-      } else {
-        setSendResult({ success: true, data });
-        if (onMessageSent) onMessageSent(data);
-      }
+      setSendResult({ success: true, data });
+      if (onMessageSent) onMessageSent(data);
     } catch (err: unknown) {
+      // SEND_BLOCKED carries the guard's reason (consent, quiet hours, suppression) in its first detail.
       setSendResult({
         success: false,
-        error: {
-          code: 'CLIENT_ERROR',
-          message: err instanceof Error ? err.message : 'Network request failed',
-        },
+        error:
+          err instanceof ApiError
+            ? { code: err.code, message: err.message, issue: err.details[0]?.issue, details: err.details }
+            : {
+                code: 'CLIENT_ERROR',
+                message: err instanceof Error ? err.message : 'Network request failed',
+              },
       });
     } finally {
       setLoading(false);

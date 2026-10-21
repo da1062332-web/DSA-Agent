@@ -67,6 +67,14 @@ export const ID_PREFIXES = [
   'lcsh',
   'qry',
   'dsr',
+  'arv',
+  'ari',
+  'rfl',
+  'rlv',
+  'set',
+  'lbl',
+  'pkv',
+  'cbd',
   'snc',
   'trn',
   'exa',
@@ -87,6 +95,8 @@ export const ID_PREFIXES = [
   'apk',
   'whs',
   'whd',
+  'iwh',
+  'rtp',
   'evp',
   'trg',
   'rpr',
@@ -108,6 +118,18 @@ export const ID_PREFIXES = [
   'ent',
   // MOD-DOC checklist items (SUB-DOC.02, ENT-048).
   'chk',
+  // MOD-DOC documents (M-070): type, upload intent, version, review, access log, archive; MOD-PRV legal hold.
+  'dtp',
+  'upi',
+  'dvr',
+  'drv',
+  'dal',
+  'arc',
+  'lgh',
+  'apl',
+  'dup',
+  'otp',
+  'tob',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

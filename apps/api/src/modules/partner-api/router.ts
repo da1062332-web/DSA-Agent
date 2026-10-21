@@ -23,6 +23,7 @@ import {
 } from './auth-middleware';
 import { PartnerApiService } from './service';
 import { WebhookDeliveryService } from './webhook-service';
+import { registerWebhookRoutes } from './webhooks';
 
 function requireContext(req: Request): RequestContext {
   const ctx = req.ctx as RequestContext | undefined;
@@ -74,6 +75,8 @@ export function createRouter(
 
   // Apply Partner API key auth middleware
   router.use('/partner', createPartnerAuthMiddleware(apiKeyStore));
+  // API-API-005/006: tenant webhook subscriptions and the delivery log, in Postgres (webhooks.ts).
+  registerWebhookRoutes(router, deps);
 
   // ==========================================================================
   // API Keys (ENT-121)
@@ -311,6 +314,18 @@ export function createRouter(
       const ctx = requireContext(req);
       await partnerService.deleteApiClient(ctx, paramStr(req.params.id));
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // API-API-003 is /rotation (step-up); /rotate-secret is the earlier path, kept for existing callers.
+  router.post('/api-clients/:id/rotation', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      deps.authz.requireStepUp(ctx);
+      const result = await partnerService.rotateClientSecret(ctx, paramStr(req.params.id));
+      res.json(result);
     } catch (err) {
       next(err);
     }

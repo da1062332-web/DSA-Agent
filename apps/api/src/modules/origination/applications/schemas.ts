@@ -3,6 +3,16 @@
 import { IdSchema } from '@dsa/contracts';
 import { z } from 'zod';
 
+// Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
+const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
+const safeText = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(min)
+    .max(max)
+    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+
 const Money = z
   .string()
   .regex(/^\d{1,16}(\.\d{1,2})?$/, 'decimal amount, up to 2 places, e.g. "300000.00"')
@@ -106,7 +116,7 @@ export const ApplicationPatch = z
 export const ApplicationHold = z
   .object({
     onHold: z.boolean(),
-    reason: z.string().trim().min(3).max(200).optional(),
+    reason: safeText(3, 200).optional(),
     until: z.string().datetime().nullable().optional(),
   })
   .strict()
@@ -127,8 +137,9 @@ export const ApplicationHold = z
     }
   });
 
-// ---- Transitions (API-APP-005). Only T-APP-01, 02 and 10 are built: the T-APP table in the spec is not available, so the
-// other codes are not accepted until the table is confirmed. ----
+// ---- Transitions (API-APP-005). T-APP-01, 02, 04 and 10 are named by the spec (MVP). The T-APP table itself is not available:
+// T-APP-08 (withdraw) and T-APP-09 (reopen) are the codes assumed for SUB-APP.06 (audit follow-up 2026-10-19), with the
+// permissions the module page gives them (application.withdraw, application.reopen). ----
 export const CancelReason = z.enum(['DUPLICATE', 'CREATED_IN_ERROR', 'INELIGIBLE', 'OTHER']);
 export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
   z
@@ -138,6 +149,19 @@ export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
     })
     .strict(),
   z.object({ transitionCode: z.literal('T-APP-02') }).strict(),
+  z.object({ transitionCode: z.literal('T-APP-04') }).strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-08'),
+      reason: safeText(5, 200),
+    })
+    .strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-09'),
+      reason: safeText(5, 200),
+    })
+    .strict(),
   z
     .object({
       transitionCode: z.literal('T-APP-10'),
@@ -145,4 +169,52 @@ export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
     })
     .strict(),
 ]);
+
+// ---- Creation from a customer (API-APP-001) ----
+export const ApplicationCreate = z
+  .object({
+    customerId: z.string().trim().min(3).max(64),
+    branchId: z.string().trim().min(3).max(64),
+    productCategory: z.enum(['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER']),
+    requestedAmount: z.object({
+      amount: z.string().regex(/^\d{1,16}(\.\d{1,2})?$/, 'a decimal string'),
+      currency: z.literal('INR'),
+    }),
+    tenureMonths: z.number().int().min(1).max(480).optional(),
+    purposeCode: PurposeCode.optional(),
+    applicantType: ApplicantType,
+    salesOwnerUserId: z.string().trim().min(3).max(64).optional(),
+  })
+  .strict();
+
+// ---- Parties (API-APP-006) ----
+export const ApplicationPartyChange = z.discriminatedUnion('action', [
+  z
+    .object({
+      action: z.literal('ADD'),
+      customerId: z.string().trim().min(3).max(64),
+      role: z.enum(['CO_APPLICANT', 'GUARANTOR']),
+      relationshipToPrimary: z
+        .enum(['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'PARTNER', 'DIRECTOR', 'OTHER'])
+        .optional(),
+    })
+    .strict(),
+  z.object({ action: z.literal('REMOVE'), partyId: z.string().trim().min(3).max(64) }).strict(),
+]);
+
+// ---- Ownership (API-APP-011) ----
+export const ApplicationAssignment = z
+  .object({
+    salesOwnerUserId: z.string().trim().min(3).max(64).optional(),
+    opsOwnerUserId: z.string().trim().min(3).max(64).nullable().optional(),
+    opsQueueId: z.string().trim().min(3).max(64).nullable().optional(),
+    reason: safeText(3, 200),
+  })
+  .strict()
+  .refine(
+    (a) => a.salesOwnerUserId !== undefined || a.opsOwnerUserId !== undefined || a.opsQueueId !== undefined,
+    {
+      message: 'at least one owner is required',
+    },
+  );
 export type ApplicationTransition = z.infer<typeof ApplicationTransition>;
