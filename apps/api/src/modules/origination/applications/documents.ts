@@ -90,7 +90,9 @@ export interface DocumentDeps {
 
 /** The documents dependencies from ApiDeps, or local defaults (development and tests). */
 export function documentDeps(deps: ApiDeps): DocumentDeps {
-  const secret = deps.documentLinkSecret ?? processSecret;
+  // A short or empty key would make links forgeable, so only a real secret is used; otherwise a per-process one.
+  const secret =
+    deps.documentLinkSecret && deps.documentLinkSecret.length >= 32 ? deps.documentLinkSecret : processSecret;
   return {
     store: (deps.documentStore as DocumentObjectStore | undefined) ?? new LocalDocumentObjectStore(),
     signer: new FileLinkSigner(secret),

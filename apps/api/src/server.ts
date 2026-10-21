@@ -47,7 +47,13 @@ if (config.DISABLE_MFA) logger.warn('DISABLE_MFA is on: MFA is skipped. This is 
 const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
 // Signed document links and archive encryption use keys derived from the deployment's JWT secret.
-const deps = createProductionDeps(txRunner, { documentLinkSecret: config.SUPABASE_JWT_SECRET });
+const signingSecret = config.APP_SIGNING_SECRET ?? config.SUPABASE_JWT_SECRET;
+if (!signingSecret) {
+  logger.warn(
+    'APP_SIGNING_SECRET is not set: document links work only until this API restarts, and webhook subscriptions are refused. Set it in apps/api/.env.',
+  );
+}
+const deps = createProductionDeps(txRunner, { documentLinkSecret: signingSecret });
 globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
 globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));

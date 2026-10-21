@@ -113,7 +113,7 @@ export function registerWebhookRoutes(router: Router, deps: ApiDeps): void {
       ]);
     }
     const deploymentSecret = deps.documentLinkSecret;
-    if (!deploymentSecret)
+    if (!deploymentSecret || deploymentSecret.length < 32)
       throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Webhook secrets cannot be stored in this deployment.');
     const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
       withIdempotency(

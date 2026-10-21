@@ -27,7 +27,14 @@ const EnvSchema = z
       ),
     DATABASE_URL: z.string().url(),
     SUPABASE_URL: z.string().url(),
-    SUPABASE_JWT_SECRET: z.string().optional(),
+    // Empty means unset: hosted projects sign tokens with asymmetric keys and leave this blank.
+    SUPABASE_JWT_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    /**
+     * Key material for what the API signs or encrypts itself: document view and download links, document archives, webhook signing
+     * secrets at rest. At least 32 characters, the same on every API instance, required in production. Generate one with
+     * `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+     */
+    APP_SIGNING_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(32).optional()),
     TEST_TOKENS: z
       .enum(['true', 'false'])
       .default('false')
@@ -63,6 +70,14 @@ const EnvSchema = z
         path: ['DISABLE_MFA'],
         message:
           'MFA can be disabled only against the local Supabase stack and never in production; remove DISABLE_MFA',
+      });
+    }
+    if (env.NODE_ENV === 'production' && !env.APP_SIGNING_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['APP_SIGNING_SECRET'],
+        message:
+          'is required in production (document links, archives and webhook secrets are signed or encrypted with it)',
       });
     }
     if (env.TEST_TOKENS && !isLocalHost(env.SUPABASE_URL)) {
