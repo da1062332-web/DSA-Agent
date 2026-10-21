@@ -1,0 +1,9 @@
+-- Verify migration 0069 (platform queue operations). Read-only. Expect every row PASS.
+SELECT 'worker_queue_state holds the two queues, with forced row-level security' AS check,
+       CASE WHEN (SELECT count(*) FROM pg_class WHERE oid IN (to_regclass('app.worker_queue_state')) AND relrowsecurity AND relforcerowsecurity) = 1 AND CASE WHEN to_regclass('app.worker_queue_state') IS NULL THEN 0 ELSE (xpath('/row/c/text()', query_to_xml('SELECT count(*) AS c FROM app.worker_queue_state WHERE queue IN (''outbox-relay'', ''job-queue'')', false, true, '')))[1]::text::int END = 2 THEN 'PASS' ELSE 'FAIL' END AS result
+UNION ALL SELECT 'outbox_event.discarded_at exists and dsa_app may set it',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'app' AND table_name = 'outbox_event' AND column_name = 'discarded_at') AND coalesce((SELECT has_column_privilege('dsa_app', a.attrelid, a.attnum, 'UPDATE') FROM pg_attribute a WHERE a.attrelid = to_regclass('app.outbox_event') AND a.attname = 'discarded_at' AND NOT a.attisdropped), false) THEN 'PASS' ELSE 'FAIL' END
+UNION ALL SELECT 'the platform queue functions exist and run as their owner',
+       CASE WHEN coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_queue_stats()')), false) AND coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_dead_letters(integer)')), false) AND coalesce((SELECT prosecdef FROM pg_proc WHERE oid = to_regprocedure('app.platform_dead_letter_action(text, text)')), false) THEN 'PASS' ELSE 'FAIL' END
+UNION ALL SELECT 'pending_outbox_events skips discarded events',
+       CASE WHEN coalesce(position('discarded_at' in pg_get_functiondef(to_regprocedure('app.pending_outbox_events(integer)'))) > 0, false) THEN 'PASS' ELSE 'FAIL' END;
