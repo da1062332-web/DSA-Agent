@@ -1,4 +1,4 @@
-// SUB-ADM.04 background queues against a real database (M-067, M-068): the console shows the real outbox relay and job queue,
+// SUB-ADM.04 background queues against a real database (M-067, M-069): the console shows the real outbox relay and job queue,
 // and pause, replay and discard act on them. Synthetic data only.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

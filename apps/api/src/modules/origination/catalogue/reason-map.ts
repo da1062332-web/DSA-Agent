@@ -1,4 +1,4 @@
-// MOD-LCS lender reason map (owner: Dev 3; DSA Notion SUB-LCS.05, API-LND-007; M-078).
+// MOD-LCS lender reason map (owner: Dev 3; DSA Notion SUB-LCS.05, API-LND-007; M-079).
 //   GET /v1/lenders/{id}/reason-map   the map (any signed-in staff)
 //   PUT /v1/lenders/{id}/reason-map   replace it (config.manage; If-Match on the lender version)
 // Each entry maps the lender's own decline wording to one normalised decline reason code (lender_case.decline_reason_code).

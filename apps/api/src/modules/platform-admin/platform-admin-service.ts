@@ -244,7 +244,7 @@ export class PlatformAdminService {
 
   /**
    * SUB-ADM.04: the real background queues (the outbox relay and the job queue) with their pause flags and the items parked
-   * after their last attempt, from the store's queue operations (M-068). A store without them (the in-memory store of the
+   * after their last attempt, from the store's queue operations (M-069). A store without them (the in-memory store of the
    * unit tests) shows the labelled sample data.
    */
   async getJobsAndQueues(ctx: RequestContext): Promise<{

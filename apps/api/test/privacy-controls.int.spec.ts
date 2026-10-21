@@ -1,4 +1,4 @@
-// MOD-PRV retention schedule (API-PRV-005, 006) and data-principal requests (API-PRV-001..003) against a real database (M-077),
+// MOD-PRV retention schedule (API-PRV-005, 006) and data-principal requests (API-PRV-001..003) against a real database (M-078),
 // with the production wiring. Synthetic data only.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

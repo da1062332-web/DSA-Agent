@@ -1,7 +1,8 @@
-// Tenant entitlements gate (owner: Dev 1; MOD-TEN SUB-TEN.03, M-082). A /v1 request for a module the tenant is not entitled
+// Tenant entitlements gate (owner: Dev 1; MOD-TEN SUB-TEN.03, M-083). A /v1 request for a module the tenant is not entitled
 // to answers 403 MODULE_NOT_ENABLED. Only an explicit false disables a module, so a tenant with no entitlements set keeps
 // everything (the pilot default). The core Workflow A modules (leads, customers, tasks, applications, documents, lender
-// cases, rules, users, configuration) are never gated. Entitlements are read once per tenant per 30 seconds.
+// cases, rules, users, configuration) are never gated, nor is the ledger: posting is for system identities only and must be
+// refused before any database access (F-03), which a gate lookup would precede. Entitlements are read once per tenant per 30 seconds.
 import { AppError, type TxRunner } from '@dsa/contracts';
 import type { RequestHandler } from 'express';
 import { sql } from 'kysely';
@@ -15,7 +16,6 @@ const PREFIXES: [RegExp, string][] = [
   [/^\/(payout-requests|payout-batches|payouts)(\/|$)/, 'MOD-PAY'],
   [/^\/(reconciliation|reconciliation-exceptions|lender-statements|disputes|adjustments)(\/|$)/, 'MOD-REC'],
   [/^\/(invoices)(\/|$)/, 'MOD-INV'],
-  [/^\/(ledger|accounts|periods)(\/|$)/, 'MOD-LED'],
   [/^\/(reports|report-runs|report-schedules|metric-definitions|dashboards|exports)(\/|$)/, 'MOD-RPT'],
   [/^\/(imports)(\/|$)/, 'MOD-IMP'],
   [/^\/(connectors|attribution-change-requests|attribution-disputes)(\/|$)/, 'MOD-CON'],

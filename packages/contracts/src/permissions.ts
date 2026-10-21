@@ -106,7 +106,7 @@ export const PERMISSION_CODES = [
   'security.vuln',
   'attendance.manage',
   'invoice.manage',
-  // Added 2026-10-19 (additive; migration M-069): codes the DSA module pages name for endpoints built since.
+  // Added 2026-10-19 (additive; migration M-070): codes the DSA module pages name for endpoints built since.
   'document.view',
   'document.download',
   'document.waive',

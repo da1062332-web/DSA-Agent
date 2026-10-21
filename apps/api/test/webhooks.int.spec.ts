@@ -1,4 +1,4 @@
-// MOD-API outbound webhooks against a real database (M-075), with the production wiring: subscription with an encrypted
+// MOD-API outbound webhooks against a real database (M-076), with the production wiring: subscription with an encrypted
 // secret (API-API-005), delivery log (API-API-006), signed delivery, retry and FAILING after 24 hours. Synthetic data only.
 import crypto from 'node:crypto';
 import request from 'supertest';

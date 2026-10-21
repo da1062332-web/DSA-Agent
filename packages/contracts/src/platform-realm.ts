@@ -17,7 +17,7 @@ export const PLATFORM_PERMISSIONS: readonly PermissionCode[] = [
   'platform.jobs',
   'platform.support_access',
   'platform.release',
-  // MOD-TEN lifecycle (M-082)
+  // MOD-TEN lifecycle (M-083)
   'platform.tenant.create',
   'platform.tenant.suspend',
   'platform.tenant.offboard',

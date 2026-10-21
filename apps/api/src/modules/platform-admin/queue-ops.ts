@@ -1,5 +1,5 @@
 // SUB-ADM.04 background queues (owner: Dev 1). The real queues are the outbox relay and the job queue; their counts, pause
-// flags and parked items come from the platform-realm functions and table of M-068. Dead letters carry no event payload,
+// flags and parked items come from the platform-realm functions and table of M-069. Dead letters carry no event payload,
 // only which tenant, which item type, the error and the timing.
 import {
   AppError,

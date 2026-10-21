@@ -1,4 +1,4 @@
-// MOD-USR lifecycle against a real database (M-072), with the production wiring: invitation (API-USR-001), deactivation with
+// MOD-USR lifecycle against a real database (M-073), with the production wiring: invitation (API-USR-001), deactivation with
 // hand-over (API-USR-004), suspension (API-USR-005), role assignments (API-USR-006) and transfers (API-USR-008).
 // Synthetic data only.
 import request from 'supertest';

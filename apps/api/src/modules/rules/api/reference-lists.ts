@@ -1,9 +1,9 @@
-// MOD-BRE reference lists (owner: Dev 2; DSA Notion SUB-BRE.09; M-079).
+// MOD-BRE reference lists (owner: Dev 2; DSA Notion SUB-BRE.09; M-080).
 //   API-BRE-028 GET  /v1/reference-lists                      rule.author (or rule.simulate); lists with their versions
 //   API-BRE-029 POST /v1/reference-lists/{listId}/versions    config.manage; Idempotency-Key. Publishes the next version.
 // {listId} is a list id, or the code of a new list; a new list also needs name and valueType in the body. Up to 1,000
 // values per version, each matching the list's value type (VALIDATION_ERROR with LIST_TOO_LARGE or TYPE_MISMATCH).
-// Published versions are immutable (M-079 trigger) and kept while any rule may reference them.
+// Published versions are immutable (M-080 trigger) and kept while any rule may reference them.
 import crypto from 'node:crypto';
 import { AppError, type RequestContext } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';

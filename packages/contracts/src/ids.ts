@@ -118,7 +118,7 @@ export const ID_PREFIXES = [
   'ent',
   // MOD-DOC checklist items (SUB-DOC.02, ENT-048).
   'chk',
-  // MOD-DOC documents (M-070): type, upload intent, version, review, access log, archive; MOD-PRV legal hold.
+  // MOD-DOC documents (M-071): type, upload intent, version, review, access log, archive; MOD-PRV legal hold.
   'dtp',
   'upi',
   'dvr',

@@ -1,4 +1,4 @@
-// MOD-CPT connector portal on /portal/v1 (owner: Dev 5; DSA Notion MODULE 28; M-083). CONNECTOR_SELF scope: the caller must
+// MOD-CPT connector portal on /portal/v1 (owner: Dev 5; DSA Notion MODULE 28; M-084). CONNECTOR_SELF scope: the caller must
 // be an ACTIVE app_user of user_type CONNECTOR whose connector is ACTIVE, and every read and write is limited to that
 // connector. Connectors never see Customer 360: referrals show a masked name and a coarse status only.
 //   API-CPT-001 GET  /portal/v1/referrals               my referrals

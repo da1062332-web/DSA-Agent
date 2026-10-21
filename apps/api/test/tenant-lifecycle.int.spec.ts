@@ -1,4 +1,4 @@
-// MOD-TEN tenant lifecycle (API-TEN-001, 003..006) and the entitlements gate against a real database (M-082), as platform
+// MOD-TEN tenant lifecycle (API-TEN-001, 003..006) and the entitlements gate against a real database (M-083), as platform
 // operators, with the production wiring. Synthetic data only.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

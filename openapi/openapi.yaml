@@ -12274,7 +12274,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-21T04:30:58.928Z
+                  default: 2026-10-21T05:16:54.590Z
               required:
                 - paymentRef
       responses:

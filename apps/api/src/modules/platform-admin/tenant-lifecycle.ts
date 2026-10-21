@@ -1,4 +1,4 @@
-// MOD-TEN tenant lifecycle on the platform surface (owner: Dev 1; DSA Notion MODULE 1; M-082). Platform realm only.
+// MOD-TEN tenant lifecycle on the platform surface (owner: Dev 1; DSA Notion MODULE 1; M-083). Platform realm only.
 //   API-TEN-001 POST /platform/v1/tenants                     platform.tenant.create; Idempotency-Key; 409 TENANT_SLUG_TAKEN.
 //               Creates the tenant, organisation, head-office branch, a ROLE-TENANT-ADMIN role and the first administrator
 //               as INVITED. The Auth account (with app_metadata.tenant_id) is created by the operator tool; the user is bound
@@ -24,7 +24,6 @@ export const ENTITLEMENT_MODULES = [
   'MOD-PAY',
   'MOD-REC',
   'MOD-INV',
-  'MOD-LED',
   'MOD-RPT',
   'MOD-IMP',
   'MOD-CON',
@@ -57,7 +56,7 @@ export const TenantEntitlementsPut = z
 
 type Guard = (ctx: RequestContext, code: PermissionCode) => Promise<void>;
 
-/** P0001 raised by the M-082 functions carries the API error code in its hint. */
+/** P0001 raised by the M-083 functions carries the API error code in its hint. */
 function mapDbError(err: unknown): never {
   const e = err as { code?: string; hint?: string; message?: string };
   if (e?.code === '23505') throw AppError.of('TENANT_SLUG_TAKEN', 'That tenant slug is already taken.');

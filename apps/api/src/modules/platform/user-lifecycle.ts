@@ -1,6 +1,6 @@
 // MOD-USR lifecycle (owner: Dev 1; DSA Notion MODULE 4, SUB-USR.01 and SUB-USR.02). APIs:
 //   API-USR-001 POST /v1/users/invitations          user.manage; Idempotency-Key. The user starts INVITED.
-//   API-USR-004 POST /v1/users/{id}/deactivation    user.manage; Idempotency-Key; If-Match. Atomic hand-over (M-072).
+//   API-USR-004 POST /v1/users/{id}/deactivation    user.manage; Idempotency-Key; If-Match. Atomic hand-over (M-073).
 //   API-USR-005 POST /v1/users/{id}/suspension      user.manage; If-Match. Suspend or reactivate.
 //   API-USR-006 PUT  /v1/users/{id}/role-assignments role.manage; If-Match; step-up; SOD-05.
 //   API-USR-008 POST /v1/users/{id}/transfers       user.manage; Idempotency-Key. Now, or scheduled through the job queue.

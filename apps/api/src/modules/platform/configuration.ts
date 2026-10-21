@@ -1,4 +1,4 @@
-// MOD-CFG tenant configuration (owner: Dev 1; DSA Notion MODULE 6; M-081). Reads: any staff. Writes: config.manage.
+// MOD-CFG tenant configuration (owner: Dev 1; DSA Notion MODULE 6; M-082). Reads: any staff. Writes: config.manage.
 //   API-CFG-001 GET  /v1/settings/effective?branchId=&userId=   each known key resolved tenant → organisation → branch → user,
 //               with the level it came from; a locked value stops lower levels overriding it.
 //   API-CFG-002 PUT  /v1/settings/{scope}/{key}   scope is TENANT, ORGANISATION:<id>, BRANCH:<id> or USER:<id>; If-Match

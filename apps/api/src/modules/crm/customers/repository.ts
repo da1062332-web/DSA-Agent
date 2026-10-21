@@ -355,7 +355,7 @@ export class SqlCustomerRepository implements CustomerRepository {
       WHERE tenant_id = ${tenantId}
         AND subject_type = ${subjectType}
         AND (subject_id = ${subjectId}
-             -- M-074: consents of customers merged into this one keep counting.
+             -- M-075: consents of customers merged into this one keep counting.
              OR (subject_type = 'CUSTOMER'
                  AND subject_id IN (SELECT id FROM customer WHERE merged_into_id = ${subjectId})))
         AND purpose = ${purpose}

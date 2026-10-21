@@ -1,4 +1,4 @@
-// MOD-PRV retention schedule and data-principal requests (owner: Dev 1; DSA Notion MODULE 38; M-077). privacy.manage.
+// MOD-PRV retention schedule and data-principal requests (owner: Dev 1; DSA Notion MODULE 38; M-078). privacy.manage.
 //   API-PRV-005 GET  /v1/retention-policies                 the schedule: one entry per data class, tenant value or default
 //   API-PRV-006 PUT  /v1/retention-policies/{class}         If-Match (0 for a class still on the default); step-up; never
 //               below the platform minimum. The step-up stands for the approval the page asks for; approved_by is the actor.

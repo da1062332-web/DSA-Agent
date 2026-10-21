@@ -36,7 +36,7 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
   let lastCleanup = Date.now();
   const report = opts.onError ?? (() => undefined);
 
-  // Pause flags set from the platform console (app.worker_queue_state, M-068). Unknown or unreadable means not paused.
+  // Pause flags set from the platform console (app.worker_queue_state, M-069). Unknown or unreadable means not paused.
   const pausedQueues = async (): Promise<Set<string>> => {
     try {
       const r = await opts.txRunner.withTenantTx(

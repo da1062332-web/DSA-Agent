@@ -1,4 +1,4 @@
-// API-INT-006 POST /public/v1/webhooks/{provider}/{connectionPathId} (MOD-INT, Module 35; M-076). A generic inbound provider
+// API-INT-006 POST /public/v1/webhooks/{provider}/{connectionPathId} (MOD-INT, Module 35; M-077). A generic inbound provider
 // webhook. Nothing in the request is trusted until it is verified:
 //   - the connection comes from public_entry_index (resolve_public_entry), and must be ACTIVE for that provider;
 //   - X-Webhook-Signature is v1=HMAC-SHA256(connection signing secret, X-Webhook-Timestamp + '.' + raw body);

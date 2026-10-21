@@ -1,4 +1,4 @@
-// Outbound webhooks (MOD-API, Module 36; M-075). Subscriptions and deliveries live in Postgres:
+// Outbound webhooks (MOD-API, Module 36; M-076). Subscriptions and deliveries live in Postgres:
 //   API-API-005 POST /v1/webhook-subscriptions   config.manage; Idempotency-Key; finance events also need finance.view.
 //               The signing secret is shown once; it is stored encrypted (AES-256-GCM, key derived from the deployment secret).
 //               GET /v1/webhook-subscriptions lists them, without secrets.

@@ -2,7 +2,7 @@
 // customer, API-APP-006 add or remove a co-applicant or guarantor (plus GET of the party list), API-APP-011 assign owners.
 // Creation is scoped to a branch the caller may create in: TENANT anywhere, BRANCH in its branches, OWN or TEAM in the
 // caller's primary branch (OWN also owns what it creates). A customer the caller cannot see is 404.
-// Parties are append-only: a removal sets removed_at (M-071), never deletes, and the party's open checklist items become
+// Parties are append-only: a removal sets removed_at (M-072), never deletes, and the party's open checklist items become
 // NOT_APPLICABLE; an added party gets its own checklist once the application is collecting documents. Each write bumps
 // the application's lock_version (If-Match), and writes audit and outbox in the same transaction.
 import { AppError, type PartyPort, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';

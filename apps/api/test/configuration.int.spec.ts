@@ -1,4 +1,4 @@
-// MOD-CFG settings, labels, calendars, picklists and configuration bundles (API-CFG-001..009) against a real database (M-081),
+// MOD-CFG settings, labels, calendars, picklists and configuration bundles (API-CFG-001..009) against a real database (M-082),
 // with the production wiring. Synthetic data only.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

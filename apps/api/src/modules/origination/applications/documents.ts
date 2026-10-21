@@ -1,4 +1,4 @@
-// MOD-DOC documents (owner: Dev 3; DSA Notion MODULE 20). Built in the 2026-10-19 audit follow-up on M-070.
+// MOD-DOC documents (owner: Dev 3; DSA Notion MODULE 20). Built in the 2026-10-19 audit follow-up on M-071.
 //   API-DOC-007 GET  /v1/document-types                         any signed-in user (platform defaults + tenant overrides)
 //   API-DOC-008 POST /v1/document-types                         config.manage; Idempotency-Key; create or update by code
 //   API-DOC-001 POST /v1/documents/upload-intents               document.upload; Idempotency-Key; returns a signed PUT url

@@ -14,12 +14,73 @@ import { testPrincipal } from './support/fake-auth';
 
 const P = (...c: string[]) => c as PermissionCode[];
 const NONE = P();
-const SALES_EXEC = P('activity.create', 'consent.record', 'customer.read', 'lead.create', 'lead.qualify', 'lead.read', 'lead.update', 'message.send', 'task.read', 'task.update');
-const RM = P('activity.create', 'application.cancel', 'application.create', 'application.read', 'application.update', 'consent.record', 'customer.create', 'customer.read', 'customer.update', 'lead.create', 'lead.qualify', 'lead.read', 'lead.update', 'message.send', 'task.create', 'task.read', 'task.update', 'verification.read');
-const FINANCE_EXEC = P('adjustment.create', 'finance.dispute', 'finance.reconcile', 'finance.view', 'invoice.manage');
-const COMMISSION_APPROVER = P('adjustment.approve', 'finance.view', 'payout.approve', 'payout.record_payment');
-const LOAN_OPS = P('application.read', 'application.review', 'application.update', 'disbursement.exception_approve', 'disbursement.record', 'disbursement.verify', 'document.review', 'lender_case.submit', 'sanction.record', 'verification.read');
-const COMPLIANCE = P('application.read', 'audit.export_evidence', 'audit.read', 'customer.read', 'lead.read', 'security.incident', 'security.vuln', 'verification.read');
+const SALES_EXEC = P(
+  'activity.create',
+  'consent.record',
+  'customer.read',
+  'lead.create',
+  'lead.qualify',
+  'lead.read',
+  'lead.update',
+  'message.send',
+  'task.read',
+  'task.update',
+);
+const RM = P(
+  'activity.create',
+  'application.cancel',
+  'application.create',
+  'application.read',
+  'application.update',
+  'consent.record',
+  'customer.create',
+  'customer.read',
+  'customer.update',
+  'lead.create',
+  'lead.qualify',
+  'lead.read',
+  'lead.update',
+  'message.send',
+  'task.create',
+  'task.read',
+  'task.update',
+  'verification.read',
+);
+const FINANCE_EXEC = P(
+  'adjustment.create',
+  'finance.dispute',
+  'finance.reconcile',
+  'finance.view',
+  'invoice.manage',
+);
+const COMMISSION_APPROVER = P(
+  'adjustment.approve',
+  'finance.view',
+  'payout.approve',
+  'payout.record_payment',
+);
+const LOAN_OPS = P(
+  'application.read',
+  'application.review',
+  'application.update',
+  'disbursement.exception_approve',
+  'disbursement.record',
+  'disbursement.verify',
+  'document.review',
+  'lender_case.submit',
+  'sanction.record',
+  'verification.read',
+);
+const COMPLIANCE = P(
+  'application.read',
+  'audit.export_evidence',
+  'audit.read',
+  'customer.read',
+  'lead.read',
+  'security.incident',
+  'security.vuln',
+  'verification.read',
+);
 
 let env: IsolationEnv;
 const as = (tenant: 'A' | 'B', codes: PermissionCode[]) => env.appAs(tenant === 'A' ? env.A : env.B, codes);
@@ -90,7 +151,12 @@ describe('F-02 sanction and disbursement reads need a sanction or disbursement p
   });
 
   it('TEST-P1-F02-03 loan operations (sanction.record, disbursement.*) and each sanction or disbursement permission on its own are allowed through', async () => {
-    for (const codes of [LOAN_OPS, P('sanction.record'), P('disbursement.record'), P('disbursement.verify')]) {
+    for (const codes of [
+      LOAN_OPS,
+      P('sanction.record'),
+      P('disbursement.record'),
+      P('disbursement.verify'),
+    ]) {
       for (const path of reads) passedGate((await request(as('A', codes)).get(path)).status);
     }
   });
@@ -98,24 +164,41 @@ describe('F-02 sanction and disbursement reads need a sanction or disbursement p
 
 describe('F-03 manual ledger posting is closed to human sessions; the ledger audit actions are valid', () => {
   const body = () => ({
-    referenceType: 'MANUAL',
+    referenceType: 'MANUAL' as const,
     referenceId: 'p1-manual-1',
     period: '2026-10',
     lines: [
-      { accountCode: '1010-P1-BANK', entryType: 'DEBIT', amount: '100.00' },
-      { accountCode: '2100-P1-PAYABLE', entryType: 'CREDIT', amount: '100.00' },
+      { accountCode: '1010-P1-BANK', entryType: 'DEBIT' as const, amount: '100.00' },
+      { accountCode: '2100-P1-PAYABLE', entryType: 'CREDIT' as const, amount: '100.00' },
     ],
   });
 
   it('TEST-P1-F03-01 no permissions, sales, finance executive, commission approver, and a user holding every ledger permission are all refused, and nothing is written', async () => {
-    const everyLedgerPermission = P('finance.view', 'finance.period_close', 'export.run', 'adjustment.create', 'adjustment.approve', 'payout.record_payment', 'invoice.manage');
+    const everyLedgerPermission = P(
+      'finance.view',
+      'finance.period_close',
+      'export.run',
+      'adjustment.create',
+      'adjustment.approve',
+      'payout.record_payment',
+      'invoice.manage',
+    );
     for (const codes of [NONE, SALES_EXEC, FINANCE_EXEC, COMMISSION_APPROVER, everyLedgerPermission]) {
-      const res = await request(as('A', codes)).post('/v1/ledger/journals').set('Idempotency-Key', idem()).send(body());
+      const res = await request(as('A', codes))
+        .post('/v1/ledger/journals')
+        .set('Idempotency-Key', idem())
+        .send(body());
       refused(res.status);
     }
     // refused before the body is read: an empty body gets 403, not a validation message
-    refused((await request(as('A', NONE)).post('/v1/ledger/journals').set('Idempotency-Key', idem()).send({})).status);
-    const rows = await env.admin.query(`SELECT count(*)::int AS n FROM app.ledger_journal WHERE tenant_id = $1 AND reference_id = 'p1-manual-1'`, [env.A.tenantId]);
+    refused(
+      (await request(as('A', NONE)).post('/v1/ledger/journals').set('Idempotency-Key', idem()).send({}))
+        .status,
+    );
+    const rows = await env.admin.query(
+      `SELECT count(*)::int AS n FROM app.ledger_journal WHERE tenant_id = $1 AND reference_id = 'p1-manual-1'`,
+      [env.A.tenantId],
+    );
     expect(rows.rows[0].n).toBe(0);
   });
 
@@ -134,7 +217,9 @@ describe('F-03 manual ledger posting is closed to human sessions; the ledger aud
       now: new Date(),
     };
     const record = (action: string) =>
-      txRunner.withTenantTx(ctx, (tx) => audit.record(tx, ctx, { action, entityType: 'ledger_test', entityId: 'x' }));
+      txRunner.withTenantTx(ctx, (tx) =>
+        audit.record(tx, ctx, { action, entityType: 'ledger_test', entityId: 'x' }),
+      );
 
     for (const old of ['ledger.journal.post', 'ledger.period.close', 'ledger.export.run']) {
       await expect(record(old), old).rejects.toThrow();
@@ -143,8 +228,15 @@ describe('F-03 manual ledger posting is closed to human sessions; the ledger aud
       expect(action).toMatch(/^[a-z_]+\.[a-z_]+$/);
       await record(action);
     }
-    const written = await env.admin.query(`SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_type = 'ledger_test' ORDER BY action`, [env.A.tenantId]);
-    expect(written.rows.map((r) => r.action)).toEqual(['ledger.export_run', 'ledger.journal_posted', 'ledger.period_closed']);
+    const written = await env.admin.query(
+      `SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_type = 'ledger_test' ORDER BY action`,
+      [env.A.tenantId],
+    );
+    expect(written.rows.map((r) => r.action)).toEqual([
+      'ledger.export_run',
+      'ledger.journal_posted',
+      'ledger.period_closed',
+    ]);
   });
 
   it('TEST-P1-F03-04 a system identity can still post: the journal and its audit event are written together, as the settlement adapter does', async () => {
@@ -152,14 +244,24 @@ describe('F-03 manual ledger posting is closed to human sessions; the ledger aud
     const txRunner = createTxRunner(env.db);
     const service = new LedgerService({ repository: new SqlLedgerRepository(), audit: createAuditPort(ids) });
     const ctx: RequestContext = {
-      principal: testPrincipal({ kind: 'SERVICE', id: 'SYSTEM:ledger-adapter', tenantId: env.A.tenantId, grants: [{ code: 'finance.view', scope: 'TENANT', branchIds: [] }] }),
+      principal: testPrincipal({
+        kind: 'SERVICE',
+        id: 'SYSTEM:ledger-adapter',
+        tenantId: env.A.tenantId,
+        grants: [{ code: 'finance.view', scope: 'TENANT', branchIds: [] }],
+      }),
       correlationId: 'corr-p1-svc',
       now: new Date(),
     };
     service.assertManualPostingAllowed(ctx); // does not throw for a SERVICE principal
-    const journal = await txRunner.withTenantTx(ctx, (tx) => service.postJournal(tx, ctx, { ...body(), referenceId: 'p1-service-1' }));
+    const journal = await txRunner.withTenantTx(ctx, (tx) =>
+      service.postJournal(tx, ctx, { ...body(), referenceId: 'p1-service-1' }),
+    );
     expect(journal.referenceId).toBe('p1-service-1');
-    const audited = await env.admin.query(`SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_id = $2`, [env.A.tenantId, journal.id]);
+    const audited = await env.admin.query(
+      `SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_id = $2`,
+      [env.A.tenantId, journal.id],
+    );
     expect(audited.rows.map((r) => r.action)).toEqual([LEDGER_AUDIT_ACTIONS.journalPosted]);
   });
 });
@@ -173,7 +275,11 @@ describe('F-04 security events can only be written by a holder of security.incid
     details: { note: 'p1', ...extra },
   });
   const count = async (tenantId: string) =>
-    (await env.admin.query(`SELECT count(*)::int AS n FROM app.security_event WHERE tenant_id = $1`, [tenantId])).rows[0].n as number;
+    (
+      await env.admin.query(`SELECT count(*)::int AS n FROM app.security_event WHERE tenant_id = $1`, [
+        tenantId,
+      ])
+    ).rows[0].n as number;
 
   it('TEST-P1-F04-01 no permissions, sales, RM, finance and loan operations are refused and no event is written', async () => {
     const before = await count(env.A.tenantId);
@@ -184,14 +290,20 @@ describe('F-04 security events can only be written by a holder of security.incid
   });
 
   it('TEST-P1-F04-02 a security.incident holder (compliance) can file an event; the server decides principal, address and severity, and keeps what the caller sent as claims', async () => {
-    const res = await request(as('A', COMPLIANCE)).post('/v1/security/events').send(event({ reportedBy: 'usr_forged', reporterKind: 'SERVICE' }));
+    const res = await request(as('A', COMPLIANCE))
+      .post('/v1/security/events')
+      .send(event({ reportedBy: 'usr_forged', reporterKind: 'SERVICE' }));
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expect(res.body.details.reportedBy).toBe(env.A.userIds[0]);
     expect(res.body.details.reporterKind).toBe('USER');
     expect(res.body.principal).toBe(env.A.userIds[0]); // the filer, not the caller's 'someone-else'
     expect(res.body.ip).not.toBe('203.0.113.7');
     expect(res.body.severity).toBe('MEDIUM'); // chosen by the server, not the claimed HIGH
-    expect(res.body.details.claimed).toEqual({ principal: 'someone-else', ip: '203.0.113.7', severity: 'HIGH' });
+    expect(res.body.details.claimed).toEqual({
+      principal: 'someone-else',
+      ip: '203.0.113.7',
+      severity: 'HIGH',
+    });
   });
 
   it('TEST-P1-F04-03 tenant isolation holds: tenant B (also a holder) never sees tenant A events, and the refused call in A wrote nothing there', async () => {

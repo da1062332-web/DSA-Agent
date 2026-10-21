@@ -5,9 +5,9 @@ import type { ApplicantType, DuplicateFlag, LeadPriority, LeadState, ProductCate
 
 export interface LeadRow {
   id: string;
-  /** M-073: set with state ARCHIVED (T-LEAD-07), cleared on restore. */
+  /** M-074: set with state ARCHIVED (T-LEAD-07), cleared on restore. */
   archived_at?: Date | null;
-  /** M-073: the surviving lead once this one is MERGED (API-LEAD-009). */
+  /** M-074: the surviving lead once this one is MERGED (API-LEAD-009). */
   merged_into_id?: string | null;
   tenant_id: string;
   branch_id: string;
@@ -210,7 +210,7 @@ export interface LeadRepository {
   insertAuditEvent(tx: Tx, audit: AuditEventRow): Promise<void>;
   getIdempotency(tx: Tx, tenantId: string, principalId: string, key: string): Promise<IdempotencyRow | null>;
   saveIdempotency(tx: Tx, row: IdempotencyRow): Promise<void>;
-  /** SUB-LEAD.04: queue duplicate pairs for review (M-073). Optional: the in-memory test repository has no queue. */
+  /** SUB-LEAD.04: queue duplicate pairs for review (M-074). Optional: the in-memory test repository has no queue. */
   insertDuplicateReviews?(tx: Tx, rows: DuplicateReviewRow[]): Promise<void>;
 }
 
