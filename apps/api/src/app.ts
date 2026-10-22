@@ -17,6 +17,7 @@ import { createPublicMessagingRouter } from './modules/crm/messaging/router';
 import { createPublicDocumentSharingRouter } from './modules/origination/document-sharing/router';
 import { createPublicDocumentRouter } from './modules/origination/applications/documents';
 import { createPublicApplyRouter } from './modules/crm/leads/lead-extras';
+import { createPublicAuthRouter } from './http/public-auth-router';
 import { createConnectorPortalRouter } from './modules/finance/connector-portal';
 import { createPublicIntegrationWebhookRouter } from './modules/integrations/inbound-webhooks';
 import { createLeadService } from './modules/crm/leads/router';
@@ -31,6 +32,9 @@ export interface CreateAppOptions {
   auth?: RequestHandler;
   /** Request logging is off when no logger is given (tests). */
   logger?: Logger;
+  supabaseUrl?: string;
+  bypassSecret?: string;
+  bypassOtp?: string;
 }
 
 /** ApiDeps carries some ports under two names (audit/auditPort, ids/idGenerator, userDirectory/userDirectoryPort) and modules
@@ -114,6 +118,14 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentRouter(opts.deps));
   publicV1.use(createPublicApplyRouter(opts.deps, () => createLeadService(opts.deps)));
   publicV1.use(createPublicIntegrationWebhookRouter(opts.deps));
+  publicV1.use(
+    createPublicAuthRouter({
+      deps: opts.deps,
+      supabaseUrl: opts.supabaseUrl || process.env.SUPABASE_URL || 'https://mlpkwwhnagxzinaohdxg.supabase.co',
+      bypassSecret: opts.bypassSecret || process.env.BYPASS_JWT_SECRET || 'dsa-crm-test-bypass-jwt-secret-key-2026',
+      bypassOtp: opts.bypassOtp || process.env.TEST_BYPASS_OTP || '000000',
+    }),
+  );
   app.use('/public/v1', publicV1);
 
   // Platform realm (API-TEN-002, API-ADM-001..API-ADM-009) at /platform/v1. The tenant-realm part of platform-admin

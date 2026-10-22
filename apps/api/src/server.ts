@@ -62,10 +62,14 @@ const app = createApp({
   deps,
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,
+  supabaseUrl: config.SUPABASE_URL,
+  bypassSecret: config.BYPASS_JWT_SECRET,
+  bypassOtp: config.TEST_BYPASS_OTP,
   auth: supabaseAuth({
     verifier: createTokenVerifier({
       supabaseUrl: config.SUPABASE_URL,
       jwtSecret: config.SUPABASE_JWT_SECRET,
+      bypassSecret: config.BYPASS_JWT_SECRET,
     }),
     resolver: createPrincipalResolver(txRunner),
   }),

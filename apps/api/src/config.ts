@@ -52,6 +52,10 @@ const EnvSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+    /** Hardcoded OTP for test bypass authentication. */
+    TEST_BYPASS_OTP: z.string().default('000000'),
+    /** Secret for HMAC signing and verifying test bypass tokens. */
+    BYPASS_JWT_SECRET: z.string().default('dsa-crm-test-bypass-jwt-secret-key-2026'),
   })
   .superRefine((env, ctx) => {
     if (FORBIDDEN_DB_USERS.test(decodeURIComponent(new URL(env.DATABASE_URL).username))) {

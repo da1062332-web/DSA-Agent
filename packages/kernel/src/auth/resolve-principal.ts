@@ -48,7 +48,7 @@ export function createPrincipalResolver(txRunner: TxRunner): PrincipalResolver {
         }>`
           select u.id, u.primary_branch_id, u.status, t.status as tenant_status
             from app_user u join tenant t on t.id = u.tenant_id
-           where u.idp_subject = ${token.subject}`.execute(tx);
+           where (u.idp_subject = ${token.subject} or u.id = ${token.subject} or (u.email is not null and lower(u.email::text) = ${token.email?.toLowerCase() ?? ''}))`.execute(tx);
         let row = user.rows[0];
         // First sign-in of an invited user (API-USR-001): the invitation holds a placeholder subject. The token's tenant comes
         // from app_metadata, which only the server sets, so the invitation is bound only inside that tenant, by email.

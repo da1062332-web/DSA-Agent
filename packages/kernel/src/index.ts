@@ -10,3 +10,4 @@ export * from './audit/audit';
 export * from './outbox/outbox';
 export * from './idempotency/idempotency';
 export * from './directory/user-directory';
+export { mintBypassToken, type BypassTokenOptions } from './testing/test-token';

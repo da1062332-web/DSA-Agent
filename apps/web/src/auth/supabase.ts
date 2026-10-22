@@ -16,3 +16,23 @@ export function getSupabase(): SupabaseClient {
   }
   return client;
 }
+
+export function getStorageKey(): string {
+  const config = readConfig();
+  if (!config.success) return 'sb-auth-token';
+  try {
+    const host = new URL(config.data.VITE_SUPABASE_URL).hostname;
+    return `sb-${host.split('.')[0]}-auth-token`;
+  } catch {
+    return 'sb-auth-token';
+  }
+}
+
+export function saveBypassSession(session: unknown): void {
+  const key = getStorageKey();
+  try {
+    localStorage.setItem(key, JSON.stringify(session));
+  } catch {
+    // Storage might be blocked
+  }
+}
