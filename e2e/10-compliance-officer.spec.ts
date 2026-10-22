@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
 
 test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
   test.beforeEach(async ({ page }) => {
@@ -73,19 +73,24 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
 
     // 1. Visit Audit Log Search
     await page.goto('/audit');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Searching Cryptographic Audit Ledger', 'To inspect tamper-evident SHA-256 hash chains for regulatory compliance');
+    await pauseForDemo(page, 1500);
+
+    await showDemoBanner(page, 'Audit Ledger', 'Inspecting audit events for entity app_loan_001');
     await expect(page.getByText('app_loan_001')).toBeVisible();
     await expect(page.getByText('LOAN_APPLICATION')).toBeVisible();
 
     // 2. Click "Verify Chain Integrity"
+    await showDemoBanner(page, 'Verify Chain Integrity', 'Initiating SHA-256 Merkle root verification');
     const verifyChainBtn = page.getByRole('button', { name: /Verify Chain Integrity/i });
     await expect(verifyChainBtn).toBeVisible();
-    await humanClick(verifyChainBtn, 2000);
+    await humanClick(verifyChainBtn, 1500);
 
     // Verify modal rendered with cryptographic status
+    await showDemoBanner(page, 'Chain Status: VERIFIED', 'Cryptographic audit sequence #1-#2 sealed and valid');
     await expect(page.getByText(/Chain Status:/i)).toBeVisible();
     await expect(page.getByText('VERIFIED', { exact: true }).first()).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   // =========================================================================
@@ -128,27 +133,32 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     });
 
     await page.goto('/audit');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Exporting Regulatory Evidence Pack', 'To generate an immutable sealed archive with SHA-256 manifest for RBI auditors');
+    await pauseForDemo(page, 1500);
 
     // 1. Open Export Evidence Pack Modal
+    await showDemoBanner(page, 'Request Evidence Pack', 'Opening evidence archive export dialog');
     const exportPackBtn = page.getByRole('button', { name: /Export Evidence Pack/i });
     await expect(exportPackBtn).toBeVisible();
-    await humanClick(exportPackBtn, 2000);
+    await humanClick(exportPackBtn, 1500);
 
     // 2. Fill evidence export purpose
+    await showDemoBanner(page, 'Audit Purpose Entry', 'Purpose: Regulatory RBI Annual Compliance Audit');
     const purposeField = page.getByLabel(/Export Purpose|Purpose/i);
     if (await purposeField.isVisible()) {
       await humanType(purposeField, 'Regulatory RBI Annual Compliance Audit');
-      await pauseForDemo(page, 1500);
+      await pauseForDemo(page, 1200);
     }
 
     // Submit export
+    await showDemoBanner(page, 'Generate Evidence Pack', 'Sealing evidence bundle with SHA-256 manifest');
     const generateBtn = page.getByRole('button', { name: /Generate Evidence Pack/i });
-    await humanClick(generateBtn, 2500);
+    await humanClick(generateBtn, 2000);
 
     // Verify confirmation message
+    await showDemoBanner(page, 'Export Requested', 'Evidence pack generated with cryptographic signature');
     await expect(page.getByText(/export requested/i)).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 3. Visit Privacy and Consent Register (/privacy)
     await page.route('**/v1/privacy**', async (route) => {
@@ -159,10 +169,11 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       });
     });
 
+    await showDemoBanner(page, 'DPDP Privacy Register', 'Auditing consent records & privacy notice versions');
     await page.goto('/privacy');
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
     await expect(page.locator('body')).toContainText(/privacy|consent/i);
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2000);
   });
 
   // =========================================================================
@@ -170,20 +181,26 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
   // (Notion QA Plan Module 10 Step 6: Compliance Officer has zero operational write access)
   // =========================================================================
   test('TC-CO-03: Segregation of Duties (SoD) & Read-Only Operational Boundary Enforcement', async ({ page }) => {
+    await showDemoBanner(page, 'Enforcing Read-Only Compliance Oversight', 'To verify Compliance Officers cannot alter operational loan records, rules, or commissions');
+    await pauseForDemo(page, 1200);
+
     // 1. Verify Compliance Officer cannot author or publish BRE rules
+    await showDemoBanner(page, 'Route Guard: Rules', 'Navigating to /rules (Expect 403 Forbidden)');
     await page.goto('/rules');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 1500);
 
     // 2. Verify Compliance Officer cannot access Commission Payouts
+    await showDemoBanner(page, 'Route Guard: Commission', 'Navigating to /commission (Expect 403 Forbidden)');
     await page.goto('/commission');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 1500);
 
     // 3. Verify Compliance Officer cannot record Sanctions
+    await showDemoBanner(page, 'Route Guard: Sanctions', 'Navigating to /sanctions (Expect 403 Forbidden)');
     await page.goto('/sanctions');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await showDemoBanner(page, 'Read-Only Boundaries Enforced', 'Compliance Officer restricted strictly to oversight');
     await pauseForDemo(page, 2000);
   });
 });

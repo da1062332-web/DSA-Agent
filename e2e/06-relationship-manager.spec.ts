@@ -68,7 +68,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto('/leads/new');
-    await showDemoBanner(page, 'TC-RM-01: Lead Intake Form', 'Verifying proactive client-side field validation');
+    await showDemoBanner(page, 'Opening Lead Intake Form', 'To capture applicant details with proactive field validation');
     await pauseForDemo(page, 1200);
 
     // 1. Check page title and subtitle
@@ -184,7 +184,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto('/leads/led_dup_alpha_002');
-    await showDemoBanner(page, 'TC-RM-02: Duplicate Detection', 'Surfacing duplicate classification badge');
+    await showDemoBanner(page, 'Checking for Duplicate Leads', 'To prevent redundant entries and protect CRM data integrity');
     await pauseForDemo(page, 1200);
 
     // 1. Verify lead loaded
@@ -259,14 +259,14 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto('/leads/led_lifecycle_001');
-    await showDemoBanner(page, 'TC-RM-03: Lead Lifecycle Progression', 'Testing transitions NEW ➔ CONTACT_ATTEMPTED ➔ IN_PROGRESS');
+    await showDemoBanner(page, 'Progressing Lead Lifecycle Stages', 'To track customer engagement from initial contact to active evaluation');
     await pauseForDemo(page, 1200);
 
     // Initial state: NEW
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
 
     // 1. Trigger T-LEAD-01: Attempt Contact
-    await showDemoBanner(page, 'Transition T-LEAD-01', 'Clicking Attempt Contact button');
+    await showDemoBanner(page, 'Recording First Contact Attempt', 'To log that the borrower was contacted by phone or visit');
     const attemptContactBtn = page.locator('[data-testid="lead.action.attempt-contact"]');
     await expect(attemptContactBtn).toBeVisible();
     await humanClick(attemptContactBtn);
@@ -278,7 +278,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await pauseForDemo(page, 1500);
 
     // 2. Trigger T-LEAD-02: Mark In Progress
-    await showDemoBanner(page, 'Transition T-LEAD-02', 'Clicking Mark In Progress button');
+    await showDemoBanner(page, 'Advancing Lead to In-Progress', 'To indicate borrower interest and begin loan discussions');
     const inProgressBtn = page.locator('[data-testid="lead.action.in-progress"]');
     await expect(inProgressBtn).toBeVisible();
     await humanClick(inProgressBtn);
@@ -351,7 +351,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto('/leads/led_qual_alpha_001');
-    await showDemoBanner(page, 'TC-RM-04: Qualification & Conversion', 'Opening Qualify dialog and converting to Application');
+    await showDemoBanner(page, 'Qualifying & Converting Lead', 'To approve loan terms and generate official customer & application records');
     await pauseForDemo(page, 1200);
 
     // 1. Open Qualify Dialog (T-LEAD-04)
@@ -480,7 +480,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto(`/customers/${customerId}/consents`);
-    await showDemoBanner(page, 'TC-RM-05: Customer DPDP Consents', 'Managing DPDP Act consent and withdrawal');
+    await showDemoBanner(page, 'Managing DPDP Customer Consents', 'To ensure regulatory compliance for data processing under the DPDP Act');
     await pauseForDemo(page, 1200);
 
     // 1. Verify customer header and profile details
@@ -598,7 +598,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     });
 
     await page.goto(`/applications/${applicationId}`);
-    await showDemoBanner(page, 'TC-RM-06: Segregation of Duties', 'Verifying operational review limits for ROLE-RM');
+    await showDemoBanner(page, 'Enforcing Role Boundaries & SoD', 'To verify Relationship Managers cannot self-approve or sanction loans');
     await pauseForDemo(page, 1200);
 
     // 1. Verify RM can view application details header

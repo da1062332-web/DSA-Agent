@@ -293,33 +293,49 @@ export async function showDemoBanner(page: Page, title: string, subtitle?: strin
   if (!isHeaded) return;
   try {
     await page.evaluate(({ title, subtitle }) => {
-      let el = document.getElementById('demo-step-banner');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'demo-step-banner';
-        el.style.position = 'fixed';
-        el.style.top = '12px';
-        el.style.left = '50%';
-        el.style.transform = 'translateX(-50%)';
-        el.style.zIndex = '999999';
-        el.style.backgroundColor = 'rgba(15, 23, 42, 0.94)';
-        el.style.color = '#ffffff';
-        el.style.padding = '8px 18px';
-        el.style.borderRadius = '9999px';
-        el.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.5)';
-        el.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-        el.style.fontSize = '13px';
-        el.style.fontWeight = '600';
-        el.style.pointerEvents = 'none';
-        el.style.border = '1px solid rgba(96, 165, 250, 0.6)';
-        el.style.backdropFilter = 'blur(10px)';
-        el.style.transition = 'all 0.2s ease';
-        el.style.display = 'flex';
-        el.style.alignItems = 'center';
-        el.style.gap = '8px';
-        document.body.appendChild(el);
+      let host = document.getElementById('demo-step-banner-host') as any;
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'demo-step-banner-host';
+        host.style.position = 'fixed';
+        host.style.top = '12px';
+        host.style.left = '50%';
+        host.style.transform = 'translateX(-50%)';
+        host.style.zIndex = '999999';
+        host.style.pointerEvents = 'none';
+
+        // Use closed shadow DOM so that Playwright test locators (getByText, etc.)
+        // never collide with demo banner text during headed runs.
+        const shadow = host.attachShadow({ mode: 'closed' });
+        host._demoShadow = shadow;
+        document.body.appendChild(host);
       }
-      el.innerHTML = `<span style="background:#2563eb;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;">Step</span> <span>${title}</span>${subtitle ? `<span style="color:#94a3b8;font-weight:400;">— ${subtitle}</span>` : ''}`;
+
+      const shadow = host._demoShadow;
+      if (shadow) {
+        shadow.innerHTML = `
+          <div style="
+            background-color: rgba(15, 23, 42, 0.94);
+            color: #ffffff;
+            padding: 8px 18px;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.5);
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid rgba(96, 165, 250, 0.6);
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <span style="background:#2563eb;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;">Step</span>
+            <span>${title}</span>
+            ${subtitle ? `<span style="color:#94a3b8;font-weight:400;">— ${subtitle}</span>` : ''}
+          </div>
+        `;
+      }
     }, { title, subtitle });
   } catch {
     // Ignore in case page is navigating
