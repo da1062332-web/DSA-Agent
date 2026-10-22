@@ -1,6 +1,5 @@
-import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
+import { ApiError as SharedApiError, apiRequest, newIdempotencyKey, type ApiRequest } from '../../api/client';
 import type { ConversionResponse, CreateLeadPayload, LeadListResponse, LeadResource } from './types';
-
 
 export class ApiError extends Error {
   constructor(
@@ -111,6 +110,9 @@ export async function transitionLead(
       bodyPayload.qualification = {
         applicantType,
         requestedAmount: reqAmount,
+        ...(transition.qualification?.tenureMonths
+          ? { tenureMonths: transition.qualification.tenureMonths }
+          : {}),
       };
     }
   }
@@ -126,7 +128,7 @@ export async function transitionLead(
 
 export async function assignLead(
   id: string,
-  assignment: { toUserId?: string; toQueueId?: string; reasonCode: string },
+  assignment: { toUserId?: string; toQueueId?: string; reasonCode: string; transferOpenTasks?: boolean },
   ifMatch: string,
   idempotencyKey = `asg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 ): Promise<{ lead: LeadResource; etag: string }> {
@@ -151,4 +153,71 @@ export async function convertLead(
     idempotencyKey,
   });
   return res.data;
+}
+
+/** API-LEAD-014: back to the state the lead was archived from (lead.archive). */
+export async function restoreLead(id: string, reason: string, ifMatch: string): Promise<LeadResource> {
+  const res = await request<LeadResource>(`/v1/leads/${id}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+    ifMatch,
+    idempotencyKey: newIdempotencyKey(),
+  });
+  return res.data;
+}
+
+/** API-LEAD-012: re-run the routing decision (DK-lead.assignment) for an open lead (lead.assign). */
+export async function rerouteLead(id: string, ifMatch: string): Promise<LeadResource> {
+  const res = await request<LeadResource>(`/v1/leads/${id}/reroute`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+    ifMatch,
+    idempotencyKey: newIdempotencyKey(),
+  });
+  return res.data;
+}
+
+export interface DuplicateReview {
+  id: string;
+  /** The older lead of the pair. */
+  leftId: string;
+  /** The newer lead, flagged at capture. */
+  rightId: string;
+  classification: 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT';
+  status: 'OPEN' | 'MERGED' | 'DISMISSED';
+  resolution: string | null;
+  survivorId: string | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  version: number;
+  createdAt: string;
+}
+
+/** API-LEAD-008: the duplicate review queue (lead.merge). */
+export async function fetchDuplicateReviews(
+  status: 'OPEN' | 'MERGED' | 'DISMISSED',
+  cursor?: string,
+): Promise<{ data: DuplicateReview[]; meta: { nextCursor: string | null; limit: number } }> {
+  const q = new URLSearchParams({ status, limit: '50' });
+  if (cursor) q.set('cursor', cursor);
+  return (
+    await request<{ data: DuplicateReview[]; meta: { nextCursor: string | null; limit: number } }>(
+      `/v1/duplicate-reviews?${q.toString()}`,
+    )
+  ).data;
+}
+
+/** API-LEAD-009: merge (the survivor stays, the other lead becomes MERGED) or dismiss a pair (lead.merge). */
+export async function resolveDuplicateReview(
+  id: string,
+  body: { action: 'MERGE' | 'DISMISS'; survivorId?: string; reason: string },
+  idempotencyKey: string,
+): Promise<DuplicateReview> {
+  return (
+    await request<DuplicateReview>(`/v1/duplicate-reviews/${encodeURIComponent(id)}/resolution`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      idempotencyKey,
+    })
+  ).data;
 }

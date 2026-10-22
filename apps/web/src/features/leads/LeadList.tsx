@@ -108,17 +108,29 @@ export function LeadList() {
             Manage, qualify, and convert loan enquiry leads
           </Typography>
         </Box>
-        <Can action="lead.create">
-          <Button
-            variant="contained"
-            color="primary"
-            component={RouterLink}
-            to="/leads/new"
-            data-testid="leads.create-button"
-          >
-            Create Lead
-          </Button>
-        </Can>
+        <Stack direction="row" spacing={1}>
+          <Can action="lead.merge">
+            <Button
+              variant="outlined"
+              component={RouterLink}
+              to="/leads/duplicates"
+              data-testid="leads.duplicates-button"
+            >
+              Duplicate reviews
+            </Button>
+          </Can>
+          <Can action="lead.create">
+            <Button
+              variant="contained"
+              color="primary"
+              component={RouterLink}
+              to="/leads/new"
+              data-testid="leads.create-button"
+            >
+              Create Lead
+            </Button>
+          </Can>
+        </Stack>
       </Stack>
 
       {/* Filter Bar */}

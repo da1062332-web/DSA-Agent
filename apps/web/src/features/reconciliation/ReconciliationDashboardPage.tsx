@@ -39,6 +39,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
 import { LenderName } from '../../shell/display';
+import { useLookup } from '../admin/api';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -91,15 +92,13 @@ export function ReconciliationDashboardPage() {
 
   // Import Statement Form
   const [importFormat, setImportFormat] = useState<'MT940' | 'CSV'>('MT940');
-  const [importLenderId, setImportLenderId] = useState('lnd_hdfc_bank');
-  const [importPeriod, setImportPeriod] = useState('2026-09');
+  // Forms start empty: statements, references and amounts come from the user, never from fixtures (synthetic data only, no
+  // S3-class values such as loan or bank account numbers and UTRs, CLAUDE.md data protection).
+  const [importLenderId, setImportLenderId] = useState('');
+  const [importPeriod, setImportPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [importBatchId, setImportBatchId] = useState(`batch_${Date.now()}`);
-  const [importCsvText, setImportCsvText] = useState(
-    'LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15\nLN902149,Sunita Patel,2500000,37500,3750,2026-09-16\nLN902150,Amitabh Bachchan,5000000,75000,7500,2026-09-18',
-  );
-  const [importMt940Text, setImportMt940Text] = useState(
-    `:20:STMT2026093001\n:25:50200012345678\n:28C:1/1\n:60F:C260901INR5000000,00\n:61:2609150915CR22500,00NTRFNONREF//LN902148\n:86:/COMM/Rajesh Kumar/LN902148/DISB/1500000/TDS/2250\n:61:2609160916CR37500,00NTRFNONREF//LN902149\n:86:/COMM/Sunita Patel/LN902149/DISB/2500000/TDS/3750\n:61:2609180918CR75000,00NTRFNONREF//LN902150\n:86:/COMM/Amitabh Bachchan/LN902150/DISB/5000000/TDS/7500\n:62F:C260930INR5135000,00`,
-  );
+  const [importCsvText, setImportCsvText] = useState('');
+  const [importMt940Text, setImportMt940Text] = useState('');
 
   // Resolve Exception Form
   const [resolveStatus, setResolveStatus] = useState<'RESOLVED' | 'WRITTEN_OFF' | 'INVESTIGATING'>(
@@ -110,33 +109,32 @@ export function ReconciliationDashboardPage() {
 
   // Propose Adjustment Form
   const [adjType, setAdjType] = useState<'WRITE_OFF' | 'CLAWBACK' | 'CORRECTION' | 'TAX'>('CORRECTION');
-  const [adjAmount, setAdjAmount] = useState('5000');
-  const [adjReason, setAdjReason] = useState('Lender reporting discrepancy adjustment');
+  const [adjAmount, setAdjAmount] = useState('');
+  const [adjReason, setAdjReason] = useState('');
   const [adjCalcId, setAdjCalcId] = useState('');
   const [adjPayableId, setAdjPayableId] = useState('');
 
   // Dispute Form
   const [dispPartyType, setDispPartyType] = useState<'LENDER' | 'CONNECTOR'>('LENDER');
-  const [dispPartyId, setDispPartyId] = useState('lnd_hdfc_bank');
+  const [dispPartyId, setDispPartyId] = useState('');
   const [dispSubjectType, setDispSubjectType] = useState<'STATEMENT_LINE' | 'PAYOUT' | 'CALCULATION'>(
     'STATEMENT_LINE',
   );
-  const [dispSubjectId, setDispSubjectId] = useState('stl_example_01');
-  const [dispReason, setDispReason] = useState('Lender commission statement short by ₹5,000 on tranche #2');
+  const [dispSubjectId, setDispSubjectId] = useState('');
+  const [dispReason, setDispReason] = useState('');
   const [dispHoldPayables, setDispHoldPayables] = useState('');
 
   // Update Dispute Form
   const [updateDispStatus, setUpdateDispStatus] = useState('RESOLVED');
-  const [updateDispResolution, setUpdateDispResolution] = useState(
-    'Dispute verified against lender confirmation email',
-  );
+  const [updateDispResolution, setUpdateDispResolution] = useState('');
   const [updateDispReleaseHolds, setUpdateDispReleaseHolds] = useState(true);
 
   // Bank Settlement Form
   const [bankPayoutId, setBankPayoutId] = useState('');
-  const [bankRef, setBankRef] = useState('UTR982341209384');
-  const [bankAmount, setBankAmount] = useState('150000');
-  const [bankDate, setBankDate] = useState('2026-09-20');
+  const [bankRef, setBankRef] = useState('');
+  const [bankAmount, setBankAmount] = useState('');
+  const [bankDate, setBankDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const lenders = useLookup<{ id: string; name: string }>('/v1/lenders');
 
   // Permissions
   const canReconcile = hasPermission(me, 'finance.reconcile');
@@ -173,22 +171,47 @@ export function ReconciliationDashboardPage() {
     setFeedback(null);
     try {
       const rows = importCsvText.trim().split('\n').filter(Boolean);
+      // Every column is required: a row with a missing or non-numeric value is refused, never filled in.
+      const bad = rows.findIndex((r) => {
+        const [loanAccount, customerName, disbursed, comm, tax, paidOn] = r.split(',').map((x) => x.trim());
+        return (
+          !loanAccount ||
+          !customerName ||
+          !(Number(disbursed) > 0) ||
+          !(Number(comm) >= 0) ||
+          comm === '' ||
+          !(Number(tax) >= 0) ||
+          tax === '' ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(paidOn ?? '')
+        );
+      });
+      if (rows.length === 0 || bad >= 0) {
+        setFeedback({
+          message:
+            rows.length === 0
+              ? 'Paste the statement lines to import.'
+              : `Line ${bad + 1} is incomplete: every line needs LoanAccount, CustomerName, DisbursedAmount, CommissionAmount, TaxDeducted and PaidOn (YYYY-MM-DD).`,
+          type: 'error',
+        });
+        setLoading(false);
+        return;
+      }
       const lines = rows.map((r, i) => {
-        const [loanAccount, customerName, disbursed, comm, tax, paidOn] = r.split(',').map((s) => s.trim());
+        const [loanAccount, customerName, disbursed, comm, tax, paidOn] = r.split(',').map((x) => x.trim());
         return {
-          loanAccount: loanAccount || `LN_${i + 1}`,
-          customerName: customerName || 'Customer',
-          disbursedAmount: Number(disbursed) || 100000,
-          commissionAmount: Number(comm) || 1500,
-          taxDeducted: Number(tax) || 0,
-          paidOn: paidOn || '2026-09-15',
+          loanAccount: loanAccount!,
+          customerName: customerName!,
+          disbursedAmount: Number(disbursed),
+          commissionAmount: Number(comm),
+          taxDeducted: Number(tax),
+          paidOn: paidOn!,
           rawRowRef: `csv_row_${i + 1}`,
         };
       });
 
-      // Simple deterministic file sha256 mock
+      // The sha256 of the statement as pasted, so the same file imported twice is recognised.
       const encoder = new TextEncoder();
-      const data = encoder.encode(importCsvText + importLenderId + importPeriod + Date.now());
+      const data = encoder.encode(importCsvText);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const fileSha256 = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -1116,14 +1139,21 @@ export function ReconciliationDashboardPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={3}>
-                <LenderSelect
+                <TextField
+                  select
                   size="small"
                   label="Lender"
-                  value={importLenderId || null}
-                  onChange={(id) => setImportLenderId(id ?? '')}
+                  value={importLenderId}
+                  onChange={(e) => setImportLenderId(e.target.value)}
                   fullWidth
                   required
-                />
+                >
+                  {(lenders.data ?? []).map((l) => (
+                    <MenuItem key={l.id} value={l.id}>
+                      {l.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid item xs={3}>
                 <TextField
@@ -1158,6 +1188,7 @@ export function ReconciliationDashboardPage() {
                   value={importMt940Text}
                   onChange={(e) => setImportMt940Text(e.target.value)}
                   fullWidth
+                  placeholder="Paste the lender's MT940 statement"
                   data-testid="rec.input.mt940"
                   sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
                 />
@@ -1174,7 +1205,7 @@ export function ReconciliationDashboardPage() {
                   value={importCsvText}
                   onChange={(e) => setImportCsvText(e.target.value)}
                   fullWidth
-                  placeholder="LN902148,Rajesh Kumar,1500000,22500,2250,2026-09-15"
+                  placeholder="One line per loan: LoanAccount,CustomerName,DisbursedAmount,CommissionAmount,TaxDeducted,PaidOn"
                   data-testid="rec.input.csv"
                   sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
                 />
@@ -1332,7 +1363,10 @@ export function ReconciliationDashboardPage() {
                   <Select
                     value={dispPartyType}
                     label="Party Type"
-                    onChange={(e) => setDispPartyType(e.target.value as any)}
+                    onChange={(e) => {
+                      setDispPartyType(e.target.value as 'LENDER' | 'CONNECTOR');
+                      setDispPartyId('');
+                    }}
                   >
                     <MenuItem value="LENDER">LENDER</MenuItem>
                     <MenuItem value="CONNECTOR">CONNECTOR</MenuItem>
@@ -1340,13 +1374,30 @@ export function ReconciliationDashboardPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <TextField
-                  label="Party Identifier"
-                  value={dispPartyId}
-                  onChange={(e) => setDispPartyId(e.target.value)}
-                  fullWidth
-                  required
-                />
+                {dispPartyType === 'LENDER' ? (
+                  <TextField
+                    select
+                    label="Lender"
+                    value={dispPartyId}
+                    onChange={(e) => setDispPartyId(e.target.value)}
+                    fullWidth
+                    required
+                  >
+                    {(lenders.data ?? []).map((l) => (
+                      <MenuItem key={l.id} value={l.id}>
+                        {l.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    label="Connector ID"
+                    value={dispPartyId}
+                    onChange={(e) => setDispPartyId(e.target.value)}
+                    fullWidth
+                    required
+                  />
+                )}
               </Grid>
             </Grid>
             <Grid container spacing={2}>

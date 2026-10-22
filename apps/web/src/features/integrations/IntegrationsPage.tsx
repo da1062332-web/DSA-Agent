@@ -44,6 +44,7 @@ import type {
   IntegrationStatus,
 } from '@dsa/contracts';
 import { configureIntegration, fetchCapabilities, fetchIntegrations, pingIntegration } from './api';
+import { useMe } from '../../api/useMe';
 
 function RefreshIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
@@ -79,6 +80,8 @@ function FlashIcon(props: React.ComponentProps<typeof SvgIcon>) {
 
 export function IntegrationsPage() {
   const queryClient = useQueryClient();
+  // Credential references live under the caller's own tenant in the vault.
+  const tenantRef = useMe().data?.tenantId ?? 'tenant';
   const [envFilter, setEnvFilter] = useState<'ALL' | IntegrationEnvironment>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -88,7 +91,7 @@ export function IntegrationsPage() {
   const [formProvider, setFormProvider] = useState('TWILIO');
   const [formCapability, setFormCapability] = useState('MESSAGING.SMS');
   const [formEnv, setFormEnv] = useState<IntegrationEnvironment>('SANDBOX');
-  const [formCredRef, setFormCredRef] = useState('vault://tenants/ten_demo_01/sandbox/twilio/credentials');
+  const [formCredRef, setFormCredRef] = useState(`vault://tenants/${tenantRef}/sandbox/twilio/credentials`);
   const [formConfigJson, setFormConfigJson] = useState('{\n  "senderId": "DSACRM",\n  "timeoutMs": 5000\n}');
   const [formStatus, setFormStatus] = useState<IntegrationStatus>('ACTIVE');
   const [formError, setFormError] = useState<string | null>(null);
@@ -152,7 +155,7 @@ export function IntegrationsPage() {
     setFormProvider('TWILIO');
     setFormCapability('MESSAGING.SMS');
     setFormEnv('SANDBOX');
-    setFormCredRef('vault://tenants/ten_demo_01/sandbox/twilio/credentials');
+    setFormCredRef(`vault://tenants/${tenantRef}/sandbox/twilio/credentials`);
     setFormConfigJson('{\n  "senderId": "DSACRM",\n  "timeoutMs": 5000\n}');
     setFormStatus('ACTIVE');
     setFormError(null);
@@ -569,7 +572,7 @@ export function IntegrationsPage() {
                     const p = e.target.value;
                     setFormProvider(p);
                     setFormCredRef(
-                      `vault://tenants/ten_demo_01/${formEnv.toLowerCase()}/${p.toLowerCase()}/credentials`,
+                      `vault://tenants/${tenantRef}/${formEnv.toLowerCase()}/${p.toLowerCase()}/credentials`,
                     );
                   }}
                 >
@@ -611,7 +614,7 @@ export function IntegrationsPage() {
                     const env = e.target.value as IntegrationEnvironment;
                     setFormEnv(env);
                     setFormCredRef(
-                      `vault://tenants/ten_demo_01/${env.toLowerCase()}/${formProvider.toLowerCase()}/credentials`,
+                      `vault://tenants/${tenantRef}/${env.toLowerCase()}/${formProvider.toLowerCase()}/credentials`,
                     );
                   }}
                 >

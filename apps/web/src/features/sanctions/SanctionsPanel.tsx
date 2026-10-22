@@ -83,6 +83,19 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
     evidenceDocumentId: 'doc_disbursal_receipt_01',
   });
 
+  // Form validation errors
+  const [sanctionErrors, setSanctionErrors] = useState<{
+    amount?: string;
+    tenureMonths?: string;
+    rateValue?: string;
+    validUntil?: string;
+  }>({});
+  const [trancheErrors, setTrancheErrors] = useState<{
+    amount?: string;
+    utr?: string;
+    loanAccountNumber?: string;
+  }>({});
+
   // Verify form
   const [verifyForm, setVerifyForm] = useState<VerifyTrancheInput>({
     decision: 'VERIFY',
@@ -122,10 +135,34 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
   const handleRecordSanction = async () => {
     if (!lenderCaseId) return;
+    const errors: { amount?: string; tenureMonths?: string; rateValue?: string; validUntil?: string } = {};
+
+    if (!sanctionForm.amount || isNaN(sanctionForm.amount) || sanctionForm.amount <= 0) {
+      errors.amount = 'Sanction amount must be greater than zero.';
+    }
+    if (!sanctionForm.tenureMonths || isNaN(sanctionForm.tenureMonths) || sanctionForm.tenureMonths <= 0) {
+      errors.tenureMonths = 'Tenure must be at least 1 month.';
+    }
+    if (
+      sanctionForm.rateValue === undefined ||
+      isNaN(sanctionForm.rateValue) ||
+      sanctionForm.rateValue <= 0 ||
+      sanctionForm.rateValue > 100
+    ) {
+      errors.rateValue = 'Interest rate must be between 0.01% and 100%.';
+    }
+    if (sanctionForm.validUntil && sanctionForm.sanctionDate && sanctionForm.validUntil < sanctionForm.sanctionDate) {
+      errors.validUntil = 'Valid until date cannot precede the sanction date.';
+    }
+
+    setSanctionErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       setError(null);
       await sanctionsApi.recordSanction(lenderCaseId, sanctionForm);
       setSanctionDialogOpen(false);
+      setSanctionErrors({});
       await fetchSanctions();
     } catch (err: any) {
       setError(err.message ?? 'Failed to record sanction');
@@ -134,10 +171,28 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
   const handleRecordTranche = async () => {
     if (!activeSanction) return;
+    const errors: { amount?: string; utr?: string; loanAccountNumber?: string } = {};
+
+    if (!trancheForm.amount || isNaN(trancheForm.amount) || trancheForm.amount <= 0) {
+      errors.amount = 'Tranche amount must be greater than zero.';
+    } else if (trancheForm.amount > remainingSanctionLimit) {
+      errors.amount = `Tranche amount cannot exceed remaining limit of ₹${remainingSanctionLimit.toLocaleString('en-IN')}.`;
+    }
+    if (!trancheForm.utr || !trancheForm.utr.trim()) {
+      errors.utr = 'UTR reference is required.';
+    }
+    if (!trancheForm.loanAccountNumber || !trancheForm.loanAccountNumber.trim()) {
+      errors.loanAccountNumber = 'Loan account number is required.';
+    }
+
+    setTrancheErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       setError(null);
       await sanctionsApi.recordTranche(activeSanction.id, trancheForm);
       setTrancheDialogOpen(false);
+      setTrancheErrors({});
       await fetchSanctions();
     } catch (err: any) {
       setError(err.message ?? 'Failed to record tranche');
@@ -407,8 +462,15 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 label="Sanction Amount (₹)"
                 type="number"
                 fullWidth
+                required
+                error={Boolean(sanctionErrors.amount)}
+                helperText={sanctionErrors.amount}
                 value={sanctionForm.amount}
-                onChange={(e) => setSanctionForm({ ...sanctionForm, amount: Number(e.target.value) })}
+                onChange={(e) => {
+                  setSanctionForm({ ...sanctionForm, amount: Number(e.target.value) });
+                  if (sanctionErrors.amount) setSanctionErrors((prev) => ({ ...prev, amount: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'sanction.amount' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -416,8 +478,15 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 label="Tenure (Months)"
                 type="number"
                 fullWidth
+                required
+                error={Boolean(sanctionErrors.tenureMonths)}
+                helperText={sanctionErrors.tenureMonths}
                 value={sanctionForm.tenureMonths}
-                onChange={(e) => setSanctionForm({ ...sanctionForm, tenureMonths: Number(e.target.value) })}
+                onChange={(e) => {
+                  setSanctionForm({ ...sanctionForm, tenureMonths: Number(e.target.value) });
+                  if (sanctionErrors.tenureMonths) setSanctionErrors((prev) => ({ ...prev, tenureMonths: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'sanction.tenureMonths' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -425,8 +494,15 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 label="Interest Rate (%)"
                 type="number"
                 fullWidth
+                required
+                error={Boolean(sanctionErrors.rateValue)}
+                helperText={sanctionErrors.rateValue}
                 value={sanctionForm.rateValue}
-                onChange={(e) => setSanctionForm({ ...sanctionForm, rateValue: Number(e.target.value) })}
+                onChange={(e) => {
+                  setSanctionForm({ ...sanctionForm, rateValue: Number(e.target.value) });
+                  if (sanctionErrors.rateValue) setSanctionErrors((prev) => ({ ...prev, rateValue: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'sanction.rateValue' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -434,6 +510,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 fullWidth
                 value={sanctionForm.rateType}
                 onChange={(e) => setSanctionForm({ ...sanctionForm, rateType: e.target.value as RateType })}
+                data-testid="sanction.rateType"
               >
                 <MenuItem value="FLOATING">Floating Rate</MenuItem>
                 <MenuItem value="FIXED">Fixed Rate</MenuItem>
@@ -447,6 +524,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 InputLabelProps={{ shrink: true }}
                 value={sanctionForm.sanctionDate}
                 onChange={(e) => setSanctionForm({ ...sanctionForm, sanctionDate: e.target.value })}
+                inputProps={{ 'data-testid': 'sanction.date' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -454,16 +532,22 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 label="Valid Until"
                 type="date"
                 fullWidth
+                error={Boolean(sanctionErrors.validUntil)}
+                helperText={sanctionErrors.validUntil}
                 InputLabelProps={{ shrink: true }}
                 value={sanctionForm.validUntil}
-                onChange={(e) => setSanctionForm({ ...sanctionForm, validUntil: e.target.value })}
+                onChange={(e) => {
+                  setSanctionForm({ ...sanctionForm, validUntil: e.target.value });
+                  if (sanctionErrors.validUntil) setSanctionErrors((prev) => ({ ...prev, validUntil: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'sanction.validUntil' }}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSanctionDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleRecordSanction}>
+          <Button variant="contained" onClick={handleRecordSanction} data-testid="sanction.save-btn">
             Save Sanction
           </Button>
         </DialogActions>
@@ -489,8 +573,15 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 label="Tranche Amount (₹)"
                 type="number"
                 fullWidth
+                required
+                error={Boolean(trancheErrors.amount)}
+                helperText={trancheErrors.amount}
                 value={trancheForm.amount}
-                onChange={(e) => setTrancheForm({ ...trancheForm, amount: Number(e.target.value) })}
+                onChange={(e) => {
+                  setTrancheForm({ ...trancheForm, amount: Number(e.target.value) });
+                  if (trancheErrors.amount) setTrancheErrors((prev) => ({ ...prev, amount: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'tranche.amount' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -501,22 +592,37 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 InputLabelProps={{ shrink: true }}
                 value={trancheForm.disbursedOn}
                 onChange={(e) => setTrancheForm({ ...trancheForm, disbursedOn: e.target.value })}
+                inputProps={{ 'data-testid': 'tranche.date' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="UTR Reference"
                 fullWidth
+                required
+                error={Boolean(trancheErrors.utr)}
+                helperText={trancheErrors.utr}
                 value={trancheForm.utr}
-                onChange={(e) => setTrancheForm({ ...trancheForm, utr: e.target.value })}
+                onChange={(e) => {
+                  setTrancheForm({ ...trancheForm, utr: e.target.value });
+                  if (trancheErrors.utr) setTrancheErrors((prev) => ({ ...prev, utr: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'tranche.utr' }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Loan Account Number"
                 fullWidth
+                required
+                error={Boolean(trancheErrors.loanAccountNumber)}
+                helperText={trancheErrors.loanAccountNumber}
                 value={trancheForm.loanAccountNumber}
-                onChange={(e) => setTrancheForm({ ...trancheForm, loanAccountNumber: e.target.value })}
+                onChange={(e) => {
+                  setTrancheForm({ ...trancheForm, loanAccountNumber: e.target.value });
+                  if (trancheErrors.loanAccountNumber) setTrancheErrors((prev) => ({ ...prev, loanAccountNumber: undefined }));
+                }}
+                inputProps={{ 'data-testid': 'tranche.loanAccount' }}
               />
             </Grid>
           </Grid>
@@ -527,6 +633,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
             variant="contained"
             disabled={trancheForm.amount > remainingSanctionLimit}
             onClick={handleRecordTranche}
+            data-testid="tranche.save-btn"
           >
             Record Tranche
           </Button>

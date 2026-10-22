@@ -72,21 +72,20 @@ export function VerificationPage() {
 
   // Form State
   const [formSubjectType, setFormSubjectType] = useState<VerificationSubjectType>('LOAN_APPLICATION');
-  const [formSubjectId, setFormSubjectId] = useState('app_01ARZ3NDEKTSV4RRFFQ69G5FAV');
+  const [formSubjectId, setFormSubjectId] = useState('');
   const [formCheckType, setFormCheckType] = useState<VerificationCheckType>('PAN');
   const [formMethod, setFormMethod] = useState<VerificationMethod>('MANUAL');
   const [formPurpose, setFormPurpose] = useState<VerificationPurpose>('KYC');
-  const [formConsentId, setFormConsentId] = useState('cnst_demo_ver_01');
-  const [formResult, setFormResult] = useState<VerificationResult>('VERIFIED');
-  const [formStatusDesc, setFormStatusDesc] = useState('Identity details confirmed against official records');
-  const [formMaskedId, setFormMaskedId] = useState('ABCDE****F');
-  const [formMatchScore, setFormMatchScore] = useState<number>(98);
+  const [formConsentId, setFormConsentId] = useState('');
+  // Nothing about the outcome is prefilled: the verifier records what they found (QA plan: never fabricate a pass).
+  const [formResult, setFormResult] = useState<VerificationResult | ''>('');
+  const [formStatusDesc, setFormStatusDesc] = useState('');
+  const [formMaskedId, setFormMaskedId] = useState('');
+  const [formMatchScore, setFormMatchScore] = useState<number>(0);
   const [formDiscrepancies, setFormDiscrepancies] = useState('');
-  const [formEvidenceRef, setFormEvidenceRef] = useState('upl_pan_card_copy_01.pdf');
+  const [formEvidenceRef, setFormEvidenceRef] = useState('');
   const [formValidityDays, setFormValidityDays] = useState<number>(365);
-  const [formNotes, setFormNotes] = useState(
-    'Verified document signature, watermark, and clear visual photo match.',
-  );
+  const [formNotes, setFormNotes] = useState('');
 
   // Fetch Verifications (API-VER-002)
   const queryParams = new URLSearchParams();
@@ -133,6 +132,13 @@ export function VerificationPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formSubjectId.trim() || !formConsentId.trim() || !formResult || !formStatusDesc.trim()) {
+      setFeedback({
+        message: 'Fill in the subject, the consent record, the result and what you found.',
+        severity: 'error',
+      });
+      return;
+    }
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + formValidityDays);
 
@@ -529,7 +535,7 @@ export function VerificationPage() {
                     required
                     value={formSubjectId}
                     onChange={(e) => setFormSubjectId(e.target.value)}
-                    helperText="e.g. app_01ARZ3NDEKTSV4RRFFQ69G5FAV or cust_..."
+                    helperText="The application, customer or lead ID being verified"
                   />
                 </Grid>
 
@@ -615,6 +621,9 @@ export function VerificationPage() {
                       label="Verification Result"
                       onChange={(e) => setFormResult(e.target.value as VerificationResult)}
                     >
+                      <MenuItem value="" disabled>
+                        Choose the outcome
+                      </MenuItem>
                       <MenuItem value="VERIFIED">VERIFIED (Pass)</MenuItem>
                       <MenuItem value="REJECTED">REJECTED (Fail)</MenuItem>
                       <MenuItem value="FLAGGED">FLAGGED (Review Required)</MenuItem>

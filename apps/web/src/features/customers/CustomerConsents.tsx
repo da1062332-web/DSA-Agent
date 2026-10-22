@@ -35,29 +35,19 @@ import {
 import { getCustomer, getCustomerConsents, recordCustomerConsent, withdrawConsent } from './api';
 import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
+import { useLookup } from '../admin/api';
 import type { ConsentResource, RecordConsentPayload } from './types';
-
-// Human-friendly branch map
-const BRANCH_NAMES: Record<string, string> = {
-  br_demo_01: 'Mumbai Central (MUM01)',
-  br_01JMUMBAI000000000000000000: 'Mumbai Central (MUM01)',
-  br_01M4SXZC0AQGYTCAXDYW7X5P5G: 'Mumbai Central (MUM01)',
-  br_01M4SXZKQBPV90E84AHJXMVBG9: 'Mumbai Central (MUM01)',
-  br_01M51P6RD79G416WCM2DRC81QE: 'Mumbai Central (MUM02)',
-  br_01M4SXZC2066CKN733T19QJ1T9: 'Pune Camp (PUN01)',
-  br_01M4SXZKRV8TA1K0PFRFSH9AZW: 'Pune Camp (PUN01)',
-  br_01M4ZJ8H51XBQ0A3RWZSBVRZAP: 'Platform Operations',
-};
-
-function formatBranch(id?: string | null): string {
-  if (!id) return '—';
-  return BRANCH_NAMES[id] || id;
-}
 
 export function CustomerConsents(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
   const customerId = (id || '').replace(/[)\s]+$/, '');
   const queryClient = useQueryClient();
+  const branches = useLookup<{ id: string; code: string; name: string }>('/v1/branches');
+  const formatBranch = (branchId?: string | null): string => {
+    if (!branchId) return '—';
+    const b = (branches.data ?? []).find((x) => x.id === branchId);
+    return b ? `${b.name} (${b.code})` : branchId;
+  };
 
   const [openDialog, setOpenDialog] = useState(false);
   const [purpose, setPurpose] = useState<RecordConsentPayload['purpose']>('CONTACT');
@@ -453,23 +443,41 @@ export function CustomerConsents(): React.ReactElement {
               <LenderSelect
                 label="Target Lender *"
                 value={purposeTarget || null}
-                onChange={(val) => setPurposeTarget(val ?? '')}
+                onChange={(val) => {
+                  setPurposeTarget(val ?? '');
+                  if (actionError) setActionError(null);
+                }}
                 size="small"
                 fullWidth
                 required
-                helperText="Lender organization with whom consent is granted"
+                error={Boolean(actionError && !purposeTarget.trim())}
+                helperText={
+                  actionError && !purposeTarget.trim()
+                    ? 'Target lender is required'
+                    : 'Lender organization with whom consent is granted'
+                }
+                data-testid="consent.purposeTarget"
               />
             )}
 
             {purpose === 'VERIFICATION_CHECK' && (
               <TextField
                 label="Verification Agency / Target *"
-                value={purposeTarget || ''}
-                onChange={(e) => setPurposeTarget(e.target.value)}
+                value={purposeTarget}
+                onChange={(e) => {
+                  setPurposeTarget(e.target.value);
+                  if (actionError) setActionError(null);
+                }}
                 size="small"
                 fullWidth
                 required
-                helperText="Identifier or name of agency conducting verification"
+                error={Boolean(actionError && !purposeTarget.trim())}
+                helperText={
+                  actionError && !purposeTarget.trim()
+                    ? 'Target agency identifier is required'
+                    : 'Identifier or name of agency conducting verification'
+                }
+                inputProps={{ 'data-testid': 'consent.purposeTarget' }}
               />
             )}
 
@@ -479,6 +487,7 @@ export function CustomerConsents(): React.ReactElement {
               onChange={(e) => setNoticeVersion(e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ 'data-testid': 'consent.noticeVersion' }}
             />
 
             <FormControl fullWidth size="small">
@@ -488,6 +497,7 @@ export function CustomerConsents(): React.ReactElement {
                 value={channel}
                 label="Channel"
                 onChange={(e) => setChannel(e.target.value as RecordConsentPayload['channel'])}
+                data-testid="consent.channel"
               >
                 <MenuItem value="WEB_FORM">WEB_FORM</MenuItem>
                 <MenuItem value="OTP">OTP</MenuItem>
@@ -505,6 +515,7 @@ export function CustomerConsents(): React.ReactElement {
               size="small"
               fullWidth
               placeholder="e.g. DOC-SIGNED-001"
+              inputProps={{ 'data-testid': 'consent.evidenceRef' }}
             />
           </Stack>
         </DialogContent>
@@ -512,10 +523,18 @@ export function CustomerConsents(): React.ReactElement {
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
           <Button
             variant="contained"
+            data-testid="consent.submit"
             onClick={() => {
+              if (
+                (purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') &&
+                !purposeTarget.trim()
+              ) {
+                setActionError('Target lender or agency identifier is required for this consent purpose.');
+                return;
+              }
               const target =
                 purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
-                  ? purposeTarget.trim() || 'LENDER_HDFC_01'
+                  ? purposeTarget.trim()
                   : purposeTarget.trim() || undefined;
               recordMutation.mutate({
                 purpose,

@@ -62,13 +62,13 @@ export const statusTone = (s: ChecklistStatus): Tone =>
 export function nextAction(item: Pick<ChecklistItem, 'status'>): string | null {
   switch (item.status) {
     case 'PENDING':
-      return 'Ask the customer to upload it (Document sharing).';
+      return 'Upload it here, or ask the customer through Document sharing.';
     case 'SUBMITTED':
-      return 'A verifier reviews it (Verification).';
+      return 'A verifier reviews it (Review).';
     case 'REJECTED':
-      return 'Ask the customer to send it again (Document sharing).';
+      return 'Upload a new version, or ask the customer to send it again.';
     case 'EXPIRED':
-      return 'Ask the customer for a current copy (Document sharing).';
+      return 'Upload a current copy, or ask the customer for one.';
     default:
       return null;
   }
@@ -90,6 +90,31 @@ export function groupByParty(items: ChecklistItem[]): { partyId: string; items: 
       (a, b) => a.documentTypeCode.localeCompare(b.documentTypeCode) || a.ordinal - b.ordinal,
     ),
   }));
+}
+
+/**
+ * Which document actions a checklist row offers (SUB-DOC.03, .05, .07 and API-APP-009). The item's status decides which actions make
+ * sense, and the permission each endpoint checks decides whether this user is offered it; the API refuses the request either way.
+ */
+export interface ItemActions {
+  upload: boolean; // API-DOC-001/002, document.upload; a new upload becomes the next version
+  view: boolean; // API-DOC-003/004, document.view
+  review: boolean; // API-DOC-006, document.review; only a received file waits for review
+  waive: boolean; // API-APP-009, document.waive
+}
+
+const CLOSED: ChecklistStatus[] = ['ACCEPTED', 'WAIVED', 'NOT_APPLICABLE'];
+
+export function itemActions(
+  item: Pick<ChecklistItem, 'status' | 'documentId'>,
+  can: (code: string) => boolean,
+): ItemActions {
+  return {
+    upload: !CLOSED.includes(item.status) && can('document.upload'),
+    view: !!item.documentId && can('document.view'),
+    review: item.status === 'SUBMITTED' && !!item.documentId && can('document.review'),
+    waive: !CLOSED.includes(item.status) && can('document.waive'),
+  };
 }
 
 export function progressText(s: ChecklistSummary): string {

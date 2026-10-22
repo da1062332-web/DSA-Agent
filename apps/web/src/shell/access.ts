@@ -167,7 +167,14 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         label: 'Approvals',
         to: '/approvals',
-        anyOf: ['config.manage', 'data_correction.request', 'data_correction.approve'],
+        // Finance checkers find their queue here too (QA plan Module 13B: "open /approvals").
+        anyOf: [
+          'config.manage',
+          'data_correction.request',
+          'data_correction.approve',
+          'commission.plan.approve',
+          'payout.approve',
+        ],
       },
       { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
       { label: 'Security', to: '/account/security' },
@@ -197,6 +204,8 @@ export const NAV_GROUPS: NavGroup[] = [
  */
 export const EXTRA_ROUTE_RULES: { to: string; anyOf?: string[] }[] = [
   { to: '/leads/new', anyOf: ['lead.create'] },
+  // The duplicate review queue (API-LEAD-008) answers 403 without lead.merge.
+  { to: '/leads/duplicates', anyOf: ['lead.merge'] },
   { to: '/permissions', anyOf: ['user.manage', 'role.manage'] },
   { to: '/grievances', anyOf: ['complaint.create', 'complaint.manage'] },
   { to: '/message-templates', anyOf: ['message.send', 'config.manage'] },
@@ -276,6 +285,7 @@ export type ActionId =
   | 'lead.reopen'
   | 'lead.convert'
   | 'lead.qualify'
+  | 'lead.merge'
   | 'lead.archive'
   // Lender cases
   | 'lender_case.submit'
@@ -352,6 +362,7 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'lead.reopen': ['lead.reopen', 'lead.update'], // fallback to lead.update supported
   'lead.convert': ['lead.convert'],
   'lead.qualify': ['lead.qualify'],
+  'lead.merge': ['lead.merge'],
   'lead.archive': ['lead.archive'],
 
   // Lender cases
@@ -430,10 +441,7 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
  * Checks whether a user holding a given permission tester can perform an action.
  * Evaluates anyOf semantics against ACTION_RULES, or falls back to testing the code directly.
  */
-export function canPerformAction(
-  action: ActionId | string,
-  can: (code: string) => boolean,
-): boolean {
+export function canPerformAction(action: ActionId | string, can: (code: string) => boolean): boolean {
   const allowedCodes = (ACTION_RULES as Record<string, string[]>)[action];
   if (!allowedCodes || allowedCodes.length === 0) {
     return can(action);

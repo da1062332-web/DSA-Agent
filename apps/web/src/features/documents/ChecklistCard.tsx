@@ -1,7 +1,9 @@
-// The document checklist of one application (owner: Dev 3, MOD-DOC checklist slice, API-APP-007). Read only: items move through
-// document sharing (customer upload) and verification (reviewer attestation); upload, storage and scanning are TASK-401.
+// The document checklist of one application (owner: Dev 3; DSA Notion MODULE 20, API-APP-007 and API-APP-008). Each row offers the
+// document actions this user may take (upload, view, review, waive: ChecklistItemActions); customers can also upload through
+// Document sharing. "Check completeness" asks the API whether every mandatory item is accepted, waived or not applicable.
 import {
   Alert,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -14,13 +16,16 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
+import { useMutation } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
 import { ErrorAlert, Loading } from '../admin/components';
-import { useChecklist } from './api';
+import { checkCompleteness, useChecklist } from './api';
+import { ChecklistItemActions } from './ChecklistItemActions';
 import { groupByParty, nextAction, progressText, readable, STATUS_LABELS, statusTone } from './model';
 
 export function ChecklistCard({ applicationId }: { applicationId: string }) {
   const q = useChecklist(applicationId);
+  const check = useMutation({ meta: { silent: true }, mutationFn: () => checkCompleteness(applicationId) });
   return (
     <Card sx={{ mt: 3 }} data-testid="checklist-card">
       <CardContent>
@@ -50,6 +55,7 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
                       <TableCell>Required</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Next step</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -74,13 +80,37 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
                             {nextAction(i) ?? '-'}
                           </Typography>
                         </TableCell>
+                        <TableCell>
+                          <ChecklistItemActions item={i} />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
             ))}
-            <Stack direction="row" spacing={2}>
+            {check.data && (
+              <Alert
+                severity={check.data.result === 'COMPLETE' ? 'success' : 'warning'}
+                sx={{ mb: 2 }}
+                data-testid="documents.completeness-result"
+              >
+                {check.data.result === 'COMPLETE'
+                  ? 'Complete: every mandatory document is accepted, waived or not applicable.'
+                  : `Incomplete: ${check.data.reasons.map((r) => readable(r.text)).join('; ')}.`}
+              </Alert>
+            )}
+            <ErrorAlert error={check.error} />
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={check.isPending}
+                onClick={() => check.mutate()}
+                data-testid="documents.check-completeness"
+              >
+                Check completeness
+              </Button>
               <RouterLink to="/document-sharing">Document sharing</RouterLink>
               <RouterLink to="/verifications">Verification</RouterLink>
             </Stack>

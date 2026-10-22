@@ -10,9 +10,9 @@ import { routes } from './routes';
 
 describe('Module 19 — Verification Detail & Create Dialog Component Rendering', () => {
   it('renders VerificationCreateDialog with all form fields and actions when open', () => {
-    const queryClient = new QueryClient();
+    // The application and branch are picked from the API's lists, so the dialog needs a query client.
     const html = renderToString(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={new QueryClient()}>
         <VerificationCreateDialog open={true} onClose={() => {}} onSuccess={() => {}} />
       </QueryClientProvider>,
     );

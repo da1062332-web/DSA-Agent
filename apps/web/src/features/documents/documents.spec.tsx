@@ -21,7 +21,7 @@ vi.mock('../../config', () => ({
 
 import { getChecklist } from './api';
 import { DocumentsPage } from './DocumentsPage';
-import { groupByParty, nextAction, progressText, statusTone, type ChecklistItem } from './model';
+import { groupByParty, itemActions, nextAction, progressText, statusTone, type ChecklistItem } from './model';
 import { routes } from './routes';
 
 const item = (over: Partial<ChecklistItem>): ChecklistItem => ({
@@ -129,5 +129,47 @@ describe('checklist API call', () => {
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe('http://api.test/v1/applications/app%201%2Fx/checklist');
     expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token');
+  });
+});
+
+describe('checklist row actions (CMP-DOC.03.1, CMP-DOC.05.1, API-APP-009)', () => {
+  const can =
+    (...codes: string[]) =>
+    (c: string) =>
+      codes.includes(c);
+
+  it('TEST-UI-DOC-10 a pending item offers upload and waive to the roles holding them, never review', () => {
+    const a = itemActions(
+      item({ status: 'PENDING' }),
+      can('document.upload', 'document.waive', 'document.review'),
+    );
+    expect(a).toEqual({ upload: true, view: false, review: false, waive: true });
+  });
+
+  it('TEST-UI-DOC-11 a received file can be viewed and reviewed by a verifier, who cannot upload or waive', () => {
+    const a = itemActions(
+      item({ status: 'SUBMITTED', documentId: 'doc_1' }),
+      can('document.view', 'document.review'),
+    );
+    expect(a).toEqual({ upload: false, view: true, review: true, waive: false });
+  });
+
+  it('TEST-UI-DOC-12 an accepted, waived or not-applicable item is closed to upload, review and waiver', () => {
+    for (const status of ['ACCEPTED', 'WAIVED', 'NOT_APPLICABLE'] as const) {
+      const a = itemActions(
+        item({ status, documentId: 'doc_1' }),
+        can('document.upload', 'document.view', 'document.review', 'document.waive'),
+      );
+      expect(a).toEqual({ upload: false, view: true, review: false, waive: false });
+    }
+  });
+
+  it('TEST-UI-DOC-13 a rejected item can get a new version but not another review until one arrives', () => {
+    const a = itemActions(
+      item({ status: 'REJECTED', documentId: 'doc_1' }),
+      can('document.upload', 'document.review'),
+    );
+    expect(a.upload).toBe(true);
+    expect(a.review).toBe(false);
   });
 });

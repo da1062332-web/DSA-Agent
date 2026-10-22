@@ -1552,8 +1552,8 @@ export function ConnectorPage() {
             onClick={() => {
               createConnectorMutation.mutate({
                 ...newConnector,
-                primaryBranchId: newConnector.primaryBranchId || me.data?.primaryBranchId || 'br_demo_01',
-                relationshipOwnerUserId: newConnector.relationshipOwnerUserId || me.data?.id || 'usr_demo_01',
+                primaryBranchId: newConnector.primaryBranchId || me.data?.primaryBranchId,
+                relationshipOwnerUserId: newConnector.relationshipOwnerUserId || me.data?.id,
               } as CreateConnectorInput);
             }}
           >

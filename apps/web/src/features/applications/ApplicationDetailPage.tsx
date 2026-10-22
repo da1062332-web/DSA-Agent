@@ -1,9 +1,21 @@
 // /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 010). Edit the applicant request while the
 // status allows it, and put the file on hold with a reason. Every change sends the version the screen loaded (If-Match),
 // so a stale screen gets the conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
-import { Alert, Box, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Link,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
+import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
@@ -66,40 +78,7 @@ export function ApplicationDetailPage() {
         </Alert>
       )}
 
-      {/* Applicant & Servicing Overview */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4} divider={<Box sx={{ borderRight: 1, borderColor: 'divider', display: { xs: 'none', sm: 'block' } }} />}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Applicant / Customer</Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <CustomerName id={a.customerId} linkToProfile typographyProps={{ variant: 'body1', fontWeight: 600 }} />
-              </Box>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Servicing Branch</Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <BranchName id={a.branchId} typographyProps={{ variant: 'body1', fontWeight: 500 }} />
-              </Box>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Sales RM</Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <UserName id={a.salesOwnerId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
-              </Box>
-            </Box>
-            {a.opsOwnerId && (
-              <Box>
-                <Typography variant="caption" color="text.secondary">Operations Owner</Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <UserName id={a.opsOwnerId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
-                </Box>
-              </Box>
-            )}
-          </Stack>
-        </CardContent>
-      </Card>
-
+      <RelationsCard app={a} />
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
@@ -109,7 +88,47 @@ export function ApplicationDetailPage() {
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />
       </div>
+
+      <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
     </>
+  );
+}
+
+/** Who and what the file belongs to (QA plan Module 06 step 7: lead, customer and application relationships). */
+function RelationsCard({ app }: { app: Application }) {
+  const me = useMe();
+  return (
+    <Card sx={{ mb: 3 }} data-testid="application.relations">
+      <CardContent>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
+          <Typography variant="body2">
+            Customer:{' '}
+            <Link
+              component={RouterLink}
+              to={`/customers/${app.customerId}`}
+              data-testid="application.customer-link"
+            >
+              <CustomerName id={app.customerId} fallback={app.customerId} />
+            </Link>
+          </Typography>
+          <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
+          <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
+          <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
+          <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
+          {hasPermission(me.data, 'document.upload') && (
+            <Button
+              size="small"
+              variant="outlined"
+              component={RouterLink}
+              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+              data-testid="application.upload-link"
+            >
+              Send customer upload link
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 

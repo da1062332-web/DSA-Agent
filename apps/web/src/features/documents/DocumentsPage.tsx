@@ -1,4 +1,5 @@
-// /documents (owner: Dev 3, MOD-DOC checklist slice). Pick an application, see its document checklist. Needs application.read.
+// /documents (owner: Dev 3, MOD-DOC; QA plan Module 09 document verifier). Pick an application and work its document checklist.
+// Needs application.read.
 import { Alert, Card, MenuItem, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -33,7 +34,7 @@ export function DocumentsPage() {
     <div>
       <PageHeader
         title="Documents"
-        subtitle="The documents each application needs, and where each one stands. Customers upload through Document sharing; verifiers review in Verification."
+        subtitle="The documents each application needs and where each one stands. Upload, view, review (accept or reject with a reason) and waive from the checklist; customers can also upload through Document sharing."
       />
       <ErrorAlert error={apps.error} />
       {apps.isLoading ? (

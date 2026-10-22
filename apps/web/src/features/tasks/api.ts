@@ -2,7 +2,6 @@
 import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
 import type { CompleteTaskPayload, CreateTaskPayload, TaskResource, UpdateTaskPayload } from './types';
 
-
 export class ApiError extends Error {
   constructor(
     public readonly code: string,
@@ -45,12 +44,16 @@ export function generateIdempotencyKey(): string {
 export async function listTasks(params: {
   view?: 'MINE' | 'QUEUES' | 'ALL';
   status?: string;
+  linkedType?: string;
+  linkedId?: string;
   limit?: number;
   cursor?: string;
 }): Promise<{ data: TaskResource[]; nextCursor: string | null }> {
   const q = new URLSearchParams();
   if (params.view) q.set('view', params.view);
   if (params.status) q.set('status', params.status);
+  if (params.linkedType) q.set('linkedType', params.linkedType);
+  if (params.linkedId) q.set('linkedId', params.linkedId);
   if (params.limit) q.set('limit', String(params.limit));
   if (params.cursor) q.set('cursor', params.cursor);
 

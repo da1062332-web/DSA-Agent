@@ -1,6 +1,9 @@
 // apps/web/src/features/document-sharing/DocumentSharingPage.tsx
-// Module 25: Document Sharing Dashboard (MOD-DSH)
-import React, { useState } from 'react';
+// Document sharing (MOD-DSH): customer upload links (SUB-DSH.01) and case share packages (SUB-DSH.02); QA plan Module 14.
+// The forms pick a real application, its open checklist items and a lender from the API: nothing is typed or prefilled from
+// fixtures. Opening /document-sharing?applicationId=…&action=upload-link (from a customer or application page) starts a link.
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -35,20 +38,17 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, errorText } from '../../api/client';
+import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
-import { ApplicationSelect } from '../../shell/selectors';
 import { ApplicationName } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
+import { useLookup } from '../admin/api';
+import { ApplicationSelect } from '../applications/ApplicationSelect';
+import { useChecklist } from '../documents/api';
+import { readable } from '../documents/model';
 
-const APPROVED_CHECKLIST_REQUIREMENTS = [
-  { id: 'chk_pan_card', label: 'PAN Card (Identity Proof)' },
-  { id: 'chk_bank_statement', label: 'Bank Statement (6 Months)' },
-  { id: 'chk_salary_slip', label: 'Salary Slips (3 Months)' },
-  { id: 'chk_address_proof', label: 'Address / Aadhaar Proof' },
-  { id: 'chk_itr_filing', label: 'ITR / Form 16' },
-  { id: 'chk_business_proof', label: 'Business Registration' },
-];
+/** Checklist items a customer can still send: nothing accepted, waived or not applicable. */
+const OPEN_FOR_UPLOAD = ['PENDING', 'REJECTED', 'EXPIRED', 'SUBMITTED'];
 
 export function DocumentSharingPage() {
   const queryClient = useQueryClient();
@@ -59,32 +59,48 @@ export function DocumentSharingPage() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
 
-  // Link Form State - prefill with seeded live application ID for frictionless testing
-  const [linkAppId, setLinkAppId] = useState('app_01ARZ3NDEKTSV4RRFFQ69G5FAV');
-  const [linkItems, setLinkItems] = useState('chk_bank_statement, chk_salary_slip, chk_pan_card');
+  const [params, setParams] = useSearchParams();
+  const fromUrl = params.get('applicationId') ?? '';
+
+  // Link form state
+  const [linkAppId, setLinkAppId] = useState(fromUrl);
+  const [linkItems, setLinkItems] = useState<string[]>([]);
   const [linkHours, setLinkHours] = useState(48);
   const [linkMaxUses, setLinkMaxUses] = useState(5);
   const [linkOtpRequired, setLinkOtpRequired] = useState(true);
   const [createdLinkResult, setCreatedLinkResult] = useState<any | null>(null);
 
-  const toggleChecklistItem = (itemId: string) => {
-    const current = linkItems
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (current.includes(itemId)) {
-      setLinkItems(current.filter((id) => id !== itemId).join(', '));
-    } else {
-      setLinkItems([...current, itemId].join(', '));
-    }
-  };
+  const toggleChecklistItem = (itemId: string) =>
+    setLinkItems((current) =>
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId],
+    );
+  const checklist = useChecklist(linkAppId || null);
+  const uploadable = (checklist.data?.data ?? []).filter((i) => OPEN_FOR_UPLOAD.includes(i.status));
+  const [linkKey, setLinkKey] = useState(newIdempotencyKey);
 
-  // Share Form State
-  const [shareAppId, setShareAppId] = useState('app_01ARZ3NDEKTSV4RRFFQ69G5FAV');
+  // Share form state
+  const [shareAppId, setShareAppId] = useState(fromUrl);
   const [shareRecipientType, setShareRecipientType] = useState('LENDER');
-  const [shareRecipientId, setShareRecipientId] = useState('len_hdfc_bank');
-  const [shareRecipientName, setShareRecipientName] = useState('Pooja Sharma');
-  const [shareRecipientEmail, setShareRecipientEmail] = useState('credit.ops@hdfcbank.com');
+  const [shareRecipientId, setShareRecipientId] = useState('');
+  const [shareRecipientName, setShareRecipientName] = useState('');
+  const [shareRecipientEmail, setShareRecipientEmail] = useState('');
+  const lenders = useLookup<{ id: string; name: string; status?: string }>(
+    '/v1/lenders',
+    {},
+    isShareModalOpen,
+  );
+  const [shareKey, setShareKey] = useState(newIdempotencyKey);
+
+  // A link from a customer or application page opens the upload-link form for that application.
+  useEffect(() => {
+    if (fromUrl && params.get('action') === 'upload-link') {
+      setIsLinkModalOpen(true);
+      params.delete('action');
+      setParams(params, { replace: true });
+    }
+    // Only on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [sharePurpose, setSharePurpose] = useState('LENDER_SUBMISSION');
   const [shareDays, setShareDays] = useState(7);
 
@@ -105,11 +121,12 @@ export function DocumentSharingPage() {
     mutationFn: (payload: any) =>
       apiFetch<UploadLinkRecord & { uploadUrl: string; generatedOtp?: string }>('/v1/upload-links', {
         method: 'POST',
-        idempotencyKey: `idem_upl_${Date.now()}`,
+        idempotencyKey: linkKey,
         body: payload,
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['upload-links'] });
+      setLinkKey(newIdempotencyKey());
       setCreatedLinkResult(data);
       setFeedback({ message: 'Upload link generated successfully!', severity: 'success' });
     },
@@ -135,11 +152,12 @@ export function DocumentSharingPage() {
     mutationFn: (payload: any) =>
       apiFetch<ExternalShareRecord>('/v1/shares', {
         method: 'POST',
-        idempotencyKey: `idem_shr_${Date.now()}`,
+        idempotencyKey: shareKey,
         body: payload,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shares'] });
+      setShareKey(newIdempotencyKey());
       setIsShareModalOpen(false);
       setFeedback({
         message: 'Case share package created and logged in ENT-100 inventory.',
@@ -165,13 +183,16 @@ export function DocumentSharingPage() {
 
   const handleCreateLink = (e: React.FormEvent) => {
     e.preventDefault();
-    const items = linkItems
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    if (!linkAppId || linkItems.length === 0) {
+      setFeedback({
+        message: 'Choose an application and at least one document to request.',
+        severity: 'error',
+      });
+      return;
+    }
     createLinkMutation.mutate({
-      applicationId: linkAppId.trim(),
-      checklistItemIds: items,
+      applicationId: linkAppId,
+      checklistItemIds: linkItems,
       expiresInHours: linkHours,
       maxUses: linkMaxUses,
       otpRequired: linkOtpRequired,
@@ -180,8 +201,17 @@ export function DocumentSharingPage() {
 
   const handleCreateShare = (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      !shareAppId ||
+      !shareRecipientId.trim() ||
+      !shareRecipientName.trim() ||
+      !shareRecipientEmail.trim()
+    ) {
+      setFeedback({ message: 'Fill in the application, recipient and contact.', severity: 'error' });
+      return;
+    }
     createShareMutation.mutate({
-      applicationId: shareAppId.trim(),
+      applicationId: shareAppId,
       recipientType: shareRecipientType,
       recipientId: shareRecipientId.trim(),
       recipientContact: {
@@ -213,7 +243,7 @@ export function DocumentSharingPage() {
             Document Sharing
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Module 25 (MOD-DSH): Customer Upload Links & Case Share Packages
+            Secure upload links for customers, and consent-checked case packages for lenders
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5}>
@@ -490,14 +520,13 @@ export function DocumentSharingPage() {
             <Box component="form" onSubmit={handleCreateLink}>
               <Stack spacing={2.5}>
                 <ApplicationSelect
-                  label="Loan Application"
-                  fullWidth
                   required
-                  placeholder="Select loan application..."
-                  value={linkAppId || null}
-                  onChange={(id) => setLinkAppId(id ?? '')}
-                  helperText="Choose the active application to request documents for"
-                  size="medium"
+                  value={linkAppId}
+                  onChange={(id) => {
+                    setLinkAppId(id);
+                    setLinkItems([]);
+                  }}
+                  testId="sharing.link.application"
                 />
 
                 <Box>
@@ -506,35 +535,39 @@ export function DocumentSharingPage() {
                     color="text.secondary"
                     sx={{ display: 'block', mb: 1, fontWeight: 600 }}
                   >
-                    Approved Document Requirements (Click to select/deselect):
+                    Documents to request (click to select):
                   </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
-                    {APPROVED_CHECKLIST_REQUIREMENTS.map((req) => {
-                      const selected = linkItems
-                        .split(',')
-                        .map((s) => s.trim())
-                        .includes(req.id);
-                      return (
-                        <Chip
-                          key={req.id}
-                          label={req.label}
-                          size="small"
-                          color={selected ? 'primary' : 'default'}
-                          variant={selected ? 'filled' : 'outlined'}
-                          onClick={() => toggleChecklistItem(req.id)}
-                          clickable
-                        />
-                      );
-                    })}
-                  </Stack>
-                  <TextField
-                    label="Checklist Item IDs (comma-separated)"
-                    fullWidth
-                    required
-                    value={linkItems}
-                    onChange={(e) => setLinkItems(e.target.value)}
-                    helperText="Approved requirements or custom checklist IDs for this loan application"
-                  />
+                  {!linkAppId ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Choose an application first.
+                    </Typography>
+                  ) : checklist.isLoading ? (
+                    <CircularProgress size={20} />
+                  ) : uploadable.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {checklist.isError
+                        ? errorText(checklist.error)
+                        : "Nothing is outstanding on this application's checklist."}
+                    </Typography>
+                  ) : (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {uploadable.map((item) => {
+                        const selected = linkItems.includes(item.id);
+                        return (
+                          <Chip
+                            key={item.id}
+                            label={`${readable(item.documentTypeCode)}${item.mandatory ? '' : ' (optional)'}`}
+                            size="small"
+                            color={selected ? 'primary' : 'default'}
+                            variant={selected ? 'filled' : 'outlined'}
+                            onClick={() => toggleChecklistItem(item.id)}
+                            clickable
+                            data-testid="sharing.link.item"
+                          />
+                        );
+                      })}
+                    </Stack>
+                  )}
                 </Box>
 
                 <Stack direction="row" spacing={2}>
@@ -596,13 +629,10 @@ export function DocumentSharingPage() {
               </Alert>
 
               <ApplicationSelect
-                label="Loan Application"
-                fullWidth
                 required
-                placeholder="Select loan application..."
-                value={shareAppId || null}
-                onChange={(id) => setShareAppId(id ?? '')}
-                size="medium"
+                value={shareAppId}
+                onChange={setShareAppId}
+                testId="sharing.share.application"
               />
 
               <Stack direction="row" spacing={2}>
@@ -611,7 +641,10 @@ export function DocumentSharingPage() {
                   <Select
                     value={shareRecipientType}
                     label="Recipient Type"
-                    onChange={(e) => setShareRecipientType(e.target.value)}
+                    onChange={(e) => {
+                      setShareRecipientType(e.target.value);
+                      setShareRecipientId('');
+                    }}
                   >
                     <MenuItem value="LENDER">Lender</MenuItem>
                     <MenuItem value="CO_LENDER">Co-Lender</MenuItem>
@@ -620,13 +653,32 @@ export function DocumentSharingPage() {
                   </Select>
                 </FormControl>
 
-                <TextField
-                  label="Recipient ID"
-                  fullWidth
-                  required
-                  value={shareRecipientId}
-                  onChange={(e) => setShareRecipientId(e.target.value)}
-                />
+                {shareRecipientType === 'LENDER' || shareRecipientType === 'CO_LENDER' ? (
+                  <TextField
+                    select
+                    label="Lender"
+                    fullWidth
+                    required
+                    value={shareRecipientId}
+                    onChange={(e) => setShareRecipientId(e.target.value)}
+                    disabled={lenders.isPending}
+                    helperText={lenders.isError ? errorText(lenders.error) : undefined}
+                  >
+                    {(lenders.data ?? []).map((l) => (
+                      <MenuItem key={l.id} value={l.id}>
+                        {l.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    label="Recipient ID"
+                    fullWidth
+                    required
+                    value={shareRecipientId}
+                    onChange={(e) => setShareRecipientId(e.target.value)}
+                  />
+                )}
               </Stack>
 
               <Stack direction="row" spacing={2}>
@@ -642,6 +694,7 @@ export function DocumentSharingPage() {
                   type="email"
                   fullWidth
                   required
+                  placeholder="name@example.com"
                   value={shareRecipientEmail}
                   onChange={(e) => setShareRecipientEmail(e.target.value)}
                 />

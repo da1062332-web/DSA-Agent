@@ -29,12 +29,16 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:verify": "npm run verify:migrations -w @dsa/tools",
-    "test:isolation": "vitest run --config tests/isolation/vitest.config.ts"
+    "test:isolation": "vitest run --config tests/isolation/vitest.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.0",
     "@commitlint/config-conventional": "^19.6.0",
     "@eslint/js": "^9.14.0",
+    "@playwright/test": "^1.64.1",
     "concurrently": "^9.1.0",
     "eslint": "^9.14.0",
     "eslint-plugin-import": "^2.31.0",
