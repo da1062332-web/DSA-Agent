@@ -20,7 +20,11 @@ vi.mock('./supabase', () => ({
     auth: {
       mfa: {
         listFactors: vi.fn().mockResolvedValue({
-          data: { totp: [{ id: 'factor_1', factor_type: 'totp', status: 'verified' }] },
+          data: { all: [], totp: [] },
+          error: null,
+        }),
+        enroll: vi.fn().mockResolvedValue({
+          data: { id: 'factor_1', totp: { qr_code: '<svg></svg>', secret: 'TEST-SECRET' } },
           error: null,
         }),
         challengeAndVerify: vi.fn().mockResolvedValue({ error: null }),
@@ -31,8 +35,8 @@ vi.mock('./supabase', () => ({
   getStorageKey: () => 'sb-test-auth-token',
 }));
 
-describe('MfaPage Component — Hardcoded OTP and Original OTP', () => {
-  it('renders OTP challenge screen correctly', () => {
+describe('MfaPage Component — Dedicated Setup Two-Step Verification View', () => {
+  it('renders Set up two-step verification screen with barcode and input', () => {
     const queryClient = new QueryClient();
     const html = renderToString(
       <QueryClientProvider client={queryClient}>
@@ -42,6 +46,14 @@ describe('MfaPage Component — Hardcoded OTP and Original OTP', () => {
       </QueryClientProvider>,
     );
 
-    expect(html).toContain('Two-step verification');
+    expect(html).toContain('Set up two-step verification');
+    expect(html).toContain(
+      'Your role requires an authenticator app. Scan the barcode, then enter the 6 digits it shows.',
+    );
+    expect(html).toContain('data-testid="auth.mfa.code"');
+    expect(html).toContain('data-testid="auth.mfa.submit"');
+    expect(html).toContain('data-testid="auth.mfa.secret"');
+    // Ensure challenge screen and re-enroll button are not rendered
+    expect(html).not.toContain('Scan New Barcode / Re-enroll');
   });
 });
