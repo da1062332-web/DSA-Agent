@@ -18,6 +18,7 @@ import {
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { getSupabase } from './supabase';
+import { readConfig } from '../config';
 import { TimeoutError, withTimeout } from './timeout';
 
 export const HARDCODED_TEST_OTP = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
@@ -67,7 +68,11 @@ export function LoginPage() {
       // 2. If password verification failed, check if the email belongs to an active database user
       // so testing with database accounts proceeds directly to the OTP screen.
       try {
-        const checkRes = await fetch('/public/v1/auth/test-login', {
+        const config = readConfig();
+        const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+        const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
+
+        const checkRes = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, otp: HARDCODED_TEST_OTP }),

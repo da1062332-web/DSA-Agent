@@ -8,6 +8,8 @@ import { useAuth } from './AuthProvider';
 import { AuthCard } from './AuthCard';
 import { isTotpCode, startTotpEnrolment, verifiedTotpFactors, verifyTotp } from './totp';
 import { saveBypassSession } from './supabase';
+import { setAuthToken } from './token';
+import { readConfig } from '../config';
 
 type Mode =
   | { kind: 'loading' }
@@ -81,16 +83,28 @@ export function MfaPage() {
 
       // 1. If user entered the hardcoded test OTP (000000)
       if (code === bypassOtp && pendingEmail) {
-        const res = await fetch('/public/v1/auth/test-login', {
+        const config = readConfig();
+        const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+        const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: pendingEmail, otp: code }),
         });
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error?.message || 'Invalid OTP code.');
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok || !json?.data?.session) {
+          throw new Error(
+            json?.error?.message ||
+              (res.status >= 500
+                ? 'Cannot connect to API server (port 3000). Please ensure the backend is running.'
+                : 'Invalid OTP code.'),
+          );
         }
+
         saveBypassSession(json.data.session);
+        setAuthToken(json.data.session.access_token);
         sessionStorage.removeItem('dsa_pending_email');
         window.location.replace(from);
         return;
