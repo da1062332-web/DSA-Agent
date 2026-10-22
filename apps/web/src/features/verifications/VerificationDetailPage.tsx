@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { UserPicker } from '../admin/components';
 import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
 import { ApplicationName, BranchName, UserName } from '../../shell/display';
@@ -517,13 +518,14 @@ export function VerificationDetailPage() {
               </Select>
             </FormControl>
 
-            <UserSelect
-              label="Assigned Staff Member"
-              placeholder="Search staff user by name..."
-              value={newAssignee || null}
-              onChange={(val) => setNewAssignee(val ?? '')}
-              fullWidth
+            <UserPicker
+              multiple={false}
               size="small"
+              label="Assigned Staff Member"
+              placeholder="Select staff verifier or enter ID..."
+              value={newAssignee || null}
+              onChange={(id) => setNewAssignee(id ?? '')}
+              freeSolo
             />
           </Box>
         </DialogContent>

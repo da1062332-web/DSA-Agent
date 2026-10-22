@@ -42,7 +42,15 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     email: 'sales1@alpha.com',
     displayName: 'Sameer Sales',
     roleCode: 'ROLE-SALES-EXEC',
-    permissions: ['lead.create', 'lead.read', 'lead.update', 'task.read', 'task.update', 'activity.create'],
+    permissions: [
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
     primaryBranchId: 'MUM01',
   },
   // 08 — Loan Operations
@@ -118,7 +126,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     email: 'finance@alpha.com',
     displayName: 'Farhan Finance',
     roleCode: 'ROLE-FINANCE-EXEC',
-    permissions: ['finance.view', 'finance.reconcile', 'payout.request', 'adjustment.create'],
+    permissions: ['finance.view', 'finance.reconcile', 'payout.request', 'adjustment.create', 'commission.plan.edit'],
     primaryBranchId: 'MUM01',
   },
   // 13 — Commission Approver
@@ -279,26 +287,71 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
   });
 }
 
-export const isHeaded = process.argv.includes('--headed') || process.env.HEADED === 'true';
+export const isHeaded = process.env.HEADED === 'true' || process.argv.includes('--headed');
 
-export async function pauseForDemo(page: Page, ms = 100): Promise<void> {
-  if (isHeaded) {
-    await page.waitForTimeout(Math.min(ms, 150));
+export async function showDemoBanner(page: Page, title: string, subtitle?: string): Promise<void> {
+  if (!isHeaded) return;
+  try {
+    await page.evaluate(({ title, subtitle }) => {
+      let el = document.getElementById('demo-step-banner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'demo-step-banner';
+        el.style.position = 'fixed';
+        el.style.top = '12px';
+        el.style.left = '50%';
+        el.style.transform = 'translateX(-50%)';
+        el.style.zIndex = '999999';
+        el.style.backgroundColor = 'rgba(15, 23, 42, 0.94)';
+        el.style.color = '#ffffff';
+        el.style.padding = '8px 18px';
+        el.style.borderRadius = '9999px';
+        el.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.5)';
+        el.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+        el.style.fontSize = '13px';
+        el.style.fontWeight = '600';
+        el.style.pointerEvents = 'none';
+        el.style.border = '1px solid rgba(96, 165, 250, 0.6)';
+        el.style.backdropFilter = 'blur(10px)';
+        el.style.transition = 'all 0.2s ease';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.gap = '8px';
+        document.body.appendChild(el);
+      }
+      el.innerHTML = `<span style="background:#2563eb;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;">Step</span> <span>${title}</span>${subtitle ? `<span style="color:#94a3b8;font-weight:400;">— ${subtitle}</span>` : ''}`;
+    }, { title, subtitle });
+  } catch {
+    // Ignore in case page is navigating
   }
 }
 
-export async function humanType(locator: Locator, text: string): Promise<void> {
-  await locator.scrollIntoViewIfNeeded();
-  await locator.fill(text);
+export async function pauseForDemo(page: Page, ms = 1400): Promise<void> {
   if (isHeaded) {
-    await locator.page().waitForTimeout(40);
+    const demoMs = Math.min(ms, 2000);
+    await page.waitForTimeout(demoMs);
   }
 }
 
-export async function humanClick(locator: Locator, pauseAfter = 80): Promise<void> {
+export async function humanType(locator: Locator, text: string, charDelay = 30): Promise<void> {
   await locator.scrollIntoViewIfNeeded();
   await locator.click();
+  await locator.fill('');
+  await locator.pressSequentially(text, { delay: charDelay });
   if (isHeaded) {
-    await locator.page().waitForTimeout(Math.min(pauseAfter, 100));
+    await locator.page().waitForTimeout(300);
+  }
+}
+
+export async function humanClick(locator: Locator, pauseAfter = 400): Promise<void> {
+  await locator.scrollIntoViewIfNeeded();
+  if (isHeaded) {
+    await locator.hover();
+    await locator.page().waitForTimeout(180);
+  }
+  await locator.click();
+  if (isHeaded) {
+    const tunedPause = Math.min(pauseAfter, 600);
+    await locator.page().waitForTimeout(tunedPause);
   }
 }

@@ -1,18 +1,20 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick } from './helpers/mock-session';
 
 test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
   test.beforeEach(async ({ page }) => {
     await setupPersonaSession(page, PERSONAS.compliance);
   });
 
-  test('TC-CO-01: Cryptographic Audit Trail Search, SHA-256 Chain Verification & Evidence Pack Export', async ({
-    page,
-  }) => {
+  // =========================================================================
+  // TC-CO-01: Cryptographic Audit Trail Search & SHA-256 Chain Verification
+  // (Notion QA Plan Module 10 Steps 1-3, MOD-AUD, CMP-AUD.01)
+  // =========================================================================
+  test('TC-CO-01: Cryptographic Audit Trail Search & SHA-256 Chain Verification', async ({ page }) => {
     const mockAuditEvents = [
       {
         id: 'aud_01J00000000000000000000001',
-        tenantId: 'tenant_test_001',
+        tenantId: 'ten_alpha',
         entityType: 'LOAN_APPLICATION',
         entityId: 'app_loan_001',
         action: 'STATUS_TRANSITION',
@@ -26,7 +28,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       },
       {
         id: 'aud_01J00000000000000000000002',
-        tenantId: 'tenant_test_001',
+        tenantId: 'ten_alpha',
         entityType: 'SANCTION',
         entityId: 'snc_001',
         action: 'CREATE',
@@ -40,7 +42,6 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       },
     ];
 
-    // Mock search audit events
     await page.route('**/v1/audit-events**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -49,14 +50,13 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       });
     });
 
-    // Mock SHA-256 chain verification
     await page.route('**/v1/audit-chain/verification', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           status: 'VERIFIED',
-          tenantId: 'tenant_test_001',
+          tenantId: 'ten_alpha',
           totalEvents: 2,
           sealedEvents: 2,
           unsealedEvents: 0,
@@ -71,16 +71,48 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       });
     });
 
-    // Mock Evidence Pack generation
+    // 1. Visit Audit Log Search
+    await page.goto('/audit');
+    await pauseForDemo(page, 2000);
+    await expect(page.getByText('app_loan_001')).toBeVisible();
+    await expect(page.getByText('LOAN_APPLICATION')).toBeVisible();
+
+    // 2. Click "Verify Chain Integrity"
+    const verifyChainBtn = page.getByRole('button', { name: /Verify Chain Integrity/i });
+    await expect(verifyChainBtn).toBeVisible();
+    await humanClick(verifyChainBtn, 2000);
+
+    // Verify modal rendered with cryptographic status
+    await expect(page.getByText(/Chain Status:/i)).toBeVisible();
+    await expect(page.getByText('VERIFIED', { exact: true }).first()).toBeVisible();
+    await pauseForDemo(page, 3000);
+  });
+
+  // =========================================================================
+  // TC-CO-02: Tamper-Evident Evidence Pack Export & DPDP Privacy Register Audit
+  // (Notion QA Plan Module 10 Steps 4-5, MOD-AUD, MOD-PRV)
+  // =========================================================================
+  test('TC-CO-02: Tamper-Evident Evidence Pack Export & DPDP Privacy Register Audit', async ({ page }) => {
+    await page.route('**/v1/audit-events**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], meta: { total: 0 } }),
+      });
+    });
+
+    // Mock evidence pack creation
     await page.route('**/v1/evidence-packs**', async (route) => {
       if (route.request().method() === 'POST') {
+        const body = JSON.parse(route.request().postData() || '{}');
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
           body: JSON.stringify({
-            id: 'evp_pack_001',
+            id: 'evp_qa_001',
             entityType: 'LOAN_APPLICATION',
-            entityId: 'app_loan_001',
+            entityId: body.entityId || 'APP-QA-001',
+            purpose: body.purpose || 'REGULATORY_AUDIT',
             status: 'COMPLETED',
             packHashSha256: 'a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0',
             createdAt: new Date().toISOString(),
@@ -95,21 +127,30 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       }
     });
 
-    // 1. Visit Audit Log Search
     await page.goto('/audit');
-    await expect(page.getByText('app_loan_001')).toBeVisible();
-    await expect(page.getByText('LOAN_APPLICATION')).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2000);
 
-    // 2. Click "Verify Chain Integrity"
-    const verifyChainBtn = page.getByRole('button', { name: /Verify Chain Integrity/i });
-    await expect(verifyChainBtn).toBeVisible();
-    await verifyChainBtn.click();
-    await expect(page.getByText(/Chain Status:/i)).toBeVisible();
-    await expect(page.getByText('VERIFIED', { exact: true }).first()).toBeVisible();
-    await pauseForDemo(page, 4000);
+    // 1. Open Export Evidence Pack Modal
+    const exportPackBtn = page.getByRole('button', { name: /Export Evidence Pack/i });
+    await expect(exportPackBtn).toBeVisible();
+    await humanClick(exportPackBtn, 2000);
 
-    // 3. Visit Privacy Register
+    // 2. Fill evidence export purpose
+    const purposeField = page.getByLabel(/Export Purpose|Purpose/i);
+    if (await purposeField.isVisible()) {
+      await humanType(purposeField, 'Regulatory RBI Annual Compliance Audit');
+      await pauseForDemo(page, 1500);
+    }
+
+    // Submit export
+    const generateBtn = page.getByRole('button', { name: /Generate Evidence Pack/i });
+    await humanClick(generateBtn, 2500);
+
+    // Verify confirmation message
+    await expect(page.getByText(/export requested/i)).toBeVisible();
+    await pauseForDemo(page, 2000);
+
+    // 3. Visit Privacy and Consent Register (/privacy)
     await page.route('**/v1/privacy**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -117,8 +158,32 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
         body: JSON.stringify({ data: [] }),
       });
     });
+
     await page.goto('/privacy');
+    await pauseForDemo(page, 2000);
     await expect(page.locator('body')).toContainText(/privacy|consent/i);
     await pauseForDemo(page, 3000);
+  });
+
+  // =========================================================================
+  // TC-CO-03: Segregation of Duties (SoD) & Read-Only Operational Boundary Enforcement
+  // (Notion QA Plan Module 10 Step 6: Compliance Officer has zero operational write access)
+  // =========================================================================
+  test('TC-CO-03: Segregation of Duties (SoD) & Read-Only Operational Boundary Enforcement', async ({ page }) => {
+    // 1. Verify Compliance Officer cannot author or publish BRE rules
+    await page.goto('/rules');
+    await pauseForDemo(page, 1500);
+    await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+
+    // 2. Verify Compliance Officer cannot access Commission Payouts
+    await page.goto('/commission');
+    await pauseForDemo(page, 1500);
+    await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+
+    // 3. Verify Compliance Officer cannot record Sanctions
+    await page.goto('/sanctions');
+    await pauseForDemo(page, 1500);
+    await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 2000);
   });
 });

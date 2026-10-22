@@ -72,8 +72,8 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
       const { email, otp } = parsed.data;
       console.log(`[test-login] Received login request for email: "${email}", otp: "${otp}"`);
 
-      // 1. Verify hardcoded OTP
-      if (otp !== opts.bypassOtp && otp !== '000000') {
+      // 1. Verify hardcoded OTP against configured test bypass OTP (defaults to 000000)
+      if (otp !== opts.bypassOtp) {
         throw AppError.of('UNAUTHENTICATED', 'Invalid test OTP.');
       }
 

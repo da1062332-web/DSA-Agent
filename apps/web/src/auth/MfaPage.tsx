@@ -88,9 +88,9 @@ export function MfaPage() {
     setError(null);
     try {
       const bypassOtp = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
-      const isBypass = code === bypassOtp || code === '000000';
+      const isBypass = code === bypassOtp;
 
-      // 1. If user entered the hardcoded test OTP (000000)
+      // 1. If user entered the configured test bypass OTP
       if (isBypass) {
         let email =
           (location.state as { email?: string } | null)?.email ||
@@ -114,7 +114,7 @@ export function MfaPage() {
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), otp: '000000' }),
+          body: JSON.stringify({ email: email.trim(), otp: bypassOtp }),
         });
         const json = await res.json().catch(() => null);
 

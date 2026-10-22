@@ -40,6 +40,7 @@ import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
 import { LenderName } from '../../shell/display';
 import { useLookup } from '../admin/api';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -1390,11 +1391,11 @@ export function ReconciliationDashboardPage() {
                     ))}
                   </TextField>
                 ) : (
-                  <TextField
-                    label="Connector ID"
-                    value={dispPartyId}
-                    onChange={(e) => setDispPartyId(e.target.value)}
-                    fullWidth
+                  <ConnectorSelect
+                    label="Connector / Partner"
+                    placeholder="Search or select connector..."
+                    value={dispPartyId || null}
+                    onChange={(id) => setDispPartyId(id ?? '')}
                     required
                   />
                 )}

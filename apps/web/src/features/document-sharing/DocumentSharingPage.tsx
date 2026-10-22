@@ -44,6 +44,7 @@ import { ApplicationName } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 import { useLookup } from '../admin/api';
 import { ApplicationSelect } from '../applications/ApplicationSelect';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { useChecklist } from '../documents/api';
 import { readable } from '../documents/model';
 
@@ -670,6 +671,14 @@ export function DocumentSharingPage() {
                       </MenuItem>
                     ))}
                   </TextField>
+                ) : shareRecipientType === 'PARTNER' ? (
+                  <ConnectorSelect
+                    label="Sourcing Partner / Connector"
+                    placeholder="Select partner or enter ID..."
+                    value={shareRecipientId || null}
+                    onChange={(id) => setShareRecipientId(id ?? '')}
+                    required
+                  />
                 ) : (
                   <TextField
                     label="Recipient ID"

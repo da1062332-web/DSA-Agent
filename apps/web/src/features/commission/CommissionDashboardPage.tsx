@@ -33,9 +33,9 @@ import {
   Typography,
 } from '@mui/material';
 import { errorText } from '../../api/client';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
-import { ConnectorSelect } from '../../shell/selectors';
 import { ConnectorName } from '../../shell/display';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
@@ -818,11 +818,11 @@ export function CommissionDashboardPage() {
                 onChange={(e) => setCalcRate(Number(e.target.value))}
               />
               <ConnectorSelect
-                fullWidth
-                label="Attributed Connector (optional)"
+                label="Attributed Connector"
+                placeholder="Optional: select sourcing partner..."
                 value={calcConnectorId || null}
                 onChange={(id) => setCalcConnectorId(id ?? '')}
-                size="medium"
+                helperText="Select the partner earning referral commission split"
               />
               <TextField
                 fullWidth

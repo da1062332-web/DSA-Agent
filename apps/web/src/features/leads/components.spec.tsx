@@ -58,7 +58,7 @@ describe('Leads Frontend Components Rendering', () => {
     const html = renderWithProviders(<LeadList />);
     expect(html).toContain('Leads');
     expect(html).not.toContain('Create Lead');
-    expect(html).toContain('Owner User ID');
+    expect(html).toContain('Owner / Staff');
     expect(html).toContain('State');
   });
 
