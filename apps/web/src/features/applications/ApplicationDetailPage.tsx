@@ -1,9 +1,20 @@
 // /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 010). Edit the applicant request while the
 // status allows it, and put the file on hold with a reason. Every change sends the version the screen loaded (If-Match),
 // so a stale screen gets the conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
-import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Link,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
+import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
@@ -65,6 +76,7 @@ export function ApplicationDetailPage() {
         </Alert>
       )}
 
+      <RelationsCard app={a} />
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
@@ -74,7 +86,49 @@ export function ApplicationDetailPage() {
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />
       </div>
+
+      <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
     </>
+  );
+}
+
+/** Who and what the file belongs to (QA plan Module 06 step 7: lead, customer and application relationships). */
+function RelationsCard({ app }: { app: Application }) {
+  const me = useMe();
+  const owners = useLookup<{ id: string; displayName: string }>('/v1/users', { status: 'ACTIVE' });
+  const name = (id: string | null) =>
+    id ? (owners.data?.find((u) => u.id === id)?.displayName ?? id) : 'Not assigned';
+  return (
+    <Card sx={{ mb: 3 }} data-testid="application.relations">
+      <CardContent>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
+          <Typography variant="body2">
+            Customer:{' '}
+            <Link
+              component={RouterLink}
+              to={`/customers/${app.customerId}`}
+              data-testid="application.customer-link"
+            >
+              {app.customerId}
+            </Link>
+          </Typography>
+          <Typography variant="body2">Sales owner: {name(app.salesOwnerId)}</Typography>
+          <Typography variant="body2">Operations owner: {name(app.opsOwnerId)}</Typography>
+          <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
+          {hasPermission(me.data, 'document.upload') && (
+            <Button
+              size="small"
+              variant="outlined"
+              component={RouterLink}
+              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+              data-testid="application.upload-link"
+            >
+              Send customer upload link
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 

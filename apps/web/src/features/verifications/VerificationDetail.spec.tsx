@@ -2,6 +2,7 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { VerificationCreateDialog } from './VerificationCreateDialog';
 import { VerificationDetailPage } from './VerificationDetailPage';
@@ -9,12 +10,15 @@ import { routes } from './routes';
 
 describe('Module 19 — Verification Detail & Create Dialog Component Rendering', () => {
   it('renders VerificationCreateDialog with all form fields and actions when open', () => {
+    // The application and branch are picked from the API's lists, so the dialog needs a query client.
     const html = renderToString(
-      <VerificationCreateDialog open={true} onClose={() => {}} onSuccess={() => {}} />,
+      <QueryClientProvider client={new QueryClient()}>
+        <VerificationCreateDialog open={true} onClose={() => {}} onSuccess={() => {}} />
+      </QueryClientProvider>,
     );
 
     expect(html).toContain('Initiate Verification Case');
-    expect(html).toContain('Loan Application ID');
+    expect(html).toContain('Loan Application');
     expect(html).toContain('Verification Type');
     expect(html).toContain('Branch');
     expect(html).toContain('Priority');

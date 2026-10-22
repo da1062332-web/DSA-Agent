@@ -1,6 +1,8 @@
 // /approvals (owner: Dev 1; DSA Notion MODULE 40, SUB-ADM.06 and SUB-ADM.07). The customer-tenant side of two governed workflows:
 //   - support access: a platform operator asks, the tenant administrator approves, denies or revokes (SOD-06);
 //   - data corrections: tenant staff request, a different person approves (SOD-08), and the executor service runs it.
+//   - finance approvals (QA plan Module 13B): commission plans and payout requests waiting for an independent checker
+//     (SOD-02, SOD-03), listed with a link to the screen where the decision is taken.
 // It shows only this tenant's records (the API and the database enforce that). It is not part of the Platform Console, which only
 // platform operators can open.
 import {
@@ -28,6 +30,10 @@ import {
 } from '@mui/material';
 import type { DataCorrectionRequest, SupportAccessGrant } from '@dsa/contracts';
 import { useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { fetchCommissionPlans } from '../commission/api';
+import { fetchPayoutRequests } from '../payouts/api';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { useCommand, useList } from '../admin/api';
@@ -55,32 +61,167 @@ export function ApprovalsPage() {
   const canRequest = hasPermission(me.data, 'data_correction.request');
   const canApprove = hasPermission(me.data, 'data_correction.approve');
   const showCorrections = canRequest || canApprove;
-  const [tab, setTab] = useState<'support' | 'corrections'>(canSupport ? 'support' : 'corrections');
+  const canPlans = hasPermission(me.data, 'commission.plan.approve');
+  const canPayouts = hasPermission(me.data, 'payout.approve');
+  const showFinance = canPlans || canPayouts;
+  const [tab, setTab] = useState<'support' | 'corrections' | 'finance'>(
+    canSupport ? 'support' : showCorrections ? 'corrections' : 'finance',
+  );
 
   return (
     <>
       <PageHeader
         title="Approvals"
-        subtitle="Support access and data corrections for your organisation. Platform operators cannot approve their own requests."
+        subtitle="Support access, data corrections and finance approvals for your organisation. Nobody approves their own request."
       />
-      {!canSupport && !showCorrections && (
+      {!canSupport && !showCorrections && !showFinance && (
         <Alert severity="warning" data-testid="approvals.noAccess">
           You don't have access to approvals. Ask your administrator to grant you the permission.
         </Alert>
       )}
-      {(canSupport || showCorrections) && (
+      {(canSupport || showCorrections || showFinance) && (
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
           {canSupport && <Tab value="support" label="Support access" data-testid="approvals.tab.support" />}
           {showCorrections && (
             <Tab value="corrections" label="Data corrections" data-testid="approvals.tab.corrections" />
           )}
+          {showFinance && <Tab value="finance" label="Finance" data-testid="approvals.tab.finance" />}
         </Tabs>
       )}
       {canSupport && tab === 'support' && <SupportAccessTab />}
       {showCorrections && tab === 'corrections' && (
         <CorrectionsTab meId={me.data?.id} canRequest={canRequest} canApprove={canApprove} />
       )}
+      {showFinance && tab === 'finance' && (
+        <FinanceApprovalsTab meId={me.data?.id} canPlans={canPlans} canPayouts={canPayouts} />
+      )}
     </>
+  );
+}
+
+/** What waits for a finance checker. The decision itself is taken on the Commission and Payouts screens. */
+function FinanceApprovalsTab({
+  meId,
+  canPlans,
+  canPayouts,
+}: {
+  meId?: string;
+  canPlans: boolean;
+  canPayouts: boolean;
+}) {
+  const plans = useQuery({
+    queryKey: ['approvals', 'commission-plans'],
+    // The list endpoint returns every plan; approval moves a DRAFT or PENDING_APPROVAL plan to ACTIVE.
+    queryFn: async () => {
+      const all = await fetchCommissionPlans({ limit: 100 });
+      return { data: all.data.filter((p) => p.status === 'DRAFT' || p.status === 'PENDING_APPROVAL') };
+    },
+    enabled: canPlans,
+  });
+  const payouts = useQuery({
+    queryKey: ['approvals', 'payout-requests'],
+    queryFn: () => fetchPayoutRequests({ status: 'SUBMITTED', limit: 100 }),
+    enabled: canPayouts,
+  });
+  const own = (who: string | undefined) =>
+    who && who === meId ? (
+      <Typography variant="caption" color="warning.main">
+        You made this, so another approver must decide.
+      </Typography>
+    ) : null;
+  return (
+    <Stack spacing={3}>
+      {canPlans && (
+        <Card>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="h6">Commission plans awaiting approval (SOD-02)</Typography>
+              <Button component={RouterLink} to="/commission" size="small">
+                Open Commission
+              </Button>
+            </Stack>
+            <ErrorAlert error={plans.error} />
+            {plans.isLoading ? (
+              <Loading />
+            ) : (plans.data?.data ?? []).length === 0 ? (
+              <Typography color="text.secondary">No plans are waiting for approval.</Typography>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Plan</TableCell>
+                    <TableCell>Lender</TableCell>
+                    <TableCell>Event and basis</TableCell>
+                    <TableCell>Updated</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(plans.data?.data ?? []).map((p) => (
+                    <TableRow key={p.id} data-testid="approvals.finance.plan">
+                      <TableCell>
+                        {p.id}
+                        <br />
+                        {own(p.createdBy)}
+                      </TableCell>
+                      <TableCell>{p.lenderId}</TableCell>
+                      <TableCell>
+                        {p.qualifyingEvent} · {p.basis}
+                      </TableCell>
+                      <TableCell>{when(p.updatedAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      {canPayouts && (
+        <Card>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="h6">Payout requests awaiting approval (SOD-03)</Typography>
+              <Button component={RouterLink} to="/payouts" size="small">
+                Open Payouts
+              </Button>
+            </Stack>
+            <ErrorAlert error={payouts.error} />
+            {payouts.isLoading ? (
+              <Loading />
+            ) : (payouts.data?.data ?? []).length === 0 ? (
+              <Typography color="text.secondary">No payout requests are waiting for approval.</Typography>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Request</TableCell>
+                    <TableCell>Connector</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell>Submitted</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(payouts.data?.data ?? []).map((r) => (
+                    <TableRow key={r.id} data-testid="approvals.finance.payout">
+                      <TableCell>
+                        {r.id}
+                        <br />
+                        {own(r.submittedBy)}
+                      </TableCell>
+                      <TableCell>{r.connectorId}</TableCell>
+                      <TableCell align="right">
+                        {r.currency} {r.total}
+                      </TableCell>
+                      <TableCell>{when(r.submittedAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </Stack>
   );
 }
 

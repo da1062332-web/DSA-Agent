@@ -1,3 +1,5 @@
+// /customers/:id (owner: Dev 5; DSA Notion MODULE 8; QA plan Modules 06 and 14). The customer profile with masked contact
+// points, its loan applications (with a secure document-upload link for each), consents and grievances.
 import { useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,16 +18,32 @@ import {
   DialogTitle,
   Divider,
   Grid,
+  Link,
+  List,
+  ListItem,
+  ListItemText,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { getCustomer, updateCustomer, ApiError } from './api';
 import { Can } from '../../shell/Can';
+import { hasPermission, useMe } from '../../api/useMe';
+import { useLookup } from '../admin/api';
+import { BranchSelect } from '../admin/components';
+import { STATUS_LABELS } from '../applications/rules';
+import type { Application } from '../applications/ApplicationsPage';
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const me = useMe();
+  const canReadApps = hasPermission(me.data, 'application.read');
+  const canLink = hasPermission(me.data, 'document.upload');
+  const canComplain =
+    hasPermission(me.data, 'complaint.create') || hasPermission(me.data, 'complaint.manage');
+  // The list endpoint has no customer filter, so the customer's applications are picked out of the caller's scope.
+  const apps = useLookup<Application>('/v1/applications', {}, canReadApps);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editFullName, setEditFullName] = useState('');
@@ -74,7 +92,7 @@ export function CustomerDetailPage() {
     e.preventDefault();
     updateMutation.mutate({
       fullName: editFullName,
-      homeBranchId: editHomeBranchId,
+      homeBranchId: editHomeBranchId || undefined,
     });
   };
 
@@ -284,28 +302,84 @@ export function CustomerDetailPage() {
           </Card>
         </Grid>
 
+        {/* Loan applications of this customer (QA Module 06 step 7, Module 14 step 2) */}
+        {canReadApps && (
+          <Grid item xs={12}>
+            <Card sx={{ borderRadius: 2 }} data-testid="customer.applications">
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                  Loan Applications
+                </Typography>
+                <Divider sx={{ mb: 1 }} />
+                {apps.isLoading ? (
+                  <CircularProgress size={24} />
+                ) : (apps.data ?? []).filter((a) => a.customerId === customer.id).length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No applications in your scope for this customer.
+                  </Typography>
+                ) : (
+                  <List dense disablePadding>
+                    {(apps.data ?? [])
+                      .filter((a) => a.customerId === customer.id)
+                      .map((a) => (
+                        <ListItem
+                          key={a.id}
+                          disableGutters
+                          divider
+                          secondaryAction={
+                            canLink ? (
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to={`/document-sharing?applicationId=${encodeURIComponent(a.id)}&action=upload-link`}
+                                data-testid="customer.upload-link"
+                              >
+                                Send upload link
+                              </Button>
+                            ) : undefined
+                          }
+                        >
+                          <ListItemText
+                            primary={
+                              <Link component={RouterLink} to={`/applications/${a.id}`}>
+                                {a.id}
+                              </Link>
+                            }
+                            secondary={`${a.productCategory} · ${a.currency} ${a.requestedAmount} · ${STATUS_LABELS[a.status] ?? a.status}`}
+                          />
+                        </ListItem>
+                      ))}
+                  </List>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
         {/* Customer Grievances & Complaints Card */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 2, border: 1, borderColor: 'warning.light' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                Grievances & Complaints
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Track service tickets, fee disputes, and escalate borrower grievances directly to the
-                Grievances module (MOD-GRV).
-              </Typography>
-              <Button
-                variant="outlined"
-                color="warning"
-                component={RouterLink}
-                to={`/complaints?complainantType=CUSTOMER&complainantId=${customer.id}`}
-              >
-                View Customer Grievances →
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
+        {canComplain && (
+          <Grid item xs={12} md={6}>
+            <Card sx={{ borderRadius: 2, border: 1, borderColor: 'warning.light' }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                  Grievances & Complaints
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Track service tickets, fee disputes, and escalate borrower grievances directly to the
+                  Grievances module (MOD-GRV).
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  component={RouterLink}
+                  to={`/complaints?complainantType=CUSTOMER&complainantId=${customer.id}`}
+                >
+                  View Customer Grievances →
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* Edit Customer Dialog */}
@@ -321,12 +395,11 @@ export function CustomerDetailPage() {
                 value={editFullName}
                 onChange={(e) => setEditFullName(e.target.value)}
               />
-              <TextField
-                label="Home Branch ID"
-                fullWidth
-                value={editHomeBranchId}
-                onChange={(e) => setEditHomeBranchId(e.target.value)}
-                helperText="Primary branch responsible for servicing this customer"
+              <BranchSelect
+                label="Home Branch"
+                allowNone
+                value={editHomeBranchId || null}
+                onChange={(branch) => setEditHomeBranchId(branch ?? '')}
               />
             </Stack>
           </DialogContent>

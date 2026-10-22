@@ -968,7 +968,7 @@ export function InvoicesPage() {
                     fullWidth
                     required
                     label="Counterparty ID"
-                    placeholder="lnd_hdfc or con_98..."
+                    placeholder="lnd_… or con_…"
                     value={formPartyId}
                     onChange={(e) => setFormPartyId(e.target.value)}
                   />

@@ -213,6 +213,20 @@ describe('F-12 lead action buttons follow the permission the API requires', () =
       expect(Object.values(act('ROLE-COMPLIANCE', state)).some(Boolean), state).toBe(false);
   });
 
+  it('TEST-ACC-13 archive, restore and reopen follow lead.archive and lead.reopen and the state the API accepts them from', () => {
+    const can =
+      (...codes: string[]) =>
+      (c: string) =>
+        codes.includes(c);
+    expect(leadActions('IN_PROGRESS', can('lead.archive'))).toMatchObject({ archive: true, restore: false });
+    expect(leadActions('ARCHIVED', can('lead.archive'))).toMatchObject({ archive: false, restore: true });
+    expect(leadActions('ARCHIVED', can('lead.update', 'lead.qualify', 'lead.assign')).restore).toBe(false);
+    expect(leadActions('DISQUALIFIED', can('lead.reopen')).reopen).toBe(true);
+    expect(leadActions('QUALIFIED', can('lead.reopen')).reopen).toBe(false);
+    // Qualification is accepted from any open, unqualified state, not only IN_PROGRESS.
+    expect(leadActions('NEW', can('lead.qualify')).qualify).toBe(true);
+  });
+
   it('TEST-ACC-12 the state still decides which action applies; nothing is offered on a converted or archived lead, and without permissions nothing at all', () => {
     for (const state of ['CONVERTED', 'ARCHIVED'])
       expect(Object.values(act('ROLE-ORG-OWNER', state)).some(Boolean), state).toBe(false);

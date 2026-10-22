@@ -48,6 +48,7 @@ export function LeadCreate() {
     subSource: '',
     campaign: '',
     noticeVersion: 'v1.0',
+    evidenceRef: '',
   });
   const [productCategory, setProductCategory] = useState('PL');
   const [source, setSource] = useState('WALK_IN');
@@ -107,9 +108,17 @@ export function LeadCreate() {
           purpose: consentPurpose,
           noticeVersion: form.noticeVersion.trim(),
           channel: consentChannel,
+          evidenceRef: form.evidenceRef?.trim() || null,
         },
       });
-      toast.success(`Lead created for ${form.fullName.trim()}.`);
+      // QA Module 06 step 4: the duplicate classification is shown as soon as the lead is created.
+      if (res.lead.duplicateFlag && res.lead.duplicateFlag !== 'NONE') {
+        toast.warning(
+          `Lead created for ${form.fullName.trim()}, flagged as a ${res.lead.duplicateFlag.toLowerCase().replace(/_/g, ' ')} duplicate.`,
+        );
+      } else {
+        toast.success(`Lead created for ${form.fullName.trim()}.`);
+      }
       navigate(`/leads/${res.lead.id}`);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -344,7 +353,7 @@ export function LeadCreate() {
               Consent Details (DPDP Mandatory)
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   select
                   fullWidth
@@ -360,7 +369,7 @@ export function LeadCreate() {
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   required
@@ -372,7 +381,7 @@ export function LeadCreate() {
                   inputProps={{ 'data-testid': 'lead-form.noticeVersion', maxLength: 40 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   select
                   fullWidth
@@ -387,6 +396,18 @@ export function LeadCreate() {
                     </MenuItem>
                   ))}
                 </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Consent Evidence Reference"
+                  value={form.evidenceRef}
+                  onChange={(e) => set('evidenceRef')(e.target.value)}
+                  placeholder="e.g. call recording or signed form reference"
+                  error={!!errors.evidenceRef}
+                  helperText={errors.evidenceRef ?? 'Optional: where the consent proof is kept'}
+                  inputProps={{ 'data-testid': 'lead-form.evidenceRef', maxLength: 200 }}
+                />
               </Grid>
             </Grid>
 

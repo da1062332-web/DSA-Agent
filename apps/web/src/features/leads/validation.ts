@@ -1,5 +1,6 @@
 // Lead form rules (DSA Notion MODULE 7, API-LEAD-001). Each rule mirrors the API (apps/api/src/modules/crm/leads/types.ts
 // and normalizer.ts) so the form catches problems before sending. The API stays the authority and re-checks everything.
+import { containsS2SensitiveData } from '@dsa/contracts';
 
 // The option lists the API accepts. Anything else is refused with 422.
 export const PRODUCT_CATEGORIES = [
@@ -51,6 +52,8 @@ export interface LeadForm {
   subSource: string;
   campaign: string;
   noticeVersion: string;
+  /** Where the consent proof is kept (a recording or form reference). Optional; free text, so no identity numbers. */
+  evidenceRef?: string;
 }
 
 export type LeadFieldErrors = Partial<Record<keyof LeadForm, string>>;
@@ -101,6 +104,11 @@ export function validateLead(f: LeadForm): LeadFieldErrors {
   if (!/^[a-zA-Z0-9._-]{2,40}$/.test(f.noticeVersion.trim()))
     e.noticeVersion = 'Use 2 to 40 letters, digits, dots, dashes or underscores, for example v1.0.';
 
+  const evidence = f.evidenceRef?.trim() ?? '';
+  if (evidence.length > 200) e.evidenceRef = 'Keep this under 200 characters.';
+  else if (evidence && containsS2SensitiveData(evidence))
+    e.evidenceRef = 'Do not enter PAN, Aadhaar or account numbers here.';
+
   return e;
 }
 
@@ -118,6 +126,7 @@ export function formFieldFor(apiField: string | undefined): keyof LeadForm | und
     subSource: 'subSource',
     campaign: 'campaign',
     'consent.noticeVersion': 'noticeVersion',
+    'consent.evidenceRef': 'evidenceRef',
     noticeVersion: 'noticeVersion',
   };
   return map[apiField];

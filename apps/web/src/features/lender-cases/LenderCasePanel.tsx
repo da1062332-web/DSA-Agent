@@ -39,6 +39,7 @@ import {
   updateLenderCaseStatus,
 } from './api';
 import type { DeclineReasonCode, LenderCaseResource, LenderCaseStatus, SubmissionChannel } from './types';
+import { LenderAttemptFields, type LenderAttemptValue } from './LenderAttemptFields';
 
 interface LenderCasePanelProps {
   applicationId?: string;
@@ -78,9 +79,11 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newLenderId, setNewLenderId] = useState('lnd_hdfc_01');
-  const [newProductVersionId, setNewProductVersionId] = useState('lpv_hl_01');
-  const [newEmpanelmentId, setNewEmpanelmentId] = useState('emp_blr_01');
+  const [attempt, setAttempt] = useState<LenderAttemptValue>({
+    lenderId: '',
+    empanelmentId: '',
+    productVersionId: '',
+  });
 
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [activeCase, setActiveCase] = useState<LenderCaseResource | null>(null);
@@ -112,18 +115,12 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
     meta: { successMessage: 'Lender case created.' },
     mutationFn: () => {
       if (!applicationId) throw new Error('Application ID is required to create a lender attempt.');
-      return createLenderCase(applicationId, {
-        lenderId: newLenderId,
-        productVersionId: newProductVersionId,
-        empanelmentId: newEmpanelmentId,
-      });
+      return createLenderCase(applicationId, attempt);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
       setCreateDialogOpen(false);
-      setNewLenderId('');
-      setNewProductVersionId('');
-      setNewEmpanelmentId('');
+      setAttempt({ lenderId: '', empanelmentId: '', productVersionId: '' });
       setSuccessMessage('New lender attempt created successfully.');
       setErrorMessage(null);
     },
@@ -281,7 +278,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               <TextField
                 size="small"
                 fullWidth
-                placeholder="Enter Application ID (e.g. app_demo_001)"
+                placeholder="Enter Application ID (app_…)"
                 value={inputAppId}
                 onChange={(e) => setInputAppId(e.target.value)}
               />
@@ -453,39 +450,22 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                 {errorMessage}
               </Alert>
             )}
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Lender ID"
-                value={newLenderId}
-                onChange={(e) => setNewLenderId(e.target.value)}
-                placeholder="lnd_01..."
-                fullWidth
-                required
-              />
-              <TextField
-                label="Product Version ID"
-                value={newProductVersionId}
-                onChange={(e) => setNewProductVersionId(e.target.value)}
-                placeholder="lpv_01..."
-                fullWidth
-                required
-              />
-              <TextField
-                label="Empanelment ID"
-                value={newEmpanelmentId}
-                onChange={(e) => setNewEmpanelmentId(e.target.value)}
-                placeholder="emp_01..."
-                fullWidth
-                required
-              />
-            </Stack>
+            <Box sx={{ mt: 1 }}>
+              <LenderAttemptFields value={attempt} onChange={setAttempt} />
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button
               variant="contained"
               onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending || !newLenderId || !newProductVersionId || !newEmpanelmentId}
+              disabled={
+                createMutation.isPending ||
+                !attempt.lenderId ||
+                !attempt.productVersionId ||
+                !attempt.empanelmentId
+              }
+              data-testid="lender-case.create.submit"
             >
               Create Attempt
             </Button>

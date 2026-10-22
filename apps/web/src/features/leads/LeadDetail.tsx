@@ -1,3 +1,5 @@
+// /leads/:id (owner: Dev 5; DSA Notion MODULE 7; QA plan Modules 06 and 07). The lead, its lifecycle actions (SUB-LEAD.06, .09,
+// .10), assignment (CMP-LEAD.05.2 assign dialog), duplicate flag (SUB-LEAD.04), and its activity and follow-up tasks.
 import { useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +9,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
@@ -17,17 +20,29 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
   MenuItem,
   Select,
+  Link,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { hasPermission, useMe } from '../../api/useMe';
-import { fetchLeadById, transitionLead, assignLead, convertLead, ApiError } from './api';
+import { UserPicker } from '../admin/components';
+import {
+  fetchLeadById,
+  transitionLead,
+  assignLead,
+  convertLead,
+  restoreLead,
+  rerouteLead,
+  ApiError,
+} from './api';
 import { leadActions } from './lead-actions';
+import { LeadFollowUps } from './LeadFollowUps';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
@@ -41,17 +56,23 @@ export function LeadDetail() {
   // Modal states
   const [qualifyOpen, setQualifyOpen] = useState(false);
   const [qualApplicantType, setQualApplicantType] = useState('SALARIED');
-  const [qualMonthlyIncome, setQualMonthlyIncome] = useState('75000');
-  const [qualAmount, setQualAmount] = useState('500000');
-  const [qualifyErrors, setQualifyErrors] = useState<{ monthlyIncome?: string; amount?: string }>({});
+  const [qualTenure, setQualTenure] = useState('');
+  const [qualAmount, setQualAmount] = useState('');
+  const [qualifyErrors, setQualifyErrors] = useState<{ tenure?: string; amount?: string }>({});
 
   const [disqualifyOpen, setDisqualifyOpen] = useState(false);
   const [disqualificationReason, setDisqualificationReason] = useState('NOT_INTERESTED');
 
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignUserId, setAssignUserId] = useState('');
+  const [assignUserId, setAssignUserId] = useState<string | null>(null);
   const [assignReason, setAssignReason] = useState('MANUAL');
-  const [assignError, setAssignError] = useState<string | null>(null);
+  const [transferOpenTasks, setTransferOpenTasks] = useState(true);
+
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('CUSTOMER_RECONTACTED');
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreReason, setRestoreReason] = useState('');
 
   const [conversionResult, setConversionResult] = useState<ConversionResponse | null>(null);
 
@@ -76,6 +97,8 @@ export function LeadDetail() {
       setErrorMessage(null);
       setQualifyOpen(false);
       setDisqualifyOpen(false);
+      setReopenOpen(false);
+      setArchiveOpen(false);
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
     },
     onError: (err) => {
@@ -89,7 +112,7 @@ export function LeadDetail() {
 
   const assignMutation = useMutation({
     meta: { successMessage: 'Lead assigned.' },
-    mutationFn: (variables: { toUserId?: string; reasonCode: string }) => {
+    mutationFn: (variables: { toUserId?: string; reasonCode: string; transferOpenTasks?: boolean }) => {
       if (!id || !etag) throw new Error('Missing lead ID or ETag');
       return assignLead(id, variables, etag);
     },
@@ -129,6 +152,36 @@ export function LeadDetail() {
     },
   });
 
+  const restoreMutation = useMutation({
+    meta: { successMessage: 'Lead restored.' },
+    mutationFn: () => {
+      if (!id || !etag) throw new Error('Missing lead ID or ETag');
+      return restoreLead(id, restoreReason.trim(), etag);
+    },
+    onSuccess: () => {
+      setRestoreOpen(false);
+      setRestoreReason('');
+      setErrorMessage(null);
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
+    },
+    onError: (err) =>
+      setErrorMessage(err instanceof ApiError ? `${err.code}: ${err.message}` : (err as Error).message),
+  });
+
+  const rerouteMutation = useMutation({
+    meta: { successMessage: 'Routing decision re-run.' },
+    mutationFn: () => {
+      if (!id || !etag) throw new Error('Missing lead ID or ETag');
+      return rerouteLead(id, etag);
+    },
+    onSuccess: () => {
+      setErrorMessage(null);
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
+    },
+    onError: (err) =>
+      setErrorMessage(err instanceof ApiError ? `${err.code}: ${err.message}` : (err as Error).message),
+  });
+
   if (isLoading) {
     return (
       <Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
@@ -151,7 +204,15 @@ export function LeadDetail() {
   }
 
   const isTransitionPending =
-    transitionMutation.isPending || convertMutation.isPending || assignMutation.isPending;
+    transitionMutation.isPending ||
+    convertMutation.isPending ||
+    assignMutation.isPending ||
+    restoreMutation.isPending ||
+    rerouteMutation.isPending;
+  const canComplain =
+    hasPermission(me.data, 'complaint.create') || hasPermission(me.data, 'complaint.manage');
+  const canMerge = hasPermission(me.data, 'lead.merge');
+  const applicationId = conversionResult?.applicationId ?? lead.applicationId ?? null;
   // The state decides which actions apply; the user's permissions decide which of those are offered (audit F-12).
   const actions = leadActions(lead.state, (code) => hasPermission(me.data, code));
 
@@ -182,12 +243,45 @@ export function LeadDetail() {
                 }
               />
               {lead.duplicateFlag !== 'NONE' && (
-                <Chip label={`Duplicate: ${lead.duplicateFlag}`} color="warning" variant="outlined" />
+                <Chip
+                  label={`Duplicate: ${lead.duplicateFlag}`}
+                  color="warning"
+                  variant="outlined"
+                  data-testid="lead.duplicate-flag"
+                />
               )}
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Lead ID: <code>{lead.id}</code> · Version: {lead.lockVersion} (ETag: {etag})
+              Lead ID: <code>{lead.id}</code> · Version: {lead.lockVersion}
             </Typography>
+            {lead.duplicateFlag !== 'NONE' && (
+              <Typography
+                variant="body2"
+                color="warning.main"
+                sx={{ mt: 0.5 }}
+                data-testid="lead.duplicate-candidates"
+              >
+                May duplicate:{' '}
+                {(lead.duplicateCandidateIds ?? []).length === 0
+                  ? 'an existing lead'
+                  : (lead.duplicateCandidateIds ?? []).map((c, i) => (
+                      <span key={c}>
+                        {i > 0 && ', '}
+                        <Link component={RouterLink} to={`/leads/${c}`}>
+                          {c}
+                        </Link>
+                      </span>
+                    ))}
+                {canMerge && (
+                  <>
+                    {' · '}
+                    <Link component={RouterLink} to="/leads/duplicates">
+                      Review duplicates
+                    </Link>
+                  </>
+                )}
+              </Typography>
+            )}
           </Box>
 
           {/* Action Buttons */}
@@ -221,7 +315,10 @@ export function LeadDetail() {
                 variant="contained"
                 color="success"
                 disabled={isTransitionPending}
-                onClick={() => setQualifyOpen(true)}
+                onClick={() => {
+                  setQualAmount(lead.indicativeAmount?.amount ?? '');
+                  setQualifyOpen(true);
+                }}
                 data-testid="lead.action.qualify"
               >
                 Qualify Lead
@@ -251,6 +348,28 @@ export function LeadDetail() {
               </Button>
             )}
 
+            {actions.reopen && (
+              <Button
+                variant="outlined"
+                disabled={isTransitionPending}
+                onClick={() => setReopenOpen(true)}
+                data-testid="lead.action.reopen"
+              >
+                Reopen
+              </Button>
+            )}
+
+            {actions.restore && (
+              <Button
+                variant="contained"
+                disabled={isTransitionPending}
+                onClick={() => setRestoreOpen(true)}
+                data-testid="lead.action.restore"
+              >
+                Restore
+              </Button>
+            )}
+
             {actions.assign && (
               <Button
                 variant="outlined"
@@ -263,15 +382,41 @@ export function LeadDetail() {
               </Button>
             )}
 
-            <Button
-              variant="outlined"
-              color="warning"
-              component={RouterLink}
-              to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
-              data-testid="lead.action.grievance"
-            >
-              Grievance / Complaint
-            </Button>
+            {actions.reroute && (
+              <Button
+                variant="text"
+                color="inherit"
+                disabled={isTransitionPending}
+                onClick={() => rerouteMutation.mutate()}
+                data-testid="lead.action.reroute"
+              >
+                Re-run routing
+              </Button>
+            )}
+
+            {actions.archive && (
+              <Button
+                variant="text"
+                color="inherit"
+                disabled={isTransitionPending}
+                onClick={() => setArchiveOpen(true)}
+                data-testid="lead.action.archive"
+              >
+                Archive
+              </Button>
+            )}
+
+            {canComplain && (
+              <Button
+                variant="outlined"
+                color="warning"
+                component={RouterLink}
+                to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
+                data-testid="lead.action.grievance"
+              >
+                Grievance / Complaint
+              </Button>
+            )}
           </Stack>
         </Stack>
       </Box>
@@ -312,7 +457,9 @@ export function LeadDetail() {
                   Customer Created / Linked:
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  {conversionResult.customerId}
+                  <Link component={RouterLink} to={`/customers/${conversionResult.customerId}`}>
+                    {conversionResult.customerNumber || conversionResult.customerId}
+                  </Link>
                 </Typography>
                 <Button
                   component={RouterLink}
@@ -330,7 +477,9 @@ export function LeadDetail() {
                   Loan Application Created:
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  {conversionResult.applicationId}
+                  <Link component={RouterLink} to={`/applications/${conversionResult.applicationId}`}>
+                    {conversionResult.applicationNumber || conversionResult.applicationId}
+                  </Link>
                 </Typography>
               </Grid>
             </Grid>
@@ -346,7 +495,10 @@ export function LeadDetail() {
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
               <Typography variant="body1">
-                Linked Customer: <strong>{lead.customerId}</strong>
+                Linked Customer:{' '}
+                <Link component={RouterLink} to={`/customers/${lead.customerId}`}>
+                  <strong>{lead.customerId}</strong>
+                </Link>
               </Typography>
               <Button
                 component={RouterLink}
@@ -359,12 +511,13 @@ export function LeadDetail() {
               </Button>
               <Button
                 component={RouterLink}
-                to={`/applications`}
+                to={applicationId ? `/applications/${applicationId}` : '/applications'}
                 variant="outlined"
                 color="primary"
                 size="small"
+                data-testid="lead.converted.application"
               >
-                View Loan Applications →
+                {applicationId ? 'Open Loan Application →' : 'View Loan Applications →'}
               </Button>
             </Stack>
           </CardContent>
@@ -452,12 +605,22 @@ export function LeadDetail() {
                     <Typography variant="body1">{lead.qualApplicantType}</Typography>
                   </Box>
                 )}
-                {lead.qualMonthlyIncome && (
+                {lead.qualRequestedAmount && (
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Monthly Income (Qualified)
+                      Requested Amount (Qualified)
                     </Typography>
-                    <Typography variant="body1">INR {lead.qualMonthlyIncome}</Typography>
+                    <Typography variant="body1">
+                      {lead.qualRequestedAmount.currency} {lead.qualRequestedAmount.amount}
+                    </Typography>
+                  </Box>
+                )}
+                {lead.qualTenureMonths && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Tenure (Qualified)
+                    </Typography>
+                    <Typography variant="body1">{lead.qualTenureMonths} months</Typography>
                   </Box>
                 )}
                 {lead.disqualificationReason && (
@@ -553,37 +716,44 @@ export function LeadDetail() {
           </Card>
         </Grid>
 
-        {/* Grievance & Complaints Integration */}
+        {/* Activity and follow-up tasks (QA Modules 06, 07) */}
         <Grid item xs={12}>
-          <Card sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
-            <CardContent>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between"
-                alignItems={{ sm: 'center' }}
-                spacing={2}
-              >
-                <Box>
-                  <Typography variant="h6" fontWeight="semibold">
-                    Grievances & Customer Complaints
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Registered complaints for this lead are linked to the Grievances module (MOD-GRV).
-                  </Typography>
-                </Box>
-                <Button
-                  variant="contained"
-                  color="warning"
-                  component={RouterLink}
-                  to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
-                  data-testid="lead.view-grievances"
-                >
-                  Manage Lead Complaints →
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
+          <LeadFollowUps subjectType="LEAD" subjectId={lead.id} />
         </Grid>
+
+        {/* Grievance & Complaints Integration */}
+        {canComplain && (
+          <Grid item xs={12}>
+            <Card sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+              <CardContent>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  justifyContent="space-between"
+                  alignItems={{ sm: 'center' }}
+                  spacing={2}
+                >
+                  <Box>
+                    <Typography variant="h6" fontWeight="semibold">
+                      Grievances & Customer Complaints
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Registered complaints for this lead are linked to the Grievances module (MOD-GRV).
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    component={RouterLink}
+                    to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
+                    data-testid="lead.view-grievances"
+                  >
+                    Manage Lead Complaints →
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* Qualify Dialog (T-LEAD-04) */}
@@ -612,22 +782,6 @@ export function LeadDetail() {
             <TextField
               fullWidth
               required
-              label="Monthly Income (INR)"
-              value={qualMonthlyIncome}
-              error={Boolean(qualifyErrors.monthlyIncome)}
-              helperText={qualifyErrors.monthlyIncome}
-              onChange={(e) => {
-                setQualMonthlyIncome(e.target.value);
-                if (qualifyErrors.monthlyIncome) {
-                  setQualifyErrors((prev) => ({ ...prev, monthlyIncome: undefined }));
-                }
-              }}
-              placeholder="e.g. 75000"
-              data-testid="qualify.monthlyIncome"
-            />
-            <TextField
-              fullWidth
-              required
               label="Requested Loan Amount (INR)"
               value={qualAmount}
               error={Boolean(qualifyErrors.amount)}
@@ -641,6 +795,19 @@ export function LeadDetail() {
               placeholder="e.g. 500000"
               data-testid="qualify.amount"
             />
+            <TextField
+              fullWidth
+              label="Tenure (months)"
+              value={qualTenure}
+              error={Boolean(qualifyErrors.tenure)}
+              helperText={qualifyErrors.tenure ?? 'Optional'}
+              onChange={(e) => {
+                setQualTenure(e.target.value.replace(/\D/g, ''));
+                if (qualifyErrors.tenure) setQualifyErrors((prev) => ({ ...prev, tenure: undefined }));
+              }}
+              placeholder="e.g. 36"
+              inputProps={{ inputMode: 'numeric', maxLength: 3, 'data-testid': 'qualify.tenure' }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -649,10 +816,10 @@ export function LeadDetail() {
             variant="contained"
             color="success"
             onClick={() => {
-              const errors: { monthlyIncome?: string; amount?: string } = {};
-              const numIncome = Number(qualMonthlyIncome.trim());
-              if (!qualMonthlyIncome.trim() || isNaN(numIncome) || numIncome <= 0) {
-                errors.monthlyIncome = 'Enter a valid monthly income greater than zero.';
+              const errors: { tenure?: string; amount?: string } = {};
+              const tenure = qualTenure ? Number(qualTenure) : null;
+              if (tenure !== null && (tenure < 1 || tenure > 480)) {
+                errors.tenure = 'Enter a tenure from 1 to 480 months.';
               }
               const numAmt = Number(qualAmount.trim());
               if (!qualAmount.trim() || isNaN(numAmt) || numAmt <= 0) {
@@ -677,6 +844,7 @@ export function LeadDetail() {
                     amount: formattedAmt,
                     currency: 'INR',
                   },
+                  tenureMonths: tenure,
                 },
                 qualApplicantType: qualApplicantType || 'SALARIED',
                 qualRequestedAmount: {
@@ -734,22 +902,24 @@ export function LeadDetail() {
         </DialogActions>
       </Dialog>
 
-      {/* Assign Dialog (API-LEAD-006) */}
+      {/* Assign Dialog (CMP-LEAD.05.2, API-LEAD-006) */}
       <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Assign Lead</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Reassign ownership of this lead to another sales executive or queue.
+            Choose the new owner. The API refuses an owner who cannot hold leads in this branch
+            (INVALID_ASSIGNEE).
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Target User ID"
-              value={assignUserId}
-              onChange={(e) => setAssignUserId(e.target.value)}
-              placeholder="e.g. usr_123"
-              data-testid="assign.userId"
-            />
+            <Box data-testid="assign.userId">
+              <UserPicker
+                multiple={false}
+                label="New owner"
+                value={assignUserId}
+                onChange={setAssignUserId}
+                exclude={lead.ownerUserId ? [lead.ownerUserId] : []}
+              />
+            </Box>
             <FormControl fullWidth>
               <InputLabel id="assign-reason-label">Reason Code</InputLabel>
               <Select
@@ -758,12 +928,20 @@ export function LeadDetail() {
                 label="Reason Code"
                 onChange={(e) => setAssignReason(e.target.value)}
               >
-                <MenuItem value="MANUAL">Manual Reassignment</MenuItem>
-                <MenuItem value="WORKLOAD_BALANCE">Workload Balancing</MenuItem>
-                <MenuItem value="SPECIALIST_TRANSFER">Specialist Transfer</MenuItem>
-                <MenuItem value="TERRITORY_CHANGE">Territory Change</MenuItem>
+                <MenuItem value="MANUAL">Manual reassignment</MenuItem>
+                <MenuItem value="REBALANCE">Workload rebalance</MenuItem>
+                <MenuItem value="OWNER_INACTIVE">Current owner inactive</MenuItem>
               </Select>
             </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={transferOpenTasks}
+                  onChange={(e) => setTransferOpenTasks(e.target.checked)}
+                />
+              }
+              label="Move the lead's open tasks to the new owner"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -772,14 +950,103 @@ export function LeadDetail() {
             variant="contained"
             onClick={() =>
               assignMutation.mutate({
-                toUserId: assignUserId.trim() || undefined,
+                toUserId: assignUserId ?? undefined,
                 reasonCode: assignReason,
+                transferOpenTasks,
               })
             }
-            disabled={assignMutation.isPending || !assignUserId.trim()}
+            disabled={assignMutation.isPending || !assignUserId}
             data-testid="assign.submit"
           >
             Assign Lead
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reopen Dialog (T-LEAD-06) */}
+      <Dialog open={reopenOpen} onClose={() => setReopenOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Reopen Lead</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            The lead goes back to NEW. Say why it is reopened.
+          </DialogContentText>
+          <TextField
+            select
+            fullWidth
+            label="Reason"
+            value={reopenReason}
+            onChange={(e) => setReopenReason(e.target.value)}
+            inputProps={{ 'data-testid': 'reopen.reason' }}
+          >
+            <MenuItem value="CUSTOMER_RECONTACTED">Customer got back in touch</MenuItem>
+            <MenuItem value="NEW_INFORMATION">New information</MenuItem>
+            <MenuItem value="DISQUALIFIED_IN_ERROR">Disqualified in error</MenuItem>
+            <MenuItem value="OTHER">Other</MenuItem>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReopenOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={transitionMutation.isPending}
+            onClick={() =>
+              transitionMutation.mutate({ transitionCode: 'T-LEAD-06', reasonCode: reopenReason })
+            }
+            data-testid="reopen.submit"
+          >
+            Reopen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Archive Dialog (T-LEAD-07, SUB-LEAD.10) */}
+      <Dialog open={archiveOpen} onClose={() => setArchiveOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Archive Lead</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            The lead leaves the working lists and its retention timer starts. It can be restored later.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setArchiveOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={transitionMutation.isPending}
+            onClick={() => transitionMutation.mutate({ transitionCode: 'T-LEAD-07', reasonCode: 'INACTIVE' })}
+            data-testid="archive.submit"
+          >
+            Archive
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Restore Dialog (API-LEAD-014) */}
+      <Dialog open={restoreOpen} onClose={() => setRestoreOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Restore Lead</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            The lead returns to the state it was archived from.
+          </DialogContentText>
+          <TextField
+            fullWidth
+            required
+            label="Reason"
+            value={restoreReason}
+            onChange={(e) => setRestoreReason(e.target.value)}
+            helperText="3 to 200 characters. No identity or account numbers."
+            inputProps={{ maxLength: 200, 'data-testid': 'restore.reason' }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestoreOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={restoreMutation.isPending || restoreReason.trim().length < 3}
+            onClick={() => restoreMutation.mutate()}
+            data-testid="restore.submit"
+          >
+            Restore
           </Button>
         </DialogActions>
       </Dialog>

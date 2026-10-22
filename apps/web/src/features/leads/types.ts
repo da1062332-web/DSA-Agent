@@ -1,5 +1,6 @@
 export interface LeadResource {
   id: string;
+  branchId?: string;
   fullName: string;
   mobileMasked: string;
   emailMasked: string | null;
@@ -27,14 +28,19 @@ export interface LeadResource {
   ownerQueueId: string | null;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   customerId: string | null;
+  /** Set once the lead is converted (API-LEAD-007). */
+  applicationId?: string | null;
   mergedIntoId: string | null;
   duplicateFlag: 'NONE' | 'POSSIBLE' | 'EXACT' | 'ATTRIBUTION_CONFLICT';
+  /** The leads this one may duplicate, when duplicateFlag is not NONE. */
+  duplicateCandidateIds?: string[];
   tags: string[];
   nextFollowUpAt: string | null;
   contactAttempts: number;
   qualMonthlyIncome: string | null;
   qualApplicantType: string | null;
   qualRequestedAmount: { amount: string; currency: string } | null;
+  qualTenureMonths?: number | null;
   disqualificationReason: string | null;
   lockVersion: number;
   createdAt: string;

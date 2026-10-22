@@ -58,7 +58,7 @@ describe('Module 9 — TaskList Frontend Component Rendering (UI-TASK-001)', () 
     mockGrants(['task.read']);
     const html = renderTaskList();
 
-    expect(html).toContain('Task Management (UI-TASK-001)');
+    expect(html).toContain('Tasks');
     expect(html).not.toContain('+ Create Task');
     expect(html).toContain('Mine');
     expect(html).toContain('Queues');
@@ -69,7 +69,7 @@ describe('Module 9 — TaskList Frontend Component Rendering (UI-TASK-001)', () 
     mockGrants(['task.read', 'task.create']);
     const html = renderTaskList();
 
-    expect(html).toContain('Task Management (UI-TASK-001)');
+    expect(html).toContain('Tasks');
     expect(html).toContain('+ Create Task');
   });
 

@@ -467,7 +467,7 @@ export function RulesListPage() {
                 fullWidth
                 value={newScopeRef}
                 onChange={(e) => setNewScopeRef(e.target.value)}
-                placeholder="e.g. br_mumbai or len_hdfc"
+                placeholder="e.g. brn_… or lnd_…"
                 helperText="Identifier for the targeted branch, lender, or product version"
               />
             )}

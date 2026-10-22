@@ -15,6 +15,9 @@ import {
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
+import { useMe } from '../../api/useMe';
+import { BranchSelect } from '../admin/components';
+import { ApplicationSelect } from '../applications/ApplicationSelect';
 import { createVerification } from './api';
 import type { CreateVerificationInput, VerificationPriority, VerificationType } from './types';
 
@@ -27,7 +30,8 @@ interface Props {
 export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
   const [applicationId, setApplicationId] = useState('');
   const [verificationType, setVerificationType] = useState<VerificationType>('DOCUMENT_REVIEW');
-  const [branchId, setBranchId] = useState('br_demo_01');
+  const me = useMe();
+  const [branchId, setBranchId] = useState(me.data?.primaryBranchId ?? '');
   const [priority, setPriority] = useState<VerificationPriority>('MEDIUM');
   const [findingsSummary, setFindingsSummary] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,7 +68,7 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
 
   return (
     <Dialog open={open} disablePortal onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <DialogTitle>Initiate Verification Case</DialogTitle>
         <DialogContent dividers>
           {error && (
@@ -74,15 +78,12 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
           )}
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Loan Application ID"
-              placeholder="e.g. app_01J..."
-              value={applicationId}
-              onChange={(e) => setApplicationId(e.target.value)}
+            <ApplicationSelect
+              label="Loan Application"
               required
-              fullWidth
-              size="small"
-              data-testid="verification.create.applicationId"
+              value={applicationId}
+              onChange={setApplicationId}
+              testId="verification.create.applicationId"
             />
 
             <FormControl fullWidth size="small">
@@ -103,20 +104,9 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
               </Select>
             </FormControl>
 
-            <FormControl fullWidth size="small">
-              <InputLabel id="verification-branch-label">Branch</InputLabel>
-              <Select
-                labelId="verification-branch-label"
-                value={branchId}
-                label="Branch"
-                onChange={(e) => setBranchId(e.target.value)}
-                data-testid="verification.create.branch"
-              >
-                <MenuItem value="br_demo_01">Mumbai Central (MUM01)</MenuItem>
-                <MenuItem value="br_mumbai">Mumbai Central (MUM01 Legacy)</MenuItem>
-                <MenuItem value="br_pune">Pune Camp (PUN01)</MenuItem>
-              </Select>
-            </FormControl>
+            <Box data-testid="verification.create.branch">
+              <BranchSelect required value={branchId || null} onChange={(id) => setBranchId(id ?? '')} />
+            </Box>
 
             <FormControl fullWidth size="small">
               <InputLabel id="verification-priority-label">Priority</InputLabel>

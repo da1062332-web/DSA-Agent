@@ -56,22 +56,11 @@ export function PublicUploadPage() {
     retry: false,
   });
 
-  // Fallback requested items if backend returned empty array
-  const effectiveRequestedItems = React.useMemo(() => {
-    if (linkStatus?.requestedItems && linkStatus.requestedItems.length > 0) {
-      return linkStatus.requestedItems;
-    }
-    return [
-      { checklistItemId: 'chk_pan_card', documentTypeCode: 'PAN_CARD', ordinal: 1, mandatory: true },
-      {
-        checklistItemId: 'chk_bank_statement',
-        documentTypeCode: 'BANK_STATEMENT',
-        ordinal: 2,
-        mandatory: true,
-      },
-      { checklistItemId: 'chk_salary_slip', documentTypeCode: 'SALARY_SLIP', ordinal: 3, mandatory: false },
-    ];
-  }, [linkStatus?.requestedItems]);
+  // Only the items this link asks for (QA plan Module 14: the customer sees only the intended workflow). Never a made-up list.
+  const effectiveRequestedItems = React.useMemo(
+    () => linkStatus?.requestedItems ?? [],
+    [linkStatus?.requestedItems],
+  );
 
   // Set default selected checklist item when link status loads
   React.useEffect(() => {
