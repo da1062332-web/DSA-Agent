@@ -24,7 +24,9 @@ export function useCan(action: ActionId | string, options?: UseCanOptions): bool
 
 export interface CanProps {
   /** Action identifier from ACTION_RULES or direct permission code */
-  action: ActionId | string;
+  action?: ActionId | string;
+  /** Direct permission code (alias for action) */
+  permission?: string;
   /** Optional secondary condition (e.g. record state !== 'LOCKED') */
   when?: boolean;
   /** Fallback content when forbidden (defaults to null, hiding the control) */
@@ -36,8 +38,9 @@ export interface CanProps {
  * Declarative component for guarding action buttons and mutating controls.
  * Hides children (or displays fallback) if the user lacks the required permission.
  */
-export function Can({ action, when = true, fallback = null, children }: CanProps) {
-  const allowed = useCan(action, { when });
+export function Can({ action, permission, when = true, fallback = null, children }: CanProps) {
+  const target = (action || permission) as (ActionId | string);
+  const allowed = useCan(target, { when });
   if (!allowed) {
     return <>{fallback}</>;
   }

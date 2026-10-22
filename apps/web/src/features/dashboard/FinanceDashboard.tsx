@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Can } from '../../shell/Can';
+import { ConnectorName, LenderName } from '../../shell/display';
 import { fetchCommissionPlans } from '../commission/api';
 import { fetchPayoutRequests } from '../payouts/api';
 
@@ -156,7 +157,9 @@ export function FinanceDashboard() {
                     {payouts.map((p) => (
                       <TableRow key={p.id} hover>
                         <TableCell sx={{ fontWeight: 600 }}>{p.id}</TableCell>
-                        <TableCell>{p.connectorId}</TableCell>
+                        <TableCell>
+                          <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 500 }} />
+                        </TableCell>
                         <TableCell>
                           {p.currency} {Number(p.total || 0).toLocaleString()}
                         </TableCell>
@@ -210,7 +213,7 @@ export function FinanceDashboard() {
                           {plan.id}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Lender: {plan.lenderId} · v{plan.lockVersion}
+                          Lender: <LenderName id={plan.lenderId} typographyProps={{ variant: 'caption', fontWeight: 600 }} /> · v{plan.lockVersion}
                         </Typography>
                       </Box>
                       <Chip label={plan.status} size="small" color={plan.status === 'ACTIVE' ? 'success' : 'default'} />

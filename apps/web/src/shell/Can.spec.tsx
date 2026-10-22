@@ -173,3 +173,55 @@ describe('Phase 1: ACTION_RULES against live 14 roles fixture', () => {
     expect(canPerformAction('lead.create', can)).toBe(false);
   });
 });
+
+describe('Route gates and action guards for commission.calculate, lender.manage, and product.manage (Section 3.4)', () => {
+  const zeroPerm = () => false;
+
+  describe('commission.calculate', () => {
+    it('blocks a zero-permission user', () => {
+      expect(canPerformAction('commission.calculate', zeroPerm)).toBe(false);
+    });
+
+    it('allows an old role holding finance.view (fallback)', () => {
+      const oldRole = (code: string) => code === 'finance.view';
+      expect(canPerformAction('commission.calculate', oldRole)).toBe(true);
+    });
+
+    it('allows a new role holding commission.calculate directly', () => {
+      const newRole = (code: string) => code === 'commission.calculate';
+      expect(canPerformAction('commission.calculate', newRole)).toBe(true);
+    });
+  });
+
+  describe('lender.manage', () => {
+    it('blocks a zero-permission user', () => {
+      expect(canPerformAction('lender.manage', zeroPerm)).toBe(false);
+    });
+
+    it('allows an old role holding config.manage (fallback)', () => {
+      const oldRole = (code: string) => code === 'config.manage';
+      expect(canPerformAction('lender.manage', oldRole)).toBe(true);
+    });
+
+    it('allows a new role holding lender.manage directly', () => {
+      const newRole = (code: string) => code === 'lender.manage';
+      expect(canPerformAction('lender.manage', newRole)).toBe(true);
+    });
+  });
+
+  describe('product.manage', () => {
+    it('blocks a zero-permission user', () => {
+      expect(canPerformAction('product.manage', zeroPerm)).toBe(false);
+    });
+
+    it('allows an old role holding config.manage (fallback)', () => {
+      const oldRole = (code: string) => code === 'config.manage';
+      expect(canPerformAction('product.manage', oldRole)).toBe(true);
+    });
+
+    it('allows a new role holding product.manage directly', () => {
+      const newRole = (code: string) => code === 'product.manage';
+      expect(canPerformAction('product.manage', newRole)).toBe(true);
+    });
+  });
+});

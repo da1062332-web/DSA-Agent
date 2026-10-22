@@ -275,11 +275,15 @@ export type ActionId =
   | 'lead.assign'
   | 'lead.reopen'
   | 'lead.convert'
+  | 'lead.qualify'
+  | 'lead.archive'
   // Lender cases
   | 'lender_case.submit'
   | 'lender_case.update_status'
   | 'lender_case.package'
   // Verifications & Documents
+  | 'verification.create'
+  | 'verification.update'
   | 'verification.perform'
   | 'verification.complete'
   | 'document.review'
@@ -297,6 +301,9 @@ export type ActionId =
   | 'disbursement.verify'
   // Connectors
   | 'connector.manage'
+  | 'connector.attribution_change'
+  | 'connector.bank_change_approve'
+  | 'connector.dispute_resolve'
   // Finance & Payouts
   | 'finance.reconcile'
   | 'finance.period_close'
@@ -313,10 +320,13 @@ export type ActionId =
   | 'application.create'
   | 'application.review'
   // Customers & Complaints
+  | 'customer.create'
   | 'customer.update'
   | 'customer.reveal_sensitive'
+  | 'consent.record'
   | 'complaint.create'
   | 'complaint.manage'
+  | 'attendance.manage'
   // Administration & Platform
   | 'user.manage'
   | 'role.manage'
@@ -341,6 +351,8 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'lead.assign': ['lead.assign'],
   'lead.reopen': ['lead.reopen', 'lead.update'], // fallback to lead.update supported
   'lead.convert': ['lead.convert'],
+  'lead.qualify': ['lead.qualify'],
+  'lead.archive': ['lead.archive'],
 
   // Lender cases
   'lender_case.submit': ['lender_case.submit'],
@@ -348,6 +360,8 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'lender_case.package': ['lender_case.submit', 'application.read'],
 
   // Verifications & Documents
+  'verification.create': ['verification.create'],
+  'verification.update': ['verification.update'],
   'verification.perform': ['verification.perform'],
   'verification.complete': ['verification.complete'],
   'document.review': ['document.review'],
@@ -368,6 +382,9 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
 
   // Connectors
   'connector.manage': ['connector.manage'],
+  'connector.attribution_change': ['connector.attribution_change', 'connector.manage'],
+  'connector.bank_change_approve': ['connector.bank_change_approve', 'connector.manage'],
+  'connector.dispute_resolve': ['connector.dispute_resolve', 'connector.manage'],
 
   // Finance & Payouts
   'finance.reconcile': ['finance.reconcile'],
@@ -387,10 +404,13 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'application.review': ['application.review'],
 
   // Customers & Complaints
+  'customer.create': ['customer.create'],
   'customer.update': ['customer.update'],
   'customer.reveal_sensitive': ['customer.reveal_sensitive'],
+  'consent.record': ['consent.record'],
   'complaint.create': ['complaint.create'],
   'complaint.manage': ['complaint.manage'],
+  'attendance.manage': ['attendance.manage'],
 
   // Administration & Platform
   'user.manage': ['user.manage'],

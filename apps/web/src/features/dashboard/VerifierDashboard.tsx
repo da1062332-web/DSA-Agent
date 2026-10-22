@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { fetchVerifications } from '../verifications/api';
+import { ApplicationName } from '../../shell/display';
 
 import type { VerificationRequest } from '../verifications/types';
 
@@ -145,7 +146,9 @@ export function VerifierDashboard() {
                   <TableRow key={v.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{v.id}</TableCell>
                     <TableCell>{v.verificationType}</TableCell>
-                    <TableCell>{v.applicationId}</TableCell>
+                    <TableCell>
+                      <ApplicationName id={v.applicationId} linkToApp />
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={v.status}
