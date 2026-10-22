@@ -53,4 +53,10 @@ describe('grievances: text rules (TEST-GRV-WEB-002)', () => {
     expect(isValidReference('ABCDE1234F')).toBe(false);
     expect(isValidReference('123456789012')).toBe(false);
   });
+
+  it('rejects descriptions with PAN, Aadhaar or account numbers (CMP-02)', () => {
+    expect(isValidDescription('My PAN is ABCDE1234F please check')).toBe(false);
+    expect(isValidDescription('Aadhaar number is 1234 5678 9012 update')).toBe(false);
+    expect(isValidDescription('My account number is 12345678901234')).toBe(false);
+  });
 });

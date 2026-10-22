@@ -193,7 +193,7 @@ export class SendEligibilityGuard {
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
         hour: 'numeric',
-        hour12: false,
+        hourCycle: 'h23',
       });
       const hour = parseInt(formatter.format(now), 10);
 
@@ -450,8 +450,8 @@ export class SendEligibilityGuard {
       // 8. Consent: an ACTIVE, unexpired consent for the purpose, held by the lead itself, or for a customer or application by
       // the customer or by a lead that converted into it (consents captured before conversion stay valid).
       const purpose = template.category === 'MARKETING' ? 'MARKETING' : 'CONTACT';
-      const consentRes = await sql<{ id: string; status: string; expires_at: Date | null }>`
-        SELECT c.id, c.status, c.expires_at FROM app.consent_record c
+      const consentRes = await sql<{ id: string; status: string; expires_at: Date | null; captured_at: Date }>`
+        SELECT c.id, c.status, c.expires_at, c.captured_at FROM app.consent_record c
          WHERE c.tenant_id = ${tenantId}
            AND c.purpose = ${purpose}
            AND (
@@ -460,19 +460,22 @@ export class SendEligibilityGuard {
              OR (c.subject_type = 'LEAD' AND ${subject.customerId ?? null}::text IS NOT NULL
                  AND c.subject_id IN (SELECT l.id FROM app.lead l WHERE l.customer_id = ${subject.customerId ?? null}))
            )
-         ORDER BY (c.status = 'ACTIVE') DESC, c.captured_at DESC
-         LIMIT 1
+         ORDER BY c.captured_at DESC, c.created_at DESC
+         LIMIT 5
       `.execute(tx);
 
-      const consent = consentRes.rows[0];
-      if (!consent) {
+      const rows = consentRes.rows;
+      if (!rows.length) {
         return blocked('CONSENT_REQUIRED', `Active consent record for purpose ${purpose} is required`);
       }
-      if (consent.status === 'WITHDRAWN') {
+      const withdrawn = rows.find((r) => r.status === 'WITHDRAWN');
+      const active = rows.find((r) => r.status === 'ACTIVE' && (!r.expires_at || new Date(r.expires_at) >= ctx.now));
+
+      if (withdrawn && (!active || new Date(withdrawn.captured_at) >= new Date(active.captured_at))) {
         return blocked('CONSENT_WITHDRAWN', `Consent for purpose ${purpose} has been withdrawn`);
       }
-      if (consent.status !== 'ACTIVE' || (consent.expires_at && new Date(consent.expires_at) < ctx.now)) {
-        return blocked('CONSENT_REQUIRED', `Consent for purpose ${purpose} has expired`);
+      if (!active) {
+        return blocked('CONSENT_REQUIRED', `Consent for purpose ${purpose} has expired or is inactive`);
       }
     }
 

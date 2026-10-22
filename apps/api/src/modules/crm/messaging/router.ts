@@ -33,6 +33,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: MessagingService):
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
 
+      const hasPermission = ctx.principal.grants.some((g) => g.code === 'config.manage');
+      if (!hasPermission) {
+        throw AppError.of('FORBIDDEN', 'Principal requires config.manage permission to create templates');
+      }
+
       const idempotencyKey = req.get('Idempotency-Key');
       if (!idempotencyKey) {
         throw AppError.of('VALIDATION_ERROR', 'Idempotency-Key header is required for creating templates', [

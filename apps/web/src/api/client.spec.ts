@@ -17,4 +17,13 @@ describe('errorText', () => {
     expect(errorText(new Error('boom'))).toBe('boom');
     expect(errorText('x')).toBe('Something went wrong.');
   });
+  it('maps internal error class names (e.g. System.Xml.XmlElement) to plain user messages', () => {
+    const errWithXml = new ApiError('INTERNAL_ERROR', 500, 'System.Xml.XmlElement');
+    expect(errorText(errWithXml)).not.toContain('System.Xml');
+    expect(errorText(errWithXml)).toBe('An unexpected error occurred.');
+
+    const plainErrorWithXml = new Error('Unhandled exception: System.Xml.XmlElement');
+    expect(errorText(plainErrorWithXml)).not.toContain('System.Xml');
+    expect(errorText(plainErrorWithXml)).toBe('An unexpected error occurred.');
+  });
 });

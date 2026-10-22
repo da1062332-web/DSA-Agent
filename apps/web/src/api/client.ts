@@ -134,13 +134,31 @@ async function send<T>(path: string, req: ApiRequest): Promise<{ data: T; etag?:
 export const ACCESS_DENIED_TEXT =
   "You don't have access to this. Ask your administrator to grant you the permission.";
 
+const INTERNAL_CLASS_PATTERNS = [
+  /System\.(Xml|IO|Data|Web|Net|Collections|Runtime|Threading|Security)/i,
+  /XmlElement/i,
+  /NullReferenceException|InvalidOperationException|ArgumentNullException/i,
+  /\[object\s+Object\]/i,
+];
+
+function sanitizeErrorMessage(msg: string): string {
+  if (INTERNAL_CLASS_PATTERNS.some((p) => p.test(msg))) {
+    return 'An unexpected error occurred.';
+  }
+  return msg;
+}
+
 /** A readable message for an error, including field details from VALIDATION_ERROR. */
 export function errorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return err instanceof Error ? err.message : 'Something went wrong.';
+  if (!(err instanceof ApiError)) {
+    const raw = err instanceof Error ? err.message : 'Something went wrong.';
+    return sanitizeErrorMessage(raw);
+  }
   if (err.code === 'FORBIDDEN') return ACCESS_DENIED_TEXT;
+  const rawMsg = sanitizeErrorMessage(err.message);
   const fields = err.details.filter((d) => d.field).map((d) => `${d.field}: ${d.issue.toLowerCase()}`);
   const ref = err.correlationId ? ` (ref ${err.correlationId})` : '';
-  return `${err.message}${fields.length ? ` — ${fields.join(', ')}` : ''}${ref}`;
+  return `${rawMsg}${fields.length ? ` — ${fields.join(', ')}` : ''}${ref}`;
 }
 
 /** Opens a streaming response (server-sent events) with the session token; the caller reads res.body. */

@@ -418,6 +418,31 @@ describe('Module 7 — Leads (MOD-LEAD)', () => {
       expect(res.body.qualRequestedAmount?.amount).toBe('450000.00');
     });
 
+    it('TC-LEAD-016b rejects T-LEAD-04 with VALIDATION_ERROR when qualification details are missing or blank (LEAD-06)', async () => {
+      const app = getApp();
+      const createRes = await request(app)
+        .post('/v1/leads')
+        .set('Idempotency-Key', 'lead_trans_04_blank')
+        .send(validLeadPayload);
+
+      const leadId = createRes.body.id;
+      const res = await request(app)
+        .post(`/v1/leads/${leadId}/transitions`)
+        .set('If-Match', '"0"')
+        .set('Idempotency-Key', 't_lead_04_blank_step')
+        .send({
+          transitionCode: 'T-LEAD-04',
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+
+      // Verify state is unchanged
+      const checkRes = await request(app).get(`/v1/leads/${leadId}`);
+      expect(checkRes.status).toBe(200);
+      expect(checkRes.body.state).toBe('NEW');
+    });
+
     it('TC-LEAD-017 executes T-LEAD-05 (disqualify) with disqualificationReason', async () => {
       const app = getApp();
       const createRes = await request(app)

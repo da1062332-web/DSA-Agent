@@ -51,20 +51,38 @@ export type TemplateVariableDeclaration = z.infer<typeof TemplateVariableDeclara
 /**
  * ENT-035: Message Template
  */
-export const CreateTemplateSchema = z.object({
-  code: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[a-z0-9._-]+$/, 'code must be lowercase alphanumeric with ., _, or -'),
-  channel: MessageChannelSchema,
-  language: z.string().min(2).max(10).default('en'),
-  category: TemplateCategorySchema.default('TRANSACTIONAL'),
-  body: z.string().min(1).max(5000),
-  variables: z.array(TemplateVariableDeclarationSchema).default([]),
-  providerTemplateId: z.string().max(100).nullable().optional(),
-  status: TemplateStatusSchema.default('APPROVED'),
-});
+export const CreateTemplateSchema = z
+  .object({
+    code: z
+      .string()
+      .min(3)
+      .max(50)
+      .regex(/^[a-z0-9._-]+$/, 'code must be lowercase alphanumeric with ., _, or -'),
+    channel: MessageChannelSchema,
+    language: z.string().min(2).max(10).default('en'),
+    category: TemplateCategorySchema.default('TRANSACTIONAL'),
+    body: z.string().min(1).max(5000),
+    variables: z.array(TemplateVariableDeclarationSchema).default([]),
+    providerTemplateId: z.string().max(100).nullable().optional(),
+    status: TemplateStatusSchema.default('APPROVED'),
+  })
+  .superRefine((data, ctx) => {
+    // If template is approved, all variables used in body via {{var}} must be declared in variables
+    if (data.status === 'APPROVED') {
+      const declared = new Set(data.variables.map((v) => v.name));
+      const matches = data.body.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g);
+      for (const m of matches) {
+        const varName = m[1];
+        if (varName && !declared.has(varName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Template body uses undeclared variable: '{{${varName}}}'`,
+            path: ['variables'],
+          });
+        }
+      }
+    }
+  });
 export type CreateTemplateInput = z.infer<typeof CreateTemplateSchema>;
 
 export const MessageTemplateSchema = z.object({

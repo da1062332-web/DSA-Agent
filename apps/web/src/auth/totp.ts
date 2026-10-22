@@ -9,13 +9,18 @@ export async function verifiedTotpFactors(): Promise<Factor[]> {
   return data.totp;
 }
 
-/** Starts enrolment. Leftover unverified factors from an abandoned attempt are removed first. */
-export async function startTotpEnrolment(friendlyName: string) {
+/** Starts enrolment. Leftover unverified factors (or existing factors when resetting) are removed first. */
+export async function startTotpEnrolment(friendlyName: string, resetExisting = false) {
   const supabase = getSupabase();
   const { data: factors } = await supabase.auth.mfa.listFactors();
   for (const f of factors?.all ?? []) {
-    if (f.factor_type === 'totp' && f.status === 'unverified')
-      await supabase.auth.mfa.unenroll({ factorId: f.id });
+    if (f.factor_type === 'totp' && (resetExisting || f.status === 'unverified')) {
+      try {
+        await supabase.auth.mfa.unenroll({ factorId: f.id });
+      } catch {
+        // ignore if unenroll fails or already removed
+      }
+    }
   }
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName });
   if (error) throw error;

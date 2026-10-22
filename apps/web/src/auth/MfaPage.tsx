@@ -38,7 +38,7 @@ export function MfaPage() {
         else
           setMode({
             kind: 'enrol',
-            ...(await startTotpEnrolment(`Authenticator ${new Date().toISOString().slice(0, 10)}`)),
+            ...(await startTotpEnrolment(`Authenticator ${new Date().toISOString().slice(0, 10)}`, forceEnrol)),
           });
       } catch (e) {
         if (!cancelled) setError((e as Error).message);

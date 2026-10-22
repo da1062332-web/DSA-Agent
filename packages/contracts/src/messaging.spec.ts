@@ -28,6 +28,20 @@ describe('Messaging Contracts', () => {
     ).toThrow();
   });
 
+  it('rejects approved template with undeclared variable in body', () => {
+    expect(() =>
+      CreateTemplateSchema.parse({
+        code: 'lead_welcome_email',
+        channel: 'EMAIL',
+        category: 'TRANSACTIONAL',
+        language: 'en',
+        body: 'Hello {{undeclaredVar}}, welcome!',
+        variables: [{ name: 'otherVar', required: true }],
+        status: 'APPROVED',
+      }),
+    ).toThrow(/Template body uses undeclared variable/);
+  });
+
   it('validates MessageRecipientSchema with email or phone', () => {
     const withEmail = MessageRecipientSchema.parse({ email: 'user@example.com' });
     expect(withEmail.email).toBe('user@example.com');

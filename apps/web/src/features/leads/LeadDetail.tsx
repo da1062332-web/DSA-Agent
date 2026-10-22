@@ -26,8 +26,11 @@ import {
   Typography,
 } from '@mui/material';
 import { hasPermission, useMe } from '../../api/useMe';
+import { Can } from '../../shell/Can';
 import { fetchLeadById, transitionLead, assignLead, convertLead, ApiError } from './api';
 import { leadActions } from './lead-actions';
+import { UserSelect } from '../../shell/selectors';
+import { CustomerName, ConnectorName, UserName } from '../../shell/display';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
@@ -41,11 +44,16 @@ export function LeadDetail() {
   // Modal states
   const [qualifyOpen, setQualifyOpen] = useState(false);
   const [qualApplicantType, setQualApplicantType] = useState('SALARIED');
-  const [qualMonthlyIncome, setQualMonthlyIncome] = useState('75000');
-  const [qualAmount, setQualAmount] = useState('500000');
+  const [qualMonthlyIncome, setQualMonthlyIncome] = useState('');
+  const [qualAmount, setQualAmount] = useState('');
+  const [qualError, setQualError] = useState<string | null>(null);
 
   const [disqualifyOpen, setDisqualifyOpen] = useState(false);
   const [disqualificationReason, setDisqualificationReason] = useState('NOT_INTERESTED');
+
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('CUSTOMER_REQUESTED');
+  const [reopenError, setReopenError] = useState<string | null>(null);
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignUserId, setAssignUserId] = useState('');
@@ -74,6 +82,7 @@ export function LeadDetail() {
       setErrorMessage(null);
       setQualifyOpen(false);
       setDisqualifyOpen(false);
+      setReopenOpen(false);
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
     },
     onError: (err) => {
@@ -191,74 +200,100 @@ export function LeadDetail() {
           {/* Action Buttons */}
           <Stack direction="row" spacing={1} flexWrap="wrap">
             {actions.attemptContact && (
-              <Button
-                variant="outlined"
-                color="primary"
-                disabled={isTransitionPending}
-                onClick={() => transitionMutation.mutate({ transitionCode: 'T-LEAD-01' })}
-                data-testid="lead.action.attempt-contact"
-              >
-                Attempt Contact
-              </Button>
+              <Can permission="lead.update">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  disabled={isTransitionPending}
+                  onClick={() => transitionMutation.mutate({ transitionCode: 'T-LEAD-01' })}
+                  data-testid="lead.action.attempt-contact"
+                >
+                  Attempt Contact
+                </Button>
+              </Can>
             )}
 
             {actions.markInProgress && (
-              <Button
-                variant="outlined"
-                color="info"
-                disabled={isTransitionPending}
-                onClick={() => transitionMutation.mutate({ transitionCode: 'T-LEAD-02' })}
-                data-testid="lead.action.in-progress"
-              >
-                Mark In Progress
-              </Button>
+              <Can permission="lead.update">
+                <Button
+                  variant="outlined"
+                  color="info"
+                  disabled={isTransitionPending}
+                  onClick={() => transitionMutation.mutate({ transitionCode: 'T-LEAD-02' })}
+                  data-testid="lead.action.in-progress"
+                >
+                  Mark In Progress
+                </Button>
+              </Can>
             )}
 
             {actions.qualify && (
-              <Button
-                variant="contained"
-                color="success"
-                disabled={isTransitionPending}
-                onClick={() => setQualifyOpen(true)}
-                data-testid="lead.action.qualify"
-              >
-                Qualify Lead
-              </Button>
+              <Can permission="lead.qualify">
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={isTransitionPending}
+                  onClick={() => setQualifyOpen(true)}
+                  data-testid="lead.action.qualify"
+                >
+                  Qualify Lead
+                </Button>
+              </Can>
             )}
             {actions.disqualify && (
-              <Button
-                variant="outlined"
-                color="error"
-                disabled={isTransitionPending}
-                onClick={() => setDisqualifyOpen(true)}
-                data-testid="lead.action.disqualify"
-              >
-                Disqualify
-              </Button>
+              <Can permission="lead.qualify">
+                <Button
+                  variant="outlined"
+                  color="error"
+                  disabled={isTransitionPending}
+                  onClick={() => setDisqualifyOpen(true)}
+                  data-testid="lead.action.disqualify"
+                >
+                  Disqualify
+                </Button>
+              </Can>
+            )}
+
+            {actions.reopen && (
+              <Can permission="lead.reopen">
+                <Button
+                  variant="contained"
+                  color="warning"
+                  disabled={isTransitionPending}
+                  onClick={() => setReopenOpen(true)}
+                  data-testid="lead.action.reopen"
+                >
+                  Reopen Lead
+                </Button>
+              </Can>
             )}
 
             {actions.convert && (
-              <Button
-                variant="contained"
-                color="primary"
-                disabled={isTransitionPending}
-                onClick={() => convertMutation.mutate()}
-                data-testid="lead.action.convert"
-              >
-                Convert to Loan Application
-              </Button>
+              <Can permission="application.create">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={isTransitionPending}
+                  onClick={() => convertMutation.mutate()}
+                  data-testid="lead.action.convert"
+                >
+                  Convert to Loan Application
+                </Button>
+              </Can>
             )}
 
             {actions.assign && (
-              <Button
-                variant="outlined"
-                color="inherit"
-                disabled={isTransitionPending}
-                onClick={() => setAssignOpen(true)}
-                data-testid="lead.action.assign"
-              >
-                Assign
-              </Button>
+              <Can permission="lead.assign">
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  disabled={isTransitionPending}
+                  onClick={() => setAssignOpen(true)}
+                  data-testid="lead.action.assign"
+                >
+                  Assign
+                </Button>
+              </Can>
             )}
 
             <Button
@@ -344,7 +379,7 @@ export function LeadDetail() {
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
               <Typography variant="body1">
-                Linked Customer: <strong>{lead.customerId}</strong>
+                Linked Customer: <CustomerName id={lead.customerId} linkToProfile typographyProps={{ fontWeight: 'bold' }} />
               </Typography>
               <Button
                 component={RouterLink}
@@ -496,9 +531,11 @@ export function LeadDetail() {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Connector ID
+                    Connector / Partner
                   </Typography>
-                  <Typography variant="body1">{lead.connectorId || '—'}</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <ConnectorName id={lead.connectorId} fallback="Direct / Organic" typographyProps={{ variant: 'body1' }} />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -524,9 +561,11 @@ export function LeadDetail() {
               <Stack spacing={1.5}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Owner User ID
+                    Owner User
                   </Typography>
-                  <Typography variant="body1">{lead.ownerUserId || '—'}</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <UserName id={lead.ownerUserId} fallback="Unassigned" typographyProps={{ variant: 'body1' }} />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -591,6 +630,11 @@ export function LeadDetail() {
           <DialogContentText sx={{ mb: 2 }}>
             Provide qualification details before marking this lead as QUALIFIED.
           </DialogContentText>
+          {qualError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {qualError}
+            </Alert>
+          )}
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth>
               <InputLabel id="qual-applicant-type-label">Applicant Type</InputLabel>
@@ -609,6 +653,7 @@ export function LeadDetail() {
             </FormControl>
             <TextField
               fullWidth
+              required
               label="Monthly Income (INR)"
               value={qualMonthlyIncome}
               onChange={(e) => setQualMonthlyIncome(e.target.value)}
@@ -617,10 +662,12 @@ export function LeadDetail() {
             />
             <TextField
               fullWidth
+              required
               label="Requested Loan Amount (INR)"
               value={qualAmount}
               onChange={(e) => setQualAmount(e.target.value)}
               placeholder="e.g. 500000"
+              data-testid="qualify.requestedAmount"
             />
           </Stack>
         </DialogContent>
@@ -630,24 +677,33 @@ export function LeadDetail() {
             variant="contained"
             color="success"
             onClick={() => {
+              if (!qualApplicantType || !qualAmount.trim() || !qualMonthlyIncome.trim()) {
+                setQualError('Applicant type, monthly income, and requested amount are required.');
+                return;
+              }
+              const amtNum = Number(qualAmount.trim());
+              const incNum = Number(qualMonthlyIncome.trim());
+              if (isNaN(amtNum) || amtNum <= 0 || isNaN(incNum) || incNum <= 0) {
+                setQualError('Please enter valid positive numbers for income and requested amount.');
+                return;
+              }
+              setQualError(null);
               const formattedAmt =
-                qualAmount && qualAmount.trim()
-                  ? /^\d+$/.test(qualAmount.trim())
-                    ? `${qualAmount.trim()}.00`
-                    : /^\d+\.\d$/.test(qualAmount.trim())
-                      ? `${qualAmount.trim()}0`
-                      : qualAmount.trim()
-                  : '500000.00';
+                /^\d+$/.test(qualAmount.trim())
+                  ? `${qualAmount.trim()}.00`
+                  : /^\d+\.\d$/.test(qualAmount.trim())
+                    ? `${qualAmount.trim()}0`
+                    : qualAmount.trim();
               transitionMutation.mutate({
                 transitionCode: 'T-LEAD-04',
                 qualification: {
-                  applicantType: qualApplicantType || 'SALARIED',
+                  applicantType: qualApplicantType,
                   requestedAmount: {
                     amount: formattedAmt,
                     currency: 'INR',
                   },
                 },
-                qualApplicantType: qualApplicantType || 'SALARIED',
+                qualApplicantType,
                 qualRequestedAmount: {
                   amount: formattedAmt,
                   currency: 'INR',
@@ -658,6 +714,61 @@ export function LeadDetail() {
             data-testid="qualify.submit"
           >
             Submit Qualification
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reopen Dialog (T-LEAD-06) */}
+      <Dialog open={reopenOpen} onClose={() => setReopenOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reopen Lead (T-LEAD-06)</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Provide a mandatory reason for reopening this lead back to NEW status.
+          </DialogContentText>
+          {reopenError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {reopenError}
+            </Alert>
+          )}
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="reopen-reason-label">Reason Code</InputLabel>
+              <Select
+                labelId="reopen-reason-label"
+                value={reopenReason}
+                label="Reason Code"
+                onChange={(e) => setReopenReason(e.target.value)}
+                data-testid="reopen.reason"
+              >
+                <MenuItem value="CUSTOMER_REQUESTED">Customer Requested Re-evaluation</MenuItem>
+                <MenuItem value="NEW_INFORMATION_RECEIVED">New Information Received</MenuItem>
+                <MenuItem value="CONTACT_DETAILS_UPDATED">Contact Details Updated</MenuItem>
+                <MenuItem value="CREDIT_PROFILE_IMPROVED">Credit Profile Improved</MenuItem>
+                <MenuItem value="OTHER">Other / Manager Override</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReopenOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              if (!reopenReason || !reopenReason.trim()) {
+                setReopenError('Reopen reason is required.');
+                return;
+              }
+              setReopenError(null);
+              transitionMutation.mutate({
+                transitionCode: 'T-LEAD-06',
+                reasonCode: reopenReason.trim(),
+              });
+            }}
+            disabled={transitionMutation.isPending}
+            data-testid="reopen.submit"
+          >
+            Confirm Reopen
           </Button>
         </DialogActions>
       </Dialog>
@@ -711,12 +822,12 @@ export function LeadDetail() {
             Reassign ownership of this lead to another sales executive or queue.
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
+            <UserSelect
               fullWidth
-              label="Target User ID"
-              value={assignUserId}
-              onChange={(e) => setAssignUserId(e.target.value)}
-              placeholder="e.g. usr_123"
+              label="Target User / Sales Executive"
+              value={assignUserId || null}
+              onChange={(val) => setAssignUserId(val ?? '')}
+              placeholder="Search user by name or email..."
               data-testid="assign.userId"
             />
             <FormControl fullWidth>

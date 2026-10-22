@@ -7,20 +7,34 @@ const pgError = (code: string, message: string, extra: Record<string, unknown> =
 
 describe('TEST-ERR toAppError', () => {
   it('TEST-ERR-001 a refusal raised by our own trigger (42501) is a 409 INVALID_STATE', () => {
-    const e = toAppError(pgError('42501', 'submission_package pkg_1 is immutable (only frozen_at may be set once)'));
+    const e = toAppError(
+      pgError('42501', 'submission_package pkg_1 is immutable (only frozen_at may be set once)'),
+    );
     expect(e.code).toBe('INVALID_STATE');
     expect(e.httpStatus).toBe(409);
   });
 
   it('TEST-ERR-002 a missing GRANT or a row-level-security violation (42501) is a 500, not a business conflict', () => {
-    expect(toAppError(pgError('42501', 'permission denied for table lender_query')).code).toBe('INTERNAL_ERROR');
-    expect(toAppError(pgError('42501', 'new row violates row-level security policy for table "lead"')).code).toBe(
+    expect(toAppError(pgError('42501', 'permission denied for table lender_query')).code).toBe(
       'INTERNAL_ERROR',
     );
+    expect(
+      toAppError(pgError('42501', 'new row violates row-level security policy for table "lead"')).code,
+    ).toBe('INTERNAL_ERROR');
+  });
+
+  it('TEST-ERR-004 a missing table (42P01) means a migration is not applied here: 503 DEPENDENCY_UNAVAILABLE with a plain message, not the generic error', () => {
+    const e = toAppError(pgError('42P01', 'relation "app.ledger_account" does not exist'));
+    expect(e.code).toBe('DEPENDENCY_UNAVAILABLE');
+    expect(e.httpStatus).toBe(503);
+    expect(e.message).toMatch(/not set up in this environment/);
+    expect(e.message).not.toMatch(/ledger_account|relation/);
   });
 
   it('TEST-ERR-003 unique, check and foreign-key violations keep their codes and reveal only the constraint name', () => {
-    const unique = toAppError(pgError('23505', 'duplicate key value violates unique constraint', { constraint: 'x_uq' }));
+    const unique = toAppError(
+      pgError('23505', 'duplicate key value violates unique constraint', { constraint: 'x_uq' }),
+    );
     expect(unique.code).toBe('INVALID_STATE');
     expect(unique.details[0]?.meta).toEqual({ constraint: 'x_uq' });
     expect(toAppError(pgError('23514', 'check failed')).code).toBe('VALIDATION_ERROR');

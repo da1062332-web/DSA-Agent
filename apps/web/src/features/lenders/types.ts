@@ -58,6 +58,7 @@ export interface UpdateLenderInput {
   lenderType?: LenderType;
   regulatorRef?: string;
   status?: LenderStatus;
+  statusReason?: string;
 }
 
 export interface CreateEmpanelmentInput {

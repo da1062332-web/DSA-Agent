@@ -96,21 +96,23 @@ export async function transitionLead(
 
   if (transition.transitionCode === 'T-LEAD-04') {
     const applicantType =
-      transition.qualification?.applicantType || transition.qualApplicantType || 'SALARIED';
+      transition.qualification?.applicantType || transition.qualApplicantType;
     let reqAmount = transition.qualification?.requestedAmount || transition.qualRequestedAmount;
-    if (reqAmount && typeof reqAmount.amount === 'string') {
+    if (reqAmount && typeof reqAmount.amount === 'string' && reqAmount.amount.trim()) {
       const amt = reqAmount.amount.trim();
       reqAmount = {
         amount: /^\d+$/.test(amt) ? `${amt}.00` : /^\d+\.\d$/.test(amt) ? `${amt}0` : amt,
         currency: reqAmount.currency || 'INR',
       };
     } else {
-      reqAmount = { amount: '500000.00', currency: 'INR' };
+      reqAmount = undefined;
     }
-    bodyPayload.qualification = {
-      applicantType,
-      requestedAmount: reqAmount,
-    };
+    if (applicantType || reqAmount) {
+      bodyPayload.qualification = {
+        applicantType,
+        requestedAmount: reqAmount,
+      };
+    }
   }
 
   const res = await request<LeadResource>(`/v1/leads/${id}/transitions`, {

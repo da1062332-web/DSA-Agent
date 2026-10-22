@@ -60,6 +60,20 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
     setVariables(variables.filter((v) => v.name !== name));
   };
 
+  // Extract all variables referenced in body
+  const bodyVariables = React.useMemo(() => {
+    const declaredNames = new Set(variables.map((v) => v.name));
+    const undeclared: string[] = [];
+    const matches = body.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g);
+    for (const m of matches) {
+      const varName = m[1];
+      if (varName && !declaredNames.has(varName) && !undeclared.includes(varName)) {
+        undeclared.push(varName);
+      }
+    }
+    return { undeclared };
+  }, [body, variables]);
+
   // Preview synthetic rendering
   const renderPreview = () => {
     let preview = body;
@@ -73,6 +87,12 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (bodyVariables.undeclared.length > 0) {
+      setError(`Template body uses undeclared variable(s): {{${bodyVariables.undeclared.join('}}, {{')}}}. Declare them below before approving.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -218,6 +238,11 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                 Live Message Preview:
               </Typography>
+              {bodyVariables.undeclared.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 1.5 }}>
+                  Undeclared variable(s) found in body: <strong>{bodyVariables.undeclared.map(v => `{{${v}}}`).join(', ')}</strong>. Please declare them above or remove them from the message body.
+                </Alert>
+              )}
               <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 1.5 }}>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
                   {renderPreview()}

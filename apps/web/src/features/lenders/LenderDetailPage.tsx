@@ -55,7 +55,7 @@ import type {
 export function LenderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const me = useMe();
-  const canManage = hasPermission(me.data, 'config.manage');
+  const canManage = hasPermission(me.data, 'lender.manage') || hasPermission(me.data, 'config.manage');
 
   const [lender, setLender] = useState<Lender | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -68,6 +68,7 @@ export function LenderDetailPage() {
   const [editType, setEditType] = useState<LenderType>('BANK');
   const [editRegulatorRef, setEditRegulatorRef] = useState<string>('');
   const [editStatus, setEditStatus] = useState<LenderStatus>('ACTIVE');
+  const [editStatusReason, setEditStatusReason] = useState<string>('');
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -107,6 +108,7 @@ export function LenderDetailPage() {
       setEditType(data.lenderType);
       setEditRegulatorRef(data.regulatorRef || '');
       setEditStatus(data.status);
+      setEditStatusReason('');
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -121,6 +123,10 @@ export function LenderDetailPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lender) return;
+    if ((editStatus === 'PAUSED' || editStatus === 'TERMINATED') && !editStatusReason.trim()) {
+      setEditError('A reason is required to pause or terminate a lender.');
+      return;
+    }
     try {
       setSavingProfile(true);
       setEditError(null);
@@ -129,6 +135,7 @@ export function LenderDetailPage() {
         lenderType: editType,
         regulatorRef: editRegulatorRef.trim() || undefined,
         status: editStatus,
+        statusReason: editStatus !== 'ACTIVE' ? editStatusReason.trim() : undefined,
       };
       const updated = await updateLender(lender.id, lender.lockVersion, input);
       setLender(updated);
@@ -584,6 +591,17 @@ export function LenderDetailPage() {
                   <MenuItem value="TERMINATED">Terminated</MenuItem>
                 </Select>
               </FormControl>
+              {(editStatus === 'PAUSED' || editStatus === 'TERMINATED') && (
+                <TextField
+                  fullWidth
+                  required
+                  label="Status Change Reason"
+                  value={editStatusReason}
+                  onChange={(e) => setEditStatusReason(e.target.value)}
+                  placeholder="Explain why this lender is paused or terminated"
+                  helperText="Required when setting status to Paused or Terminated"
+                />
+              )}
             </Stack>
           </DialogContent>
           <DialogActions>

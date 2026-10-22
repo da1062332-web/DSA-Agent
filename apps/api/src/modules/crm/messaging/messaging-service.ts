@@ -56,15 +56,13 @@ export class MessagingService {
     sendGuard?: SendEligibilityGuard,
   ) {
     this.sendGuard = sendGuard ?? new SendEligibilityGuard();
-    const useMock =
-      process.env.ENABLE_MOCK_PROVIDERS === 'true' ||
-      (process.env.NODE_ENV === 'development' && process.env.DISABLE_MOCK_PROVIDERS !== 'true');
+    const useMock = process.env.ENABLE_MOCK_PROVIDERS === 'true';
     if (useMock) {
       this.adapters.set('EMAIL', new ConfiguredTestAdapter('EMAIL', 'DEV_SIMULATED_SES', true));
       this.adapters.set('SMS', new ConfiguredTestAdapter('SMS', 'DEV_SIMULATED_TWILIO', true));
       this.adapters.set('WHATSAPP', new ConfiguredTestAdapter('WHATSAPP', 'DEV_SIMULATED_META', true));
     } else {
-      // Default to unconfigured adapters (fails closed, no fake success)
+      // Default to unconfigured adapters (fails closed with PROVIDER_NOT_CONFIGURED, no fake success)
       this.adapters.set('EMAIL', new UnconfiguredAdapter('EMAIL'));
       this.adapters.set('SMS', new UnconfiguredAdapter('SMS'));
       this.adapters.set('WHATSAPP', new UnconfiguredAdapter('WHATSAPP'));

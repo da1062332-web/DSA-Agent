@@ -9,6 +9,7 @@ export interface LeadActions {
   disqualify: boolean; // T-LEAD-05, needs lead.qualify
   convert: boolean; // conversion to an application, needs application.create
   assign: boolean; // assignment, needs lead.assign
+  reopen: boolean; // T-LEAD-06, needs lead.reopen
 }
 
 export function leadActions(state: string, can: (code: string) => boolean): LeadActions {
@@ -19,5 +20,6 @@ export function leadActions(state: string, can: (code: string) => boolean): Lead
     disqualify: state === 'IN_PROGRESS' && can('lead.qualify'),
     convert: state === 'QUALIFIED' && can('application.create'),
     assign: state !== 'CONVERTED' && state !== 'ARCHIVED' && can('lead.assign'),
+    reopen: (state === 'DISQUALIFIED' || state === 'NOT_CONTACTABLE') && can('lead.reopen'),
   };
 }

@@ -30,9 +30,12 @@ import {
   CHANNEL_LABELS,
   COMPLAINT_CATEGORIES,
   COMPLAINT_CHANNELS,
+  containsSensitiveNumber,
   isValidDescription,
   type ComplaintStatus,
 } from './rules';
+import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
+import { ApplicationName, LeadName } from '../../shell/display';
 
 export interface Complaint {
   id: string;
@@ -143,6 +146,7 @@ export function ComplaintsPage() {
                   <TableHead>
                     <TableRow>
                       <TableCell>Reference</TableCell>
+                      <TableCell>Subject</TableCell>
                       <TableCell>Category</TableCell>
                       <TableCell>Channel</TableCell>
                       <TableCell>Due</TableCell>
@@ -152,7 +156,7 @@ export function ComplaintsPage() {
                   <TableBody>
                     {rows.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                           No complaints match.
                         </TableCell>
                       </TableRow>
@@ -167,6 +171,13 @@ export function ComplaintsPage() {
                           >
                             {c.ackRef}
                           </Link>
+                        </TableCell>
+                        <TableCell>
+                          {c.complainantType === 'APPLICATION' ? (
+                            <ApplicationName id={c.complainantId} linkToApp />
+                          ) : (
+                            <LeadName id={c.complainantId} linkToLead />
+                          )}
                         </TableCell>
                         <TableCell>{CATEGORY_LABELS[c.category]}</TableCell>
                         <TableCell>{CHANNEL_LABELS[c.channel]}</TableCell>
@@ -194,12 +205,24 @@ export function ComplaintsPage() {
 }
 
 function RecordComplaintDialog({ onClose }: { onClose: () => void }) {
+  const [complainantType, setComplainantType] = useState<'APPLICATION' | 'LEAD'>('APPLICATION');
   const [complainantId, setComplainantId] = useState('');
   const [channel, setChannel] = useState<Complaint['channel']>('PHONE');
   const [category, setCategory] = useState<Complaint['category']>('SERVICE');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [ack, setAck] = useState<string | null>(null);
+
+  const descriptionError =
+    description === ''
+      ? null
+      : description.trim().length < 10
+        ? 'Description must be at least 10 characters.'
+        : description.trim().length > 2000
+          ? 'Description must not exceed 2000 characters.'
+          : containsSensitiveNumber(description)
+            ? 'Description must not contain PAN, Aadhaar or account numbers.'
+            : null;
   const create = useCommand<object, Complaint>(
     () => ({ path: '/v1/complaints', method: 'POST' }),
     [['/v1/complaints']],
@@ -208,7 +231,7 @@ function RecordComplaintDialog({ onClose }: { onClose: () => void }) {
   const submit = () =>
     create.mutate(
       {
-        complainantType: 'APPLICATION',
+        complainantType,
         complainantId: complainantId.trim(),
         channel,
         category,
@@ -231,13 +254,36 @@ function RecordComplaintDialog({ onClose }: { onClose: () => void }) {
             <ErrorAlert error={create.error} />
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
-                label="Application reference"
-                value={complainantId}
-                onChange={(e) => setComplainantId(e.target.value)}
-                required
-                helperText="Complaints about a lead are not supported yet."
-                inputProps={{ 'data-testid': 'complaints.complainant' }}
-              />
+                select
+                label="Complainant Type"
+                value={complainantType}
+                onChange={(e) => {
+                  setComplainantType(e.target.value as 'APPLICATION' | 'LEAD');
+                  setComplainantId('');
+                }}
+              >
+                <MenuItem value="APPLICATION">Loan Application</MenuItem>
+                <MenuItem value="LEAD">Lead</MenuItem>
+              </TextField>
+              {complainantType === 'APPLICATION' ? (
+                <ApplicationSelect
+                  label="Loan Application"
+                  value={complainantId || null}
+                  onChange={(id) => setComplainantId(id ?? '')}
+                  required
+                  fullWidth
+                  data-testid="complaints.complainant"
+                />
+              ) : (
+                <LeadSelect
+                  label="Lead"
+                  value={complainantId || null}
+                  onChange={(id) => setComplainantId(id ?? '')}
+                  required
+                  fullWidth
+                  data-testid="complaints.complainant"
+                />
+              )}
               <TextField
                 select
                 label="Channel"
@@ -269,8 +315,8 @@ function RecordComplaintDialog({ onClose }: { onClose: () => void }) {
                 multiline
                 minRows={3}
                 required
-                error={description !== '' && !isValidDescription(description)}
-                helperText="10 to 2000 characters. Do not write PAN, Aadhaar or account numbers."
+                error={Boolean(descriptionError)}
+                helperText={descriptionError || '10 to 2000 characters. Do not write PAN, Aadhaar or account numbers.'}
                 inputProps={{ 'data-testid': 'complaints.description' }}
               />
               <TextField

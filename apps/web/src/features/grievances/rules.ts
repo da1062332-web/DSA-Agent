@@ -37,24 +37,28 @@ export const canStartWork = (status: ComplaintStatus) => status === 'OPEN';
 export const canResolve = (status: ComplaintStatus) => status !== 'RESOLVED';
 export const canReopen = (status: ComplaintStatus) => status === 'RESOLVED';
 
-/** Matches the API: 10 to 2000 characters after trimming. */
+/** Identity or account-number patterns (PAN, Aadhaar, account numbers) forbidden by safeText. */
+export const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
+
+export const containsSensitiveNumber = (text: string) => S3_PATTERNS.some((p) => p.test(text));
+
+/** Matches the API: 10 to 2000 characters after trimming, free of identity or account numbers. */
 export const isValidDescription = (text: string) => {
-  const n = text.trim().length;
-  return n >= 10 && n <= 2000;
+  const t = text.trim();
+  return t.length >= 10 && t.length <= 2000 && !containsSensitiveNumber(t);
 };
 
 /** Matches the API: resolutions carry the same length rule as descriptions. */
 export const isValidResolution = (text: string) => isValidDescription(text);
 
-/** Matches the API: a reason for reopening is 5 to 500 characters. */
+/** Matches the API: a reason for reopening is 5 to 500 characters, free of sensitive numbers. */
 export const isValidReason = (text: string) => {
-  const n = text.trim().length;
-  return n >= 5 && n <= 500;
+  const t = text.trim();
+  return t.length >= 5 && t.length <= 500 && !containsSensitiveNumber(t);
 };
 
 /** Matches the API: lender references are at least 2 characters and free of identity or account numbers. */
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 export const isValidReference = (text: string) => {
   const t = text.trim();
-  return t.length >= 2 && t.length <= 100 && !S3_PATTERNS.some((p) => p.test(t));
+  return t.length >= 2 && t.length <= 100 && !containsSensitiveNumber(t);
 };

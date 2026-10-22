@@ -51,6 +51,13 @@ function fromPostgres(err: unknown): AppError | null {
       return AppError.of('INVALID_STATE', 'A record with the same unique value already exists.', [
         { issue: 'UNIQUE_VIOLATION', meta },
       ]);
+    // undefined_table: a migration this environment has not applied yet (for example the ledger tables on a database that predates
+    // migration 0056). It is a deployment state, not a server bug, so it says so instead of the generic message.
+    case code === '42P01':
+      return AppError.of(
+        'DEPENDENCY_UNAVAILABLE',
+        'This feature is not set up in this environment yet: a database migration it needs has not been applied.',
+      );
     case code === '23P01':
       return table === 'rule_set_version'
         ? AppError.of('EFFECTIVE_OVERLAP', 'The effective period overlaps an existing version.')

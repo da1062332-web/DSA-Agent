@@ -34,6 +34,8 @@ import {
 import { createTask, completeTask, listTasks } from './api';
 import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
+import { ApplicationSelect, BranchSelect, LeadSelect } from '../../shell/selectors';
+import { ApplicationName, LeadName } from '../../shell/display';
 import type {
   CompleteTaskPayload,
   CreateTaskPayload,
@@ -110,9 +112,12 @@ export function TaskList(): React.ReactElement {
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const effectiveBranch = branchId.trim() || me?.primaryBranchId || '';
-    const effectiveLinkedId = linkedId.trim() || 'lead_01M4V6DFJWWB25K8X7QNAXTSC0';
     if (!title.trim()) {
       setActionError('Title is required.');
+      return;
+    }
+    if (!linkedId.trim()) {
+      setActionError('Please select a linked entity.');
       return;
     }
     createMutation.mutate({
@@ -120,7 +125,7 @@ export function TaskList(): React.ReactElement {
       title: title.trim(),
       ownerUserId: me?.id,
       linkedType,
-      linkedId: effectiveLinkedId,
+      linkedId: linkedId.trim(),
       branchId: effectiveBranch,
       priority,
       slaClass: slaClass || undefined,
@@ -239,7 +244,13 @@ export function TaskList(): React.ReactElement {
                             />
                           </TableCell>
                           <TableCell>
-                            {task.linkedType}: {task.linkedId}
+                            {task.linkedType === 'LEAD' ? (
+                              <LeadName id={task.linkedId} linkToLead />
+                            ) : task.linkedType === 'LOAN_APPLICATION' ? (
+                              <ApplicationName id={task.linkedId} linkToApp />
+                            ) : (
+                              `${task.linkedType}: ${task.linkedId}`
+                            )}
                           </TableCell>
                           <TableCell>{new Date(task.dueAt).toLocaleString()}</TableCell>
                           <TableCell>
@@ -311,29 +322,43 @@ export function TaskList(): React.ReactElement {
                     <Select
                       value={linkedType}
                       label="Linked Type"
-                      onChange={(e) => setLinkedType(e.target.value as TaskLinkedType)}
+                      onChange={(e) => {
+                        setLinkedType(e.target.value as TaskLinkedType);
+                        setLinkedId('');
+                      }}
                     >
                       <MenuItem value="LEAD">Lead</MenuItem>
                       <MenuItem value="LOAN_APPLICATION">Loan Application</MenuItem>
                     </Select>
                   </FormControl>
-                  <TextField
-                    label="Linked ID"
-                    value={linkedId}
-                    onChange={(e) => setLinkedId(e.target.value)}
-                    required
-                    fullWidth
-                    size="small"
-                  />
+                  {linkedType === 'LEAD' ? (
+                    <LeadSelect
+                      label="Linked Lead"
+                      value={linkedId || null}
+                      onChange={(id) => setLinkedId(id ?? '')}
+                      required
+                      size="small"
+                      fullWidth
+                    />
+                  ) : (
+                    <ApplicationSelect
+                      label="Linked Application"
+                      value={linkedId || null}
+                      onChange={(id) => setLinkedId(id ?? '')}
+                      required
+                      size="small"
+                      fullWidth
+                    />
+                  )}
                 </Stack>
                 <Stack direction="row" spacing={2}>
-                  <TextField
-                    label="Branch ID"
-                    value={branchId}
-                    onChange={(e) => setBranchId(e.target.value)}
+                  <BranchSelect
+                    label="Branch"
+                    value={branchId || null}
+                    onChange={(id) => setBranchId(id ?? '')}
                     required
-                    fullWidth
                     size="small"
+                    fullWidth
                   />
                   <FormControl fullWidth size="small">
                     <InputLabel>Priority</InputLabel>

@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { ApiError, apiFetch } from '../../api/client';
 import { Can } from '../../shell/Can';
+import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
 import {
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -132,15 +133,36 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
             </Grid>
 
             <Grid item xs={12} sm={8}>
-              <TextField
-                size="small"
-                fullWidth
-                required
-                label="Subject ID"
-                placeholder="e.g. lead_01J00000000000000000000001"
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-              />
+              {subjectType === 'LEAD' && (
+                <LeadSelect
+                  size="small"
+                  fullWidth
+                  required
+                  label="Select Lead"
+                  value={subjectId || null}
+                  onChange={(id) => setSubjectId(id ?? '')}
+                />
+              )}
+              {subjectType === 'CUSTOMER' && (
+                <CustomerSelect
+                  size="small"
+                  fullWidth
+                  required
+                  label="Select Customer"
+                  value={subjectId || null}
+                  onChange={(id) => setSubjectId(id ?? '')}
+                />
+              )}
+              {subjectType === 'LOAN_APPLICATION' && (
+                <ApplicationSelect
+                  size="small"
+                  fullWidth
+                  required
+                  label="Select Loan Application"
+                  value={subjectId || null}
+                  onChange={(id) => setSubjectId(id ?? '')}
+                />
+              )}
             </Grid>
 
             <Grid item xs={12} sm={4}>
@@ -251,7 +273,7 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
         {sendResult && (
           <Box sx={{ mt: 3 }}>
             <Divider sx={{ mb: 2 }} />
-            {sendResult.success && sendResult.data ? (
+            {sendResult.success && sendResult.data && sendResult.data.status !== 'BLOCKED' ? (
               <Alert severity="success">
                 <AlertTitle sx={{ fontWeight: 700 }}>Message Successfully Sent!</AlertTitle>
                 <Typography variant="body2">
@@ -266,15 +288,17 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
             ) : (
               <Alert severity="error">
                 <AlertTitle sx={{ fontWeight: 700 }}>
-                  {sendResult.error?.code === 'SEND_BLOCKED'
+                  {(sendResult.data?.status === 'BLOCKED' || sendResult.error?.code === 'SEND_BLOCKED')
                     ? '422 SEND_BLOCKED: Send-Eligibility Guard Blocked This Dispatch'
-                    : `Dispatch Failed: ${sendResult.error?.code}`}
+                    : `Dispatch Failed: ${sendResult.error?.code || 'ERROR'}`}
                 </AlertTitle>
-                <Typography variant="body2">{sendResult.error?.message}</Typography>
-                {sendResult.error?.issue && (
+                <Typography variant="body2">
+                  {sendResult.data?.statusHistory?.[0]?.reason || sendResult.error?.message}
+                </Typography>
+                {(sendResult.data?.statusHistory?.[0]?.reason || sendResult.error?.issue) && (
                   <Box sx={{ mt: 1 }}>
                     <Chip
-                      label={`Reason Code: ${sendResult.error.issue}`}
+                      label={`Reason Code: ${sendResult.data?.statusHistory?.[0]?.reason || sendResult.error?.issue}`}
                       color="error"
                       variant="outlined"
                       size="small"
