@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { getSupabase } from './supabase';
 import { readConfig } from '../config';
@@ -26,7 +26,7 @@ export const HARDCODED_TEST_OTP = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, signOut } = useAuth();
+  const { session, aal, signOut } = useAuth();
   const requested = (location.state as { from?: string } | null)?.from ?? '/';
   // Only in-app paths: the page reloads to this address after sign-in, so it must never point at another site.
   const from = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
@@ -108,72 +108,13 @@ export function LoginPage() {
     }
   };
 
-  // Already signed in: say who it is and let the user choose.
+  // If already authenticated: navigate directly to destination if AAL2, or to /mfa if pending OTP verification.
+  // This eliminates any intermediate flash screen.
   if (session) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)',
-          p: { xs: 2, sm: 3 },
-        }}
-      >
-        <Card
-          sx={{
-            width: '100%',
-            maxWidth: 440,
-            borderRadius: 4,
-            boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05)',
-            overflow: 'hidden',
-          }}
-        >
-          <Box sx={{ height: 4, background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)' }} />
-          <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
-            <Typography variant="h5" component="h1" fontWeight={700} gutterBottom sx={{ color: '#0f172a' }}>
-              Already signed in
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5, color: '#64748b' }} data-testid="login.signedInAs">
-              You are signed in as <strong>{session.user.email}</strong>. To sign in as someone else, sign out first.
-            </Typography>
-            <Stack spacing={2}>
-              <Button
-                variant="contained"
-                onClick={() => navigate(from, { replace: true })}
-                sx={{
-                  py: 1.3,
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  borderRadius: 2.5,
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.4)',
-                }}
-              >
-                Continue as {session.user.email}
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => void signOut()}
-                data-testid="login.signOutFirst"
-                sx={{
-                  py: 1.2,
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  borderRadius: 2.5,
-                  borderColor: '#cbd5e1',
-                  color: '#475569',
-                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
-                }}
-              >
-                Sign out and use another account
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
-      </Box>
-    );
+    if (aal?.current === 'aal2') {
+      return <Navigate to={from} replace />;
+    }
+    return <Navigate to="/mfa" replace state={{ from, email: session.user.email }} />;
   }
 
   return (

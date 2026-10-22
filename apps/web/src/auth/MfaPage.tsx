@@ -22,11 +22,6 @@ export function MfaPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
-  const [mode, setMode] = useState<Mode>({ kind: 'loading' });
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const query = new URLSearchParams(location.search);
   const forceEnrol = query.get('enrol') === 'true';
 
@@ -35,6 +30,15 @@ export function MfaPage() {
     session?.user?.email ||
     (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('dsa_pending_email') : null) ||
     (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_pending_email') : null);
+
+  const [mode, setMode] = useState<Mode>(() =>
+    pendingEmail && !forceEnrol
+      ? { kind: 'challenge', factorId: 'test-challenge' }
+      : { kind: 'loading' },
+  );
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) {
