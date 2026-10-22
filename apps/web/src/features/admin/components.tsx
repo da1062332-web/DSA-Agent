@@ -173,38 +173,85 @@ export function UserPicker<M extends boolean>(props: {
   label: string;
   exclude?: string[];
   disabled?: boolean;
+  size?: 'small' | 'medium';
+  placeholder?: string;
+  freeSolo?: boolean;
+  testId?: string;
+  fullWidth?: boolean;
 }) {
   const users = useLookup<UserSummary>('/v1/users', { status: 'ACTIVE' });
   const options = (users.data ?? []).filter((u) => !props.exclude?.includes(u.id));
   const byId = new Map((users.data ?? []).map((u) => [u.id, u]));
-  const label = (id: string) => byId.get(id)?.displayName ?? id;
+  const label = (id: string) => {
+    const u = byId.get(id);
+    return u ? `${u.displayName} (${u.id})` : id;
+  };
 
   if (props.multiple) {
-    const value = props.value as string[];
+    const value = (props.value as string[]) ?? [];
     return (
       <Autocomplete
         multiple
+        fullWidth={props.fullWidth ?? true}
         options={options.map((u) => u.id)}
         value={value}
         getOptionLabel={label}
         loading={users.isPending}
         disabled={props.disabled}
         onChange={(_e, v) => (props.onChange as (v: string[]) => void)(v)}
-        renderInput={(params) => <TextField {...params} label={props.label} />}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            size={props.size}
+            placeholder={props.placeholder}
+            label={props.label}
+            inputProps={{
+              ...params.inputProps,
+              ...(props.testId ? { 'data-testid': props.testId } : {}),
+            }}
+          />
+        )}
       />
     );
   }
   return (
     <Autocomplete
+      freeSolo={props.freeSolo}
+      fullWidth={props.fullWidth ?? true}
       options={options.map((u) => u.id)}
       value={(props.value as string | null) ?? null}
       getOptionLabel={label}
       loading={users.isPending}
       disabled={props.disabled}
-      onChange={(_e, v) => (props.onChange as (v: string | null) => void)(v)}
-      renderInput={(params) => <TextField {...params} label={props.label} />}
+      onChange={(_e, v) => {
+        if (!v) {
+          (props.onChange as (v: string | null) => void)(null);
+        } else if (typeof v === 'string') {
+          (props.onChange as (v: string | null) => void)(v.trim() || null);
+        } else {
+          (props.onChange as (v: string | null) => void)(v);
+        }
+      }}
+      onInputChange={(_e, newInputValue, reason) => {
+        if (reason === 'input' && props.freeSolo) {
+          (props.onChange as (v: string | null) => void)(newInputValue.trim() || null);
+        }
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          size={props.size}
+          placeholder={props.placeholder}
+          label={props.label}
+          inputProps={{
+            ...params.inputProps,
+            ...(props.testId ? { 'data-testid': props.testId } : {}),
+          }}
+        />
+      )}
     />
   );
 }
 
+export { ConnectorSelect } from '../connectors/ConnectorSelect';
 export const formatDate = (iso: string) => new Date(iso).toLocaleDateString();

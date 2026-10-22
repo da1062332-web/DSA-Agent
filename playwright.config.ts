@@ -1,7 +1,26 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const isHeaded = process.argv.includes('--headed') || process.env.HEADED === 'true';
-const slowMoMs = process.env.SLOWMO ? parseInt(process.env.SLOWMO, 10) : 0;
+if (process.argv.includes('--headed') || process.env.HEADED === 'true') {
+  process.env.HEADED = 'true';
+}
+
+const isHeaded = process.env.HEADED === 'true';
+
+// Human-paced slowMo for headed demo:
+// Default 650ms allows the user to clearly see and read each click, form fill, and UI state change.
+// If the SLOWMO env var is provided, clamp between 150ms and 1000ms to stay human-paced without timing out.
+function getSlowMo(): number {
+  if (!isHeaded) return 0;
+  if (process.env.SLOWMO) {
+    const custom = parseInt(process.env.SLOWMO, 10);
+    if (!isNaN(custom)) {
+      return Math.min(Math.max(custom, 150), 1000);
+    }
+  }
+  return 650; // Comfortable, natural human demonstration pace (~0.65s per action)
+}
+
+const slowMoMs = getSlowMo();
 
 export default defineConfig({
   testDir: './e2e',

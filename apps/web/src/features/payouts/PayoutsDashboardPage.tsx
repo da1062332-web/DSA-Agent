@@ -33,6 +33,7 @@ import {
   Typography,
 } from '@mui/material';
 import { errorText } from '../../api/client';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { hasPermission, useMe } from '../../api/useMe';
 import { fetchPayables } from '../commission/api';
 import type { CommissionPayable } from '../commission/types';
@@ -764,14 +765,16 @@ export function PayoutsDashboardPage() {
             )}
             <Grid container spacing={2} sx={{ mt: 0.5 }}>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Connector ID"
-                  value={selectedConnector}
-                  onChange={(e) => {
-                    setSelectedConnector(e.target.value);
-                    loadEligiblePayablesForConnector(e.target.value);
+                <ConnectorSelect
+                  label="Select Sourcing Connector"
+                  placeholder="Search partner to load payable lines..."
+                  value={selectedConnector || null}
+                  onChange={(id) => {
+                    const next = id ?? '';
+                    setSelectedConnector(next);
+                    loadEligiblePayablesForConnector(next);
                   }}
+                  helperText="Select a registered partner to view their accrued, eligible payout items"
                 />
               </Grid>
               <Grid item xs={12} sm={6} display="flex" alignItems="center">

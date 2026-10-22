@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
-import { BranchSelect } from '../admin/components';
+import { BranchSelect, ConnectorSelect } from '../admin/components';
 import { createLead, ApiError } from './api';
 import {
   CONSENT_CHANNELS,
@@ -337,12 +337,16 @@ export function LeadCreate() {
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Connector ID"
-                  value={connectorId}
-                  onChange={(e) => setConnectorId(e.target.value)}
-                  placeholder="Optional"
+                <ConnectorSelect
+                  value={connectorId || null}
+                  onChange={(id) => setConnectorId(id ?? '')}
+                  testId="lead-form.connector"
+                  label={source === 'REFERRAL' ? 'Referring Connector / Partner *' : 'Connector / Partner (Optional)'}
+                  helperText={
+                    source === 'REFERRAL'
+                      ? 'Select the registered partner earning referral attribution'
+                      : 'Optional partner referral attribution'
+                  }
                 />
               </Grid>
             </Grid>

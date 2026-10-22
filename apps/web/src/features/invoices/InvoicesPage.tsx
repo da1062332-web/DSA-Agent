@@ -30,6 +30,7 @@ import React, { useMemo, useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
 
 export function InvoicesPage() {
@@ -658,13 +659,12 @@ export function InvoicesPage() {
 
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
+                <ConnectorSelect
                   size="small"
-                  label="Connector ID"
-                  placeholder="e.g. con_01JTESTCONN0000000000001"
-                  value={statementConnectorId}
-                  onChange={(e) => setStatementConnectorId(e.target.value)}
+                  label="Filter by Connector"
+                  placeholder="Select partner or search by name/ID..."
+                  value={statementConnectorId || null}
+                  onChange={(id) => setStatementConnectorId(id ?? '')}
                 />
               </Grid>
               <Grid item xs={6} sm={3}>

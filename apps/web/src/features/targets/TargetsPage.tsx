@@ -25,6 +25,9 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
+import { BranchSelect, UserPicker } from '../admin/components';
+import { useLookup } from '../admin/api';
+import type { Product } from '../admin/ProductsPage';
 import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
 import {
   DIMENSION_LABELS,
@@ -72,6 +75,7 @@ export function TargetsPage() {
 
   const { data, isLoading, isError, error } = useTargets(query);
   const { data: historyData, isLoading: historyLoading } = useTargetHistory(historyTargetId);
+  const products = useLookup<Product>('/v1/products', { status: 'ACTIVE' });
   const createMutation = useCreateTarget();
   const approveMutation = useApproveTarget();
 
@@ -380,7 +384,10 @@ export function TargetsPage() {
               select
               label="Dimension Type"
               value={dimensionType}
-              onChange={(e) => setDimensionType(e.target.value as DimensionType)}
+              onChange={(e) => {
+                setDimensionType(e.target.value as DimensionType);
+                setDimensionId('');
+              }}
               fullWidth
               required
             >
@@ -389,14 +396,46 @@ export function TargetsPage() {
               <MenuItem value="PRODUCT">Loan Product</MenuItem>
             </TextField>
 
-            <TextField
-              label="Dimension ID"
-              value={dimensionId}
-              onChange={(e) => setDimensionId(e.target.value)}
-              helperText="e.g. br_01JMUMBAI... or usr_01J... or prd_01J..."
-              fullWidth
-              required
-            />
+            {dimensionType === 'BRANCH' ? (
+              <BranchSelect
+                required
+                value={dimensionId || null}
+                onChange={(id) => setDimensionId(id ?? '')}
+                label="Target Branch"
+              />
+            ) : dimensionType === 'USER' ? (
+              <UserPicker
+                multiple={false}
+                label="Target User / Agent"
+                value={dimensionId || null}
+                onChange={(id) => setDimensionId(id ?? '')}
+                freeSolo
+              />
+            ) : dimensionType === 'PRODUCT' ? (
+              <TextField
+                select
+                fullWidth
+                required
+                label="Target Loan Product"
+                value={dimensionId}
+                onChange={(e) => setDimensionId(e.target.value)}
+              >
+                {(products.data ?? []).map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name} ({p.category})
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <TextField
+                label="Dimension ID"
+                value={dimensionId}
+                onChange={(e) => setDimensionId(e.target.value)}
+                helperText="e.g. br_01JMUMBAI... or usr_01J... or prd_01J..."
+                fullWidth
+                required
+              />
+            )}
 
             <TextField
               select

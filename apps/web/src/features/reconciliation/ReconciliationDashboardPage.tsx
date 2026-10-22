@@ -38,6 +38,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { useLookup } from '../admin/api';
+import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -1386,11 +1387,11 @@ export function ReconciliationDashboardPage() {
                     ))}
                   </TextField>
                 ) : (
-                  <TextField
-                    label="Connector ID"
-                    value={dispPartyId}
-                    onChange={(e) => setDispPartyId(e.target.value)}
-                    fullWidth
+                  <ConnectorSelect
+                    label="Connector / Partner"
+                    placeholder="Search or select connector..."
+                    value={dispPartyId || null}
+                    onChange={(id) => setDispPartyId(id ?? '')}
                     required
                   />
                 )}

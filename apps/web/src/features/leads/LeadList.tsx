@@ -23,6 +23,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { UserPicker } from '../admin/components';
 import { Can } from '../../shell/Can';
 import { fetchLeads } from './api';
 import type { LeadResource } from './types';
@@ -157,14 +158,18 @@ export function LeadList() {
             </Select>
           </FormControl>
 
-          <TextField
-            size="small"
-            label="Owner User ID"
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            placeholder="e.g. usr_123"
-            data-testid="leads.filter.owner"
-          />
+          <Box sx={{ minWidth: 220 }}>
+            <UserPicker
+              multiple={false}
+              size="small"
+              label="Owner / Staff"
+              placeholder="All owners or search..."
+              value={ownerFilter || null}
+              onChange={(id) => setOwnerFilter(id ?? '')}
+              testId="leads.filter.owner"
+              freeSolo
+            />
+          </Box>
 
           <Button variant="outlined" onClick={handleFilterApply} data-testid="leads.filter.apply">
             Apply
