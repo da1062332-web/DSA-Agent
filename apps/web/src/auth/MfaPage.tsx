@@ -7,6 +7,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { AuthCard } from './AuthCard';
 import { isTotpCode, startTotpEnrolment, verifiedTotpFactors, verifyTotp } from './totp';
+import { saveBypassSession } from './supabase';
 
 type Mode =
   | { kind: 'loading' }
@@ -27,8 +28,18 @@ export function MfaPage() {
   const query = new URLSearchParams(location.search);
   const forceEnrol = query.get('enrol') === 'true';
 
+  const pendingEmail =
+    (location.state as { email?: string } | null)?.email ||
+    session?.user?.email ||
+    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('dsa_pending_email') : null);
+
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      if (pendingEmail) {
+        setMode({ kind: 'challenge', factorId: 'test-challenge' });
+      }
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -47,12 +58,12 @@ export function MfaPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, forceEnrol]);
+  }, [session, forceEnrol, pendingEmail]);
 
   const skipMfa = import.meta.env?.VITE_DISABLE_MFA === 'true';
   const targetPath = from === '/mfa' ? '/' : from;
 
-  if (session === null) return <Navigate to="/login" replace />;
+  if (session === null && !pendingEmail) return <Navigate to="/login" replace />;
   if (skipMfa && !forceEnrol && session) return <Navigate to={targetPath} replace />;
   if (!forceEnrol && aal?.current === 'aal2' && mode.kind === 'loading') return <Navigate to={from} replace />;
 
@@ -66,8 +77,33 @@ export function MfaPage() {
     setBusy(true);
     setError(null);
     try {
+      const bypassOtp = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
+
+      // 1. If user entered the hardcoded test OTP (000000)
+      if (code === bypassOtp && pendingEmail) {
+        const res = await fetch('/public/v1/auth/test-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendingEmail, otp: code }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error?.message || 'Invalid OTP code.');
+        }
+        saveBypassSession(json.data.session);
+        sessionStorage.removeItem('dsa_pending_email');
+        window.location.replace(from);
+        return;
+      }
+
+      // 2. Otherwise verify with standard Supabase TOTP
+      if (!session) {
+        throw new Error('That code did not match. Check the time on your phone and try again.');
+      }
+
       await verifyTotp(mode.factorId, code);
       await refreshAal();
+      sessionStorage.removeItem('dsa_pending_email');
       navigate(from, { replace: true });
     } catch (err) {
       setError((err as Error).message);
@@ -150,7 +186,7 @@ export function MfaPage() {
             >
               {busy ? <CircularProgress size={22} color="inherit" /> : 'Verify'}
             </Button>
-            {mode.kind === 'challenge' && (
+            {mode.kind === 'challenge' && session && (
               <Button
                 variant="outlined"
                 color="primary"
@@ -180,7 +216,14 @@ export function MfaPage() {
             >
               Bypass Verification (Dev Mode)
             </Button>
-            <Button color="inherit" onClick={() => void signOut()}>
+            <Button
+              color="inherit"
+              onClick={() => {
+                sessionStorage.removeItem('dsa_pending_email');
+                if (session) void signOut();
+                else navigate('/login');
+              }}
+            >
               Sign out
             </Button>
           </Stack>

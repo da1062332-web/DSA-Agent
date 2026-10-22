@@ -4,7 +4,6 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LoginPage, HARDCODED_TEST_OTP } from './LoginPage';
-import * as AuthProviderModule from './AuthProvider';
 
 vi.mock('./AuthProvider', () => ({
   useAuth: () => ({
@@ -28,12 +27,12 @@ vi.mock('./supabase', () => ({
   getStorageKey: () => 'sb-test-auth-token',
 }));
 
-describe('LoginPage Component — Test OTP Bypass & Standard Auth', () => {
+describe('LoginPage Component — Clean Sign In UI', () => {
   it('defines HARDCODED_TEST_OTP as 000000 by default', () => {
     expect(HARDCODED_TEST_OTP).toBe('000000');
   });
 
-  it('renders login screen with password tab and test OTP bypass tab', () => {
+  it('renders clean standard sign in screen with email, password, and submit', () => {
     const queryClient = new QueryClient();
     const html = renderToString(
       <QueryClientProvider client={queryClient}>
@@ -44,10 +43,13 @@ describe('LoginPage Component — Test OTP Bypass & Standard Auth', () => {
     );
 
     expect(html).toContain('Sign In');
-    expect(html).toContain('Password');
-    expect(html).toContain('Test OTP Bypass');
+    expect(html).toContain('Use your work email and password');
     expect(html).toContain('data-testid="auth.email"');
     expect(html).toContain('data-testid="auth.password"');
     expect(html).toContain('data-testid="auth.submit"');
+    expect(html).toContain('data-testid="auth.forgot"');
+    // Unwanted elements (tabs, dropdowns) are not present
+    expect(html).not.toContain('Test OTP Bypass');
+    expect(html).not.toContain('Quick Select User');
   });
 });
