@@ -43,6 +43,7 @@ export function LeadDetail() {
   const [qualApplicantType, setQualApplicantType] = useState('SALARIED');
   const [qualMonthlyIncome, setQualMonthlyIncome] = useState('75000');
   const [qualAmount, setQualAmount] = useState('500000');
+  const [qualifyErrors, setQualifyErrors] = useState<{ monthlyIncome?: string; amount?: string }>({});
 
   const [disqualifyOpen, setDisqualifyOpen] = useState(false);
   const [disqualificationReason, setDisqualificationReason] = useState('NOT_INTERESTED');
@@ -50,6 +51,7 @@ export function LeadDetail() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignUserId, setAssignUserId] = useState('');
   const [assignReason, setAssignReason] = useState('MANUAL');
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const [conversionResult, setConversionResult] = useState<ConversionResponse | null>(null);
 
@@ -609,18 +611,35 @@ export function LeadDetail() {
             </FormControl>
             <TextField
               fullWidth
+              required
               label="Monthly Income (INR)"
               value={qualMonthlyIncome}
-              onChange={(e) => setQualMonthlyIncome(e.target.value)}
+              error={Boolean(qualifyErrors.monthlyIncome)}
+              helperText={qualifyErrors.monthlyIncome}
+              onChange={(e) => {
+                setQualMonthlyIncome(e.target.value);
+                if (qualifyErrors.monthlyIncome) {
+                  setQualifyErrors((prev) => ({ ...prev, monthlyIncome: undefined }));
+                }
+              }}
               placeholder="e.g. 75000"
               data-testid="qualify.monthlyIncome"
             />
             <TextField
               fullWidth
+              required
               label="Requested Loan Amount (INR)"
               value={qualAmount}
-              onChange={(e) => setQualAmount(e.target.value)}
+              error={Boolean(qualifyErrors.amount)}
+              helperText={qualifyErrors.amount}
+              onChange={(e) => {
+                setQualAmount(e.target.value);
+                if (qualifyErrors.amount) {
+                  setQualifyErrors((prev) => ({ ...prev, amount: undefined }));
+                }
+              }}
               placeholder="e.g. 500000"
+              data-testid="qualify.amount"
             />
           </Stack>
         </DialogContent>
@@ -630,14 +649,26 @@ export function LeadDetail() {
             variant="contained"
             color="success"
             onClick={() => {
-              const formattedAmt =
-                qualAmount && qualAmount.trim()
-                  ? /^\d+$/.test(qualAmount.trim())
-                    ? `${qualAmount.trim()}.00`
-                    : /^\d+\.\d$/.test(qualAmount.trim())
-                      ? `${qualAmount.trim()}0`
-                      : qualAmount.trim()
-                  : '500000.00';
+              const errors: { monthlyIncome?: string; amount?: string } = {};
+              const numIncome = Number(qualMonthlyIncome.trim());
+              if (!qualMonthlyIncome.trim() || isNaN(numIncome) || numIncome <= 0) {
+                errors.monthlyIncome = 'Enter a valid monthly income greater than zero.';
+              }
+              const numAmt = Number(qualAmount.trim());
+              if (!qualAmount.trim() || isNaN(numAmt) || numAmt <= 0) {
+                errors.amount = 'Enter a valid loan amount greater than zero.';
+              }
+              if (Object.keys(errors).length > 0) {
+                setQualifyErrors(errors);
+                return;
+              }
+
+              const formattedAmt = /^\d+$/.test(qualAmount.trim())
+                ? `${qualAmount.trim()}.00`
+                : /^\d+\.\d$/.test(qualAmount.trim())
+                  ? `${qualAmount.trim()}0`
+                  : qualAmount.trim();
+
               transitionMutation.mutate({
                 transitionCode: 'T-LEAD-04',
                 qualification: {

@@ -446,12 +446,21 @@ export function CustomerConsents(): React.ReactElement {
             {(purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') && (
               <TextField
                 label="Purpose Target (Lender / Vendor ID) *"
-                value={purposeTarget || 'LENDER_HDFC_01'}
-                onChange={(e) => setPurposeTarget(e.target.value)}
+                value={purposeTarget}
+                onChange={(e) => {
+                  setPurposeTarget(e.target.value);
+                  if (actionError) setActionError(null);
+                }}
                 size="small"
                 fullWidth
                 required
-                helperText="Identifier of lender or agency with whom data is shared"
+                error={Boolean(actionError && !purposeTarget.trim())}
+                helperText={
+                  actionError && !purposeTarget.trim()
+                    ? 'Target lender or agency identifier is required'
+                    : 'Identifier of lender or agency with whom data is shared'
+                }
+                inputProps={{ 'data-testid': 'consent.purposeTarget' }}
               />
             )}
 
@@ -461,6 +470,7 @@ export function CustomerConsents(): React.ReactElement {
               onChange={(e) => setNoticeVersion(e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ 'data-testid': 'consent.noticeVersion' }}
             />
 
             <FormControl fullWidth size="small">
@@ -470,6 +480,7 @@ export function CustomerConsents(): React.ReactElement {
                 value={channel}
                 label="Channel"
                 onChange={(e) => setChannel(e.target.value as RecordConsentPayload['channel'])}
+                data-testid="consent.channel"
               >
                 <MenuItem value="WEB_FORM">WEB_FORM</MenuItem>
                 <MenuItem value="OTP">OTP</MenuItem>
@@ -487,6 +498,7 @@ export function CustomerConsents(): React.ReactElement {
               size="small"
               fullWidth
               placeholder="e.g. DOC-SIGNED-001"
+              inputProps={{ 'data-testid': 'consent.evidenceRef' }}
             />
           </Stack>
         </DialogContent>
@@ -494,10 +506,18 @@ export function CustomerConsents(): React.ReactElement {
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
           <Button
             variant="contained"
+            data-testid="consent.submit"
             onClick={() => {
+              if (
+                (purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') &&
+                !purposeTarget.trim()
+              ) {
+                setActionError('Target lender or agency identifier is required for this consent purpose.');
+                return;
+              }
               const target =
                 purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
-                  ? purposeTarget.trim() || 'LENDER_HDFC_01'
+                  ? purposeTarget.trim()
                   : purposeTarget.trim() || undefined;
               recordMutation.mutate({
                 purpose,

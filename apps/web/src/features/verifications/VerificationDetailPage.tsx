@@ -77,9 +77,10 @@ export function VerificationDetailPage() {
       setLoading(true);
       setError(null);
       const res = await fetchVerification(id);
-      setData(res);
-      setNewStatus(res.status);
-      setNewAssignee(res.assignedToUserId || '');
+      const record = (res as any)?.data ?? res;
+      setData(record);
+      setNewStatus(record?.status || 'IN_PROGRESS');
+      setNewAssignee(record?.assignedToUserId || '');
     } catch (err) {
       setError((err as Error).message || 'Failed to load verification case');
     } finally {
@@ -110,7 +111,7 @@ export function VerificationDetailPage() {
       };
 
       const updated = await completeVerification(data.id, data.lockVersion, payload);
-      setData(updated);
+      setData((updated as any)?.data ?? updated);
       setCompleteOpen(false);
       setActionSuccess('Verification case successfully finalized!');
     } catch (err) {
@@ -132,7 +133,7 @@ export function VerificationDetailPage() {
       };
 
       const updated = await updateVerification(data.id, data.lockVersion, payload);
-      setData(updated);
+      setData((updated as any)?.data ?? updated);
       setAssignOpen(false);
       setActionSuccess('Verification case updated successfully!');
     } catch (err) {
@@ -217,7 +218,7 @@ export function VerificationDetailPage() {
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Application: {data.applicationId} • Branch: {data.branchId} • Type:{' '}
-            {data.verificationType.replace(/_/g, ' ')}
+            {data.verificationType?.replace(/_/g, ' ') || 'VERIFICATION'}
           </Typography>
         </Box>
 
@@ -359,13 +360,13 @@ export function VerificationDetailPage() {
         />
         <Divider />
         <CardContent>
-          {data.checklistItmIds.length === 0 ? (
+          {(data.checklistItmIds || []).length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
               No specific checklist items linked to this case. General verification applies.
             </Typography>
           ) : (
             <Stack spacing={2}>
-              {data.checklistItmIds.map((itemId) => (
+              {(data.checklistItmIds || []).map((itemId) => (
                 <Paper
                   key={itemId}
                   variant="outlined"

@@ -231,6 +231,10 @@ export function PayoutsDashboardPage() {
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRequest) return;
+    if (!paymentUtr.trim()) {
+      setPaymentError('Bank reference (UTR) is required.');
+      return;
+    }
     try {
       setRecordingPayment(true);
       setPaymentError(null);
@@ -257,6 +261,10 @@ export function PayoutsDashboardPage() {
   const handleFailureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRequest) return;
+    if (!failureReason.trim()) {
+      setFailureError('Failure reason is required.');
+      return;
+    }
     try {
       setRecordingFailure(true);
       setFailureError(null);
@@ -910,7 +918,7 @@ export function PayoutsDashboardPage() {
 
       {/* Record Bank Payment Modal */}
       <Dialog open={paymentDialogOpen} onClose={() => setPaymentDialogOpen(false)} maxWidth="sm" fullWidth>
-        <form onSubmit={handlePaymentSubmit}>
+        <form onSubmit={handlePaymentSubmit} noValidate>
           <DialogTitle>Record Bank Payment Reference (UTR)</DialogTitle>
           <DialogContent>
             {paymentError && (
@@ -928,12 +936,24 @@ export function PayoutsDashboardPage() {
               label="Bank UTR / Transaction Reference"
               placeholder="e.g. UTR1029384756"
               value={paymentUtr}
-              onChange={(e) => setPaymentUtr(e.target.value)}
+              error={Boolean(paymentError)}
+              helperText={paymentError}
+              onChange={(e) => {
+                setPaymentUtr(e.target.value);
+                if (paymentError) setPaymentError(null);
+              }}
+              inputProps={{ 'data-testid': 'payment.utr' }}
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" color="success" disabled={recordingPayment}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="success"
+              disabled={recordingPayment}
+              data-testid="payment.submit"
+            >
               {recordingPayment ? <CircularProgress size={24} /> : 'Record Payment'}
             </Button>
           </DialogActions>
@@ -942,7 +962,7 @@ export function PayoutsDashboardPage() {
 
       {/* Record Failure Modal */}
       <Dialog open={failureDialogOpen} onClose={() => setFailureDialogOpen(false)} maxWidth="sm" fullWidth>
-        <form onSubmit={handleFailureSubmit}>
+        <form onSubmit={handleFailureSubmit} noValidate>
           <DialogTitle>Record Bank Payment Failure</DialogTitle>
           <DialogContent>
             {failureError && (
@@ -959,12 +979,24 @@ export function PayoutsDashboardPage() {
               fullWidth
               label="Failure Reason"
               value={failureReason}
-              onChange={(e) => setFailureReason(e.target.value)}
+              error={Boolean(failureError)}
+              helperText={failureError}
+              onChange={(e) => {
+                setFailureReason(e.target.value);
+                if (failureError) setFailureError(null);
+              }}
+              inputProps={{ 'data-testid': 'payment.failureReason' }}
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setFailureDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" color="error" disabled={recordingFailure}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="error"
+              disabled={recordingFailure}
+              data-testid="payment.failureSubmit"
+            >
               {recordingFailure ? <CircularProgress size={24} /> : 'Record Failure'}
             </Button>
           </DialogActions>

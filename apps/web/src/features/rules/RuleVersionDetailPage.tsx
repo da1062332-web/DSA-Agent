@@ -125,9 +125,10 @@ export function RuleVersionDetailPage() {
       setLoading(true);
       setError(null);
       const res = await fetchRuleSetVersion(versionId);
-      setVersion(res.data);
-      setHitPolicy(res.data.hitPolicy);
-      setDefinitionJson(JSON.stringify(res.data.definition, null, 2));
+      const v = (res as any)?.data?.data ?? res.data ?? res;
+      setVersion(v);
+      setHitPolicy(v.hitPolicy);
+      setDefinitionJson(JSON.stringify(v.definition, null, 2));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load rule version');
     } finally {
@@ -201,7 +202,7 @@ export function RuleVersionDetailPage() {
         throw new Error('Invalid JSON facts format.');
       }
       const res = await simulateRuleSetVersion(version.id, { facts });
-      setSimResult(res);
+      setSimResult((res as any)?.data ?? res);
     } catch (err) {
       setSimError(err instanceof Error ? err.message : 'Simulation failed');
     } finally {
@@ -567,7 +568,7 @@ export function RuleVersionDetailPage() {
                 Created By: {version.createdBy}
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
-                Editors: {version.editors.join(', ')}
+                Editors: {(version.editors || []).join(', ')}
               </Typography>
               {version.submittedBy && (
                 <Typography variant="caption" color="text.secondary" display="block">
