@@ -7,7 +7,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { AuthCard } from './AuthCard';
 import { isTotpCode, startTotpEnrolment, verifiedTotpFactors, verifyTotp } from './totp';
-import { saveBypassSession } from './supabase';
+import { getSupabase, saveBypassSession } from './supabase';
 import { setAuthToken } from './token';
 import { readConfig } from '../config';
 
@@ -33,7 +33,8 @@ export function MfaPage() {
   const pendingEmail =
     (location.state as { email?: string } | null)?.email ||
     session?.user?.email ||
-    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('dsa_pending_email') : null);
+    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('dsa_pending_email') : null) ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_pending_email') : null);
 
   useEffect(() => {
     if (!session) {
@@ -80,9 +81,25 @@ export function MfaPage() {
     setError(null);
     try {
       const bypassOtp = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
+      const isBypass = code === bypassOtp || code === '000000';
 
       // 1. If user entered the hardcoded test OTP (000000)
-      if (code === bypassOtp && pendingEmail) {
+      if (isBypass) {
+        let email =
+          (location.state as { email?: string } | null)?.email ||
+          session?.user?.email ||
+          (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('dsa_pending_email') : null) ||
+          (typeof localStorage !== 'undefined' ? localStorage.getItem('dsa_pending_email') : null);
+
+        if (!email) {
+          const { data } = await getSupabase().auth.getSession();
+          email = data?.session?.user?.email ?? null;
+        }
+
+        if (!email) {
+          throw new Error('Please go back to sign-in and enter your email address first.');
+        }
+
         const config = readConfig();
         const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
         const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
@@ -90,22 +107,26 @@ export function MfaPage() {
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: pendingEmail, otp: code }),
+          body: JSON.stringify({ email: email.trim(), otp: '000000' }),
         });
         const json = await res.json().catch(() => null);
 
-        if (!res.ok || !json?.data?.session) {
+        if (!res.ok || (!json?.data?.access_token && !json?.data?.session)) {
           throw new Error(
             json?.error?.message ||
               (res.status >= 500
-                ? 'Cannot connect to API server (port 3000). Please ensure the backend is running.'
+                ? 'Cannot connect to API server (port 3000). Please ensure backend is running.'
                 : 'Invalid OTP code.'),
           );
         }
 
-        saveBypassSession(json.data.session);
-        setAuthToken(json.data.session.access_token);
-        sessionStorage.removeItem('dsa_pending_email');
+        const sessionPayload = json.data.session || json.data;
+        saveBypassSession(sessionPayload);
+        setAuthToken(sessionPayload.access_token);
+        try {
+          sessionStorage.removeItem('dsa_pending_email');
+          localStorage.removeItem('dsa_pending_email');
+        } catch {}
         window.location.replace(from);
         return;
       }
@@ -117,7 +138,10 @@ export function MfaPage() {
 
       await verifyTotp(mode.factorId, code);
       await refreshAal();
-      sessionStorage.removeItem('dsa_pending_email');
+      try {
+        sessionStorage.removeItem('dsa_pending_email');
+        localStorage.removeItem('dsa_pending_email');
+      } catch {}
       navigate(from, { replace: true });
     } catch (err) {
       setError((err as Error).message);
@@ -233,7 +257,10 @@ export function MfaPage() {
             <Button
               color="inherit"
               onClick={() => {
-                sessionStorage.removeItem('dsa_pending_email');
+                try {
+                  sessionStorage.removeItem('dsa_pending_email');
+                  localStorage.removeItem('dsa_pending_email');
+                } catch {}
                 if (session) void signOut();
                 else navigate('/login');
               }}

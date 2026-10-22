@@ -60,7 +60,10 @@ export function LoginPage() {
       );
 
       if (!error && data?.session) {
-        sessionStorage.setItem('dsa_pending_email', email);
+        try {
+          sessionStorage.setItem('dsa_pending_email', email);
+          localStorage.setItem('dsa_pending_email', email);
+        } catch {}
         navigate('/mfa', { state: { from, email } });
         return;
       }
@@ -79,7 +82,10 @@ export function LoginPage() {
         });
 
         if (checkRes.ok) {
-          sessionStorage.setItem('dsa_pending_email', email);
+          try {
+            sessionStorage.setItem('dsa_pending_email', email);
+            localStorage.setItem('dsa_pending_email', email);
+          } catch {}
           navigate('/mfa', { state: { from, email } });
           return;
         }
