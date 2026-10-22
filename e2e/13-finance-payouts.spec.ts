@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE-COMMISSION-APPROVER)', () => {
   const mockPayoutRequest = {
@@ -13,7 +13,9 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     paymentRefMasked: null,
   };
 
-  test('TC-FIN-01: Finance Executive proposes payout request and verifies Maker SOD-03 lock', async ({ page }) => {
+  test('TC-FIN-01: Finance Executive proposes payout request and verifies Maker SOD-03 lock', async ({
+    page,
+  }) => {
     await setupPersonaSession(page, PERSONAS.financeExec);
 
     // Mock payout requests
@@ -30,17 +32,22 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     // 1. Verify Payout Dashboard loaded
     await expect(page.getByText('Payouts & Settlement Hub')).toBeVisible();
     await expect(page.getByText('pay_req_001')).toBeVisible();
+    await pauseForDemo(page, 2500);
 
     // 2. Check tab "Approval Queue"
     await page.getByRole('tab', { name: /Approval Queue/i }).click();
+    await pauseForDemo(page, 2500);
 
     // 3. SOD-03: Maker (usr_finance_01) CANNOT approve own payout request!
     const approveBtn = page.getByRole('button', { name: /Review & Decide \(SOD-03\)/i });
     await expect(approveBtn).toBeVisible();
     await expect(approveBtn).toBeDisabled();
+    await pauseForDemo(page, 3000);
   });
 
-  test('TC-FIN-02: Commission Approver authorizes payout and records bank UTR with validation', async ({ page }) => {
+  test('TC-FIN-02: Commission Approver authorizes payout and records bank UTR with validation', async ({
+    page,
+  }) => {
     await setupPersonaSession(page, PERSONAS.commissionApprover);
 
     const approvedRequest = {
@@ -70,15 +77,18 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     });
 
     await page.goto('/payouts');
+    await pauseForDemo(page, 2000);
 
     // 1. Go to "Payment Recording & Batches" tab
     await page.getByRole('tab', { name: /Payment Recording & Batches/i }).click();
     await expect(page.getByText('pay_req_001')).toBeVisible();
+    await pauseForDemo(page, 2000);
 
     // 2. Click "Record UTR"
     const recordUtrBtn = page.getByRole('button', { name: /Record UTR/i });
     await expect(recordUtrBtn).toBeVisible();
     await recordUtrBtn.click();
+    await pauseForDemo(page, 2000);
 
     // 3. Test validation: empty UTR submission
     const utrInput = page.locator('input[data-testid="payment.utr"]');
@@ -86,12 +96,15 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     const submitPaymentBtn = page.locator('button[data-testid="payment.submit"]');
     await submitPaymentBtn.click();
     await expect(page.getByText('Bank reference (UTR) is required.').first()).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 4. Fill valid UTR and submit
     await utrInput.fill('UTR9876543210');
+    await pauseForDemo(page, 1500);
     await submitPaymentBtn.click();
 
     // 5. Verify success toast / feedback
     await expect(page.getByText(/Payment recorded for payout/i)).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 });

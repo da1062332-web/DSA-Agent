@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 export interface PersonaConfig {
   userId: string;
@@ -22,10 +22,13 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'lead.update',
       'lead.qualify',
       'customer.create',
+      'customer.update',
       'customer.read',
       'consent.record',
       'application.create',
       'application.update',
+      'application.read',
+      'document.upload',
       'task.read',
       'task.create',
       'task.update',
@@ -39,14 +42,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     email: 'sales1@alpha.com',
     displayName: 'Sameer Sales',
     roleCode: 'ROLE-SALES-EXEC',
-    permissions: [
-      'lead.create',
-      'lead.read',
-      'lead.update',
-      'task.read',
-      'task.update',
-      'activity.create',
-    ],
+    permissions: ['lead.create', 'lead.read', 'lead.update', 'task.read', 'task.update', 'activity.create'],
     primaryBranchId: 'MUM01',
   },
   // 08 — Loan Operations
@@ -143,11 +139,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
 };
 
 function base64UrlEncode(str: string): string {
-  return Buffer.from(str)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  return Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export function createMockJwt(persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aal2'): string {
@@ -285,4 +277,28 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
       }),
     });
   });
+}
+
+export const isHeaded = process.argv.includes('--headed') || process.env.HEADED === 'true';
+
+export async function pauseForDemo(page: Page, ms = 100): Promise<void> {
+  if (isHeaded) {
+    await page.waitForTimeout(Math.min(ms, 150));
+  }
+}
+
+export async function humanType(locator: Locator, text: string): Promise<void> {
+  await locator.scrollIntoViewIfNeeded();
+  await locator.fill(text);
+  if (isHeaded) {
+    await locator.page().waitForTimeout(40);
+  }
+}
+
+export async function humanClick(locator: Locator, pauseAfter = 80): Promise<void> {
+  await locator.scrollIntoViewIfNeeded();
+  await locator.click();
+  if (isHeaded) {
+    await locator.page().waitForTimeout(Math.min(pauseAfter, 100));
+  }
 }

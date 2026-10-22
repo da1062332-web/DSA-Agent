@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
   test.beforeEach(async ({ page }) => {
@@ -97,20 +97,24 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await expect(page.getByText('Sanction amount must be greater than zero.')).toBeVisible();
     await expect(page.getByText('Tenure must be at least 1 month.')).toBeVisible();
     await expect(page.getByText('Interest rate must be between 0.01% and 100%.')).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 4. Fill valid sanction details
     await amountField.fill('1500000');
     await tenureField.fill('180');
     await rateField.fill('9.25');
+    await pauseForDemo(page, 1500);
     await saveSanctionBtn.click();
 
     // Verify Sanction recorded and displayed
     await expect(page.getByRole('heading', { name: '₹15,00,000' }).first()).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 5. Open "Record Tranche" dialog
     const recordTrancheBtn = page.locator('[data-testid="record-tranche-btn"]');
     await expect(recordTrancheBtn).toBeVisible();
     await recordTrancheBtn.click();
+    await pauseForDemo(page, 2000);
 
     // 6. Test Tranche validation: amount exceeding sanction limit
     const trancheAmountField = page.locator('input[data-testid="tranche.amount"]');
@@ -122,16 +126,19 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       await trancheSaveBtn.click();
       await expect(page.getByText(/exceed remaining limit/i)).toBeVisible();
     }
+    await pauseForDemo(page, 3000);
 
     // Fill valid tranche details
     await trancheAmountField.fill('750000');
     await page.locator('input[data-testid="tranche.utr"]').fill('UTR202610219999');
     await page.locator('input[data-testid="tranche.loanAccount"]').fill('LN8877665544');
+    await pauseForDemo(page, 2000);
     await trancheSaveBtn.click();
 
     // Verify Tranche recorded in table
     await expect(page.getByRole('cell', { name: '₹7,50,000' })).toBeVisible();
     await expect(page.getByText('#1')).toBeVisible();
     await expect(page.getByText('RECORDED')).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 });

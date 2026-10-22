@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
   test.beforeEach(async ({ page }) => {
     await setupPersonaSession(page, PERSONAS.compliance);
   });
 
-  test('TC-CO-01: Cryptographic Audit Trail Search, SHA-256 Chain Verification & Evidence Pack Export', async ({ page }) => {
+  test('TC-CO-01: Cryptographic Audit Trail Search, SHA-256 Chain Verification & Evidence Pack Export', async ({
+    page,
+  }) => {
     const mockAuditEvents = [
       {
         id: 'aud_01J00000000000000000000001',
@@ -97,6 +99,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     await page.goto('/audit');
     await expect(page.getByText('app_loan_001')).toBeVisible();
     await expect(page.getByText('LOAN_APPLICATION')).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 2. Click "Verify Chain Integrity"
     const verifyChainBtn = page.getByRole('button', { name: /Verify Chain Integrity/i });
@@ -104,6 +107,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     await verifyChainBtn.click();
     await expect(page.getByText(/Chain Status:/i)).toBeVisible();
     await expect(page.getByText('VERIFIED', { exact: true }).first()).toBeVisible();
+    await pauseForDemo(page, 4000);
 
     // 3. Visit Privacy Register
     await page.route('**/v1/privacy**', async (route) => {
@@ -115,5 +119,6 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     });
     await page.goto('/privacy');
     await expect(page.locator('body')).toContainText(/privacy|consent/i);
+    await pauseForDemo(page, 3000);
   });
 });

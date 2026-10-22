@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 14: Customer (Secure Link Portal)', () => {
   const token = 'tok_secure_cust_9988';
@@ -71,20 +72,24 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
 
     // 1. Visit Public Upload URL
     await page.goto(`/upload/${token}`);
+    await pauseForDemo(page, 2000);
 
     // 2. Verify Security Portal Header & Masked Phone
     await expect(page.getByText('DSA Loan Portal')).toBeVisible();
     await expect(page.getByText('Two-Step Identity Verification')).toBeVisible();
     await expect(page.getByText('+91 ******3210')).toBeVisible();
+    await pauseForDemo(page, 2000);
 
     // 3. Test Invalid OTP
     const otpInput = page.getByPlaceholder('123456');
     await otpInput.fill('999999');
     await page.getByRole('button', { name: /Verify Code & Access/i }).click();
     await expect(page.getByText('Invalid or expired OTP verification code.').first()).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 4. Test Valid OTP
     await otpInput.fill('123456');
+    await pauseForDemo(page, 1500);
     await page.getByRole('button', { name: /Verify Code & Access/i }).click();
 
     // 5. Verify Document Upload Portal is displayed
@@ -92,6 +97,7 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
     await expect(page.getByText('Requested Documents Checklist')).toBeVisible();
     await expect(page.getByText('PAN CARD').first()).toBeVisible();
     await expect(page.getByText('BANK STATEMENT').first()).toBeVisible();
+    await pauseForDemo(page, 2500);
 
     // 6. Test File Upload
     await page.locator('#public-file-input').setInputFiles({
@@ -99,11 +105,13 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
       mimeType: 'application/pdf',
       buffer: Buffer.from('%PDF-1.4 test pan content'),
     });
+    await pauseForDemo(page, 2000);
 
     // Click Upload Document
     await page.getByRole('button', { name: /Upload Document/i }).click();
 
     // 7. Verify Upload Success
     await expect(page.getByText(/Successfully uploaded pan_card_copy.pdf/i)).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 });

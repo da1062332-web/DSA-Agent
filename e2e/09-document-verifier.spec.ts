@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
   test.beforeEach(async ({ page }) => {
     await setupPersonaSession(page, PERSONAS.docVerifier);
   });
 
-  test('TC-DV-01: Verification Case Initiation, Checklist Attestation & Case Finalization', async ({ page }) => {
+  test('TC-DV-01: Verification Case Initiation, Checklist Attestation & Case Finalization', async ({
+    page,
+  }) => {
     const mockVerificationCase = {
       id: 'vrf_case_001',
       applicationId: 'app_loan_001',
@@ -87,17 +89,18 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     // 1. Visit Verifications list
     await page.goto('/verifications');
     await expect(page.getByText('vrf_case_001')).toBeVisible();
+    await pauseForDemo(page, 2500);
 
     // 2. Open "Initiate Verification" dialog
     const newCaseBtn = page.getByRole('button', { name: /Initiate Verification/i });
     if (await newCaseBtn.isVisible()) {
       await newCaseBtn.click();
-      // Test validation: empty application ID
+      await pauseForDemo(page, 1500);
+      // Test validation: no application chosen (the application is picked from a list, never typed)
       const submitBtn = page.getByRole('button', { name: /Initiate Case|Submit/i });
-      const appIdInput = page.locator('input[data-testid="verification.create.applicationId"]');
-      await appIdInput.fill('');
       await submitBtn.click();
       await expect(page.getByText(/Application ID is required/i)).toBeVisible();
+      await pauseForDemo(page, 3000);
       // Cancel dialog
       await page.getByRole('button', { name: /Cancel/i }).click();
     }
@@ -105,21 +108,26 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     // 3. Navigate to Verification Detail Page
     await page.goto('/verifications/vrf_case_001');
     await expect(page.getByText('DOCUMENT REVIEW', { exact: true })).toBeVisible();
+    await pauseForDemo(page, 2500);
 
     // 4. Test Finalize Verification Dialog Validation: findings too short
     const completeBtn = page.locator('[data-testid="verification.btn.complete"]');
     await expect(completeBtn).toBeVisible();
     await completeBtn.click();
+    await pauseForDemo(page, 1500);
 
     const findingsField = page.locator('[data-testid="verification.complete.findings"] textarea').first();
     await findingsField.fill('ok'); // Length < 5
     const submitVerdictBtn = page.locator('[data-testid="verification.complete.submit"]');
     await submitVerdictBtn.click();
     await expect(page.getByText(/Findings summary must be at least 5 characters/i)).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // Enter valid findings
     await findingsField.fill('All KYC and income records verified satisfactorily.');
+    await pauseForDemo(page, 2000);
     await submitVerdictBtn.click();
     await expect(page.getByText(/successfully finalized/i)).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 });

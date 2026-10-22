@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,6 +34,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     // 1. Visit Leads list
     await page.goto('/leads');
     await expect(page.getByText('Aarav Patel')).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     // 2. Visit Tasks
     await page.route('**/v1/tasks**', async (route) => {
@@ -55,14 +56,17 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     });
     await page.goto('/tasks');
     await expect(page.locator('body')).toContainText(/tasks/i);
+    await pauseForDemo(page, 3000);
 
     // 3. Verify Access Control: Sales Executive cannot access Commission or Audit
     await page.goto('/commission');
     // Expect Forbidden page
     await expect(page.locator('[data-testid="shell.forbidden"]')).toBeVisible();
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 3000);
 
     await page.goto('/audit');
     await expect(page.locator('[data-testid="shell.forbidden"]')).toBeVisible();
+    await pauseForDemo(page, 3000);
   });
 });

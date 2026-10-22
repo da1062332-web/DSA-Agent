@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo } from './helpers/mock-session';
 
 test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-APPROVER)', () => {
   const versionId = 'rsv_01J00000000000000000000001';
@@ -71,6 +71,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     });
 
     await page.goto(`/rules/versions/${versionId}`);
+    await pauseForDemo(page, 2000);
 
     // 1. Verify Rule Version page loaded
     await expect(page.getByText(versionId).first()).toBeVisible();
@@ -80,6 +81,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     const simBtn = page.getByRole('button', { name: /Simulate \/ Test/i });
     await expect(simBtn).toBeVisible();
     await simBtn.click();
+    await pauseForDemo(page, 2000);
 
     // 3. Check Simulation dialog is open
     await expect(page.getByText(/Safe Rule Simulation Environment/i)).toBeVisible();
@@ -89,6 +91,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
 
     // 4. Verify simulation output renders
     await expect(page.getByText(/Simulation Outcome: COMPLETED/i)).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 
   test('TC-BRE-02: Rule Approver reviews & approves with SOD-01 check', async ({ page }) => {
@@ -100,7 +103,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       submittedBy: 'usr_ruleauthor_01',
     };
 
-    let currentVersion = { ...inReviewVersion };
+    const currentVersion = { ...inReviewVersion };
 
     await page.route(`**/v1/rule-set-versions/${versionId}**`, async (route) => {
       const url = route.request().url();
@@ -121,11 +124,13 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     });
 
     await page.goto(`/rules/versions/${versionId}`);
+    await pauseForDemo(page, 2000);
 
     // 1. Approver sees review action
     const reviewBtn = page.getByRole('button', { name: /Review \/ Approve \(SOD-01\)/i });
     await expect(reviewBtn).toBeVisible();
     await reviewBtn.click();
+    await pauseForDemo(page, 2000);
 
     // 2. Maker-checker modal opened
     await expect(page.getByText(/Independent Maker-Checker Review \(SOD-01\)/i)).toBeVisible();
@@ -137,5 +142,6 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
 
     // 4. Verify review success notification and status change
     await expect(page.getByText(/Version review completed: APPROVE/i)).toBeVisible();
+    await pauseForDemo(page, 4000);
   });
 });

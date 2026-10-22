@@ -1,10 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const isHeaded = process.argv.includes('--headed') || process.env.HEADED === 'true';
+const slowMoMs = process.env.SLOWMO ? parseInt(process.env.SLOWMO, 10) : 0;
+
 export default defineConfig({
   testDir: './e2e',
-  timeout: 45_000,
+  timeout: 180_000,
   expect: {
-    timeout: 10_000,
+    timeout: 20_000,
   },
   fullyParallel: false,
   workers: 1,
@@ -14,7 +17,10 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    headless: true,
+    headless: !isHeaded,
+    launchOptions: {
+      slowMo: slowMoMs,
+    },
   },
   webServer: {
     command: 'npm run dev -w @dsa/web',
