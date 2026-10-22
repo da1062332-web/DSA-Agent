@@ -108,8 +108,7 @@ export function LoginPage() {
     }
   };
 
-  // Already signed in: say who it is and let the user choose. Silent redirects hid the sign-in form, so signing in
-  // as another person looked like it had not worked.
+  // Already signed in: say who it is and let the user choose.
   if (session) {
     return (
       <Box
@@ -118,23 +117,56 @@ export function LoginPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: '#f4f6f8',
-          p: 2,
+          background: 'linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)',
+          p: { xs: 2, sm: 3 },
         }}
       >
-        <Card sx={{ width: '100%', maxWidth: 420, borderRadius: 3 }}>
-          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-            <Typography variant="h5" component="h1" fontWeight={700} gutterBottom>
+        <Card
+          sx={{
+            width: '100%',
+            maxWidth: 440,
+            borderRadius: 4,
+            boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05)',
+            overflow: 'hidden',
+          }}
+        >
+          <Box sx={{ height: 4, background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)' }} />
+          <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
+            <Typography variant="h5" component="h1" fontWeight={700} gutterBottom sx={{ color: '#0f172a' }}>
               Already signed in
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }} data-testid="login.signedInAs">
-              You are signed in as {session.user.email}. To sign in as someone else, sign out first.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5, color: '#64748b' }} data-testid="login.signedInAs">
+              You are signed in as <strong>{session.user.email}</strong>. To sign in as someone else, sign out first.
             </Typography>
-            <Stack spacing={1.5}>
-              <Button variant="contained" onClick={() => navigate(from, { replace: true })}>
+            <Stack spacing={2}>
+              <Button
+                variant="contained"
+                onClick={() => navigate(from, { replace: true })}
+                sx={{
+                  py: 1.3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.4)',
+                }}
+              >
                 Continue as {session.user.email}
               </Button>
-              <Button variant="outlined" onClick={() => void signOut()} data-testid="login.signOutFirst">
+              <Button
+                variant="outlined"
+                onClick={() => void signOut()}
+                data-testid="login.signOutFirst"
+                sx={{
+                  py: 1.2,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  borderColor: '#cbd5e1',
+                  color: '#475569',
+                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                }}
+              >
                 Sign out and use another account
               </Button>
             </Stack>
@@ -151,48 +183,62 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#f4f6f8',
-        p: 2,
+        background: 'linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)',
+        p: { xs: 2, sm: 3 },
       }}
     >
       <Card
         sx={{
           width: '100%',
-          maxWidth: 420,
-          boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-          borderRadius: 3,
+          maxWidth: 440,
+          boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05)',
+          borderRadius: 4,
+          overflow: 'hidden',
+          bgcolor: '#ffffff',
         }}
       >
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)' }} />
+        <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3.5 }}>
             <Box
               sx={{
-                width: 52,
-                height: 52,
-                borderRadius: '50%',
-                bgcolor: 'primary.main',
-                color: 'white',
+                width: 56,
+                height: 56,
+                borderRadius: '16px',
+                bgcolor: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #dbeafe',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                mb: 1.5,
-                fontSize: 24,
+                mb: 2,
+                fontSize: 26,
               }}
             >
               🔐
             </Box>
-            <Typography variant="h5" component="h1" fontWeight={700}>
+            <Typography
+              variant="h5"
+              component="h1"
+              fontWeight={700}
+              sx={{ color: '#0f172a', letterSpacing: '-0.02em', mb: 0.5 }}
+            >
               Sign In
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.9rem' }}>
               Use your work email and password
             </Typography>
           </Box>
 
           {/* Feedback Alerts */}
           {errorMessage && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage(null)}>
+            <Alert
+              severity="error"
+              sx={{ mb: 2.5, borderRadius: 2.5 }}
+              onClose={() => setErrorMessage(null)}
+            >
               {errorMessage}
             </Alert>
           )}
@@ -213,6 +259,11 @@ export function LoginPage() {
                 autoComplete="username"
                 inputProps={{ 'data-testid': 'auth.email' }}
                 variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2.5,
+                  },
+                }}
               />
 
               <TextField
@@ -227,6 +278,11 @@ export function LoginPage() {
                 autoComplete="current-password"
                 inputProps={{ 'data-testid': 'auth.password' }}
                 variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2.5,
+                  },
+                }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -235,6 +291,7 @@ export function LoginPage() {
                         onClick={() => setShowPassword((prev) => !prev)}
                         edge="end"
                         size="small"
+                        sx={{ color: '#64748b' }}
                       >
                         {showPassword ? '👁️' : '🙈'}
                       </IconButton>
@@ -251,11 +308,17 @@ export function LoginPage() {
                 size="large"
                 disabled={isLoading}
                 sx={{
-                  py: 1.3,
+                  py: 1.4,
                   fontWeight: 600,
                   textTransform: 'none',
-                  fontSize: '1rem',
-                  borderRadius: 2,
+                  fontSize: '0.975rem',
+                  borderRadius: 2.5,
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.4)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                    boxShadow: '0 10px 22px -6px rgba(37, 99, 235, 0.5)',
+                  },
                 }}
               >
                 {isLoading ? (
@@ -267,8 +330,19 @@ export function LoginPage() {
                   'Sign In'
                 )}
               </Button>
-              <Box sx={{ textAlign: 'center' }}>
-                <Link component={RouterLink} to="/forgot-password" data-testid="auth.forgot">
+              <Box sx={{ textAlign: 'center', pt: 0.5 }}>
+                <Link
+                  component={RouterLink}
+                  to="/forgot-password"
+                  data-testid="auth.forgot"
+                  sx={{
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                >
                   Forgot password?
                 </Link>
               </Box>

@@ -160,8 +160,29 @@ export function MfaPage() {
         : mode.qrCode
       : '';
 
+  const headerIcon = (
+    <Box
+      sx={{
+        width: 56,
+        height: 56,
+        borderRadius: '16px',
+        bgcolor: '#eff6ff',
+        color: '#2563eb',
+        border: '1px solid #dbeafe',
+        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 26,
+      }}
+    >
+      🛡️
+    </Box>
+  );
+
   return (
     <AuthCard
+      icon={headerIcon}
       title={mode.kind === 'enrol' ? 'Set up two-step verification' : 'Two-step verification'}
       subtitle={
         mode.kind === 'enrol'
@@ -170,17 +191,17 @@ export function MfaPage() {
       }
     >
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2.5 }}>
           {error}
         </Alert>
       )}
       {mode.kind === 'loading' && !error && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={36} />
         </Box>
       )}
       {mode.kind === 'enrol' && (
-        <Stack alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
+        <Stack alignItems="center" spacing={2} sx={{ mb: 3 }}>
           <Box
             component="img"
             src={qrCodeSrc}
@@ -190,30 +211,59 @@ export function MfaPage() {
               height: 200,
               bgcolor: '#ffffff',
               p: 1.5,
-              borderRadius: 2,
-              border: '1px solid #e0e0e0',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              borderRadius: 3,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
             }}
           />
-          <Typography variant="caption" color="text.secondary">
-            Can’t scan the barcode? Enter this secret key: <code data-testid="auth.mfa.secret">{mode.secret}</code>
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', px: 1 }}>
+            Can’t scan the barcode? Enter this secret key:{' '}
+            <Box
+              component="code"
+              data-testid="auth.mfa.secret"
+              sx={{
+                bgcolor: '#f1f5f9',
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                fontWeight: 600,
+                color: '#1e293b',
+                display: 'inline-block',
+                mt: 0.5,
+              }}
+            >
+              {mode.secret}
+            </Box>
           </Typography>
         </Stack>
       )}
       {mode.kind !== 'loading' && (
         <Box component="form" onSubmit={submit} noValidate>
-          <Stack spacing={2}>
+          <Stack spacing={2.5}>
             <TextField
-              label="6-digit code"
+              label="6-digit verification code"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
               inputProps={{
                 inputMode: 'numeric',
                 autoComplete: 'one-time-code',
                 'data-testid': 'auth.mfa.code',
+                style: {
+                  textAlign: 'center',
+                  letterSpacing: '0.35em',
+                  fontSize: '1.4rem',
+                  fontWeight: 600,
+                  fontFamily: 'monospace',
+                },
               }}
               autoFocus
               disabled={busy}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2.5,
+                },
+              }}
             />
             <Button
               type="submit"
@@ -221,8 +271,28 @@ export function MfaPage() {
               size="large"
               disabled={busy}
               data-testid="auth.mfa.submit"
+              sx={{
+                py: 1.4,
+                fontWeight: 600,
+                textTransform: 'none',
+                fontSize: '0.975rem',
+                borderRadius: 2.5,
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.4)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                  boxShadow: '0 10px 22px -6px rgba(37, 99, 235, 0.5)',
+                },
+              }}
             >
-              {busy ? <CircularProgress size={22} color="inherit" /> : 'Verify'}
+              {busy ? (
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <CircularProgress size={20} color="inherit" />
+                  <span>Verifying...</span>
+                </Stack>
+              ) : (
+                'Verify'
+              )}
             </Button>
             {mode.kind === 'challenge' && session && (
               <Button
@@ -243,30 +313,41 @@ export function MfaPage() {
                     setBusy(false);
                   }
                 }}
+                sx={{
+                  py: 1.1,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  borderColor: '#cbd5e1',
+                  color: '#475569',
+                  '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' },
+                }}
               >
                 Scan New Barcode / Re-enroll
               </Button>
             )}
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={() => navigate(targetPath, { replace: true })}
-            >
-              Bypass Verification (Dev Mode)
-            </Button>
-            <Button
-              color="inherit"
-              onClick={() => {
-                try {
-                  sessionStorage.removeItem('dsa_pending_email');
-                  localStorage.removeItem('dsa_pending_email');
-                } catch {}
-                if (session) void signOut();
-                else navigate('/login');
-              }}
-            >
-              Sign out
-            </Button>
+            <Box sx={{ textAlign: 'center', pt: 0.5 }}>
+              <Button
+                color="inherit"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem('dsa_pending_email');
+                    localStorage.removeItem('dsa_pending_email');
+                  } catch {}
+                  if (session) void signOut();
+                  else navigate('/login');
+                }}
+                sx={{
+                  color: '#64748b',
+                  textTransform: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  '&:hover': { color: '#0f172a', bgcolor: 'transparent', textDecoration: 'underline' },
+                }}
+              >
+                ← Sign out and switch account
+              </Button>
+            </Box>
           </Stack>
         </Box>
       )}
