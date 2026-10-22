@@ -20,6 +20,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, UserPicker, formatDate } from '../admin/components';
 import type { Lender } from '../admin/LendersPage';
+import { UserName, LenderName } from '../../shell/display';
 import {
   CATEGORY_LABELS,
   CHANNEL_LABELS,
@@ -73,16 +74,20 @@ export function ComplaintDetailPage() {
               {c.complainantId}
             </Typography>
             <Typography variant="body2">
-              <strong>Owner:</strong> {c.ownerUserId ?? 'Unassigned'}
+              <strong>Owner:</strong> <UserName id={c.ownerUserId} fallback="Unassigned" typographyProps={{ fontWeight: 500 }} />
             </Typography>
             <Typography variant="body2">
               <strong>Due:</strong> {c.dueAt ? formatDate(c.dueAt) : 'Not set'}
             </Typography>
             <Typography variant="body2">
               <strong>Lender referral:</strong>{' '}
-              {c.lenderReferral.lenderId
-                ? `${String(c.lenderReferral.lenderId)} · ${String(c.lenderReferral.reference)}`
-                : 'None'}
+              {c.lenderReferral.lenderId ? (
+                <>
+                  <LenderName id={String(c.lenderReferral.lenderId)} typographyProps={{ fontWeight: 500 }} /> · {String(c.lenderReferral.reference)}
+                </>
+              ) : (
+                'None'
+              )}
             </Typography>
             {c.resolution && (
               <Typography variant="body2">

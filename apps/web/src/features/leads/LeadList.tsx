@@ -24,6 +24,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Can } from '../../shell/Can';
+import { UserSelect } from '../../shell/selectors';
 import { fetchLeads } from './api';
 import type { LeadResource } from './types';
 
@@ -145,14 +146,16 @@ export function LeadList() {
             </Select>
           </FormControl>
 
-          <TextField
-            size="small"
-            label="Owner User ID"
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            placeholder="e.g. usr_123"
-            data-testid="leads.filter.owner"
-          />
+          <Box sx={{ minWidth: 220 }}>
+            <UserSelect
+              size="small"
+              label="Owner User ID"
+              value={ownerFilter || null}
+              onChange={(val) => setOwnerFilter(val ?? '')}
+              placeholder="All Owners"
+              data-testid="leads.filter.owner"
+            />
+          </Box>
 
           <Button variant="outlined" onClick={handleFilterApply} data-testid="leads.filter.apply">
             Apply

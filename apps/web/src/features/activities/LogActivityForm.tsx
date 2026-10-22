@@ -19,6 +19,7 @@ import {
   Chip,
 } from '@mui/material';
 import { ApiError, apiFetch, errorText, newIdempotencyKey } from '../../api/client';
+import { ApplicationSelect, ConnectorSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
 import {
   ACTIVITY_KINDS,
   ACTIVITY_OUTCOME_CODES,
@@ -187,18 +188,62 @@ export function LogActivityForm({
         </Grid>
 
         <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            size="small"
-            label="Subject ID"
-            id="subject-id-input"
-            value={subjectId}
-            disabled={lockSubject}
-            onChange={(e) => setSubjectId(e.target.value)}
-            error={Boolean(fieldErrors.subjectId)}
-            helperText={fieldErrors.subjectId}
-            data-testid="activity.log-form.subject-id"
-          />
+          {lockSubject ? (
+            <TextField
+              fullWidth
+              size="small"
+              label="Subject ID"
+              id="subject-id-input"
+              value={subjectId}
+              disabled
+              data-testid="activity.log-form.subject-id"
+            />
+          ) : subjectType === 'LEAD' ? (
+            <LeadSelect
+              fullWidth
+              size="small"
+              label="Select Lead"
+              value={subjectId || null}
+              onChange={(id) => setSubjectId(id ?? '')}
+              error={Boolean(fieldErrors.subjectId)}
+              helperText={fieldErrors.subjectId}
+              data-testid="activity.log-form.subject-id"
+            />
+          ) : subjectType === 'LOAN_APPLICATION' ? (
+            <ApplicationSelect
+              fullWidth
+              size="small"
+              label="Select Application"
+              value={subjectId || null}
+              onChange={(id) => setSubjectId(id ?? '')}
+              error={Boolean(fieldErrors.subjectId)}
+              helperText={fieldErrors.subjectId}
+              data-testid="activity.log-form.subject-id"
+            />
+          ) : subjectType === 'CUSTOMER' ? (
+            <CustomerSelect
+              fullWidth
+              size="small"
+              label="Select Customer"
+              value={subjectId || null}
+              onChange={(id) => setSubjectId(id ?? '')}
+              error={Boolean(fieldErrors.subjectId)}
+              helperText={fieldErrors.subjectId}
+              data-testid="activity.log-form.subject-id"
+            />
+          ) : (
+            <TextField
+              fullWidth
+              size="small"
+              label="Subject ID"
+              id="subject-id-input"
+              value={subjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
+              error={Boolean(fieldErrors.subjectId)}
+              helperText={fieldErrors.subjectId}
+              data-testid="activity.log-form.subject-id"
+            />
+          )}
         </Grid>
 
         <Grid item xs={12} sm={6}>

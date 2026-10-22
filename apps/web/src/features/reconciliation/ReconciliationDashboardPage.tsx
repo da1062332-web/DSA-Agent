@@ -37,6 +37,8 @@ import {
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
+import { LenderSelect } from '../../shell/selectors';
+import { LenderName } from '../../shell/display';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -600,7 +602,9 @@ export function ReconciliationDashboardPage() {
                     statements.map((stmt) => (
                       <TableRow key={stmt.id} hover>
                         <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{stmt.id}</TableCell>
-                        <TableCell>{stmt.lenderId}</TableCell>
+                        <TableCell>
+                          <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 500 }} />
+                        </TableCell>
                         <TableCell>
                           <Chip label={stmt.period} size="small" variant="outlined" />
                         </TableCell>
@@ -1112,11 +1116,11 @@ export function ReconciliationDashboardPage() {
                 </FormControl>
               </Grid>
               <Grid item xs={3}>
-                <TextField
+                <LenderSelect
                   size="small"
-                  label="Lender ID"
-                  value={importLenderId}
-                  onChange={(e) => setImportLenderId(e.target.value)}
+                  label="Lender"
+                  value={importLenderId || null}
+                  onChange={(id) => setImportLenderId(id ?? '')}
                   fullWidth
                   required
                 />

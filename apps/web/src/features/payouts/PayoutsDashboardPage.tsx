@@ -34,6 +34,7 @@ import {
 } from '@mui/material';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { ConnectorName } from '../../shell/display';
 import { fetchPayables } from '../commission/api';
 import type { CommissionPayable } from '../commission/types';
 import {
@@ -477,7 +478,9 @@ export function PayoutsDashboardPage() {
                           <TableCell>
                             <strong>{r.id}</strong>
                           </TableCell>
-                          <TableCell>{r.connectorId}</TableCell>
+                          <TableCell>
+                            <ConnectorName id={r.connectorId} typographyProps={{ fontWeight: 500 }} />
+                          </TableCell>
                           <TableCell>{r.origin}</TableCell>
                           <TableCell>
                             <strong>₹{Number(r.total).toLocaleString('en-IN')}</strong>
@@ -558,7 +561,9 @@ export function PayoutsDashboardPage() {
                           <TableCell>
                             <strong>{req.id}</strong>
                           </TableCell>
-                          <TableCell>{req.connectorId}</TableCell>
+                          <TableCell>
+                            <ConnectorName id={req.connectorId} typographyProps={{ fontWeight: 500 }} />
+                          </TableCell>
                           <TableCell>
                             <strong>₹{Number(req.total).toLocaleString('en-IN')}</strong>
                           </TableCell>
@@ -641,7 +646,9 @@ export function PayoutsDashboardPage() {
                             <TableCell>
                               <strong>{p.id}</strong>
                             </TableCell>
-                            <TableCell>{p.connectorId}</TableCell>
+                            <TableCell>
+                              <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 500 }} />
+                            </TableCell>
                             <TableCell>
                               <strong>₹{Number(p.total).toLocaleString('en-IN')}</strong>
                             </TableCell>
@@ -869,7 +876,7 @@ export function PayoutsDashboardPage() {
           )}
           <Typography variant="body2" sx={{ mb: 2 }}>
             Reviewing Payout Request <strong>{selectedRequest?.id}</strong> for Connector{' '}
-            <strong>{selectedRequest?.connectorId}</strong>. Total Amount:{' '}
+            <strong><ConnectorName id={selectedRequest?.connectorId} /></strong>. Total Amount:{' '}
             <strong>₹{selectedRequest?.total}</strong>.
           </Typography>
 

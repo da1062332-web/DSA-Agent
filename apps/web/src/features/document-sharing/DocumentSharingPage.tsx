@@ -37,6 +37,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
 import { Can } from '../../shell/Can';
+import { ApplicationSelect } from '../../shell/selectors';
+import { ApplicationName } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 
 const APPROVED_CHECKLIST_REQUIREMENTS = [
@@ -305,7 +307,9 @@ export function DocumentSharingPage() {
                       return (
                         <TableRow key={link.id} hover>
                           <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{link.applicationId}</TableCell>
+                          <TableCell>
+                            <ApplicationName id={link.applicationId} linkToApp />
+                          </TableCell>
                           <TableCell>{link.items.length} items</TableCell>
                           <TableCell>
                             {link.uses} / {link.maxUses}
@@ -394,7 +398,9 @@ export function DocumentSharingPage() {
                       return (
                         <TableRow key={share.id} hover>
                           <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{share.applicationId}</TableCell>
+                          <TableCell>
+                            <ApplicationName id={share.applicationId} linkToApp />
+                          </TableCell>
                           <TableCell>
                             <Typography variant="body2" fontWeight={600}>
                               {share.recipientContact.name}
@@ -483,14 +489,15 @@ export function DocumentSharingPage() {
           ) : (
             <Box component="form" onSubmit={handleCreateLink}>
               <Stack spacing={2.5}>
-                <TextField
-                  label="Application ID"
+                <ApplicationSelect
+                  label="Loan Application"
                   fullWidth
                   required
-                  placeholder="app_01ARZ3NDEKTSV4RRFFQ69G5FAV"
-                  value={linkAppId}
-                  onChange={(e) => setLinkAppId(e.target.value)}
-                  helperText="Prefix: app_ followed by 26-char ULID"
+                  placeholder="Select loan application..."
+                  value={linkAppId || null}
+                  onChange={(id) => setLinkAppId(id ?? '')}
+                  helperText="Choose the active application to request documents for"
+                  size="medium"
                 />
 
                 <Box>
@@ -588,13 +595,14 @@ export function DocumentSharingPage() {
                 record will be created atomically.
               </Alert>
 
-              <TextField
-                label="Application ID"
+              <ApplicationSelect
+                label="Loan Application"
                 fullWidth
                 required
-                placeholder="app_01ARZ3NDEKTSV4RRFFQ69G5FAV"
-                value={shareAppId}
-                onChange={(e) => setShareAppId(e.target.value)}
+                placeholder="Select loan application..."
+                value={shareAppId || null}
+                onChange={(id) => setShareAppId(id ?? '')}
+                size="medium"
               />
 
               <Stack direction="row" spacing={2}>

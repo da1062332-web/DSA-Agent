@@ -33,6 +33,8 @@ import {
   Paper,
 } from '@mui/material';
 import { getCustomer, getCustomerConsents, recordCustomerConsent, withdrawConsent } from './api';
+import { Can } from '../../shell/Can';
+import { LenderSelect } from '../../shell/selectors';
 import type { ConsentResource, RecordConsentPayload } from './types';
 
 // Human-friendly branch map
@@ -191,13 +193,15 @@ export function CustomerConsents(): React.ReactElement {
                   />
                   <Chip label={customer.partyType} variant="outlined" color="primary" size="small" />
                 </Stack>
-                <Button
-                  variant="contained"
-                  onClick={() => setOpenDialog(true)}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
-                >
-                  + Record New Consent
-                </Button>
+                <Can action="consent.record">
+                  <Button
+                    variant="contained"
+                    onClick={() => setOpenDialog(true)}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    + Record New Consent
+                  </Button>
+                </Can>
               </Stack>
 
               <Divider sx={{ mb: 2 }} />
@@ -385,15 +389,17 @@ export function CustomerConsents(): React.ReactElement {
                         </TableCell>
                         <TableCell align="right">
                           {c.status === 'ACTIVE' && (
-                            <Button
-                              size="small"
-                              color="error"
-                              variant="outlined"
-                              onClick={() => withdrawMutation.mutate(c.id)}
-                              disabled={withdrawMutation.isPending}
-                            >
-                              Withdraw
-                            </Button>
+                            <Can action="consent.record">
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                onClick={() => withdrawMutation.mutate(c.id)}
+                                disabled={withdrawMutation.isPending}
+                              >
+                                Withdraw
+                              </Button>
+                            </Can>
                           )}
                           {c.status === 'WITHDRAWN' && (
                             <Typography variant="caption" color="text.secondary">
@@ -443,15 +449,27 @@ export function CustomerConsents(): React.ReactElement {
               </Select>
             </FormControl>
 
-            {(purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') && (
+            {purpose === 'SHARE_WITH_LENDER' && (
+              <LenderSelect
+                label="Target Lender *"
+                value={purposeTarget || null}
+                onChange={(val) => setPurposeTarget(val ?? '')}
+                size="small"
+                fullWidth
+                required
+                helperText="Lender organization with whom consent is granted"
+              />
+            )}
+
+            {purpose === 'VERIFICATION_CHECK' && (
               <TextField
-                label="Purpose Target (Lender / Vendor ID) *"
-                value={purposeTarget || 'LENDER_HDFC_01'}
+                label="Verification Agency / Target *"
+                value={purposeTarget || ''}
                 onChange={(e) => setPurposeTarget(e.target.value)}
                 size="small"
                 fullWidth
                 required
-                helperText="Identifier of lender or agency with whom data is shared"
+                helperText="Identifier or name of agency conducting verification"
               />
             )}
 

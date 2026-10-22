@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { fetchLenderCase } from './api';
 import { LenderCasePanel } from './LenderCasePanel';
+import { ApplicationName, LenderName } from '../../shell/display';
 
 export function LenderCaseDetailPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +56,7 @@ export function LenderCaseDetailPage(): React.ReactElement {
             Lender Case: {c.id}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Application: {c.applicationId} | Attempt #{c.attemptNo}
+            Application: <ApplicationName id={c.applicationId} linkToApp /> | Attempt #{c.attemptNo}
           </Typography>
         </Box>
         <Chip label={c.status} color="primary" />
@@ -69,7 +70,7 @@ export function LenderCaseDetailPage(): React.ReactElement {
             </Typography>
             <Divider sx={{ mb: 1.5 }} />
             <Typography variant="body2">
-              <strong>Lender ID:</strong> {c.lenderId}
+              <strong>Lender:</strong> <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} />
             </Typography>
             <Typography variant="body2">
               <strong>Product Version:</strong> {c.productVersionId}

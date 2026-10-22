@@ -35,6 +35,7 @@ import {
 } from '@mui/material';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
+import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
 
 export function PrivacyDashboard(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -356,13 +357,13 @@ export function PrivacyDashboard(): React.ReactElement {
             {/* Filter Controls */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} sm={4}>
-                <TextField
+                <ApplicationSelect
                   fullWidth
                   size="small"
-                  label="Search by Application ID"
-                  placeholder="e.g. app_..."
-                  value={sharingSubjectFilter}
-                  onChange={(e) => setSharingSubjectFilter(e.target.value)}
+                  label="Filter by Application"
+                  placeholder="Select application..."
+                  value={sharingSubjectFilter || null}
+                  onChange={(id) => setSharingSubjectFilter(id ?? '')}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -501,14 +502,13 @@ export function PrivacyDashboard(): React.ReactElement {
                   </Typography>
 
                   <Stack spacing={2.5}>
-                    <TextField
+                    <CustomerSelect
                       fullWidth
-                      id="input-customer-id"
                       size="small"
-                      label="Customer ID"
-                      placeholder="e.g. cus_..."
-                      value={verifyCustomerId}
-                      onChange={(e) => setVerifyCustomerId(e.target.value)}
+                      label="Customer"
+                      placeholder="Select customer..."
+                      value={verifyCustomerId || null}
+                      onChange={(id) => setVerifyCustomerId(id ?? '')}
                       helperText="Check consent directly on customer profile"
                     />
 
@@ -518,14 +518,13 @@ export function PrivacyDashboard(): React.ReactElement {
                       </Typography>
                     </Divider>
 
-                    <TextField
+                    <LeadSelect
                       fullWidth
-                      id="input-lead-id"
                       size="small"
-                      label="Lead ID"
-                      placeholder="e.g. lead_..."
-                      value={verifyLeadId}
-                      onChange={(e) => setVerifyLeadId(e.target.value)}
+                      label="Lead"
+                      placeholder="Select lead..."
+                      value={verifyLeadId || null}
+                      onChange={(id) => setVerifyLeadId(id ?? '')}
                       helperText="Check consent captured on original lead"
                     />
 

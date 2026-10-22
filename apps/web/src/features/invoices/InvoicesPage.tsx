@@ -30,6 +30,8 @@ import React, { useMemo, useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
+import { ConnectorSelect } from '../../shell/selectors';
+import { ConnectorName } from '../../shell/display';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
 
 export function InvoicesPage() {
@@ -658,13 +660,13 @@ export function InvoicesPage() {
 
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={4}>
-                <TextField
+                <ConnectorSelect
                   fullWidth
                   size="small"
-                  label="Connector ID"
-                  placeholder="e.g. con_01JTESTCONN0000000000001"
-                  value={statementConnectorId}
-                  onChange={(e) => setStatementConnectorId(e.target.value)}
+                  label="Connector"
+                  placeholder="Select connector..."
+                  value={statementConnectorId || null}
+                  onChange={(id) => setStatementConnectorId(id ?? '')}
                 />
               </Grid>
               <Grid item xs={6} sm={3}>
@@ -820,7 +822,7 @@ export function InvoicesPage() {
               <Card sx={{ borderRadius: 2, mb: 3 }}>
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    Account Activity: {statementData.connectorId} ({statementData.fromDate} to{' '}
+                    Account Activity: <ConnectorName id={statementData.connectorId} typographyProps={{ fontWeight: 700 }} /> ({statementData.fromDate} to{' '}
                     {statementData.toDate})
                   </Typography>
                   <Button

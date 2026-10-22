@@ -15,6 +15,7 @@ import {
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
+import { ApplicationSelect, BranchSelect } from '../../shell/selectors';
 import { createVerification } from './api';
 import type { CreateVerificationInput, VerificationPriority, VerificationType } from './types';
 
@@ -74,11 +75,11 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
           )}
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Loan Application ID"
-              placeholder="e.g. app_01J..."
-              value={applicationId}
-              onChange={(e) => setApplicationId(e.target.value)}
+            <ApplicationSelect
+              label="Loan Application"
+              placeholder="Search application by number or category..."
+              value={applicationId || null}
+              onChange={(id) => setApplicationId(id ?? '')}
               required
               fullWidth
               size="small"
@@ -103,20 +104,15 @@ export function VerificationCreateDialog({ open, onClose, onSuccess }: Props) {
               </Select>
             </FormControl>
 
-            <FormControl fullWidth size="small">
-              <InputLabel id="verification-branch-label">Branch</InputLabel>
-              <Select
-                labelId="verification-branch-label"
-                value={branchId}
-                label="Branch"
-                onChange={(e) => setBranchId(e.target.value)}
-                data-testid="verification.create.branch"
-              >
-                <MenuItem value="br_demo_01">Mumbai Central (MUM01)</MenuItem>
-                <MenuItem value="br_mumbai">Mumbai Central (MUM01 Legacy)</MenuItem>
-                <MenuItem value="br_pune">Pune Camp (PUN01)</MenuItem>
-              </Select>
-            </FormControl>
+            <BranchSelect
+              label="Branch"
+              value={branchId || null}
+              onChange={(id) => setBranchId(id ?? '')}
+              required
+              size="small"
+              fullWidth
+              data-testid="verification.create.branch"
+            />
 
             <FormControl fullWidth size="small">
               <InputLabel id="verification-priority-label">Priority</InputLabel>

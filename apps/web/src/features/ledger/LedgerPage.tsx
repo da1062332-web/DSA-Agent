@@ -215,7 +215,7 @@ export function LedgerPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-            <span>Ledger Management</span>
+            <span>Ledger Management</span>{' '}
             <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
               MOD-LED • DOM-K
             </span>

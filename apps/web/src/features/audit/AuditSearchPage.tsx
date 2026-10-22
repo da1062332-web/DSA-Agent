@@ -1,5 +1,5 @@
 // apps/web/src/features/audit/AuditSearchPage.tsx — owner: Akash (Module 37: Audit MOD-AUD)
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -12,12 +12,18 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Snackbar,
+  Stack,
+  Switch,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -38,6 +44,8 @@ import {
   VisibilityIcon,
   LockIcon,
   ShieldIcon,
+  ContentCopyIcon,
+  CheckCircleIcon,
 } from '../../shell/icons';
 import type { AuditEvent, AuditChainVerificationResponse, EvidencePackResponse } from '@dsa/contracts';
 import {
@@ -48,11 +56,388 @@ import {
   listEvidencePacks,
 } from './api';
 import { Can } from '../../shell/Can';
+import { UserSelect } from '../../shell/selectors';
+import { UserName } from '../../shell/display';
 
+// =========================================================================
+// HELPER: Format field values nicely (Currencies, Masked PII, Booleans, etc.)
+// =========================================================================
+function formatFieldValue(val: unknown): React.ReactNode {
+  if (val === null || val === undefined) {
+    return (
+      <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+        null
+      </Typography>
+    );
+  }
+
+  // Currency / Money object
+  if (typeof val === 'object' && val !== null && 'amount' in val && 'currency' in val) {
+    const money = val as { amount: string | number; currency: string };
+    const num = Number(money.amount);
+    return (
+      <Typography variant="body2" fontWeight={700} color="primary.main">
+        {money.currency === 'INR' ? '₹' : ''}
+        {Number.isNaN(num) ? money.amount : num.toLocaleString('en-IN')} {money.currency}
+      </Typography>
+    );
+  }
+
+  // Redacted or Masked PII
+  if (typeof val === 'string' && (val === '[REDACTED]' || val.includes('******') || val.includes('****'))) {
+    return (
+      <Chip
+        label={val}
+        size="small"
+        variant="outlined"
+        color="warning"
+        sx={{ fontFamily: 'monospace', fontSize: '0.75rem', height: 22 }}
+      />
+    );
+  }
+
+  // Booleans
+  if (typeof val === 'boolean') {
+    return (
+      <Chip
+        label={val ? 'true' : 'false'}
+        size="small"
+        color={val ? 'success' : 'default'}
+        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+      />
+    );
+  }
+
+  // Arrays
+  if (Array.isArray(val)) {
+    if (val.length === 0) {
+      return (
+        <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+          [] (empty)
+        </Typography>
+      );
+    }
+    return (
+      <Stack direction="row" spacing={0.5} flexWrap="wrap">
+        {val.map((item, idx) => (
+          <Chip
+            key={idx}
+            label={typeof item === 'object' ? JSON.stringify(item) : String(item)}
+            size="small"
+            variant="outlined"
+            sx={{ fontSize: '0.7rem', height: 20, my: 0.2 }}
+          />
+        ))}
+      </Stack>
+    );
+  }
+
+  // Objects
+  if (typeof val === 'object') {
+    return (
+      <pre style={{ margin: 0, fontSize: '0.75rem', fontFamily: 'monospace' }}>
+        {JSON.stringify(val, null, 2)}
+      </pre>
+    );
+  }
+
+  // Strings / IDs
+  const str = String(val);
+  const isId = /^[a-z]{2,5}_[0-9A-Za-z]+$/.test(str);
+  if (isId) {
+    return (
+      <Typography variant="body2" fontFamily="monospace" fontWeight={600} color="text.secondary">
+        {str}
+      </Typography>
+    );
+  }
+
+  // Date strings
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+    return (
+      <Typography variant="body2">
+        {new Date(val).toLocaleString()}
+      </Typography>
+    );
+  }
+
+  return (
+    <Typography variant="body2" fontWeight={500}>
+      {str}
+    </Typography>
+  );
+}
+
+// Convert camelCase or snake_case to Human Readable Title
+function formatFieldLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
+// =========================================================================
+// COMPONENT: Structured Payload Viewer (Card / Key-Value Table vs Raw JSON)
+// =========================================================================
+interface PayloadViewerProps {
+  data?: Record<string, unknown> | null;
+  title: string;
+  isBefore?: boolean;
+  onCopy: (text: string, label: string) => void;
+}
+
+function PayloadViewer({ data, title, isBefore = false, onCopy }: PayloadViewerProps) {
+  const [viewMode, setViewMode] = useState<'structured' | 'raw'>('structured');
+  const [hideNulls, setHideNulls] = useState<boolean>(true);
+
+  if (!data) {
+    return (
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 3,
+          backgroundColor: 'action.hover',
+          height: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          textAlign: 'center',
+          borderRadius: 2,
+        }}
+      >
+        <Chip
+          label={isBefore ? '+ Initial Creation' : 'Entity Deleted'}
+          color={isBefore ? 'info' : 'error'}
+          size="small"
+          sx={{ mb: 1.5, fontWeight: 700 }}
+        />
+        <Typography variant="body2" fontWeight={600} color="text.primary">
+          {isBefore ? 'No prior state recorded.' : 'Entity was deleted / purged.'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, maxWidth: 280 }}>
+          {isBefore
+            ? 'This audit event created the entity, so no prior database values existed.'
+            : 'No subsequent state exists for this record.'}
+        </Typography>
+      </Paper>
+    );
+  }
+
+  const entries = Object.entries(data);
+  const filteredEntries = hideNulls
+    ? entries.filter(([_, v]) => v !== null && v !== undefined && (!Array.isArray(v) || v.length > 0))
+    : entries;
+
+  const rawJson = JSON.stringify(data, null, 2);
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        height: 320,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 2,
+        overflow: 'hidden',
+        backgroundColor: 'background.paper',
+      }}
+    >
+      {/* Viewer Header / Toolbar */}
+      <Box
+        sx={{
+          px: 2,
+          py: 1,
+          backgroundColor: 'action.hover',
+          borderBottom: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="caption" fontWeight={700} color="text.primary" textTransform="uppercase">
+            {title} ({filteredEntries.length} fields)
+          </Typography>
+        </Stack>
+
+        <Stack direction="row" spacing={1} alignItems="center">
+          {viewMode === 'structured' && (
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={hideNulls}
+                  onChange={(e) => setHideNulls(e.target.checked)}
+                />
+              }
+              label={
+                <Typography variant="caption" color="text.secondary">
+                  Hide Empty
+                </Typography>
+              }
+              sx={{ mr: 0.5 }}
+            />
+          )}
+
+          <Button
+            size="small"
+            variant={viewMode === 'structured' ? 'contained' : 'outlined'}
+            onClick={() => setViewMode('structured')}
+            sx={{ textTransform: 'none', py: 0.2, px: 1, fontSize: '0.75rem', minWidth: 0 }}
+          >
+            Structured
+          </Button>
+          <Button
+            size="small"
+            variant={viewMode === 'raw' ? 'contained' : 'outlined'}
+            onClick={() => setViewMode('raw')}
+            sx={{ textTransform: 'none', py: 0.2, px: 1, fontSize: '0.75rem', minWidth: 0 }}
+          >
+            Raw JSON
+          </Button>
+          <Tooltip title={`Copy ${title} JSON`}>
+            <IconButton size="small" onClick={() => onCopy(rawJson, `${title} JSON`)} sx={{ p: 0.5 }}>
+              <ContentCopyIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
+
+      {/* Content Area */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: viewMode === 'raw' ? 1.5 : 0 }}>
+        {viewMode === 'raw' ? (
+          <pre
+            style={{
+              margin: 0,
+              fontSize: '0.8rem',
+              fontFamily: 'monospace',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+            }}
+          >
+            {rawJson}
+          </pre>
+        ) : (
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700, width: '42%', fontSize: '0.75rem', py: 0.75 }}>
+                  Property
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', py: 0.75 }}>
+                  Value
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredEntries.map(([k, v]) => (
+                <TableRow key={k} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell sx={{ py: 0.75, verticalAlign: 'top' }}>
+                    <Typography variant="body2" fontWeight={600} color="text.primary">
+                      {formatFieldLabel(k)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                      {k}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 0.75, verticalAlign: 'top' }}>
+                    {formatFieldValue(v)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
+// =========================================================================
+// COMPONENT: Changed Fields Diff Viewer
+// =========================================================================
+interface DiffViewerProps {
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+}
+
+function DiffViewer({ before, after }: DiffViewerProps) {
+  const diffs = useMemo(() => {
+    if (!before || !after) return [];
+    const allKeys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+    return allKeys
+      .filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]))
+      .map((k) => ({
+        key: k,
+        label: formatFieldLabel(k),
+        beforeVal: before[k],
+        afterVal: after[k],
+      }));
+  }, [before, after]);
+
+  if (diffs.length === 0) {
+    return (
+      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          No field modifications detected between before and after states.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <TableContainer sx={{ maxHeight: 320 }}>
+        <Table size="small" stickyHeader>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 700, width: '30%' }}>Field Changed</TableCell>
+              <TableCell sx={{ fontWeight: 700, width: '35%', color: 'error.main' }}>
+                Previous Value (Before)
+              </TableCell>
+              <TableCell sx={{ fontWeight: 700, width: '35%', color: 'success.main' }}>
+                Updated Value (After)
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {diffs.map((d) => (
+              <TableRow key={d.key} hover>
+                <TableCell sx={{ verticalAlign: 'top' }}>
+                  <Typography variant="body2" fontWeight={600}>
+                    {d.label}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                    {d.key}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ verticalAlign: 'top', bgcolor: 'rgba(211, 47, 47, 0.04)' }}>
+                  {formatFieldValue(d.beforeVal)}
+                </TableCell>
+                <TableCell sx={{ verticalAlign: 'top', bgcolor: 'rgba(46, 125, 50, 0.04)' }}>
+                  {formatFieldValue(d.afterVal)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  );
+}
+
+// =========================================================================
+// MAIN PAGE: AuditSearchPage
+// =========================================================================
 export function AuditSearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
 
   // Search Results
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -71,14 +456,22 @@ export function AuditSearchPage() {
   const [verifyingChain, setVerifyingChain] = useState(false);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
 
-  // Detail Modal
+  // Detail Modal State
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<number>(0);
 
   // Evidence Pack Modal
   const [evidenceModalOpen, setEvidenceModalOpen] = useState(false);
   const [evidencePurpose, setEvidencePurpose] = useState('');
   const [evidencePacks, setEvidencePacks] = useState<EvidencePackResponse[]>([]);
+
+  const handleCopy = (text: string, label: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopyToast(`${label} copied to clipboard`);
+    }
+  };
 
   const handleSearch = async () => {
     setLoading(true);
@@ -89,8 +482,8 @@ export function AuditSearchPage() {
         entityId: entityId.trim() || undefined,
         action: action.trim() || undefined,
         actorId: actorId.trim() || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
+        dateFrom: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+        dateTo: dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : undefined,
         limit: 50,
       });
       setEvents(result?.data ?? []);
@@ -154,6 +547,9 @@ export function AuditSearchPage() {
     handleSearch();
   }, []);
 
+  // Check if both before and after exist on selected event
+  const hasDiff = Boolean(selectedEvent?.before && selectedEvent?.after);
+
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Title Header */}
@@ -203,7 +599,7 @@ export function AuditSearchPage() {
       )}
 
       {/* Chain Status Card */}
-      <Card elevation={2} sx={{ mb: 3, backgroundColor: 'background.paper' }}>
+      <Card elevation={2} sx={{ mb: 3, backgroundColor: 'background.paper', borderRadius: 2 }}>
         <CardContent sx={{ py: 2 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} sm={4}>
@@ -217,7 +613,7 @@ export function AuditSearchPage() {
                     <Typography variant="h6" fontWeight={700}>
                       SHA-256 Hash Chained
                     </Typography>
-                    <Chip size="small" color="success" label="Active" />
+                    <Chip size="small" color="success" label="Active & Verified" />
                   </Box>
                 </Box>
               </Box>
@@ -243,12 +639,12 @@ export function AuditSearchPage() {
       </Card>
 
       {/* Filter / Search Panel */}
-      <Paper elevation={2} sx={{ p: 2.5, mb: 3 }}>
+      <Paper elevation={2} sx={{ p: 2.5, mb: 3, borderRadius: 2 }}>
         <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
           Filter Audit Log
         </Typography>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid item xs={12} sm={6} md={2}>
             <FormControl fullWidth size="small">
               <InputLabel>Entity Type</InputLabel>
               <Select value={entityType} label="Entity Type" onChange={(e) => setEntityType(e.target.value)}>
@@ -264,7 +660,7 @@ export function AuditSearchPage() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid item xs={12} sm={6} md={2}>
             <TextField
               size="small"
               label="Entity ID"
@@ -274,7 +670,7 @@ export function AuditSearchPage() {
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid item xs={12} sm={6} md={2}>
             <TextField
               size="small"
               label="Action"
@@ -284,26 +680,39 @@ export function AuditSearchPage() {
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
-            <TextField
+          <Grid item xs={12} sm={6} md={2}>
+            <UserSelect
               size="small"
-              label="Actor ID"
-              placeholder="e.g. usr_01J..."
-              value={actorId}
-              onChange={(e) => setActorId(e.target.value)}
+              label="Actor / User"
+              placeholder="All Actors"
+              value={actorId || null}
+              onChange={(val) => setActorId(val ?? '')}
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} md={2} sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="contained"
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              size="small"
+              type="date"
+              label="Date From"
+              InputLabelProps={{ shrink: true }}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
               fullWidth
-              startIcon={<SearchIcon />}
-              onClick={handleSearch}
-              disabled={loading}
-            >
-              Search
-            </Button>
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              size="small"
+              type="date"
+              label="Date To"
+              InputLabelProps={{ shrink: true }}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 1 }}>
             <Button
               variant="outlined"
               onClick={() => {
@@ -317,12 +726,21 @@ export function AuditSearchPage() {
             >
               Reset
             </Button>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={handleSearch}
+              disabled={loading}
+              sx={{ px: 3 }}
+            >
+              Search
+            </Button>
           </Grid>
         </Grid>
       </Paper>
 
       {/* Events Table */}
-      <Paper elevation={2}>
+      <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         <TableContainer>
           <Table size="medium">
             <TableHead sx={{ backgroundColor: 'action.hover' }}>
@@ -341,13 +759,13 @@ export function AuditSearchPage() {
             <TableBody>
               {loading && events.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                     <CircularProgress size={32} />
                   </TableCell>
                 </TableRow>
               ) : events.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                     <Typography color="text.secondary">
                       No audit events match your search criteria.
                     </Typography>
@@ -365,20 +783,24 @@ export function AuditSearchPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={ev.action} color="primary" variant="outlined" />
+                      <Chip size="small" label={ev.action} color="primary" variant="outlined" sx={{ fontWeight: 600 }} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>
                         {ev.entityType}
                       </Typography>
                       <Typography variant="caption" fontFamily="monospace" color="text.secondary">
-                        {ev.entityId}
+                        {ev.entityId || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {ev.actorType}: {ev.actorId.slice(0, 10)}...
-                      </Typography>
+                      {ev.actorType === 'USER' ? (
+                        <UserName id={ev.actorId} typographyProps={{ fontWeight: 500 }} />
+                      ) : (
+                        <Typography variant="body2" fontWeight={500}>
+                          {ev.actorType}: {ev.actorId.slice(0, 14)}...
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption" fontFamily="monospace">
@@ -387,12 +809,13 @@ export function AuditSearchPage() {
                     </TableCell>
                     <TableCell>
                       {ev.hash ? (
-                        <Tooltip title={`Hash: ${ev.hash}`}>
+                        <Tooltip title={`SHA-256 Hash: ${ev.hash}`}>
                           <Chip
                             size="small"
                             color="success"
                             label="Sealed"
                             icon={<LockIcon sx={{ fontSize: 14 }} />}
+                            sx={{ fontWeight: 600 }}
                           />
                         </Tooltip>
                       ) : (
@@ -405,6 +828,7 @@ export function AuditSearchPage() {
                         color="primary"
                         onClick={() => {
                           setSelectedEvent(ev);
+                          setModalTab(0);
                           setDetailModalOpen(true);
                         }}
                       >
@@ -419,109 +843,285 @@ export function AuditSearchPage() {
         </TableContainer>
       </Paper>
 
-      {/* Event Details Dialog */}
-      <Dialog open={detailModalOpen} onClose={() => setDetailModalOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              Audit Event: {selectedEvent?.action}
-            </Typography>
-            <Typography variant="caption" fontFamily="monospace" color="text.secondary">
-              ID: {selectedEvent?.id} | Correlation: {selectedEvent?.correlationId}
-            </Typography>
-          </Box>
-          {selectedEvent?.hash && <Chip size="small" color="success" label="Cryptographically Sealed" />}
-        </DialogTitle>
-        <DialogContent dividers sx={{ pt: 2 }}>
-          {selectedEvent && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    Actor
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedEvent.actorType}: {selectedEvent.actorId}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    Permission Used
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedEvent.permissionUsed || 'SYSTEM_AUTH'}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    Client IP & Agent
-                  </Typography>
-                  <Typography variant="body2" fontFamily="monospace">
-                    {selectedEvent.ip || 'N/A'} ({selectedEvent.userAgent || 'App'})
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    Linked Decision Record
-                  </Typography>
-                  <Typography variant="body2" fontFamily="monospace">
-                    {selectedEvent.decisionRecordId || 'None'}
-                  </Typography>
-                </Grid>
-              </Grid>
-
-              <Divider sx={{ my: 1 }} />
-
-              <Typography variant="subtitle2" fontWeight={700}>
-                State Mutation Payload
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    Before State
-                  </Typography>
-                  <Paper
-                    variant="outlined"
-                    sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}
+      {/* ========================================================================= */}
+      {/* Event Details Dialog (High-Resolution Professional Audit Inspector)      */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}
+      >
+        <DialogTitle sx={{ pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            spacing={1.5}
+          >
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="h6" fontWeight={700}>
+                  Audit Event:
+                </Typography>
+                <Chip
+                  label={selectedEvent?.action}
+                  color="primary"
+                  size="small"
+                  sx={{ fontWeight: 700, fontSize: '0.85rem' }}
+                />
+                <Chip
+                  label={selectedEvent?.entityType.toUpperCase()}
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                <Typography variant="caption" fontFamily="monospace" color="text.secondary">
+                  Event ID: {selectedEvent?.id} • Correlation: {selectedEvent?.correlationId}
+                </Typography>
+                <Tooltip title="Copy Event ID">
+                  <IconButton
+                    size="small"
+                    onClick={() => selectedEvent && handleCopy(selectedEvent.id, 'Event ID')}
+                    sx={{ p: 0.25 }}
                   >
-                    <pre style={{ margin: 0, fontSize: '0.8rem' }}>
-                      {selectedEvent.before ? JSON.stringify(selectedEvent.before, null, 2) : 'null'}
-                    </pre>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    After State
-                  </Typography>
-                  <Paper
-                    variant="outlined"
-                    sx={{ p: 1.5, backgroundColor: 'action.hover', maxHeight: 220, overflow: 'auto' }}
-                  >
-                    <pre style={{ margin: 0, fontSize: '0.8rem' }}>
-                      {selectedEvent.after ? JSON.stringify(selectedEvent.after, null, 2) : 'null'}
-                    </pre>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              {selectedEvent.hash && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    SHA-256 Hash Chain
-                  </Typography>
-                  <Typography variant="caption" fontFamily="monospace" display="block">
-                    Current Hash: {selectedEvent.hash}
-                  </Typography>
-                  <Typography variant="caption" fontFamily="monospace" color="text.secondary" display="block">
-                    Previous Hash: {selectedEvent.prevHash || '0'.repeat(64)}
-                  </Typography>
-                </Box>
-              )}
+                    <ContentCopyIcon sx={{ fontSize: 13 }} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </Box>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              {selectedEvent?.hash ? (
+                <Chip
+                  size="small"
+                  color="success"
+                  icon={<LockIcon sx={{ fontSize: 14 }} />}
+                  label="Cryptographically Sealed"
+                  sx={{ fontWeight: 600 }}
+                />
+              ) : (
+                <Chip size="small" variant="outlined" label="Unsealed Event" />
+              )}
+            </Stack>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          {selectedEvent && (
+            <>
+              {/* Context Summary Cards */}
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, height: '100%' }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                      ACTOR
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+                      <Chip
+                        label={selectedEvent.actorType}
+                        size="small"
+                        color={selectedEvent.actorType === 'USER' ? 'primary' : 'secondary'}
+                        sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                      {selectedEvent.actorType === 'USER' ? (
+                        <UserName id={selectedEvent.actorId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          fontWeight={600}
+                          fontFamily="monospace"
+                          sx={{ wordBreak: 'break-all' }}
+                        >
+                          {selectedEvent.actorId}
+                        </Typography>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Grid>
+
+                <Grid item xs={6} sm={3}>
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, height: '100%' }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                      PERMISSION USED
+                    </Typography>
+                    <Chip
+                      label={selectedEvent.permissionUsed || 'SYSTEM_AUTH'}
+                      size="small"
+                      color="info"
+                      variant="outlined"
+                      sx={{ fontWeight: 600, mt: 0.5, height: 22 }}
+                    />
+                  </Paper>
+                </Grid>
+
+                <Grid item xs={6} sm={3}>
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, height: '100%' }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                      CLIENT IP & USER AGENT
+                    </Typography>
+                    <Typography variant="body2" fontFamily="monospace" fontWeight={500} sx={{ mt: 0.5 }}>
+                      {selectedEvent.ip || 'N/A'}{' '}
+                      <span style={{ color: 'gray' }}>({selectedEvent.userAgent || 'App'})</span>
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid item xs={6} sm={3}>
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, height: '100%' }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                      LINKED DECISION RECORD
+                    </Typography>
+                    <Typography variant="body2" fontFamily="monospace" fontWeight={500} sx={{ mt: 0.5 }}>
+                      {selectedEvent.decisionRecordId || 'None (Direct Call)'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              {/* View Switcher Tabs (Side-by-Side Payloads vs Field-Level Diff) */}
+              <Box>
+                <Tabs
+                  value={modalTab}
+                  onChange={(_, v) => setModalTab(v)}
+                  sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+                >
+                  <Tab label="Side-by-Side State Payloads" sx={{ fontWeight: 600, textTransform: 'none' }} />
+                  {hasDiff && (
+                    <Tab
+                      label="Field-by-Field Changes (Diff)"
+                      sx={{ fontWeight: 600, textTransform: 'none', color: 'primary.main' }}
+                    />
+                  )}
+                </Tabs>
+
+                {/* TAB 0: Side-by-Side Payload Inspector */}
+                {modalTab === 0 && (
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <PayloadViewer
+                        data={selectedEvent.before}
+                        title="Before State"
+                        isBefore={true}
+                        onCopy={handleCopy}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <PayloadViewer
+                        data={selectedEvent.after}
+                        title="After State"
+                        isBefore={false}
+                        onCopy={handleCopy}
+                      />
+                    </Grid>
+                  </Grid>
+                )}
+
+                {/* TAB 1: Diff Table */}
+                {modalTab === 1 && hasDiff && (
+                  <DiffViewer before={selectedEvent.before} after={selectedEvent.after} />
+                )}
+              </Box>
+
+              {/* Cryptographic SHA-256 Hash Chain Proof */}
+              {selectedEvent.hash && (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(46, 125, 50, 0.03)',
+                    borderColor: 'rgba(46, 125, 50, 0.2)',
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                    <ShieldIcon color="success" sx={{ fontSize: 22 }} />
+                    <Typography variant="subtitle2" fontWeight={700} color="success.dark">
+                      Cryptographic Hash Chain Verification (SHA-256)
+                    </Typography>
+                    {selectedEvent.seq !== undefined && (
+                      <Chip
+                        label={`Sequence #${selectedEvent.seq}`}
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                      />
+                    )}
+                  </Stack>
+
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                        CURRENT EVENT HASH
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Paper
+                          variant="outlined"
+                          sx={{ p: 0.85, flexGrow: 1, backgroundColor: 'background.paper', overflow: 'hidden' }}
+                        >
+                          <Typography variant="caption" fontFamily="monospace" sx={{ wordBreak: 'break-all' }}>
+                            {selectedEvent.hash}
+                          </Typography>
+                        </Paper>
+                        <Tooltip title="Copy Current Hash">
+                          <IconButton size="small" onClick={() => handleCopy(selectedEvent.hash!, 'Current Hash')}>
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                        PREVIOUS HASH IN CHAIN
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Paper
+                          variant="outlined"
+                          sx={{ p: 0.85, flexGrow: 1, backgroundColor: 'background.paper', overflow: 'hidden' }}
+                        >
+                          <Typography
+                            variant="caption"
+                            fontFamily="monospace"
+                            color="text.secondary"
+                            sx={{ wordBreak: 'break-all' }}
+                          >
+                            {selectedEvent.prevHash || '0'.repeat(64)}
+                          </Typography>
+                        </Paper>
+                        <Tooltip title="Copy Previous Hash">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCopy(selectedEvent.prevHash || '0'.repeat(64), 'Previous Hash')}
+                          >
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              )}
+            </>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDetailModalOpen(false)}>Close</Button>
+
+        <DialogActions sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: 'divider', justifyContent: 'space-between' }}>
+          <Button
+            size="small"
+            startIcon={<ContentCopyIcon />}
+            onClick={() => selectedEvent && handleCopy(JSON.stringify(selectedEvent, null, 2), 'Full Event')}
+            sx={{ textTransform: 'none' }}
+          >
+            Copy Full Event JSON
+          </Button>
+          <Button variant="contained" onClick={() => setDetailModalOpen(false)} sx={{ px: 3 }}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -613,6 +1213,14 @@ export function AuditSearchPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Copy Toast Snackbar */}
+      <Snackbar
+        open={!!copyToast}
+        autoHideDuration={2500}
+        onClose={() => setCopyToast(null)}
+        message={copyToast}
+      />
     </Box>
   );
 }

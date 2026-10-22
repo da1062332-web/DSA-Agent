@@ -23,6 +23,7 @@ import Alert from '@mui/material/Alert';
 import { apiFetch, errorText } from '../../api/client';
 import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
+import { UserName } from '../../shell/display';
 
 // Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
 export function ActivitiesPage() {
@@ -164,7 +165,9 @@ export function ActivitiesPage() {
                       <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
                         <Typography variant="body2">{a.note || '&mdash;'}</Typography>
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{a.actorId}</TableCell>
+                      <TableCell>
+                        <UserName id={a.actorId} typographyProps={{ fontWeight: 500 }} />
+                      </TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                         {new Date(a.occurredAt).toLocaleString()}
                       </TableCell>

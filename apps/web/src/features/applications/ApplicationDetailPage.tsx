@@ -1,7 +1,7 @@
 // /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 010). Edit the applicant request while the
 // status allows it, and put the file on hold with a reason. Every change sends the version the screen loaded (If-Match),
 // so a stale screen gets the conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
-import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
@@ -12,6 +12,7 @@ import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { EligibilityCard } from './EligibilityCard';
+import { CustomerName, BranchName, UserName } from '../../shell/display';
 import {
   STATUS_LABELS,
   canEditDetails,
@@ -64,6 +65,40 @@ export function ApplicationDetailPage() {
           {a.holdUntil ? ` until ${formatDate(a.holdUntil)}` : ''}.
         </Alert>
       )}
+
+      {/* Applicant & Servicing Overview */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4} divider={<Box sx={{ borderRight: 1, borderColor: 'divider', display: { xs: 'none', sm: 'block' } }} />}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Applicant / Customer</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <CustomerName id={a.customerId} linkToProfile typographyProps={{ variant: 'body1', fontWeight: 600 }} />
+              </Box>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Servicing Branch</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <BranchName id={a.branchId} typographyProps={{ variant: 'body1', fontWeight: 500 }} />
+              </Box>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Sales RM</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <UserName id={a.salesOwnerId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
+              </Box>
+            </Box>
+            {a.opsOwnerId && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">Operations Owner</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <UserName id={a.opsOwnerId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
+                </Box>
+              </Box>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
 
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />

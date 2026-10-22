@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import { listCustomers } from './api';
 import type { CustomerResource } from './types';
+import { BranchName } from '../../shell/display';
 
 export function CustomerListPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -272,7 +273,7 @@ export function CustomerListPage() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{customer.homeBranchId || '—'}</Typography>
+                    <BranchName id={customer.homeBranchId} fallback="—" />
                   </TableCell>
                   <TableCell>
                     <Chip

@@ -34,6 +34,7 @@ import type {
   ComplaintChannel,
   ComplaintStatus,
 } from './types';
+import { CustomerSelect } from '../../shell/selectors';
 
 export function GrievancesPage({ initialTab = 0 }: { initialTab?: number } = {}) {
   const [activeTab, setActiveTab] = useState<number>(initialTab);
@@ -242,12 +243,13 @@ export function GrievancesPage({ initialTab = 0 }: { initialTab?: number } = {})
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <TextField
+                  <CustomerSelect
                     required
                     fullWidth
-                    label="Complainant Customer ID"
-                    value={complainantId}
-                    onChange={(e) => setComplainantId(e.target.value)}
+                    label="Complainant Customer"
+                    value={complainantId || null}
+                    onChange={(id) => setComplainantId(id ?? '')}
+                    size="medium"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>

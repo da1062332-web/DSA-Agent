@@ -39,6 +39,7 @@ import {
   VisibilityIcon,
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
+import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
 import type {
   AutomationDefinition,
   AutomationExecution,
@@ -645,14 +646,32 @@ export function AutomationListPage() {
           <Typography variant="body2" color="text.secondary">
             Trigger rule: <strong>{selectedDefForExec?.name}</strong> ({selectedDefForExec?.code})
           </Typography>
-          <TextField
-            label={`${selectedDefForExec?.entityType ?? 'Subject'} ID`}
-            placeholder="e.g. lead_01JTEST00000000000000"
-            value={execSubjectId}
-            onChange={(e) => setExecSubjectId(e.target.value)}
-            fullWidth
-            required
-          />
+          {selectedDefForExec?.entityType === 'LEAD' ? (
+            <LeadSelect
+              label="Select Lead"
+              value={execSubjectId || null}
+              onChange={(id) => setExecSubjectId(id ?? '')}
+              fullWidth
+              required
+            />
+          ) : selectedDefForExec?.entityType === 'LOAN_APPLICATION' ? (
+            <ApplicationSelect
+              label="Select Loan Application"
+              value={execSubjectId || null}
+              onChange={(id) => setExecSubjectId(id ?? '')}
+              fullWidth
+              required
+            />
+          ) : (
+            <TextField
+              label={`${selectedDefForExec?.entityType ?? 'Subject'} ID`}
+              placeholder="e.g. lead_01JTEST00000000000000"
+              value={execSubjectId}
+              onChange={(e) => setExecSubjectId(e.target.value)}
+              fullWidth
+              required
+            />
+          )}
           <FormControl fullWidth>
             <InputLabel>Execution Mode</InputLabel>
             <Select

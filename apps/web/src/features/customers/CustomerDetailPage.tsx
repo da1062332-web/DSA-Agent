@@ -22,6 +22,8 @@ import {
 } from '@mui/material';
 import { getCustomer, updateCustomer, ApiError } from './api';
 import { Can } from '../../shell/Can';
+import { BranchSelect } from '../../shell/selectors';
+import { BranchName } from '../../shell/display';
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -207,7 +209,9 @@ export function CustomerDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Primary Home Branch
                   </Typography>
-                  <Typography variant="body1">{customer.homeBranchId || 'Not Assigned'}</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <BranchName id={customer.homeBranchId} fallback="Not Assigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -321,12 +325,13 @@ export function CustomerDetailPage() {
                 value={editFullName}
                 onChange={(e) => setEditFullName(e.target.value)}
               />
-              <TextField
-                label="Home Branch ID"
-                fullWidth
-                value={editHomeBranchId}
-                onChange={(e) => setEditHomeBranchId(e.target.value)}
+              <BranchSelect
+                label="Home Branch"
+                value={editHomeBranchId || null}
+                onChange={(id) => setEditHomeBranchId(id ?? '')}
                 helperText="Primary branch responsible for servicing this customer"
+                size="medium"
+                fullWidth
               />
             </Stack>
           </DialogContent>

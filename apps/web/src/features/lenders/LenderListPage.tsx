@@ -37,7 +37,7 @@ import type { CreateLenderInput, Lender, LenderStatus, LenderType } from './type
 
 export function LenderListPage() {
   const me = useMe();
-  const canManage = hasPermission(me.data, 'config.manage');
+  const canManage = hasPermission(me.data, 'lender.manage') || hasPermission(me.data, 'config.manage');
 
   const [lenders, setLenders] = useState<Lender[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

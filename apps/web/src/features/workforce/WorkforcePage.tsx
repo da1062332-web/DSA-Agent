@@ -29,6 +29,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
+import { BranchName } from '../../shell/display';
 import {
   checkIn,
   checkOut,
@@ -390,9 +391,7 @@ export function WorkforcePage() {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" sx={{ color: '#334155' }}>
-                              {agent.primaryBranchId || 'General'}
-                            </Typography>
+                            <BranchName id={agent.primaryBranchId} fallback="General" typographyProps={{ sx: { color: '#334155' } }} />
                           </TableCell>
                           <TableCell>
                             <Chip

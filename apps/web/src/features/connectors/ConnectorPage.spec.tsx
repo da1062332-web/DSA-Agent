@@ -67,4 +67,16 @@ describe('Module 27 — ConnectorPage Component Rendering & Action Guarding', ()
     expect(html).toContain('Connector Management (MOD-CON)');
     expect(html).toContain('+ Onboard Connector');
   });
+
+  it('renders clean top-level directory tabs without leaking connector-specific tabs onto main screen', () => {
+    mockGrants(['connector.read', 'connector.manage']);
+    const html = renderConnectorPage();
+
+    expect(html).toContain('Directory &amp; Onboarding');
+    expect(html).toContain('Attribution Requests');
+    expect(html).toContain('Disputes &amp; Duplicate Referrals');
+    // Connector-specific tabs are NOT rendered on the top-level main screen
+    expect(html).not.toContain('Bank Accounts &amp; SOD (');
+    expect(html).not.toContain('Agreements &amp; Rate Cards (');
+  });
 });

@@ -40,7 +40,7 @@ import type { CreateProductInput, LoanProduct, ProductCategory, ProductStatus } 
 
 export function ProductCataloguePage() {
   const me = useMe();
-  const canManage = hasPermission(me.data, 'config.manage');
+  const canManage = hasPermission(me.data, 'product.manage') || hasPermission(me.data, 'config.manage');
 
   const [products, setProducts] = useState<LoanProduct[]>([]);
   const [lenders, setLenders] = useState<Lender[]>([]);

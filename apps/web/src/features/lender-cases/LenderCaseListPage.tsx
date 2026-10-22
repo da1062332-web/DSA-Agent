@@ -35,6 +35,7 @@ import {
 import { PageHeader } from '../admin/components';
 import { fetchAllLenderCases } from './api';
 import type { LenderCaseResource, LenderCaseStatus } from './types';
+import { ApplicationName, LenderName } from '../../shell/display';
 
 const STATUS_CHIP_COLORS: Record<
   string,
@@ -341,23 +342,10 @@ export function LenderCaseListPage(): React.ReactElement {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Typography
-                            component={RouterLink}
-                            to={`/applications/${c.applicationId}`}
-                            variant="body2"
-                            sx={{
-                              color: 'text.primary',
-                              textDecoration: 'none',
-                              '&:hover': { textDecoration: 'underline', color: 'primary.main' },
-                            }}
-                          >
-                            {c.applicationId}
-                          </Typography>
+                          <ApplicationName id={c.applicationId} linkToApp />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" fontWeight={500}>
-                            {c.lenderId}
-                          </Typography>
+                          <LenderName id={c.lenderId} typographyProps={{ variant: 'body2', fontWeight: 500 }} />
                         </TableCell>
                         <TableCell>
                           <Chip

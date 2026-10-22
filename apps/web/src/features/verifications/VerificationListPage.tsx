@@ -33,6 +33,7 @@ import type {
 } from './types';
 import { VerificationCreateDialog } from './VerificationCreateDialog';
 import { Can } from '../../shell/Can';
+import { ApplicationName, BranchName, UserName } from '../../shell/display';
 
 function getStatusColor(
   status: VerificationStatus,
@@ -311,7 +312,9 @@ export function VerificationListPage() {
               data.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{row.id}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>{row.applicationId}</TableCell>
+                  <TableCell>
+                    <ApplicationName id={row.applicationId} linkToApp />
+                  </TableCell>
                   <TableCell>
                     <Chip label={row.verificationType.replace(/_/g, ' ')} size="small" variant="outlined" />
                   </TableCell>
@@ -331,9 +334,9 @@ export function VerificationListPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{row.assignedToUserId ?? 'Unassigned'}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {row.branchId}
+                    <UserName id={row.assignedToUserId} fallback="Unassigned" typographyProps={{ fontWeight: 500 }} />
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      <BranchName id={row.branchId} />
                     </Typography>
                   </TableCell>
                   <TableCell>

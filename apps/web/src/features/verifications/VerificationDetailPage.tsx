@@ -29,6 +29,8 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
+import { UserSelect } from '../../shell/selectors';
+import { ApplicationName, BranchName, UserName } from '../../shell/display';
 import { attestChecklistItem, completeVerification, fetchVerification, updateVerification } from './api';
 import type {
   ChecklistAttestationInput,
@@ -216,7 +218,7 @@ export function VerificationDetailPage() {
             )}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Application: {data.applicationId} • Branch: {data.branchId} • Type:{' '}
+            Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} /> • Type:{' '}
             {data.verificationType.replace(/_/g, ' ')}
           </Typography>
         </Box>
@@ -286,7 +288,9 @@ export function VerificationDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Assigned Verifier
                   </Typography>
-                  <Typography variant="body1">{data.assignedToUserId || 'Unassigned'}</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <UserName id={data.assignedToUserId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -512,11 +516,11 @@ export function VerificationDetailPage() {
               </Select>
             </FormControl>
 
-            <TextField
-              label="Assigned Staff User ID"
-              placeholder="e.g. usr_01J..."
-              value={newAssignee}
-              onChange={(e) => setNewAssignee(e.target.value)}
+            <UserSelect
+              label="Assigned Staff Member"
+              placeholder="Search staff user by name..."
+              value={newAssignee || null}
+              onChange={(val) => setNewAssignee(val ?? '')}
               fullWidth
               size="small"
             />

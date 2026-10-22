@@ -35,6 +35,8 @@ import {
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
+import { ConnectorSelect } from '../../shell/selectors';
+import { ConnectorName } from '../../shell/display';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import {
@@ -587,7 +589,7 @@ export function CommissionDashboardPage() {
                           <TableRow key={p.id}>
                             <TableCell>{p.id}</TableCell>
                             <TableCell>
-                              <strong>{p.connectorId}</strong>
+                              <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 600 }} />
                             </TableCell>
                             <TableCell>{(Number(p.shareRate) * 100).toFixed(1)}%</TableCell>
                             <TableCell>
@@ -815,11 +817,12 @@ export function CommissionDashboardPage() {
                 value={calcRate}
                 onChange={(e) => setCalcRate(Number(e.target.value))}
               />
-              <TextField
+              <ConnectorSelect
                 fullWidth
-                label="Attributed Connector ID"
-                value={calcConnectorId}
-                onChange={(e) => setCalcConnectorId(e.target.value)}
+                label="Attributed Connector (optional)"
+                value={calcConnectorId || null}
+                onChange={(id) => setCalcConnectorId(id ?? '')}
+                size="medium"
               />
               <TextField
                 fullWidth

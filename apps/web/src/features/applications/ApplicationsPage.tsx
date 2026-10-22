@@ -14,12 +14,14 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
 import { ErrorAlert, LoadMore, Loading, PageHeader } from '../admin/components';
+import { CustomerName } from '../../shell/display';
 import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from './rules';
 
 export interface Application {
@@ -139,9 +141,13 @@ function ApplicationsList() {
                         component={RouterLink}
                         to={`/applications/${a.id}`}
                         data-testid="applications.open"
+                        sx={{ fontWeight: 600, display: 'block' }}
                       >
-                        {a.id}
+                        <CustomerName id={a.customerId} fallback={`App #${a.id.slice(-6)}`} />
                       </Link>
+                      <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                        {a.id}
+                      </Typography>
                     </TableCell>
                     <TableCell>{a.productCategory}</TableCell>
                     <TableCell>

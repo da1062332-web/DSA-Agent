@@ -20,6 +20,7 @@ import {
 import { useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { BranchSelect } from '../admin/components';
+import { ConnectorSelect } from '../../shell/selectors';
 import { createLead, ApiError } from './api';
 import {
   CONSENT_CHANNELS,
@@ -328,12 +329,11 @@ export function LeadCreate() {
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Connector ID"
-                  value={connectorId}
-                  onChange={(e) => setConnectorId(e.target.value)}
-                  placeholder="Optional"
+                <ConnectorSelect
+                  label="Connector"
+                  value={connectorId || null}
+                  onChange={(id) => setConnectorId(id ?? '')}
+                  placeholder="Select sourcing connector"
                 />
               </Grid>
             </Grid>

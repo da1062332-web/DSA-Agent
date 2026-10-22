@@ -26,6 +26,7 @@ import {
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
+import { BranchSelect, ProductSelect, UserSelect } from '../../shell/selectors';
 import {
   DIMENSION_LABELS,
   METRIC_LABELS,
@@ -389,14 +390,38 @@ export function TargetsPage() {
               <MenuItem value="PRODUCT">Loan Product</MenuItem>
             </TextField>
 
-            <TextField
-              label="Dimension ID"
-              value={dimensionId}
-              onChange={(e) => setDimensionId(e.target.value)}
-              helperText="e.g. br_01JMUMBAI... or usr_01J... or prd_01J..."
-              fullWidth
-              required
-            />
+            {dimensionType === 'BRANCH' && (
+              <BranchSelect
+                label="Target Branch"
+                value={dimensionId || null}
+                onChange={(id) => setDimensionId(id ?? '')}
+                fullWidth
+                size="medium"
+                required
+              />
+            )}
+
+            {dimensionType === 'USER' && (
+              <UserSelect
+                label="Target User / Agent"
+                value={dimensionId || null}
+                onChange={(id) => setDimensionId(id ?? '')}
+                fullWidth
+                size="medium"
+                required
+              />
+            )}
+
+            {dimensionType === 'PRODUCT' && (
+              <ProductSelect
+                label="Target Loan Product"
+                value={dimensionId || null}
+                onChange={(id) => setDimensionId(id ?? '')}
+                fullWidth
+                size="medium"
+                required
+              />
+            )}
 
             <TextField
               select

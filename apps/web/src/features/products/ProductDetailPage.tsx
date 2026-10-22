@@ -33,7 +33,7 @@ import type { CreateProductVersionInput, LoanProduct } from './types';
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const me = useMe();
-  const canManage = hasPermission(me.data, 'config.manage');
+  const canManage = hasPermission(me.data, 'product.manage') || hasPermission(me.data, 'config.manage');
 
   const [product, setProduct] = useState<LoanProduct | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

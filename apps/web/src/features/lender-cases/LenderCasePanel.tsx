@@ -29,6 +29,8 @@ import {
   Typography,
 } from '@mui/material';
 import { Can } from '../../shell/Can';
+import { ApplicationSelect } from '../../shell/selectors';
+import { LenderName } from '../../shell/display';
 import {
   buildPackage,
   createLenderCase,
@@ -278,12 +280,13 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               /applications/:applicationId/lender-cases) or enter one below:
             </Typography>
             <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
-              <TextField
+              <ApplicationSelect
                 size="small"
                 fullWidth
-                placeholder="Enter Application ID (e.g. app_demo_001)"
-                value={inputAppId}
-                onChange={(e) => setInputAppId(e.target.value)}
+                label="Application"
+                placeholder="Select Application..."
+                value={inputAppId || null}
+                onChange={(id) => setInputAppId(id ?? '')}
               />
             </Stack>
           </Paper>
@@ -333,7 +336,9 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                     <TableCell>
                       <Chip label={`#${c.attemptNo}`} size="small" variant="outlined" />
                     </TableCell>
-                    <TableCell>{c.lenderId}</TableCell>
+                    <TableCell>
+                      <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} />
+                    </TableCell>
                     <TableCell>
                       <Chip label={c.status} size="small" color={statusColors[c.status] || 'default'} />
                       {c.declineReasonCode && (
