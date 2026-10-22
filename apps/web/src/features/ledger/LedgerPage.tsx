@@ -1,5 +1,37 @@
-// apps/web/src/features/ledger/LedgerPage.tsx — MOD-LED Ledger Management UI
+// apps/web/src/features/ledger/LedgerPage.tsx — MOD-LED Ledger Management UI (Material UI)
 import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  TextField,
+  Typography,
+} from '@mui/material';
 import type {
   AccountBalanceResponse,
   ConnectorStatementResponse,
@@ -209,739 +241,947 @@ export function LedgerPage() {
     }
   };
 
+  const getTypeChipColor = (type: string): 'primary' | 'secondary' | 'success' | 'warning' | 'default' => {
+    switch (type) {
+      case 'ASSET':
+        return 'primary';
+      case 'LIABILITY':
+        return 'secondary';
+      case 'INCOME':
+        return 'success';
+      case 'EXPENSE':
+        return 'warning';
+      default:
+        return 'default';
+    }
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-            <span>Ledger Management</span>{' '}
-            <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
-              MOD-LED • DOM-K
-            </span>
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+    <Box sx={{ p: { xs: 2.5, sm: 3.5 }, maxWidth: 1400, mx: 'auto' }}>
+      {/* Header Section */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
+        <Box>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
+            <Typography variant="h5" component="h1" fontWeight={700} sx={{ color: '#0f172a' }}>
+              Ledger Management
+            </Typography>
+            <Chip
+              label="MOD-LED • DOM-K"
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             General and sub-ledger chart of accounts, immutable double-entry journal postings, and
             period-close governance.
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
-        <div className="flex items-center gap-3">
-          <button
-            id="btn-new-account"
-            onClick={() => setIsNewAccountModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition"
-          >
-            + New Account
-          </button>
-        </div>
-      </div>
+        <Button
+          id="btn-new-account"
+          variant="contained"
+          onClick={() => setIsNewAccountModalOpen(true)}
+          sx={{
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: 2,
+            px: 2.5,
+            py: 1,
+            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+          }}
+        >
+          + New Account
+        </Button>
+      </Stack>
 
-      {/* Alerts */}
+      {/* Feedback Alerts */}
       {error && (
-        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm flex justify-between items-center">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold ml-2">
-            ×
-          </button>
-        </div>
+        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
       {successMsg && (
-        <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-sm flex justify-between items-center">
-          <span>{successMsg}</span>
-          <button onClick={() => setSuccessMsg(null)} className="font-bold ml-2">
-            ×
-          </button>
-        </div>
+        <Alert severity="success" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setSuccessMsg(null)}>
+          {successMsg}
+        </Alert>
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="flex space-x-6">
-          {[
-            { id: 'accounts', label: 'Chart of Accounts (SUB-LED.01)' },
-            { id: 'journals', label: 'Journal Postings (SUB-LED.02)' },
-            { id: 'statements', label: 'Connector Statements (SUB-LED.03)' },
-            { id: 'period_close', label: 'Trial Balance & Period Close' },
-            { id: 'exports', label: 'Exports' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              id={`tab-${tab.id}`}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`py-3 px-1 font-medium text-sm border-b-2 transition ${
-                activeTab === tab.id
-                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <Paper elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              py: 1.5,
+            },
+          }}
+        >
+          <Tab id="tab-accounts" value="accounts" label="Chart of Accounts (SUB-LED.01)" />
+          <Tab id="tab-journals" value="journals" label="Journal Postings (SUB-LED.02)" />
+          <Tab id="tab-statements" value="statements" label="Connector Statements (SUB-LED.03)" />
+          <Tab id="tab-period_close" value="period_close" label="Trial Balance & Period Close" />
+          <Tab id="tab-exports" value="exports" label="Exports" />
+        </Tabs>
+      </Paper>
 
       {/* TAB 1: Chart of Accounts */}
       {activeTab === 'accounts' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="select-account-type"
-                className="text-xs font-semibold uppercase tracking-wider text-gray-500"
-              >
-                Filter by Type:
-              </label>
-              <select
-                id="select-account-type"
-                value={accountTypeFilter}
-                onChange={(e) => setAccountTypeFilter(e.target.value)}
-                className="text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md p-1.5"
-              >
-                <option value="ALL">All Types</option>
-                <option value="ASSET">ASSET</option>
-                <option value="LIABILITY">LIABILITY</option>
-                <option value="INCOME">INCOME</option>
-                <option value="EXPENSE">EXPENSE</option>
-                <option value="SUSPENSE">SUSPENSE</option>
-                <option value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</option>
-                <option value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</option>
-              </select>
-            </div>
-            <div className="text-xs text-gray-500">Showing {accounts.length} accounts</div>
-          </div>
+        <Stack spacing={2.5}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: 2.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: '#f8fafc',
+            }}
+          >
+            <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Typography variant="caption" fontWeight={700} sx={{ color: '#64748b', textTransform: 'uppercase' }}>
+                  Filter by Type:
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 220 }}>
+                  <InputLabel id="select-account-type-label">All Types</InputLabel>
+                  <Select
+                    labelId="select-account-type-label"
+                    id="select-account-type"
+                    value={accountTypeFilter}
+                    label="All Types"
+                    onChange={(e) => setAccountTypeFilter(e.target.value)}
+                    sx={{ bgcolor: '#ffffff', borderRadius: 2 }}
+                  >
+                    <MenuItem value="ALL">All Types</MenuItem>
+                    <MenuItem value="ASSET">ASSET</MenuItem>
+                    <MenuItem value="LIABILITY">LIABILITY</MenuItem>
+                    <MenuItem value="INCOME">INCOME</MenuItem>
+                    <MenuItem value="EXPENSE">EXPENSE</MenuItem>
+                    <MenuItem value="SUSPENSE">SUSPENSE</MenuItem>
+                    <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</MenuItem>
+                    <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                Showing {accounts.length} accounts
+              </Typography>
+            </Stack>
+          </Paper>
 
-          <div className="overflow-x-auto border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Code</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Type</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">
-                    Counterparty
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              overflow: 'hidden',
+            }}
+          >
+            <Table>
+              <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Code</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Type</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Counterparty</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
                     Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {accounts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-400">
-                      {loading ? 'Loading accounts...' : 'No ledger accounts registered.'}
-                    </td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                      {loading ? (
+                        <Stack alignItems="center" spacing={1.5}>
+                          <CircularProgress size={28} />
+                          <Typography variant="body2">Loading accounts...</Typography>
+                        </Stack>
+                      ) : (
+                        'No ledger accounts registered.'
+                      )}
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   accounts.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                      <td className="px-4 py-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">
+                    <TableRow key={acc.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
                         {acc.code}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{acc.name}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                            acc.type === 'ASSET'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200'
-                              : acc.type === 'LIABILITY'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200'
-                                : acc.type === 'INCOME'
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200'
-                                  : acc.type === 'EXPENSE'
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                          }`}
-                        >
-                          {acc.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 500, color: '#0f172a' }}>{acc.name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={acc.type}
+                          size="small"
+                          color={getTypeChipColor(acc.type)}
+                          variant="outlined"
+                          sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>
                         {acc.counterpartyType
                           ? `${acc.counterpartyType} (${acc.counterpartyId ?? 'any'})`
                           : '—'}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         {acc.isActive ? (
-                          <span className="text-emerald-600 text-xs font-semibold flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Active
-                          </span>
+                          <Chip
+                            label="Active"
+                            size="small"
+                            color="success"
+                            variant="filled"
+                            sx={{ fontWeight: 600, fontSize: '0.75rem', height: 22 }}
+                          />
                         ) : (
-                          <span className="text-amber-600 text-xs font-semibold flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Inactive
-                            (OD-021)
-                          </span>
+                          <Chip
+                            label="Inactive (OD-021)"
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            sx={{ fontWeight: 600, fontSize: '0.75rem', height: 22 }}
+                          />
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="outlined"
                           onClick={() => handleInspectBalance(acc.id)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 px-3 py-1 rounded transition"
+                          sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600 }}
                         >
                           View Balance
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Stack>
       )}
 
       {/* TAB 2: Journal Postings */}
       {activeTab === 'journals' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="filter-journal-period"
-                className="text-xs font-semibold uppercase tracking-wider text-gray-500"
-              >
-                Period (YYYY-MM):
-              </label>
-              <input
-                id="filter-journal-period"
-                type="text"
-                placeholder="e.g. 2026-10"
-                value={journalPeriodFilter}
-                onChange={(e) => setJournalPeriodFilter(e.target.value)}
-                className="text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md p-1.5 font-mono"
-              />
-            </div>
-            <div className="text-xs text-gray-500">
-              Append-only double-entry journals enforced by PostgreSQL deferred balancing trigger.
-            </div>
-          </div>
+        <Stack spacing={2.5}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: 2.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: '#f8fafc',
+            }}
+          >
+            <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Typography variant="caption" fontWeight={700} sx={{ color: '#64748b', textTransform: 'uppercase' }}>
+                  Period (YYYY-MM):
+                </Typography>
+                <TextField
+                  id="filter-journal-period"
+                  size="small"
+                  placeholder="e.g. 2026-10"
+                  value={journalPeriodFilter}
+                  onChange={(e) => setJournalPeriodFilter(e.target.value)}
+                  sx={{ width: 160, bgcolor: '#ffffff', borderRadius: 2 }}
+                />
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                Append-only double-entry journals enforced by PostgreSQL deferred balancing trigger.
+              </Typography>
+            </Stack>
+          </Paper>
 
-          <div className="space-y-4">
+          <Stack spacing={2}>
             {journals.length === 0 ? (
-              <div className="text-center py-12 border border-dashed rounded-xl text-gray-400">
-                {loading ? 'Loading journals...' : 'No journals found for this filter.'}
-              </div>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 6,
+                  textAlign: 'center',
+                  borderRadius: 3,
+                  border: '1px dashed',
+                  borderColor: 'divider',
+                  color: 'text.secondary',
+                }}
+              >
+                {loading ? (
+                  <Stack alignItems="center" spacing={1.5}>
+                    <CircularProgress size={28} />
+                    <Typography variant="body2">Loading journals...</Typography>
+                  </Stack>
+                ) : (
+                  'No journals found for this filter.'
+                )}
+              </Paper>
             ) : (
               journals.map((j) => (
-                <div
+                <Card
                   key={j.id}
-                  className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900 shadow-sm space-y-3"
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 3,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    overflow: 'hidden',
+                  }}
                 >
-                  <div className="flex flex-wrap items-center justify-between border-b pb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-gray-900 dark:text-white">
-                        {j.journalNumber}
-                      </span>
-                      <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium">
-                        {j.referenceType}
-                      </span>
-                      <span className="text-xs text-gray-400">Ref: {j.referenceId}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span>
-                        Period: <b className="text-gray-700 dark:text-gray-300">{j.period}</b>
-                      </span>
-                      <span>Posted by: {j.postedBy}</span>
-                      <span>{new Date(j.postedAt).toLocaleString()}</span>
-                    </div>
-                  </div>
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      justifyContent="space-between"
+                      spacing={1.5}
+                      sx={{ pb: 2, mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={1.5}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ fontFamily: 'monospace' }}>
+                          {j.journalNumber}
+                        </Typography>
+                        <Chip
+                          label={j.referenceType}
+                          size="small"
+                          sx={{ fontWeight: 600, bgcolor: '#f1f5f9', color: '#475569' }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          Ref: {j.referenceId}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" alignItems="center" spacing={2} sx={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        <span>
+                          Period: <strong>{j.period}</strong>
+                        </span>
+                        <span>Posted by: {j.postedBy}</span>
+                        <span>{new Date(j.postedAt).toLocaleString()}</span>
+                      </Stack>
+                    </Stack>
 
-                  {/* Lines Table */}
-                  <table className="min-w-full text-xs">
-                    <thead>
-                      <tr className="text-gray-500 border-b">
-                        <th className="text-left py-1">#</th>
-                        <th className="text-left py-1">Account</th>
-                        <th className="text-left py-1">Type</th>
-                        <th className="text-left py-1">Narration</th>
-                        <th className="text-right py-1">Debit (₹)</th>
-                        <th className="text-right py-1">Credit (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {j.lines?.map((line) => (
-                        <tr key={line.id}>
-                          <td className="py-1 text-gray-400">{line.lineNumber}</td>
-                          <td className="py-1 font-mono">{line.accountCode ?? line.accountId}</td>
-                          <td className="py-1">
-                            <span
-                              className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                                line.entryType === 'DEBIT'
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                              }`}
-                            >
-                              {line.entryType}
-                            </span>
-                          </td>
-                          <td className="py-1 text-gray-500">{line.narration ?? '—'}</td>
-                          <td className="py-1 text-right font-mono font-medium text-blue-600 dark:text-blue-400">
-                            {line.entryType === 'DEBIT'
-                              ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                              : '—'}
-                          </td>
-                          <td className="py-1 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
-                            {line.entryType === 'CREDIT'
-                              ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                              : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ '& th': { color: '#64748b', fontWeight: 600, py: 0.75 } }}>
+                            <TableCell>#</TableCell>
+                            <TableCell>Account</TableCell>
+                            <TableCell>Type</TableCell>
+                            <TableCell>Narration</TableCell>
+                            <TableCell align="right">Debit (₹)</TableCell>
+                            <TableCell align="right">Credit (₹)</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {j.lines?.map((line) => (
+                            <TableRow key={line.id} sx={{ '& td': { py: 0.75 } }}>
+                              <TableCell sx={{ color: 'text.secondary' }}>{line.lineNumber}</TableCell>
+                              <TableCell sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                                {line.accountCode ?? line.accountId}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={line.entryType}
+                                  size="small"
+                                  color={line.entryType === 'DEBIT' ? 'primary' : 'success'}
+                                  variant="outlined"
+                                  sx={{ fontWeight: 700, fontSize: '0.7rem', height: 20 }}
+                                />
+                              </TableCell>
+                              <TableCell sx={{ color: 'text.secondary' }}>{line.narration ?? '—'}</TableCell>
+                              <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
+                                {line.entryType === 'DEBIT'
+                                  ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                  : '—'}
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'success.main' }}>
+                                {line.entryType === 'CREDIT'
+                                  ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                  : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
               ))
             )}
-          </div>
-        </div>
+          </Stack>
+        </Stack>
       )}
 
       {/* TAB 3: Connector Statements */}
       {activeTab === 'statements' && (
-        <div className="space-y-6">
-          <form
+        <Stack spacing={3}>
+          <Paper
+            component="form"
             onSubmit={handleFetchStatements}
-            className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl flex flex-wrap items-center gap-4"
+            elevation={0}
+            sx={{
+              p: 2.5,
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: '#f8fafc',
+            }}
           >
-            <div className="flex-1 min-w-[240px]">
-              <label
-                htmlFor="input-connector-id"
-                className="block text-xs font-semibold uppercase text-gray-500 mb-1"
+            <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'flex-end' }} spacing={2}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" fontWeight={700} sx={{ color: '#64748b', textTransform: 'uppercase', mb: 0.5, display: 'block' }}>
+                  Connector ID:
+                </Typography>
+                <TextField
+                  id="input-connector-id"
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. con_01J..."
+                  value={connectorIdInput}
+                  onChange={(e) => setConnectorIdInput(e.target.value)}
+                  sx={{ bgcolor: '#ffffff', borderRadius: 2 }}
+                />
+              </Box>
+              <Button
+                id="btn-fetch-statement"
+                type="submit"
+                variant="contained"
+                disabled={loading}
+                sx={{
+                  py: 1,
+                  px: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: 2,
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                }}
               >
-                Connector ID:
-              </label>
-              <input
-                id="input-connector-id"
-                type="text"
-                placeholder="e.g. con_01J..."
-                value={connectorIdInput}
-                onChange={(e) => setConnectorIdInput(e.target.value)}
-                className="w-full text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2 font-mono"
-              />
-            </div>
-            <button
-              id="btn-fetch-statement"
-              type="submit"
-              disabled={loading}
-              className="mt-5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-            >
-              Generate Statement
-            </button>
-          </form>
+                Generate Statement
+              </Button>
+            </Stack>
+          </Paper>
 
           {connectorStatement && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-white dark:bg-gray-900 border rounded-xl shadow-sm">
-                  <div className="text-xs text-gray-500">Opening Balance</div>
-                  <div className="text-lg font-bold font-mono text-gray-900 dark:text-white mt-1">
-                    ₹{connectorStatement.openingBalance}
-                  </div>
-                </div>
-                <div className="p-4 bg-white dark:bg-gray-900 border rounded-xl shadow-sm">
-                  <div className="text-xs text-gray-500">Total Credits (Earned)</div>
-                  <div className="text-lg font-bold font-mono text-emerald-600 mt-1">
-                    ₹{connectorStatement.totalCredits}
-                  </div>
-                </div>
-                <div className="p-4 bg-white dark:bg-gray-900 border rounded-xl shadow-sm">
-                  <div className="text-xs text-gray-500">Total Debits (Paid)</div>
-                  <div className="text-lg font-bold font-mono text-blue-600 mt-1">
-                    ₹{connectorStatement.totalDebits}
-                  </div>
-                </div>
-                <div className="p-4 bg-white dark:bg-gray-900 border rounded-xl shadow-sm">
-                  <div className="text-xs text-gray-500">Closing Balance (Payable)</div>
-                  <div className="text-lg font-bold font-mono text-indigo-600 mt-1">
-                    ₹{connectorStatement.closingBalance}
-                  </div>
-                </div>
-              </div>
+            <Stack spacing={3}>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Opening Balance
+                    </Typography>
+                    <Typography variant="h6" fontWeight={700} sx={{ fontFamily: 'monospace', mt: 0.5 }}>
+                      ₹{connectorStatement.openingBalance}
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Total Credits (Earned)
+                    </Typography>
+                    <Typography variant="h6" fontWeight={700} color="success.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
+                      ₹{connectorStatement.totalCredits}
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Total Debits (Paid)
+                    </Typography>
+                    <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
+                      ₹{connectorStatement.totalDebits}
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Closing Balance (Payable)
+                    </Typography>
+                    <Typography variant="h6" fontWeight={700} color="secondary.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
+                      ₹{connectorStatement.closingBalance}
+                    </Typography>
+                  </Card>
+                </Grid>
+              </Grid>
 
-              <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
-                <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-800">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500">Date</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500">Journal #</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-500">Reference</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500">Debit (₹)</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500">Credit (₹)</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-500">Running Balance (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  overflow: 'hidden',
+                }}
+              >
+                <Table>
+                  <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Date</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Journal #</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Reference</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
+                        Debit (₹)
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
+                        Credit (₹)
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
+                        Running Balance (₹)
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {connectorStatement.lines.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="text-center py-6 text-gray-400">
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                           No activity recorded for this connector.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       connectorStatement.lines.map((line, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          <td className="px-4 py-2 font-mono text-xs">{line.date}</td>
-                          <td className="px-4 py-2 font-mono text-xs text-indigo-600">
+                        <TableRow key={idx} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{line.date}</TableCell>
+                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600, color: 'primary.main' }}>
                             {line.journalNumber}
-                          </td>
-                          <td className="px-4 py-2 text-xs text-gray-500">
+                          </TableCell>
+                          <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
                             {line.referenceType}: {line.referenceId}
-                          </td>
-                          <td className="px-4 py-2 text-right font-mono text-xs text-blue-600">
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.main' }}>
                             {line.debit !== '0.00' ? `₹${line.debit}` : '—'}
-                          </td>
-                          <td className="px-4 py-2 text-right font-mono text-xs text-emerald-600">
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'success.main' }}>
                             {line.credit !== '0.00' ? `₹${line.credit}` : '—'}
-                          </td>
-                          <td className="px-4 py-2 text-right font-mono text-xs font-bold text-gray-900 dark:text-white">
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
                             ₹{line.runningBalance}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Stack>
           )}
-        </div>
+        </Stack>
       )}
 
       {/* TAB 4: Trial Balance & Period Close */}
       {activeTab === 'period_close' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 bg-white dark:bg-gray-900 border rounded-2xl shadow-sm space-y-3">
-              <div className="text-xs uppercase font-bold text-gray-500 tracking-wider">Total Debits</div>
-              <div className="text-3xl font-bold font-mono text-blue-600">
-                ₹{trialBalance?.totalDebit ?? '0.00'}
-              </div>
-              <p className="text-xs text-gray-400">Aggregated debits across all sub-ledgers</p>
-            </div>
+        <Stack spacing={3}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined" sx={{ borderRadius: 3, p: 3, bgcolor: '#ffffff' }}>
+                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Total Debits
+                </Typography>
+                <Typography variant="h4" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', my: 1 }}>
+                  ₹{trialBalance?.totalDebit ?? '0.00'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Aggregated debits across all sub-ledgers
+                </Typography>
+              </Card>
+            </Grid>
 
-            <div className="p-6 bg-white dark:bg-gray-900 border rounded-2xl shadow-sm space-y-3">
-              <div className="text-xs uppercase font-bold text-gray-500 tracking-wider">Total Credits</div>
-              <div className="text-3xl font-bold font-mono text-emerald-600">
-                ₹{trialBalance?.totalCredit ?? '0.00'}
-              </div>
-              <p className="text-xs text-gray-400">Aggregated credits across all sub-ledgers</p>
-            </div>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined" sx={{ borderRadius: 3, p: 3, bgcolor: '#ffffff' }}>
+                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Total Credits
+                </Typography>
+                <Typography variant="h4" fontWeight={700} color="success.main" sx={{ fontFamily: 'monospace', my: 1 }}>
+                  ₹{trialBalance?.totalCredit ?? '0.00'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Aggregated credits across all sub-ledgers
+                </Typography>
+              </Card>
+            </Grid>
 
-            <div
-              className={`p-6 border rounded-2xl shadow-sm space-y-3 ${
-                trialBalance?.isBalanced
-                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200'
-                  : 'bg-red-50/50 dark:bg-red-950/20 border-red-200'
-              }`}
-            >
-              <div className="text-xs uppercase font-bold text-gray-500 tracking-wider">
-                Trial Balance Variance
-              </div>
-              <div
-                className={`text-3xl font-bold font-mono ${trialBalance?.isBalanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}
+            <Grid item xs={12} md={4}>
+              <Card
+                variant="outlined"
+                sx={{
+                  borderRadius: 3,
+                  p: 3,
+                  bgcolor: trialBalance?.isBalanced ? '#f0fdf4' : '#fef2f2',
+                  borderColor: trialBalance?.isBalanced ? '#bbf7d0' : '#fecaca',
+                }}
               >
-                ₹{trialBalance?.variance ?? '0.00'}
-              </div>
-              <div className="text-xs font-semibold">
-                {trialBalance?.isBalanced
-                  ? '✓ Zero-sum verified (Debit = Credit)'
-                  : '⚠ UNBALANCED: Period close blocked'}
-              </div>
-            </div>
-          </div>
+                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Trial Balance Variance
+                </Typography>
+                <Typography
+                  variant="h4"
+                  fontWeight={700}
+                  color={trialBalance?.isBalanced ? 'success.dark' : 'error.main'}
+                  sx={{ fontFamily: 'monospace', my: 1 }}
+                >
+                  ₹{trialBalance?.variance ?? '0.00'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  fontWeight={600}
+                  color={trialBalance?.isBalanced ? 'success.dark' : 'error.main'}
+                >
+                  {trialBalance?.isBalanced
+                    ? '✓ Zero-sum verified (Debit = Credit)'
+                    : '⚠ UNBALANCED: Period close blocked'}
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
 
-          {/* Period Close Card */}
-          <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <span>Execute Accounting Period Close</span>
-              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium">
-                Step-Up MFA Required
-              </span>
-            </h2>
-            <p className="text-sm text-gray-500">
+          {/* Period Close Action Card */}
+          <Card variant="outlined" sx={{ borderRadius: 3, p: 3.5, bgcolor: '#ffffff' }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
+              <Typography variant="h6" fontWeight={700} sx={{ color: '#0f172a' }}>
+                Execute Accounting Period Close
+              </Typography>
+              <Chip
+                label="Step-Up MFA Required"
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+              />
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 800 }}>
               Closing a period finalizes all journal postings for that calendar month. It locks the period
               against retroactive adjustments and ensures financial statements remain tamper-evident.
-            </p>
+            </Typography>
 
-            <form onSubmit={handleClosePeriodSubmit} className="space-y-4 max-w-xl">
-              <div>
-                <label
-                  htmlFor="input-close-period"
-                  className="block text-xs font-semibold text-gray-600 mb-1"
-                >
-                  Period to Close:
-                </label>
-                <input
+            <Box component="form" onSubmit={handleClosePeriodSubmit} sx={{ maxWidth: 540 }}>
+              <Stack spacing={2.5}>
+                <TextField
                   id="input-close-period"
-                  type="text"
+                  label="Period to Close"
+                  size="small"
                   value={trialPeriod}
                   onChange={(e) => setTrialPeriod(e.target.value)}
-                  className="w-full text-sm font-mono border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2"
+                  placeholder="YYYY-MM"
+                  inputProps={{ style: { fontFamily: 'monospace' } }}
+                  fullWidth
                 />
-              </div>
 
-              <div>
-                <label htmlFor="input-close-note" className="block text-xs font-semibold text-gray-600 mb-1">
-                  Closing Note / Audit Memo:
-                </label>
-                <textarea
+                <TextField
                   id="input-close-note"
+                  label="Closing Note / Audit Memo"
+                  multiline
                   rows={3}
+                  size="small"
                   value={closePeriodNote}
                   onChange={(e) => setClosePeriodNote(e.target.value)}
                   placeholder="e.g. Month-end commission settlement closed after reconciliation."
-                  className="w-full text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2"
+                  fullWidth
                 />
-              </div>
 
-              <button
-                id="btn-close-period"
-                type="submit"
-                disabled={isClosingPeriod || !trialBalance?.isBalanced}
-                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-semibold transition"
-              >
-                {isClosingPeriod ? 'Closing Period...' : `Close Period ${trialPeriod}`}
-              </button>
-            </form>
-          </div>
-        </div>
+                <Button
+                  id="btn-close-period"
+                  type="submit"
+                  variant="contained"
+                  color="error"
+                  disabled={isClosingPeriod || !trialBalance?.isBalanced}
+                  sx={{
+                    py: 1.2,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)',
+                  }}
+                >
+                  {isClosingPeriod ? 'Closing Period...' : `Close Period ${trialPeriod}`}
+                </Button>
+              </Stack>
+            </Box>
+          </Card>
+        </Stack>
       )}
 
       {/* TAB 5: Exports */}
       {activeTab === 'exports' && (
-        <div className="space-y-6">
-          <form
-            onSubmit={handleExportSubmit}
-            className="p-6 bg-white dark:bg-gray-900 border rounded-2xl shadow-sm space-y-4 max-w-xl"
-          >
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+        <Stack spacing={3}>
+          <Card variant="outlined" sx={{ borderRadius: 3, p: 3.5, maxWidth: 640, bgcolor: '#ffffff' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ color: '#0f172a', mb: 0.5 }}>
               Generate Accounting Ledger Export
-            </h2>
-            <p className="text-xs text-gray-500">
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Export general ledger journals, account balances, and sub-ledger movements for external ERP
               accounting suites.
-            </p>
+            </Typography>
 
-            <div>
-              <label
-                htmlFor="select-export-format"
-                className="block text-xs font-semibold text-gray-600 mb-1"
-              >
-                Format:
-              </label>
-              <select
-                id="select-export-format"
-                value={exportFormat}
-                onChange={(e) => setExportFormat(e.target.value as any)}
-                className="w-full text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2"
-              >
-                <option value="CSV">CSV (Tally / QuickBooks Compatible)</option>
-                <option value="JSON">JSON (Standard Schema)</option>
-                <option value="EXCEL">Excel (.xlsx)</option>
-              </select>
-            </div>
+            <Box component="form" onSubmit={handleExportSubmit}>
+              <Stack spacing={2.5}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="select-export-format-label">Export Format</InputLabel>
+                  <Select
+                    labelId="select-export-format-label"
+                    id="select-export-format"
+                    value={exportFormat}
+                    label="Export Format"
+                    onChange={(e) => setExportFormat(e.target.value as any)}
+                  >
+                    <MenuItem value="CSV">CSV (Tally / QuickBooks Compatible)</MenuItem>
+                    <MenuItem value="JSON">JSON (Standard Schema)</MenuItem>
+                    <MenuItem value="EXCEL">Excel (.xlsx)</MenuItem>
+                  </Select>
+                </FormControl>
 
-            <div>
-              <label htmlFor="input-export-period" className="block text-xs font-semibold text-gray-600 mb-1">
-                Period (Optional):
-              </label>
-              <input
-                id="input-export-period"
-                type="text"
-                value={exportPeriod}
-                onChange={(e) => setExportPeriod(e.target.value)}
-                className="w-full text-sm font-mono border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2"
-              />
-            </div>
+                <TextField
+                  id="input-export-period"
+                  label="Period (Optional)"
+                  size="small"
+                  value={exportPeriod}
+                  onChange={(e) => setExportPeriod(e.target.value)}
+                  inputProps={{ style: { fontFamily: 'monospace' } }}
+                  fullWidth
+                />
 
-            <button
-              id="btn-trigger-export"
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg hover:bg-indigo-700 transition"
-            >
-              Dispatch Export Job
-            </button>
-          </form>
+                <Button
+                  id="btn-trigger-export"
+                  type="submit"
+                  variant="contained"
+                  disabled={loading}
+                  sx={{
+                    py: 1.2,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                  }}
+                >
+                  Dispatch Export Job
+                </Button>
+              </Stack>
+            </Box>
+          </Card>
 
           {exportHistory.length > 0 && (
-            <div className="border rounded-2xl overflow-hidden bg-white dark:bg-gray-900">
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 font-bold text-sm border-b">
-                Recent Export Dispatches
-              </div>
-              <table className="min-w-full text-sm divide-y">
-                <thead>
-                  <tr className="text-gray-500 text-xs">
-                    <th className="px-4 py-2 text-left">Export ID</th>
-                    <th className="px-4 py-2 text-left">Period</th>
-                    <th className="px-4 py-2 text-left">Format</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-right">Dispatched At</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                overflow: 'hidden',
+                maxWidth: 900,
+              }}
+            >
+              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Recent Export Dispatches
+                </Typography>
+              </Box>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ '& th': { color: '#64748b', fontWeight: 600 } }}>
+                    <TableCell>Export ID</TableCell>
+                    <TableCell>Period</TableCell>
+                    <TableCell>Format</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="right">Dispatched At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
                   {exportHistory.map((h) => (
-                    <tr key={h.id} className="text-xs">
-                      <td className="px-4 py-2 font-mono text-indigo-600">{h.id}</td>
-                      <td className="px-4 py-2">{h.period}</td>
-                      <td className="px-4 py-2">{h.format}</td>
-                      <td className="px-4 py-2 text-emerald-600 font-bold">{h.status}</td>
-                      <td className="px-4 py-2 text-right text-gray-400">{h.date}</td>
-                    </tr>
+                    <TableRow key={h.id} hover>
+                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
+                        {h.id}
+                      </TableCell>
+                      <TableCell>{h.period}</TableCell>
+                      <TableCell>
+                        <Chip label={h.format} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={h.status} size="small" color="success" sx={{ fontWeight: 600 }} />
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                        {h.date}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
-        </div>
+        </Stack>
       )}
 
       {/* Balance Inspection Modal */}
-      {selectedBalance && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">Account Balance Summary</h3>
-              <button
-                onClick={() => setSelectedBalance(null)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Account:</span>{' '}
-                <span className="font-mono font-bold">{selectedBalance.accountCode}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Name:</span> <span>{selectedBalance.accountName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Type:</span>{' '}
-                <span className="font-semibold">{selectedBalance.type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total Debits:</span>{' '}
-                <span className="font-mono text-blue-600">₹{selectedBalance.debitTotal}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total Credits:</span>{' '}
-                <span className="font-mono text-emerald-600">₹{selectedBalance.creditTotal}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 text-base font-bold">
-                <span>Net Balance:</span>
-                <span className="font-mono text-indigo-600">₹{selectedBalance.balance}</span>
-              </div>
-              <div className="text-xs text-gray-400 mt-2 text-right">
+      <Dialog
+        open={Boolean(selectedBalance)}
+        onClose={() => setSelectedBalance(null)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Account Balance Summary</DialogTitle>
+        <DialogContent dividers>
+          {selectedBalance && (
+            <Stack spacing={1.5} sx={{ py: 1 }}>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Account:
+                </Typography>
+                <Typography variant="body2" fontWeight={700} sx={{ fontFamily: 'monospace' }}>
+                  {selectedBalance.accountCode}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Name:
+                </Typography>
+                <Typography variant="body2" fontWeight={500}>
+                  {selectedBalance.accountName}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Type:
+                </Typography>
+                <Chip
+                  label={selectedBalance.type}
+                  size="small"
+                  color={getTypeChipColor(selectedBalance.type)}
+                  sx={{ fontWeight: 600, height: 22 }}
+                />
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Total Debits:
+                </Typography>
+                <Typography variant="body2" fontWeight={600} color="primary.main" sx={{ fontFamily: 'monospace' }}>
+                  ₹{selectedBalance.debitTotal}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  Total Credits:
+                </Typography>
+                <Typography variant="body2" fontWeight={600} color="success.main" sx={{ fontFamily: 'monospace' }}>
+                  ₹{selectedBalance.creditTotal}
+                </Typography>
+              </Stack>
+              <Divider sx={{ my: 1 }} />
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Net Balance:
+                </Typography>
+                <Typography variant="subtitle1" fontWeight={700} color="primary.dark" sx={{ fontFamily: 'monospace' }}>
+                  ₹{selectedBalance.balance}
+                </Typography>
+              </Stack>
+              <Typography variant="caption" color="text.secondary" align="right">
                 Computed from {selectedBalance.lineCount} ledger entries
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedBalance(null)}
-              className="w-full py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+              </Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setSelectedBalance(null)} variant="outlined" fullWidth sx={{ borderRadius: 2 }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* New Account Modal */}
-      {isNewAccountModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Register New Ledger Account
-              </h3>
-              <button
-                onClick={() => setIsNewAccountModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-xl"
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateAccount} className="space-y-4 text-sm">
-              <div>
-                <label htmlFor="input-new-code" className="block text-xs font-semibold text-gray-500 mb-1">
-                  Account Code:
-                </label>
-                <input
-                  id="input-new-code"
-                  type="text"
-                  required
-                  placeholder="e.g. 1020-OPERATING-BANK"
-                  value={newAccountCode}
-                  onChange={(e) => setNewAccountCode(e.target.value)}
-                  className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2 font-mono text-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="input-new-name" className="block text-xs font-semibold text-gray-500 mb-1">
-                  Account Name:
-                </label>
-                <input
-                  id="input-new-name"
-                  type="text"
-                  required
-                  placeholder="e.g. Operating Bank Account"
-                  value={newAccountName}
-                  onChange={(e) => setNewAccountName(e.target.value)}
-                  className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2 text-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="select-new-type" className="block text-xs font-semibold text-gray-500 mb-1">
-                  Type:
-                </label>
-                <select
+      <Dialog
+        open={isNewAccountModalOpen}
+        onClose={() => setIsNewAccountModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Register New Ledger Account</DialogTitle>
+        <Box component="form" onSubmit={handleCreateAccount}>
+          <DialogContent dividers>
+            <Stack spacing={2.5} sx={{ py: 1 }}>
+              <TextField
+                id="input-new-code"
+                label="Account Code"
+                required
+                placeholder="e.g. 1020-OPERATING-BANK"
+                value={newAccountCode}
+                onChange={(e) => setNewAccountCode(e.target.value)}
+                inputProps={{ style: { fontFamily: 'monospace' } }}
+                fullWidth
+                size="small"
+              />
+
+              <TextField
+                id="input-new-name"
+                label="Account Name"
+                required
+                placeholder="e.g. Operating Bank Account"
+                value={newAccountName}
+                onChange={(e) => setNewAccountName(e.target.value)}
+                fullWidth
+                size="small"
+              />
+
+              <FormControl fullWidth size="small">
+                <InputLabel id="select-new-type-label">Account Type</InputLabel>
+                <Select
+                  labelId="select-new-type-label"
                   id="select-new-type"
                   value={newAccountType}
+                  label="Account Type"
                   onChange={(e) => setNewAccountType(e.target.value)}
-                  className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-lg p-2 text-sm"
                 >
-                  <option value="ASSET">ASSET</option>
-                  <option value="LIABILITY">LIABILITY</option>
-                  <option value="INCOME">INCOME</option>
-                  <option value="EXPENSE">EXPENSE</option>
-                  <option value="SUSPENSE">SUSPENSE</option>
-                  <option value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</option>
-                  <option value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</option>
-                </select>
-              </div>
+                  <MenuItem value="ASSET">ASSET</MenuItem>
+                  <MenuItem value="LIABILITY">LIABILITY</MenuItem>
+                  <MenuItem value="INCOME">INCOME</MenuItem>
+                  <MenuItem value="EXPENSE">EXPENSE</MenuItem>
+                  <MenuItem value="SUSPENSE">SUSPENSE</MenuItem>
+                  <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</MenuItem>
+                  <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</MenuItem>
+                </Select>
+              </FormControl>
 
               {(newAccountType === 'TAX_PAYABLE' || newAccountType === 'TAX_RECEIVABLE') && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg text-xs text-amber-800 dark:text-amber-300">
-                  ⚠ Under Open Decision OD-021, tax accounts will be created in INACTIVE state until tax
+                <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                  Under Open Decision OD-021, tax accounts will be created in INACTIVE state until tax
                   withholding rules are finalized.
-                </div>
+                </Alert>
               )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewAccountModalOpen(false)}
-                  className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  id="btn-save-account"
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
-                >
-                  Save Account
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setIsNewAccountModalOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>
+              Cancel
+            </Button>
+            <Button
+              id="btn-save-account"
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              sx={{ borderRadius: 2, px: 3, fontWeight: 600 }}
+            >
+              Save Account
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+    </Box>
   );
 }
