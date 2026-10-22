@@ -5,7 +5,7 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
   const token = 'tok_secure_cust_9988';
 
   test('TC-CUST-01: Public Document Upload Flow with OTP Gate & Valid File Upload', async ({ page }) => {
-    await showDemoBanner(page, 'ROLE-CUSTOMER (PUBLIC LINK)', 'Customer Identity Verification (OTP) & Compliant Document Upload');
+    await showDemoBanner(page, 'Customer Document Upload Portal', 'To authenticate applicant via OTP and upload required KYC documents');
 
     // Mock Public Upload status
     await page.route(`**/public/v1/upload/${token}`, async (route) => {
@@ -74,56 +74,63 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
 
     // 1. Visit Public Upload URL
     await page.goto(`/upload/${token}`);
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 2. Verify Security Portal Header & Masked Phone
+    await showDemoBanner(page, 'Portal Security Header', 'Verifying Two-Step Identity Verification gate & masked mobile');
     await expect(page.getByText('DSA Loan Portal')).toBeVisible();
     await expect(page.getByText('Two-Step Identity Verification')).toBeVisible();
     await expect(page.getByText('+91 ******3210')).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 3. Test Invalid OTP
+    await showDemoBanner(page, 'Invalid OTP Check', 'Entering incorrect 6-digit code "999999"');
     const otpInput = page.getByPlaceholder('123456');
     await humanType(otpInput, '999999');
     await pauseForDemo(page, 1000);
 
     const verifyOtpBtn = page.getByRole('button', { name: /Verify Code & Access/i });
-    await humanClick(verifyOtpBtn, 2000);
+    await humanClick(verifyOtpBtn, 1500);
     await expect(page.getByText('Invalid or expired OTP verification code.').first()).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 4. Test Valid OTP
+    await showDemoBanner(page, 'Valid OTP Verification', 'Entering valid code "123456"');
     await otpInput.fill('');
     await humanType(otpInput, '123456');
-    await pauseForDemo(page, 1500);
-    await humanClick(verifyOtpBtn, 2500);
+    await pauseForDemo(page, 1200);
+    await humanClick(verifyOtpBtn, 2000);
 
     // 5. Verify Document Upload Portal is displayed
+    await showDemoBanner(page, 'Upload Portal Unlocked', 'Checklist items: PAN CARD & BANK STATEMENT');
     await expect(page.getByText('Document Upload Portal')).toBeVisible();
     await expect(page.getByText('Requested Documents Checklist')).toBeVisible();
     await expect(page.getByText('PAN CARD').first()).toBeVisible();
     await expect(page.getByText('BANK STATEMENT').first()).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 6. Test File Upload
+    await showDemoBanner(page, 'Select Valid PDF', 'Attaching pan_card_copy.pdf');
     await page.locator('#public-file-input').setInputFiles({
       name: 'pan_card_copy.pdf',
       mimeType: 'application/pdf',
       buffer: Buffer.from('%PDF-1.4 test pan content'),
     });
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // Click Upload Document
+    await showDemoBanner(page, 'Upload Document', 'Encrypting and uploading file to application');
     const uploadBtn = page.getByRole('button', { name: /Upload Document/i });
-    await humanClick(uploadBtn, 2500);
+    await humanClick(uploadBtn, 2000);
 
     // 7. Verify Upload Success
+    await showDemoBanner(page, 'Upload Successful', 'pan_card_copy.pdf attached to verification checklist');
     await expect(page.getByText(/Successfully uploaded pan_card_copy.pdf/i)).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   test('TC-CUST-02: File Type & Size Validation Gate on Public Upload', async ({ page }) => {
-    await showDemoBanner(page, 'ROLE-CUSTOMER (PUBLIC LINK)', 'Public Portal Validation Gate: Rejecting Unsupported Formats');
+    await showDemoBanner(page, 'Validating File Format Security', 'To reject unsupported file extensions and enforce approved document formats');
 
     // Mock Public Upload status
     await page.route(`**/public/v1/upload/${token}`, async (route) => {
@@ -158,29 +165,32 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
     });
 
     await page.goto(`/upload/${token}`);
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // Verify upload portal loaded directly (otpRequired: false)
     await expect(page.getByText('Document Upload Portal')).toBeVisible();
 
     // Select unsupported executable file
+    await showDemoBanner(page, 'Select Unsupported File', 'Attempting upload of unauthorized_script.exe');
     await page.locator('#public-file-input').setInputFiles({
       name: 'unauthorized_script.exe',
       mimeType: 'application/x-msdownload',
       buffer: Buffer.from('MZ binary executable content'),
     });
-    await pauseForDemo(page, 1500);
+    await pauseForDemo(page, 1200);
 
+    await showDemoBanner(page, 'Submit Invalid File', 'Triggering file format compliance filter');
     const uploadBtn = page.getByRole('button', { name: /Upload Document/i });
-    await humanClick(uploadBtn, 2000);
+    await humanClick(uploadBtn, 1500);
 
     // Verify rejection alert
+    await showDemoBanner(page, 'Format Filter Enforced', 'Only PDF, JPG, and PNG files are accepted');
     await expect(page.getByText(/Only PDF, JPG, and PNG files are accepted/i).first()).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   test('TC-CUST-03: Expired and Revoked Public Link Access Denial (410 LINK_EXPIRED)', async ({ page }) => {
-    await showDemoBanner(page, 'ROLE-CUSTOMER (PUBLIC LINK)', 'Security Boundary: Expired & Revoked Link Rejection');
+    await showDemoBanner(page, 'Rejecting Expired Upload Links', 'To prevent unauthorized uploads after secure link expiration deadline');
 
     const expiredToken = 'tok_expired_9999';
 
@@ -201,11 +211,12 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
     });
 
     await page.goto(`/upload/${expiredToken}`);
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // Verify Expired Link screen
+    await showDemoBanner(page, 'Upload Link Expired', 'Access blocked: Customer advised to request fresh upload link');
     await expect(page.getByRole('heading', { name: 'Upload Link Expired' })).toBeVisible();
     await expect(page.getByText(/Please request a fresh upload link from your loan advisor/i)).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 });

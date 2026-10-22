@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
 
 test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
   test.beforeEach(async ({ page }) => {
@@ -67,50 +67,57 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     });
 
     await page.goto('/leads/new');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Capturing Field Lead Intake', 'To capture prospective borrower details during field outreach');
+    await pauseForDemo(page, 1500);
 
     // 1. Verify header
     await expect(page.locator('h1')).toContainText('Create New Lead');
 
     // 2. Validate empty submission error handling
+    await showDemoBanner(page, 'Empty Submission Check', 'Triggering required field validation');
     const submitBtn = page.getByRole('button', { name: /Create Lead/i });
     await humanClick(submitBtn);
     await expect(page.getByText('Enter the full name (at least 2 characters).')).toBeVisible();
     await expect(page.getByText('Enter a mobile number.')).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 3. Validate invalid mobile number
+    await showDemoBanner(page, 'Mobile Number Validation', 'Entering invalid mobile "55555"');
     const mobileInput = page.locator('input[data-testid="lead-form.mobile"]');
     await humanType(mobileInput, '55555');
     await humanClick(submitBtn);
     await expect(
       page.getByText('Enter a 10-digit mobile number starting with 6, 7, 8 or 9.'),
     ).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 4. Validate invalid pincode
+    await showDemoBanner(page, 'Pincode Validation', 'Entering invalid pincode "012345"');
     const pincodeInput = page.locator('input[data-testid="lead-form.pincode"]');
     await humanType(pincodeInput, '012345');
     await humanClick(submitBtn);
     await expect(page.getByText('Enter a 6-digit pincode that does not start with 0.')).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 5. Fill Notion QA Test Data
+    await showDemoBanner(page, 'Fill Lead Details', 'Entering synthetic data for Test Customer Beta');
     await humanType(page.locator('input[data-testid="lead-form.fullName"]'), 'Test Customer Beta');
     await humanType(mobileInput, '9000000102');
     await humanType(page.locator('input[data-testid="lead-form.email"]'), 'beta.qa@example.com');
     await humanType(pincodeInput, '411002');
     await humanType(page.locator('input[data-testid="lead-form.amount"]'), '200000');
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // Submit lead
-    await humanClick(submitBtn, 3000);
+    await showDemoBanner(page, 'Submit Lead Intake', 'Saving lead with source FIELD_OUTREACH');
+    await humanClick(submitBtn, 2500);
 
     // Verify redirection to lead detail page in state NEW
     await expect(page).toHaveURL(/\/leads\/led_se_beta_001/);
+    await showDemoBanner(page, 'Lead Created Successfully', 'State: NEW with masked mobile +91 ••••• ••102');
     await expect(page.locator('h1')).toContainText('Test Customer Beta');
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   // =========================================================================
@@ -219,41 +226,50 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     });
 
     await page.goto(`/leads/${leadId}`);
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Logging Field Follow-up & Tasks', 'To record call outcomes and schedule document collection tasks');
+    await pauseForDemo(page, 1500);
 
     // 1. Verify Follow-ups card loaded
+    await showDemoBanner(page, 'Follow-up Panel', 'Inspecting communication history and tasks');
     await expect(page.locator('[data-testid="lead.follow-ups"]')).toBeVisible();
 
     // 2. Open Log Activity Dialog
+    await showDemoBanner(page, 'Log Call Activity', 'Recording contact attempt outcome');
     const logActivityBtn = page.locator('[data-testid="lead.log-activity"]');
     await expect(logActivityBtn).toBeVisible();
-    await humanClick(logActivityBtn, 2000);
+    await humanClick(logActivityBtn, 1500);
 
     // Submit activity
+    await showDemoBanner(page, 'Submit Activity', 'Outcome: CONNECTED — Discussed loan terms');
     const submitActBtn = page.locator('[data-testid="activity.log-form.submit"]');
-    await humanClick(submitActBtn, 2500);
+    await humanClick(submitActBtn, 2000);
 
     // Verify activity entry rendered
+    await showDemoBanner(page, 'Timeline Updated', 'Logged call event rendered in timeline');
     await expect(page.getByText('connected', { exact: false })).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 3. Open Add Task Dialog
+    await showDemoBanner(page, 'Create Follow-up Task', 'Opening follow-up task modal');
     const addTaskBtn = page.locator('[data-testid="lead.add-task"]');
     await expect(addTaskBtn).toBeVisible();
-    await humanClick(addTaskBtn, 2000);
+    await humanClick(addTaskBtn, 1500);
 
     // Fill task title
+    await showDemoBanner(page, 'Task Title Entry', 'Scheduling: Collect 6-month bank statement');
     const titleInput = page.locator('input[data-testid="tasks.create.title"]');
     await humanType(titleInput, 'Collect 6-month bank statement');
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // Submit task
+    await showDemoBanner(page, 'Submit Task', 'Assigning task to sales executive queue');
     const submitTaskBtn = page.locator('[data-testid="tasks.create.submit"]');
-    await humanClick(submitTaskBtn, 2500);
+    await humanClick(submitTaskBtn, 2000);
 
     // Verify task entry rendered
+    await showDemoBanner(page, 'Task Assigned', 'Collect 6-month bank statement added to tasks list');
     await expect(page.getByText('Collect 6-month bank statement')).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   // =========================================================================
@@ -289,26 +305,30 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     });
 
     await page.goto(`/leads/${leadId}`);
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Enforcing Role Boundaries & SoD', 'To confirm Sales Executives cannot reassign leads, convert applications, or view audits');
+    await pauseForDemo(page, 1500);
 
     // 1. SoD Boundary Verification: Sales Executive lacks `lead.assign`
-    // Assign lead button MUST NOT be visible for Sales Executive
+    await showDemoBanner(page, 'Lead Reassignment Restricted', 'Verifying lead reassign action is restricted to managers');
     const assignBtn = page.locator('[data-testid="lead.action.assign"]');
     await expect(assignBtn).not.toBeVisible();
 
     // 2. SoD Boundary Verification: Sales Executive lacks `application.create`
-    // Convert to application button MUST NOT be visible for Sales Executive
+    await showDemoBanner(page, 'Application Conversion Restricted', 'Verifying loan application conversion requires RM role');
     const convertBtn = page.locator('[data-testid="lead.action.convert"]');
     await expect(convertBtn).not.toBeVisible();
+    await pauseForDemo(page, 1500);
 
     // 3. Route Guard Verification: Access to restricted financial/audit modules blocked
+    await showDemoBanner(page, 'Route Guard: Commission', 'Navigating to /commission (Expect 403 Forbidden)');
     await page.goto('/commission');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 1500);
 
+    await showDemoBanner(page, 'Route Guard: Audit Trail', 'Navigating to /audit (Expect 403 Forbidden)');
     await page.goto('/audit');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await showDemoBanner(page, 'Role Boundaries Enforced', 'All operational and route boundaries strictly verified');
     await pauseForDemo(page, 2000);
   });
 });

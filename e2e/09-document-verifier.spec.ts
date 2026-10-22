@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick } from './helpers/mock-session';
+import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
 
 test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
   test.beforeEach(async ({ page }) => {
@@ -54,37 +54,43 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
 
     // 1. Visit Verifications queue
     await page.goto('/verifications');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Reviewing Document Verification Queue', 'To inspect applicant documents and record checklist item verifications');
+    await pauseForDemo(page, 1500);
     await expect(page.getByText('vrf_case_001')).toBeVisible();
 
     // 2. Open Initiate Verification Dialog and test validation
     const newCaseBtn = page.getByRole('button', { name: /Initiate Verification/i });
     if (await newCaseBtn.isVisible()) {
+      await showDemoBanner(page, 'Initiate Case Dialog', 'Testing empty Application ID validation check');
       await humanClick(newCaseBtn, 1500);
       const submitBtn = page.getByRole('button', { name: /Initiate Case|Submit/i });
       await humanClick(submitBtn);
       await expect(page.getByText(/Application ID is required/i)).toBeVisible();
-      await pauseForDemo(page, 2000);
+      await pauseForDemo(page, 1500);
       await humanClick(page.getByRole('button', { name: /Cancel/i }));
     }
 
     // 3. Open Verification Detail Page
     await page.goto('/verifications/vrf_case_001');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Case vrf_case_001 Detail', 'Inspecting checklist items for APP-QA-001');
+    await pauseForDemo(page, 1500);
     await expect(page.getByText('DOCUMENT REVIEW', { exact: true })).toBeVisible();
 
     // 4. Attest Checklist Document Item (QA_ADDRESS_PROOF_001 / chk_pan_01)
+    await showDemoBanner(page, 'Attest PAN Card', 'Opening checklist attestation modal for chk_pan_01');
     const attestPanBtn = page.locator('[data-testid="verification.attest.chk_pan_01"]');
     await expect(attestPanBtn).toBeVisible();
-    await humanClick(attestPanBtn, 2000);
+    await humanClick(attestPanBtn, 1500);
 
     // Submit Attestation as ACCEPTED
+    await showDemoBanner(page, 'Attestation: ACCEPTED', 'Confirming document validity with audit note');
     const submitAttestBtn = page.getByRole('button', { name: /Submit Attestation/i });
-    await humanClick(submitAttestBtn, 2500);
+    await humanClick(submitAttestBtn, 2000);
 
     // Verify attestation success message
-    await expect(page.getByText(/marked as ACCEPTED/i)).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await showDemoBanner(page, 'Attestation Saved', 'PAN Card checklist item confirmed valid');
+    await expect(page.getByRole('alert')).toContainText(/marked as ACCEPTED/i);
+    await pauseForDemo(page, 2500);
   });
 
   // =========================================================================
@@ -136,48 +142,59 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     });
 
     await page.goto('/verifications/vrf_case_002');
-    await pauseForDemo(page, 2000);
+    await showDemoBanner(page, 'Rejecting Illegible Document', 'To record verification rejection reasons and enforce mandatory assessment findings');
+    await pauseForDemo(page, 1500);
 
     // 1. Open Attestation Dialog for Invalid Document
+    await showDemoBanner(page, 'Review Invalid Document', 'Opening attestation dialog for unreadable file');
     const attestInvalidBtn = page.locator('[data-testid="verification.attest.chk_invalid_doc_01"]');
     await expect(attestInvalidBtn).toBeVisible();
-    await humanClick(attestInvalidBtn, 2000);
+    await humanClick(attestInvalidBtn, 1500);
 
     // 2. Select REJECTED verdict with ILLEGIBLE reason
+    await showDemoBanner(page, 'Select REJECTED Verdict', 'Attesting verdict: REJECTED with reason ILLEGIBLE');
     const verdictSelect = page.getByLabel('Review Verdict');
     await humanClick(verdictSelect);
     await humanClick(page.getByRole('option', { name: /REJECTED/i }), 1000);
 
     // Add note
+    await showDemoBanner(page, 'Attestation Note', 'Entering note: Document is unreadable and blurry');
     const noteField = page.getByLabel('Attestation Note');
     await humanType(noteField, 'Document is unreadable and blurry');
-    await pauseForDemo(page, 1500);
+    await pauseForDemo(page, 1200);
 
     // Submit Attestation
-    await humanClick(page.getByRole('button', { name: /Submit Attestation/i }), 2500);
+    await showDemoBanner(page, 'Submit Rejection', 'Persisting REJECTED attestation code');
+    await humanClick(page.getByRole('button', { name: /Submit Attestation/i }), 2000);
     await expect(page.getByText(/marked as REJECTED/i)).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 3. Complete Verification Assessment: Test validation error for short findings (< 5 chars)
+    await showDemoBanner(page, 'Finalize Assessment', 'Opening assessment completion dialog');
     const completeBtn = page.locator('[data-testid="verification.btn.complete"]');
     await expect(completeBtn).toBeVisible();
-    await humanClick(completeBtn, 2000);
+    await humanClick(completeBtn, 1500);
 
+    await showDemoBanner(page, 'Findings Length Check', 'Testing rejection of short findings (< 5 chars)');
     const findingsField = page.locator('[data-testid="verification.complete.findings"] textarea').first();
     await findingsField.fill('ok'); // < 5 chars
     const submitVerdictBtn = page.locator('[data-testid="verification.complete.submit"]');
     await humanClick(submitVerdictBtn);
     await expect(page.getByText(/Findings summary must be at least 5 characters/i)).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await pauseForDemo(page, 1500);
 
     // 4. Enter valid findings and finalize verification
+    await showDemoBanner(page, 'Submit Valid Findings', 'Entering comprehensive summary findings');
     await humanType(findingsField, 'All required documents reviewed and attested.');
-    await pauseForDemo(page, 1500);
-    await humanClick(submitVerdictBtn, 2500);
+    await pauseForDemo(page, 1200);
+
+    await showDemoBanner(page, 'Confirm Finalization', 'Submitting final assessment');
+    await humanClick(submitVerdictBtn, 2000);
 
     // Verify successful finalization
+    await showDemoBanner(page, 'Verification Finalized', 'Case successfully verified and closed');
     await expect(page.getByText(/successfully finalized/i)).toBeVisible();
-    await pauseForDemo(page, 3000);
+    await pauseForDemo(page, 2500);
   });
 
   // =========================================================================
@@ -185,19 +202,25 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
   // (Notion Architecture SoD Boundaries: Denies Sanction Recording & Finance Payouts)
   // =========================================================================
   test('TC-DV-03: Segregation of Duties (SoD) & Access Control Enforcement', async ({ page }) => {
+    await showDemoBanner(page, 'Enforcing Document Verifier Boundaries', 'To ensure Verifiers cannot record sanctions, configure commission, or approve payouts');
+    await pauseForDemo(page, 1200);
+
     // 1. Verify Document Verifier cannot access Sanctions & Disbursements
+    await showDemoBanner(page, 'Route Guard: Sanctions', 'Navigating to /sanctions (Expect 403 Forbidden)');
     await page.goto('/sanctions');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 1500);
 
     // 2. Verify Document Verifier cannot access Commission & Payouts
+    await showDemoBanner(page, 'Route Guard: Commission', 'Navigating to /commission (Expect 403 Forbidden)');
     await page.goto('/commission');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await pauseForDemo(page, 1500);
 
+    await showDemoBanner(page, 'Route Guard: Approvals', 'Navigating to /approvals (Expect 403 Forbidden)');
     await page.goto('/approvals');
-    await pauseForDemo(page, 1500);
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    await showDemoBanner(page, 'Operational Boundaries Enforced', 'Verifier restricted to checklist reviews');
     await pauseForDemo(page, 2000);
   });
 });
