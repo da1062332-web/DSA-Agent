@@ -29,6 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { Link as RouterLink } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -240,97 +241,54 @@ export function LenderListPage() {
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : filteredLenders.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              No lenders found matching the criteria.
-            </Typography>
-          </Box>
-        ) : (
-          <Table>
-            <TableHead sx={{ bgcolor: 'grey.100' }}>
-              <TableRow>
-                <TableCell>
-                  <strong>Lender Name</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Type</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Regulator Ref</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Status</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Empanelments</strong>
-                </TableCell>
-                <TableCell align="right">
-                  <strong>Actions</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredLenders.map((lender) => (
-                <TableRow key={lender.id} hover>
-                  <TableCell>
-                    <Typography
-                      component={RouterLink}
-                      to={`/lenders/${lender.id}`}
-                      sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none' }}
-                    >
-                      {lender.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={lender.lenderType} size="small" variant="outlined" />
-                  </TableCell>
-                  <TableCell>{lender.regulatorRef || '—'}</TableCell>
-                  <TableCell>
-                    <Chip label={lender.status} size="small" color={getStatusChipColor(lender.status)} />
-                  </TableCell>
-                  <TableCell>{lender.empanelments?.length ?? 0}</TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        component={RouterLink}
-                        to={`/lenders/${lender.id}`}
-                        variant="outlined"
-                      >
-                        Manage
-                      </Button>
-                      {canManage && lender.status === 'ACTIVE' && (
-                        <Button
-                          size="small"
-                          color="warning"
-                          onClick={() => handleOpenStatusDialog(lender, 'PAUSED')}
-                        >
-                          Pause
-                        </Button>
-                      )}
-                      {canManage && lender.status === 'PAUSED' && (
-                        <Button
-                          size="small"
-                          color="success"
-                          onClick={() => handleOpenStatusDialog(lender, 'ACTIVE')}
-                        >
-                          Activate
-                        </Button>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </TableContainer>
+      <DataTable<(typeof filteredLenders)[number]>
+        dataTestId="lenders.table"
+        loading={loading}
+        data={filteredLenders}
+        keyExtractor={(lender) => lender.id}
+        emptyMessage="No lenders found matching the criteria."
+        columns={[
+          {
+            id: 'name',
+            header: 'Lender Name',
+            render: (lender) => (
+              <Typography component={RouterLink} to={`/lenders/${lender.id}`} sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none' }}>
+                {lender.name}
+              </Typography>
+            ),
+          },
+          { id: 'type', header: 'Type', render: (lender) => <Chip label={lender.lenderType} size="small" variant="outlined" /> },
+          { id: 'regulator', header: 'Regulator Ref', render: (lender) => lender.regulatorRef || '—' },
+          {
+            id: 'status',
+            header: 'Status',
+            render: (lender) => <Chip label={lender.status} size="small" color={getStatusChipColor(lender.status)} />,
+          },
+          { id: 'empanelments', header: 'Empanelments', render: (lender) => lender.empanelments?.length ?? 0 },
+          {
+            id: 'actions',
+            header: 'Actions',
+            align: 'right',
+            render: (lender) => (
+              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                <Button size="small" component={RouterLink} to={`/lenders/${lender.id}`} variant="outlined">
+                  Manage
+                </Button>
+                {canManage && lender.status === 'ACTIVE' && (
+                  <Button size="small" color="warning" onClick={() => handleOpenStatusDialog(lender, 'PAUSED')}>
+                    Pause
+                  </Button>
+                )}
+                {canManage && lender.status === 'PAUSED' && (
+                  <Button size="small" color="success" onClick={() => handleOpenStatusDialog(lender, 'ACTIVE')}>
+                    Activate
+                  </Button>
+                )}
+              </Stack>
+            ),
+          },
+        ]}
+      />
 
       {/* Create Lender Modal */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>

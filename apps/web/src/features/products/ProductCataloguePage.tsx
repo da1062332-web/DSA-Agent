@@ -30,6 +30,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { Link as RouterLink } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -257,113 +258,67 @@ export function ProductCataloguePage() {
         </CardContent>
       </Card>
 
-      <TableContainer component={Paper}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : filteredProducts.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              No products found matching the search criteria.
-            </Typography>
-          </Box>
-        ) : (
-          <Table>
-            <TableHead sx={{ bgcolor: 'grey.100' }}>
-              <TableRow>
-                <TableCell>
-                  <strong>Product Name</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Lender</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Category</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Security</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Amount Range (₹)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Tenure (Months)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Active Ver</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Status</strong>
-                </TableCell>
-                <TableCell align="right">
-                  <strong>Actions</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredProducts.map((p) => (
-                <TableRow key={p.id} hover>
-                  <TableCell>
-                    <Typography
-                      component={RouterLink}
-                      to={`/products/${p.id}`}
-                      sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none' }}
-                    >
-                      {p.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{p.lenderName || p.lenderId}</TableCell>
-                  <TableCell>
-                    <Chip label={p.category} size="small" variant="outlined" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={p.secured ? 'Secured' : 'Unsecured'}
-                      size="small"
-                      color={p.secured ? 'primary' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {p.activeVersion
-                      ? `₹${Number(p.activeVersion.amountMin).toLocaleString('en-IN')} – ₹${Number(p.activeVersion.amountMax).toLocaleString('en-IN')}`
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    {p.activeVersion ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}` : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={`v${p.activeVersionNo ?? 1}`} size="small" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={p.status}
-                      size="small"
-                      color={p.status === 'ACTIVE' ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button size="small" component={RouterLink} to={`/products/${p.id}`} variant="outlined">
-                        Versions
-                      </Button>
-                      {canManage && (
-                        <Button
-                          size="small"
-                          color={p.status === 'ACTIVE' ? 'warning' : 'success'}
-                          onClick={() => handleToggleStatus(p)}
-                        >
-                          {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </TableContainer>
+      <DataTable<(typeof filteredProducts)[number]>
+        dataTestId="products.table"
+        loading={loading}
+        data={filteredProducts}
+        keyExtractor={(p) => p.id}
+        emptyMessage="No products found matching the search criteria."
+        columns={[
+          {
+            id: 'name',
+            header: 'Product Name',
+            render: (p) => (
+              <Typography component={RouterLink} to={`/products/${p.id}`} sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none' }}>
+                {p.name}
+              </Typography>
+            ),
+          },
+          { id: 'lender', header: 'Lender', render: (p) => p.lenderName || p.lenderId },
+          { id: 'category', header: 'Category', render: (p) => <Chip label={p.category} size="small" variant="outlined" /> },
+          {
+            id: 'security',
+            header: 'Security',
+            render: (p) => <Chip label={p.secured ? 'Secured' : 'Unsecured'} size="small" color={p.secured ? 'primary' : 'default'} />,
+          },
+          {
+            id: 'amount',
+            header: 'Amount Range (₹)',
+            render: (p) =>
+              p.activeVersion
+                ? `₹${Number(p.activeVersion.amountMin).toLocaleString('en-IN')} – ₹${Number(p.activeVersion.amountMax).toLocaleString('en-IN')}`
+                : '—',
+          },
+          {
+            id: 'tenure',
+            header: 'Tenure (Months)',
+            render: (p) => (p.activeVersion ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}` : '—'),
+          },
+          { id: 'version', header: 'Active Ver', render: (p) => <Chip label={`v${p.activeVersionNo ?? 1}`} size="small" /> },
+          {
+            id: 'status',
+            header: 'Status',
+            render: (p) => <Chip label={p.status} size="small" color={p.status === 'ACTIVE' ? 'success' : 'default'} />,
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            align: 'right',
+            render: (p) => (
+              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                <Button size="small" component={RouterLink} to={`/products/${p.id}`} variant="outlined">
+                  Versions
+                </Button>
+                {canManage && (
+                  <Button size="small" color={p.status === 'ACTIVE' ? 'warning' : 'success'} onClick={() => handleToggleStatus(p)}>
+                    {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                  </Button>
+                )}
+              </Stack>
+            ),
+          },
+        ]}
+      />
 
       {/* Create Product Modal */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>

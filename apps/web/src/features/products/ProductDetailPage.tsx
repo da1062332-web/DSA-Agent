@@ -24,6 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -242,70 +243,47 @@ export function ProductDetailPage() {
           }
         />
         <Divider />
-        <TableContainer>
-          <Table>
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
-              <TableRow>
-                <TableCell>
-                  <strong>Version</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Effective From</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Amount Range (₹)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Tenure Range</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Rate Terms</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Fee Terms</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Document Profile</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Status</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {versionsList.map((ver) => (
-                <TableRow key={ver.id || ver.versionNo}>
-                  <TableCell>
-                    <Chip
-                      label={`v${ver.versionNo}`}
-                      size="small"
-                      color={ver.versionNo === product.activeVersionNo ? 'primary' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>{new Date(ver.effectiveFrom).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    ₹{Number(ver.amountMin).toLocaleString('en-IN')} – ₹
-                    {Number(ver.amountMax).toLocaleString('en-IN')}
-                  </TableCell>
-                  <TableCell>
-                    {ver.tenureMin} – {ver.tenureMax} mos
-                  </TableCell>
-                  <TableCell>{ver.illustrativeRateText || '—'}</TableCell>
-                  <TableCell>{ver.feeText || '—'}</TableCell>
-                  <TableCell>{ver.documentProfileId || 'Default Master'}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={ver.versionNo === product.activeVersionNo ? 'ACTIVE PINNED' : 'HISTORICAL'}
-                      size="small"
-                      variant="outlined"
-                      color={ver.versionNo === product.activeVersionNo ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <DataTable<(typeof versionsList)[number]>
+          dataTestId="products.table.versions"
+          data={versionsList}
+          keyExtractor={(ver) => ver.id || String(ver.versionNo)}
+          columns={[
+            {
+              id: 'version',
+              header: 'Version',
+              render: (ver) => (
+                <Chip
+                  label={`v${ver.versionNo}`}
+                  size="small"
+                  color={ver.versionNo === product.activeVersionNo ? 'primary' : 'default'}
+                />
+              ),
+            },
+            { id: 'effective', header: 'Effective From', render: (ver) => new Date(ver.effectiveFrom).toLocaleDateString() },
+            {
+              id: 'amount',
+              header: 'Amount Range (₹)',
+              render: (ver) =>
+                `₹${Number(ver.amountMin).toLocaleString('en-IN')} – ₹${Number(ver.amountMax).toLocaleString('en-IN')}`,
+            },
+            { id: 'tenure', header: 'Tenure Range', render: (ver) => `${ver.tenureMin} – ${ver.tenureMax} mos` },
+            { id: 'rate', header: 'Rate Terms', render: (ver) => ver.illustrativeRateText || '—' },
+            { id: 'fee', header: 'Fee Terms', render: (ver) => ver.feeText || '—' },
+            { id: 'doc', header: 'Document Profile', render: (ver) => ver.documentProfileId || 'Default Master' },
+            {
+              id: 'status',
+              header: 'Status',
+              render: (ver) => (
+                <Chip
+                  label={ver.versionNo === product.activeVersionNo ? 'ACTIVE PINNED' : 'HISTORICAL'}
+                  size="small"
+                  variant="outlined"
+                  color={ver.versionNo === product.activeVersionNo ? 'success' : 'default'}
+                />
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* Create Version Modal */}
