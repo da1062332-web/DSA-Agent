@@ -2,32 +2,31 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
   MenuItem,
-  Paper,
   Stack,
   Tab,
   Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
-  CircularProgress,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { useToast } from '../../shell/toast';
+import {
+  DataTable,
+  DetailCard,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+} from '../../ui';
+import type { ColumnDef } from '../../ui';
 
 interface Referral {
   id: string;
@@ -47,6 +46,11 @@ interface Statement {
   state: string;
   createdAt: string;
 }
+
+const STATEMENT_TONE: Record<string, 'success' | 'info' | 'neutral'> = {
+  PAID: 'success',
+  ELIGIBLE: 'info',
+};
 
 export function ConnectorPortalPage() {
   const queryClient = useQueryClient();
@@ -69,13 +73,11 @@ export function ConnectorPortalPage() {
   const [payoutAmount, setPayoutAmount] = useState('10000');
   const [payoutNotes, setPayoutNotes] = useState('');
 
-  // Fetch referrals
   const { data: referralsData, isLoading: loadingReferrals } = useQuery<{ data: Referral[] }>({
     queryKey: ['/portal/v1/referrals'],
     queryFn: () => apiFetch<{ data: Referral[] }>('/portal/v1/referrals').catch(() => ({ data: [] })),
   });
 
-  // Fetch statements
   const { data: statementsData, isLoading: loadingStatements } = useQuery<{ data: Statement[] }>({
     queryKey: ['/portal/v1/statements'],
     queryFn: () => apiFetch<{ data: Statement[] }>('/portal/v1/statements').catch(() => ({ data: [] })),
@@ -166,195 +168,126 @@ export function ConnectorPortalPage() {
     .filter((s) => s.state === 'ELIGIBLE')
     .reduce((sum, s) => sum + (s.amount || 0), 0);
 
+  const referralColumns: ColumnDef<Referral>[] = [
+    { id: 'id', header: 'Referral ID', render: (ref) => <span style={{ fontFamily: 'monospace' }}>{ref.id.slice(0, 12)}...</span> },
+    { id: 'name', header: 'Applicant Name', render: (ref) => <strong>{ref.fullName}</strong> },
+    { id: 'mobile', header: 'Mobile (Masked)', render: (ref) => ref.mobileMasked || 'XXXXXX' },
+    { id: 'product', header: 'Product', render: (ref) => <Chip label={ref.productCategory} size="small" variant="outlined" /> },
+    {
+      id: 'amount',
+      header: 'Indicative Amount',
+      align: 'right',
+      render: (ref) => `₹${Number(ref.indicativeAmount?.amount || 0).toLocaleString('en-IN')}`,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      render: (ref) => (
+        <StatusBadge
+          status={ref.status === 'CONVERTED' ? 'success' : 'neutral'}
+          label={ref.status || 'SUBMITTED'}
+        />
+      ),
+    },
+    { id: 'date', header: 'Referred Date', render: (ref) => new Date(ref.createdAt || Date.now()).toLocaleDateString() },
+  ];
+
+  const statementColumns: ColumnDef<Statement>[] = [
+    { id: 'id', header: 'Statement Reference', render: (s) => <span style={{ fontFamily: 'monospace' }}>{s.id}</span> },
+    { id: 'calc', header: 'Calculation ID', render: (s) => <span style={{ fontFamily: 'monospace' }}>{s.calculationId}</span> },
+    { id: 'rate', header: 'Share Rate', align: 'right', render: (s) => `${(s.shareRate * 100).toFixed(1)}%` },
+    {
+      id: 'payable',
+      header: 'Payable Amount',
+      align: 'right',
+      render: (s) => <strong>₹{s.amount?.toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'state',
+      header: 'State',
+      render: (s) => <StatusBadge status={STATEMENT_TONE[s.state] ?? 'neutral'} label={s.state} />,
+    },
+    { id: 'date', header: 'Date', render: (s) => new Date(s.createdAt || Date.now()).toLocaleDateString() },
+  ];
+
   return (
     <Box sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Connector Partner Portal
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            MOD-CPT: Manage referred leads, monitor commission payouts, and view product rate cards.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            onClick={() => setPayoutOpen(true)}
-            data-testid="cpt.request-payout"
-          >
-            Request Payout
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => setNewReferralOpen(true)}
-            data-testid="cpt.submit-referral"
-          >
-            Submit Referral
-          </Button>
-        </Stack>
-      </Stack>
+      <PageHeader
+        title="Connector Partner Portal"
+        subtitle="MOD-CPT: Manage referred leads, monitor commission payouts, and view product rate cards."
+        actions={
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" onClick={() => setPayoutOpen(true)} data-testid="cpt.request-payout">
+              Request Payout
+            </Button>
+            <Button variant="contained" onClick={() => setNewReferralOpen(true)} data-testid="cpt.submit-referral">
+              Submit Referral
+            </Button>
+          </Stack>
+        }
+      />
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ bgcolor: 'primary.50' }}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                TOTAL REFERRALS
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="primary.main">
-                {referrals.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Active partner sourcing pipeline
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ bgcolor: 'success.50' }}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                ACCUMULATED COMMISSION
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="success.main">
-                ₹{totalEarned.toLocaleString('en-IN')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Lifetime earnings from disbursements
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ bgcolor: 'warning.50' }}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                ELIGIBLE FOR PAYOUT
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="warning.dark">
-                ₹{eligibleAmount.toLocaleString('en-IN')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Ready for withdrawal batch processing
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatCardGrid columns={{ xs: 12, sm: 4 }}>
+        <StatCard
+          title="TOTAL REFERRALS"
+          value={referrals.length}
+          format="number"
+          status="primary"
+          subtext="Active partner sourcing pipeline"
+        />
+        <StatCard
+          title="ACCUMULATED COMMISSION"
+          value={`₹${totalEarned.toLocaleString('en-IN')}`}
+          format="raw"
+          status="success"
+          subtext="Lifetime earnings from disbursements"
+        />
+        <StatCard
+          title="ELIGIBLE FOR PAYOUT"
+          value={`₹${eligibleAmount.toLocaleString('en-IN')}`}
+          format="raw"
+          status="warning"
+          subtext="Ready for withdrawal batch processing"
+        />
+      </StatCardGrid>
 
-      {/* Navigation Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
+      <DetailCard
+        title={activeTab === 0 ? 'My Referrals' : 'Commission Statements'}
+        subtitle={
+          activeTab === 0
+            ? 'Leads you have referred, with their consent-verified status.'
+            : 'Payable commission statements and their state.'
+        }
+      >
+        <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)} sx={{ mb: 2 }}>
           <Tab label="My Referrals" />
           <Tab label="Commission Statements" />
         </Tabs>
-      </Box>
 
-      {/* Tab 0: Referrals */}
-      {activeTab === 0 && (
-        <Card>
-          <CardContent>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell>Referral ID</TableCell>
-                    <TableCell>Applicant Name</TableCell>
-                    <TableCell>Mobile (Masked)</TableCell>
-                    <TableCell>Product</TableCell>
-                    <TableCell align="right">Indicative Amount</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Referred Date</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {referrals.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        {loadingReferrals ? 'Loading referrals...' : 'No referrals submitted yet. Click "Submit Referral" to refer a borrower.'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    referrals.map((ref) => (
-                      <TableRow key={ref.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{ref.id.slice(0, 12)}...</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{ref.fullName}</TableCell>
-                        <TableCell>{ref.mobileMasked || 'XXXXXX'}</TableCell>
-                        <TableCell>
-                          <Chip label={ref.productCategory} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell align="right">
-                          ₹{Number(ref.indicativeAmount?.amount || 0).toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={ref.status || 'SUBMITTED'}
-                            size="small"
-                            color={ref.status === 'CONVERTED' ? 'success' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell>{new Date(ref.createdAt || Date.now()).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
+        {activeTab === 0 && (
+          <DataTable<Referral>
+            dataTestId="cpt.table.referrals"
+            data={referrals}
+            columns={referralColumns}
+            keyExtractor={(ref) => ref.id}
+            emptyMessage={
+              loadingReferrals
+                ? 'Loading referrals...'
+                : 'No referrals submitted yet. Click "Submit Referral" to refer a borrower.'
+            }
+          />
+        )}
 
-      {/* Tab 1: Statements */}
-      {activeTab === 1 && (
-        <Card>
-          <CardContent>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell>Statement Reference</TableCell>
-                    <TableCell>Calculation ID</TableCell>
-                    <TableCell align="right">Share Rate</TableCell>
-                    <TableCell align="right">Payable Amount</TableCell>
-                    <TableCell>State</TableCell>
-                    <TableCell>Date</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {statements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        {loadingStatements ? 'Loading statements...' : 'No payable statements recorded yet.'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    statements.map((s) => (
-                      <TableRow key={s.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{s.id}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{s.calculationId}</TableCell>
-                        <TableCell align="right">{(s.shareRate * 100).toFixed(1)}%</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>
-                          ₹{s.amount?.toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={s.state}
-                            size="small"
-                            color={s.state === 'PAID' ? 'success' : s.state === 'ELIGIBLE' ? 'primary' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell>{new Date(s.createdAt || Date.now()).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
+        {activeTab === 1 && (
+          <DataTable<Statement>
+            dataTestId="cpt.table.statements"
+            data={statements}
+            columns={statementColumns}
+            keyExtractor={(s) => s.id}
+            emptyMessage={loadingStatements ? 'Loading statements...' : 'No payable statements recorded yet.'}
+          />
+        )}
+      </DetailCard>
 
       {/* Submit Referral Dialog */}
       <Dialog open={newReferralOpen} onClose={() => setNewReferralOpen(false)} maxWidth="sm" fullWidth>
@@ -428,17 +361,15 @@ export function ConnectorPortalPage() {
                 value={refAmount}
                 onChange={(e) => setRefAmount(e.target.value)}
                 inputProps={{ min: 10000 }}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
               />
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2.5 }}>
             <Button onClick={() => setNewReferralOpen(false)}>Cancel</Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={submitting || !otpSent || !otpCode}
-            >
+            <Button type="submit" variant="contained" disabled={submitting || !otpSent || !otpCode}>
               {submitting ? <CircularProgress size={24} /> : 'Verify & Submit'}
             </Button>
           </DialogActions>
@@ -450,7 +381,8 @@ export function ConnectorPortalPage() {
         <DialogTitle sx={{ fontWeight: 700 }}>Request Commission Payout</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Eligible balance: <strong>₹{eligibleAmount.toLocaleString('en-IN')}</strong>. Payouts undergo dual-control verification (SOD-03).
+            Eligible balance: <strong>₹{eligibleAmount.toLocaleString('en-IN')}</strong>. Payouts undergo dual-control
+            verification (SOD-03).
           </Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -461,7 +393,9 @@ export function ConnectorPortalPage() {
               value={payoutAmount}
               onChange={(e) => setPayoutAmount(e.target.value)}
               inputProps={{ min: 1000, max: eligibleAmount || 1000000 }}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+              onKeyDown={(e) => {
+                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+              }}
             />
             <TextField
               fullWidth
