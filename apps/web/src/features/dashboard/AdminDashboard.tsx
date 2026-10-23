@@ -1,0 +1,415 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Container,
+  Grid,
+  Stack,
+  Typography,
+} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
+import { hasPermission, useMe } from '../../api/useMe';
+import { PLATFORM_TENANT_ID } from '@dsa/contracts';
+import { routeAllowed } from '../../shell/access';
+import { useList } from '../admin/api';
+import type { Application } from '../applications/ApplicationsPage';
+import { fetchBranches, fetchUsers } from '../users/api';
+import { fetchLeads } from '../leads/api';
+import { searchAuditEvents } from '../audit/api';
+import {
+  DashboardDateFilter,
+  type DateRangeScope,
+  KpiMetricCard,
+  PipelineFunnelChart,
+} from './components';
+
+interface AdminDashboardProps {
+  role?: 'ROLE-TENANT-ADMIN' | 'ROLE-ORG-OWNER';
+}
+
+export function AdminDashboard({ role }: AdminDashboardProps) {
+  const me = useMe();
+  const [dateScope, setDateScope] = useState<DateRangeScope>('month');
+
+  const isOwner = role === 'ROLE-ORG-OWNER' || me.data?.roles?.includes('ROLE-ORG-OWNER');
+  const roleTitle = isOwner ? 'Organisation Owner' : 'Tenant Admin';
+
+  // Active branches
+  const {
+    data: branchesData,
+    isLoading: branchesLoading,
+    isError: branchesError,
+  } = useQuery({
+    queryKey: ['admin-branches-summary'],
+    queryFn: () => fetchBranches(),
+  });
+
+  // Staff users
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    isError: usersError,
+  } = useQuery({
+    queryKey: ['admin-users-summary'],
+    queryFn: () => fetchUsers({ limit: 100 }),
+  });
+
+  // Active Applications
+  const {
+    data: appPages,
+    isLoading: appsLoading,
+    isError: appsError,
+  } = useList<Application>('/v1/applications', {}, 100);
+
+  // Inbound Leads
+  const {
+    data: leadsData,
+    isLoading: leadsLoading,
+    isError: leadsError,
+  } = useQuery({
+    queryKey: ['admin-leads-summary', dateScope],
+    queryFn: () => fetchLeads({ limit: 100 }),
+  });
+
+  // Audit Events
+  const {
+    data: auditData,
+    isLoading: auditLoading,
+    isError: auditError,
+  } = useQuery({
+    queryKey: ['admin-audit-events-summary'],
+    queryFn: () => searchAuditEvents({ limit: 20 }),
+  });
+
+  const branches = branchesData ?? [];
+  const users = usersData?.data ?? [];
+  const applications: Application[] = appPages?.pages?.flatMap((p) => p.data ?? []) ?? [];
+  const leads = leadsData?.data ?? [];
+  const auditEvents = auditData?.data ?? [];
+
+  // Funnel calculations
+  const newAppsCount = applications.filter(
+    (a) => a.status === 'DRAFT' || a.status === 'SUBMITTED',
+  ).length;
+  const underReviewCount = applications.filter((a) => a.status === 'UNDER_REVIEW').length;
+  const sanctionedCount = applications.filter((a) => a.status === 'SANCTIONED').length;
+  const disbursedCount = applications.filter(
+    (a) => a.status === 'DISBURSED' || a.status === 'PARTIALLY_DISBURSED',
+  ).length;
+
+  const disbursedTotal = applications
+    .filter((a) => a.status === 'DISBURSED' || a.status === 'SANCTIONED' || a.status === 'PARTIALLY_DISBURSED')
+    .reduce((sum, a) => sum + (Number(a.requestedAmount) || 0), 0);
+
+  // Administration module cards (preserving complete operational access for executives)
+  const adminModules = [
+    {
+      title: 'Leads & CRM',
+      desc: 'Capture, qualify and assign loan borrower leads.',
+      to: '/leads',
+      badge: 'Leads',
+    },
+    {
+      title: 'Tasks Management',
+      desc: 'Track underwriting checklist items and follow-ups.',
+      to: '/tasks',
+      badge: 'Tasks',
+    },
+    {
+      title: 'Loan Applications',
+      desc: 'Originate, review and submit NBFC loan files.',
+      to: '/applications',
+      badge: 'Origination',
+    },
+    {
+      title: 'Decision Rules',
+      desc: 'Simulate and manage business eligibility rules.',
+      to: '/rules',
+      badge: 'BRE Engine',
+    },
+    {
+      title: 'User Management',
+      desc: 'Manage staff accounts, branch assignments, and roles.',
+      to: '/users',
+      badge: 'Users',
+    },
+    {
+      title: 'Access Control',
+      desc: 'Configure tenant roles, permission policies, and RBAC matrix.',
+      to: '/roles',
+      badge: 'Access Control',
+    },
+    {
+      title: 'Document Sharing',
+      desc: 'Customer upload links, OTP verification portal, and lender share packages.',
+      to: '/document-sharing',
+      badge: 'Sharing',
+    },
+    {
+      title: 'Verification Workbench',
+      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification.',
+      to: '/verifications',
+      badge: 'Verification',
+    },
+    {
+      title: 'Connector Management',
+      desc: 'Onboarding, bank dual-control SOD, agreements, and disputes.',
+      to: '/connectors',
+      badge: 'Connectors',
+    },
+    {
+      title: 'Commissions',
+      desc: 'Commission rule tiers, rate slabs, partner splits, and earnings calculation.',
+      to: '/commission',
+      badge: 'Commissions',
+    },
+    {
+      title: 'Payouts & Invoices',
+      desc: 'Partner payout runs, approvals, bank disbursement batches, and reconciliation.',
+      to: '/payouts',
+      badge: 'Payouts',
+    },
+    {
+      title: 'Sanctions & Disbursals',
+      desc: 'Lender sanction letter parsing, condition tracking, and multi-tranche disbursals.',
+      to: '/sanctions',
+      badge: 'Sanctions',
+    },
+    {
+      title: 'Reporting & Analytics',
+      desc: 'Standard report catalogue, operational KPIs, export jobs, and pipeline projections.',
+      to: '/reports',
+      badge: 'Reports',
+    },
+    {
+      title: 'Performance & Targets',
+      desc: 'Agent quota targets, pipeline velocity, team leaderboards, and achievement badges.',
+      to: '/performance',
+      badge: 'Performance',
+    },
+    {
+      title: 'Audit & Governance',
+      desc: 'Immutable append-only audit trail with hash-chain integrity verification.',
+      to: '/audit',
+      badge: 'Audit',
+    },
+    {
+      title: 'Organisation & Branches',
+      desc: 'Configure branch hierarchy, operational queues, and tenant settings.',
+      to: '/admin/branches',
+      badge: 'Governance',
+    },
+  ];
+
+  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
+  const allowedModules = adminModules.filter((m) =>
+    routeAllowed(m.to, (code) => hasPermission(me.data, code), platformRealm),
+  );
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="admin-dashboard">
+      {/* Header & Controls */}
+      <Box
+        sx={{
+          mb: 4,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="h4" fontWeight={700}>
+              {roleTitle} Command Center
+            </Typography>
+            <Chip
+              label={roleTitle}
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 600 }}
+            />
+          </Stack>
+          <Typography variant="body1" color="text.secondary">
+            Comprehensive tenant governance, branch network oversight, staff access control, and operational metrics.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={1}>
+          <DashboardDateFilter value={dateScope} onChange={setDateScope} />
+          <Button variant="contained" color="primary" component={RouterLink} to="/users">
+            Manage Staff
+          </Button>
+          <Button variant="outlined" component={RouterLink} to="/admin/branches">
+            Branches
+          </Button>
+          <Button variant="outlined" component={RouterLink} to="/roles">
+            Access Control
+          </Button>
+          <Button variant="outlined" component={RouterLink} to="/audit">
+            Audit Log
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* KPI Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <KpiMetricCard
+            title="Operating Branches"
+            value={branches.length}
+            subtitle="Registered branch locations"
+            isLoading={branchesLoading}
+            isError={branchesError}
+            to="/admin/branches"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <KpiMetricCard
+            title="Active Staff Users"
+            value={users.length}
+            subtitle="Configured personnel accounts"
+            isLoading={usersLoading}
+            isError={usersError}
+            to="/users"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <KpiMetricCard
+            title="Total Originations"
+            value={applications.length}
+            subtitle="Active files across all branches"
+            isLoading={appsLoading}
+            isError={appsError}
+            to="/applications"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <KpiMetricCard
+            title="Disbursed Volume"
+            value={disbursedTotal > 0 ? disbursedTotal : null}
+            format={disbursedTotal > 0 ? 'currency' : 'raw'}
+            subtitle={disbursedTotal > 0 ? 'Total portfolio volume' : 'No sanctions recorded'}
+            isLoading={appsLoading}
+            isError={appsError}
+            to="/sanctions"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Pipeline Funnel & Audit Overview */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={7}>
+          <PipelineFunnelChart
+            title="Organisation Origination Pipeline"
+            stages={[
+              { key: 'leads', label: 'Inbound Leads', count: leads.length, color: '#f59e0b' },
+              { key: 'files', label: 'New Files', count: newAppsCount, color: '#3b82f6' },
+              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#8b5cf6' },
+              { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#10b981' },
+              { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#059669' },
+            ]}
+          />
+        </Grid>
+        <Grid item xs={12} md={5}>
+          <Card sx={{ height: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight={600}>
+                  Governance &amp; Audit Trail
+                </Typography>
+                <Button size="small" component={RouterLink} to="/audit">
+                  View Full Audit
+                </Button>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Recent append-only cryptographic audit events across tenant records.
+              </Typography>
+              {auditLoading ? (
+                <Typography color="text.secondary">Loading audit events...</Typography>
+              ) : auditEvents.length === 0 ? (
+                <Typography color="text.secondary">No recent audit log entries recorded.</Typography>
+              ) : (
+                <Stack spacing={1.5} sx={{ overflowY: 'auto', flex: 1 }}>
+                  {auditEvents.slice(0, 5).map((evt: any) => (
+                    <Box
+                      key={evt.id}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 1.5,
+                        bgcolor: 'background.default',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" fontWeight={700}>
+                          {evt.action || 'EVENT'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {evt.occurredAt ? new Date(evt.occurredAt).toLocaleTimeString() : '—'}
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Actor: {evt.actorUserId || 'SYSTEM'} · Resource: {evt.resourceType || 'RECORD'}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Administration Modules Directory */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+          Organisation Management Directory
+        </Typography>
+        <Grid container spacing={2}>
+          {allowedModules.map((card) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={card.to}>
+              <Card
+                variant="outlined"
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: 2,
+                  transition: 'box-shadow 0.2s',
+                  '&:hover': { boxShadow: 2 },
+                }}
+              >
+                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {card.title}
+                    </Typography>
+                    <Chip label={card.badge} size="small" variant="outlined" />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2 }}>
+                    {card.desc}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    component={RouterLink}
+                    to={card.to}
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    Open
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    </Container>
+  );
+}

@@ -3,11 +3,13 @@ import { Box, CircularProgress, Container } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
 import { useMe } from '../../api/useMe';
 import { HomePage } from '../../shell/HomePage';
+import { AdminDashboard } from './AdminDashboard';
 import { ComplianceDashboard } from './ComplianceDashboard';
 import { FinanceDashboard } from './FinanceDashboard';
 import { LoanOpsDashboard } from './LoanOpsDashboard';
 import { ManagerDashboard } from './ManagerDashboard';
 import { RMDashboard } from './RMDashboard';
+import { RuleEngineDashboard } from './RuleEngineDashboard';
 import { type DashboardRole, resolveUserRoles } from './role-routing';
 import { RoleSwitcher } from './RoleSwitcher';
 import { SalesExecDashboard } from './SalesExecDashboard';
@@ -93,9 +95,13 @@ export function RoleDashboardRouter() {
           case 'ROLE-COMPLIANCE':
             return <ComplianceDashboard />;
           case 'ROLE-RULE-AUTHOR':
+            return <RuleEngineDashboard mode="author" />;
           case 'ROLE-RULE-APPROVER':
+            return <RuleEngineDashboard mode="approver" />;
           case 'ROLE-ORG-OWNER':
+            return <AdminDashboard role="ROLE-ORG-OWNER" />;
           case 'ROLE-TENANT-ADMIN':
+            return <AdminDashboard role="ROLE-TENANT-ADMIN" />;
           default:
             return <HomePage />;
         }

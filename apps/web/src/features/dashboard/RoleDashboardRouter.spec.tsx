@@ -41,6 +41,15 @@ vi.mock('../security/api', () => ({
 vi.mock('../audit/api', () => ({
   searchAuditEvents: vi.fn().mockResolvedValue({ data: [], meta: { hasMore: false } }),
 }));
+vi.mock('../rules/api', () => ({
+  fetchRuleSets: vi.fn().mockResolvedValue({ data: [], meta: { limit: 100, nextCursor: null } }),
+  fetchDecisionDefinitions: vi.fn().mockResolvedValue([]),
+  fetchDecisionRecords: vi.fn().mockResolvedValue({ data: [], meta: { limit: 50, nextCursor: null } }),
+}));
+vi.mock('../users/api', () => ({
+  fetchBranches: vi.fn().mockResolvedValue([]),
+  fetchUsers: vi.fn().mockResolvedValue({ data: [], meta: { limit: 100, nextCursor: null } }),
+}));
 
 const mockUseMe = vi.mocked(useMeModule.useMe);
 
@@ -258,6 +267,73 @@ describe('RoleDashboardRouter & Persona Dashboards', () => {
     const html = renderRouter();
     expect(html).toContain('Tenant Admin');
     expect(html).toContain('Leads &amp; CRM');
+  });
+
+  it('renders RuleEngineDashboard for ROLE-RULE-AUTHOR', () => {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_author',
+        tenantId: 'qloax-dsa',
+        email: 'author@qloax.com',
+        displayName: 'Rule Author',
+        primaryBranchId: 'br_01',
+        queueIds: [],
+        mfaVerifiedAt: null,
+        roles: ['ROLE-RULE-AUTHOR'],
+        grants: asGrants(QLOAX_ROLE_GRANTS['ROLE-RULE-AUTHOR']!),
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const html = renderRouter();
+    expect(html).toContain('data-testid="rule-author-dashboard"');
+    expect(html).toContain('Business Rule Authoring Studio');
+  });
+
+  it('renders RuleEngineDashboard for ROLE-RULE-APPROVER', () => {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_approver',
+        tenantId: 'qloax-dsa',
+        email: 'approver@qloax.com',
+        displayName: 'Rule Approver',
+        primaryBranchId: 'br_01',
+        queueIds: [],
+        mfaVerifiedAt: null,
+        roles: ['ROLE-RULE-APPROVER'],
+        grants: asGrants(QLOAX_ROLE_GRANTS['ROLE-RULE-APPROVER']!),
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const html = renderRouter();
+    expect(html).toContain('data-testid="rule-approver-dashboard"');
+    expect(html).toContain('Rule Engine Approver Portal');
+    expect(html).toContain('SOD-09');
+  });
+
+  it('renders AdminDashboard for ROLE-ORG-OWNER', () => {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_owner',
+        tenantId: 'qloax-dsa',
+        email: 'owner@qloax.com',
+        displayName: 'Org Owner',
+        primaryBranchId: 'br_01',
+        queueIds: [],
+        mfaVerifiedAt: null,
+        roles: ['ROLE-ORG-OWNER'],
+        grants: asGrants(QLOAX_ROLE_GRANTS['ROLE-ORG-OWNER']!),
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const html = renderRouter();
+    expect(html).toContain('data-testid="admin-dashboard"');
+    expect(html).toContain('Organisation Owner');
   });
 
   it('supports multi-role persona switching', () => {
