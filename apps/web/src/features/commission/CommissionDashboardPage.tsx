@@ -752,7 +752,8 @@ export function CommissionDashboardPage() {
                 type="number"
                 label="Clawback Window (Days)"
                 value={planClawbackDays}
-                onChange={(e) => setPlanClawbackDays(Number(e.target.value))}
+                onChange={(e) => setPlanClawbackDays(Math.max(0, Number(e.target.value)))}
+                inputProps={{ min: 0 }}
               />
               <TextField
                 fullWidth
@@ -812,10 +813,10 @@ export function CommissionDashboardPage() {
                 required
                 fullWidth
                 type="number"
-                inputProps={{ step: 0.001 }}
+                inputProps={{ step: 0.001, min: 0 }}
                 label="Commission Rate (e.g. 0.015 for 1.5%)"
                 value={calcRate}
-                onChange={(e) => setCalcRate(Number(e.target.value))}
+                onChange={(e) => setCalcRate(Math.max(0, Number(e.target.value)))}
               />
               <ConnectorSelect
                 label="Attributed Connector"
@@ -827,10 +828,10 @@ export function CommissionDashboardPage() {
               <TextField
                 fullWidth
                 type="number"
-                inputProps={{ step: 0.05 }}
+                inputProps={{ step: 0.05, min: 0 }}
                 label="Connector Share Rate (e.g. 0.70 for 70%)"
                 value={calcConnectorShare}
-                onChange={(e) => setCalcConnectorShare(Number(e.target.value))}
+                onChange={(e) => setCalcConnectorShare(Math.max(0, Number(e.target.value)))}
               />
             </Stack>
           </DialogContent>

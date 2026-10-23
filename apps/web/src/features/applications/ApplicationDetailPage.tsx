@@ -181,10 +181,14 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             label="Tenure (months)"
             type="number"
             value={tenure}
-            onChange={(e) => setTenure(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setTenure(val === '' ? '' : String(Math.max(1, Number(val))));
+            }}
             disabled={!canEdit}
             error={tenure !== '' && !isValidTenure(tenure)}
             helperText="1 to 480"
+            inputProps={{ min: 1, max: 480 }}
           />
           <TextField
             select

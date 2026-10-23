@@ -163,9 +163,9 @@ export function UserSelect({
             <Typography variant="body2" fontWeight={600}>
               {opt.displayName || opt.fullName || opt.email || opt.id}
             </Typography>
-            {opt.email && (
+            {opt.email && opt.email !== (opt.displayName || opt.fullName) && (
               <Typography variant="caption" color="text.secondary">
-                {opt.email} • {opt.id}
+                {opt.email}
               </Typography>
             )}
           </Box>
@@ -253,15 +253,24 @@ export function ConnectorSelect({
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => {
         const name = opt.tradeName || opt.contactName || opt.legalName || 'Unnamed Connector';
+        const details: string[] = [];
+        if (opt.mobile && opt.mobile !== name) {
+          details.push(`Mobile: ${opt.mobile}`);
+        }
+        if (opt.firmName && opt.firmName !== name) {
+          details.push(opt.firmName);
+        }
         return (
           <li {...props} key={opt.id}>
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
               <Typography variant="body2" fontWeight={600}>
                 {name}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {opt.mobile ? `Mobile: ${opt.mobile} • ` : ''}ID: {opt.id}
-              </Typography>
+              {details.length > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  {details.join(' • ')}
+                </Typography>
+              )}
             </Box>
           </li>
         );
@@ -352,7 +361,7 @@ export function LeadSelect({
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {opt.productCategory ? `[${opt.productCategory}] ` : ''}
-              {opt.mobileMasked ? `${opt.mobileMasked} • ` : ''}ID: {opt.id}
+              {opt.mobileMasked ? `${opt.mobileMasked}` : ''}
             </Typography>
           </Box>
         </li>
@@ -538,9 +547,11 @@ export function CustomerSelect({
             <Typography variant="body2" fontWeight={600}>
               {opt.fullName}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {opt.primaryPhoneMasked ? `${opt.primaryPhoneMasked} • ` : ''}ID: {opt.id}
-            </Typography>
+            {opt.primaryPhoneMasked && (
+              <Typography variant="caption" color="text.secondary">
+                {opt.primaryPhoneMasked}
+              </Typography>
+            )}
           </Box>
         </li>
       )}

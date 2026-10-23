@@ -463,7 +463,11 @@ export function TargetsPage() {
               type="number"
               label="Target Value"
               value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTargetValue(val === '' ? '' : String(Math.max(0, Number(val))));
+              }}
+              inputProps={{ min: 0 }}
               fullWidth
               required
             />

@@ -648,7 +648,7 @@ export function VerificationPage() {
                     fullWidth
                     size="small"
                     value={formMatchScore}
-                    onChange={(e) => setFormMatchScore(Number(e.target.value))}
+                    onChange={(e) => setFormMatchScore(Math.min(100, Math.max(0, Number(e.target.value))))}
                     inputProps={{ min: 0, max: 100 }}
                   />
                 </Grid>
@@ -682,7 +682,8 @@ export function VerificationPage() {
                     fullWidth
                     size="small"
                     value={formValidityDays}
-                    onChange={(e) => setFormValidityDays(Number(e.target.value))}
+                    onChange={(e) => setFormValidityDays(Math.max(1, Number(e.target.value)))}
+                    inputProps={{ min: 1 }}
                   />
                 </Grid>
 

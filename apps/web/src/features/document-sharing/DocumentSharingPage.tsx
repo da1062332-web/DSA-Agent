@@ -593,7 +593,8 @@ export function DocumentSharingPage() {
                     type="number"
                     fullWidth
                     value={linkMaxUses}
-                    onChange={(e) => setLinkMaxUses(Number(e.target.value))}
+                    onChange={(e) => setLinkMaxUses(Math.max(1, Number(e.target.value)))}
+                    inputProps={{ min: 1 }}
                   />
                 </Stack>
 
@@ -735,7 +736,8 @@ export function DocumentSharingPage() {
                   type="number"
                   fullWidth
                   value={shareDays}
-                  onChange={(e) => setShareDays(Number(e.target.value))}
+                  onChange={(e) => setShareDays(Math.max(1, Number(e.target.value)))}
+                  inputProps={{ min: 1 }}
                 />
               </Stack>
             </Stack>

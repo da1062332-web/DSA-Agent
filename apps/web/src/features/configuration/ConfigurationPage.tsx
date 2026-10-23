@@ -384,7 +384,8 @@ export function ConfigurationPage() {
                       type="number"
                       fullWidth
                       value={defaultSla}
-                      onChange={(e) => setDefaultSla(Number(e.target.value))}
+                      onChange={(e) => setDefaultSla(Math.max(1, Number(e.target.value)))}
+                      inputProps={{ min: 1 }}
                       helperText="Response SLA for new leads (1-1440 min)"
                     />
                   </Grid>
@@ -428,7 +429,8 @@ export function ConfigurationPage() {
                       type="number"
                       fullWidth
                       value={retentionDays}
-                      onChange={(e) => setRetentionDays(Number(e.target.value))}
+                      onChange={(e) => setRetentionDays(Math.max(1, Number(e.target.value)))}
+                      inputProps={{ min: 1 }}
                       helperText="Compliance archive retention window (min 30 days)"
                     />
                   </Grid>

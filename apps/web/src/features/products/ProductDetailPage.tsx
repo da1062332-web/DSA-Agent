@@ -351,7 +351,8 @@ export function ProductDetailPage() {
                   type="number"
                   label="Min Loan Amount (₹)"
                   value={verAmountMin}
-                  onChange={(e) => setVerAmountMin(Number(e.target.value))}
+                  onChange={(e) => setVerAmountMin(Math.max(0, Number(e.target.value)))}
+                  inputProps={{ min: 0 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -361,7 +362,8 @@ export function ProductDetailPage() {
                   type="number"
                   label="Max Loan Amount (₹)"
                   value={verAmountMax}
-                  onChange={(e) => setVerAmountMax(Number(e.target.value))}
+                  onChange={(e) => setVerAmountMax(Math.max(0, Number(e.target.value)))}
+                  inputProps={{ min: 0 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -371,7 +373,8 @@ export function ProductDetailPage() {
                   type="number"
                   label="Min Tenure (Months)"
                   value={verTenureMin}
-                  onChange={(e) => setVerTenureMin(Number(e.target.value))}
+                  onChange={(e) => setVerTenureMin(Math.max(1, Number(e.target.value)))}
+                  inputProps={{ min: 1 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -381,7 +384,8 @@ export function ProductDetailPage() {
                   type="number"
                   label="Max Tenure (Months)"
                   value={verTenureMax}
-                  onChange={(e) => setVerTenureMax(Number(e.target.value))}
+                  onChange={(e) => setVerTenureMax(Math.max(1, Number(e.target.value)))}
+                  inputProps={{ min: 1 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

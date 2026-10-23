@@ -471,10 +471,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 helperText={sanctionErrors.amount}
                 value={sanctionForm.amount}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, amount: Number(e.target.value) });
+                  const val = Math.max(0, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, amount: val });
                   if (sanctionErrors.amount) setSanctionErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.amount' }}
+                inputProps={{ 'data-testid': 'sanction.amount', min: 0 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -487,10 +488,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 helperText={sanctionErrors.tenureMonths}
                 value={sanctionForm.tenureMonths}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, tenureMonths: Number(e.target.value) });
+                  const val = Math.max(1, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, tenureMonths: val });
                   if (sanctionErrors.tenureMonths) setSanctionErrors((prev) => ({ ...prev, tenureMonths: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.tenureMonths' }}
+                inputProps={{ 'data-testid': 'sanction.tenureMonths', min: 1 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -503,10 +505,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 helperText={sanctionErrors.rateValue}
                 value={sanctionForm.rateValue}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, rateValue: Number(e.target.value) });
+                  const val = Math.max(0, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, rateValue: val });
                   if (sanctionErrors.rateValue) setSanctionErrors((prev) => ({ ...prev, rateValue: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.rateValue' }}
+                inputProps={{ 'data-testid': 'sanction.rateValue', min: 0, step: 0.01 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -582,10 +585,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 helperText={trancheErrors.amount}
                 value={trancheForm.amount}
                 onChange={(e) => {
-                  setTrancheForm({ ...trancheForm, amount: Number(e.target.value) });
+                  const val = Math.max(0, Number(e.target.value));
+                  setTrancheForm({ ...trancheForm, amount: val });
                   if (trancheErrors.amount) setTrancheErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'tranche.amount' }}
+                inputProps={{ 'data-testid': 'tranche.amount', min: 0 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

@@ -992,7 +992,11 @@ export function InvoicesPage() {
                 label="Invoice Amount (INR)"
                 placeholder="150000"
                 value={formAmount}
-                onChange={(e) => setFormAmount(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+                }}
+                inputProps={{ min: 0 }}
               />
 
               <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ pt: 1 }}>

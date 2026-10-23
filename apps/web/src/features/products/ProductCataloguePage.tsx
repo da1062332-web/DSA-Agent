@@ -442,7 +442,8 @@ export function ProductCataloguePage() {
                   type="number"
                   label="Min Loan Amount (₹)"
                   value={formAmountMin}
-                  onChange={(e) => setFormAmountMin(Number(e.target.value))}
+                  onChange={(e) => setFormAmountMin(Math.max(0, Number(e.target.value)))}
+                  inputProps={{ min: 0 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -452,7 +453,8 @@ export function ProductCataloguePage() {
                   type="number"
                   label="Max Loan Amount (₹)"
                   value={formAmountMax}
-                  onChange={(e) => setFormAmountMax(Number(e.target.value))}
+                  onChange={(e) => setFormAmountMax(Math.max(0, Number(e.target.value)))}
+                  inputProps={{ min: 0 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -462,7 +464,8 @@ export function ProductCataloguePage() {
                   type="number"
                   label="Min Tenure (Months)"
                   value={formTenureMin}
-                  onChange={(e) => setFormTenureMin(Number(e.target.value))}
+                  onChange={(e) => setFormTenureMin(Math.max(1, Number(e.target.value)))}
+                  inputProps={{ min: 1 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -472,7 +475,8 @@ export function ProductCataloguePage() {
                   type="number"
                   label="Max Tenure (Months)"
                   value={formTenureMax}
-                  onChange={(e) => setFormTenureMax(Number(e.target.value))}
+                  onChange={(e) => setFormTenureMax(Math.max(1, Number(e.target.value)))}
+                  inputProps={{ min: 1 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

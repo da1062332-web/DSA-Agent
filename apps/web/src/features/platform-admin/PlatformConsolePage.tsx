@@ -1128,7 +1128,10 @@ export function PlatformConsolePage() {
               fullWidth
               required
               value={supportDuration}
-              onChange={(e) => setSupportDuration(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSupportDuration(val === '' ? '' : String(Math.max(0.5, Math.min(4.0, Number(val)))));
+              }}
             />
             <TextField
               label="Justification & Reason"

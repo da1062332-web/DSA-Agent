@@ -840,14 +840,15 @@ export function LeadDetail() {
               error={Boolean(qualifyErrors.amount)}
               helperText={qualifyErrors.amount}
               onChange={(e) => {
-                setQualAmount(e.target.value);
+                const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                setQualAmount(cleaned);
                 if (qualifyErrors.amount) {
                   setQualifyErrors((prev) => ({ ...prev, amount: undefined }));
                 }
               }}
               placeholder="e.g. 500000"
               data-testid="qualify.amount"
-              inputProps={{ 'data-testid': 'qualify.requestedAmount' }}
+              inputProps={{ 'data-testid': 'qualify.requestedAmount', inputMode: 'decimal', min: 0 }}
             />
             <TextField
               fullWidth

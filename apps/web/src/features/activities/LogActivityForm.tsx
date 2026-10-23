@@ -310,7 +310,10 @@ export function LogActivityForm({
             label="Duration (seconds)"
             type="number"
             value={durationSeconds}
-            onChange={(e) => setDurationSeconds(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setDurationSeconds(val === '' ? '' : String(Math.max(0, Number(val))));
+            }}
             error={Boolean(fieldErrors.duration)}
             helperText={fieldErrors.duration || 'Optional duration'}
             inputProps={{ min: 0 }}

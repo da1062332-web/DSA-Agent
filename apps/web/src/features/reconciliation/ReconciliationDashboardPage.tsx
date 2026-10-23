@@ -1075,9 +1075,13 @@ export function ReconciliationDashboardPage() {
                           label="Settled Amount (₹)"
                           type="number"
                           value={bankAmount}
-                          onChange={(e) => setBankAmount(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBankAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+                          }}
                           fullWidth
                           required
+                          inputProps={{ min: 0 }}
                           data-testid="rec.input.bank-amount"
                         />
                       </Grid>
@@ -1309,7 +1313,11 @@ export function ReconciliationDashboardPage() {
               label="Adjustment Amount (₹)"
               type="number"
               value={adjAmount}
-              onChange={(e) => setAdjAmount(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setAdjAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+              }}
+              inputProps={{ min: 0 }}
               fullWidth
               required
             />
