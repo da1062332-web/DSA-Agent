@@ -24,7 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -152,30 +152,24 @@ export function ProductDetailPage() {
         </Alert>
       )}
 
+      <PageHeader
+        title={product.name}
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip label={product.category} size="small" variant="outlined" />
+            <Chip
+              label={product.secured ? 'Secured' : 'Unsecured'}
+              size="small"
+              color={product.secured ? 'primary' : 'default'}
+            />
+            <Chip label={product.status} size="small" color={product.status === 'ACTIVE' ? 'success' : 'default'} />
+          </Stack>
+        }
+        subtitle={`Lender: ${product.lenderName || product.lenderId} | Active Version: v${product.activeVersionNo ?? 1}`}
+      />
+
       {/* Product Overview Card */}
       <Card sx={{ mb: 4 }}>
-        <CardHeader
-          title={
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="h5" fontWeight={700}>
-                {product.name}
-              </Typography>
-              <Chip label={product.category} size="small" variant="outlined" />
-              <Chip
-                label={product.secured ? 'Secured' : 'Unsecured'}
-                size="small"
-                color={product.secured ? 'primary' : 'default'}
-              />
-              <Chip
-                label={product.status}
-                size="small"
-                color={product.status === 'ACTIVE' ? 'success' : 'default'}
-              />
-            </Stack>
-          }
-          subheader={`Lender: ${product.lenderName || product.lenderId} | Active Version: v${product.activeVersionNo ?? 1}`}
-        />
-        <Divider />
         <CardContent>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={3}>
