@@ -1,6 +1,7 @@
 // Sidebar navigation (owner: Dev 1). Refactored into 7 Operational Workspaces.
 // In expanded mode: clean workspace navigation matching original design (no sub-item icons).
-// In collapsed mode: compact rail displaying main orange workspace category icons with tooltips.
+// In collapsed mode: compact rail displaying main orange workspace category icons in line with the top toggle.
+// Clicking an orange category icon opens the sidebar and expands that section's dropdown.
 import {
   Box,
   Chip,
@@ -15,7 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { NAV_GROUPS, visibleGroups } from './access';
 import {
@@ -37,7 +38,7 @@ export type { NavGroup, NavItem } from './access';
 
 const STORAGE_KEY = 'qloax_sidebar_sections_v2';
 
-function getMainCategoryIcon(title: string, size: number = 22): ReactNode {
+function getMainCategoryIcon(title: string, size: number = 24): ReactNode {
   const sx = { color: '#F89344', fontSize: size };
   switch (title) {
     case 'Workspace':
@@ -66,6 +67,7 @@ export function SidebarContent({
   onNavigate,
   collapsed = false,
   onToggleCollapse,
+  onOpenSection,
 }: {
   isAdmin: boolean;
   can?: (code: string) => boolean;
@@ -73,6 +75,7 @@ export function SidebarContent({
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onOpenSection?: (title: string) => void;
 }) {
   const location = useLocation();
   const groups = visibleGroups(isAdmin, can, platformRealm);
@@ -90,6 +93,22 @@ export function SidebarContent({
     return {};
   });
 
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!collapsed && scrollTarget) {
+      const timer = setTimeout(() => {
+        const id = `nav-group-${scrollTarget.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        setScrollTarget(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [collapsed, scrollTarget]);
+
   const toggleGroup = (title: string) => {
     setExpanded((prev) => {
       const currentlyOpen = prev[title] !== false;
@@ -101,6 +120,27 @@ export function SidebarContent({
       }
       return next;
     });
+  };
+
+  const handleCategoryClick = (title: string) => {
+    // 1. Ensure this section is open when sidebar expands
+    setExpanded((prev) => {
+      const next = { ...prev, [title]: true };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 2. Queue smooth scroll to this section once the drawer opens
+    setScrollTarget(title);
+
+    // 3. Expand sidebar
+    if (onOpenSection) {
+      onOpenSection(title);
+    } else if (onToggleCollapse) {
+      onToggleCollapse();
+    }
   };
 
   return (
@@ -116,10 +156,9 @@ export function SidebarContent({
     >
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {collapsed ? (
-          // Collapsed mode: Only show the main orange category icons with rich tooltips
-          <List dense disablePadding sx={{ px: 0.75 }}>
+          // Collapsed rail mode: Perfectly centered orange icons aligned with the top hamburger menu
+          <Box sx={{ py: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {groups.map((group, i) => {
-              const primaryItem = group.items.find((item) => item.to);
               const isGroupActive = group.items.some(
                 (item) =>
                   item.to &&
@@ -128,8 +167,11 @@ export function SidebarContent({
               );
 
               return (
-                <Box key={group.title}>
-                  {i > 0 && <Divider sx={{ my: 0.75, mx: 1, borderColor: 'divider' }} />}
+                <Box
+                  key={group.title}
+                  sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                >
+                  {i > 0 && <Divider sx={{ width: 44, my: 1, borderColor: '#e2e8f0' }} />}
                   <Tooltip
                     title={
                       <Box sx={{ p: 0.5, maxWidth: 220 }}>
@@ -167,23 +209,22 @@ export function SidebarContent({
                     arrow
                   >
                     <ListItemButton
-                      component={primaryItem ? NavLink : 'div'}
-                      to={primaryItem?.to}
-                      end={primaryItem?.to === '/'}
-                      onClick={onNavigate}
+                      onClick={() => handleCategoryClick(group.title)}
                       data-testid={`shell.nav.category.${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                       sx={{
-                        minHeight: 48,
+                        width: 52,
+                        height: 52,
+                        minHeight: 52,
+                        maxWidth: 52,
+                        p: 0,
                         justifyContent: 'center',
                         alignItems: 'center',
-                        px: 1,
-                        my: 0.4,
-                        borderRadius: 2,
+                        borderRadius: '16px',
                         bgcolor: isGroupActive ? 'rgba(248, 147, 68, 0.12)' : 'transparent',
                         position: 'relative',
                         transition: 'all 0.15s ease',
                         '&:hover': {
-                          bgcolor: 'rgba(248, 147, 68, 0.18)',
+                          bgcolor: isGroupActive ? 'rgba(248, 147, 68, 0.18)' : 'rgba(248, 147, 68, 0.08)',
                         },
                         ...(isGroupActive && {
                           '&::before': {
@@ -206,21 +247,25 @@ export function SidebarContent({
                           color: '#F89344',
                         }}
                       >
-                        {getMainCategoryIcon(group.title, 22)}
+                        {getMainCategoryIcon(group.title, 24)}
                       </ListItemIcon>
                     </ListItemButton>
                   </Tooltip>
                 </Box>
               );
             })}
-          </List>
+          </Box>
         ) : (
-          // Expanded mode: Keep same like old with main orange category icon on subheaders and clean text items
+          // Expanded mode: Clean, professional workspace navigation with orange category icons and no outline glitches
           groups.map((group, i) => {
             const isOpen = expanded[group.title] !== false;
             return (
-              <Box key={group.title}>
-                {i > 0 && <Divider sx={{ my: 1 }} />}
+              <Box
+                key={group.title}
+                id={`nav-group-${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                sx={{ scrollMarginTop: '8px' }}
+              >
+                {i > 0 && <Divider sx={{ my: 0.75, mx: 1.5, borderColor: '#f1f5f9' }} />}
                 <List
                   dense
                   disablePadding
@@ -238,20 +283,31 @@ export function SidebarContent({
                       role="button"
                       aria-expanded={isOpen}
                       sx={{
-                        lineHeight: '32px',
-                        fontSize: 12,
+                        position: 'relative',
+                        bgcolor: 'transparent',
+                        lineHeight: '34px',
+                        fontSize: 11.5,
                         fontWeight: 700,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        color: 'text.secondary',
+                        letterSpacing: '0.04em',
+                        color: '#334155',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         cursor: 'pointer',
                         userSelect: 'none',
-                        px: 2,
+                        px: 1.5,
+                        mx: 1,
+                        my: 0.2,
+                        borderRadius: 1.5,
+                        outline: 'none !important',
+                        border: 'none !important',
+                        boxShadow: 'none !important',
                         '&:hover': {
-                          bgcolor: 'action.hover',
+                          bgcolor: 'rgba(0, 0, 0, 0.04)',
+                        },
+                        '&:focus-visible': {
+                          bgcolor: 'rgba(248, 147, 68, 0.08)',
                         },
                       }}
                     >
@@ -259,15 +315,15 @@ export function SidebarContent({
                         <Box sx={{ display: 'inline-flex', mr: 1, alignItems: 'center' }}>
                           {getMainCategoryIcon(group.title, 18)}
                         </Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11.5, color: 'inherit' }}>
                           {group.title}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {isOpen ? (
-                          <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <ExpandLessIcon sx={{ fontSize: 18, color: '#64748b' }} />
                         ) : (
-                          <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <ExpandMoreIcon sx={{ fontSize: 18, color: '#64748b' }} />
                         )}
                       </Box>
                     </ListSubheader>
@@ -284,26 +340,27 @@ export function SidebarContent({
                           onClick={onNavigate}
                           data-testid={`shell.nav.${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                           sx={{
-                            pl: 3,
-                            py: 0.6,
+                            pl: 3.5,
+                            pr: 2,
+                            py: 0.55,
                             borderRadius: 1.5,
                             mx: 1,
                             my: 0.2,
-                            color: 'text.secondary',
+                            color: '#475569',
                             transition: 'all 0.15s ease',
                             '&:hover': {
-                              bgcolor: 'action.hover',
-                              color: 'text.primary',
+                              bgcolor: 'rgba(33, 89, 136, 0.05)',
+                              color: '#0f172a',
                             },
                             '&.active': {
-                              bgcolor: 'rgba(56, 118, 190, 0.08)',
-                              fontWeight: 700,
+                              bgcolor: 'rgba(248, 147, 68, 0.1)',
+                              fontWeight: 600,
                               color: '#215988',
                               position: 'relative',
                               '&::before': {
                                 content: '""',
                                 position: 'absolute',
-                                left: 4,
+                                left: 6,
                                 top: '20%',
                                 bottom: '20%',
                                 width: 3.5,
@@ -325,9 +382,20 @@ export function SidebarContent({
                           placement="right"
                         >
                           <span>
-                            <ListItemButton disabled sx={{ pl: 3.5, py: 0.5, mx: 1, my: 0.25 }}>
-                              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13 }} />
-                              <Chip label="Soon" size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                            <ListItemButton disabled sx={{ pl: 3.5, pr: 2, py: 0.5, mx: 1, my: 0.2 }}>
+                              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, color: '#94a3b8' }} />
+                              <Chip
+                                label="Soon"
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  height: 18,
+                                  fontSize: 10,
+                                  borderColor: '#cbd5e1',
+                                  color: '#64748b',
+                                  fontWeight: 500,
+                                }}
+                              />
                             </ListItemButton>
                           </span>
                         </Tooltip>

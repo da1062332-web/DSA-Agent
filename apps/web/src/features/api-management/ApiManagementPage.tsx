@@ -3,8 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   Dialog,
   DialogActions,
@@ -12,24 +10,16 @@ import {
   DialogTitle,
   Divider,
   FormControl,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
   OutlinedInput,
   Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
   Alert,
-  CircularProgress,
 } from '@mui/material';
 import {
   KeyIcon,
@@ -41,7 +31,8 @@ import {
   CheckCircleIcon,
   ShieldIcon as SecurityIcon,
 } from '../../shell/icons';
-import { DataTable } from '../../ui';
+import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
+import type { ColumnDef } from '../../ui';
 import type { ApiClientResponse, CreateApiClientInput } from '@dsa/contracts';
 import { listApiClients, createApiClient, rotateClientSecret, updateApiClient, deleteApiClient } from './api';
 
@@ -59,6 +50,7 @@ export function ApiManagementPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [clients, setClients] = useState<ApiClientResponse[]>([]);
+  const [search, setSearch] = useState('');
 
   // Create Client Dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -188,29 +180,145 @@ export function ApiManagementPage() {
   };
 
   const activeClientsCount = clients.filter((c) => c.status === 'ACTIVE').length;
+  const suspendedClientsCount = clients.filter((c) => c.status !== 'ACTIVE').length;
+  const usedLast24h = clients.filter(
+    (c) => c.lastUsedAt && Date.now() - new Date(c.lastUsedAt).getTime() < 24 * 60 * 60 * 1000,
+  ).length;
+  const query = search.trim().toLowerCase();
+  const visibleClients = query
+    ? clients.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          c.partnerName.toLowerCase().includes(query) ||
+          c.clientId.toLowerCase().includes(query),
+      )
+    : clients;
+
+  const clientColumns: ColumnDef<ApiClientResponse>[] = [
+    {
+      id: 'name',
+      header: 'Client / App Name',
+      render: (client) => (
+        <>
+          <Typography variant="body2" fontWeight={600}>
+            {client.name}
+          </Typography>
+          {client.allowedIps && client.allowedIps.length > 0 && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              IPs: {client.allowedIps.join(', ')}
+            </Typography>
+          )}
+        </>
+      ),
+    },
+    { id: 'partner', header: 'Partner Organisation', render: (client) => client.partnerName },
+    {
+      id: 'clientId',
+      header: 'Client ID',
+      render: (client) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
+            {client.clientId}
+          </Typography>
+          <Tooltip title="Copy client ID">
+            <IconButton
+              size="small"
+              aria-label={`Copy client ID ${client.clientId}`}
+              onClick={() => navigator.clipboard?.writeText(client.clientId)}
+            >
+              <ContentCopyIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+    {
+      id: 'secret',
+      header: 'Client Secret',
+      render: () => (
+        <Tooltip title="Secrets are stored hashed and cannot be shown again. Rotate to issue a new one.">
+          <Chip size="small" variant="outlined" label="Hashed (rotate to reissue)" />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'scopes',
+      header: 'Scopes',
+      render: (client) => (
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          {client.scopes.map((s) => (
+            <Chip key={s} size="small" variant="outlined" label={s} />
+          ))}
+        </Box>
+      ),
+    },
+    { id: 'rate', header: 'Rate Limit', render: (client) => `${client.rateLimitRpm} RPM` },
+    {
+      id: 'lastUsed',
+      header: 'Last Used',
+      render: (client) => (client.lastUsedAt ? new Date(client.lastUsedAt).toLocaleString() : 'Never'),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      render: (client) => (
+        <StatusBadge
+          label={client.status}
+          status={client.status === 'ACTIVE' ? 'success' : client.status === 'SUSPENDED' ? 'warning' : 'error'}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (client) => (
+        <>
+          <Tooltip title="Rotate Client Secret">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => {
+                setClientToRotate(client);
+                setRotateDialogOpen(true);
+              }}
+            >
+              <AutorenewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Button
+            size="small"
+            sx={{ ml: 1 }}
+            variant="outlined"
+            color={client.status === 'ACTIVE' ? 'warning' : 'success'}
+            onClick={() => handleToggleStatus(client)}
+          >
+            {client.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+          </Button>
+          <IconButton size="small" color="error" sx={{ ml: 1 }} onClick={() => handleDeleteClient(client.id)}>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </>
+      ),
+    },
+  ];
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* Title Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} sx={{ color: 'primary.main', mb: 0.5 }}>
-            API Management & Credentials
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 36 (MOD-API): Manage partner API credentials, configure per-client rate limits, assign
-            granular scopes, and rotate client secrets.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
-            Refresh
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-            Register API Client
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title="API Management & Credentials"
+        subtitle="Module 36 (MOD-API): Manage partner API credentials, configure per-client rate limits, assign granular scopes, and rotate client secrets."
+        actions={
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
+              Refresh
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+              Register API Client
+            </Button>
+          </Box>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -224,152 +332,39 @@ export function ApiManagementPage() {
         </Alert>
       )}
 
-      {/* Metric Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Registered Clients
-              </Typography>
-              <Typography variant="h4" fontWeight={700}>
-                {clients.length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Active Integrations
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="success.main">
-                {activeClientsCount}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Authentication Mode
-              </Typography>
-              <Typography variant="h6" fontWeight={700}>
-                Client Credentials & HMAC
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Multi-Tenancy Isolation
-              </Typography>
-              <Typography variant="h6" fontWeight={700} color="primary.main">
-                RLS Enforced (app.tenant_id)
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }}>
+        <StatCard title="Registered Clients" value={clients.length} format="number" status="default" subtext={`${suspendedClientsCount} suspended`} />
+        <StatCard
+          title="Active Integrations"
+          value={activeClientsCount}
+          format="number"
+          status="success"
+          subtext={`${usedLast24h} used in the last 24 hours`}
+        />
+        <StatCard title="Authentication Mode" value="Client Credentials & HMAC" format="raw" status="info" />
+        <StatCard title="Multi-Tenancy Isolation" value="RLS Enforced (app.tenant_id)" format="raw" status="primary" />
+      </StatCardGrid>
 
       {/* Clients Table */}
-      <Paper elevation={2}>
+      <DetailCard
+        title="Registered Clients"
+        subtitle="Partner API clients. Client secrets are shown once at creation and stored hashed after that."
+      >
+        <FilterToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by client, partner or client ID"
+          searchTestId="api.search"
+        />
         <DataTable<ApiClientResponse>
           dataTestId="api.table.clients"
           loading={loading}
-          data={clients}
+          data={visibleClients}
           keyExtractor={(client) => client.id}
-          emptyMessage="No API clients registered yet."
-          columns={[
-            {
-              id: 'name',
-              header: 'Client / App Name',
-              render: (client) => (
-                <>
-                  <Typography variant="body2" fontWeight={600}>
-                    {client.name}
-                  </Typography>
-                  {client.allowedIps && client.allowedIps.length > 0 && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      IPs: {client.allowedIps.join(', ')}
-                    </Typography>
-                  )}
-                </>
-              ),
-            },
-            { id: 'partner', header: 'Partner Organisation', render: (client) => <Typography variant="body2">{client.partnerName}</Typography> },
-            {
-              id: 'clientId',
-              header: 'Client ID',
-              render: (client) => (
-                <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-                  {client.clientId}
-                </Typography>
-              ),
-            },
-            {
-              id: 'scopes',
-              header: 'Scopes',
-              render: (client) => (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {client.scopes.map((s) => (
-                    <Chip key={s} size="small" variant="outlined" label={s} />
-                  ))}
-                </Box>
-              ),
-            },
-            { id: 'rate', header: 'Rate Limit', render: (client) => <Typography variant="body2">{client.rateLimitRpm} RPM</Typography> },
-            {
-              id: 'status',
-              header: 'Status',
-              render: (client) => (
-                <Chip
-                  size="small"
-                  label={client.status}
-                  color={client.status === 'ACTIVE' ? 'success' : client.status === 'SUSPENDED' ? 'warning' : 'error'}
-                />
-              ),
-            },
-            {
-              id: 'actions',
-              header: 'Actions',
-              align: 'right',
-              render: (client) => (
-                <>
-                  <Tooltip title="Rotate Client Secret">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => {
-                        setClientToRotate(client);
-                        setRotateDialogOpen(true);
-                      }}
-                    >
-                      <AutorenewIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Button
-                    size="small"
-                    sx={{ ml: 1 }}
-                    variant="outlined"
-                    color={client.status === 'ACTIVE' ? 'warning' : 'success'}
-                    onClick={() => handleToggleStatus(client)}
-                  >
-                    {client.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                  </Button>
-                  <IconButton size="small" color="error" sx={{ ml: 1 }} onClick={() => handleDeleteClient(client.id)}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </>
-              ),
-            },
-          ]}
+          emptyMessage={query ? 'No clients match your search.' : 'No API clients registered yet.'}
+          columns={clientColumns}
         />
-      </Paper>
+      </DetailCard>
 
       {/* Register Client Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>

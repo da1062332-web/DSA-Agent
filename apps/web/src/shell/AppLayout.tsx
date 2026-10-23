@@ -70,6 +70,13 @@ export function AppLayout() {
     });
   };
 
+  const handleOpenSection = (_sectionTitle: string) => {
+    setSidebarCollapsed(false);
+    try {
+      localStorage.setItem('dsa_sidebar_collapsed', 'false');
+    } catch {}
+  };
+
   const theme = useTheme();
   const wide = useMediaQuery(theme.breakpoints.up('md'));
   useEffect(() => setDrawerOpen(false), [location.pathname]);
@@ -124,42 +131,53 @@ export function AppLayout() {
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
         <AppBar position="sticky" elevation={0} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }}>
-          <Toolbar sx={{ gap: 1, minHeight: 64, px: { xs: 2, md: 3 } }}>
-            {wide ? (
-              <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} arrow>
-                <IconButton
+          <Toolbar disableGutters sx={{ gap: 1, minHeight: 64, pr: { xs: 2, md: 3 } }}>
+            {/* Fixed-width 72px column so the hamburger icon NEVER jumps and stays perfectly aligned with the collapsed rail */}
+            <Box
+              sx={{
+                width: 72,
+                minWidth: 72,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {wide ? (
+                <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right" arrow>
+                  <IconButton
+                    color="inherit"
+                    onClick={toggleSidebarCollapse}
+                    aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      bgcolor: 'rgba(255, 255, 255, 0.12)',
+                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.22)' },
+                      borderRadius: 2.5,
+                    }}
+                  >
+                    <MenuIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <Button
                   color="inherit"
-                  onClick={toggleSidebarCollapse}
-                  aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  onClick={() => setDrawerOpen(true)}
+                  data-testid="shell.menu"
                   sx={{
-                    mr: 1,
-                    p: 1,
-                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    textTransform: 'none',
+                    bgcolor: 'rgba(255, 255, 255, 0.12)',
                     '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
                     borderRadius: 1.5,
+                    px: 1.5,
+                    fontWeight: 600,
                   }}
                 >
-                  <MenuIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            ) : (
-              <Button
-                color="inherit"
-                onClick={() => setDrawerOpen(true)}
-                data-testid="shell.menu"
-                sx={{
-                  mr: 1,
-                  textTransform: 'none',
-                  bgcolor: 'rgba(255, 255, 255, 0.12)',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                  borderRadius: 1.5,
-                  px: 1.5,
-                  fontWeight: 600,
-                }}
-              >
-                Menu
-              </Button>
-            )}
+                  Menu
+                </Button>
+              )}
+            </Box>
 
             <Box
               component={RouterLink}
@@ -169,6 +187,7 @@ export function AppLayout() {
                 alignItems: 'center',
                 gap: 1.25,
                 textDecoration: 'none',
+                ml: 0.5,
                 mr: 2,
               }}
             >
@@ -297,6 +316,7 @@ export function AppLayout() {
               onNavigate={() => setDrawerOpen(false)}
               collapsed={wide && sidebarCollapsed}
               onToggleCollapse={wide ? toggleSidebarCollapse : undefined}
+              onOpenSection={wide ? handleOpenSection : undefined}
             />
           </Drawer>
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>
