@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { PageHeader } from '../../ui';
 import { createUser, fetchBranches, fetchRoles } from './api';
 import type { Branch, Role } from './types';
 
@@ -135,14 +136,13 @@ export function UserCreatePage() {
         &larr; Back to Staff Directory
       </Button>
 
+      <PageHeader
+        title="Create New Staff User"
+        subtitle="Provision a new user account with branch association, contact details, and role assignments."
+      />
+
       <Card sx={{ borderRadius: 3, boxShadow: 2 }}>
         <CardContent sx={{ p: 4 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            Create New Staff User
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Provision a new user account with branch association, contact details, and role assignments.
-          </Typography>
 
           {errorMessage && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErrorMessage(null)}>

@@ -29,6 +29,7 @@ import {
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { assignUserRole, fetchBranches, fetchRoles, fetchUserById, removeUserRole, updateUser } from './api';
 import { Can } from '../../shell/Can';
+import { PageHeader } from '../../ui';
 import type { Branch, Role, UserSummary } from './types';
 
 export function UserDetailPage() {
@@ -210,49 +211,37 @@ export function UserDetailPage() {
         &larr; Back to Staff Directory
       </Button>
 
-      {/* Header Profile Card */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 2,
-          }}
-        >
+      <PageHeader
+        title={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar
-              sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}
-            >
+            <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}>
               {user.displayName.charAt(0).toUpperCase()}
             </Avatar>
-            <Box>
-              <Typography variant="h5" fontWeight={700}>
-                {user.displayName}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {user.email} &bull; ID: <code style={{ fontFamily: 'monospace' }}>{user.id}</code>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Primary Branch: <strong>{getBranchName(user.primaryBranchId)}</strong>
-              </Typography>
-            </Box>
+            {user.displayName}
           </Box>
-
+        }
+        subtitle={
+          <>
+            <Typography variant="body2" color="text.secondary">
+              {user.email} &bull; ID: <code style={{ fontFamily: 'monospace' }}>{user.id}</code>
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Primary Branch: <strong>{getBranchName(user.primaryBranchId)}</strong>
+            </Typography>
+          </>
+        }
+        badge={
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
               label={user.status}
-              color={
-                user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
-              }
+              color={user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'}
               sx={{ fontWeight: 600 }}
             />
             <Chip label={`Availability: ${user.availability}`} variant="outlined" />
             <Chip label={`Version: ${user.lockVersion}`} size="small" sx={{ bgcolor: 'action.hover' }} />
           </Stack>
-        </Box>
-      </Paper>
+        }
+      />
 
       {/* Feedback Alerts */}
       {error && (

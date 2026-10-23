@@ -20,6 +20,7 @@ import {
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { deleteRole, fetchPermissions, fetchRoleById, updateRole } from './api';
 import { Can } from '../../shell/Can';
+import { PageHeader } from '../../ui';
 import type { Permission, Role } from './types';
 
 export function RoleDetailPage() {
@@ -145,19 +146,11 @@ export function RoleDetailPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 3 }}
-        flexWrap="wrap"
-        gap={2}
-      >
-        <Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Typography variant="h4" fontWeight={700}>
-              {role.name}
-            </Typography>
+      <PageHeader
+        title={role.name}
+        backTo="/roles"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
             {role.isTemplate ? (
               <Chip label="System Template" color="primary" variant="outlined" size="small" />
             ) : (
@@ -165,28 +158,29 @@ export function RoleDetailPage() {
             )}
             <Chip label={`v${role.version}`} size="small" variant="outlined" />
           </Stack>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}>
+        }
+        subtitle={
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
             {role.code} &bull; ID: {role.id}
           </Typography>
-        </Box>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" component={RouterLink} to="/roles">
-            &larr; Back to Roles
-          </Button>
-          {!role.isTemplate && (
+        }
+        actions={
+          <Stack direction="row" spacing={1}>
+            {!role.isTemplate && (
+              <Can action="role.manage">
+                <Button variant="outlined" color="error" onClick={handleDelete} disabled={saving}>
+                  Delete Role
+                </Button>
+              </Can>
+            )}
             <Can action="role.manage">
-              <Button variant="outlined" color="error" onClick={handleDelete} disabled={saving}>
-                Delete Role
+              <Button variant="contained" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </Can>
-          )}
-          <Can action="role.manage">
-            <Button variant="contained" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </Can>
-        </Stack>
-      </Stack>
+          </Stack>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
