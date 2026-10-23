@@ -41,6 +41,7 @@ import {
   CheckCircleIcon,
   ShieldIcon as SecurityIcon,
 } from '../../shell/icons';
+import { DataTable } from '../../ui';
 import type { ApiClientResponse, CreateApiClientInput } from '@dsa/contracts';
 import { listApiClients, createApiClient, rotateClientSecret, updateApiClient, deleteApiClient } from './api';
 
@@ -277,115 +278,97 @@ export function ApiManagementPage() {
 
       {/* Clients Table */}
       <Paper elevation={2}>
-        <TableContainer>
-          <Table size="medium">
-            <TableHead sx={{ backgroundColor: 'action.hover' }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Client / App Name</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Partner Organisation</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Client ID</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Scopes</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Rate Limit</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading && clients.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <CircularProgress size={32} />
-                  </TableCell>
-                </TableRow>
-              ) : clients.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Typography color="text.secondary">No API clients registered yet.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                clients.map((client) => (
-                  <TableRow key={client.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600}>
-                        {client.name}
-                      </Typography>
-                      {client.allowedIps && client.allowedIps.length > 0 && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          IPs: {client.allowedIps.join(', ')}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{client.partnerName}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-                        {client.clientId}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {client.scopes.map((s) => (
-                          <Chip key={s} size="small" variant="outlined" label={s} />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{client.rateLimitRpm} RPM</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={client.status}
-                        color={
-                          client.status === 'ACTIVE'
-                            ? 'success'
-                            : client.status === 'SUSPENDED'
-                              ? 'warning'
-                              : 'error'
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Rotate Client Secret">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => {
-                            setClientToRotate(client);
-                            setRotateDialogOpen(true);
-                          }}
-                        >
-                          <AutorenewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Button
-                        size="small"
-                        sx={{ ml: 1 }}
-                        variant="outlined"
-                        color={client.status === 'ACTIVE' ? 'warning' : 'success'}
-                        onClick={() => handleToggleStatus(client)}
-                      >
-                        {client.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                      </Button>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        sx={{ ml: 1 }}
-                        onClick={() => handleDeleteClient(client.id)}
-                      >
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <DataTable<ApiClientResponse>
+          dataTestId="api.table.clients"
+          loading={loading}
+          data={clients}
+          keyExtractor={(client) => client.id}
+          emptyMessage="No API clients registered yet."
+          columns={[
+            {
+              id: 'name',
+              header: 'Client / App Name',
+              render: (client) => (
+                <>
+                  <Typography variant="body2" fontWeight={600}>
+                    {client.name}
+                  </Typography>
+                  {client.allowedIps && client.allowedIps.length > 0 && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      IPs: {client.allowedIps.join(', ')}
+                    </Typography>
+                  )}
+                </>
+              ),
+            },
+            { id: 'partner', header: 'Partner Organisation', render: (client) => <Typography variant="body2">{client.partnerName}</Typography> },
+            {
+              id: 'clientId',
+              header: 'Client ID',
+              render: (client) => (
+                <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
+                  {client.clientId}
+                </Typography>
+              ),
+            },
+            {
+              id: 'scopes',
+              header: 'Scopes',
+              render: (client) => (
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {client.scopes.map((s) => (
+                    <Chip key={s} size="small" variant="outlined" label={s} />
+                  ))}
+                </Box>
+              ),
+            },
+            { id: 'rate', header: 'Rate Limit', render: (client) => <Typography variant="body2">{client.rateLimitRpm} RPM</Typography> },
+            {
+              id: 'status',
+              header: 'Status',
+              render: (client) => (
+                <Chip
+                  size="small"
+                  label={client.status}
+                  color={client.status === 'ACTIVE' ? 'success' : client.status === 'SUSPENDED' ? 'warning' : 'error'}
+                />
+              ),
+            },
+            {
+              id: 'actions',
+              header: 'Actions',
+              align: 'right',
+              render: (client) => (
+                <>
+                  <Tooltip title="Rotate Client Secret">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        setClientToRotate(client);
+                        setRotateDialogOpen(true);
+                      }}
+                    >
+                      <AutorenewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Button
+                    size="small"
+                    sx={{ ml: 1 }}
+                    variant="outlined"
+                    color={client.status === 'ACTIVE' ? 'warning' : 'success'}
+                    onClick={() => handleToggleStatus(client)}
+                  >
+                    {client.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                  </Button>
+                  <IconButton size="small" color="error" sx={{ ml: 1 }} onClick={() => handleDeleteClient(client.id)}>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </>
+              ),
+            },
+          ]}
+        />
       </Paper>
 
       {/* Register Client Dialog */}
