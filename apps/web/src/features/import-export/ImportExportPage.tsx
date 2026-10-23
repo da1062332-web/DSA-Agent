@@ -31,7 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { apiDownload } from '../../api/client';
 import { Can } from '../../shell/Can';
@@ -202,14 +202,10 @@ export function ImportExportPage() {
           {notification.message}
         </Alert>
       )}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>
-          Import and Export Framework (MOD-IMP)
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Generic bulk data ingestion and scoped, masked, expiring record exports.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Import and Export Framework (MOD-IMP)"
+        subtitle="Generic bulk data ingestion and scoped, masked, expiring record exports."
+      />
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
         <Tab label="Bulk Import Wizard (CMP-IMP.01.1)" value="import" />

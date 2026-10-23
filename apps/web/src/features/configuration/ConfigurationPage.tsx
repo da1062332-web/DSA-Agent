@@ -31,7 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { createBranch, fetchBranches, fetchTenantConfig, updateBranch, updateTenantConfig } from './api';
 import type {
   BranchConfig,
@@ -233,14 +233,10 @@ export function ConfigurationPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Tenant Configuration & Settings
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Module 6: Manage organization parameters, operational SLAs, lead routing, and branches.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Tenant Configuration & Settings"
+        subtitle="Module 6: Manage organization parameters, operational SLAs, lead routing, and branches."
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>

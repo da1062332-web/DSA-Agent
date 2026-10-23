@@ -29,7 +29,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import React, { useState } from 'react';
 import {
   useBranchDashboard,
@@ -221,20 +221,17 @@ export function ReportingPage() {
           gap: 2,
         }}
       >
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Reporting and Analytics (MOD-RPT)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Canonical reporting engine, metric registry (ENT-094), multi-category dashboards, automated
-            schedules, and daily control totals (FR-RPT-008).
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Chip label="TASK-414 Complete" color="success" size="small" variant="outlined" />
-          <Chip label="Data Squad" color="primary" size="small" />
-          <Chip label="RLS Enforced" color="secondary" size="small" />
-        </Box>
+        <PageHeader
+          title="Reporting and Analytics (MOD-RPT)"
+          subtitle="Canonical reporting engine, metric registry (ENT-094), multi-category dashboards, automated schedules, and daily control totals (FR-RPT-008)."
+          badge={
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Chip label="TASK-414 Complete" color="success" size="small" variant="outlined" />
+              <Chip label="Data Squad" color="primary" size="small" />
+              <Chip label="RLS Enforced" color="secondary" size="small" />
+            </Box>
+          }
+        />
       </Box>
 
       {/* Tabs */}
