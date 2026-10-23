@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
+import { PageHeader, StatCard, StatCardGrid } from '../../ui';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 const CATEGORY_COLORS: Record<
@@ -75,29 +76,31 @@ export function NotificationsPage() {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <div>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            Notification Inbox
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage your personal alerts, assignments, and updates
-          </Typography>
-        </div>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" onClick={() => setPreferencesOpen(true)}>
-            Preferences
-          </Button>
-          {unreadCount > 0 && (
-            <Button
-              variant="contained"
-              onClick={() => handleMarkAsRead(notifications.filter((n) => !n.readAt).map((n) => n.id))}
-            >
-              Mark all read ({unreadCount})
+      <PageHeader
+        title="Notification Inbox"
+        subtitle="Manage your personal alerts, assignments, and updates"
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" onClick={() => setPreferencesOpen(true)}>
+              Preferences
             </Button>
-          )}
-        </Stack>
-      </Box>
+            {unreadCount > 0 && (
+              <Button
+                variant="contained"
+                onClick={() => handleMarkAsRead(notifications.filter((n) => !n.readAt).map((n) => n.id))}
+              >
+                Mark all read ({unreadCount})
+              </Button>
+            )}
+          </Stack>
+        }
+      />
+
+      <StatCardGrid columns={{ xs: 12, sm: 4 }}>
+        <StatCard title="Total" value={notifications.length} format="number" status="default" />
+        <StatCard title="Unread" value={unreadCount} format="number" status="primary" />
+        <StatCard title="Read" value={notifications.length - unreadCount} format="number" status="success" />
+      </StatCardGrid>
 
       <Paper sx={{ mb: 3 }}>
         <Tabs value={filterTab} onChange={(_, val) => setFilterTab(val)}>

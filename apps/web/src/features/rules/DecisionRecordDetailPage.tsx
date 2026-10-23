@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { PageHeader } from '../../ui';
 import { fetchDecisionRecord } from './api';
 import type { DecisionRecordResponse } from './types';
 
@@ -65,16 +66,11 @@ export function DecisionRecordDetailPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={3}>
-        <Box>
-          <Button size="small" onClick={() => navigate('/decisions')} sx={{ mb: 1 }}>
-            ← All Decision Records
-          </Button>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Typography variant="h4" fontWeight={700}>
-              Decision Record
-            </Typography>
+      <PageHeader
+        title="Decision Record"
+        backTo="/decisions"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
             <Chip
               size="medium"
               label={record.status}
@@ -82,11 +78,13 @@ export function DecisionRecordDetailPage() {
             />
             <Chip size="medium" label={record.decisionKey} color="primary" variant="outlined" />
           </Stack>
+        }
+        subtitle={
           <Typography variant="caption" color="text.secondary" fontFamily="monospace">
             ID: {record.id} | Evaluated: {new Date(record.evaluationTime).toLocaleString()}
           </Typography>
-        </Box>
-      </Stack>
+        }
+      />
 
       {/* Meta cards */}
       <Grid container spacing={2} mb={3}>
