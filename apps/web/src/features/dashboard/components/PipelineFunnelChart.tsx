@@ -39,31 +39,28 @@ export function PipelineFunnelChart({
   onStageClick,
   dataTestId,
 }: PipelineFunnelChartProps) {
-  const topStageCount = stages.length > 0 ? Math.max(stages[0]?.count ?? 0, 1) : 1;
+  const peakStageCount = stages.length > 0 ? Math.max(...stages.map((s) => s.count), 1) : 1;
   const totalCount = stages.reduce((sum, s) => sum + s.count, 0);
 
   return (
     <Card
       data-testid={dataTestId}
       sx={{
-        height: '100%',
         borderRadius: 2.5,
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
-      <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2.5 }}>
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.01em' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em', lineHeight: 1.3 }}>
               {title}
             </Typography>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="caption" color="text.secondary">
                 {subtitle}
               </Typography>
             )}
@@ -77,19 +74,18 @@ export function PipelineFunnelChart({
         </Stack>
 
         {isLoading ? (
-          <Stack spacing={2.5} sx={{ my: 'auto' }}>
+          <Stack spacing={2}>
             {[1, 2, 3, 4].map((i) => (
               <Box key={i}>
-                <Skeleton variant="text" width="40%" height={24} />
-                <Skeleton variant="rounded" width="100%" height={28} sx={{ mt: 0.5 }} />
+                <Skeleton variant="text" width="40%" height={20} />
+                <Skeleton variant="rounded" width="100%" height={16} sx={{ mt: 0.5 }} />
               </Box>
             ))}
           </Stack>
         ) : totalCount === 0 ? (
           <Box
             sx={{
-              my: 'auto',
-              py: 5,
+              py: 4,
               px: 2,
               textAlign: 'center',
               bgcolor: 'action.hover',
@@ -106,16 +102,15 @@ export function PipelineFunnelChart({
             </Typography>
           </Box>
         ) : (
-          <Stack spacing={2} sx={{ my: 'auto' }}>
+          <Stack spacing={1.5}>
             {stages.map((stage, idx) => {
+              const referenceBase = stages[0]?.count > 0 ? stages[0].count : peakStageCount;
               const conversionPercent =
-                stages[0] && stages[0].count > 0
-                  ? Math.round((stage.count / stages[0].count) * 100)
-                  : 0;
+                referenceBase > 0 ? Math.round((stage.count / referenceBase) * 100) : 0;
 
-              const stagePercentageOfTop = Math.min(
+              const stagePercentageOfPeak = Math.min(
                 100,
-                Math.max(6, (stage.count / topStageCount) * 100),
+                Math.max(stage.count > 0 ? 8 : 2, (stage.count / peakStageCount) * 100),
               );
 
               const isClickable = Boolean(stage.to || onStageClick);
@@ -132,7 +127,7 @@ export function PipelineFunnelChart({
                     textDecoration: 'none',
                     color: 'inherit',
                     borderRadius: 2,
-                    p: 1.25,
+                    p: 1,
                     transition: 'all 0.15s ease',
                     border: '1px solid transparent',
                     ...(isClickable && {
@@ -144,12 +139,12 @@ export function PipelineFunnelChart({
                     }),
                   }}
                 >
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="body2" fontWeight={600} color="text.primary">
                         {stage.label}
                       </Typography>
-                      {idx > 0 && (
+                      {idx > 0 && stage.count > 0 && (
                         <Chip
                           label={`${conversionPercent}%`}
                           size="small"
@@ -173,7 +168,7 @@ export function PipelineFunnelChart({
                   <Box
                     sx={{
                       width: '100%',
-                      height: 10,
+                      height: 8,
                       bgcolor: 'action.hover',
                       borderRadius: 1,
                       overflow: 'hidden',
@@ -181,11 +176,11 @@ export function PipelineFunnelChart({
                   >
                     <Box
                       sx={{
-                        width: `${stagePercentageOfTop}%`,
+                        width: `${stagePercentageOfPeak}%`,
                         height: '100%',
                         bgcolor: stage.color ?? 'primary.main',
                         borderRadius: 1,
-                        transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'width 0.5s ease-in-out',
                       }}
                     />
                   </Box>

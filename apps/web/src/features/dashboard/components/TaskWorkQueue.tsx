@@ -40,6 +40,7 @@ export interface TaskWorkQueueProps {
   isLoading?: boolean;
   emptyMessage?: string;
   viewAllTo?: string;
+  maxItems?: number;
   dataTestId?: string;
 }
 
@@ -78,7 +79,7 @@ function renderSlaBadge(item: TaskWorkQueueItem) {
   }
   if (item.dueDate) {
     return (
-      <Typography variant="caption" color="text.secondary" fontWeight={500}>
+      <Typography variant="caption" color="text.secondary" fontWeight={500} sx={{ whiteSpace: 'nowrap' }}>
         {new Date(item.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
       </Typography>
     );
@@ -93,27 +94,27 @@ export function TaskWorkQueue({
   isLoading = false,
   emptyMessage = 'No tasks requiring immediate action',
   viewAllTo,
+  maxItems = 4,
   dataTestId,
 }: TaskWorkQueueProps) {
+  const displayItems = items.slice(0, maxItems);
+
   return (
     <Card
       data-testid={dataTestId}
       sx={{
-        height: '100%',
         borderRadius: 2.5,
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
-      <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
           <Box>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
+              <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em', lineHeight: 1.3 }}>
                 {title}
               </Typography>
               <Chip
@@ -124,7 +125,7 @@ export function TaskWorkQueue({
               />
             </Stack>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="caption" color="text.secondary">
                 {subtitle}
               </Typography>
             )}
@@ -135,7 +136,7 @@ export function TaskWorkQueue({
               to={viewAllTo}
               size="small"
               variant="text"
-              sx={{ textTransform: 'none', fontWeight: 600 }}
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: 12, p: 0.5 }}
             >
               View all &rarr;
             </Button>
@@ -143,16 +144,15 @@ export function TaskWorkQueue({
         </Stack>
 
         {isLoading ? (
-          <Stack spacing={1.5} sx={{ my: 'auto' }}>
+          <Stack spacing={1.5} sx={{ py: 1 }}>
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} variant="rounded" width="100%" height={48} />
+              <Skeleton key={i} variant="rounded" width="100%" height={38} />
             ))}
           </Stack>
         ) : items.length === 0 ? (
           <Box
             sx={{
-              my: 'auto',
-              py: 5,
+              py: 4,
               px: 2,
               textAlign: 'center',
               bgcolor: 'action.hover',
@@ -169,29 +169,29 @@ export function TaskWorkQueue({
             </Typography>
           </Box>
         ) : (
-          <TableContainer sx={{ flex: 1 }}>
+          <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, py: 0.75, px: 1 }}>
                     Task / Action
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, py: 0.75, px: 1 }}>
                     Priority
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, py: 0.75, px: 1 }}>
                     Entity
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, py: 0.75, px: 1 }}>
                     SLA / Due
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, py: 0.75, px: 1 }}>
                     Action
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {items.map((item) => (
+                {displayItems.map((item) => (
                   <TableRow
                     key={item.id}
                     hover
@@ -200,8 +200,8 @@ export function TaskWorkQueue({
                       '&:last-child td, &:last-child th': { border: 0 },
                     }}
                   >
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={600} color="text.primary">
+                    <TableCell sx={{ py: 1, px: 1 }}>
+                      <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ lineHeight: 1.25 }}>
                         {item.title}
                       </Typography>
                       {item.category && (
@@ -210,7 +210,7 @@ export function TaskWorkQueue({
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ py: 1, px: 1 }}>
                       <Chip
                         label={item.priority}
                         size="small"
@@ -218,7 +218,7 @@ export function TaskWorkQueue({
                         sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ py: 1, px: 1 }}>
                       {item.entityLink ? (
                         <Chip
                           component={RouterLink}
@@ -228,14 +228,14 @@ export function TaskWorkQueue({
                           clickable
                           variant="outlined"
                           color="primary"
-                          sx={{ height: 22, fontSize: 11, fontWeight: 600 }}
+                          sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
                         />
                       ) : (
                         <Typography variant="caption" color="text.disabled">—</Typography>
                       )}
                     </TableCell>
-                    <TableCell>{renderSlaBadge(item)}</TableCell>
-                    <TableCell align="right">
+                    <TableCell sx={{ py: 1, px: 1 }}>{renderSlaBadge(item)}</TableCell>
+                    <TableCell align="right" sx={{ py: 1, px: 1 }}>
                       {item.actionLabel && (
                         <Button
                           size="small"
@@ -246,10 +246,12 @@ export function TaskWorkQueue({
                           sx={{
                             fontSize: 11,
                             py: 0.25,
-                            px: 1.25,
-                            height: 26,
+                            px: 1,
+                            minWidth: 56,
+                            height: 24,
                             textTransform: 'none',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {item.actionLabel}

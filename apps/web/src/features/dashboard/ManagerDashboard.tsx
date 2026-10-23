@@ -82,7 +82,7 @@ export function ManagerDashboard() {
     .reduce((sum, a) => sum + (Number(a.requestedAmount) || 0), 0);
 
   // Map tasks to TaskWorkQueue items
-  const queueItems: TaskWorkQueueItem[] = teamTasks.slice(0, 8).map((t) => ({
+  const queueItems: TaskWorkQueueItem[] = teamTasks.slice(0, 4).map((t) => ({
     id: t.id,
     title: t.title,
     category: t.type,
@@ -92,7 +92,7 @@ export function ManagerDashboard() {
       label: t.id.slice(0, 8),
       to: '/tasks',
     },
-    actionLabel: 'Assign / Resolve',
+    actionLabel: 'Assign',
   }));
 
   return (
