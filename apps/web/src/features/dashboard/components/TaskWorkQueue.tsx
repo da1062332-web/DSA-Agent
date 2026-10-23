@@ -4,8 +4,6 @@ import {
   Card,
   CardContent,
   Chip,
-  IconButton,
-  Link,
   Skeleton,
   Stack,
   Table,
@@ -14,7 +12,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -81,7 +78,7 @@ function renderSlaBadge(item: TaskWorkQueueItem) {
   }
   if (item.dueDate) {
     return (
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="text.secondary" fontWeight={500}>
         {new Date(item.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
       </Typography>
     );
@@ -102,18 +99,30 @@ export function TaskWorkQueue({
     <Card
       data-testid={dataTestId}
       sx={{
-        borderRadius: 2,
+        height: '100%',
+        borderRadius: 2.5,
         border: '1px solid',
         borderColor: 'divider',
-        boxShadow: 'none',
+        bgcolor: 'background.paper',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight={700}>
-              {title}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
+                {title}
+              </Typography>
+              <Chip
+                label={items.length}
+                size="small"
+                color={items.some((i) => i.priority === 'URGENT' || i.isOverdue) ? 'error' : 'primary'}
+                sx={{ height: 20, fontSize: 11, fontWeight: 700 }}
+              />
+            </Stack>
             {subtitle && (
               <Typography variant="body2" color="text.secondary">
                 {subtitle}
@@ -121,14 +130,20 @@ export function TaskWorkQueue({
             )}
           </Box>
           {viewAllTo && (
-            <Button component={RouterLink} to={viewAllTo} size="small" variant="text" sx={{ textTransform: 'none' }}>
+            <Button
+              component={RouterLink}
+              to={viewAllTo}
+              size="small"
+              variant="text"
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
               View all &rarr;
             </Button>
           )}
         </Stack>
 
         {isLoading ? (
-          <Stack spacing={1.5} sx={{ py: 1 }}>
+          <Stack spacing={1.5} sx={{ my: 'auto' }}>
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} variant="rounded" width="100%" height={48} />
             ))}
@@ -136,33 +151,55 @@ export function TaskWorkQueue({
         ) : items.length === 0 ? (
           <Box
             sx={{
+              my: 'auto',
               py: 5,
+              px: 2,
               textAlign: 'center',
               bgcolor: 'action.hover',
-              borderRadius: 1.5,
+              borderRadius: 2,
               border: '1px dashed',
               borderColor: 'divider',
             }}
           >
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" fontWeight={600} color="text.primary" gutterBottom>
               {emptyMessage}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              All queue items and checklists are up to date.
             </Typography>
           </Box>
         ) : (
-          <TableContainer>
+          <TableContainer sx={{ flex: 1 }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, fontSize: 12 }}>Task / Action</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: 12 }}>Priority</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: 12 }}>Related Entity</TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: 12 }}>SLA / Due</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, fontSize: 12 }}>Action</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Task / Action
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Priority
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Entity
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    SLA / Due
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Action
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableRow
+                    key={item.id}
+                    hover
+                    sx={{
+                      transition: 'background-color 0.15s',
+                      '&:last-child td, &:last-child th': { border: 0 },
+                    }}
+                  >
                     <TableCell>
                       <Typography variant="body2" fontWeight={600} color="text.primary">
                         {item.title}
@@ -178,7 +215,7 @@ export function TaskWorkQueue({
                         label={item.priority}
                         size="small"
                         color={getPriorityColor(item.priority)}
-                        sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
+                        sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
                       />
                     </TableCell>
                     <TableCell>
@@ -191,7 +228,7 @@ export function TaskWorkQueue({
                           clickable
                           variant="outlined"
                           color="primary"
-                          sx={{ height: 22, fontSize: 11 }}
+                          sx={{ height: 22, fontSize: 11, fontWeight: 600 }}
                         />
                       ) : (
                         <Typography variant="caption" color="text.disabled">—</Typography>
@@ -199,12 +236,21 @@ export function TaskWorkQueue({
                     </TableCell>
                     <TableCell>{renderSlaBadge(item)}</TableCell>
                     <TableCell align="right">
-                      {item.actionLabel && item.onAction && (
+                      {item.actionLabel && (
                         <Button
                           size="small"
                           variant="outlined"
                           onClick={() => item.onAction?.(item)}
-                          sx={{ textTransform: 'none', py: 0.25, px: 1, fontSize: 12 }}
+                          component={item.entityLink?.to ? RouterLink : 'button'}
+                          to={item.entityLink?.to}
+                          sx={{
+                            fontSize: 11,
+                            py: 0.25,
+                            px: 1.25,
+                            height: 26,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                          }}
                         >
                           {item.actionLabel}
                         </Button>

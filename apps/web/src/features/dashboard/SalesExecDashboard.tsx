@@ -6,7 +6,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -37,12 +36,12 @@ export function SalesExecDashboard() {
 
   const { data: leadsData, isLoading: leadsLoading, isError: leadsError } = useQuery({
     queryKey: ['sales-dashboard-leads', dateScope],
-    queryFn: () => fetchLeads({ limit: 20 }),
+    queryFn: () => fetchLeads({ limit: 50 }),
   });
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
     queryKey: ['sales-dashboard-tasks', dateScope],
-    queryFn: () => listTasks({ view: 'MINE', limit: 5 }),
+    queryFn: () => listTasks({ view: 'MINE', limit: 10 }),
   });
 
   const leads: LeadResource[] = leadsData?.data ?? [];
@@ -71,42 +70,69 @@ export function SalesExecDashboard() {
         }
       : undefined,
     actionLabel: 'Details',
-    onAction: () => {
-      window.location.href = `/tasks`;
-    },
   }));
 
   const funnelStages = [
-    { key: 'new', label: 'New Leads', count: newLeadsCount, to: '/leads?filter[state]=NEW', color: '#1976d2' },
+    { key: 'new', label: 'New Leads', count: newLeadsCount, to: '/leads?filter[state]=NEW', color: '#1d5fd1' },
     {
       key: 'in_progress',
       label: 'In Follow-up',
       count: inProgressCount,
       to: '/leads?filter[state]=IN_PROGRESS',
-      color: '#ed6c02',
+      color: '#f59e0b',
     },
     {
       key: 'qualified',
       label: 'Qualified',
       count: qualifiedCount,
       to: '/leads?filter[state]=QUALIFIED',
-      color: '#2e7d32',
+      color: '#10b981',
     },
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="sales-exec-dashboard">
-      {/* Header & Controls */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+    <Box sx={{ width: '100%', py: 1 }} data-testid="sales-exec-dashboard">
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Sales Executive Workspace
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+              Sales Executive Workspace
+            </Typography>
+            <Chip
+              label="Field Sales"
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Pipeline Active"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             Manage your daily lead pipeline, borrower follow-ups, and conversion targets.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
           <Can action="lead.create">
             <Button
@@ -115,6 +141,7 @@ export function SalesExecDashboard() {
               component={RouterLink}
               to="/leads/new"
               data-testid="sales-create-lead-btn"
+              sx={{ fontWeight: 700 }}
             >
               + Create Lead
             </Button>
@@ -126,10 +153,10 @@ export function SalesExecDashboard() {
             All Tasks
           </Button>
         </Stack>
-      </Box>
+      </Paper>
 
       {/* KPI Overview Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="New Inbound Leads"
@@ -183,80 +210,20 @@ export function SalesExecDashboard() {
         </Grid>
       </Grid>
 
-      {/* Main Content Layout */}
-      <Grid container spacing={3}>
-        {/* Left Column: Funnel & Recent Leads */}
-        <Grid item xs={12} md={7}>
-          <Stack spacing={3}>
-            <PipelineFunnelChart
-              title="Lead Pipeline Funnel"
-              subtitle="Conversion progression across lead lifecycle stages"
-              stages={funnelStages}
-              isLoading={leadsLoading}
-              dataTestId="sales-pipeline-funnel"
-            />
-
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Recent Inbound Leads
-                </Typography>
-                <Button size="small" component={RouterLink} to="/leads">
-                  View All &rarr;
-                </Button>
-              </Box>
-              {leadsError && <Alert severity="error">Unable to load active leads.</Alert>}
-              {leadsLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                  <CircularProgress size={32} />
-                </Box>
-              ) : leads.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No active leads assigned yet. Click "+ Create Lead" to get started.
-                </Typography>
-              ) : (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600 }}>Borrower</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>State</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {leads.slice(0, 5).map((l: LeadResource) => (
-                        <TableRow key={l.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
-                          <TableCell>{l.productCategory || 'LOAN'}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={l.state}
-                              size="small"
-                              color={l.state === 'QUALIFIED' ? 'success' : l.state === 'NEW' ? 'primary' : 'default'}
-                              sx={{ height: 22, fontSize: 11, fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Button size="small" component={RouterLink} to={`/leads/${l.id}`}>
-                              Open
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Paper>
-          </Stack>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
+          <PipelineFunnelChart
+            title="Lead Pipeline Funnel"
+            subtitle="Conversion progression across lead lifecycle stages"
+            stages={funnelStages}
+            isLoading={leadsLoading}
+            dataTestId="sales-pipeline-funnel"
+          />
         </Grid>
-
-        {/* Right Column: Work Queue */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
-            title="Urgent Follow-ups & Tasks"
+            title="Urgent Follow-ups &amp; Tasks"
             subtitle="Prioritized checklist items assigned to you"
             items={queueItems}
             isLoading={tasksLoading}
@@ -265,6 +232,84 @@ export function SalesExecDashboard() {
           />
         </Grid>
       </Grid>
-    </Container>
+
+      {/* Full-Width Operational Table: Recent Inbound Leads */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Recent Inbound Leads
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Active loan inquiries assigned to your queue
+            </Typography>
+          </Box>
+          <Button size="small" component={RouterLink} to="/leads" sx={{ fontWeight: 600 }}>
+            View All Leads &rarr;
+          </Button>
+        </Box>
+        {leadsError && <Alert severity="error">Unable to load active leads.</Alert>}
+        {leadsLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : leads.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+            No active leads assigned yet. Click "+ Create Lead" to get started.
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Borrower</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Product</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Mobile</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>State</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {leads.slice(0, 8).map((l: LeadResource) => (
+                  <TableRow key={l.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
+                    <TableCell>{l.productCategory || 'LOAN'}</TableCell>
+                    <TableCell>{l.mobileMasked || '—'}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={l.state}
+                        size="small"
+                        color={l.state === 'QUALIFIED' ? 'success' : l.state === 'NEW' ? 'primary' : 'default'}
+                        sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        component={RouterLink}
+                        to={`/leads/${l.id}`}
+                        sx={{ fontSize: 11, py: 0.25, px: 1.25, height: 26 }}
+                      >
+                        Open
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
   );
 }

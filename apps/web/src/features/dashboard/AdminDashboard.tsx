@@ -6,8 +6,8 @@ import {
   Card,
   CardContent,
   Chip,
-  Container,
   Grid,
+  Paper,
   Stack,
   Typography,
 } from '@mui/material';
@@ -211,11 +211,17 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="admin-dashboard">
-      {/* Header & Controls */}
-      <Box
+    <Box sx={{ width: '100%', py: 1 }} data-testid="admin-dashboard">
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
         sx={{
-          mb: 4,
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -224,24 +230,31 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
         }}
       >
         <Box>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="h4" fontWeight={700}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
               {roleTitle} Command Center
             </Typography>
             <Chip
               label={roleTitle}
               color="primary"
               size="small"
-              sx={{ fontWeight: 600 }}
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Tenant Active"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
             />
           </Stack>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body2" color="text.secondary">
             Comprehensive tenant governance, branch network oversight, staff access control, and operational metrics.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={1}>
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
-          <Button variant="contained" color="primary" component={RouterLink} to="/users">
+          <Button variant="contained" color="primary" component={RouterLink} to="/users" sx={{ fontWeight: 700 }}>
             Manage Staff
           </Button>
           <Button variant="outlined" component={RouterLink} to="/admin/branches">
@@ -254,10 +267,10 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
             Audit Log
           </Button>
         </Stack>
-      </Box>
+      </Paper>
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* KPI Overview Cards */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Operating Branches"
@@ -301,34 +314,47 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
         </Grid>
       </Grid>
 
-      {/* Pipeline Funnel & Audit Overview */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={7}>
+      {/* Middle Row: Balanced Funnel & Audit Overview */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
             title="Organisation Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Inbound Leads', count: leads.length, color: '#f59e0b' },
-              { key: 'files', label: 'New Files', count: newAppsCount, color: '#3b82f6' },
-              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#8b5cf6' },
+              { key: 'files', label: 'New Files', count: newAppsCount, color: '#1d5fd1' },
+              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#0288d1' },
               { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#10b981' },
               { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#059669' },
             ]}
           />
         </Grid>
-        <Grid item xs={12} md={5}>
-          <Card sx={{ height: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Grid item xs={12} lg={5}>
+          <Card
+            sx={{
+              height: '100%',
+              borderRadius: 2.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={600}>
-                  Governance &amp; Audit Trail
-                </Typography>
-                <Button size="small" component={RouterLink} to="/audit">
-                  View Full Audit
+                <Box>
+                  <Typography variant="h6" fontWeight={700}>
+                    Governance &amp; Audit Trail
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Immutable append-only cryptographic log
+                  </Typography>
+                </Box>
+                <Button size="small" component={RouterLink} to="/audit" sx={{ fontWeight: 600 }}>
+                  View Full Audit &rarr;
                 </Button>
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Recent append-only cryptographic audit events across tenant records.
-              </Typography>
               {auditLoading ? (
                 <Typography color="text.secondary">Loading audit events...</Typography>
               ) : auditEvents.length === 0 ? (
@@ -340,8 +366,8 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
                       key={evt.id}
                       sx={{
                         p: 1.5,
-                        borderRadius: 1.5,
-                        bgcolor: 'background.default',
+                        borderRadius: 2,
+                        bgcolor: 'action.hover',
                         border: '1px solid',
                         borderColor: 'divider',
                       }}
@@ -366,9 +392,9 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
         </Grid>
       </Grid>
 
-      {/* Administration Modules Directory */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+      {/* Full-Width Administration Modules Directory */}
+      <Box sx={{ mt: 1 }}>
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
           Organisation Management Directory
         </Typography>
         <Grid container spacing={2}>
@@ -380,9 +406,15 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  borderRadius: 2,
-                  transition: 'box-shadow 0.2s',
-                  '&:hover': { boxShadow: 2 },
+                  borderRadius: 2.5,
+                  bgcolor: 'background.paper',
+                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.06)',
+                    borderColor: 'primary.main',
+                    transform: 'translateY(-2px)',
+                  },
                 }}
               >
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -390,7 +422,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
                     <Typography variant="subtitle1" fontWeight={700}>
                       {card.title}
                     </Typography>
-                    <Chip label={card.badge} size="small" variant="outlined" />
+                    <Chip label={card.badge} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: 11 }} />
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2 }}>
                     {card.desc}
@@ -400,7 +432,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
                     variant="contained"
                     component={RouterLink}
                     to={card.to}
-                    sx={{ alignSelf: 'flex-start' }}
+                    sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
                   >
                     Open
                   </Button>
@@ -410,6 +442,6 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
           ))}
         </Grid>
       </Box>
-    </Container>
+    </Box>
   );
 }

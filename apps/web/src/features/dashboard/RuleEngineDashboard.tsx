@@ -6,7 +6,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -110,18 +109,24 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
   const testId = isApprover ? 'rule-approver-dashboard' : 'rule-author-dashboard';
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid={testId}>
+    <Box sx={{ width: '100%', py: 1 }} data-testid={testId}>
       {/* SOD-09 Dual Control Governance Banner */}
-      <Alert severity={isApprover ? 'warning' : 'info'} sx={{ mb: 3 }}>
+      <Alert severity={isApprover ? 'warning' : 'info'} sx={{ mb: 2.5, borderRadius: 2.5, fontWeight: 500 }}>
         {isApprover
           ? 'Dual-Control Governance (SOD-09): Rule approvers cannot approve rule versions they authored. Production deployments require step-up MFA verification.'
           : 'Authoring Policy: Versions must pass syntax validation and test simulations before submitting for dual-control approval.'}
       </Alert>
 
-      {/* Header & Controls */}
-      <Box
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
         sx={{
-          mb: 4,
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -130,19 +135,34 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
         }}
       >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            {isApprover ? 'Rule Engine Approver Portal' : 'Business Rule Authoring Studio'}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+              {isApprover ? 'Rule Engine Approver Portal' : 'Business Rule Authoring Studio'}
+            </Typography>
+            <Chip
+              label={isApprover ? 'BRE Governance' : 'BRE Author'}
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Evaluation Active"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             {isApprover
               ? 'Review business rule changes, evaluate simulation test results, and govern production deployment.'
               : 'Design eligibility rule sets, run test simulations, and submit versions for governance review.'}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={1}>
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
           <Can action="rule.author">
-            <Button variant="contained" color="primary" component={RouterLink} to="/rules">
+            <Button variant="contained" color="primary" component={RouterLink} to="/rules" sx={{ fontWeight: 700 }}>
               Rules Studio
             </Button>
           </Can>
@@ -157,10 +177,10 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
             </Can>
           )}
         </Stack>
-      </Box>
+      </Paper>
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* KPI Overview Cards */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title={isApprover ? 'Active Production Rules' : 'Draft Versions'}
@@ -203,20 +223,20 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
         </Grid>
       </Grid>
 
-      {/* Funnel Chart & Work Queue */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={7}>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
             title="Rule Lifecycle Pipeline"
             stages={[
               { key: 'drafts', label: 'Draft Versions', count: draftVersionsTotal, color: '#f59e0b' },
               { key: 'active', label: 'Active Rule Sets', count: activeCount, color: '#10b981' },
               { key: 'archived', label: 'Archived Rules', count: archivedCount, color: '#6b7280' },
-              { key: 'records', label: 'Evaluated Records', count: decisionRecords.length, color: '#6366f1' },
+              { key: 'records', label: 'Evaluated Records', count: decisionRecords.length, color: '#1d5fd1' },
             ]}
           />
         </Grid>
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
             title={isApprover ? 'Governed Rules Queue' : 'Authoring Backlog'}
             items={queueItems}
@@ -231,25 +251,34 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
         </Grid>
       </Grid>
 
-      {/* Rule Sets Overview Table */}
-      <Paper sx={{ p: 3, borderRadius: 2 }}>
+      {/* Full-Width Operational Table: Tenant Business Rule Sets */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight={600}>
+            <Typography variant="h6" fontWeight={700}>
               Tenant Business Rule Sets
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Catalog of decision tables, eligibility matrices, and scoring criteria
             </Typography>
           </Box>
-          <Button size="small" component={RouterLink} to="/rules">
-            View All Rules
+          <Button size="small" component={RouterLink} to="/rules" sx={{ fontWeight: 600 }}>
+            View All Rules &rarr;
           </Button>
         </Box>
         {rulesError && <Alert severity="error">Unable to load rule sets.</Alert>}
         {rulesLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
+            <CircularProgress size={32} />
           </Box>
         ) : ruleSets.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
@@ -260,16 +289,16 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Rule Set Name</TableCell>
-                  <TableCell>Decision Key</TableCell>
-                  <TableCell>Scope</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Drafts</TableCell>
-                  <TableCell align="right">Action</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Rule Set Name</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Decision Key</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Scope</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Drafts</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {ruleSets.slice(0, 10).map((r: RuleSetResponse) => (
+                {ruleSets.slice(0, 8).map((r: RuleSetResponse) => (
                   <TableRow key={r.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{r.name}</TableCell>
                     <TableCell>
@@ -281,6 +310,7 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
                         label={r.status}
                         size="small"
                         color={r.status === 'ACTIVE' ? 'success' : 'default'}
+                        sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
                       />
                     </TableCell>
                     <TableCell>{r.draftVersionCount ?? 0}</TableCell>
@@ -290,6 +320,7 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
                         variant="outlined"
                         component={RouterLink}
                         to={`/rules/${r.id}`}
+                        sx={{ fontSize: 11, py: 0.25, px: 1.25, height: 26 }}
                       >
                         Open
                       </Button>
@@ -301,6 +332,6 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
           </TableContainer>
         )}
       </Paper>
-    </Container>
+    </Box>
   );
 }

@@ -6,7 +6,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -43,12 +42,12 @@ export function FinanceDashboard() {
 
   const { data: payoutsData, isLoading: payoutsLoading, isError: payoutsError } = useQuery({
     queryKey: ['finance-dashboard-payouts', dateScope],
-    queryFn: () => fetchPayoutRequests({ limit: 25 }),
+    queryFn: () => fetchPayoutRequests({ limit: 50 }),
   });
 
   const { data: plansData, isLoading: plansLoading, isError: plansError } = useQuery({
     queryKey: ['finance-dashboard-plans', dateScope],
-    queryFn: () => fetchCommissionPlans({ limit: 20 }),
+    queryFn: () => fetchCommissionPlans({ limit: 50 }),
   });
 
   const payouts: PayoutRequest[] = payoutsData?.data ?? [];
@@ -76,7 +75,7 @@ export function FinanceDashboard() {
       key: 'draft',
       label: 'Draft Requests',
       count: payouts.filter((p) => p.status === 'DRAFT').length,
-      color: '#757575',
+      color: '#1d5fd1',
       to: '/payouts',
     },
     {
@@ -84,7 +83,7 @@ export function FinanceDashboard() {
       label: 'Submitted for Approval',
       count: payouts.filter((p) => p.status === 'SUBMITTED').length,
       amount: totalPendingAmount,
-      color: '#ed6c02',
+      color: '#f59e0b',
       to: '/payouts',
     },
     {
@@ -92,13 +91,13 @@ export function FinanceDashboard() {
       label: 'Approved (Bank Ready)',
       count: approvedPayoutsCount,
       amount: totalApprovedAmount,
-      color: '#2e7d32',
+      color: '#10b981',
       to: '/payouts',
     },
   ];
 
   // Map payout requests to TaskWorkQueueItem with 4-eye SOD checker protection
-  const queueItems: TaskWorkQueueItem[] = pendingPayouts.slice(0, 5).map((p) => {
+  const queueItems: TaskWorkQueueItem[] = pendingPayouts.slice(0, 8).map((p) => {
     const isMaker = p.submittedBy === me.data?.id;
     return {
       id: p.id,
@@ -110,30 +109,65 @@ export function FinanceDashboard() {
         to: `/connectors`,
       },
       actionLabel: isChecker && !isMaker ? 'Approve' : 'Review',
-      onAction: () => {
-        window.location.href = `/payouts`;
-      },
     };
   });
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="finance-dashboard">
-      {/* Header & Controls */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+    <Box sx={{ width: '100%', py: 1 }} data-testid="finance-dashboard">
+      {/* 4-Eye SOD Notice Banner for Checkers */}
+      {isChecker && (
+        <Alert severity="warning" sx={{ mb: 2.5, borderRadius: 2.5, fontWeight: 500 }}>
+          <strong>Segregation of Duties (SOD-09 Active):</strong> You are logged in with Checker authorization privileges.
+          Batches submitted by your own account are locked from self-approval. Dual-control verification required before bank disbursement.
+        </Alert>
+      )}
+
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Finance & Commission Management
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+              Finance &amp; Commission Management
+            </Typography>
+            <Chip
+              label={isChecker ? 'Checker Mode' : 'Finance Maker'}
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Ledger Synced"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             {isChecker
-              ? '4-Eye Authorization Mode: Dual-control verification required before bank disbursement.'
+              ? 'Dual-control verification required before partner disbursement.'
               : 'Oversee partner payouts, commission accruals, period close, and ledger reconciliation.'}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
           <Can action="commission.calculate">
-            <Button variant="contained" color="primary" component={RouterLink} to="/commission">
+            <Button variant="contained" color="primary" component={RouterLink} to="/commission" sx={{ fontWeight: 700 }}>
               Calculate Commissions
             </Button>
           </Can>
@@ -144,18 +178,10 @@ export function FinanceDashboard() {
             Reconciliation
           </Button>
         </Stack>
-      </Box>
-
-      {/* 4-Eye SOD Notice Banner for Checkers */}
-      {isChecker && (
-        <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-          <strong>Segregation of Duties (SOD-09 Active):</strong> You are logged in with Checker authorization privileges.
-          Batches submitted by your own account are locked from self-approval.
-        </Alert>
-      )}
+      </Paper>
 
       {/* KPI Overview Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Awaiting Approval"
@@ -210,84 +236,18 @@ export function FinanceDashboard() {
         </Grid>
       </Grid>
 
-      {/* Main Content Layout */}
-      <Grid container spacing={3}>
-        {/* Left Column: Funnel & Recent Payouts */}
-        <Grid item xs={12} md={7}>
-          <Stack spacing={3}>
-            <PipelineFunnelChart
-              title="Payout Batch Lifecycle"
-              subtitle="Partner commission payout progression from draft to bank clearance"
-              stages={payoutStages}
-              isLoading={payoutsLoading}
-              dataTestId="finance-payout-funnel"
-            />
-
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Recent Payout Requests
-                </Typography>
-                <Button size="small" component={RouterLink} to="/payouts">
-                  View All &rarr;
-                </Button>
-              </Box>
-              {payoutsError && <Alert severity="error">Unable to load payout requests.</Alert>}
-              {payoutsLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                  <CircularProgress size={32} />
-                </Box>
-              ) : payouts.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No payout batches requested yet.
-                </Typography>
-              ) : (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600 }}>Batch Ref</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Connector</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {payouts.slice(0, 5).map((p: PayoutRequest) => (
-                        <TableRow key={p.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>#{p.id.slice(0, 8)}</TableCell>
-                          <TableCell>
-                            <ConnectorName id={p.connectorId} />
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            ₹{parseFloat(p.total).toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={p.status}
-                              size="small"
-                              color={p.status === 'APPROVED' ? 'success' : p.status === 'SUBMITTED' ? 'warning' : 'default'}
-                              sx={{ height: 22, fontSize: 11, fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Button size="small" variant="outlined" component={RouterLink} to={`/payouts`}>
-                              Open
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Paper>
-          </Stack>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
+          <PipelineFunnelChart
+            title="Payout Batch Lifecycle"
+            subtitle="Partner commission payout progression from draft to bank clearance"
+            stages={payoutStages}
+            isLoading={payoutsLoading}
+            dataTestId="finance-payout-funnel"
+          />
         </Grid>
-
-        {/* Right Column: Work Queue */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
             title={isChecker ? '4-Eye Payout Approval Queue' : 'Settlement Action Items'}
             subtitle={
@@ -302,6 +262,88 @@ export function FinanceDashboard() {
           />
         </Grid>
       </Grid>
-    </Container>
+
+      {/* Full-Width Operational Table: Recent Payout Requests */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Recent Payout Requests
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Settlement runs generated for field connectors and partners
+            </Typography>
+          </Box>
+          <Button size="small" component={RouterLink} to="/payouts" sx={{ fontWeight: 600 }}>
+            View All Payouts &rarr;
+          </Button>
+        </Box>
+        {payoutsError && <Alert severity="error">Unable to load payout requests.</Alert>}
+        {payoutsLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : payouts.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+            No payout batches requested yet.
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Batch Ref</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Connector</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Amount</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {payouts.slice(0, 8).map((p: PayoutRequest) => (
+                  <TableRow key={p.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>#{p.id.slice(0, 8)}</TableCell>
+                    <TableCell>
+                      <ConnectorName id={p.connectorId} />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      ₹{parseFloat(p.total).toLocaleString('en-IN')}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={p.status}
+                        size="small"
+                        color={p.status === 'APPROVED' ? 'success' : p.status === 'SUBMITTED' ? 'warning' : 'default'}
+                        sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        component={RouterLink}
+                        to={`/payouts`}
+                        sx={{ fontSize: 11, py: 0.25, px: 1.25, height: 26 }}
+                      >
+                        Open
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
   );
 }

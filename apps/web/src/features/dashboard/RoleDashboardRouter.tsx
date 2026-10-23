@@ -67,13 +67,13 @@ export function RoleDashboardRouter() {
   return (
     <Box sx={{ width: '100%' }} data-testid="role-dashboard-container">
       {availableRoles.length > 1 && (
-        <Container maxWidth="xl" sx={{ pt: 2, pb: 0 }}>
+        <Box sx={{ mb: 1.5 }}>
           <RoleSwitcher
             availableRoles={availableRoles}
             activeRole={activeRole}
             onRoleChange={handleRoleChange}
           />
-        </Container>
+        </Box>
       )}
 
       {(() => {

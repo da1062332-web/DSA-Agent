@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -97,11 +96,17 @@ export function ManagerDashboard() {
   }));
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="manager-dashboard">
-      {/* Header & Controls */}
-      <Box
+    <Box sx={{ width: '100%', py: 1 }} data-testid="manager-dashboard">
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
         sx={{
-          mb: 4,
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -110,17 +115,17 @@ export function ManagerDashboard() {
         }}
       >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
+          <Typography variant="h5" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
             Branch &amp; Team Management Hub
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body2" color="text.secondary">
             Supervise team task distribution, monitor unassigned lead queues, and oversee branch performance.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={1}>
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
           <Can action="lead.assign">
-            <Button variant="contained" color="primary" component={RouterLink} to="/leads">
+            <Button variant="contained" color="primary" component={RouterLink} to="/leads" sx={{ fontWeight: 700 }}>
               Lead Allocation
             </Button>
           </Can>
@@ -136,10 +141,10 @@ export function ManagerDashboard() {
             Performance
           </Button>
         </Stack>
-      </Box>
+      </Paper>
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* KPI Overview Cards */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Unassigned Inbound Leads"
@@ -183,21 +188,21 @@ export function ManagerDashboard() {
         </Grid>
       </Grid>
 
-      {/* Funnel Chart & Work Queue */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={7}>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
             title="Branch Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Unassigned Leads', count: unassignedLeads.length, color: '#f59e0b' },
-              { key: 'new', label: 'New Applications', count: newAppsCount, color: '#3b82f6' },
-              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#8b5cf6' },
+              { key: 'new', label: 'New Applications', count: newAppsCount, color: '#1d5fd1' },
+              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#0288d1' },
               { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#10b981' },
               { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#059669' },
             ]}
           />
         </Grid>
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
             title="Team Queue Backlog"
             items={queueItems}
@@ -208,25 +213,34 @@ export function ManagerDashboard() {
         </Grid>
       </Grid>
 
-      {/* Unassigned Lead Intake Table */}
-      <Paper sx={{ p: 3, borderRadius: 2 }}>
+      {/* Full-Width Operational Table: Unassigned Lead Intake Table */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
-            <Typography variant="h6" fontWeight={600}>
+            <Typography variant="h6" fontWeight={700}>
               Unassigned Lead Intake Queue
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Incoming borrower leads awaiting assignment to field sales officers
             </Typography>
           </Box>
-          <Button size="small" component={RouterLink} to="/leads">
-            Manage Queue
+          <Button size="small" component={RouterLink} to="/leads" sx={{ fontWeight: 600 }}>
+            Manage Queue &rarr;
           </Button>
         </Box>
         {leadsError && <Alert severity="error">Unable to load intake queue.</Alert>}
         {leadsLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
+            <CircularProgress size={32} />
           </Box>
         ) : unassignedLeads.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
@@ -237,14 +251,14 @@ export function ManagerDashboard() {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Borrower</TableCell>
-                  <TableCell>Product</TableCell>
-                  <TableCell>Mobile</TableCell>
-                  <TableCell align="right">Action</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Borrower</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Product</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Mobile</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {unassignedLeads.slice(0, 10).map((l: LeadResource) => (
+                {unassignedLeads.slice(0, 8).map((l: LeadResource) => (
                   <TableRow key={l.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
                     <TableCell>{l.productCategory || 'LOAN'}</TableCell>
@@ -255,6 +269,7 @@ export function ManagerDashboard() {
                         variant="contained"
                         component={RouterLink}
                         to={`/leads/${l.id}`}
+                        sx={{ fontSize: 11, py: 0.25, px: 1.25, height: 26 }}
                       >
                         Assign
                       </Button>
@@ -266,6 +281,6 @@ export function ManagerDashboard() {
           </TableContainer>
         )}
       </Paper>
-    </Container>
+    </Box>
   );
 }

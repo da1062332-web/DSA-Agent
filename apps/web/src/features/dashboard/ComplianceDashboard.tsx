@@ -7,7 +7,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -41,7 +40,7 @@ export function ComplianceDashboard() {
 
   const { data: auditData, isLoading: auditLoading, isError: auditError } = useQuery({
     queryKey: ['compliance-dashboard-audit', dateScope],
-    queryFn: () => searchAuditEvents({ limit: 15 }),
+    queryFn: () => searchAuditEvents({ limit: 50 }),
   });
 
   const incidents: IncidentRecord[] = incidentsData?.data ?? [];
@@ -67,14 +66,14 @@ export function ComplianceDashboard() {
       key: 'open',
       label: 'Open / Triage',
       count: incidents.filter((i) => i.status === 'OPEN').length,
-      color: '#d32f2f',
+      color: '#ef4444',
       to: '/security',
     },
     {
       key: 'investigating',
       label: 'Under Investigation',
       count: incidents.filter((i) => i.status === 'INVESTIGATING').length,
-      color: '#ed6c02',
+      color: '#f59e0b',
       to: '/security',
     },
     {
@@ -88,13 +87,13 @@ export function ComplianceDashboard() {
       key: 'resolved',
       label: 'Resolved & Closed',
       count: resolvedCount,
-      color: '#2e7d32',
+      color: '#10b981',
       to: '/security',
     },
   ];
 
   // Map open incidents to TaskWorkQueueItem
-  const queueItems: TaskWorkQueueItem[] = openIncidents.slice(0, 5).map((inc) => ({
+  const queueItems: TaskWorkQueueItem[] = openIncidents.slice(0, 8).map((inc) => ({
     id: inc.id,
     title: `Security Event: ${inc.type.replace(/_/g, ' ')} #${inc.id.slice(0, 6)}`,
     category: inc.type,
@@ -106,39 +105,66 @@ export function ComplianceDashboard() {
       to: `/security`,
     },
     actionLabel: 'Investigate',
-    onAction: () => {
-      window.location.href = `/security`;
-    },
   }));
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="compliance-dashboard">
-      {/* Header & Controls */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+    <Box sx={{ width: '100%', py: 1 }} data-testid="compliance-dashboard">
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Compliance & Security Command Center
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+              Compliance &amp; Security Command Center
+            </Typography>
+            <Chip
+              label="Compliance & DPDP"
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Audit Cryptochain Active"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             Regulatory compliance, DPDP consent tracking, audit surveillance, and security incident response.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
-          <Button variant="contained" color="primary" component={RouterLink} to="/audit">
+          <Button variant="contained" color="primary" component={RouterLink} to="/audit" sx={{ fontWeight: 700 }}>
             Audit Trail
           </Button>
           <Button variant="outlined" component={RouterLink} to="/privacy">
-            Privacy & Consent
+            Privacy &amp; Consent
           </Button>
           <Button variant="outlined" component={RouterLink} to="/security">
             Security Incidents
           </Button>
         </Stack>
-      </Box>
+      </Paper>
 
       {/* KPI Overview Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Open Incidents"
@@ -192,71 +218,18 @@ export function ComplianceDashboard() {
         </Grid>
       </Grid>
 
-      {/* Main Content Layout */}
-      <Grid container spacing={3}>
-        {/* Left Column: Funnel & Recent Audit Trail */}
-        <Grid item xs={12} md={7}>
-          <Stack spacing={3}>
-            <PipelineFunnelChart
-              title="Security Incident Lifecycle"
-              subtitle="Incident resolution pipeline from reporting to closure"
-              stages={incidentStages}
-              isLoading={incidentsLoading}
-              dataTestId="compliance-incident-funnel"
-            />
-
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Recent Audit Trail Events
-                </Typography>
-                <Button size="small" component={RouterLink} to="/audit">
-                  View All &rarr;
-                </Button>
-              </Box>
-              {auditError && <Alert severity="error">Unable to load audit logs.</Alert>}
-              {auditLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                  <CircularProgress size={32} />
-                </Box>
-              ) : auditEvents.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No recent audit events captured.
-                </Typography>
-              ) : (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Entity</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Actor</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>Timestamp</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {auditEvents.slice(0, 5).map((evt: any) => (
-                        <TableRow key={evt.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>{evt.action || 'MUTATION'}</TableCell>
-                          <TableCell>{evt.entityType || 'SYSTEM'}</TableCell>
-                          <TableCell>{evt.actorUserId ? `User #${evt.actorUserId.slice(0, 6)}` : 'System'}</TableCell>
-                          <TableCell align="right">
-                            <Typography variant="caption" color="text.secondary">
-                              {evt.createdAt ? new Date(evt.createdAt).toLocaleTimeString() : '—'}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Paper>
-          </Stack>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
+          <PipelineFunnelChart
+            title="Security Incident Lifecycle"
+            subtitle="Incident resolution pipeline from reporting to closure"
+            stages={incidentStages}
+            isLoading={incidentsLoading}
+            dataTestId="compliance-incident-funnel"
+          />
         </Grid>
-
-        {/* Right Column: Work Queue */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
             title="Compliance Action Items"
             subtitle="Open incidents and regulatory checks needing containment"
@@ -267,6 +240,69 @@ export function ComplianceDashboard() {
           />
         </Grid>
       </Grid>
-    </Container>
+
+      {/* Full-Width Operational Table: Recent Audit Trail Events */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Recent Audit Trail Events
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Cryptographically verified event stream across financial and administrative mutations
+            </Typography>
+          </Box>
+          <Button size="small" component={RouterLink} to="/audit" sx={{ fontWeight: 600 }}>
+            View All Audit Logs &rarr;
+          </Button>
+        </Box>
+        {auditError && <Alert severity="error">Unable to load audit logs.</Alert>}
+        {auditLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : auditEvents.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+            No recent audit events captured.
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Entity Type</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Actor User</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Timestamp</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {auditEvents.slice(0, 8).map((evt: any) => (
+                  <TableRow key={evt.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{evt.action || 'MUTATION'}</TableCell>
+                    <TableCell>{evt.entityType || evt.resourceType || 'SYSTEM'}</TableCell>
+                    <TableCell>{evt.actorUserId ? `User #${evt.actorUserId.slice(0, 6)}` : 'System Daemon'}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                        {evt.createdAt || evt.occurredAt ? new Date(evt.createdAt || evt.occurredAt).toLocaleTimeString() : '—'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
   );
 }

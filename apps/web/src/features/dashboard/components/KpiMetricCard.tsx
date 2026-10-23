@@ -83,64 +83,79 @@ export function KpiMetricCard({
   const isUnavailable = (value === null || value === undefined) && !isLoading && !isError;
 
   const cardContent = (
-    <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1} sx={{ mb: 1.5 }}>
-        <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase" letterSpacing={0.5}>
-          {title}
-        </Typography>
-        {icon && (
-          <Box sx={{ color: `${status}.main`, display: 'flex', alignItems: 'center' }}>
-            {icon}
-          </Box>
-        )}
-      </Stack>
+    <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 }, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" fontWeight={700} textTransform="uppercase" letterSpacing={0.5}>
+            {title}
+          </Typography>
+          {icon && (
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: `${status}.main` === 'default' ? 'action.hover' : 'primary.50',
+                color: `${status}.main`,
+                '& svg': { fontSize: 20 },
+              }}
+            >
+              {icon}
+            </Box>
+          )}
+        </Stack>
 
-      {isLoading ? (
-        <Box sx={{ my: 1 }}>
-          <Skeleton variant="text" width="60%" height={40} />
-          <Skeleton variant="text" width="40%" height={20} />
-        </Box>
-      ) : isError ? (
-        <Typography variant="body2" color="error.main" sx={{ my: 1 }}>
-          Failed to load metric
-        </Typography>
-      ) : isUnavailable ? (
-        <Box sx={{ my: 1 }}>
-          <Chip
-            label={unavailableMessage ?? 'Data Unavailable'}
-            size="small"
-            variant="outlined"
-            color="default"
-            sx={{ fontSize: 11, fontWeight: 500 }}
-          />
-        </Box>
-      ) : (
-        <Typography
-          variant="h4"
-          fontWeight={700}
-          color="text.primary"
-          sx={{
-            my: 0.5,
-            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {formatMetricValue(value, format)}
-        </Typography>
-      )}
+        {isLoading ? (
+          <Box sx={{ my: 1 }}>
+            <Skeleton variant="text" width="60%" height={40} />
+            <Skeleton variant="text" width="40%" height={20} />
+          </Box>
+        ) : isError ? (
+          <Typography variant="body2" color="error.main" sx={{ my: 1, fontWeight: 600 }}>
+            Failed to load metric
+          </Typography>
+        ) : isUnavailable ? (
+          <Box sx={{ my: 1 }}>
+            <Chip
+              label={unavailableMessage ?? 'Data Unavailable'}
+              size="small"
+              variant="outlined"
+              color="default"
+              sx={{ fontSize: 11, fontWeight: 600, bgcolor: 'action.hover' }}
+            />
+          </Box>
+        ) : (
+          <Typography
+            variant="h4"
+            fontWeight={800}
+            color="text.primary"
+            sx={{
+              my: 0.5,
+              fontSize: { xs: '1.6rem', sm: '1.85rem', md: '2.1rem' },
+              letterSpacing: '-0.025em',
+              lineHeight: 1.2,
+            }}
+          >
+            {formatMetricValue(value, format)}
+          </Typography>
+        )}
+      </Box>
 
       {(subtitle || trend) && !isLoading && !isError && (
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap', gap: 0.5 }}>
           {trend && (
             <Chip
               size="small"
               label={`${trend.isPositive !== false ? '+' : ''}${trend.value}%`}
               color={trend.isPositive !== false ? 'success' : 'error'}
-              sx={{ height: 20, fontSize: 11, fontWeight: 600, px: 0.5 }}
+              sx={{ height: 20, fontSize: 11, fontWeight: 700, px: 0.5 }}
             />
           )}
           {subtitle && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" fontWeight={500}>
               {subtitle}
             </Typography>
           )}
@@ -161,18 +176,19 @@ export function KpiMetricCard({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 2,
+        borderRadius: 2.5,
         border: '1px solid',
         borderColor: 'divider',
-        boxShadow: 'none',
+        bgcolor: 'background.paper',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
         textDecoration: 'none',
         color: 'inherit',
-        transition: 'all 0.2s ease-in-out',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         ...(isClickable && {
           cursor: 'pointer',
           '&:hover': {
             borderColor: `${status}.main`,
-            boxShadow: 2,
+            boxShadow: '0 6px 16px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
             transform: 'translateY(-2px)',
           },
         }),

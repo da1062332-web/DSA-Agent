@@ -5,7 +5,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Grid,
   Paper,
   Stack,
@@ -32,7 +31,7 @@ import {
 export function LoanOpsDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
 
-  const { data, isLoading, isError } = useList<Application>('/v1/applications', {}, 25);
+  const { data, isLoading, isError } = useList<Application>('/v1/applications', {}, 50);
   const applications = data?.pages.flatMap((p) => p.data) ?? [];
 
   const inReviewCount = applications.filter(
@@ -63,21 +62,21 @@ export function LoanOpsDashboard() {
       key: 'ready_submission',
       label: 'Ready for Lender',
       count: applications.filter((a) => a.status === 'READY_FOR_SUBMISSION').length,
-      color: '#7b1fa2',
+      color: '#1d5fd1',
       to: '/applications?status=READY_FOR_SUBMISSION',
     },
     {
       key: 'submitted',
       label: 'Submitted to Lenders',
       count: applications.filter((a) => a.status === 'SUBMITTED').length,
-      color: '#ed6c02',
+      color: '#f59e0b',
       to: '/applications?status=SUBMITTED',
     },
     {
       key: 'sanctioned',
       label: 'Sanctioned / Disbursed',
       count: sanctionedCount,
-      color: '#2e7d32',
+      color: '#10b981',
       to: '/sanctions',
     },
   ];
@@ -85,7 +84,7 @@ export function LoanOpsDashboard() {
   // Map operational applications to task queue items
   const queueItems: TaskWorkQueueItem[] = applications
     .filter((a) => a.onHold || a.status === 'READY_FOR_SUBMISSION' || a.status === 'SUBMITTED')
-    .slice(0, 5)
+    .slice(0, 8)
     .map((app) => ({
       id: app.id,
       title: `${app.applicantType.replace(/_/g, ' ')} · ₹${(parseFloat(app.requestedAmount) / 100000).toFixed(1)}L`,
@@ -97,39 +96,66 @@ export function LoanOpsDashboard() {
         to: `/applications/${app.id}`,
       },
       actionLabel: 'Review',
-      onAction: () => {
-        window.location.href = `/applications/${app.id}`;
-      },
     }));
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="loan-ops-dashboard">
-      {/* Header & Controls */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+    <Box sx={{ width: '100%', py: 1 }} data-testid="loan-ops-dashboard">
+      {/* Executive Command Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Loan Operations Workbench
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+              Loan Operations Workbench
+            </Typography>
+            <Chip
+              label="Loan Ops"
+              color="primary"
+              size="small"
+              sx={{ fontWeight: 700, fontSize: 11 }}
+            />
+            <Chip
+              label="● Underwriting Engine"
+              color="success"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontSize: 11 }}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
             Process origination queues, verify borrower documents, and coordinate lender submissions.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <DashboardDateFilter value={dateScope} onChange={setDateScope} />
-          <Button variant="contained" color="primary" component={RouterLink} to="/applications">
+          <Button variant="contained" color="primary" component={RouterLink} to="/applications" sx={{ fontWeight: 700 }}>
             Origination Queue
           </Button>
           <Button variant="outlined" component={RouterLink} to="/verifications">
             Verification Queue
           </Button>
           <Button variant="outlined" component={RouterLink} to="/sanctions">
-            Sanctions & Disbursals
+            Sanctions &amp; Disbursals
           </Button>
         </Stack>
-      </Box>
+      </Paper>
 
       {/* KPI Overview Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Applications In Review"
@@ -184,84 +210,18 @@ export function LoanOpsDashboard() {
         </Grid>
       </Grid>
 
-      {/* Main Content Layout */}
-      <Grid container spacing={3}>
-        {/* Left Column: Funnel & Active Files */}
-        <Grid item xs={12} md={7}>
-          <Stack spacing={3}>
-            <PipelineFunnelChart
-              title="Lender Operations Stage Progression"
-              subtitle="Application distribution across lender submission pipeline"
-              stages={opsStages}
-              isLoading={isLoading}
-              dataTestId="ops-lender-funnel"
-            />
-
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Active Origination Pipeline
-                </Typography>
-                <Button size="small" component={RouterLink} to="/applications">
-                  View All &rarr;
-                </Button>
-              </Box>
-              {isError && <Alert severity="error">Unable to load application queue.</Alert>}
-              {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                  <CircularProgress size={32} />
-                </Box>
-              ) : applications.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No active loan applications in review currently.
-                </Typography>
-              ) : (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 600 }}>File ID</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {applications.slice(0, 5).map((app: Application) => (
-                        <TableRow key={app.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>#{app.id.slice(0, 8)}</TableCell>
-                          <TableCell>₹{(parseFloat(app.requestedAmount) / 100000).toFixed(2)}L</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={app.status}
-                              size="small"
-                              color={
-                                app.status === 'SANCTIONED' || app.status === 'DISBURSED'
-                                  ? 'success'
-                                  : app.onHold
-                                  ? 'error'
-                                  : 'primary'
-                              }
-                              sx={{ height: 22, fontSize: 11, fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Button size="small" variant="outlined" component={RouterLink} to={`/applications/${app.id}`}>
-                              Open
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Paper>
-          </Stack>
+      {/* Middle Row: Balanced Funnel & Work Queue */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} lg={7}>
+          <PipelineFunnelChart
+            title="Lender Operations Stage Progression"
+            subtitle="Application distribution across lender submission pipeline"
+            stages={opsStages}
+            isLoading={isLoading}
+            dataTestId="ops-lender-funnel"
+          />
         </Grid>
-
-        {/* Right Column: Work Queue */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <TaskWorkQueue
             title="Operational Action Queue"
             subtitle="Priority lender submissions, holds and condition clearances"
@@ -272,6 +232,90 @@ export function LoanOpsDashboard() {
           />
         </Grid>
       </Grid>
-    </Container>
+
+      {/* Full-Width Operational Table: Active Origination Pipeline */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 2.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Active Origination Pipeline
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Borrower files actively undergoing underwriting and lender review
+            </Typography>
+          </Box>
+          <Button size="small" component={RouterLink} to="/applications" sx={{ fontWeight: 600 }}>
+            View All Applications &rarr;
+          </Button>
+        </Box>
+        {isError && <Alert severity="error">Unable to load application queue.</Alert>}
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : applications.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+            No active loan applications in review currently.
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>File ID</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Borrower Category</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Amount</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {applications.slice(0, 8).map((app: Application) => (
+                  <TableRow key={app.id} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>#{app.id.slice(0, 8)}</TableCell>
+                    <TableCell>{app.applicantType?.replace(/_/g, ' ') || 'INDIVIDUAL'}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>₹{(parseFloat(app.requestedAmount) / 100000).toFixed(2)}L</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={app.status}
+                        size="small"
+                        color={
+                          app.status === 'SANCTIONED' || app.status === 'DISBURSED'
+                            ? 'success'
+                            : app.onHold
+                            ? 'error'
+                            : 'primary'
+                        }
+                        sx={{ height: 22, fontSize: 11, fontWeight: 700 }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        component={RouterLink}
+                        to={`/applications/${app.id}`}
+                        sx={{ fontSize: 11, py: 0.25, px: 1.25, height: 26 }}
+                      >
+                        Open
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
   );
 }
