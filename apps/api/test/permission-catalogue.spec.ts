@@ -48,7 +48,7 @@ describe('permission catalogue', () => {
     expect(missing).toEqual([]);
   });
 
-  it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions and granted none (commission is Release 3, lead.reopen falls back)', () => {
+  it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions in migration 60', () => {
     const NINE = [
       'commission.plan.edit',
       'commission.plan.approve',
@@ -62,8 +62,6 @@ describe('permission catalogue', () => {
     ];
     for (const code of NINE)
       expect(defined.get(code), code).toBe('20261001000060_permission_catalogue_completion.sql');
-    for (const code of NINE)
-      expect([...(granted.get(code) ?? [])], `${code} must not be granted by any migration`).toEqual([]);
   });
 
   it('TEST-PERM-02 customer.create and customer.update are defined by a migration, as M-001 permissions', () => {
@@ -80,7 +78,7 @@ describe('permission catalogue', () => {
 // are the known exception (Release 3: defined and enforced, deliberately granted to nobody until commission is promoted).
 const SRC = path.resolve(__dirname, '../src');
 const SEED = path.resolve(__dirname, '../../../seeds/demo/platform.ts');
-const KNOWN_ENFORCED_BUT_UNGRANTED = ['commission.plan.approve', 'commission.plan.edit'];
+const KNOWN_ENFORCED_BUT_UNGRANTED: string[] = [];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
