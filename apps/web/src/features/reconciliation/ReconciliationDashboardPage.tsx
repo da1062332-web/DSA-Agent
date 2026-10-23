@@ -5,8 +5,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
-  CardHeader,
   Chip,
   CircularProgress,
   Container,
@@ -14,7 +12,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   Grid,
   InputLabel,
@@ -23,12 +20,6 @@ import {
   Select,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Tooltip,
@@ -41,6 +32,7 @@ import { LenderSelect } from '../../shell/selectors';
 import { LenderName } from '../../shell/display';
 import { useLookup } from '../admin/api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
+import { DataTable, StatCard, StatCardGrid } from '../../ui';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -494,76 +486,36 @@ export function ReconciliationDashboardPage() {
       )}
 
       {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
-          >
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
-                Lender Statements
-              </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ mt: 1, color: 'primary.main' }}>
-                {totalStatements}
-              </Typography>
-              <Typography variant="caption" color="success.main">
-                Ingested with SHA-256 integrity
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
-          >
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
-                Open Exceptions
-              </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ mt: 1, color: 'error.main' }}>
-                {openExceptions}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Variances requiring resolution
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
-          >
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
-                Active Disputes
-              </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ mt: 1, color: 'warning.main' }}>
-                {openDisputes}
-              </Typography>
-              <Typography variant="caption" color="warning.main">
-                Payables placed ON_HOLD
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', bgcolor: 'background.paper' }}
-          >
-            <CardContent>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
-                Pending Adjustments
-              </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ mt: 1, color: 'info.main' }}>
-                {pendingAdjustments}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Enforcing SOD-07 Maker-Checker
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }}>
+        <StatCard
+          title="Lender Statements"
+          value={totalStatements}
+          format="number"
+          status="primary"
+          subtext="Ingested with SHA-256 integrity"
+        />
+        <StatCard
+          title="Open Exceptions"
+          value={openExceptions}
+          format="number"
+          status="error"
+          subtext="Variances requiring resolution"
+        />
+        <StatCard
+          title="Active Disputes"
+          value={openDisputes}
+          format="number"
+          status="warning"
+          subtext="Payables placed ON_HOLD"
+        />
+        <StatCard
+          title="Pending Adjustments"
+          value={pendingAdjustments}
+          format="number"
+          status="info"
+          subtext="Enforcing SOD-07 Maker-Checker"
+        />
+      </StatCardGrid>
 
       {/* Tabs */}
       <Paper sx={{ borderRadius: 3, overflow: 'hidden', mb: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
@@ -600,88 +552,69 @@ export function ReconciliationDashboardPage() {
                 Refresh
               </Button>
             </Stack>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Statement ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Lender ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Period</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Lines</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Disbursed Total (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Net Commission (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {statements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No lender commission statements imported yet. Click "+ Ingest Lender Statement" to
-                        import.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    statements.map((stmt) => (
-                      <TableRow key={stmt.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{stmt.id}</TableCell>
-                        <TableCell>
-                          <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 500 }} />
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={stmt.period} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell>{stmt.totals?.lineCount ?? 0}</TableCell>
-                        <TableCell>₹{stmt.totals?.totalDisbursed?.toLocaleString() ?? 0}</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>
-                          ₹{stmt.totals?.netCommission?.toLocaleString() ?? 0}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={stmt.status}
-                            size="small"
-                            color={
-                              stmt.status === 'MATCHED'
-                                ? 'success'
-                                : stmt.status === 'PARTIALLY_MATCHED'
-                                  ? 'warning'
-                                  : 'default'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1}>
-                            <Can action="finance.reconcile">
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color="primary"
-                                onClick={() => handleRunMatching(stmt.id)}
-                                disabled={loading}
-                                data-testid={`rec.btn.match-${stmt.id}`}
-                              >
-                                Run Match
-                              </Button>
-                            </Can>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                setSelectedStatement(stmt);
-                                setLinesDrawerOpen(true);
-                              }}
-                            >
-                              View Lines
-                            </Button>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<LenderStatement>
+              dataTestId="rec.table.statements"
+              data={statements}
+              keyExtractor={(stmt) => stmt.id}
+              emptyMessage='No lender commission statements imported yet. Click "+ Ingest Lender Statement" to import.'
+              columns={[
+                { id: 'id', header: 'Statement ID', render: (stmt) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{stmt.id}</Box> },
+                { id: 'lender', header: 'Lender ID', render: (stmt) => <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 500 }} /> },
+                { id: 'period', header: 'Period', render: (stmt) => <Chip label={stmt.period} size="small" variant="outlined" /> },
+                { id: 'lines', header: 'Lines', render: (stmt) => stmt.totals?.lineCount ?? 0 },
+                { id: 'disbursed', header: 'Disbursed Total (₹)', render: (stmt) => `₹${stmt.totals?.totalDisbursed?.toLocaleString() ?? 0}` },
+                {
+                  id: 'net',
+                  header: 'Net Commission (₹)',
+                  render: (stmt) => (
+                    <Box sx={{ fontWeight: 600, color: 'primary.main' }}>
+                      ₹{stmt.totals?.netCommission?.toLocaleString() ?? 0}
+                    </Box>
+                  ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (stmt) => (
+                    <Chip
+                      label={stmt.status}
+                      size="small"
+                      color={stmt.status === 'MATCHED' ? 'success' : stmt.status === 'PARTIALLY_MATCHED' ? 'warning' : 'default'}
+                    />
+                  ),
+                },
+                {
+                  id: 'actions',
+                  header: 'Actions',
+                  render: (stmt) => (
+                    <Stack direction="row" spacing={1}>
+                      <Can action="finance.reconcile">
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="primary"
+                          onClick={() => handleRunMatching(stmt.id)}
+                          disabled={loading}
+                          data-testid={`rec.btn.match-${stmt.id}`}
+                        >
+                          Run Match
+                        </Button>
+                      </Can>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setSelectedStatement(stmt);
+                          setLinesDrawerOpen(true);
+                        }}
+                      >
+                        View Lines
+                      </Button>
+                    </Stack>
+                  ),
+                },
+              ]}
+            />
           </Box>
         )}
 
@@ -696,53 +629,28 @@ export function ReconciliationDashboardPage() {
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Reconciliation Matches ({matches.length})
             </Typography>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Match ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Statement Line ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Calculation ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Match Type</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Matched Amount (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Decision Record ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {matches.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No matches generated in current session. Select a statement and click "Run Match" to
-                        trigger.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    matches.map((m) => (
-                      <TableRow key={m.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{m.id}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{m.statementLineId}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{m.calculationId}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={m.matchType}
-                            size="small"
-                            color={m.matchType === 'EXACT' ? 'success' : 'warning'}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>₹{m.matchedAmount?.toLocaleString()}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-                          {m.decisionRecordId || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={m.status} size="small" color="success" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<ReconciliationMatch>
+              dataTestId="rec.table.matches"
+              data={matches}
+              emptyMessage='No matches generated in current session. Select a statement and click "Run Match" to trigger.'
+              columns={[
+                { id: 'id', header: 'Match ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.id}</Box> },
+                { id: 'line', header: 'Statement Line ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.statementLineId}</Box> },
+                { id: 'calc', header: 'Calculation ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.calculationId}</Box> },
+                {
+                  id: 'type',
+                  header: 'Match Type',
+                  render: (m) => <Chip label={m.matchType} size="small" color={m.matchType === 'EXACT' ? 'success' : 'warning'} />,
+                },
+                { id: 'amount', header: 'Matched Amount (₹)', render: (m) => <Box sx={{ fontWeight: 600 }}>₹{m.matchedAmount?.toLocaleString()}</Box> },
+                {
+                  id: 'decision',
+                  header: 'Decision Record ID',
+                  render: (m) => <Box sx={{ fontFamily: 'monospace', fontSize: 12 }}>{m.decisionRecordId || 'N/A'}</Box>,
+                },
+                { id: 'status', header: 'Status', render: (m) => <Chip label={m.status} size="small" color="success" /> },
+              ]}
+            />
           </Box>
         )}
 
@@ -752,83 +660,74 @@ export function ReconciliationDashboardPage() {
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Reconciliation Exceptions ({exceptions.length})
             </Typography>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Exception ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Classification</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Variance Amount (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Evidence / Note</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {exceptions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No reconciliation exceptions found. All processed lines match within 0 variance.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    exceptions.map((exc) => (
-                      <TableRow key={exc.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{exc.id}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={exc.classification}
-                            size="small"
-                            color={
-                              exc.classification === 'SHORT_REMITTANCE'
-                                ? 'error'
-                                : exc.classification === 'OVER_REMITTANCE'
-                                  ? 'info'
-                                  : 'warning'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: 'error.main' }}>
-                          ₹{exc.varianceAmount?.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={exc.status}
-                            size="small"
-                            color={exc.status === 'RESOLVED' ? 'success' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 13 }}>
-                          {exc.resolutionNote || exc.evidenceRef || 'None'}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 12 }}>
-                          {new Date(exc.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {exc.status !== 'RESOLVED' && exc.status !== 'WRITTEN_OFF' && (
-                            <Can action="finance.reconcile">
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="primary"
-                                onClick={() => {
-                                  setSelectedException(exc);
-                                  setResolveDialogOpen(true);
-                                }}
-                                data-testid={`rec.btn.resolve-${exc.id}`}
-                              >
-                                Resolve
-                              </Button>
-                            </Can>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<ReconciliationException>
+              dataTestId="rec.table.exceptions"
+              data={exceptions}
+              emptyMessage="No reconciliation exceptions found. All processed lines match within 0 variance."
+              columns={[
+                { id: 'id', header: 'Exception ID', render: (exc) => <Box sx={{ fontFamily: 'monospace' }}>{exc.id}</Box> },
+                {
+                  id: 'classification',
+                  header: 'Classification',
+                  render: (exc) => (
+                    <Chip
+                      label={exc.classification}
+                      size="small"
+                      color={
+                        exc.classification === 'SHORT_REMITTANCE'
+                          ? 'error'
+                          : exc.classification === 'OVER_REMITTANCE'
+                            ? 'info'
+                            : 'warning'
+                      }
+                    />
+                  ),
+                },
+                {
+                  id: 'variance',
+                  header: 'Variance Amount (₹)',
+                  render: (exc) => <Box sx={{ fontWeight: 600, color: 'error.main' }}>₹{exc.varianceAmount?.toLocaleString()}</Box>,
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (exc) => (
+                    <Chip label={exc.status} size="small" color={exc.status === 'RESOLVED' ? 'success' : 'default'} />
+                  ),
+                },
+                {
+                  id: 'note',
+                  header: 'Evidence / Note',
+                  render: (exc) => <Box sx={{ fontSize: 13 }}>{exc.resolutionNote || exc.evidenceRef || 'None'}</Box>,
+                },
+                {
+                  id: 'created',
+                  header: 'Created At',
+                  render: (exc) => <Box sx={{ fontSize: 12 }}>{new Date(exc.createdAt).toLocaleDateString()}</Box>,
+                },
+                {
+                  id: 'action',
+                  header: 'Action',
+                  render: (exc) =>
+                    exc.status !== 'RESOLVED' && exc.status !== 'WRITTEN_OFF' ? (
+                      <Can action="finance.reconcile">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => {
+                            setSelectedException(exc);
+                            setResolveDialogOpen(true);
+                          }}
+                          data-testid={`rec.btn.resolve-${exc.id}`}
+                        >
+                          Resolve
+                        </Button>
+                      </Can>
+                    ) : null,
+                },
+              ]}
+            />
           </Box>
         )}
 
@@ -843,112 +742,92 @@ export function ReconciliationDashboardPage() {
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Financial Adjustments ({adjustments.length})
             </Typography>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Adjustment ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Amount (₹)</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Created By</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Approved By</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>SOD-07 Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {adjustments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No financial adjustments recorded. Click "Propose Adjustment" above.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    adjustments.map((adj) => {
-                      const isCreator = adj.createdBy === me?.id;
-                      return (
-                        <TableRow key={adj.id} hover>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{adj.id}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={adj.type || adj.adjustmentType}
+            <DataTable<Adjustment>
+              dataTestId="rec.table.adjustments"
+              data={adjustments}
+              emptyMessage='No financial adjustments recorded. Click "Propose Adjustment" above.'
+              columns={[
+                { id: 'id', header: 'Adjustment ID', render: (adj) => <Box sx={{ fontFamily: 'monospace' }}>{adj.id}</Box> },
+                {
+                  id: 'type',
+                  header: 'Type',
+                  render: (adj) => (
+                    <Chip
+                      label={adj.type || adj.adjustmentType}
+                      size="small"
+                      color={adj.type === 'CLAWBACK' ? 'error' : adj.type === 'WRITE_OFF' ? 'warning' : 'primary'}
+                    />
+                  ),
+                },
+                { id: 'amount', header: 'Amount (₹)', render: (adj) => <Box sx={{ fontWeight: 600 }}>₹{Number(adj.amount).toLocaleString()}</Box> },
+                { id: 'reason', header: 'Reason', render: (adj) => <Box sx={{ fontSize: 13 }}>{adj.reason}</Box> },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (adj) => (
+                    <Chip
+                      label={adj.status}
+                      size="small"
+                      color={adj.status === 'APPROVED' ? 'success' : adj.status === 'REJECTED' ? 'error' : 'default'}
+                    />
+                  ),
+                },
+                {
+                  id: 'createdBy',
+                  header: 'Created By',
+                  render: (adj) => <Box sx={{ fontSize: 12, fontFamily: 'monospace' }}>{adj.createdBy}</Box>,
+                },
+                {
+                  id: 'approvedBy',
+                  header: 'Approved By',
+                  render: (adj) => (
+                    <Box sx={{ fontSize: 12, fontFamily: 'monospace' }}>{adj.approvedBy || 'Pending'}</Box>
+                  ),
+                },
+                {
+                  id: 'sod07',
+                  header: 'SOD-07 Action',
+                  render: (adj) => {
+                    const isCreator = adj.createdBy === me?.id;
+                    if (adj.status !== 'PENDING') return null;
+                    return (
+                      <Stack direction="row" spacing={1}>
+                        <Tooltip
+                          title={
+                            isCreator
+                              ? 'SOD-07 Violation: You created this adjustment and cannot approve it.'
+                              : 'Approve adjustment'
+                          }
+                        >
+                          <span>
+                            <Button
                               size="small"
-                              color={
-                                adj.type === 'CLAWBACK'
-                                  ? 'error'
-                                  : adj.type === 'WRITE_OFF'
-                                    ? 'warning'
-                                    : 'primary'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            ₹{Number(adj.amount).toLocaleString()}
-                          </TableCell>
-                          <TableCell sx={{ fontSize: 13 }}>{adj.reason}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={adj.status}
-                              size="small"
-                              color={
-                                adj.status === 'APPROVED'
-                                  ? 'success'
-                                  : adj.status === 'REJECTED'
-                                    ? 'error'
-                                    : 'default'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontSize: 12, fontFamily: 'monospace' }}>
-                            {adj.createdBy}
-                          </TableCell>
-                          <TableCell sx={{ fontSize: 12, fontFamily: 'monospace' }}>
-                            {adj.approvedBy || 'Pending'}
-                          </TableCell>
-                          <TableCell>
-                            {adj.status === 'PENDING' && (
-                              <Stack direction="row" spacing={1}>
-                                <Tooltip
-                                  title={
-                                    isCreator
-                                      ? 'SOD-07 Violation: You created this adjustment and cannot approve it.'
-                                      : 'Approve adjustment'
-                                  }
-                                >
-                                  <span>
-                                    <Button
-                                      size="small"
-                                      variant="contained"
-                                      color="success"
-                                      disabled={isCreator || !canApproveAdj || loading}
-                                      onClick={() => handleApproveAdjustment(adj, true)}
-                                      data-testid={`rec.btn.adj-approve-${adj.id}`}
-                                    >
-                                      Approve
-                                    </Button>
-                                  </span>
-                                </Tooltip>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  disabled={isCreator || !canApproveAdj || loading}
-                                  onClick={() => handleApproveAdjustment(adj, false)}
-                                  data-testid={`rec.btn.adj-reject-${adj.id}`}
-                                >
-                                  Reject
-                                </Button>
-                              </Stack>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                              variant="contained"
+                              color="success"
+                              disabled={isCreator || !canApproveAdj || loading}
+                              onClick={() => handleApproveAdjustment(adj, true)}
+                              data-testid={`rec.btn.adj-approve-${adj.id}`}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          disabled={isCreator || !canApproveAdj || loading}
+                          onClick={() => handleApproveAdjustment(adj, false)}
+                          data-testid={`rec.btn.adj-reject-${adj.id}`}
+                        >
+                          Reject
+                        </Button>
+                      </Stack>
+                    );
+                  },
+                },
+              ]}
+            />
           </Box>
         )}
 
@@ -962,78 +841,58 @@ export function ReconciliationDashboardPage() {
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
               Lender & Connector Disputes ({disputes.length})
             </Typography>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Dispute ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Party Type</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Party ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Subject</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Lock Version</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {disputes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No disputes raised. Click "Raise Dispute" to initiate.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    disputes.map((disp) => (
-                      <TableRow key={disp.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{disp.id}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={disp.partyType}
-                            size="small"
-                            color={disp.partyType === 'LENDER' ? 'secondary' : 'primary'}
-                          />
-                        </TableCell>
-                        <TableCell>{disp.partyId}</TableCell>
-                        <TableCell sx={{ fontSize: 13 }}>
-                          {disp.subjectType}: {disp.subjectId}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 13 }}>{disp.reason}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={disp.status}
-                            size="small"
-                            color={
-                              disp.status === 'RESOLVED'
-                                ? 'success'
-                                : disp.status === 'OPEN'
-                                  ? 'warning'
-                                  : 'default'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>{disp.lockVersion}</TableCell>
-                        <TableCell>
-                          {disp.status !== 'RESOLVED' && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                setSelectedDispute(disp);
-                                setUpdateDisputeDialogOpen(true);
-                              }}
-                              data-testid={`rec.btn.dispute-update-${disp.id}`}
-                            >
-                              Resolve Dispute
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<Dispute>
+              dataTestId="rec.table.disputes"
+              data={disputes}
+              emptyMessage='No disputes raised. Click "Raise Dispute" to initiate.'
+              columns={[
+                { id: 'id', header: 'Dispute ID', render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.id}</Box> },
+                {
+                  id: 'partyType',
+                  header: 'Party Type',
+                  render: (disp) => (
+                    <Chip label={disp.partyType} size="small" color={disp.partyType === 'LENDER' ? 'secondary' : 'primary'} />
+                  ),
+                },
+                { id: 'partyId', header: 'Party ID', render: (disp) => disp.partyId },
+                {
+                  id: 'subject',
+                  header: 'Subject',
+                  render: (disp) => <Box sx={{ fontSize: 13 }}>{disp.subjectType}: {disp.subjectId}</Box>,
+                },
+                { id: 'reason', header: 'Reason', render: (disp) => <Box sx={{ fontSize: 13 }}>{disp.reason}</Box> },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (disp) => (
+                    <Chip
+                      label={disp.status}
+                      size="small"
+                      color={disp.status === 'RESOLVED' ? 'success' : disp.status === 'OPEN' ? 'warning' : 'default'}
+                    />
+                  ),
+                },
+                { id: 'lock', header: 'Lock Version', render: (disp) => disp.lockVersion },
+                {
+                  id: 'action',
+                  header: 'Action',
+                  render: (disp) =>
+                    disp.status !== 'RESOLVED' ? (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setSelectedDispute(disp);
+                          setUpdateDisputeDialogOpen(true);
+                        }}
+                        data-testid={`rec.btn.dispute-update-${disp.id}`}
+                      >
+                        Resolve Dispute
+                      </Button>
+                    ) : null,
+                },
+              ]}
+            />
           </Box>
         )}
 
