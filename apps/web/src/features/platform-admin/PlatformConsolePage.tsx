@@ -36,6 +36,7 @@ import {
   Typography,
   SvgIcon,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 
 function RefreshIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
@@ -372,107 +373,84 @@ export function PlatformConsolePage() {
                   <CircularProgress size={32} />
                 </Box>
               ) : (
-                <TableContainer>
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Slug / ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Legal Name</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Type</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Region / Timezone</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Health Status</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Active Users</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Entitlements</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Status</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>Manage</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {tenantsQuery.data?.data.map((t) => (
-                        <TableRow key={t.id} hover>
-                          <TableCell>
-                            <Typography
-                              variant="subtitle2"
-                              fontWeight={600}
-                              component={RouterLink}
-                              to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
-                              sx={{ textDecoration: 'none', color: 'primary.main' }}
-                            >
-                              {t.slug}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {t.id}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{t.legalName}</TableCell>
-                          <TableCell>
-                            <Chip label={t.tenantType} size="small" variant="outlined" />
-                          </TableCell>
-                          <TableCell>
-                            {t.dataRegion} / {t.timezone}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={t.healthStatus}
-                              size="small"
-                              color={t.healthStatus === 'HEALTHY' ? 'success' : 'warning'}
-                            />
-                          </TableCell>
-                          <TableCell>{t.activeUsersCount} users</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                              {t.entitlements.slice(0, 3).map((e) => (
-                                <Chip key={e} label={e} size="small" sx={{ fontSize: '0.65rem' }} />
-                              ))}
-                              {t.entitlements.length > 3 && (
-                                <Chip
-                                  label={`+${t.entitlements.length - 3}`}
-                                  size="small"
-                                  sx={{ fontSize: '0.65rem' }}
-                                />
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={t.status}
-                              size="small"
-                              color={t.status === 'ACTIVE' ? 'primary' : 'default'}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              component={RouterLink}
-                              to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
-                            >
-                              Manage
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <DataTable<NonNullable<typeof tenantsQuery.data>['data'][number]>
+                  dataTestId="platform.table.tenants"
+                  data={tenantsQuery.data?.data ?? []}
+                  keyExtractor={(t) => t.id}
+                  columns={[
+                    {
+                      id: 'slug',
+                      header: 'Slug / ID',
+                      render: (t) => (
+                        <>
+                          <Typography
+                            variant="subtitle2"
+                            fontWeight={600}
+                            component={RouterLink}
+                            to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
+                            sx={{ textDecoration: 'none', color: 'primary.main' }}
+                          >
+                            {t.slug}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {t.id}
+                          </Typography>
+                        </>
+                      ),
+                    },
+                    { id: 'legal', header: 'Legal Name', render: (t) => t.legalName },
+                    {
+                      id: 'type',
+                      header: 'Type',
+                      render: (t) => <Chip label={t.tenantType} size="small" variant="outlined" />,
+                    },
+                    { id: 'region', header: 'Region / Timezone', render: (t) => `${t.dataRegion} / ${t.timezone}` },
+                    {
+                      id: 'health',
+                      header: 'Health Status',
+                      render: (t) => (
+                        <Chip label={t.healthStatus} size="small" color={t.healthStatus === 'HEALTHY' ? 'success' : 'warning'} />
+                      ),
+                    },
+                    { id: 'users', header: 'Active Users', render: (t) => `${t.activeUsersCount} users` },
+                    {
+                      id: 'entitlements',
+                      header: 'Entitlements',
+                      render: (t) => (
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {t.entitlements.slice(0, 3).map((e) => (
+                            <Chip key={e} label={e} size="small" sx={{ fontSize: '0.65rem' }} />
+                          ))}
+                          {t.entitlements.length > 3 && (
+                            <Chip label={`+${t.entitlements.length - 3}`} size="small" sx={{ fontSize: '0.65rem' }} />
+                          )}
+                        </Box>
+                      ),
+                    },
+                    {
+                      id: 'status',
+                      header: 'Status',
+                      render: (t) => (
+                        <Chip label={t.status} size="small" color={t.status === 'ACTIVE' ? 'primary' : 'default'} />
+                      ),
+                    },
+                    {
+                      id: 'manage',
+                      header: 'Manage',
+                      align: 'right',
+                      render: (t) => (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          component={RouterLink}
+                          to={`/platform-admin/tenants/${encodeURIComponent(t.id)}`}
+                        >
+                          Manage
+                        </Button>
+                      ),
+                    },
+                  ]}
+                />
               )}
             </CardContent>
           </Card>
@@ -589,28 +567,16 @@ export function PlatformConsolePage() {
                         </Typography>
                         <Chip label={`${items.length} items`} size="small" variant="outlined" />
                       </Box>
-                      <TableContainer sx={{ maxHeight: 220 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Code</TableCell>
-                              <TableCell>Label</TableCell>
-                              <TableCell>Version</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {items.map((i) => (
-                              <TableRow key={i.id}>
-                                <TableCell>
-                                  <code>{i.code}</code>
-                                </TableCell>
-                                <TableCell>{i.label}</TableCell>
-                                <TableCell>v{i.version}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                      <DataTable<(typeof items)[number]>
+                        dataTestId="platform.table.picklist"
+                        data={items}
+                        keyExtractor={(i) => i.id}
+                        columns={[
+                          { id: 'code', header: 'Code', render: (i) => <code>{i.code}</code> },
+                          { id: 'label', header: 'Label', render: (i) => i.label },
+                          { id: 'version', header: 'Version', render: (i) => `v${i.version}` },
+                        ]}
+                      />
                     </CardContent>
                   </Card>
                 </Grid>
@@ -706,73 +672,61 @@ export function PlatformConsolePage() {
           <Typography variant="subtitle1" fontWeight={700} gutterBottom>
             Dead Letter Store (ENT-070)
           </Typography>
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-            <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell>ID / Queue</TableCell>
-                  <TableCell>Original Job ID</TableCell>
-                  <TableCell>Failure Reason</TableCell>
-                  <TableCell>Retries</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {jobsQuery.data?.deadLetters.map((dl) => (
-                  <TableRow key={dl.id}>
-                    <TableCell>
-                      <Typography variant="subtitle2">
-                        <code>{dl.id}</code>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {dl.queue}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <code>{dl.originalJobId}</code>
-                    </TableCell>
-                    <TableCell sx={{ color: 'error.main', fontSize: '0.85rem' }}>{dl.errorReason}</TableCell>
-                    <TableCell>{dl.retryCount}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={dl.status}
-                        size="small"
-                        color={
-                          dl.status === 'REPLAYED'
-                            ? 'success'
-                            : dl.status === 'DISCARDED'
-                              ? 'default'
-                              : 'error'
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      {dl.status === 'UNRESOLVED' && (
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => replayDlMutation.mutate(dl.id)}
-                          >
-                            Replay
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            onClick={() => discardDlMutation.mutate(dl.id)}
-                          >
-                            Discard
-                          </Button>
-                        </Box>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<NonNullable<typeof jobsQuery.data>['deadLetters'][number]>
+            dataTestId="platform.table.dead-letters"
+            data={jobsQuery.data?.deadLetters ?? []}
+            keyExtractor={(dl) => dl.id}
+            columns={[
+              {
+                id: 'id',
+                header: 'ID / Queue',
+                render: (dl) => (
+                  <>
+                    <Typography variant="subtitle2">
+                      <code>{dl.id}</code>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {dl.queue}
+                    </Typography>
+                  </>
+                ),
+              },
+              { id: 'job', header: 'Original Job ID', render: (dl) => <code>{dl.originalJobId}</code> },
+              {
+                id: 'reason',
+                header: 'Failure Reason',
+                render: (dl) => <Box sx={{ color: 'error.main', fontSize: '0.85rem' }}>{dl.errorReason}</Box>,
+              },
+              { id: 'retries', header: 'Retries', render: (dl) => dl.retryCount },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (dl) => (
+                  <Chip
+                    label={dl.status}
+                    size="small"
+                    color={dl.status === 'REPLAYED' ? 'success' : dl.status === 'DISCARDED' ? 'default' : 'error'}
+                  />
+                ),
+              },
+              {
+                id: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (dl) =>
+                  dl.status === 'UNRESOLVED' ? (
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Button size="small" variant="contained" onClick={() => replayDlMutation.mutate(dl.id)}>
+                        Replay
+                      </Button>
+                      <Button size="small" variant="outlined" color="error" onClick={() => discardDlMutation.mutate(dl.id)}>
+                        Discard
+                      </Button>
+                    </Box>
+                  ) : null,
+              },
+            ]}
+          />
         </Box>
       )}
 
@@ -859,66 +813,70 @@ export function PlatformConsolePage() {
             </Button>
           </Box>
 
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-            <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell>Grant ID</TableCell>
-                  <TableCell>Tenant</TableCell>
-                  <TableCell>Incident / Reason</TableCell>
-                  <TableCell>Requester / Approver</TableCell>
-                  <TableCell>Duration Window</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {supportQuery.data?.data.map((grant) => (
-                  <TableRow key={grant.id}>
-                    <TableCell>
-                      <code>{grant.id}</code>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="subtitle2">{grant.tenantName}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {grant.tenantId}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={grant.incidentRef} size="small" color="error" sx={{ mr: 1 }} />
-                      <Typography variant="caption">{grant.reason}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        Req: <code>{grant.requester}</code>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Appr: <code>{grant.approver || 'Pending'}</code>
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption">
-                        {new Date(grant.startsAt).toLocaleTimeString()} -{' '}
-                        {new Date(grant.endsAt).toLocaleTimeString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={grant.status}
-                        color={
-                          grant.status === 'APPROVED'
-                            ? 'success'
-                            : grant.status === 'PENDING'
-                              ? 'warning'
-                              : 'default'
-                        }
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<NonNullable<typeof supportQuery.data>['data'][number]>
+            dataTestId="platform.table.support-grants"
+            data={supportQuery.data?.data ?? []}
+            keyExtractor={(grant) => grant.id}
+            columns={[
+              { id: 'id', header: 'Grant ID', render: (grant) => <code>{grant.id}</code> },
+              {
+                id: 'tenant',
+                header: 'Tenant',
+                render: (grant) => (
+                  <>
+                    <Typography variant="subtitle2">{grant.tenantName}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {grant.tenantId}
+                    </Typography>
+                  </>
+                ),
+              },
+              {
+                id: 'incident',
+                header: 'Incident / Reason',
+                render: (grant) => (
+                  <>
+                    <Chip label={grant.incidentRef} size="small" color="error" sx={{ mr: 1 }} />
+                    <Typography variant="caption">{grant.reason}</Typography>
+                  </>
+                ),
+              },
+              {
+                id: 'people',
+                header: 'Requester / Approver',
+                render: (grant) => (
+                  <>
+                    <Typography variant="body2">
+                      Req: <code>{grant.requester}</code>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Appr: <code>{grant.approver || 'Pending'}</code>
+                    </Typography>
+                  </>
+                ),
+              },
+              {
+                id: 'window',
+                header: 'Duration Window',
+                render: (grant) => (
+                  <Typography variant="caption">
+                    {new Date(grant.startsAt).toLocaleTimeString()} - {new Date(grant.endsAt).toLocaleTimeString()}
+                  </Typography>
+                ),
+              },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (grant) => (
+                  <Chip
+                    label={grant.status}
+                    color={grant.status === 'APPROVED' ? 'success' : grant.status === 'PENDING' ? 'warning' : 'default'}
+                    size="small"
+                  />
+                ),
+              },
+            ]}
+          />
         </Box>
       )}
 
