@@ -1,7 +1,8 @@
 // apps/web/src/features/platform-admin/PlatformConsolePage.tsx
 // Module 30: Administration and Platform Operations (MOD-ADM) UI Console
 import React, { useState } from 'react';
-import type { FeatureFlag } from '@dsa/contracts';
+import type { FeatureFlag, MasterDataItem, PlatformTenantSummary } from '@dsa/contracts';
+import { DataTable } from '../../ui';
 import {
   Alert,
   Box,
@@ -36,7 +37,6 @@ import {
   Typography,
   SvgIcon,
 } from '@mui/material';
-import { DataTable } from '../../ui';
 
 function RefreshIcon(props: React.ComponentProps<typeof SvgIcon>) {
   return (
@@ -373,7 +373,7 @@ export function PlatformConsolePage() {
                   <CircularProgress size={32} />
                 </Box>
               ) : (
-                <DataTable<NonNullable<typeof tenantsQuery.data>['data'][number]>
+                <DataTable<PlatformTenantSummary>
                   dataTestId="platform.table.tenants"
                   data={tenantsQuery.data?.data ?? []}
                   keyExtractor={(t) => t.id}
@@ -567,7 +567,7 @@ export function PlatformConsolePage() {
                         </Typography>
                         <Chip label={`${items.length} items`} size="small" variant="outlined" />
                       </Box>
-                      <DataTable<(typeof items)[number]>
+                      <DataTable<MasterDataItem>
                         dataTestId="platform.table.picklist"
                         data={items}
                         keyExtractor={(i) => i.id}

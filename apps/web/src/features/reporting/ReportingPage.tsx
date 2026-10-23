@@ -29,6 +29,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import React, { useState } from 'react';
 import {
   useBranchDashboard,
@@ -315,86 +316,48 @@ export function ReportingPage() {
           {reportRunsLoading ? (
             <CircularProgress />
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell>
-                      <strong>Run ID</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Report Code</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Status</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Row Count</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Created At</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Action</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {reportRunsData?.data && reportRunsData.data.length > 0 ? (
-                    reportRunsData.data.map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell>
-                          <code>{run.id}</code>
-                        </TableCell>
-                        <TableCell>{run.reportCode}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={run.status}
-                            size="small"
-                            color={
-                              run.status === 'COMPLETED'
-                                ? 'success'
-                                : run.status === 'RUNNING'
-                                  ? 'primary'
-                                  : 'default'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>{run.rowCount}</TableCell>
-                        <TableCell>{new Date(run.createdAt).toLocaleString()}</TableCell>
-                        <TableCell>
-                          {run.downloadUrl ? (
-                            <Button
-                              size="small"
-                              onClick={() => {
-                                void apiDownload(
-                                  run.downloadUrl!,
-                                  `report_${run.reportCode.toLowerCase()}_${run.id}.csv`,
-                                );
-                              }}
-                            >
-                              Download
-                            </Button>
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">
-                              Ready in Store
-                            </Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                          No report runs generated yet. Select a standard report above to trigger execution.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<NonNullable<typeof reportRunsData>['data'][number]>
+              dataTestId="reporting.table.runs"
+              data={reportRunsData?.data ?? []}
+              keyExtractor={(run) => run.id}
+              emptyMessage="No report runs generated yet. Select a standard report above to trigger execution."
+              columns={[
+                { id: 'id', header: 'Run ID', render: (run) => <code>{run.id}</code> },
+                { id: 'code', header: 'Report Code', render: (run) => run.reportCode },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (run) => (
+                    <Chip
+                      label={run.status}
+                      size="small"
+                      color={run.status === 'COMPLETED' ? 'success' : run.status === 'RUNNING' ? 'primary' : 'default'}
+                    />
+                  ),
+                },
+                { id: 'rows', header: 'Row Count', render: (run) => run.rowCount },
+                { id: 'created', header: 'Created At', render: (run) => new Date(run.createdAt).toLocaleString() },
+                {
+                  id: 'action',
+                  header: 'Action',
+                  render: (run) =>
+                    run.downloadUrl ? (
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          void apiDownload(run.downloadUrl!, `report_${run.reportCode.toLowerCase()}_${run.id}.csv`);
+                        }}
+                      >
+                        Download
+                      </Button>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        Ready in Store
+                      </Typography>
+                    ),
+                },
+              ]}
+            />
           )}
         </Box>
       )}
@@ -496,54 +459,34 @@ export function ReportingPage() {
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                     Top Performing Branches
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell>
-                            <strong>Branch</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Disbursed Volume</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Target</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Achievement %</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {execData.topBranches.map((b) => (
-                          <TableRow key={b.branchId}>
-                            <TableCell>{b.branchName}</TableCell>
-                            <TableCell>₹{b.disbursedAmount.toLocaleString('en-IN')}</TableCell>
-                            <TableCell>
-                              {b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : '—'}
-                            </TableCell>
-                            <TableCell>
-                              {b.achievementRate !== null ? (
-                                <Chip
-                                  label={`${b.achievementRate}%`}
-                                  size="small"
-                                  color={
-                                    b.achievementRate >= 100
-                                      ? 'success'
-                                      : b.achievementRate >= 80
-                                        ? 'warning'
-                                        : 'default'
-                                  }
-                                />
-                              ) : (
-                                '—'
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<(typeof execData.topBranches)[number]>
+                    dataTestId="reporting.table.top-branches"
+                    data={execData.topBranches}
+                    keyExtractor={(b) => b.branchId}
+                    columns={[
+                      { id: 'branch', header: 'Branch', render: (b) => b.branchName },
+                      { id: 'disbursed', header: 'Disbursed Volume', render: (b) => `₹${b.disbursedAmount.toLocaleString('en-IN')}` },
+                      {
+                        id: 'target',
+                        header: 'Target',
+                        render: (b) => (b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : '—'),
+                      },
+                      {
+                        id: 'achievement',
+                        header: 'Achievement %',
+                        render: (b) =>
+                          b.achievementRate !== null ? (
+                            <Chip
+                              label={`${b.achievementRate}%`}
+                              size="small"
+                              color={b.achievementRate >= 100 ? 'success' : b.achievementRate >= 80 ? 'warning' : 'default'}
+                            />
+                          ) : (
+                            '—'
+                          ),
+                      },
+                    ]}
+                  />
                 </Box>
               ) : null}
             </Box>
@@ -598,40 +541,22 @@ export function ReportingPage() {
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                     Loan Officer Activity & Breakdown
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell>
-                            <strong>Officer Name</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Leads Sourced</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Sanctions</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Disbursed Volume</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Conversion Rate</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {branchData.officerPerformance.map((officer) => (
-                          <TableRow key={officer.userId}>
-                            <TableCell>{officer.userName}</TableCell>
-                            <TableCell>{officer.leadCount}</TableCell>
-                            <TableCell>{officer.sanctionCount}</TableCell>
-                            <TableCell>₹{officer.disbursementAmount.toLocaleString('en-IN')}</TableCell>
-                            <TableCell>{officer.conversionRate}%</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<(typeof branchData.officerPerformance)[number]>
+                    dataTestId="reporting.table.officers"
+                    data={branchData.officerPerformance}
+                    keyExtractor={(officer) => officer.userId}
+                    columns={[
+                      { id: 'name', header: 'Officer Name', render: (officer) => officer.userName },
+                      { id: 'leads', header: 'Leads Sourced', render: (officer) => officer.leadCount },
+                      { id: 'sanctions', header: 'Sanctions', render: (officer) => officer.sanctionCount },
+                      {
+                        id: 'disbursed',
+                        header: 'Disbursed Volume',
+                        render: (officer) => `₹${officer.disbursementAmount.toLocaleString('en-IN')}`,
+                      },
+                      { id: 'conversion', header: 'Conversion Rate', render: (officer) => `${officer.conversionRate}%` },
+                    ]}
+                  />
                 </Box>
               ) : null}
             </Box>
@@ -740,36 +665,17 @@ export function ReportingPage() {
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                     Product Portfolio Breakdown
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell>
-                            <strong>Product</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Sanction Count</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Disbursed Volume</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Portfolio Share</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {finData.productBreakdown.map((p) => (
-                          <TableRow key={p.productId}>
-                            <TableCell>{p.productName}</TableCell>
-                            <TableCell>{p.sanctionCount}</TableCell>
-                            <TableCell>₹{p.disbursedAmount.toLocaleString('en-IN')}</TableCell>
-                            <TableCell>{p.sharePercentage}%</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<(typeof finData.productBreakdown)[number]>
+                    dataTestId="reporting.table.products"
+                    data={finData.productBreakdown}
+                    keyExtractor={(p) => p.productId}
+                    columns={[
+                      { id: 'product', header: 'Product', render: (p) => p.productName },
+                      { id: 'sanctions', header: 'Sanction Count', render: (p) => p.sanctionCount },
+                      { id: 'disbursed', header: 'Disbursed Volume', render: (p) => `₹${p.disbursedAmount.toLocaleString('en-IN')}` },
+                      { id: 'share', header: 'Portfolio Share', render: (p) => `${p.sharePercentage}%` },
+                    ]}
+                  />
                 </Box>
               ) : null}
             </Box>
@@ -834,32 +740,16 @@ export function ReportingPage() {
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                     Top Connector Partners
                   </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell>
-                            <strong>Partner Name</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Leads Sourced</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Disbursed Volume</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {conData.topPartners.map((p) => (
-                          <TableRow key={p.connectorId}>
-                            <TableCell>{p.connectorName}</TableCell>
-                            <TableCell>{p.leadsCount}</TableCell>
-                            <TableCell>₹{p.disbursedAmount.toLocaleString('en-IN')}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<(typeof conData.topPartners)[number]>
+                    dataTestId="reporting.table.partners"
+                    data={conData.topPartners}
+                    keyExtractor={(p) => p.connectorId}
+                    columns={[
+                      { id: 'name', header: 'Partner Name', render: (p) => p.connectorName },
+                      { id: 'leads', header: 'Leads Sourced', render: (p) => p.leadsCount },
+                      { id: 'disbursed', header: 'Disbursed Volume', render: (p) => `₹${p.disbursedAmount.toLocaleString('en-IN')}` },
+                    ]}
+                  />
                 </Box>
               ) : null}
             </Box>
@@ -885,60 +775,29 @@ export function ReportingPage() {
           {metricDefsLoading ? (
             <CircularProgress />
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell>
-                      <strong>Code</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Name</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Category</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Unit</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Grain</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Date Basis</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Version</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Formula AST</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {metricDefsData?.data.map((def) => (
-                    <TableRow key={def.code}>
-                      <TableCell>
-                        <code>{def.code}</code>
-                      </TableCell>
-                      <TableCell>{def.name}</TableCell>
-                      <TableCell>
-                        <Chip label={def.category} size="small" />
-                      </TableCell>
-                      <TableCell>{def.unit}</TableCell>
-                      <TableCell>{def.grain}</TableCell>
-                      <TableCell>{def.dateBasis}</TableCell>
-                      <TableCell>v{def.version}</TableCell>
-                      <TableCell>
-                        <Button size="small" variant="outlined" onClick={() => setFormulaModalDef(def)}>
-                          View AST
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<NonNullable<typeof metricDefsData>['data'][number]>
+              dataTestId="reporting.table.metrics"
+              data={metricDefsData?.data ?? []}
+              keyExtractor={(def) => def.code}
+              columns={[
+                { id: 'code', header: 'Code', render: (def) => <code>{def.code}</code> },
+                { id: 'name', header: 'Name', render: (def) => def.name },
+                { id: 'category', header: 'Category', render: (def) => <Chip label={def.category} size="small" /> },
+                { id: 'unit', header: 'Unit', render: (def) => def.unit },
+                { id: 'grain', header: 'Grain', render: (def) => def.grain },
+                { id: 'basis', header: 'Date Basis', render: (def) => def.dateBasis },
+                { id: 'version', header: 'Version', render: (def) => `v${def.version}` },
+                {
+                  id: 'ast',
+                  header: 'Formula AST',
+                  render: (def) => (
+                    <Button size="small" variant="outlined" onClick={() => setFormulaModalDef(def)}>
+                      View AST
+                    </Button>
+                  ),
+                },
+              ]}
+            />
           )}
         </Box>
       )}
@@ -973,84 +832,43 @@ export function ReportingPage() {
           {exportsLoading ? (
             <CircularProgress />
           ) : (
-            <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell>
-                      <strong>ID</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Export Type</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Format</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Status</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Row Count</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Expires At (24h)</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Download</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {exportsData?.data && exportsData.data.length > 0 ? (
-                    exportsData.data.map((job) => (
-                      <TableRow key={job.id}>
-                        <TableCell>
-                          <code>{job.id}</code>
-                        </TableCell>
-                        <TableCell>{job.exportType}</TableCell>
-                        <TableCell>
-                          <Chip label={job.fileFormat} size="small" />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={job.status}
-                            size="small"
-                            color={job.status === 'COMPLETED' ? 'success' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell>{job.rowCount}</TableCell>
-                        <TableCell>{new Date(job.expiresAt).toLocaleString()}</TableCell>
-                        <TableCell>
-                          {job.downloadUrl ? (
-                            <Button
-                              size="small"
-                              onClick={() => {
-                                void apiDownload(
-                                  job.downloadUrl!,
-                                  `export_${job.id}.${job.fileFormat.toLowerCase()}`,
-                                );
-                              }}
-                            >
-                              Download
-                            </Button>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                          No recent export jobs. Click &quot;New Export&quot; to initiate a data export.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<NonNullable<typeof exportsData>['data'][number]>
+              dataTestId="reporting.table.exports"
+              data={exportsData?.data ?? []}
+              keyExtractor={(job) => job.id}
+              emptyMessage='No recent export jobs. Click "New Export" to initiate a data export.'
+              columns={[
+                { id: 'id', header: 'ID', render: (job) => <code>{job.id}</code> },
+                { id: 'type', header: 'Export Type', render: (job) => job.exportType },
+                { id: 'format', header: 'Format', render: (job) => <Chip label={job.fileFormat} size="small" /> },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (job) => (
+                    <Chip label={job.status} size="small" color={job.status === 'COMPLETED' ? 'success' : 'default'} />
+                  ),
+                },
+                { id: 'rows', header: 'Row Count', render: (job) => job.rowCount },
+                { id: 'expires', header: 'Expires At (24h)', render: (job) => new Date(job.expiresAt).toLocaleString() },
+                {
+                  id: 'download',
+                  header: 'Download',
+                  render: (job) =>
+                    job.downloadUrl ? (
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          void apiDownload(job.downloadUrl!, `export_${job.id}.${job.fileFormat.toLowerCase()}`);
+                        }}
+                      >
+                        Download
+                      </Button>
+                    ) : (
+                      '—'
+                    ),
+                },
+              ]}
+            />
           )}
 
           <Typography variant="subtitle1" fontWeight={600} gutterBottom>
@@ -1059,77 +877,40 @@ export function ReportingPage() {
           {schedulesLoading ? (
             <CircularProgress />
           ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'action.hover' }}>
-                    <TableCell>
-                      <strong>ID</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Report Code</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Frequency</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Recipients</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Next Run</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Status</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Action</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {schedulesData?.data && schedulesData.data.length > 0 ? (
-                    schedulesData.data.map((sch) => (
-                      <TableRow key={sch.id}>
-                        <TableCell>
-                          <code>{sch.id}</code>
-                        </TableCell>
-                        <TableCell>{sch.reportCode}</TableCell>
-                        <TableCell>
-                          <Chip label={sch.frequency} size="small" color="primary" />
-                        </TableCell>
-                        <TableCell>{sch.recipientEmails.join(', ')}</TableCell>
-                        <TableCell>{new Date(sch.nextRunAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={sch.isActive ? 'ACTIVE' : 'PAUSED'}
-                            size="small"
-                            color={sch.isActive ? 'success' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            color="error"
-                            disabled={deleteScheduleMutation.isPending}
-                            onClick={() => handleDeleteSchedule(sch.id)}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                          No recurring report schedules configured. Click &quot;New Schedule&quot; to add one.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<NonNullable<typeof schedulesData>['data'][number]>
+              dataTestId="reporting.table.schedules"
+              data={schedulesData?.data ?? []}
+              keyExtractor={(sch) => sch.id}
+              emptyMessage='No recurring report schedules configured. Click "New Schedule" to add one.'
+              columns={[
+                { id: 'id', header: 'ID', render: (sch) => <code>{sch.id}</code> },
+                { id: 'code', header: 'Report Code', render: (sch) => sch.reportCode },
+                { id: 'frequency', header: 'Frequency', render: (sch) => <Chip label={sch.frequency} size="small" color="primary" /> },
+                { id: 'recipients', header: 'Recipients', render: (sch) => sch.recipientEmails.join(', ') },
+                { id: 'next', header: 'Next Run', render: (sch) => new Date(sch.nextRunAt).toLocaleDateString() },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (sch) => (
+                    <Chip label={sch.isActive ? 'ACTIVE' : 'PAUSED'} size="small" color={sch.isActive ? 'success' : 'default'} />
+                  ),
+                },
+                {
+                  id: 'action',
+                  header: 'Action',
+                  render: (sch) => (
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={deleteScheduleMutation.isPending}
+                      onClick={() => handleDeleteSchedule(sch.id)}
+                    >
+                      Delete
+                    </Button>
+                  ),
+                },
+              ]}
+            />
           )}
         </Box>
       )}
@@ -1203,116 +984,67 @@ export function ReportingPage() {
                   subheader={`Tenant ID: ${controlTotalsData.tenantId} • Reconciled As Of: ${new Date(controlTotalsData.asOf).toLocaleString()}`}
                 />
                 <CardContent>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table>
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                          <TableCell>
-                            <strong>Metric Domain</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>OLTP Primary Tables</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>Reporting Projection Store</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>Variance Difference</strong>
-                          </TableCell>
-                          <TableCell align="center">
-                            <strong>Status</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>Leads Created</TableCell>
-                          <TableCell align="right">{controlTotalsData.oltpTotals.leads}</TableCell>
-                          <TableCell align="right">{controlTotalsData.projectionTotals.leads}</TableCell>
-                          <TableCell align="right">{controlTotalsData.variance.leadsDiff}</TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={controlTotalsData.variance.leadsDiff === 0 ? 'MATCH' : 'DIFF'}
-                              size="small"
-                              color={controlTotalsData.variance.leadsDiff === 0 ? 'success' : 'error'}
-                            />
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Sanction Count</TableCell>
-                          <TableCell align="right">{controlTotalsData.oltpTotals.sanctions}</TableCell>
-                          <TableCell align="right">{controlTotalsData.projectionTotals.sanctions}</TableCell>
-                          <TableCell align="right">{controlTotalsData.variance.sanctionsDiff}</TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={controlTotalsData.variance.sanctionsDiff === 0 ? 'MATCH' : 'DIFF'}
-                              size="small"
-                              color={controlTotalsData.variance.sanctionsDiff === 0 ? 'success' : 'error'}
-                            />
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Sanction Amount</TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.oltpTotals.sanctionAmount.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.projectionTotals.sanctionAmount.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.variance.sanctionAmountDiff.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={controlTotalsData.variance.sanctionAmountDiff === 0 ? 'MATCH' : 'DIFF'}
-                              size="small"
-                              color={
-                                controlTotalsData.variance.sanctionAmountDiff === 0 ? 'success' : 'error'
-                              }
-                            />
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Disbursement Count</TableCell>
-                          <TableCell align="right">{controlTotalsData.oltpTotals.disbursements}</TableCell>
-                          <TableCell align="right">
-                            {controlTotalsData.projectionTotals.disbursements}
-                          </TableCell>
-                          <TableCell align="right">{controlTotalsData.variance.disbursementsDiff}</TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={controlTotalsData.variance.disbursementsDiff === 0 ? 'MATCH' : 'DIFF'}
-                              size="small"
-                              color={controlTotalsData.variance.disbursementsDiff === 0 ? 'success' : 'error'}
-                            />
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>Disbursement Volume</TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.oltpTotals.disbursementAmount.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.projectionTotals.disbursementAmount.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="right">
-                            ₹{controlTotalsData.variance.disbursementAmountDiff.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={
-                                controlTotalsData.variance.disbursementAmountDiff === 0 ? 'MATCH' : 'DIFF'
-                              }
-                              size="small"
-                              color={
-                                controlTotalsData.variance.disbursementAmountDiff === 0 ? 'success' : 'error'
-                              }
-                            />
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<{
+                    domain: string;
+                    oltp: string;
+                    projection: string;
+                    diff: string;
+                    matched: boolean;
+                  }>
+                    dataTestId="reporting.table.control-totals"
+                    keyExtractor={(row) => row.domain}
+                    data={[
+                      {
+                        domain: 'Leads Created',
+                        oltp: String(controlTotalsData.oltpTotals.leads),
+                        projection: String(controlTotalsData.projectionTotals.leads),
+                        diff: String(controlTotalsData.variance.leadsDiff),
+                        matched: controlTotalsData.variance.leadsDiff === 0,
+                      },
+                      {
+                        domain: 'Sanction Count',
+                        oltp: String(controlTotalsData.oltpTotals.sanctions),
+                        projection: String(controlTotalsData.projectionTotals.sanctions),
+                        diff: String(controlTotalsData.variance.sanctionsDiff),
+                        matched: controlTotalsData.variance.sanctionsDiff === 0,
+                      },
+                      {
+                        domain: 'Sanction Amount',
+                        oltp: `₹${controlTotalsData.oltpTotals.sanctionAmount.toLocaleString('en-IN')}`,
+                        projection: `₹${controlTotalsData.projectionTotals.sanctionAmount.toLocaleString('en-IN')}`,
+                        diff: `₹${controlTotalsData.variance.sanctionAmountDiff.toLocaleString('en-IN')}`,
+                        matched: controlTotalsData.variance.sanctionAmountDiff === 0,
+                      },
+                      {
+                        domain: 'Disbursement Count',
+                        oltp: String(controlTotalsData.oltpTotals.disbursements),
+                        projection: String(controlTotalsData.projectionTotals.disbursements),
+                        diff: String(controlTotalsData.variance.disbursementsDiff),
+                        matched: controlTotalsData.variance.disbursementsDiff === 0,
+                      },
+                      {
+                        domain: 'Disbursement Volume',
+                        oltp: `₹${controlTotalsData.oltpTotals.disbursementAmount.toLocaleString('en-IN')}`,
+                        projection: `₹${controlTotalsData.projectionTotals.disbursementAmount.toLocaleString('en-IN')}`,
+                        diff: `₹${controlTotalsData.variance.disbursementAmountDiff.toLocaleString('en-IN')}`,
+                        matched: controlTotalsData.variance.disbursementAmountDiff === 0,
+                      },
+                    ]}
+                    columns={[
+                      { id: 'domain', header: 'Metric Domain', render: (row) => row.domain },
+                      { id: 'oltp', header: 'OLTP Primary Tables', align: 'right', render: (row) => row.oltp },
+                      { id: 'projection', header: 'Reporting Projection Store', align: 'right', render: (row) => row.projection },
+                      { id: 'diff', header: 'Variance Difference', align: 'right', render: (row) => row.diff },
+                      {
+                        id: 'status',
+                        header: 'Status',
+                        align: 'center',
+                        render: (row) => (
+                          <Chip label={row.matched ? 'MATCH' : 'DIFF'} size="small" color={row.matched ? 'success' : 'error'} />
+                        ),
+                      },
+                    ]}
+                  />
                 </CardContent>
               </Card>
             </Box>
