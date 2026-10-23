@@ -29,6 +29,7 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import type { TenantFeatureFlag } from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
@@ -206,68 +207,68 @@ export function TenantDetailPage() {
               )}
 
               {flagsQuery.data && (
-                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 3 }}>
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>Flag</TableCell>
-                        <TableCell>Platform default</TableCell>
-                        <TableCell>This tenant</TableCell>
-                        <TableCell>State</TableCell>
-                        <TableCell>Version</TableCell>
-                        <TableCell>Last change</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {flagsQuery.data.data.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6}>No tenant-scoped flags are defined.</TableCell>
-                        </TableRow>
-                      )}
-                      {flagsQuery.data.data.map((flag) => {
+                <DataTable<(typeof flagsQuery.data.data)[number]>
+                  dataTestId="tenant.table.flags"
+                  data={flagsQuery.data.data}
+                  keyExtractor={(flag) => flag.key}
+                  emptyMessage="No tenant-scoped flags are defined."
+                  columns={[
+                    {
+                      id: 'flag',
+                      header: 'Flag',
+                      render: (flag) => (
+                        <>
+                          <Typography variant="subtitle2" fontWeight={700}>
+                            {flag.key}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {flag.description || 'No description provided.'}
+                          </Typography>
+                        </>
+                      ),
+                    },
+                    {
+                      id: 'default',
+                      header: 'Platform default',
+                      render: (flag) => <Chip label={onOff(flag.defaultValue)} size="small" variant="outlined" />,
+                    },
+                    {
+                      id: 'tenant',
+                      header: 'This tenant',
+                      render: (flag) => (
+                        <Switch
+                          checked={flag.value}
+                          color="success"
+                          disabled={toggleMutation.isPending}
+                          inputProps={{ 'aria-label': `${flag.key} for ${tenantName}` }}
+                          onChange={(e) => setPending({ flag, next: e.target.checked })}
+                        />
+                      ),
+                    },
+                    {
+                      id: 'state',
+                      header: 'State',
+                      render: (flag) => {
                         const state = flagState(flag);
                         return (
-                          <TableRow key={flag.key} hover>
-                            <TableCell>
-                              <Typography variant="subtitle2" fontWeight={700}>
-                                {flag.key}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {flag.description || 'No description provided.'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Chip label={onOff(flag.defaultValue)} size="small" variant="outlined" />
-                            </TableCell>
-                            <TableCell>
-                              <Switch
-                                checked={flag.value}
-                                color="success"
-                                disabled={toggleMutation.isPending}
-                                inputProps={{ 'aria-label': `${flag.key} for ${tenantName}` }}
-                                onChange={(e) => setPending({ flag, next: e.target.checked })}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={state.label}
-                                size="small"
-                                color={state.overridden ? 'secondary' : 'default'}
-                                variant={state.overridden ? 'filled' : 'outlined'}
-                              />
-                            </TableCell>
-                            <TableCell>v{flag.lockVersion}</TableCell>
-                            <TableCell>
-                              {flag.updatedAt
-                                ? `${new Date(flag.updatedAt).toLocaleString()} by ${flag.updatedBy}`
-                                : '—'}
-                            </TableCell>
-                          </TableRow>
+                          <Chip
+                            label={state.label}
+                            size="small"
+                            color={state.overridden ? 'secondary' : 'default'}
+                            variant={state.overridden ? 'filled' : 'outlined'}
+                          />
                         );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      },
+                    },
+                    { id: 'version', header: 'Version', render: (flag) => `v${flag.lockVersion}` },
+                    {
+                      id: 'changed',
+                      header: 'Last change',
+                      render: (flag) =>
+                        flag.updatedAt ? `${new Date(flag.updatedAt).toLocaleString()} by ${flag.updatedBy}` : '—',
+                    },
+                  ]}
+                />
               )}
 
               {globals.length > 0 && (

@@ -30,6 +30,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -278,79 +279,81 @@ export function RuleSetDetailPage() {
       </Box>
 
       {tabIndex === 0 && (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Version</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Hit Policy</TableCell>
-                <TableCell>Content Hash</TableCell>
-                <TableCell>Rules Count</TableCell>
-                <TableCell>Change Reason</TableCell>
-                <TableCell>Effective Range</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {versions.map((ver) => (
-                <TableRow
-                  key={ver.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/rules/versions/${ver.id}`)}
+        <DataTable<(typeof versions)[number]>
+          dataTestId="rules.table.versions"
+          data={versions}
+          keyExtractor={(ver) => ver.id}
+          onRowClick={(ver) => navigate(`/rules/versions/${ver.id}`)}
+          columns={[
+            {
+              id: 'version',
+              header: 'Version',
+              render: (ver) => (
+                <>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    v{ver.versionNo}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {ver.id}
+                  </Typography>
+                </>
+              ),
+            },
+            { id: 'status', header: 'Status', render: (ver) => <Chip size="small" label={ver.status} color={getStatusColor(ver.status)} /> },
+            { id: 'hit', header: 'Hit Policy', render: (ver) => <Chip size="small" label={ver.hitPolicy} variant="outlined" /> },
+            {
+              id: 'hash',
+              header: 'Content Hash',
+              render: (ver) => (
+                <Typography variant="caption" fontFamily="monospace">
+                  {ver.contentHash.slice(0, 16)}...
+                </Typography>
+              ),
+            },
+            {
+              id: 'rules',
+              header: 'Rules Count',
+              render: (ver) => <Typography variant="body2">{ver.definition?.rules?.length ?? 0}</Typography>,
+            },
+            {
+              id: 'reason',
+              header: 'Change Reason',
+              render: (ver) => (
+                <Typography variant="body2" color="text.secondary">
+                  {ver.changeReason || '—'}
+                </Typography>
+              ),
+            },
+            {
+              id: 'range',
+              header: 'Effective Range',
+              render: (ver) => (
+                <Typography variant="caption">
+                  {ver.effectiveFrom
+                    ? `${ver.effectiveFrom.slice(0, 10)} → ${ver.effectiveTo ? ver.effectiveTo.slice(0, 10) : 'active'}`
+                    : '—'}
+                </Typography>
+              ),
+            },
+            {
+              id: 'actions',
+              header: 'Actions',
+              align: 'right',
+              render: (ver) => (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/rules/versions/${ver.id}`);
+                  }}
                 >
-                  <TableCell>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      v{ver.versionNo}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {ver.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="small" label={ver.status} color={getStatusColor(ver.status)} />
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="small" label={ver.hitPolicy} variant="outlined" />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="caption" fontFamily="monospace">
-                      {ver.contentHash.slice(0, 16)}...
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{ver.definition?.rules?.length ?? 0}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {ver.changeReason || '—'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="caption">
-                      {ver.effectiveFrom
-                        ? `${ver.effectiveFrom.slice(0, 10)} → ${ver.effectiveTo ? ver.effectiveTo.slice(0, 10) : 'active'}`
-                        : '—'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/rules/versions/${ver.id}`);
-                      }}
-                    >
-                      {ver.status === 'DRAFT' ? 'Edit Draft' : 'View Rules'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                  {ver.status === 'DRAFT' ? 'Edit Draft' : 'View Rules'}
+                </Button>
+              ),
+            },
+          ]}
+        />
       )}
 
       {tabIndex === 1 && (
@@ -371,53 +374,51 @@ export function RuleSetDetailPage() {
               </Typography>
             </Paper>
           ) : (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Test Case Name</TableCell>
-                    <TableCell>Expected Status</TableCell>
-                    <TableCell>Expected Output</TableCell>
-                    <TableCell>Active</TableCell>
-                    <TableCell>Created</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {testCases.map((tc) => (
-                    <TableRow key={tc.id}>
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight={600}>
-                          {tc.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {tc.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip size="small" label={tc.expectedStatus} color="primary" variant="outlined" />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" fontFamily="monospace">
-                          {JSON.stringify(tc.expectedOutput)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={tc.active ? 'YES' : 'NO'}
-                          color={tc.active ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {new Date(tc.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<(typeof testCases)[number]>
+              dataTestId="rules.table.test-cases"
+              data={testCases}
+              keyExtractor={(tc) => tc.id}
+              columns={[
+                {
+                  id: 'name',
+                  header: 'Test Case Name',
+                  render: (tc) => (
+                    <>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        {tc.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {tc.id}
+                      </Typography>
+                    </>
+                  ),
+                },
+                {
+                  id: 'expected',
+                  header: 'Expected Status',
+                  render: (tc) => <Chip size="small" label={tc.expectedStatus} color="primary" variant="outlined" />,
+                },
+                {
+                  id: 'output',
+                  header: 'Expected Output',
+                  render: (tc) => (
+                    <Typography variant="caption" fontFamily="monospace">
+                      {JSON.stringify(tc.expectedOutput)}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'active',
+                  header: 'Active',
+                  render: (tc) => <Chip size="small" label={tc.active ? 'YES' : 'NO'} color={tc.active ? 'success' : 'default'} />,
+                },
+                {
+                  id: 'created',
+                  header: 'Created',
+                  render: (tc) => <Typography variant="caption">{new Date(tc.createdAt).toLocaleDateString()}</Typography>,
+                },
+              ]}
+            />
           )}
         </Box>
       )}

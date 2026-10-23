@@ -1,5 +1,6 @@
 // Sidebar navigation (owner: Dev 1). Refactored into 7 Operational Workspaces.
-// Supports both full expanded navigation and compact collapsible rail navigation.
+// In expanded mode: clean workspace navigation matching original design (no sub-item icons).
+// In collapsed mode: compact rail displaying main orange workspace category icons with tooltips.
 import {
   Box,
   Chip,
@@ -15,30 +16,20 @@ import {
   Typography,
 } from '@mui/material';
 import { type ReactNode, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { NAV_GROUPS, visibleGroups } from './access';
 import {
   AccountBalanceIcon,
   AdminPanelSettingsIcon,
   AssessmentIcon,
   AssignmentIcon,
-  BusinessIcon,
-  ChecklistIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
-  DescriptionIcon,
   ExpandLessIcon,
   ExpandMoreIcon,
   HubIcon,
-  InboxIcon,
-  LockIcon,
-  NotificationsIcon,
   PeopleIcon,
-  SettingsIcon,
-  ShieldIcon,
-  TrendingUpIcon,
-  VerifiedUserIcon,
 } from './icons';
 
 export { NAV_GROUPS, visibleGroups };
@@ -46,97 +37,25 @@ export type { NavGroup, NavItem } from './access';
 
 const STORAGE_KEY = 'qloax_sidebar_sections_v2';
 
-function getCategoryIcon(title: string): ReactNode {
+function getMainCategoryIcon(title: string, size: number = 22): ReactNode {
+  const sx = { color: '#F89344', fontSize: size };
   switch (title) {
     case 'Workspace':
-      return <DashboardIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <DashboardIcon sx={sx} />;
     case 'Sales & CRM':
-      return <PeopleIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <PeopleIcon sx={sx} />;
     case 'Loan Origination':
-      return <AssignmentIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <AssignmentIcon sx={sx} />;
     case 'Finance & Settlement':
-      return <AccountBalanceIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <AccountBalanceIcon sx={sx} />;
     case 'Partners & Operations':
-      return <HubIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <HubIcon sx={sx} />;
     case 'Analytics & Performance':
-      return <AssessmentIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <AssessmentIcon sx={sx} />;
     case 'Governance & Administration':
-      return <AdminPanelSettingsIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />;
+      return <AdminPanelSettingsIcon sx={sx} />;
     default:
-      return null;
-  }
-}
-
-function getItemIcon(label: string, categoryTitle?: string): ReactNode {
-  switch (label) {
-    case 'Home':
-      return <DashboardIcon fontSize="small" />;
-    case 'Tasks':
-    case 'Verification workbench':
-      return <ChecklistIcon fontSize="small" />;
-    case 'Approvals':
-      return <VerifiedUserIcon fontSize="small" />;
-    case 'Activity':
-      return <TrendingUpIcon fontSize="small" />;
-    case 'Notifications':
-      return <NotificationsIcon fontSize="small" />;
-    case 'Leads':
-    case 'Customers':
-    case 'Workforce':
-    case 'Users':
-      return <PeopleIcon fontSize="small" />;
-    case 'Messaging':
-      return <InboxIcon fontSize="small" />;
-    case 'Grievances':
-      return <ShieldIcon fontSize="small" />;
-    case 'Applications':
-    case 'Lender cases':
-    case 'Sanction and disbursement':
-      return <AssignmentIcon fontSize="small" />;
-    case 'Documents':
-    case 'Document sharing':
-      return <DescriptionIcon fontSize="small" />;
-    case 'Verification':
-      return <VerifiedUserIcon fontSize="small" />;
-    case 'Lenders':
-    case 'Organisation':
-    case 'Branches':
-      return <BusinessIcon fontSize="small" />;
-    case 'Products':
-      return <HubIcon fontSize="small" />;
-    case 'Commission':
-    case 'Payouts':
-    case 'Ledger':
-    case 'Invoices':
-    case 'Reconciliation':
-      return <AccountBalanceIcon fontSize="small" />;
-    case 'Connectors':
-    case 'Connector portal':
-    case 'Integrations':
-    case 'API management':
-      return <HubIcon fontSize="small" />;
-    case 'Performance Dashboard':
-    case 'Targets':
-    case 'Leaderboard':
-    case 'Reports & Catalogue':
-      return <AssessmentIcon fontSize="small" />;
-    case 'Rule sets':
-    case 'Decisions':
-    case 'Automation rules':
-    case 'Audit':
-    case 'Privacy and consent':
-      return <AdminPanelSettingsIcon fontSize="small" />;
-    case 'Security events and incidents':
-    case 'Security':
-      return <LockIcon fontSize="small" />;
-    case 'Configuration':
-    case 'Work queues':
-    case 'Access control':
-    case 'Import and export':
-    case 'Platform Console':
-      return <SettingsIcon fontSize="small" />;
-    default:
-      return categoryTitle ? getCategoryIcon(categoryTitle) : <DashboardIcon fontSize="small" />;
+      return <DashboardIcon sx={sx} />;
   }
 }
 
@@ -155,6 +74,7 @@ export function SidebarContent({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
+  const location = useLocation();
   const groups = visibleGroups(isAdmin, can, platformRealm);
 
   // Initialize all visible groups to expanded (true) by default
@@ -195,30 +115,180 @@ export function SidebarContent({
       }}
     >
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        {groups.map((group, i) => {
-          const isOpen = expanded[group.title] !== false;
+        {collapsed ? (
+          // Collapsed mode: Only show the main orange category icons with rich tooltips
+          <List dense disablePadding sx={{ px: 0.75 }}>
+            {groups.map((group, i) => {
+              const primaryItem = group.items.find((item) => item.to);
+              const isGroupActive = group.items.some(
+                (item) =>
+                  item.to &&
+                  (location.pathname === item.to ||
+                    (item.to !== '/' && location.pathname.startsWith(item.to))),
+              );
 
-          // Collapsed rail mode: Show compact icon list with tooltips
-          if (collapsed) {
+              return (
+                <Box key={group.title}>
+                  {i > 0 && <Divider sx={{ my: 0.75, mx: 1, borderColor: 'divider' }} />}
+                  <Tooltip
+                    title={
+                      <Box sx={{ p: 0.5, maxWidth: 220 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{ fontWeight: 700, color: '#F89344', display: 'block', mb: 0.5 }}
+                        >
+                          {group.title}
+                        </Typography>
+                        {group.items.slice(0, 5).map((item) => (
+                          <Typography
+                            key={item.label}
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              color: 'text.secondary',
+                              fontSize: 11,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            • {item.label}
+                          </Typography>
+                        ))}
+                        {group.items.length > 5 && (
+                          <Typography
+                            variant="caption"
+                            sx={{ color: 'text.disabled', fontSize: 10, display: 'block', mt: 0.25 }}
+                          >
+                            +{group.items.length - 5} more items
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    placement="right"
+                    arrow
+                  >
+                    <ListItemButton
+                      component={primaryItem ? NavLink : 'div'}
+                      to={primaryItem?.to}
+                      end={primaryItem?.to === '/'}
+                      onClick={onNavigate}
+                      data-testid={`shell.nav.category.${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                      sx={{
+                        minHeight: 48,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        px: 1,
+                        my: 0.4,
+                        borderRadius: 2,
+                        bgcolor: isGroupActive ? 'rgba(248, 147, 68, 0.12)' : 'transparent',
+                        position: 'relative',
+                        transition: 'all 0.15s ease',
+                        '&:hover': {
+                          bgcolor: 'rgba(248, 147, 68, 0.18)',
+                        },
+                        ...(isGroupActive && {
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 3,
+                            top: '20%',
+                            bottom: '20%',
+                            width: 3.5,
+                            borderRadius: 2,
+                            bgcolor: '#F89344',
+                          },
+                        }),
+                      }}
+                    >
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 0,
+                          justifyContent: 'center',
+                          color: '#F89344',
+                        }}
+                      >
+                        {getMainCategoryIcon(group.title, 22)}
+                      </ListItemIcon>
+                    </ListItemButton>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+          </List>
+        ) : (
+          // Expanded mode: Keep same like old with main orange category icon on subheaders and clean text items
+          groups.map((group, i) => {
+            const isOpen = expanded[group.title] !== false;
             return (
-              <Box key={group.title} sx={{ px: 0.75 }}>
-                {i > 0 && <Divider sx={{ my: 1, mx: 1, borderColor: 'divider' }} />}
-                <List dense disablePadding>
-                  {group.items.map((item) =>
-                    item.to ? (
-                      <Tooltip key={item.label} title={item.label} placement="right" arrow>
+              <Box key={group.title}>
+                {i > 0 && <Divider sx={{ my: 1 }} />}
+                <List
+                  dense
+                  disablePadding
+                  subheader={
+                    <ListSubheader
+                      component="div"
+                      onClick={() => toggleGroup(group.title)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleGroup(group.title);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-expanded={isOpen}
+                      sx={{
+                        lineHeight: '32px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: 'text.secondary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        px: 2,
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{ display: 'inline-flex', mr: 1, alignItems: 'center' }}>
+                          {getMainCategoryIcon(group.title, 18)}
+                        </Box>
+                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }}>
+                          {group.title}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {isOpen ? (
+                          <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        ) : (
+                          <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        )}
+                      </Box>
+                    </ListSubheader>
+                  }
+                >
+                  <Collapse in={isOpen} timeout="auto" unmountOnExit={false}>
+                    {group.items.map((item) =>
+                      item.to ? (
                         <ListItemButton
+                          key={item.label}
                           component={NavLink}
                           to={item.to}
                           end={item.to === '/'}
                           onClick={onNavigate}
                           data-testid={`shell.nav.${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                           sx={{
-                            minHeight: 44,
-                            justifyContent: 'center',
-                            px: 1,
-                            my: 0.4,
-                            borderRadius: 2,
+                            pl: 3,
+                            py: 0.6,
+                            borderRadius: 1.5,
+                            mx: 1,
+                            my: 0.2,
                             color: 'text.secondary',
                             transition: 'all 0.15s ease',
                             '&:hover': {
@@ -226,13 +296,14 @@ export function SidebarContent({
                               color: 'text.primary',
                             },
                             '&.active': {
-                              bgcolor: 'rgba(56, 118, 190, 0.12)',
+                              bgcolor: 'rgba(56, 118, 190, 0.08)',
+                              fontWeight: 700,
                               color: '#215988',
                               position: 'relative',
                               '&::before': {
                                 content: '""',
                                 position: 'absolute',
-                                left: 2,
+                                left: 4,
                                 top: '20%',
                                 bottom: '20%',
                                 width: 3.5,
@@ -242,168 +313,32 @@ export function SidebarContent({
                             },
                           }}
                         >
-                          <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: 'inherit' }}>
-                            {getItemIcon(item.label, group.title)}
-                          </ListItemIcon>
+                          <ListItemText
+                            primary={item.label}
+                            primaryTypographyProps={{ fontSize: 13, fontWeight: 'inherit' }}
+                          />
                         </ListItemButton>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip
-                        key={item.label}
-                        title={`${item.label} (Coming soon)`}
-                        placement="right"
-                        arrow
-                      >
-                        <span>
-                          <ListItemButton
-                            disabled
-                            sx={{
-                              minHeight: 44,
-                              justifyContent: 'center',
-                              px: 1,
-                              my: 0.4,
-                              borderRadius: 2,
-                              opacity: 0.45,
-                            }}
-                          >
-                            <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', color: 'text.disabled' }}>
-                              {getItemIcon(item.label, group.title)}
-                            </ListItemIcon>
-                          </ListItemButton>
-                        </span>
-                      </Tooltip>
-                    ),
-                  )}
+                      ) : (
+                        <Tooltip
+                          key={item.label}
+                          title={`Not built yet${item.task ? ` (${item.task})` : ''}`}
+                          placement="right"
+                        >
+                          <span>
+                            <ListItemButton disabled sx={{ pl: 3.5, py: 0.5, mx: 1, my: 0.25 }}>
+                              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13 }} />
+                              <Chip label="Soon" size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                            </ListItemButton>
+                          </span>
+                        </Tooltip>
+                      ),
+                    )}
+                  </Collapse>
                 </List>
               </Box>
             );
-          }
-
-          // Expanded mode: Full operational workspaces with expandable sections
-          return (
-            <Box key={group.title}>
-              {i > 0 && <Divider sx={{ my: 1 }} />}
-              <List
-                dense
-                disablePadding
-                subheader={
-                  <ListSubheader
-                    component="div"
-                    onClick={() => toggleGroup(group.title)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleGroup(group.title);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-expanded={isOpen}
-                    sx={{
-                      lineHeight: '32px',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      px: 2,
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {getCategoryIcon(group.title)}
-                      <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11 }}>
-                        {group.title}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {isOpen ? (
-                        <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      ) : (
-                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      )}
-                    </Box>
-                  </ListSubheader>
-                }
-              >
-                <Collapse in={isOpen} timeout="auto" unmountOnExit={false}>
-                  {group.items.map((item) =>
-                    item.to ? (
-                      <ListItemButton
-                        key={item.label}
-                        component={NavLink}
-                        to={item.to}
-                        end={item.to === '/'}
-                        onClick={onNavigate}
-                        data-testid={`shell.nav.${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                        sx={{
-                          pl: 2.5,
-                          py: 0.6,
-                          borderRadius: 1.5,
-                          mx: 1,
-                          my: 0.2,
-                          color: 'text.secondary',
-                          transition: 'all 0.15s ease',
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                            color: 'text.primary',
-                          },
-                          '&.active': {
-                            bgcolor: 'rgba(56, 118, 190, 0.08)',
-                            fontWeight: 700,
-                            color: '#215988',
-                            position: 'relative',
-                            '&::before': {
-                              content: '""',
-                              position: 'absolute',
-                              left: 4,
-                              top: '20%',
-                              bottom: '20%',
-                              width: 3.5,
-                              borderRadius: 2,
-                              bgcolor: '#F89344',
-                            },
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 26, color: 'inherit' }}>
-                          {getItemIcon(item.label, group.title)}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={item.label}
-                          primaryTypographyProps={{ fontSize: 13, fontWeight: 'inherit' }}
-                        />
-                      </ListItemButton>
-                    ) : (
-                      <Tooltip
-                        key={item.label}
-                        title={`Not built yet${item.task ? ` (${item.task})` : ''}`}
-                        placement="right"
-                      >
-                        <span>
-                          <ListItemButton disabled sx={{ pl: 2.5, py: 0.5, mx: 1, my: 0.25 }}>
-                            <ListItemIcon sx={{ minWidth: 26, color: 'inherit', opacity: 0.5 }}>
-                              {getItemIcon(item.label, group.title)}
-                            </ListItemIcon>
-                            <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13 }} />
-                            <Chip label="Soon" size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
-                          </ListItemButton>
-                        </span>
-                      </Tooltip>
-                    ),
-                  )}
-                </Collapse>
-              </List>
-            </Box>
-          );
-        })}
+          })
+        )}
       </Box>
 
       {/* Collapse / Expand Toggle Control at bottom */}
