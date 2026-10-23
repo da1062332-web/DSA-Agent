@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanType,
+  humanClick,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.loanOps);
-  });
+
 
   // =========================================================================
   // TC-LO-01: Sanction Terms Recording & Tranche Limit Validation
@@ -74,7 +81,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       }
     });
 
-    await page.goto('/sanctions/lcs_case_001');
+    await performRoleLogin(page, PERSONAS.loanOps, '/sanctions/lcs_case_001');
     await showDemoBanner(page, 'Recording Loan Sanction Terms', 'To set approved loan amounts, interest rates, and enforce disbursement tranche limits');
     await pauseForDemo(page, 1500);
 
@@ -153,6 +160,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await expect(page.getByText('#1')).toBeVisible();
     await expect(page.getByText('RECORDED')).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -202,7 +210,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       });
     });
 
-    await page.goto('/sanctions/lcs_case_002');
+    await performRoleLogin(page, PERSONAS.loanOps, '/sanctions/lcs_case_002');
     await showDemoBanner(page, 'Maker-Checker Dual Control', 'To prevent the maker who entered a disbursement tranche from self-verifying it');
     await pauseForDemo(page, 1500);
 
@@ -213,6 +221,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await expect(verifyBtn).not.toBeVisible();
     await showDemoBanner(page, 'Dual Control Verified', 'Separation of duties between recorder and verifier enforced');
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -220,12 +229,12 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
   // (Notion Architecture SoD Boundaries: Denies Rule Publishing & Payout Approvals)
   // =========================================================================
   test('TC-LO-03: Downstream Segregation of Duties (SoD) & Access Boundaries', async ({ page }) => {
+    await performRoleLogin(page, PERSONAS.loanOps, '/rules');
     await showDemoBanner(page, 'Restricting Loan Operations Routes', 'To prevent Loan Operations staff from accessing rule engines or finance payouts');
     await pauseForDemo(page, 1200);
 
     // 1. Verify Loan Operations cannot access Rules Authoring / Publishing
     await showDemoBanner(page, 'Route Guard: Rules', 'Navigating to /rules (Expect 403 Forbidden)');
-    await page.goto('/rules');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await pauseForDemo(page, 1500);
 
@@ -240,5 +249,6 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await showDemoBanner(page, 'Access Boundaries Enforced', 'Loan Operations restricted strictly to origination');
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });

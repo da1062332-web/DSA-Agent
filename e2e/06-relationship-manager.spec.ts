@@ -1,10 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanType,
+  humanClick,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.rm);
-  });
 
   // =========================================================================
   // TC-RM-01: Lead Intake with proactive client-side field validation & creation
@@ -67,7 +73,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto('/leads/new');
+    await performRoleLogin(page, PERSONAS.rm, '/leads/new');
     await showDemoBanner(page, 'Opening Lead Intake Form', 'To capture applicant details with proactive field validation');
     await pauseForDemo(page, 1200);
 
@@ -134,6 +140,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await expect(page.locator('h1')).toContainText('Test Customer Alpha');
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
     await pauseForDemo(page, 1800);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -183,7 +190,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto('/leads/led_dup_alpha_002');
+    await performRoleLogin(page, PERSONAS.rm, '/leads/led_dup_alpha_002');
     await showDemoBanner(page, 'Checking for Duplicate Leads', 'To prevent redundant entries and protect CRM data integrity');
     await pauseForDemo(page, 1200);
 
@@ -203,6 +210,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await expect(dupCandidates).toBeVisible();
     await expect(dupCandidates).toContainText('led_existing_099');
     await pauseForDemo(page, 1800);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -258,7 +266,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto('/leads/led_lifecycle_001');
+    await performRoleLogin(page, PERSONAS.rm, '/leads/led_lifecycle_001');
     await showDemoBanner(page, 'Progressing Lead Lifecycle Stages', 'To track customer engagement from initial contact to active evaluation');
     await pauseForDemo(page, 1200);
 
@@ -288,6 +296,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await expect(page.getByText('Lead status updated.')).toBeVisible();
     await expect(page.getByText('IN_PROGRESS', { exact: true })).toBeVisible();
     await pauseForDemo(page, 1800);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -350,7 +359,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto('/leads/led_qual_alpha_001');
+    await performRoleLogin(page, PERSONAS.rm, '/leads/led_qual_alpha_001');
     await showDemoBanner(page, 'Qualifying & Converting Lead', 'To approve loan terms and generate official customer & application records');
     await pauseForDemo(page, 1200);
 
@@ -403,6 +412,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     const consentsLink = page.getByRole('link', { name: /Manage Customer DPDP Consents/i });
     await expect(consentsLink).toBeVisible();
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -483,7 +493,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto(`/customers/${customerId}/consents`);
+    await performRoleLogin(page, PERSONAS.rm, `/customers/${customerId}/consents`);
     await showDemoBanner(page, 'Managing DPDP Customer Consents', 'To ensure regulatory compliance for data processing under the DPDP Act');
     await pauseForDemo(page, 1200);
 
@@ -528,6 +538,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await showDemoBanner(page, 'Consent Withdrawal', 'Customer exercised Right to Withdraw');
     await expect(page.getByText('Revoked', { exact: true })).toBeVisible();
     await pauseForDemo(page, 1800);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -601,7 +612,7 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto(`/applications/${applicationId}`);
+    await performRoleLogin(page, PERSONAS.rm, `/applications/${applicationId}`);
     await showDemoBanner(page, 'Enforcing Role Boundaries & SoD', 'To verify Relationship Managers cannot self-approve or sanction loans');
     await pauseForDemo(page, 1200);
 
@@ -643,5 +654,6 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(page.getByRole('alert').getByText(/Cannot reach the lead|Request failed \(403\)|Access denied/i)).toBeVisible();
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });

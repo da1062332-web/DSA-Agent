@@ -7,13 +7,117 @@ export interface PersonaConfig {
   roleCode: string;
   permissions: string[];
   primaryBranchId?: string;
+  tenantId?: string;
 }
 
 export const PERSONAS: Record<string, PersonaConfig> = {
+  // 01 — Platform Super Admin
+  platformSuperAdmin: {
+    userId: 'usr_platform_admin_01',
+    email: 'vaibhav.qloax@gmail.com',
+    displayName: 'Vaibhav Super Admin',
+    roleCode: 'ROLE-PLATFORM-ADMIN',
+    permissions: [
+      'platform.console',
+      'platform.flags',
+      'platform.jobs',
+      'platform.master_data',
+      'platform.release',
+      'platform.support_access',
+      'platform.tenant.create',
+      'platform.tenant.entitlements',
+      'platform.tenant.offboard',
+      'platform.tenant.suspend',
+      'user.manage',
+    ],
+    tenantId: 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG',
+  },
+  // 02 — Tenant Admin
+  tenantAdmin: {
+    userId: 'usr_admin_01',
+    email: 'admin@qloax.com',
+    displayName: 'Asha Admin',
+    roleCode: 'ROLE-TENANT-ADMIN',
+    permissions: [
+      'user.manage',
+      'role.manage',
+      'config.manage',
+      'lead.read',
+      'lead.create',
+      'application.read',
+      'finance.view',
+      'report.read',
+      'audit.read',
+    ],
+    primaryBranchId: 'MUM01',
+  },
+  // 03 — Organisation Owner
+  orgOwner: {
+    userId: 'usr_owner_01',
+    email: 'owner@qloax.com',
+    displayName: 'Omkar Owner',
+    roleCode: 'ROLE-ORG-OWNER',
+    permissions: [
+      'lead.read',
+      'application.read',
+      'connector.read',
+      'connector.manage',
+      'finance.view',
+      'payout.approve',
+      'invoice.manage',
+      'commission.calculate',
+      'report.read',
+      'audit.read',
+    ],
+    primaryBranchId: 'MUM01',
+  },
+  // 04 — Branch Manager
+  branchMgr: {
+    userId: 'usr_branchmgr_01',
+    email: 'branchmgr@qloax.com',
+    displayName: 'Bhavna Branch Mgr',
+    roleCode: 'ROLE-BRANCH-MGR',
+    permissions: [
+      'lead.read',
+      'lead.assign',
+      'application.read',
+      'application.assign',
+      'task.read',
+      'task.assign',
+      'task.create',
+      'task.update',
+      'activity.create',
+      'activity.update',
+      'report.read',
+      'rule.simulate',
+      'connector.read',
+      'complaint.manage',
+    ],
+    primaryBranchId: 'MUM01',
+  },
+  // 05 — Team Manager
+  teamMgr: {
+    userId: 'usr_teammgr_01',
+    email: 'teammgr@qloax.com',
+    displayName: 'Tarun Team Mgr',
+    roleCode: 'ROLE-TEAM-MGR',
+    permissions: [
+      'lead.read',
+      'lead.assign',
+      'application.read',
+      'task.read',
+      'task.assign',
+      'task.create',
+      'task.update',
+      'activity.create',
+      'report.read',
+    ],
+    primaryBranchId: 'MUM01',
+  },
   // 06 — Relationship Manager
   rm: {
     userId: 'usr_rm_01',
-    email: 'rm1@alpha.com',
+    email: 'rm@qloax.com',
     displayName: 'Riya RM',
     roleCode: 'ROLE-RM',
     permissions: [
@@ -39,7 +143,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 07 — Sales Executive
   salesExec: {
     userId: 'usr_sales_01',
-    email: 'sales1@alpha.com',
+    email: 'sales@qloax.com',
     displayName: 'Sameer Sales',
     roleCode: 'ROLE-SALES-EXEC',
     permissions: [
@@ -56,7 +160,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 08 — Loan Operations
   loanOps: {
     userId: 'usr_loanops_01',
-    email: 'loanops@alpha.com',
+    email: 'loanops@qloax.com',
     displayName: 'Lata Loan Ops',
     roleCode: 'ROLE-LOAN-OPS',
     permissions: [
@@ -72,7 +176,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 09 — Document Verifier
   docVerifier: {
     userId: 'usr_verifier_01',
-    email: 'verifier@alpha.com',
+    email: 'verifier@qloax.com',
     displayName: 'Vikas Verifier',
     roleCode: 'ROLE-DOC-VERIFIER',
     permissions: [
@@ -88,7 +192,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 10 — Compliance Officer
   compliance: {
     userId: 'usr_compliance_01',
-    email: 'compliance@alpha.com',
+    email: 'compliance@qloax.com',
     displayName: 'Chetan Compliance',
     roleCode: 'ROLE-COMPLIANCE',
     permissions: [
@@ -105,7 +209,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 11 — Rule Author
   ruleAuthor: {
     userId: 'usr_ruleauthor_01',
-    email: 'ruleauthor@alpha.com',
+    email: 'ruleauthor@qloax.com',
     displayName: 'Rekha Author',
     roleCode: 'ROLE-RULE-AUTHOR',
     permissions: ['rule.author', 'rule.simulate'],
@@ -114,7 +218,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 12 — Rule Approver
   ruleApprover: {
     userId: 'usr_ruleapprover_01',
-    email: 'ruleapprover@alpha.com',
+    email: 'ruleapprover@qloax.com',
     displayName: 'Ravi Approver',
     roleCode: 'ROLE-RULE-APPROVER',
     permissions: ['rule.approve', 'rule.publish', 'rule.suspend', 'rule.simulate'],
@@ -123,7 +227,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 13 — Finance Executive
   financeExec: {
     userId: 'usr_finance_01',
-    email: 'finance@alpha.com',
+    email: 'finance@qloax.com',
     displayName: 'Farhan Finance',
     roleCode: 'ROLE-FINANCE-EXEC',
     permissions: ['finance.view', 'finance.reconcile', 'payout.request', 'adjustment.create', 'commission.plan.edit'],
@@ -132,7 +236,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   // 13 — Commission Approver
   commissionApprover: {
     userId: 'usr_cfo_01',
-    email: 'cfo@alpha.com',
+    email: 'commission@qloax.com',
     displayName: 'Charu Approver',
     roleCode: 'ROLE-COMMISSION-APPROVER',
     permissions: [
@@ -165,7 +269,7 @@ export function createMockJwt(persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aa
       { method: 'password', timestamp: now },
       ...(aal === 'aal2' ? [{ method: 'totp', timestamp: now }] : []),
     ],
-    app_metadata: { tenant_id: 'ten_alpha' },
+    app_metadata: { tenant_id: persona.tenantId || 'ten_01M595WCNH6H3ZMCVS70XH9GAN' },
     user_metadata: { display_name: persona.displayName },
   };
 
@@ -174,8 +278,14 @@ export function createMockJwt(persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aa
   )}.mock-signature`;
 }
 
-export async function setupPersonaSession(page: Page, persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aal2') {
+export async function setupPersonaSession(
+  page: Page,
+  persona: PersonaConfig,
+  aal: 'aal1' | 'aal2' = 'aal2',
+  seedStorage = true,
+) {
   const token = createMockJwt(persona, aal);
+  const tenantId = persona.tenantId || 'ten_01M595WCNH6H3ZMCVS70XH9GAN';
   const sessionData = {
     access_token: token,
     token_type: 'bearer',
@@ -187,19 +297,57 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
       aud: 'authenticated',
       role: 'authenticated',
       email: persona.email,
-      app_metadata: { tenant_id: 'ten_alpha' },
+      app_metadata: { tenant_id: tenantId },
       user_metadata: { display_name: persona.displayName },
       created_at: '2026-01-01T00:00:00.000Z',
     },
   };
 
-  // Seed localStorage before page scripts mount
-  await page.addInitScript(
-    ({ session }) => {
-      localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
-    },
-    { session: sessionData },
-  );
+  // Seed localStorage if requested
+  if (seedStorage) {
+    await page.addInitScript(
+      ({ session }) => {
+        localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
+      },
+      { session: sessionData },
+    );
+  }
+
+  // Mock Supabase token endpoint (signInWithPassword)
+  await page.route('**/auth/v1/token*', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(sessionData),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Mock Supabase sign-out
+  await page.route('**/auth/v1/logout*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{}',
+    });
+  });
+
+  // Mock test-login endpoint for fast bypass fallback
+  await page.route('**/public/v1/auth/test-login', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          access_token: token,
+          session: sessionData,
+        },
+      }),
+    });
+  });
 
   // Mock Supabase Auth routes
   await page.route('**/auth/v1/user', async (route) => {
@@ -230,7 +378,7 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
         id: persona.userId,
         email: persona.email,
         displayName: persona.displayName,
-        tenantId: 'ten_alpha',
+        tenantId: tenantId,
         primaryBranchId: persona.primaryBranchId || 'MUM01',
         queueIds: ['queue_01'],
         roles: [persona.roleCode],
@@ -251,9 +399,9 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        id: 'ten_alpha',
-        slug: 'alpha',
-        legalName: 'Alpha Finserv Private Limited',
+        id: tenantId,
+        slug: 'qloax-dsa',
+        legalName: 'Qloax Finserv Private Limited',
         tenantType: 'DSA',
         dataRegion: 'ap-south-1',
         timezone: 'Asia/Kolkata',
@@ -285,6 +433,81 @@ export async function setupPersonaSession(page: Page, persona: PersonaConfig, aa
       }),
     });
   });
+}
+
+export async function performRoleLogin(
+  page: Page,
+  persona: PersonaConfig,
+  targetPath = '/',
+  password = 'Qloax@DSA#2026',
+): Promise<void> {
+  // 1. Setup API route mocks for the persona without pre-seeding localStorage
+  await setupPersonaSession(page, persona, 'aal1', false);
+
+  // 2. Navigate to /login
+  await page.goto('/login');
+  await page.waitForLoadState('domcontentloaded');
+
+  const emailInput = page.locator('[data-testid="auth.email"]');
+  const isLoginPage = await emailInput.isVisible({ timeout: 4000 }).catch(() => false);
+
+  if (isLoginPage) {
+    await showDemoBanner(
+      page,
+      'Authentication Gate',
+      `Signing in as ${persona.displayName} (${persona.roleCode})`,
+    );
+
+    const passwordInput = page.locator('[data-testid="auth.password"]');
+    const submitBtn = page.locator('[data-testid="auth.submit"]');
+
+    await humanType(emailInput, persona.email);
+    await humanType(passwordInput, password);
+    await pauseForDemo(page, 400);
+    await humanClick(submitBtn, 600);
+  }
+
+  // 3. Handle MFA OTP step if presented
+  const mfaInput = page.locator('[data-testid="auth.mfa.code"]');
+  const isMfaPage = await mfaInput.isVisible({ timeout: 4000 }).catch(() => false);
+
+  if (isMfaPage) {
+    await showDemoBanner(page, '2FA Step-Up', 'Verifying MFA TOTP Code: 000000');
+    const mfaSubmit = page.locator('[data-testid="auth.mfa.submit"]');
+    await humanType(mfaInput, '000000');
+    await pauseForDemo(page, 400);
+    await humanClick(mfaSubmit, 800);
+  }
+
+  // 4. Ensure destination is reached
+  if (targetPath && targetPath !== '/' && !page.url().includes(targetPath)) {
+    await page.goto(targetPath);
+  }
+  await page.waitForLoadState('domcontentloaded');
+  await pauseForDemo(page, 800);
+}
+
+export async function performRoleLogout(page: Page): Promise<void> {
+  await showDemoBanner(page, 'Session Sign-Out', 'Signing out of role session');
+  const accountBtn = page.locator('[data-testid="shell.account"]');
+  if (await accountBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await humanClick(accountBtn, 300);
+    const signoutBtn = page.locator('[data-testid="shell.signout"]');
+    if (await signoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await humanClick(signoutBtn, 800);
+    }
+  } else {
+    // If shell header is not visible (e.g. 403 or non-shell screen), clear storage and return to login
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.goto('/login');
+  }
+  const submitBtn = page.locator('[data-testid="auth.submit"]');
+  await submitBtn.waitFor({ state: 'visible', timeout: 15000 });
+  await showDemoBanner(page, 'Signed Out', 'Returned cleanly to Sign-In gate');
+  await pauseForDemo(page, 1000);
 }
 
 export const isHeaded = process.env.HEADED === 'true' || process.argv.includes('--headed');

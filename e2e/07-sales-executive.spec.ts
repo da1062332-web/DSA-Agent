@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanType,
+  humanClick,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.salesExec);
-  });
+
 
   // =========================================================================
   // TC-SE-01: Field Outreach Lead Intake with proactive client-side field validation
@@ -66,7 +73,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
       });
     });
 
-    await page.goto('/leads/new');
+    await performRoleLogin(page, PERSONAS.salesExec, '/leads/new');
     await showDemoBanner(page, 'Capturing Field Lead Intake', 'To capture prospective borrower details during field outreach');
     await pauseForDemo(page, 1500);
 
@@ -118,6 +125,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     await expect(page.locator('h1')).toContainText('Test Customer Beta');
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -225,7 +233,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
       }
     });
 
-    await page.goto(`/leads/${leadId}`);
+    await performRoleLogin(page, PERSONAS.salesExec, `/leads/${leadId}`);
     await showDemoBanner(page, 'Logging Field Follow-up & Tasks', 'To record call outcomes and schedule document collection tasks');
     await pauseForDemo(page, 1500);
 
@@ -270,6 +278,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     await showDemoBanner(page, 'Task Assigned', 'Collect 6-month bank statement added to tasks list');
     await expect(page.getByText('Collect 6-month bank statement')).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -304,7 +313,7 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
       });
     });
 
-    await page.goto(`/leads/${leadId}`);
+    await performRoleLogin(page, PERSONAS.salesExec, `/leads/${leadId}`);
     await showDemoBanner(page, 'Enforcing Role Boundaries & SoD', 'To confirm Sales Executives cannot reassign leads, convert applications, or view audits');
     await pauseForDemo(page, 1500);
 
@@ -330,5 +339,6 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await showDemoBanner(page, 'Role Boundaries Enforced', 'All operational and route boundaries strictly verified');
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });

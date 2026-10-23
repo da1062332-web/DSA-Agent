@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanType,
+  humanClick,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.compliance);
-  });
+
 
   // =========================================================================
   // TC-CO-01: Cryptographic Audit Trail Search & SHA-256 Chain Verification
@@ -72,7 +79,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     });
 
     // 1. Visit Audit Log Search
-    await page.goto('/audit');
+    await performRoleLogin(page, PERSONAS.compliance, '/audit');
     await showDemoBanner(page, 'Searching Cryptographic Audit Ledger', 'To inspect tamper-evident SHA-256 hash chains for regulatory compliance');
     await pauseForDemo(page, 1500);
 
@@ -91,6 +98,15 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     await expect(page.getByText(/Chain Status:/i)).toBeVisible();
     await expect(page.getByText('VERIFIED', { exact: true }).first()).toBeVisible();
     await pauseForDemo(page, 2500);
+
+    // Close the verification modal before signing out
+    const closeBtn = page.getByRole('button', { name: /Close/i });
+    if (await closeBtn.isVisible()) {
+      await humanClick(closeBtn);
+      await pauseForDemo(page, 500);
+    }
+
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -132,7 +148,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
       }
     });
 
-    await page.goto('/audit');
+    await performRoleLogin(page, PERSONAS.compliance, '/audit');
     await showDemoBanner(page, 'Exporting Regulatory Evidence Pack', 'To generate an immutable sealed archive with SHA-256 manifest for RBI auditors');
     await pauseForDemo(page, 1500);
 
@@ -174,6 +190,7 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     await pauseForDemo(page, 1500);
     await expect(page.locator('body')).toContainText(/privacy|consent/i);
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -181,12 +198,12 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
   // (Notion QA Plan Module 10 Step 6: Compliance Officer has zero operational write access)
   // =========================================================================
   test('TC-CO-03: Segregation of Duties (SoD) & Read-Only Operational Boundary Enforcement', async ({ page }) => {
+    await performRoleLogin(page, PERSONAS.compliance, '/rules');
     await showDemoBanner(page, 'Enforcing Read-Only Compliance Oversight', 'To verify Compliance Officers cannot alter operational loan records, rules, or commissions');
     await pauseForDemo(page, 1200);
 
     // 1. Verify Compliance Officer cannot author or publish BRE rules
     await showDemoBanner(page, 'Route Guard: Rules', 'Navigating to /rules (Expect 403 Forbidden)');
-    await page.goto('/rules');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await pauseForDemo(page, 1500);
 
@@ -202,5 +219,6 @@ test.describe('Persona 10: Compliance Officer (ROLE-COMPLIANCE)', () => {
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await showDemoBanner(page, 'Read-Only Boundaries Enforced', 'Compliance Officer restricted strictly to oversight');
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });

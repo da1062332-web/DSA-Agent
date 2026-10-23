@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanClick, humanType, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanClick,
+  humanType,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE-COMMISSION-APPROVER)', () => {
   const mockPayoutRequest = {
@@ -24,7 +33,6 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
   test('TC-FIN-01: Finance Executive proposes payout request and verifies Maker SOD-03 lock', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.financeExec);
     await showDemoBanner(page, 'Proposing Partner Payout Batch', 'To submit connector payout batches and enforce maker lockout from approving them');
 
     // Mock payout requests
@@ -36,7 +44,7 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       });
     });
 
-    await page.goto('/payouts');
+    await performRoleLogin(page, PERSONAS.financeExec, '/payouts');
     await pauseForDemo(page, 1500);
 
     // 1. Verify Payout Dashboard loaded
@@ -56,12 +64,12 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     await expect(approveBtn).toBeVisible();
     await expect(approveBtn).toBeDisabled();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   test('TC-FIN-02: Commission Approver authorizes payout request (Independent Dual Control)', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
     await showDemoBanner(page, 'Authorizing Payout as Independent Checker', 'To review payout calculations and approve bank disbursement independently');
 
     let currentRequest = { ...mockPayoutRequest };
@@ -94,7 +102,7 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       }
     });
 
-    await page.goto('/payouts');
+    await performRoleLogin(page, PERSONAS.commissionApprover, '/payouts');
     await pauseForDemo(page, 1500);
 
     // 1. Go to "Approval Queue" tab
@@ -127,12 +135,12 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     await showDemoBanner(page, 'Payout Approved', 'Request marked as APPROVED for payment settlement');
     await expect(page.getByText(/marked as APPROVED/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   test('TC-FIN-03: Payment Operations records bank UTR with validation & batch generation', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
     await showDemoBanner(page, 'Recording Bank Settlement & UTR', 'To record official bank reference numbers and mark partner payouts settled');
 
     const approvedRequest = {
@@ -167,7 +175,7 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       }
     });
 
-    await page.goto('/payouts');
+    await performRoleLogin(page, PERSONAS.commissionApprover, '/payouts');
     await pauseForDemo(page, 1500);
 
     // 1. Go to "Payment Recording & Batches" tab
@@ -202,11 +210,11 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     await showDemoBanner(page, 'Payment Recorded', 'Settlement confirmed & encrypted NEFT/RTGS batch generated');
     await expect(page.getByText(/Payment recorded for payout/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   test('TC-FIN-04: Commission Plan Maker-Checker Dual Control (SOD-02)', async ({ page }) => {
     // Session as Commission Approver (Independent Checker)
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
     await showDemoBanner(page, 'Governing Commission Plans Dual Control', 'To ensure lender commission schemes require independent checker sign-off before activation');
 
     const mockPlan = {
@@ -280,7 +288,7 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       });
     });
 
-    await page.goto('/commission');
+    await performRoleLogin(page, PERSONAS.commissionApprover, '/commission');
     await pauseForDemo(page, 1500);
 
     // 1. Verify Commission Dashboard loaded
@@ -301,5 +309,6 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     await showDemoBanner(page, 'Commission Plan ACTIVE', 'Plan approved and active for tranche calculations');
     await expect(page.getByText(/approved and marked ACTIVE/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 });

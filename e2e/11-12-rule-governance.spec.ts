@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanClick, humanType, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanClick,
+  humanType,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-APPROVER)', () => {
   const versionId = 'rsv_01J00000000000000000000001';
@@ -34,7 +43,6 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
   test('TC-BRE-01: Rule Author drafts decision table, encounters syntax validation, and runs simulation', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.ruleAuthor);
     await showDemoBanner(page, 'Drafting Business Decision Rule', 'To create policy rules, test syntax, and safely simulate test cases in sandbox');
 
     let currentVersion = { ...mockRuleSetVersion };
@@ -107,7 +115,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await page.goto(`/rules/versions/${versionId}`);
+    await performRoleLogin(page, PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
     await pauseForDemo(page, 1500);
 
     // 1. Verify Rule Version page loaded in DRAFT state
@@ -190,10 +198,10 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     await showDemoBanner(page, 'Submitted for Review', 'Version successfully submitted for independent review');
     await expect(page.getByText(/Version successfully submitted for review/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   test('TC-BRE-02: Rule Approver reviews & approves with SOD-01 dual-control check', async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.ruleApprover);
     await showDemoBanner(page, 'Independent Rule Checker Review', 'To ensure an independent approver validates business rules prior to production release');
 
     const inReviewVersion = {
@@ -227,7 +235,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await page.goto(`/rules/versions/${versionId}`);
+    await performRoleLogin(page, PERSONAS.ruleApprover, `/rules/versions/${versionId}`);
     await pauseForDemo(page, 1500);
 
     // 1. Approver sees review action
@@ -256,11 +264,11 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     await showDemoBanner(page, 'Rule Version Approved', 'Review completed successfully by independent checker');
     await expect(page.getByText(/Version review completed: APPROVE/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   test('TC-BRE-03: Segregation of Duties (SOD-01) Enforces Maker Cannot Self-Approve Rule', async ({ page }) => {
     // Session as Rule Author (who has rule.author permission, but tries to invoke review directly)
-    await setupPersonaSession(page, PERSONAS.ruleAuthor);
     await showDemoBanner(page, 'Enforcing Rule Maker Lockout', 'To ensure rule authors cannot approve or deploy their own decision logic');
 
     // Rule version in IN_REVIEW authored by usr_ruleauthor_01
@@ -294,7 +302,7 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await page.goto(`/rules/versions/${versionId}`);
+    await performRoleLogin(page, PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
     await pauseForDemo(page, 1500);
 
     // 1. In UI, rule.approve action button is NOT shown to rule author because they lack rule.approve permission
@@ -312,5 +320,6 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     await expect(page.getByText('IN_REVIEW').first()).toBeVisible();
     await expect(page.getByText(/Locked Rule Definition/i)).toBeVisible();
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });

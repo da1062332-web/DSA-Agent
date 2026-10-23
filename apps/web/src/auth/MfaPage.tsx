@@ -164,11 +164,11 @@ export function MfaPage() {
     }
   };
 
-  const qrCodeSrc = mode.qrCode.startsWith('data:')
+  const qrCodeSrc = (mode.qrCode || '').startsWith('data:')
     ? mode.qrCode
-    : mode.qrCode.startsWith('<svg')
+    : (mode.qrCode || '').startsWith('<svg')
     ? `data:image/svg+xml;utf-8,${encodeURIComponent(mode.qrCode)}`
-    : mode.qrCode;
+    : (mode.qrCode || PLACEHOLDER_QR);
 
   const headerIcon = (
     <Box

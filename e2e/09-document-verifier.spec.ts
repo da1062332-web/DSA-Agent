@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanType, humanClick, showDemoBanner } from './helpers/mock-session';
+import {
+  PERSONAS,
+  setupPersonaSession,
+  performRoleLogin,
+  performRoleLogout,
+  pauseForDemo,
+  humanType,
+  humanClick,
+  showDemoBanner,
+} from './helpers/mock-session';
 
 test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupPersonaSession(page, PERSONAS.docVerifier);
-  });
+
 
   // =========================================================================
   // TC-DV-01: Verification Case Initiation & Checklist Attestation
@@ -53,7 +60,7 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     });
 
     // 1. Visit Verifications queue
-    await page.goto('/verifications');
+    await performRoleLogin(page, PERSONAS.docVerifier, '/verifications');
     await showDemoBanner(page, 'Reviewing Document Verification Queue', 'To inspect applicant documents and record checklist item verifications');
     await pauseForDemo(page, 1500);
     await expect(page.getByText('vrf_case_001')).toBeVisible();
@@ -91,6 +98,7 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     await showDemoBanner(page, 'Attestation Saved', 'PAN Card checklist item confirmed valid');
     await expect(page.getByRole('alert')).toContainText(/marked as ACCEPTED/i);
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -141,7 +149,7 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
       }
     });
 
-    await page.goto('/verifications/vrf_case_002');
+    await performRoleLogin(page, PERSONAS.docVerifier, '/verifications/vrf_case_002');
     await showDemoBanner(page, 'Rejecting Illegible Document', 'To record verification rejection reasons and enforce mandatory assessment findings');
     await pauseForDemo(page, 1500);
 
@@ -195,6 +203,7 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     await showDemoBanner(page, 'Verification Finalized', 'Case successfully verified and closed');
     await expect(page.getByText(/successfully finalized/i)).toBeVisible();
     await pauseForDemo(page, 2500);
+    await performRoleLogout(page);
   });
 
   // =========================================================================
@@ -202,12 +211,12 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
   // (Notion Architecture SoD Boundaries: Denies Sanction Recording & Finance Payouts)
   // =========================================================================
   test('TC-DV-03: Segregation of Duties (SoD) & Access Control Enforcement', async ({ page }) => {
+    await performRoleLogin(page, PERSONAS.docVerifier, '/sanctions');
     await showDemoBanner(page, 'Enforcing Document Verifier Boundaries', 'To ensure Verifiers cannot record sanctions, configure commission, or approve payouts');
     await pauseForDemo(page, 1200);
 
     // 1. Verify Document Verifier cannot access Sanctions & Disbursements
     await showDemoBanner(page, 'Route Guard: Sanctions', 'Navigating to /sanctions (Expect 403 Forbidden)');
-    await page.goto('/sanctions');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await pauseForDemo(page, 1500);
 
@@ -222,5 +231,6 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
     await showDemoBanner(page, 'Operational Boundaries Enforced', 'Verifier restricted to checklist reviews');
     await pauseForDemo(page, 2000);
+    await performRoleLogout(page);
   });
 });
