@@ -4,28 +4,16 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Checkbox,
   Chip,
-  CircularProgress,
   Container,
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
-  Divider,
   FormControlLabel,
   Grid,
-  IconButton,
-  InputAdornment,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -33,6 +21,15 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { createRole, deleteRole, fetchPermissions, fetchRoles } from './api';
 import { Can } from '../../shell/Can';
+import {
+  ConfirmDialog,
+  DataTable,
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  type ColumnDef,
+} from '../../ui';
 import type { Permission, Role } from './types';
 
 export function RolesListPage() {
@@ -99,12 +96,13 @@ export function RolesListPage() {
     const trimmedCode = createCode.trim().toUpperCase();
     const trimmedName = createName.trim();
 
-    if (!trimmedCode.match(/^ROLE-[A-Z-]+$/)) {
-      setCreateError('Role code must follow format: ROLE-[A-Z-]+ (e.g. ROLE-CREDIT-ANALYST)');
+    if (!trimmedCode || !trimmedName) {
+      setCreateError('Role Code and Role Name are required.');
       return;
     }
-    if (!trimmedName) {
-      setCreateError('Please enter a role name.');
+
+    if (!/^ROLE-[A-Z-]+$/.test(trimmedCode)) {
+      setCreateError('Role code must start with ROLE- and use uppercase letters/hyphens.');
       return;
     }
 
@@ -116,7 +114,7 @@ export function RolesListPage() {
         name: trimmedName,
         permissions: selectedPermissions,
       });
-      setSuccessMsg(`Role ${trimmedName} (${trimmedCode}) created successfully!`);
+      setSuccessMsg(`Role ${trimmedName} (${trimmedCode}) created successfully.`);
       setCreateOpen(false);
       await loadData();
     } catch (err: any) {
@@ -128,13 +126,13 @@ export function RolesListPage() {
 
   async function handleDeleteConfirm() {
     if (!deleteRoleTarget) return;
+
     setDeleting(true);
-    setError(null);
     try {
       await deleteRole(deleteRoleTarget.id);
       setSuccessMsg(`Role ${deleteRoleTarget.name} deleted successfully.`);
-      setDeleteRoleTarget(null);
       await loadData();
+      setDeleteRoleTarget(null);
     } catch (err: any) {
       setError(err?.message || 'Failed to delete role.');
       setDeleteRoleTarget(null);
@@ -143,35 +141,130 @@ export function RolesListPage() {
     }
   }
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 3 }}
-        flexWrap="wrap"
-        gap={2}
-      >
+  const roleColumns: ColumnDef<Role>[] = [
+    {
+      id: 'name',
+      header: 'Role Name & Code',
+      accessor: (role) => (
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Access Control & Roles
+          <Typography variant="subtitle2" fontWeight={600}>
+            {role.name}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage tenant roles, system permissions, and role-based access security policies.
+          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+            {role.code}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" component={RouterLink} to="/permissions">
-            View Permissions Catalog
+      ),
+    },
+    {
+      id: 'type',
+      header: 'Type',
+      accessor: (role) =>
+        role.isTemplate ? (
+          <Chip label="System Template" size="small" color="primary" variant="outlined" />
+        ) : (
+          <Chip label="Custom Role" size="small" color="secondary" variant="filled" />
+        ),
+    },
+    {
+      id: 'permissions',
+      header: 'Permissions Count',
+      accessor: (role) => (
+        <Tooltip
+          title={
+            role.permissions.length > 0 ? role.permissions.join(', ') : 'No permissions granted'
+          }
+        >
+          <Chip
+            label={`${role.permissions.length} grants`}
+            size="small"
+            variant="outlined"
+            clickable
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'version',
+      header: 'Version',
+      accessor: (role) => (
+        <Chip
+          label={`v${role.version}`}
+          size="small"
+          variant="filled"
+          sx={{ fontSize: '0.75rem' }}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (role) => (
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button
+            variant="outlined"
+            size="small"
+            component={RouterLink}
+            to={`/roles/${role.id}`}
+          >
+            Configure
           </Button>
-          <Can action="role.manage">
-            <Button variant="contained" onClick={handleOpenCreate}>
-              + Create Role
-            </Button>
-          </Can>
+          {!role.isTemplate && (
+            <Can action="role.manage">
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                onClick={() => setDeleteRoleTarget(role)}
+              >
+                Delete
+              </Button>
+            </Can>
+          )}
         </Stack>
-      </Stack>
+      ),
+    },
+  ];
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <PageHeader
+        title="Access Control & Roles"
+        subtitle="Manage tenant roles, system permissions, and role-based access security policies."
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" component={RouterLink} to="/permissions">
+              View Permissions Catalog
+            </Button>
+            <Can action="role.manage">
+              <Button variant="contained" onClick={handleOpenCreate}>
+                + Create Role
+              </Button>
+            </Can>
+          </Stack>
+        }
+      />
+
+      <StatCardGrid columns={{ xs: 1, sm: 3, md: 3 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Defined Roles"
+          value={roles.length}
+          subtext="Configured access profiles"
+        />
+        <StatCard
+          title="System Templates"
+          value={roles.filter((r) => r.isTemplate).length}
+          subtext="Standard baseline roles"
+          colorVariant="info"
+        />
+        <StatCard
+          title="Custom Roles"
+          value={roles.filter((r) => !r.isTemplate).length}
+          subtext="Tenant-customized profiles"
+          colorVariant="secondary"
+        />
+      </StatCardGrid>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -186,116 +279,20 @@ export function RolesListPage() {
       )}
 
       {/* Filter and Search Bar */}
-      <Card sx={{ mb: 3, p: 2 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <TextField
-            placeholder="Search roles by name or role code..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-            InputProps={{
-              startAdornment: <InputAdornment position="start">🔍</InputAdornment>,
-            }}
-          />
-          <Button variant="outlined" onClick={loadData} disabled={loading}>
-            Refresh
-          </Button>
-        </Stack>
-      </Card>
+      <FilterToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search roles by name or role code..."
+        onRefresh={loadData}
+      />
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : filteredRoles.length === 0 ? (
-        <Alert severity="info">No roles found matching your query.</Alert>
-      ) : (
-        <Card sx={{ borderRadius: 2, boxShadow: 1, overflow: 'hidden' }}>
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ bgcolor: 'action.hover' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Role Name & Code</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Permissions Count</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Version</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }} align="right">
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRoles.map((role) => (
-                  <TableRow key={role.id} hover>
-                    <TableCell>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        {role.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                        {role.code}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {role.isTemplate ? (
-                        <Chip label="System Template" size="small" color="primary" variant="outlined" />
-                      ) : (
-                        <Chip label="Custom Role" size="small" color="secondary" variant="filled" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip
-                        title={
-                          role.permissions.length > 0 ? role.permissions.join(', ') : 'No permissions granted'
-                        }
-                      >
-                        <Chip
-                          label={`${role.permissions.length} grants`}
-                          size="small"
-                          variant="outlined"
-                          clickable
-                        />
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={`v${role.version}`}
-                        size="small"
-                        variant="filled"
-                        sx={{ fontSize: '0.75rem' }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          component={RouterLink}
-                          to={`/roles/${role.id}`}
-                        >
-                          Configure
-                        </Button>
-                        {!role.isTemplate && (
-                          <Can action="role.manage">
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              color="error"
-                              onClick={() => setDeleteRoleTarget(role)}
-                            >
-                              Delete
-                            </Button>
-                          </Can>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+      {/* Roles Table */}
+      <DataTable<Role>
+        columns={roleColumns}
+        data={filteredRoles}
+        loading={loading}
+        emptyTitle="No roles found matching your query."
+      />
 
       {/* Create Role Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="md" fullWidth>
@@ -372,26 +369,24 @@ export function RolesListPage() {
       </Dialog>
 
       {/* Delete Role Dialog */}
-      <Dialog open={Boolean(deleteRoleTarget)} onClose={() => setDeleteRoleTarget(null)}>
-        <DialogTitle>Delete Role</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
+      <ConfirmDialog
+        open={Boolean(deleteRoleTarget)}
+        title="Delete Role"
+        description={
+          <Typography variant="body2" color="text.secondary">
             Are you sure you want to permanently delete custom role <strong>{deleteRoleTarget?.name}</strong>{' '}
             ({deleteRoleTarget?.code})?
             <br />
             <br />
             Note: Roles currently assigned to any active user cannot be deleted.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteRoleTarget(null)} disabled={deleting}>
-            Cancel
-          </Button>
-          <Button color="error" variant="contained" onClick={handleDeleteConfirm} disabled={deleting}>
-            {deleting ? 'Deleting...' : 'Confirm Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Typography>
+        }
+        confirmLabel="Confirm Delete"
+        severity="error"
+        isLoading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setDeleteRoleTarget(null)}
+      />
     </Container>
   );
 }

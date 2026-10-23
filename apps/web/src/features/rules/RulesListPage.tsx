@@ -16,16 +16,9 @@ import {
   Grid,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Typography,
@@ -33,6 +26,15 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createRuleSet, fetchDecisionDefinitions, fetchRuleSets } from './api';
+import {
+  DataTable,
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 import type { DecisionDefinitionResponse, DecisionKey, RuleSetResponse, ScopeType } from './types';
 
 const MVP_DECISION_KEYS: DecisionKey[] = [
@@ -106,14 +108,14 @@ export function RulesListPage() {
   }, [loadRuleSets]);
 
   useEffect(() => {
-    if (tabIndex === 1 && definitions.length === 0) {
+    if (tabIndex === 1) {
       loadDefinitions();
     }
-  }, [tabIndex, definitions.length, loadDefinitions]);
+  }, [tabIndex, loadDefinitions]);
 
   const handleCreate = async () => {
     if (!newName.trim()) {
-      setCreateError('Name is required');
+      setCreateError('Rule Set Name is required');
       return;
     }
     try {
@@ -122,10 +124,12 @@ export function RulesListPage() {
       const created = await createRuleSet({
         decisionKey: newDecisionKey,
         scopeType: newScopeType,
-        scopeRef: newScopeRef.trim() || null,
+        scopeRef: newScopeRef.trim() || undefined,
         name: newName.trim(),
       });
       setCreateOpen(false);
+      setNewName('');
+      setNewScopeRef('');
       navigate(`/rules/${created.id}`);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create rule set');
@@ -134,26 +138,110 @@ export function RulesListPage() {
     }
   };
 
-  return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+  const ruleColumns: ColumnDef<RuleSetResponse>[] = [
+    {
+      id: 'name',
+      header: 'Rule Set Name',
+      accessor: (rs) => (
         <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Business Rule Engine
+          <Typography variant="subtitle2" fontWeight={600} color="primary.main">
+            {rs.name}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage, author, validate, and simulate decision rule sets and review audit records
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+            {rs.id}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2}>
-          <Button variant="outlined" onClick={() => navigate('/decisions')}>
-            View Execution Logs
-          </Button>
-          <Button variant="contained" onClick={() => setCreateOpen(true)}>
-            New Rule Set
-          </Button>
-        </Stack>
-      </Stack>
+      ),
+    },
+    {
+      id: 'decisionKey',
+      header: 'Decision Key',
+      accessor: (rs) => (
+        <Chip size="small" label={rs.decisionKey} variant="outlined" color="primary" />
+      ),
+    },
+    {
+      id: 'scope',
+      header: 'Scope',
+      accessor: (rs) => (
+        <Typography variant="body2">
+          {rs.scopeType}
+          {rs.scopeRef ? ` (${rs.scopeRef})` : ''}
+        </Typography>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (rs) => <StatusBadge status={rs.status} />,
+    },
+    {
+      id: 'activeVersion',
+      header: 'Active Version',
+      accessor: (rs) =>
+        rs.activeVersionId ? (
+          <Chip
+            size="small"
+            label={rs.activeVersionId.slice(0, 12) + '...'}
+            color="success"
+            variant="outlined"
+          />
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            None
+          </Typography>
+        ),
+    },
+    {
+      id: 'drafts',
+      header: 'Open Drafts',
+      accessor: (rs) => <Chip size="small" label={`${rs.draftVersionCount ?? 0} draft(s)`} />,
+    },
+    {
+      id: 'updated',
+      header: 'Updated',
+      accessor: (rs) => (
+        <Typography variant="caption" color="text.secondary">
+          {new Date(rs.updatedAt).toLocaleDateString()}
+        </Typography>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (rs) => (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/rules/${rs.id}`);
+          }}
+          sx={{ textTransform: 'none', borderRadius: 1.5 }}
+        >
+          View Details
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <PageHeader
+        title="Business Rule Engine"
+        subtitle="Manage, author, validate, and simulate decision rule sets and review audit records"
+        actions={
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" onClick={() => navigate('/decisions')}>
+              View Execution Logs
+            </Button>
+            <Button variant="contained" onClick={() => setCreateOpen(true)}>
+              New Rule Set
+            </Button>
+          </Stack>
+        }
+      />
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)}>
@@ -170,197 +258,114 @@ export function RulesListPage() {
 
       {tabIndex === 0 && (
         <>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="filter-decision-label">Decision Key</InputLabel>
-                    <Select
-                      labelId="filter-decision-label"
-                      value={decisionFilter}
-                      label="Decision Key"
-                      onChange={(e) => setDecisionFilter(e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>All Decision Keys</em>
-                      </MenuItem>
-                      {MVP_DECISION_KEYS.map((k) => (
-                        <MenuItem key={k} value={k}>
-                          {k}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="filter-scope-label">Scope Type</InputLabel>
-                    <Select
-                      labelId="filter-scope-label"
-                      value={scopeFilter}
-                      label="Scope Type"
-                      onChange={(e) => setScopeFilter(e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>All Scopes</em>
-                      </MenuItem>
-                      <MenuItem value="TENANT_DEFAULT">TENANT_DEFAULT</MenuItem>
-                      <MenuItem value="BRANCH">BRANCH</MenuItem>
-                      <MenuItem value="LENDER">LENDER</MenuItem>
-                      <MenuItem value="PRODUCT_VERSION">PRODUCT_VERSION</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="filter-status-label">Status</InputLabel>
-                    <Select
-                      labelId="filter-status-label"
-                      value={statusFilter}
-                      label="Status"
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>All Statuses</em>
-                      </MenuItem>
-                      <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-                      <MenuItem value="ARCHIVED">ARCHIVED</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={2}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => {
-                      setDecisionFilter('');
-                      setScopeFilter('');
-                      setStatusFilter('');
-                    }}
-                  >
-                    Reset
-                  </Button>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+          <StatCardGrid columns={{ xs: 1, sm: 3, md: 3 }} sx={{ mb: 3 }}>
+            <StatCard
+              title="Total Rule Sets"
+              value={ruleSets.length}
+              subtext="Configured decision packages"
+            />
+            <StatCard
+              title="Active Rule Sets"
+              value={ruleSets.filter((r) => r.status === 'ACTIVE').length}
+              subtext="Live operational rules"
+              colorVariant="success"
+            />
+            <StatCard
+              title="Open Drafts"
+              value={ruleSets.reduce((acc, r) => acc + (r.draftVersionCount ?? 0), 0)}
+              subtext="Unpublished revisions"
+              colorVariant="warning"
+            />
+          </StatCardGrid>
 
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={8}>
-              <CircularProgress />
-            </Box>
-          ) : ruleSets.length === 0 ? (
-            <Paper sx={{ p: 6, textAlign: 'center' }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No rule sets found
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Get started by creating a new rule set for one of the registered decision keys.
-              </Typography>
-              <Button variant="contained" onClick={() => setCreateOpen(true)}>
+          <FilterToolbar
+            onReset={() => {
+              setDecisionFilter('');
+              setScopeFilter('');
+              setStatusFilter('');
+            }}
+            filters={
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} flexWrap="wrap">
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel id="filter-decision-label">Decision Key</InputLabel>
+                  <Select
+                    labelId="filter-decision-label"
+                    value={decisionFilter}
+                    label="Decision Key"
+                    onChange={(e) => setDecisionFilter(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Decision Keys</em>
+                    </MenuItem>
+                    {MVP_DECISION_KEYS.map((k) => (
+                      <MenuItem key={k} value={k}>
+                        {k}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 170 }}>
+                  <InputLabel id="filter-scope-label">Scope Type</InputLabel>
+                  <Select
+                    labelId="filter-scope-label"
+                    value={scopeFilter}
+                    label="Scope Type"
+                    onChange={(e) => setScopeFilter(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Scopes</em>
+                    </MenuItem>
+                    <MenuItem value="TENANT_DEFAULT">TENANT_DEFAULT</MenuItem>
+                    <MenuItem value="BRANCH">BRANCH</MenuItem>
+                    <MenuItem value="LENDER">LENDER</MenuItem>
+                    <MenuItem value="PRODUCT_VERSION">PRODUCT_VERSION</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel id="filter-status-label">Status</InputLabel>
+                  <Select
+                    labelId="filter-status-label"
+                    value={statusFilter}
+                    label="Status"
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Statuses</em>
+                    </MenuItem>
+                    <MenuItem value="ACTIVE">ACTIVE</MenuItem>
+                    <MenuItem value="ARCHIVED">ARCHIVED</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+            }
+          />
+
+          <DataTable<RuleSetResponse>
+            columns={ruleColumns}
+            data={ruleSets}
+            loading={loading}
+            emptyTitle="No rule sets found"
+            emptyAction={
+              <Button variant="contained" onClick={() => setCreateOpen(true)} sx={{ mt: 2 }}>
                 Create First Rule Set
               </Button>
-            </Paper>
-          ) : (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Rule Set Name</TableCell>
-                    <TableCell>Decision Key</TableCell>
-                    <TableCell>Scope</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Active Version</TableCell>
-                    <TableCell>Open Drafts</TableCell>
-                    <TableCell>Updated</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ruleSets.map((rs) => (
-                    <TableRow
-                      key={rs.id}
-                      hover
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/rules/${rs.id}`)}
-                    >
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight={600}>
-                          {rs.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {rs.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip size="small" label={rs.decisionKey} variant="outlined" color="primary" />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {rs.scopeType}
-                          {rs.scopeRef ? ` (${rs.scopeRef})` : ''}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={rs.status}
-                          color={rs.status === 'ACTIVE' ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {rs.activeVersionId ? (
-                          <Chip
-                            size="small"
-                            label={rs.activeVersionId.slice(0, 12) + '...'}
-                            color="success"
-                            variant="outlined"
-                          />
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            None
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip size="small" label={`${rs.draftVersionCount ?? 0} draft(s)`} />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {new Date(rs.updatedAt).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant="text"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/rules/${rs.id}`);
-                          }}
-                        >
-                          View Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+            }
+            onRowClick={(rs) => navigate(`/rules/${rs.id}`)}
+          />
         </>
       )}
 
       {tabIndex === 1 && (
         <Box>
-          <Typography variant="h6" fontWeight={600} mb={2}>
-            Registered Decision Definitions (Read-Only Global MVP)
-          </Typography>
-          <Typography variant="body2" color="text.secondary" mb={3}>
-            These definitions are platform-managed specifications defining input/output contracts, tier risk,
-            hit policies, and fallback policies.
-          </Typography>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Registered Decision Definitions (Read-Only Global MVP)
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              These definitions are platform-managed specifications defining input/output contracts, tier risk,
+              hit policies, and fallback policies.
+            </Typography>
+          </Box>
 
           {loadingDefs ? (
             <Box display="flex" justifyContent="center" py={8}>
@@ -370,7 +375,16 @@ export function RulesListPage() {
             <Grid container spacing={3}>
               {definitions.map((def) => (
                 <Grid item xs={12} md={6} key={def.key}>
-                  <Card variant="outlined" sx={{ height: '100%' }}>
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      height: '100%',
+                      borderRadius: 2.5,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
                     <CardContent>
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
                         <Typography variant="subtitle1" fontWeight={700} color="primary">
@@ -399,9 +413,11 @@ export function RulesListPage() {
                           <Typography variant="caption" color="text.secondary" display="block">
                             Dependencies:
                           </Typography>
-                          {def.dependencies.map((dep) => (
-                            <Chip key={dep} size="small" label={dep} sx={{ mr: 0.5, mt: 0.5 }} />
-                          ))}
+                          <Stack direction="row" spacing={0.5} mt={0.5} flexWrap="wrap">
+                            {def.dependencies.map((d) => (
+                              <Chip key={d} size="small" label={d} variant="outlined" />
+                            ))}
+                          </Stack>
                         </Box>
                       )}
                     </CardContent>
@@ -413,31 +429,22 @@ export function RulesListPage() {
         </Box>
       )}
 
-      {/* Create Rule Set Dialog */}
-      <Dialog
-        open={createOpen}
-        onClose={() => !createSubmitting && setCreateOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      {/* Create Rule Set Modal */}
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Rule Set</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing={3} pt={1}>
-            {createError && <Alert severity="error">{createError}</Alert>}
-            <TextField
-              label="Rule Set Name"
-              fullWidth
-              required
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Regional Lead Distribution Policy"
-            />
+          {createError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {createError}
+            </Alert>
+          )}
+          <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             <FormControl fullWidth required>
               <InputLabel id="create-decision-key-label">Decision Key</InputLabel>
               <Select
                 labelId="create-decision-key-label"
                 value={newDecisionKey}
-                label="Decision Key"
+                label="Decision Key *"
                 onChange={(e) => setNewDecisionKey(e.target.value as DecisionKey)}
               >
                 {MVP_DECISION_KEYS.map((k) => (
@@ -447,12 +454,22 @@ export function RulesListPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <TextField
+              label="Rule Set Name"
+              required
+              fullWidth
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Standard Personal Loan Assignment Matrix"
+            />
+
             <FormControl fullWidth required>
               <InputLabel id="create-scope-type-label">Scope Type</InputLabel>
               <Select
                 labelId="create-scope-type-label"
                 value={newScopeType}
-                label="Scope Type"
+                label="Scope Type *"
                 onChange={(e) => setNewScopeType(e.target.value as ScopeType)}
               >
                 <MenuItem value="TENANT_DEFAULT">TENANT_DEFAULT</MenuItem>
@@ -461,19 +478,21 @@ export function RulesListPage() {
                 <MenuItem value="PRODUCT_VERSION">PRODUCT_VERSION</MenuItem>
               </Select>
             </FormControl>
+
             {newScopeType !== 'TENANT_DEFAULT' && (
               <TextField
-                label="Scope Reference"
+                label="Scope Reference ID"
+                required
                 fullWidth
                 value={newScopeRef}
                 onChange={(e) => setNewScopeRef(e.target.value)}
-                placeholder="e.g. brn_… or lnd_…"
-                helperText="Identifier for the targeted branch, lender, or product version"
+                placeholder="e.g. brn_01JTEST..., len_01JTEST..."
+                helperText="Identifier of the entity this rule set applies to"
               />
             )}
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setCreateOpen(false)} disabled={createSubmitting}>
             Cancel
           </Button>

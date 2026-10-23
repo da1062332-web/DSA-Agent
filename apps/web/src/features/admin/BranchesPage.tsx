@@ -1,25 +1,22 @@
 // /admin/branches (owner: Dev 1) — list, create, edit, deactivate (config.manage).
 import {
   Button,
-  Card,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  InputLabel,
   MenuItem,
+  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, type Branch } from './api';
-import { ConfirmDialog, ErrorAlert, LoadMore, Loading, PageHeader, StatusChip } from './components';
+import { ConfirmDialog, ErrorAlert, LoadMore, PageHeader, StatusChip } from './components';
+import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
 
 export function BranchesPage() {
   const me = useMe();
@@ -41,6 +38,58 @@ export function BranchesPage() {
 
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
 
+  const branchColumns: ColumnDef<Branch>[] = [
+    {
+      id: 'code',
+      header: 'Code',
+      accessor: (b) => b.code,
+    },
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (b) => b.name,
+    },
+    {
+      id: 'pincode',
+      header: 'PIN code',
+      accessor: (b) => b.pincode ?? '—',
+    },
+    {
+      id: 'timezone',
+      header: 'Time zone',
+      accessor: (b) => b.timezone,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (b) => <StatusChip active={b.status === 'ACTIVE'} />,
+    },
+    ...(canEdit
+      ? [
+          {
+            id: 'actions',
+            header: 'Actions',
+            align: 'right' as const,
+            accessor: (b: Branch) => (
+              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                <Button size="small" onClick={() => setEditing(b)} disabled={b.status !== 'ACTIVE'}>
+                  Edit
+                </Button>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => setDeactivating(b)}
+                  disabled={b.status !== 'ACTIVE'}
+                >
+                  Deactivate
+                </Button>
+              </Stack>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
       <PageHeader
@@ -54,82 +103,32 @@ export function BranchesPage() {
           )
         }
       />
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          label="Search code or name"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <TextField
-          size="small"
-          select
-          label="Status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          sx={{ minWidth: 140 }}
-        >
-          <MenuItem value="">All</MenuItem>
-          <MenuItem value="ACTIVE">Active</MenuItem>
-          <MenuItem value="INACTIVE">Inactive</MenuItem>
-        </TextField>
-      </Stack>
+      <FilterToolbar
+        searchPlaceholder="Search code or name..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        filters={
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={status}
+              label="Status"
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="ACTIVE">Active</MenuItem>
+              <MenuItem value="INACTIVE">Inactive</MenuItem>
+            </Select>
+          </FormControl>
+        }
+      />
       <ErrorAlert error={list.error} />
-      {list.isPending ? (
-        <Loading />
-      ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Code</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>PIN code</TableCell>
-                  <TableCell>Time zone</TableCell>
-                  <TableCell>Status</TableCell>
-                  {canEdit && <TableCell align="right">Actions</TableCell>}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No branches match.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((b) => (
-                  <TableRow key={b.id} hover>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>{b.code}</TableCell>
-                    <TableCell>{b.name}</TableCell>
-                    <TableCell>{b.pincode ?? '—'}</TableCell>
-                    <TableCell>{b.timezone}</TableCell>
-                    <TableCell>
-                      <StatusChip active={b.status === 'ACTIVE'} />
-                    </TableCell>
-                    {canEdit && (
-                      <TableCell align="right">
-                        <Button size="small" onClick={() => setEditing(b)} disabled={b.status !== 'ACTIVE'}>
-                          Edit
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => setDeactivating(b)}
-                          disabled={b.status !== 'ACTIVE'}
-                        >
-                          Deactivate
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+      <DataTable<Branch>
+        columns={branchColumns}
+        data={rows}
+        loading={list.isPending}
+        emptyTitle="No branches match."
+      />
       <LoadMore
         hasNext={!!list.hasNextPage}
         loading={list.isFetchingNextPage}

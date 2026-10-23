@@ -4,13 +4,7 @@ import {
   Autocomplete,
   Box,
   Button,
-  Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   MenuItem,
   TextField,
   Typography,
@@ -18,6 +12,11 @@ import {
 import type { ReactNode } from 'react';
 import { errorText } from '../../api/client';
 import { useLookup, type Branch, type UserSummary } from './api';
+import {
+  ConfirmDialog as UiConfirmDialog,
+  PageHeader as UiPageHeader,
+  StatusBadge,
+} from '../../ui';
 
 export function PageHeader({
   title,
@@ -29,28 +28,11 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 2,
-        mb: 3,
-        flexWrap: 'wrap',
-      }}
-    >
-      <Box>
-        <Typography variant="h5" fontWeight={700}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body2" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
-      {action}
-    </Box>
+    <UiPageHeader
+      title={title}
+      subtitle={subtitle}
+      actions={action}
+    />
   );
 }
 
@@ -73,10 +55,8 @@ export function Loading() {
 
 export function StatusChip({ active, label }: { active: boolean; label?: string }) {
   return (
-    <Chip
-      size="small"
-      color={active ? 'success' : 'default'}
-      label={label ?? (active ? 'Active' : 'Inactive')}
+    <StatusBadge
+      status={label ?? (active ? 'ACTIVE' : 'INACTIVE')}
     />
   );
 }
@@ -111,21 +91,23 @@ export function ConfirmDialog(props: {
   onClose: () => void;
 }) {
   return (
-    <Dialog open={props.open} onClose={props.onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{props.title}</DialogTitle>
-      <DialogContent>
-        <ErrorAlert error={props.error} />
-        <DialogContentText>{props.text}</DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={props.onClose} disabled={props.busy}>
-          Cancel
-        </Button>
-        <Button color="error" variant="contained" onClick={props.onConfirm} disabled={props.busy}>
-          {props.confirmLabel}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <UiConfirmDialog
+      open={props.open}
+      title={props.title}
+      description={
+        <Box>
+          <ErrorAlert error={props.error} />
+          <Typography variant="body2" color="text.secondary">
+            {props.text}
+          </Typography>
+        </Box>
+      }
+      confirmLabel={props.confirmLabel}
+      severity="error"
+      isLoading={props.busy}
+      onConfirm={props.onConfirm}
+      onClose={props.onClose}
+    />
   );
 }
 

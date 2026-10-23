@@ -1,6 +1,7 @@
 // /admin/queues and /admin/queues/:id (owner: Dev 1) — work queues and their members (config.manage).
 // Members with "Can pick" take turns in round-robin assignment; "Can assign" may hand records to others.
 import {
+  Box,
   Button,
   Card,
   CardContent,
@@ -51,6 +52,7 @@ import {
   UserPicker,
   formatDate,
 } from './components';
+import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
 
 function RecordTypePicker({
   value,
@@ -98,6 +100,49 @@ export function QueuesPage() {
   const [creating, setCreating] = useState(false);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
 
+  const queueColumns: ColumnDef<WorkQueue>[] = [
+    {
+      id: 'code',
+      header: 'Code',
+      accessor: (q) => (
+        <Link component={RouterLink} to={`/admin/queues/${q.id}`} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+          {q.code}
+        </Link>
+      ),
+    },
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (q) => q.name,
+    },
+    {
+      id: 'kind',
+      header: 'Kind',
+      accessor: (q) => q.kind,
+    },
+    {
+      id: 'branch',
+      header: 'Branch',
+      accessor: (q) => (q.branchId ? (branchName.get(q.branchId) ?? q.branchId) : '—'),
+    },
+    {
+      id: 'recordTypes',
+      header: 'Record types',
+      accessor: (q) => q.recordTypes.join(', '),
+    },
+    {
+      id: 'members',
+      header: 'Members',
+      align: 'right',
+      accessor: (q) => q.memberCount,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (q) => <StatusChip active={q.active} />,
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -111,63 +156,23 @@ export function QueuesPage() {
           )
         }
       />
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          label="Search code or name"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <BranchSelect value={branchId} onChange={setBranchId} allowNone label="Branch" />
-      </Stack>
+      <FilterToolbar
+        searchPlaceholder="Search code or name..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        filters={
+          <Box sx={{ minWidth: 200 }}>
+            <BranchSelect value={branchId} onChange={setBranchId} allowNone label="Branch" />
+          </Box>
+        }
+      />
       <ErrorAlert error={list.error} />
-      {list.isPending ? (
-        <Loading />
-      ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Code</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Kind</TableCell>
-                  <TableCell>Branch</TableCell>
-                  <TableCell>Record types</TableCell>
-                  <TableCell align="right">Members</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No queues match.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((q) => (
-                  <TableRow key={q.id} hover>
-                    <TableCell sx={{ fontFamily: 'monospace' }}>
-                      <Link component={RouterLink} to={`/admin/queues/${q.id}`}>
-                        {q.code}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{q.name}</TableCell>
-                    <TableCell>{q.kind}</TableCell>
-                    <TableCell>{q.branchId ? (branchName.get(q.branchId) ?? q.branchId) : '—'}</TableCell>
-                    <TableCell>{q.recordTypes.join(', ')}</TableCell>
-                    <TableCell align="right">{q.memberCount}</TableCell>
-                    <TableCell>
-                      <StatusChip active={q.active} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+      <DataTable<WorkQueue>
+        columns={queueColumns}
+        data={rows}
+        loading={list.isPending}
+        emptyTitle="No queues match."
+      />
       <LoadMore
         hasNext={!!list.hasNextPage}
         loading={list.isFetchingNextPage}

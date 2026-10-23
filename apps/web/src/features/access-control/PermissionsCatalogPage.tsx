@@ -9,13 +9,17 @@ import {
   CircularProgress,
   Container,
   Grid,
-  InputAdornment,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { fetchPermissions } from './api';
+import {
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+} from '../../ui';
 import type { Permission } from './types';
 
 export function PermissionsCatalogPage() {
@@ -59,31 +63,40 @@ export function PermissionsCatalogPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 3 }}
-        flexWrap="wrap"
-        gap={2}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Permissions Catalog
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Global catalog of platform permissions governed by Role-Based Access Control (RBAC).
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" component={RouterLink} to="/roles">
-            &larr; Back to Roles
-          </Button>
-          <Button variant="outlined" onClick={loadCatalog} disabled={loading}>
-            Refresh
-          </Button>
-        </Stack>
-      </Stack>
+      <PageHeader
+        title="Permissions Catalog"
+        subtitle="Global catalog of platform permissions governed by Role-Based Access Control (RBAC)."
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" component={RouterLink} to="/roles">
+              &larr; Back to Roles
+            </Button>
+            <Button variant="outlined" onClick={loadCatalog} disabled={loading}>
+              Refresh
+            </Button>
+          </Stack>
+        }
+      />
+
+      <StatCardGrid columns={{ xs: 1, sm: 3, md: 3 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Permissions"
+          value={permissions.length}
+          subtext="Standard platform capabilities"
+        />
+        <StatCard
+          title="Permission Domains"
+          value={domains.length}
+          subtext="Functional subsystem scopes"
+          colorVariant="info"
+        />
+        <StatCard
+          title="Active Filter Count"
+          value={filtered.length}
+          subtext="Matching current filters"
+          colorVariant="secondary"
+        />
+      </StatCardGrid>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -92,18 +105,11 @@ export function PermissionsCatalogPage() {
       )}
 
       {/* Filter and Search Bar */}
-      <Card sx={{ mb: 4, p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <TextField
-            placeholder="Search permissions by code or description..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            size="small"
-            fullWidth
-            InputProps={{
-              startAdornment: <InputAdornment position="start">🔍</InputAdornment>,
-            }}
-          />
+      <FilterToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search permissions by code or description..."
+        filters={
           <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', maxWidth: '100%', py: 0.5 }}>
             <Chip
               label="All"
@@ -123,8 +129,8 @@ export function PermissionsCatalogPage() {
               />
             ))}
           </Stack>
-        </Stack>
-      </Card>
+        }
+      />
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -144,7 +150,9 @@ export function PermissionsCatalogPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: 2,
-                    boxShadow: 1,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    border: '1px solid',
+                    borderColor: 'divider',
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1 }}>

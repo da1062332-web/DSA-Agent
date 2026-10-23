@@ -2,29 +2,26 @@
 // Writes need config.manage; the list is visible to any signed-in staff, as the API allows.
 import {
   Button,
-  Card,
   Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
+  InputLabel,
   Link,
   MenuItem,
+  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, useLookup } from './api';
-import { ErrorAlert, LoadMore, Loading, PageHeader, StatusChip } from './components';
+import { ErrorAlert, LoadMore, PageHeader, StatusChip } from './components';
+import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
 import type { Lender } from './LendersPage';
 
 export interface Product {
@@ -108,6 +105,43 @@ export function ProductsPage() {
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   const lenderName = (id: string) => lenders.data?.find((l) => l.id === id)?.name ?? id;
 
+  const productColumns: ColumnDef<Product>[] = [
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (p) => (
+        <Link component={RouterLink} to={`/products/${p.id}`} data-testid="admin.product.open" sx={{ fontWeight: 600 }}>
+          {p.name}
+        </Link>
+      ),
+    },
+    {
+      id: 'lender',
+      header: 'Lender',
+      accessor: (p) => lenderName(p.lenderId),
+    },
+    {
+      id: 'category',
+      header: 'Category',
+      accessor: (p) => CATEGORY_LABELS[p.category],
+    },
+    {
+      id: 'applicantTypes',
+      header: 'Applicant types',
+      accessor: (p) => p.applicantTypes.join(', '),
+    },
+    {
+      id: 'secured',
+      header: 'Secured',
+      accessor: (p) => (p.secured ? 'Yes' : 'No'),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (p) => <StatusChip active={p.status === 'ACTIVE'} label={p.status} />,
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -121,102 +155,64 @@ export function ProductsPage() {
           )
         }
       />
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          label="Search name"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <TextField
-          size="small"
-          select
-          label="Lender"
-          value={lenderId}
-          onChange={(e) => setLenderId(e.target.value)}
-          sx={{ minWidth: 200 }}
-        >
-          <MenuItem value="">All lenders</MenuItem>
-          {(lenders.data ?? []).map((l) => (
-            <MenuItem key={l.id} value={l.id}>
-              {l.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          size="small"
-          select
-          label="Category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          sx={{ minWidth: 180 }}
-        >
-          <MenuItem value="">All categories</MenuItem>
-          {PRODUCT_CATEGORIES.map((c) => (
-            <MenuItem key={c} value={c}>
-              {CATEGORY_LABELS[c]}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          size="small"
-          select
-          label="Status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          sx={{ minWidth: 150 }}
-        >
-          <MenuItem value="">All</MenuItem>
-          <MenuItem value="ACTIVE">Active</MenuItem>
-          <MenuItem value="INACTIVE">Inactive</MenuItem>
-        </TextField>
-      </Stack>
-      <ErrorAlert error={list.error} />
-      {list.isPending ? (
-        <Loading />
-      ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Lender</TableCell>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Applicant types</TableCell>
-                  <TableCell>Secured</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No products match.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((p) => (
-                  <TableRow key={p.id} hover>
-                    <TableCell>
-                      <Link component={RouterLink} to={`/products/${p.id}`} data-testid="admin.product.open">
-                        {p.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{lenderName(p.lenderId)}</TableCell>
-                    <TableCell>{CATEGORY_LABELS[p.category]}</TableCell>
-                    <TableCell>{p.applicantTypes.join(', ')}</TableCell>
-                    <TableCell>{p.secured ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>
-                      <StatusChip active={p.status === 'ACTIVE'} label={p.status} />
-                    </TableCell>
-                  </TableRow>
+      <FilterToolbar
+        searchPlaceholder="Search product name..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        filters={
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Lender</InputLabel>
+              <Select
+                value={lenderId}
+                label="Lender"
+                onChange={(e) => setLenderId(e.target.value)}
+              >
+                <MenuItem value="">All lenders</MenuItem>
+                {(lenders.data ?? []).map((l) => (
+                  <MenuItem key={l.id} value={l.id}>
+                    {l.name}
+                  </MenuItem>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={category}
+                label="Category"
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <MenuItem value="">All categories</MenuItem>
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <MenuItem key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={status}
+                label="Status"
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="INACTIVE">Inactive</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        }
+      />
+      <ErrorAlert error={list.error} />
+      <DataTable<Product>
+        columns={productColumns}
+        data={rows}
+        loading={list.isPending}
+        emptyTitle="No products match."
+      />
       <LoadMore
         hasNext={!!list.hasNextPage}
         loading={list.isFetchingNextPage}
