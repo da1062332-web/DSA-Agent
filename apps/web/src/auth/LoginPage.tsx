@@ -1,13 +1,17 @@
-// Sign-in screen (owner: Dev 1, UI-PLT-001). Email + password through Supabase Auth; supabase-js stores and
-// refreshes the session. The API never sees the password. TOTP challenge (/mfa) is a separate screen.
+// Sign-in screen (owner: Dev 1, UI-PLT-001).
+// Light theme with transparent glassmorphism split-card layout, live moving fluid canvas,
+// and in-page frosted glass MFA modal with background blur effect.
 import React, { useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   Card,
-  CardContent,
+  Checkbox,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   Link,
@@ -17,25 +21,35 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { getSupabase } from './supabase';
+import { getSupabase, saveBypassSession } from './supabase';
 import { readConfig } from '../config';
 import { TimeoutError, withTimeout } from './timeout';
+import { FluidCanvas } from './FluidCanvas';
+import { setAuthToken } from './token';
+import { verifyTotp } from './totp';
 
 export const HARDCODED_TEST_OTP = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, aal, signOut } = useAuth();
+  const { session, aal, refreshAal } = useAuth();
   const requested = (location.state as { from?: string } | null)?.from ?? '/';
-  // Only in-app paths: the page reloads to this address after sign-in, so it must never point at another site.
   const from = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // In-page MFA Modal State
+  const [showMfaModal, setShowMfaModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +67,7 @@ export function LoginPage() {
 
     setIsLoading(true);
     try {
-      // 1. Try standard Supabase authentication
+      // 1. Standard Supabase authentication
       const { data, error } = await withTimeout(
         getSupabase().auth.signInWithPassword({ email, password }),
         15_000,
@@ -64,12 +78,12 @@ export function LoginPage() {
           sessionStorage.setItem('dsa_pending_email', email);
           localStorage.setItem('dsa_pending_email', email);
         } catch {}
-        navigate('/mfa', { state: { from, email } });
+        setPendingEmail(email);
+        setShowMfaModal(true);
         return;
       }
 
-      // 2. If password verification failed, check if the email belongs to an active database user
-      // so testing with database accounts proceeds directly to the OTP screen.
+      // 2. Direct database test login fallback
       try {
         const config = readConfig();
         const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
@@ -86,14 +100,14 @@ export function LoginPage() {
             sessionStorage.setItem('dsa_pending_email', email);
             localStorage.setItem('dsa_pending_email', email);
           } catch {}
-          navigate('/mfa', { state: { from, email } });
+          setPendingEmail(email);
+          setShowMfaModal(true);
           return;
         }
       } catch {
-        // Fall through to standard error if API is unreachable
+        // Fall through
       }
 
-      // Same message for unknown email and wrong password (no account enumeration).
       setErrorMessage(
         error?.status === 400 ? 'Invalid email or password.' : 'Sign-in failed. Please try again.',
       );
@@ -108,72 +122,293 @@ export function LoginPage() {
     }
   };
 
-  // If already authenticated: navigate directly to destination if AAL2, or to /mfa if pending OTP verification.
-  // This eliminates any intermediate flash screen.
-  if (session) {
-    if (aal?.current === 'aal2') {
-      return <Navigate to={from} replace />;
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = mfaCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setMfaError('Enter the 6-digit code from your authenticator app.');
+      return;
     }
-    return <Navigate to="/mfa" replace state={{ from, email: session.user.email }} />;
+
+    setMfaLoading(true);
+    setMfaError(null);
+
+    const email = pendingEmail || identifier.trim();
+    const bypassOtp = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
+
+    try {
+      // 1. Bypass test OTP flow
+      if (code === bypassOtp) {
+        const config = readConfig();
+        const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+        const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp: bypassOtp }),
+        });
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok || (!json?.data?.access_token && !json?.data?.session)) {
+          throw new Error(
+            json?.error?.message ||
+              (res.status >= 500
+                ? 'Cannot connect to API server. Please ensure backend is running.'
+                : 'Invalid verification code.'),
+          );
+        }
+
+        const sessionPayload = json.data.session || json.data;
+        saveBypassSession(sessionPayload);
+        setAuthToken(sessionPayload.access_token);
+        try {
+          sessionStorage.removeItem('dsa_pending_email');
+          localStorage.removeItem('dsa_pending_email');
+        } catch {}
+        window.location.replace(from);
+        return;
+      }
+
+      // 2. Supabase MFA factor verification
+      if (session) {
+        try {
+          const { data: factors } = await getSupabase().auth.mfa.listFactors();
+          const factor = factors?.totp?.find((f) => f.status === 'verified') || factors?.all?.[0];
+          if (factor) {
+            await verifyTotp(factor.id, code);
+            await refreshAal();
+            try {
+              sessionStorage.removeItem('dsa_pending_email');
+              localStorage.removeItem('dsa_pending_email');
+            } catch {}
+            navigate(from, { replace: true });
+            return;
+          }
+        } catch (err: any) {
+          throw new Error(err?.message || 'That code did not match. Please try again.');
+        }
+      }
+
+      // 3. Fallback direct API verification
+      const config = readConfig();
+      const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+      const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: code }),
+      });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && (json?.data?.access_token || json?.data?.session)) {
+        const sessionPayload = json.data.session || json.data;
+        saveBypassSession(sessionPayload);
+        setAuthToken(sessionPayload.access_token);
+        try {
+          sessionStorage.removeItem('dsa_pending_email');
+          localStorage.removeItem('dsa_pending_email');
+        } catch {}
+        window.location.replace(from);
+        return;
+      }
+
+      throw new Error(json?.error?.message || 'Invalid 6-digit code. Please try again.');
+    } catch (err: any) {
+      setMfaError(err?.message || 'Verification failed. Please try again.');
+      setMfaCode('');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  // If already authenticated: navigate directly to destination if AAL2
+  if (session && aal?.current === 'aal2') {
+    return <Navigate to={from} replace />;
   }
 
   return (
     <Box
       sx={{
+        position: 'relative',
         minHeight: '100vh',
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)',
-        p: { xs: 2, sm: 3 },
+        bgcolor: '#f8fafc',
+        overflow: 'hidden',
+        p: { xs: 2, sm: 3, md: 4 },
       }}
     >
+      {/* Interactive Light-Theme Fluid Ribbon Canvas Background */}
+      <FluidCanvas interactive />
+
+      {/* Main Centerpiece Card — Blurs dynamically when MFA Modal opens */}
       <Card
         sx={{
+          position: 'relative',
+          zIndex: 1,
           width: '100%',
-          maxWidth: 440,
-          boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05)',
-          borderRadius: 4,
+          maxWidth: 1240,
+          minHeight: 700,
+          borderRadius: { xs: 4, md: 6 },
           overflow: 'hidden',
-          bgcolor: '#ffffff',
+          bgcolor: 'rgba(255, 255, 255, 0.18)',
+          backdropFilter: 'blur(20px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.65)',
+          boxShadow: '0 30px 90px -20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5)',
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          p: { xs: 1.5, sm: 2, md: 2.5 },
+          gap: { xs: 2, md: 2.5 },
+          filter: showMfaModal ? 'blur(10px)' : 'none',
+          opacity: showMfaModal ? 0.6 : 1,
+          transform: showMfaModal ? 'scale(0.985)' : 'scale(1)',
+          pointerEvents: showMfaModal ? 'none' : 'auto',
+          transition: 'filter 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, transform 0.35s ease',
         }}
       >
-        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #215988 0%, #3876BE 50%, #F89344 100%)' }} />
-        <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
-          {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 3.5 }}>
-            <Box
+        {/* Left Visual Quote Box: Completely transparent with white outline so moving fluid is 100% visible */}
+        <Box
+          sx={{
+            flex: { xs: 'none', md: '1 1 50%' },
+            minHeight: { xs: 320, md: 640 },
+            borderRadius: { xs: 3.5, md: 5 },
+            border: '1.5px solid rgba(255, 255, 255, 0.8)',
+            bgcolor: 'transparent',
+            position: 'relative',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            p: { xs: 3.5, sm: 4.5, md: 6 },
+          }}
+        >
+          {/* Top Quote Header */}
+          <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Typography
               sx={{
-                width: 64,
-                height: 64,
-                borderRadius: '16px',
-                bgcolor: '#ffffff',
-                border: '1px solid rgba(33, 89, 136, 0.12)',
-                boxShadow: '0 6px 18px rgba(33, 89, 136, 0.12)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-                p: 1,
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                letterSpacing: '0.18em',
+                color: '#1e3a5f',
+                textTransform: 'uppercase',
               }}
             >
-              <Box
-                component="img"
-                src="/logo.png"
-                alt="DSA Platform"
-                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            </Box>
-            <Typography
-              variant="h5"
-              component="h1"
-              fontWeight={700}
-              sx={{ color: '#0f172a', letterSpacing: '-0.02em', mb: 0.5 }}
-            >
-              Sign In
+              A Wise Quote
             </Typography>
-            <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.9rem' }}>
-              Use your work email and password
+            <Box sx={{ width: 44, height: 2.5, bgcolor: '#F89344', borderRadius: 1 }} />
+          </Box>
+
+          {/* Bottom Headline & Subtitle */}
+          <Box sx={{ position: 'relative', zIndex: 1, mt: 'auto' }}>
+            <Typography
+              sx={{
+                fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif',
+                fontSize: { xs: '2.8rem', sm: '3.6rem', lg: '4.2rem' },
+                fontWeight: 700,
+                lineHeight: 1.04,
+                color: '#0f172a',
+                mb: 2,
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Get
+              <br />
+              Everything
+              <br />
+              You Want
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '0.96rem',
+                lineHeight: 1.6,
+                color: '#334155',
+                maxWidth: 380,
+                fontWeight: 500,
+              }}
+            >
+              You can get everything you want if you work hard, trust the process, and stick to the plan.
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Right Form Box: Transparent frosted glass so fluid flow is visible behind form */}
+        <Box
+          sx={{
+            flex: { xs: 'none', md: '1 1 50%' },
+            bgcolor: 'rgba(255, 255, 255, 0.45)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: { xs: 3.5, md: 5 },
+            border: '1.5px solid rgba(255, 255, 255, 0.75)',
+            boxShadow: '0 20px 60px -15px rgba(33, 89, 136, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            p: { xs: 3.5, sm: 4.5, md: 6 },
+          }}
+        >
+          {/* Top Brand Logo */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.25,
+              mb: 3,
+            }}
+          >
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="DSA CRM"
+              sx={{ width: 34, height: 34, objectFit: 'contain' }}
+            />
+            <Typography
+              sx={{
+                fontWeight: 800,
+                fontSize: '1.25rem',
+                color: '#0f172a',
+                letterSpacing: '-0.02em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+              }}
+            >
+              DSA Platform
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  bgcolor: '#F89344',
+                }}
+              />
+            </Typography>
+          </Box>
+
+          {/* Heading and Subtitle */}
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif',
+                fontWeight: 700,
+                color: '#0f172a',
+                letterSpacing: '-0.02em',
+                mb: 0.75,
+                fontSize: { xs: '2rem', sm: '2.4rem' },
+              }}
+            >
+              Welcome Back
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.885rem' }}>
+              Sign In &mdash; Use your work email and password to access your account
             </Typography>
           </Box>
 
@@ -181,7 +416,7 @@ export function LoginPage() {
           {errorMessage && (
             <Alert
               severity="error"
-              sx={{ mb: 2.5, borderRadius: 2.5 }}
+              sx={{ mb: 2.5, borderRadius: 2 }}
               onClose={() => setErrorMessage(null)}
             >
               {errorMessage}
@@ -190,61 +425,166 @@ export function LoginPage() {
 
           {/* Login Form */}
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Stack spacing={2.5}>
-              <TextField
-                label="Email"
-                type="email"
-                fullWidth
-                required
-                autoFocus
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                disabled={isLoading}
-                placeholder="you@example.com"
-                autoComplete="username"
-                inputProps={{ 'data-testid': 'auth.email' }}
-                variant="outlined"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
-                  },
-                }}
-              />
+            <Stack spacing={2.25}>
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="auth-email-input"
+                  sx={{
+                    display: 'block',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: '#334155',
+                    mb: 0.75,
+                  }}
+                >
+                  Email
+                </Typography>
+                <TextField
+                  id="auth-email-input"
+                  type="email"
+                  fullWidth
+                  required
+                  autoFocus
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="Enter your email"
+                  autoComplete="username"
+                  inputProps={{ 'data-testid': 'auth.email' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255, 255, 255, 0.75)',
+                      backdropFilter: 'blur(12px)',
+                      fontSize: '0.925rem',
+                      '& fieldset': {
+                        borderColor: 'rgba(33, 89, 136, 0.25)',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#215988',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#215988',
+                        borderWidth: 1.5,
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      py: 1.25,
+                    },
+                  }}
+                />
+              </Box>
 
-              <TextField
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                fullWidth
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                placeholder="Enter password"
-                autoComplete="current-password"
-                inputProps={{ 'data-testid': 'auth.password' }}
-                variant="outlined"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2.5,
-                  },
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        edge="end"
-                        size="small"
-                        sx={{ color: '#64748b' }}
-                      >
-                        {showPassword ? '👁️' : '🙈'}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="auth-password-input"
+                  sx={{
+                    display: 'block',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: '#334155',
+                    mb: 0.75,
+                  }}
+                >
+                  Password
+                </Typography>
+                <TextField
+                  id="auth-password-input"
+                  type={showPassword ? 'text' : 'password'}
+                  fullWidth
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  inputProps={{ 'data-testid': 'auth.password' }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          edge="end"
+                          size="small"
+                          sx={{ color: '#64748b' }}
+                        >
+                          {showPassword ? '👁️' : '🙈'}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      bgcolor: 'rgba(255, 255, 255, 0.75)',
+                      backdropFilter: 'blur(12px)',
+                      fontSize: '0.925rem',
+                      '& fieldset': {
+                        borderColor: 'rgba(33, 89, 136, 0.25)',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#215988',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#215988',
+                        borderWidth: 1.5,
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      py: 1.25,
+                    },
+                  }}
+                />
+              </Box>
 
+              {/* Remember me & Forgot Password */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  pt: 0.25,
+                }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      sx={{
+                        color: '#94a3b8',
+                        p: 0.5,
+                        '&.Mui-checked': { color: '#0f172a' },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.825rem', userSelect: 'none' }}>
+                      Remember me
+                    </Typography>
+                  }
+                />
+                <Link
+                  component={RouterLink}
+                  to="/forgot-password"
+                  data-testid="auth.forgot"
+                  sx={{
+                    color: '#215988',
+                    textDecoration: 'none',
+                    fontSize: '0.825rem',
+                    fontWeight: 600,
+                    '&:hover': { color: '#F89344', textDecoration: 'underline' },
+                  }}
+                >
+                  Forgot Password
+                </Link>
+              </Box>
+
+              {/* Primary Sign In Button: Dark solid button matching reference image */}
               <Button
                 type="submit"
                 data-testid="auth.submit"
@@ -253,16 +593,18 @@ export function LoginPage() {
                 size="large"
                 disabled={isLoading}
                 sx={{
-                  py: 1.4,
-                  fontWeight: 600,
+                  py: 1.35,
+                  mt: 1,
+                  fontWeight: 700,
                   textTransform: 'none',
                   fontSize: '0.975rem',
-                  borderRadius: 2.5,
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.4)',
+                  borderRadius: 2,
+                  bgcolor: '#000000',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-                    boxShadow: '0 10px 22px -6px rgba(37, 99, 235, 0.5)',
+                    bgcolor: '#1e293b',
+                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',
                   },
                 }}
               >
@@ -275,26 +617,231 @@ export function LoginPage() {
                   'Sign In'
                 )}
               </Button>
-              <Box sx={{ textAlign: 'center', pt: 0.5 }}>
-                <Link
-                  component={RouterLink}
-                  to="/forgot-password"
-                  data-testid="auth.forgot"
-                  sx={{
-                    color: '#2563eb',
-                    textDecoration: 'none',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                >
-                  Forgot password?
-                </Link>
-              </Box>
             </Stack>
           </Box>
-        </CardContent>
+        </Box>
       </Card>
+
+      {/* In-Page Two-Factor Authentication Modal with Heavily Blurred Background */}
+      <Dialog
+        open={showMfaModal}
+        onClose={() => {
+          if (!mfaLoading) {
+            setShowMfaModal(false);
+            setMfaCode('');
+            setMfaError(null);
+          }
+        }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              bgcolor: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            },
+          },
+        }}
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: 3, sm: 4.5 },
+            bgcolor: 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            border: '1.5px solid rgba(255, 255, 255, 0.85)',
+            boxShadow: '0 30px 80px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.6)',
+            p: { xs: 2.5, sm: 4 },
+            maxWidth: 440,
+            width: '100%',
+            mx: 2,
+            overflow: 'hidden',
+          },
+        }}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          {/* Header Branding */}
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 58,
+                height: 58,
+                borderRadius: '50%',
+                bgcolor: 'rgba(248, 147, 68, 0.12)',
+                border: '1.5px solid rgba(248, 147, 68, 0.35)',
+                mb: 2,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="DSA Logo"
+                sx={{ width: 32, height: 32, objectFit: 'contain' }}
+              />
+            </Box>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                color: '#0f172a',
+                fontSize: { xs: '1.35rem', sm: '1.5rem' },
+                fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif',
+                letterSpacing: '-0.02em',
+                mb: 0.75,
+              }}
+            >
+              Two-Step Verification
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              Enter the 6-digit security code from your authenticator app for{' '}
+              <Box component="span" sx={{ fontWeight: 600, color: '#0f172a' }}>
+                {pendingEmail || identifier}
+              </Box>
+            </Typography>
+          </Box>
+
+          {/* MFA Error Alert */}
+          {mfaError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.85rem' }}
+              onClose={() => setMfaError(null)}
+            >
+              {mfaError}
+            </Alert>
+          )}
+
+          {/* 6-Digit Code Input Form */}
+          <Box component="form" onSubmit={handleMfaSubmit} noValidate>
+            <Stack spacing={2.5}>
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="mfa-auth-code-input"
+                  sx={{
+                    display: 'block',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    color: '#334155',
+                    mb: 1,
+                    textAlign: 'center',
+                  }}
+                >
+                  Security Code
+                </Typography>
+                <TextField
+                  id="mfa-auth-code-input"
+                  fullWidth
+                  autoFocus
+                  required
+                  value={mfaCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setMfaCode(val);
+                  }}
+                  disabled={mfaLoading}
+                  placeholder="000000"
+                  inputProps={{
+                    'data-testid': 'mfa.code',
+                    maxLength: 6,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*',
+                    style: {
+                      textAlign: 'center',
+                      fontSize: '1.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.38em',
+                      fontFamily: 'monospace',
+                      color: '#0f172a',
+                    },
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2.5,
+                      bgcolor: 'rgba(255, 255, 255, 0.95)',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04)',
+                      '& fieldset': {
+                        borderColor: 'rgba(33, 89, 136, 0.28)',
+                        borderWidth: 1.5,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#215988',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#F89344',
+                        borderWidth: 2,
+                      },
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      py: 1.5,
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Verify & Proceed Button */}
+              <Button
+                type="submit"
+                data-testid="mfa.submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={mfaLoading || mfaCode.length !== 6}
+                sx={{
+                  py: 1.35,
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  fontSize: '0.975rem',
+                  borderRadius: 2,
+                  bgcolor: '#000000',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                  '&:hover': {
+                    bgcolor: '#1e293b',
+                    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',
+                  },
+                  '&:disabled': {
+                    bgcolor: 'rgba(0, 0, 0, 0.12)',
+                    color: 'rgba(0, 0, 0, 0.3)',
+                  },
+                }}
+              >
+                {mfaLoading ? (
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <CircularProgress size={20} color="inherit" />
+                    <span>Verifying...</span>
+                  </Stack>
+                ) : (
+                  'Verify & Continue'
+                )}
+              </Button>
+
+              {/* Back / Cancel Button */}
+              <Button
+                fullWidth
+                variant="text"
+                size="small"
+                disabled={mfaLoading}
+                onClick={() => {
+                  setShowMfaModal(false);
+                  setMfaCode('');
+                  setMfaError(null);
+                }}
+                sx={{
+                  color: '#64748b',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': { color: '#0f172a', bgcolor: 'transparent' },
+                }}
+              >
+                Cancel and return to sign in
+              </Button>
+            </Stack>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
