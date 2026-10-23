@@ -15,7 +15,6 @@ import {
   Divider,
   FormControl,
   Grid,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -38,6 +37,14 @@ import type {
   LedgerAccount,
   LedgerJournal,
 } from '@dsa/contracts';
+import {
+  DataTable,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 import {
   closeLedgerPeriod,
   createLedgerAccount,
@@ -256,51 +263,177 @@ export function LedgerPage() {
     }
   };
 
+  const accountColumns: ColumnDef<LedgerAccount>[] = [
+    {
+      id: 'code',
+      header: 'Code',
+      accessor: (acc) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
+          {acc.code}
+        </Typography>
+      ),
+    },
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (acc) => (
+        <Typography variant="body2" sx={{ fontWeight: 500, color: '#0f172a' }}>
+          {acc.name}
+        </Typography>
+      ),
+    },
+    {
+      id: 'type',
+      header: 'Type',
+      accessor: (acc) => <StatusBadge status={acc.type} />,
+    },
+    {
+      id: 'counterparty',
+      header: 'Counterparty',
+      accessor: (acc) => (
+        <Typography variant="body2" color="text.secondary">
+          {acc.counterpartyType ? `${acc.counterpartyType} (${acc.counterpartyId ?? 'any'})` : '—'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (acc) => <StatusBadge status={acc.isActive ? 'ACTIVE' : 'INACTIVE'} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (acc) => (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => handleInspectBalance(acc.id)}
+          sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600 }}
+        >
+          View Balance
+        </Button>
+      ),
+    },
+  ];
+
+  const statementLineColumns: ColumnDef<any>[] = [
+    {
+      id: 'date',
+      header: 'Date',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+          {line.date}
+        </Typography>
+      ),
+    },
+    {
+      id: 'journalNumber',
+      header: 'Journal #',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600, color: 'primary.main' }}>
+          {line.journalNumber}
+        </Typography>
+      ),
+    },
+    {
+      id: 'reference',
+      header: 'Reference',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+          {line.referenceType}: {line.referenceId}
+        </Typography>
+      ),
+    },
+    {
+      id: 'debit',
+      header: 'Debit (₹)',
+      align: 'right',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.main' }}>
+          {line.debit !== '0.00' ? `₹${line.debit}` : '—'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'credit',
+      header: 'Credit (₹)',
+      align: 'right',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'success.main' }}>
+          {line.credit !== '0.00' ? `₹${line.credit}` : '—'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'runningBalance',
+      header: 'Running Balance (₹)',
+      align: 'right',
+      accessor: (line) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+          ₹{line.runningBalance}
+        </Typography>
+      ),
+    },
+  ];
+
+  const exportHistoryColumns: ColumnDef<any>[] = [
+    {
+      id: 'id',
+      header: 'Export ID',
+      accessor: (h) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
+          {h.id}
+        </Typography>
+      ),
+    },
+    { id: 'period', header: 'Period', accessor: (h) => h.period },
+    {
+      id: 'format',
+      header: 'Format',
+      accessor: (h) => <StatusBadge status={h.format} />,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (h) => <StatusBadge status={h.status} />,
+    },
+    {
+      id: 'date',
+      header: 'Dispatched At',
+      align: 'right',
+      accessor: (h) => (
+        <Typography variant="body2" color="text.secondary">
+          {h.date}
+        </Typography>
+      ),
+    },
+  ];
+
   return (
     <Box sx={{ p: { xs: 2.5, sm: 3.5 }, maxWidth: 1400, mx: 'auto' }}>
       {/* Header Section */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-            <Typography variant="h5" component="h1" fontWeight={700} sx={{ color: '#0f172a' }}>
-              Ledger Management
-            </Typography>
-            <Chip
-              label="MOD-LED • DOM-K"
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-            />
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            General and sub-ledger chart of accounts, immutable double-entry journal postings, and
-            period-close governance.
-          </Typography>
-        </Box>
-
-        <Button
-          id="btn-new-account"
-          variant="contained"
-          onClick={() => setIsNewAccountModalOpen(true)}
-          sx={{
-            fontWeight: 600,
-            textTransform: 'none',
-            borderRadius: 2,
-            px: 2.5,
-            py: 1,
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
-          }}
-        >
-          + New Account
-        </Button>
-      </Stack>
+      <PageHeader
+        title="Ledger Management"
+        subtitle="General and sub-ledger chart of accounts, immutable double-entry journal postings, and period-close governance."
+        actions={
+          <Button
+            id="btn-new-account"
+            variant="contained"
+            onClick={() => setIsNewAccountModalOpen(true)}
+            sx={{
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: 2,
+              px: 2.5,
+              py: 1,
+            }}
+          >
+            + New Account
+          </Button>
+        }
+      />
 
       {/* Feedback Alerts */}
       {error && (
@@ -383,99 +516,12 @@ export function LedgerPage() {
             </Stack>
           </Paper>
 
-          <TableContainer
-            component={Paper}
-            elevation={0}
-            sx={{
-              borderRadius: 3,
-              border: '1px solid',
-              borderColor: 'divider',
-              overflow: 'hidden',
-            }}
-          >
-            <Table>
-              <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Code</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Counterparty</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {accounts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                      {loading ? (
-                        <Stack alignItems="center" spacing={1.5}>
-                          <CircularProgress size={28} />
-                          <Typography variant="body2">Loading accounts...</Typography>
-                        </Stack>
-                      ) : (
-                        'No ledger accounts registered.'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  accounts.map((acc) => (
-                    <TableRow key={acc.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
-                        {acc.code}
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 500, color: '#0f172a' }}>{acc.name}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={acc.type}
-                          size="small"
-                          color={getTypeChipColor(acc.type)}
-                          variant="outlined"
-                          sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>
-                        {acc.counterpartyType
-                          ? `${acc.counterpartyType} (${acc.counterpartyId ?? 'any'})`
-                          : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {acc.isActive ? (
-                          <Chip
-                            label="Active"
-                            size="small"
-                            color="success"
-                            variant="filled"
-                            sx={{ fontWeight: 600, fontSize: '0.75rem', height: 22 }}
-                          />
-                        ) : (
-                          <Chip
-                            label="Inactive (OD-021)"
-                            size="small"
-                            color="warning"
-                            variant="outlined"
-                            sx={{ fontWeight: 600, fontSize: '0.75rem', height: 22 }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleInspectBalance(acc.id)}
-                          sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600 }}
-                        >
-                          View Balance
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<LedgerAccount>
+            columns={accountColumns}
+            data={accounts}
+            loading={loading}
+            emptyTitle="No ledger accounts registered."
+          />
         </Stack>
       )}
 
@@ -678,108 +724,37 @@ export function LedgerPage() {
 
           {connectorStatement && (
             <Stack spacing={3}>
-              <Grid container spacing={2.5}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Opening Balance
-                    </Typography>
-                    <Typography variant="h6" fontWeight={700} sx={{ fontFamily: 'monospace', mt: 0.5 }}>
-                      ₹{connectorStatement.openingBalance}
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Total Credits (Earned)
-                    </Typography>
-                    <Typography variant="h6" fontWeight={700} color="success.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
-                      ₹{connectorStatement.totalCredits}
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Total Debits (Paid)
-                    </Typography>
-                    <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
-                      ₹{connectorStatement.totalDebits}
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Closing Balance (Payable)
-                    </Typography>
-                    <Typography variant="h6" fontWeight={700} color="secondary.main" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
-                      ₹{connectorStatement.closingBalance}
-                    </Typography>
-                  </Card>
-                </Grid>
-              </Grid>
+              <StatCardGrid columns={{ xs: 1, sm: 2, md: 4 }}>
+                <StatCard
+                  title="Opening Balance"
+                  value={`₹${connectorStatement.openingBalance}`}
+                  subtext="Period Start"
+                />
+                <StatCard
+                  title="Total Credits (Earned)"
+                  value={`₹${connectorStatement.totalCredits}`}
+                  subtext="Commissions"
+                  colorVariant="success"
+                />
+                <StatCard
+                  title="Total Debits (Paid)"
+                  value={`₹${connectorStatement.totalDebits}`}
+                  subtext="Disbursements"
+                  colorVariant="primary"
+                />
+                <StatCard
+                  title="Closing Balance (Payable)"
+                  value={`₹${connectorStatement.closingBalance}`}
+                  subtext="Current Net Payable"
+                  colorVariant="secondary"
+                />
+              </StatCardGrid>
 
-              <TableContainer
-                component={Paper}
-                elevation={0}
-                sx={{
-                  borderRadius: 3,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                }}
-              >
-                <Table>
-                  <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Journal #</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#475569' }}>Reference</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
-                        Debit (₹)
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
-                        Credit (₹)
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: '#475569' }}>
-                        Running Balance (₹)
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {connectorStatement.lines.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                          No activity recorded for this connector.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      connectorStatement.lines.map((line, idx) => (
-                        <TableRow key={idx} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{line.date}</TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600, color: 'primary.main' }}>
-                            {line.journalNumber}
-                          </TableCell>
-                          <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                            {line.referenceType}: {line.referenceId}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.main' }}>
-                            {line.debit !== '0.00' ? `₹${line.debit}` : '—'}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'success.main' }}>
-                            {line.credit !== '0.00' ? `₹${line.credit}` : '—'}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                            ₹{line.runningBalance}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <DataTable
+                columns={statementLineColumns}
+                data={connectorStatement.lines}
+                emptyTitle="No activity recorded for this connector."
+              />
             </Stack>
           )}
         </Stack>
@@ -788,68 +763,30 @@ export function LedgerPage() {
       {/* TAB 4: Trial Balance & Period Close */}
       {activeTab === 'period_close' && (
         <Stack spacing={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Card variant="outlined" sx={{ borderRadius: 3, p: 3, bgcolor: '#ffffff' }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Total Debits
-                </Typography>
-                <Typography variant="h4" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', my: 1 }}>
-                  ₹{trialBalance?.totalDebit ?? '0.00'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Aggregated debits across all sub-ledgers
-                </Typography>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Card variant="outlined" sx={{ borderRadius: 3, p: 3, bgcolor: '#ffffff' }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Total Credits
-                </Typography>
-                <Typography variant="h4" fontWeight={700} color="success.main" sx={{ fontFamily: 'monospace', my: 1 }}>
-                  ₹{trialBalance?.totalCredit ?? '0.00'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Aggregated credits across all sub-ledgers
-                </Typography>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Card
-                variant="outlined"
-                sx={{
-                  borderRadius: 3,
-                  p: 3,
-                  bgcolor: trialBalance?.isBalanced ? '#f0fdf4' : '#fef2f2',
-                  borderColor: trialBalance?.isBalanced ? '#bbf7d0' : '#fecaca',
-                }}
-              >
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Trial Balance Variance
-                </Typography>
-                <Typography
-                  variant="h4"
-                  fontWeight={700}
-                  color={trialBalance?.isBalanced ? 'success.dark' : 'error.main'}
-                  sx={{ fontFamily: 'monospace', my: 1 }}
-                >
-                  ₹{trialBalance?.variance ?? '0.00'}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  fontWeight={600}
-                  color={trialBalance?.isBalanced ? 'success.dark' : 'error.main'}
-                >
-                  {trialBalance?.isBalanced
-                    ? '✓ Zero-sum verified (Debit = Credit)'
-                    : '⚠ UNBALANCED: Period close blocked'}
-                </Typography>
-              </Card>
-            </Grid>
-          </Grid>
+          <StatCardGrid columns={{ xs: 1, md: 3 }}>
+            <StatCard
+              title="Total Debits"
+              value={`₹${trialBalance?.totalDebit ?? '0.00'}`}
+              subtext="Aggregated debits across all sub-ledgers"
+              colorVariant="primary"
+            />
+            <StatCard
+              title="Total Credits"
+              value={`₹${trialBalance?.totalCredit ?? '0.00'}`}
+              subtext="Aggregated credits across all sub-ledgers"
+              colorVariant="success"
+            />
+            <StatCard
+              title="Trial Balance Variance"
+              value={`₹${trialBalance?.variance ?? '0.00'}`}
+              subtext={
+                trialBalance?.isBalanced
+                  ? '✓ Zero-sum verified (Debit = Credit)'
+                  : '⚠ UNBALANCED: Period close blocked'
+              }
+              colorVariant={trialBalance?.isBalanced ? 'success' : 'error'}
+            />
+          </StatCardGrid>
 
           {/* Period Close Action Card */}
           <Card variant="outlined" sx={{ borderRadius: 3, p: 3.5, bgcolor: '#ffffff' }}>
@@ -976,53 +913,16 @@ export function LedgerPage() {
           </Card>
 
           {exportHistory.length > 0 && (
-            <TableContainer
-              component={Paper}
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: 'divider',
-                overflow: 'hidden',
-                maxWidth: 900,
-              }}
-            >
-              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" fontWeight={700}>
-                  Recent Export Dispatches
-                </Typography>
-              </Box>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ '& th': { color: '#64748b', fontWeight: 600 } }}>
-                    <TableCell>Export ID</TableCell>
-                    <TableCell>Period</TableCell>
-                    <TableCell>Format</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Dispatched At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {exportHistory.map((h) => (
-                    <TableRow key={h.id} hover>
-                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
-                        {h.id}
-                      </TableCell>
-                      <TableCell>{h.period}</TableCell>
-                      <TableCell>
-                        <Chip label={h.format} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={h.status} size="small" color="success" sx={{ fontWeight: 600 }} />
-                      </TableCell>
-                      <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                        {h.date}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box sx={{ maxWidth: 900 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+                Recent Export Dispatches
+              </Typography>
+              <DataTable
+                columns={exportHistoryColumns}
+                data={exportHistory}
+                emptyTitle="No exports dispatched yet."
+              />
+            </Box>
           )}
         </Stack>
       )}

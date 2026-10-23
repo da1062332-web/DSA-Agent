@@ -19,21 +19,27 @@ import { ErrorState } from '../AsyncContainer/ErrorState';
 
 export interface ColumnDef<T> {
   id: string;
-  header: React.ReactNode;
+  header?: React.ReactNode;
+  label?: React.ReactNode;
   accessor?: (row: T) => React.ReactNode;
+  render?: (row: T) => React.ReactNode;
   width?: string | number;
   align?: 'left' | 'center' | 'right';
 }
 
+export type Column<T> = ColumnDef<T>;
+
 export interface DataTableProps<T> {
   columns: ColumnDef<T>[];
   data: T[];
-  keyExtractor: (item: T) => string | number;
+  keyExtractor?: (item: T, idx?: number) => string | number;
   isLoading?: boolean;
+  loading?: boolean;
   isError?: boolean;
   error?: string | Error | null;
   onRetry?: () => void;
   emptyTitle?: string;
+  emptyMessage?: string;
   emptyDescription?: string;
   emptyAction?: React.ReactNode;
   pagination?: {
@@ -56,10 +62,12 @@ export function DataTable<T>({
   data,
   keyExtractor,
   isLoading = false,
+  loading = false,
   isError = false,
   error,
   onRetry,
   emptyTitle = 'No records found',
+  emptyMessage,
   emptyDescription = 'There are no items to display matching the current criteria.',
   emptyAction,
   pagination,
@@ -67,6 +75,9 @@ export function DataTable<T>({
   dataTestId,
   elevation = 0,
 }: DataTableProps<T>) {
+  const effectiveLoading = isLoading || loading;
+  const effectiveEmptyTitle = emptyMessage || emptyTitle;
+  const getKey = keyExtractor ?? ((item: any, idx?: number) => item?.id ?? item?.key ?? (idx !== undefined ? `row-${idx}` : JSON.stringify(item)));
   if (isError) {
     return (
       <Box sx={{ my: 2 }}>
@@ -107,13 +118,13 @@ export function DataTable<T>({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {col.header}
+                  {col.header ?? col.label}
                 </TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {isLoading ? (
+            {effectiveLoading ? (
               // Skeletons
               Array.from({ length: 5 }).map((_, rIdx) => (
                 <TableRow key={`skeleton-${rIdx}`}>
@@ -129,7 +140,7 @@ export function DataTable<T>({
               <TableRow>
                 <TableCell colSpan={columns.length} align="center" sx={{ py: 6, border: 0 }}>
                   <EmptyState
-                    title={emptyTitle}
+                    title={effectiveEmptyTitle}
                     description={emptyDescription}
                     action={emptyAction}
                     compact
@@ -138,8 +149,8 @@ export function DataTable<T>({
               </TableRow>
             ) : (
               // Data Rows
-              data.map((row) => {
-                const key = keyExtractor(row);
+              data.map((row, rIdx) => {
+                const key = getKey(row, rIdx);
                 const isClickable = Boolean(onRowClick);
                 return (
                   <TableRow
@@ -155,7 +166,9 @@ export function DataTable<T>({
                     {columns.map((col) => {
                       const content = col.accessor
                         ? col.accessor(row)
-                        : (row as any)[col.id];
+                        : col.render
+                          ? col.render(row)
+                          : (row as any)[col.id];
                       return (
                         <TableCell
                           key={col.id}

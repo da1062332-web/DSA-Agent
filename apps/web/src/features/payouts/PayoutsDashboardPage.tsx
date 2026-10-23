@@ -6,7 +6,6 @@ import {
   Card,
   CardHeader,
   Checkbox,
-  Chip,
   CircularProgress,
   Container,
   Dialog,
@@ -38,6 +37,14 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { ConnectorName } from '../../shell/display';
 import { fetchPayables } from '../commission/api';
 import type { CommissionPayable } from '../commission/types';
+import {
+  DataTable,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 import {
   approvePayoutRequest,
   cancelPayoutRequest,
@@ -377,24 +384,236 @@ export function PayoutsDashboardPage() {
     .filter((p) => selectedPayableIds.includes(p.id))
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
+  const requestColumns: ColumnDef<PayoutRequest>[] = [
+    {
+      id: 'id',
+      header: 'Payout ID',
+      accessor: (r) => <strong>{r.id}</strong>,
+    },
+    {
+      id: 'connector',
+      header: 'Connector',
+      accessor: (r) => <ConnectorName id={r.connectorId} typographyProps={{ fontWeight: 500 }} />,
+    },
+    {
+      id: 'origin',
+      header: 'Origin',
+      accessor: (r) => r.origin,
+    },
+    {
+      id: 'total',
+      header: 'Total Amount (₹)',
+      accessor: (r) => <strong>₹{Number(r.total).toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'paymentRef',
+      header: 'Payment Ref',
+      accessor: (r) => r.paymentRefMasked || '—',
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (r) => <StatusBadge status={r.status} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (r) => (
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          {r.status === 'SUBMITTED' && canRequestPayout && (
+            <Button size="small" color="error" onClick={() => handleCancelRequest(r.id)}>
+              Cancel
+            </Button>
+          )}
+          {r.status === 'SUBMITTED' && canApprovePayout && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => handleOpenApprovalDialog(r)}
+            >
+              Review
+            </Button>
+          )}
+        </Stack>
+      ),
+    },
+  ];
+
+  const approvalColumns: ColumnDef<PayoutRequest>[] = [
+    {
+      id: 'id',
+      header: 'Payout ID',
+      accessor: (req) => <strong>{req.id}</strong>,
+    },
+    {
+      id: 'connector',
+      header: 'Connector',
+      accessor: (req) => <ConnectorName id={req.connectorId} typographyProps={{ fontWeight: 500 }} />,
+    },
+    {
+      id: 'total',
+      header: 'Total Amount (₹)',
+      accessor: (req) => <strong>₹{Number(req.total).toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'submittedBy',
+      header: 'Submitted By',
+      accessor: (req) => req.submittedBy,
+    },
+    {
+      id: 'submittedAt',
+      header: 'Submitted At',
+      accessor: (req) => new Date(req.submittedAt).toLocaleDateString(),
+    },
+    {
+      id: 'action',
+      header: 'Action',
+      align: 'right',
+      accessor: (req) => (
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          disabled={req.submittedBy === currentUserId || !canApprovePayout}
+          onClick={() => handleOpenApprovalDialog(req)}
+        >
+          Review & Decide (SOD-03)
+        </Button>
+      ),
+    },
+  ];
+
+  const readyPaymentColumns: ColumnDef<PayoutRequest>[] = [
+    {
+      id: 'id',
+      header: 'Payout ID',
+      accessor: (p) => <strong>{p.id}</strong>,
+    },
+    {
+      id: 'connector',
+      header: 'Connector',
+      accessor: (p) => <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 500 }} />,
+    },
+    {
+      id: 'total',
+      header: 'Total (₹)',
+      accessor: (p) => <strong>₹{Number(p.total).toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'actions',
+      header: 'Payment Actions',
+      align: 'right',
+      accessor: (p) => (
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            disabled={disbursingId === p.id}
+            onClick={() => handleGatewayDisburse(p)}
+          >
+            {disbursingId === p.id ? <CircularProgress size={16} /> : 'Net-Banking API'}
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="success"
+            onClick={() => handleOpenPaymentDialog(p)}
+          >
+            Record UTR
+          </Button>
+          <Button size="small" color="error" onClick={() => handleOpenFailureDialog(p)}>
+            Mark Failed
+          </Button>
+        </Stack>
+      ),
+    },
+  ];
+
+  const batchColumns: ColumnDef<PayoutBatch>[] = [
+    {
+      id: 'id',
+      header: 'Batch ID',
+      accessor: (b) => <strong>{b.id}</strong>,
+    },
+    {
+      id: 'count',
+      header: 'Payouts Count',
+      accessor: (b) => b.payoutIds.length,
+    },
+    {
+      id: 'hash',
+      header: 'SHA-256 Integrity Hash',
+      accessor: (b) => <code>{b.fileSha256.slice(0, 24)}...</code>,
+    },
+    {
+      id: 'actions',
+      header: 'Disbursement Actions',
+      align: 'right',
+      accessor: (b) => (
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            disabled={batching}
+            onClick={() => handleBatchGatewayDispatch(b.id)}
+          >
+            Gateway Dispatch
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => handleDownloadBankFile(b.id)}
+          >
+            Download CSV
+          </Button>
+        </Stack>
+      ),
+    },
+  ];
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Payouts & Settlement Hub
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 31 / 30 Part B — Connector payouts with maker-checker controls, bank batching, and payment
-            recording
-          </Typography>
-        </Box>
-        {canRequestPayout && (
-          <Button variant="contained" onClick={handleOpenCreateDialog}>
-            Create Payout Request
-          </Button>
-        )}
-      </Stack>
+      <PageHeader
+        title="Payouts & Settlement Hub"
+        subtitle="Module 31 / 30 Part B — Connector payouts with maker-checker controls, bank batching, and payment recording"
+        actions={
+          canRequestPayout && (
+            <Button variant="contained" onClick={handleOpenCreateDialog}>
+              Create Payout Request
+            </Button>
+          )
+        }
+      />
+
+      {/* KPI Stats */}
+      <StatCardGrid columns={{ xs: 1, sm: 2, md: 4 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Requests"
+          value={requests.length}
+          subtext="Registered payouts"
+        />
+        <StatCard
+          title="Pending Approvals"
+          value={pendingApprovals.length}
+          subtext="Awaiting maker-checker review"
+          colorVariant="warning"
+        />
+        <StatCard
+          title="Ready for Payment"
+          value={readyForPayment.length}
+          subtext="Approved for bank disbursement"
+          colorVariant="info"
+        />
+        <StatCard
+          title="Completed Batches"
+          value={createdBatches.length}
+          subtext="Exported payment files"
+          colorVariant="success"
+        />
+      </StatCardGrid>
 
       {successMsg && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMsg(null)}>
@@ -447,81 +666,11 @@ export function PayoutsDashboardPage() {
                 }
               />
               <Divider />
-              <TableContainer>
-                {requests.length === 0 ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No payout requests found.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Payout ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Connector</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Origin</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Total Amount (₹)</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Payment Ref</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Status</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>Actions</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {requests.map((r) => (
-                        <TableRow key={r.id}>
-                          <TableCell>
-                            <strong>{r.id}</strong>
-                          </TableCell>
-                          <TableCell>
-                            <ConnectorName id={r.connectorId} typographyProps={{ fontWeight: 500 }} />
-                          </TableCell>
-                          <TableCell>{r.origin}</TableCell>
-                          <TableCell>
-                            <strong>₹{Number(r.total).toLocaleString('en-IN')}</strong>
-                          </TableCell>
-                          <TableCell>{r.paymentRefMasked || '—'}</TableCell>
-                          <TableCell>
-                            <Chip label={r.status} size="small" color={getStatusColor(r.status)} />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                              {r.status === 'SUBMITTED' && canRequestPayout && (
-                                <Button size="small" color="error" onClick={() => handleCancelRequest(r.id)}>
-                                  Cancel
-                                </Button>
-                              )}
-                              {r.status === 'SUBMITTED' && canApprovePayout && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => handleOpenApprovalDialog(r)}
-                                >
-                                  Review
-                                </Button>
-                              )}
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </TableContainer>
+              <DataTable<PayoutRequest>
+                columns={requestColumns}
+                data={requests}
+                emptyTitle="No payout requests found."
+              />
             </Card>
           )}
 
@@ -533,68 +682,11 @@ export function PayoutsDashboardPage() {
                 subheader="Requester cannot approve their own payout request (SOD-03). Dynamic payable eligibility is checked."
               />
               <Divider />
-              <TableContainer>
-                {pendingApprovals.length === 0 ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No payout requests currently waiting for approval.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Payout ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Connector</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Total Amount (₹)</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Submitted By</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Submitted At</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>Action</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {pendingApprovals.map((req) => (
-                        <TableRow key={req.id}>
-                          <TableCell>
-                            <strong>{req.id}</strong>
-                          </TableCell>
-                          <TableCell>
-                            <ConnectorName id={req.connectorId} typographyProps={{ fontWeight: 500 }} />
-                          </TableCell>
-                          <TableCell>
-                            <strong>₹{Number(req.total).toLocaleString('en-IN')}</strong>
-                          </TableCell>
-                          <TableCell>{req.submittedBy}</TableCell>
-                          <TableCell>{new Date(req.submittedAt).toLocaleDateString()}</TableCell>
-                          <TableCell align="right">
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="primary"
-                              disabled={req.submittedBy === currentUserId || !canApprovePayout}
-                              onClick={() => handleOpenApprovalDialog(req)}
-                            >
-                              Review & Decide (SOD-03)
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </TableContainer>
+              <DataTable<PayoutRequest>
+                columns={approvalColumns}
+                data={pendingApprovals}
+                emptyTitle="No payout requests currently waiting for approval."
+              />
             </Card>
           )}
 
@@ -624,73 +716,11 @@ export function PayoutsDashboardPage() {
                   }
                 />
                 <Divider />
-                <TableContainer>
-                  {readyForPayment.length === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No approved payouts waiting for payment execution.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Table>
-                      <TableHead sx={{ bgcolor: 'grey.50' }}>
-                        <TableRow>
-                          <TableCell>
-                            <strong>Payout ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Connector</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Total (₹)</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>Payment Actions</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {readyForPayment.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>
-                              <strong>{p.id}</strong>
-                            </TableCell>
-                            <TableCell>
-                              <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 500 }} />
-                            </TableCell>
-                            <TableCell>
-                              <strong>₹{Number(p.total).toLocaleString('en-IN')}</strong>
-                            </TableCell>
-                            <TableCell align="right">
-                              <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="primary"
-                                  disabled={disbursingId === p.id}
-                                  onClick={() => handleGatewayDisburse(p)}
-                                >
-                                  {disbursingId === p.id ? <CircularProgress size={16} /> : 'Net-Banking API'}
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="success"
-                                  onClick={() => handleOpenPaymentDialog(p)}
-                                >
-                                  Record UTR
-                                </Button>
-                                <Button size="small" color="error" onClick={() => handleOpenFailureDialog(p)}>
-                                  Mark Failed
-                                </Button>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TableContainer>
+                <DataTable<PayoutRequest>
+                  columns={readyPaymentColumns}
+                  data={readyForPayment}
+                  emptyTitle="No approved payouts waiting for payment execution."
+                />
               </Card>
 
               {createdBatches.length > 0 && (
@@ -700,59 +730,11 @@ export function PayoutsDashboardPage() {
                     subheader="Batches with SHA-256 integrity hash for secure bank transfer files"
                   />
                   <Divider />
-                  <TableContainer>
-                    <Table>
-                      <TableHead sx={{ bgcolor: 'grey.50' }}>
-                        <TableRow>
-                          <TableCell>
-                            <strong>Batch ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Payouts Count</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>SHA-256 Integrity Hash</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>Disbursement Actions</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {createdBatches.map((b) => (
-                          <TableRow key={b.id}>
-                            <TableCell>
-                              <strong>{b.id}</strong>
-                            </TableCell>
-                            <TableCell>{b.payoutIds.length}</TableCell>
-                            <TableCell>
-                              <code>{b.fileSha256.slice(0, 24)}...</code>
-                            </TableCell>
-                            <TableCell align="right">
-                              <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="primary"
-                                  disabled={batching}
-                                  onClick={() => handleBatchGatewayDispatch(b.id)}
-                                >
-                                  Gateway Dispatch
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => handleDownloadBankFile(b.id)}
-                                >
-                                  Download CSV
-                                </Button>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<PayoutBatch>
+                    columns={batchColumns}
+                    data={createdBatches}
+                    emptyTitle="No batches generated yet."
+                  />
                 </Card>
               )}
             </Stack>

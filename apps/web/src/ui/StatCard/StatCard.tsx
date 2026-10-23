@@ -15,12 +15,14 @@ export interface StatCardProps {
   title: string;
   value: string | number | null | undefined;
   subtitle?: string;
+  subtext?: string;
   format?: 'currency' | 'percent' | 'number' | 'raw';
   trend?: {
     value: number;
     label?: string;
   };
-  status?: 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error';
+  status?: 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error' | 'default';
+  colorVariant?: 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error' | 'default';
   icon?: React.ReactNode;
   isLoading?: boolean;
   isError?: boolean;
@@ -53,9 +55,11 @@ export function StatCard({
   title,
   value,
   subtitle,
+  subtext,
   format = 'raw',
   trend,
   status = 'primary',
+  colorVariant,
   icon,
   isLoading = false,
   isError = false,
@@ -64,6 +68,8 @@ export function StatCard({
   dataTestId,
 }: StatCardProps) {
   const isClickable = Boolean(to || onClick);
+  const effectiveStatus = colorVariant ?? status;
+  const effectiveSubtitle = subtext ?? subtitle;
 
   return (
     <Card
@@ -117,19 +123,19 @@ export function StatCard({
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: () => {
-                  if (status === 'success') return '#ECFDF5';
-                  if (status === 'warning') return '#FFF7ED';
-                  if (status === 'error') return '#FFF1EC';
-                  if (status === 'info') return '#EBF4F9';
-                  if (status === 'secondary') return '#FFF1EC';
+                  if (effectiveStatus === 'success') return '#ECFDF5';
+                  if (effectiveStatus === 'warning') return '#FFF7ED';
+                  if (effectiveStatus === 'error') return '#FFF1EC';
+                  if (effectiveStatus === 'info') return '#EBF4F9';
+                  if (effectiveStatus === 'secondary') return '#FFF1EC';
                   return '#FFF7ED';
                 },
                 color: () => {
-                  if (status === 'success') return '#059669';
-                  if (status === 'warning') return '#F89344';
-                  if (status === 'error') return '#FF642F';
-                  if (status === 'info') return '#215988';
-                  if (status === 'secondary') return '#FF642F';
+                  if (effectiveStatus === 'success') return '#059669';
+                  if (effectiveStatus === 'warning') return '#F89344';
+                  if (effectiveStatus === 'error') return '#FF642F';
+                  if (effectiveStatus === 'info') return '#215988';
+                  if (effectiveStatus === 'secondary') return '#FF642F';
                   return '#F89344';
                 },
                 '& svg': { fontSize: 20 },
@@ -160,7 +166,7 @@ export function StatCard({
           </Typography>
         )}
 
-        {(subtitle || trend) && (
+        {(effectiveSubtitle || trend) && (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
             {trend && (
               <Chip
@@ -184,9 +190,9 @@ export function StatCard({
                 }}
               />
             )}
-            {subtitle && (
+            {effectiveSubtitle && (
               <Typography variant="caption" color="text.secondary">
-                {subtitle}
+                {effectiveSubtitle}
               </Typography>
             )}
           </Stack>

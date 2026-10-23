@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Chip,
   CircularProgress,
   Container,
   Dialog,
@@ -22,12 +21,6 @@ import {
   Select,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Typography,
@@ -39,6 +32,14 @@ import { Can } from '../../shell/Can';
 import { ConnectorName } from '../../shell/display';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
+import {
+  DataTable,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 import {
   approveCommissionPlan,
   approveRecalculationProposal,
@@ -312,55 +313,233 @@ export function CommissionDashboardPage() {
     }
   };
 
+  const planColumns: ColumnDef<CommissionPlan>[] = [
+    {
+      id: 'lender',
+      header: 'Lender ID',
+      accessor: (p) => <strong>{lenders.find((l) => l.id === p.lenderId)?.name || p.lenderId}</strong>,
+    },
+    {
+      id: 'qualifyingEvent',
+      header: 'Qualifying Event',
+      accessor: (p) => p.qualifyingEvent,
+    },
+    {
+      id: 'basis',
+      header: 'Basis',
+      accessor: (p) => p.basis,
+    },
+    {
+      id: 'rounding',
+      header: 'Rounding',
+      accessor: (p) => p.roundingMode,
+    },
+    {
+      id: 'clawback',
+      header: 'Clawback Window',
+      accessor: (p) => `${p.clawbackWindowDays} Days`,
+    },
+    {
+      id: 'ruleSet',
+      header: 'Rule Set ID',
+      accessor: (p) => p.ruleSetId || 'Default Standard',
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (p) => <StatusBadge status={p.status} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (p) => (
+        p.status === 'DRAFT' && canApprovePlan ? (
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            disabled={p.createdBy === currentUserId}
+            onClick={() => handleApprovePlan(p)}
+          >
+            Approve (SOD-02)
+          </Button>
+        ) : null
+      ),
+    },
+  ];
+
+  const calcColumns: ColumnDef<CommissionCalculation>[] = [
+    { id: 'id', header: 'Calc ID', accessor: (c) => c.id },
+    { id: 'trancheId', header: 'Tranche ID', accessor: (c) => <strong>{c.trancheId}</strong> },
+    {
+      id: 'lender',
+      header: 'Lender',
+      accessor: (c) => lenders.find((l) => l.id === c.lenderId)?.name || c.lenderId,
+    },
+    {
+      id: 'basisAmount',
+      header: 'Basis Amount (₹)',
+      accessor: (c) => `₹${Number(c.basisAmount).toLocaleString('en-IN')}`,
+    },
+    {
+      id: 'rate',
+      header: 'Rate',
+      accessor: (c) => `${(Number(c.rate) * 100).toFixed(2)}%`,
+    },
+    {
+      id: 'grossAmount',
+      header: 'Gross Amount (₹)',
+      accessor: (c) => <strong>₹{Number(c.grossAmount).toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (c) => <StatusBadge status={c.status} />,
+    },
+  ];
+
+  const payableColumns: ColumnDef<CommissionPayable>[] = [
+    { id: 'id', header: 'Payable ID', accessor: (p) => p.id },
+    {
+      id: 'connector',
+      header: 'Connector ID',
+      accessor: (p) => <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 600 }} />,
+    },
+    {
+      id: 'shareRate',
+      header: 'Share Rate',
+      accessor: (p) => `${(Number(p.shareRate) * 100).toFixed(1)}%`,
+    },
+    {
+      id: 'amount',
+      header: 'Payable Amount (₹)',
+      accessor: (p) => <strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong>,
+    },
+    {
+      id: 'state',
+      header: 'State',
+      accessor: (p) => <StatusBadge status={p.state} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (p) => (
+        canCreateClawback && p.state === 'ELIGIBLE' ? (
+          <Button size="small" color="warning" onClick={() => handleOpenClawback(p)}>
+            Clawback
+          </Button>
+        ) : null
+      ),
+    },
+  ];
+
+  const proposalColumns: ColumnDef<RecalculationProposal>[] = [
+    { id: 'id', header: 'Proposal ID', accessor: (pr) => pr.id },
+    { id: 'reason', header: 'Reason', accessor: (pr) => <strong>{pr.reason}</strong> },
+    {
+      id: 'affected',
+      header: 'Affected Calculations',
+      accessor: (pr) => pr.affectedCalculationIds.join(', '),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (pr) => <StatusBadge status={pr.status} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (pr) => (
+        pr.status === 'PENDING' && canApproveRecalc ? (
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            disabled={pr.createdBy === currentUserId}
+            onClick={() => handleApproveRecalc(pr.id)}
+          >
+            Approve (SOD-07)
+          </Button>
+        ) : null
+      ),
+    },
+  ];
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Commission Management Hub
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 29 / 30 Part A — Lender plans, disbursement tranche calculations, splits, and clawbacks
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1}>
-          {canEditPlan && activeTab === 0 && (
-            <Button
-              variant="contained"
-              onClick={() => {
-                setPlanError(null);
-                setCreatePlanOpen(true);
-              }}
-            >
-              Add Commission Plan
-            </Button>
-          )}
-          {activeTab === 1 && (
-            <Can action="commission.calculate">
+      <PageHeader
+        title="Commission Management Hub"
+        subtitle="Module 29 / 30 Part A — Lender plans, disbursement tranche calculations, splits, and clawbacks"
+        actions={
+          <Stack direction="row" spacing={1}>
+            {canEditPlan && activeTab === 0 && (
               <Button
                 variant="contained"
                 onClick={() => {
-                  setCalcError(null);
-                  setCalcDialogOpen(true);
+                  setPlanError(null);
+                  setCreatePlanOpen(true);
                 }}
               >
-                Calculate Commission
+                Add Commission Plan
               </Button>
-            </Can>
-          )}
-          {activeTab === 2 && canEditPlan && (
-            <Button
-              variant="contained"
-              onClick={() => {
-                setRecalcError(null);
-                setRecalcDialogOpen(true);
-              }}
-            >
-              New Recalculation Proposal
-            </Button>
-          )}
-        </Stack>
-      </Stack>
+            )}
+            {activeTab === 1 && (
+              <Can action="commission.calculate">
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setCalcError(null);
+                    setCalcDialogOpen(true);
+                  }}
+                >
+                  Calculate Commission
+                </Button>
+              </Can>
+            )}
+            {activeTab === 2 && canEditPlan && (
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setRecalcError(null);
+                  setRecalcDialogOpen(true);
+                }}
+              >
+                New Recalculation Proposal
+              </Button>
+            )}
+          </Stack>
+        }
+      />
+
+      {/* KPI Stat Cards */}
+      <StatCardGrid columns={{ xs: 1, sm: 2, md: 4 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Commission Plans"
+          value={plans.length}
+          subtext="Active & draft lender agreements"
+        />
+        <StatCard
+          title="Calculations"
+          value={calculations.length}
+          subtext="Tranche disbursement calculations"
+          colorVariant="primary"
+        />
+        <StatCard
+          title="Connector Payables"
+          value={payables.length}
+          subtext="Connector revenue shares"
+          colorVariant="secondary"
+        />
+        <StatCard
+          title="Recalc Proposals"
+          value={proposals.length}
+          subtext="Pending audit & adjustments"
+          colorVariant="warning"
+        />
+      </StatCardGrid>
 
       {successMsg && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMsg(null)}>
@@ -396,81 +575,11 @@ export function CommissionDashboardPage() {
                 subheader="One ACTIVE plan per lender with maker-checker governance (SOD-02)"
               />
               <Divider />
-              <TableContainer>
-                {plans.length === 0 ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No commission plans configured. Add a plan to enable disbursement commission
-                      calculations.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Lender ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Qualifying Event</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Basis</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Rounding</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Clawback Window</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Rule Set ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Status</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>Actions</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {plans.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell>
-                            <strong>{lenders.find((l) => l.id === p.lenderId)?.name || p.lenderId}</strong>
-                          </TableCell>
-                          <TableCell>{p.qualifyingEvent}</TableCell>
-                          <TableCell>{p.basis}</TableCell>
-                          <TableCell>{p.roundingMode}</TableCell>
-                          <TableCell>{p.clawbackWindowDays} Days</TableCell>
-                          <TableCell>{p.ruleSetId || 'Default Standard'}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={p.status}
-                              size="small"
-                              color={p.status === 'ACTIVE' ? 'success' : 'default'}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {p.status === 'DRAFT' && canApprovePlan && (
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color="success"
-                                disabled={p.createdBy === currentUserId}
-                                onClick={() => handleApprovePlan(p)}
-                              >
-                                Approve (SOD-02)
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </TableContainer>
+              <DataTable<CommissionPlan>
+                columns={planColumns}
+                data={plans}
+                emptyTitle="No commission plans configured. Add a plan to enable disbursement commission calculations."
+              />
             </Card>
           )}
 
@@ -483,68 +592,11 @@ export function CommissionDashboardPage() {
                   subheader="Immutable calculation snapshots per disbursement tranche"
                 />
                 <Divider />
-                <TableContainer>
-                  {calculations.length === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No calculations generated yet. Click "Calculate Commission" above.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Table>
-                      <TableHead sx={{ bgcolor: 'grey.50' }}>
-                        <TableRow>
-                          <TableCell>
-                            <strong>Calc ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Tranche ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Lender</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Basis Amount (₹)</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Rate</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Gross Amount (₹)</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Status</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {calculations.map((c) => (
-                          <TableRow key={c.id}>
-                            <TableCell>{c.id}</TableCell>
-                            <TableCell>
-                              <strong>{c.trancheId}</strong>
-                            </TableCell>
-                            <TableCell>
-                              {lenders.find((l) => l.id === c.lenderId)?.name || c.lenderId}
-                            </TableCell>
-                            <TableCell>₹{Number(c.basisAmount).toLocaleString('en-IN')}</TableCell>
-                            <TableCell>{(Number(c.rate) * 100).toFixed(2)}%</TableCell>
-                            <TableCell>
-                              <strong>₹{Number(c.grossAmount).toLocaleString('en-IN')}</strong>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={c.status}
-                                size="small"
-                                color={c.status === 'EARNED' ? 'success' : 'default'}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TableContainer>
+                <DataTable<CommissionCalculation>
+                  columns={calcColumns}
+                  data={calculations}
+                  emptyTitle="No calculations generated yet. Click &quot;Calculate Commission&quot; above."
+                />
               </Card>
 
               <Card>
@@ -553,64 +605,11 @@ export function CommissionDashboardPage() {
                   subheader="Commission shares attributable to connectors with clawback controls"
                 />
                 <Divider />
-                <TableContainer>
-                  {payables.length === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No connector payables registered.
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Table>
-                      <TableHead sx={{ bgcolor: 'grey.50' }}>
-                        <TableRow>
-                          <TableCell>
-                            <strong>Payable ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Connector ID</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Share Rate</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>Payable Amount (₹)</strong>
-                          </TableCell>
-                          <TableCell>
-                            <strong>State</strong>
-                          </TableCell>
-                          <TableCell align="right">
-                            <strong>Actions</strong>
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {payables.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.id}</TableCell>
-                            <TableCell>
-                              <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 600 }} />
-                            </TableCell>
-                            <TableCell>{(Number(p.shareRate) * 100).toFixed(1)}%</TableCell>
-                            <TableCell>
-                              <strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong>
-                            </TableCell>
-                            <TableCell>
-                              <Chip label={p.state} size="small" color={getPayableChipColor(p.state)} />
-                            </TableCell>
-                            <TableCell align="right">
-                              {canCreateClawback && p.state === 'ELIGIBLE' && (
-                                <Button size="small" color="warning" onClick={() => handleOpenClawback(p)}>
-                                  Clawback
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TableContainer>
+                <DataTable<CommissionPayable>
+                  columns={payableColumns}
+                  data={payables}
+                  emptyTitle="No connector payables registered."
+                />
               </Card>
             </Stack>
           )}
@@ -623,68 +622,11 @@ export function CommissionDashboardPage() {
                 subheader="Maker-checker approval for superseding historical calculations (SOD-07)"
               />
               <Divider />
-              <TableContainer>
-                {proposals.length === 0 ? (
-                  <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No recalculation proposals pending review.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Proposal ID</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Reason</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Affected Calculations</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Status</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>Actions</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {proposals.map((pr) => (
-                        <TableRow key={pr.id}>
-                          <TableCell>{pr.id}</TableCell>
-                          <TableCell>
-                            <strong>{pr.reason}</strong>
-                          </TableCell>
-                          <TableCell>{pr.affectedCalculationIds.join(', ')}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={pr.status}
-                              size="small"
-                              color={pr.status === 'APPROVED' ? 'success' : 'warning'}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {pr.status === 'PENDING' && canApproveRecalc && (
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color="success"
-                                disabled={pr.createdBy === currentUserId}
-                                onClick={() => handleApproveRecalc(pr.id)}
-                              >
-                                Approve (SOD-07)
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </TableContainer>
+              <DataTable<RecalculationProposal>
+                columns={proposalColumns}
+                data={proposals}
+                emptyTitle="No recalculation proposals pending review."
+              />
             </Card>
           )}
         </>

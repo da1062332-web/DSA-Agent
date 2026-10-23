@@ -4,13 +4,14 @@ import { Grid } from '@mui/material';
 export interface StatCardGridProps {
   children: React.ReactNode;
   columns?: { xs?: number; sm?: number; md?: number; lg?: number };
+  sx?: any;
 }
 
-export function StatCardGrid({ children, columns = { xs: 12, sm: 6, md: 3 } }: StatCardGridProps) {
+export function StatCardGrid({ children, columns = { xs: 12, sm: 6, md: 3 }, sx }: StatCardGridProps) {
   const items = React.Children.toArray(children);
 
   return (
-    <Grid container spacing={2} sx={{ mb: 3 }}>
+    <Grid container spacing={2} sx={{ mb: 3, ...sx }}>
       {items.map((item, idx) => (
         <Grid item key={idx} xs={columns.xs ?? 12} sm={columns.sm ?? 6} md={columns.md ?? 3} lg={columns.lg}>
           {item}

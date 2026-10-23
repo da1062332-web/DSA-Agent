@@ -18,6 +18,7 @@ export interface FilterToolbarProps {
   actions?: React.ReactNode;
   onApply?: () => void;
   onReset?: () => void;
+  onRefresh?: () => void;
   applyTestId?: string;
   resetTestId?: string;
   children?: React.ReactNode;
@@ -33,6 +34,7 @@ export function FilterToolbar({
   actions,
   onApply,
   onReset,
+  onRefresh,
   applyTestId,
   resetTestId,
   children,
@@ -132,7 +134,40 @@ export function FilterToolbar({
                   Reset
                 </Button>
               )}
+              {onRefresh && (
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  onClick={onRefresh}
+                  sx={{
+                    px: 2,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    height: 40,
+                  }}
+                >
+                  Refresh
+                </Button>
+              )}
             </Stack>
+          )}
+
+          {!onApply && !onReset && onRefresh && (
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={onRefresh}
+              sx={{
+                px: 2,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                height: 40,
+              }}
+            >
+              Refresh
+            </Button>
           )}
         </Stack>
 

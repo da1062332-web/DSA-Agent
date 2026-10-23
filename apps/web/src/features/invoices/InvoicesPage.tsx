@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
   Dialog,
@@ -15,12 +14,6 @@ import {
   MenuItem,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Typography,
@@ -29,6 +22,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
+import {
+  DataTable,
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type Column,
+} from '../../ui';
 import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { ConnectorName } from '../../shell/display';
@@ -277,36 +279,192 @@ export function InvoicesPage() {
     );
   };
 
+  const invoiceColumns: Column<InvoiceRecord>[] = [
+    {
+      id: 'number',
+      label: 'Invoice #',
+      render: (inv) => (
+        <Typography
+          variant="body2"
+          fontWeight={600}
+          sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDetailsInvoice(inv);
+          }}
+        >
+          {inv.number}
+        </Typography>
+      ),
+    },
+    {
+      id: 'direction',
+      label: 'Direction',
+      render: (inv) => getDirectionChip(inv.direction),
+    },
+    {
+      id: 'date',
+      label: 'Date',
+      render: (inv) => (
+        <Box>
+          <Typography variant="body2">{inv.date}</Typography>
+          {inv.dueDate && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              Due: {inv.dueDate}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'partyName',
+      label: 'Party Name',
+      render: (inv) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>
+            {inv.partyName || inv.partyId}
+          </Typography>
+          {inv.partyName && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              {inv.partyId}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'amount',
+      label: 'Amount',
+      align: 'right',
+      render: (inv) => (
+        <Typography variant="body2" fontWeight={700}>
+          {formatCurrency(inv.amount, inv.currency)}
+        </Typography>
+      ),
+    },
+    {
+      id: 'taxes',
+      label: 'Taxes',
+      render: (inv) => (
+        <Box>
+          {inv.taxFields.gstRate ? (
+            <Typography variant="caption" display="block">
+              GST: {inv.taxFields.gstRate}% ({formatCurrency(Number(inv.taxFields.gstAmount ?? 0))})
+            </Typography>
+          ) : null}
+          {inv.taxFields.tdsRate ? (
+            <Typography variant="caption" color="text.secondary" display="block">
+              TDS: {inv.taxFields.tdsRate}%
+            </Typography>
+          ) : null}
+          {!inv.taxFields.gstRate && !inv.taxFields.tdsRate && (
+            <Typography variant="caption" color="text.secondary">
+              None
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      render: (inv) => <StatusBadge status={inv.status} />,
+    },
+    {
+      id: 'actions',
+      label: 'Actions',
+      align: 'center',
+      render: (inv) => (
+        <Stack direction="row" spacing={1} justifyContent="center" onClick={(e) => e.stopPropagation()}>
+          {canManage && inv.status === 'DRAFT' && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="warning"
+              disabled={statusMutation.isPending}
+              onClick={() =>
+                statusMutation.mutate({
+                  id: inv.id,
+                  status: 'ISSUED',
+                  lockVersion: inv.lockVersion,
+                })
+              }
+              sx={{ textTransform: 'none', py: 0.25 }}
+            >
+              Issue
+            </Button>
+          )}
+
+          {canManage && inv.status === 'ISSUED' && (
+            <Button
+              size="small"
+              variant="contained"
+              color="success"
+              disabled={statusMutation.isPending}
+              onClick={() =>
+                statusMutation.mutate({
+                  id: inv.id,
+                  status: 'PAID',
+                  lockVersion: inv.lockVersion,
+                })
+              }
+              sx={{ textTransform: 'none', py: 0.25 }}
+            >
+              Mark Paid
+            </Button>
+          )}
+
+          {canManage && (inv.status === 'DRAFT' || inv.status === 'ISSUED') && (
+            <Button
+              size="small"
+              variant="text"
+              color="error"
+              disabled={statusMutation.isPending}
+              onClick={() =>
+                statusMutation.mutate({
+                  id: inv.id,
+                  status: 'VOID',
+                  lockVersion: inv.lockVersion,
+                })
+              }
+              sx={{ textTransform: 'none', py: 0.25 }}
+            >
+              Void
+            </Button>
+          )}
+
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => setDetailsInvoice(inv)}
+            sx={{ textTransform: 'none', py: 0.25 }}
+          >
+            Details
+          </Button>
+        </Stack>
+      ),
+    },
+  ];
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Top Header */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ sm: 'center' }}
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.5px' }}>
-            Invoices & Statements
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 33 (MOD-INV) — Manage lender billing, connector invoices, and periodic payout account
-            statements.
-          </Typography>
-        </Box>
-        {canManage && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setRecordDialogOpen(true)}
-            sx={{ px: 3, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: 2 }}
-          >
-            + Record Invoice
-          </Button>
-        )}
-      </Stack>
+      <PageHeader
+        title="Invoices & Statements"
+        subtitle="Module 33 (MOD-INV) — Manage lender billing, connector invoices, and periodic payout account statements."
+        actions={
+          canManage ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setRecordDialogOpen(true)}
+              sx={{ px: 3, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: 2 }}
+            >
+              + Record Invoice
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -328,126 +486,59 @@ export function InvoicesPage() {
       {tabIndex === 0 && (
         <Box>
           {/* KPI Summary Cards */}
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    fontWeight={600}
-                    textTransform="uppercase"
-                  >
-                    Total Volume
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} sx={{ mt: 0.5 }}>
-                    {formatCurrency(metrics.totalAmount)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {metrics.totalCount} invoices registered
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <StatCardGrid columns={{ xs: 1, sm: 2, md: 4 }} sx={{ mb: 3 }}>
+            <StatCard
+              title="Total Volume"
+              value={formatCurrency(metrics.totalAmount)}
+              subtext={`${metrics.totalCount} invoices registered`}
+            />
+            <StatCard
+              title="Billed to Lenders"
+              value={formatCurrency(metrics.toLenderAmount)}
+              subtext="Outbound commission billing"
+              colorVariant="primary"
+            />
+            <StatCard
+              title="From Connectors"
+              value={formatCurrency(metrics.fromConnectorAmount)}
+              subtext="Inbound partner payouts"
+              colorVariant="secondary"
+            />
+            <StatCard
+              title="Paid Volume"
+              value={formatCurrency(metrics.paidAmount)}
+              subtext={`${metrics.draftCount} draft · ${metrics.issuedCount} pending payment`}
+              colorVariant="success"
+            />
+          </StatCardGrid>
 
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography
-                    variant="caption"
-                    color="primary.main"
-                    fontWeight={600}
-                    textTransform="uppercase"
-                  >
-                    Billed to Lenders
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} color="primary.main" sx={{ mt: 0.5 }}>
-                    {formatCurrency(metrics.toLenderAmount)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Outbound commission billing
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography
-                    variant="caption"
-                    color="secondary.main"
-                    fontWeight={600}
-                    textTransform="uppercase"
-                  >
-                    From Connectors
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} color="secondary.main" sx={{ mt: 0.5 }}>
-                    {formatCurrency(metrics.fromConnectorAmount)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Inbound partner payouts
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <CardContent sx={{ p: 2 }}>
-                  <Typography
-                    variant="caption"
-                    color="success.main"
-                    fontWeight={600}
-                    textTransform="uppercase"
-                  >
-                    Paid Volume
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700} color="success.main" sx={{ mt: 0.5 }}>
-                    {formatCurrency(metrics.paidAmount)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {metrics.draftCount} draft · {metrics.issuedCount} pending payment
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Filter Bar */}
-          <Card sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={4} md={5}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Search by invoice # or party name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6} sm={4} md={3}>
+          {/* Filter Toolbar */}
+          <FilterToolbar
+            searchPlaceholder="Search by invoice # or party name..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            onRefresh={() => refetchInvoices()}
+            filters={
+              <>
                 <TextField
                   select
-                  fullWidth
                   size="small"
                   label="Direction"
                   value={directionFilter}
                   onChange={(e) => setDirectionFilter(e.target.value)}
+                  sx={{ minWidth: 170 }}
                 >
                   <MenuItem value="ALL">All Directions</MenuItem>
                   <MenuItem value="TO_LENDER">To Lender (Billing)</MenuItem>
                   <MenuItem value="FROM_CONNECTOR">From Connector (Payout)</MenuItem>
                 </TextField>
-              </Grid>
-              <Grid item xs={6} sm={4} md={3}>
                 <TextField
                   select
-                  fullWidth
                   size="small"
                   label="Status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
+                  sx={{ minWidth: 150 }}
                 >
                   <MenuItem value="ALL">All Statuses</MenuItem>
                   <MenuItem value="DRAFT">Draft</MenuItem>
@@ -455,190 +546,23 @@ export function InvoicesPage() {
                   <MenuItem value="PAID">Paid</MenuItem>
                   <MenuItem value="VOID">Void</MenuItem>
                 </TextField>
-              </Grid>
-              <Grid item xs={12} sm={12} md={1}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => refetchInvoices()}
-                  sx={{ height: 40, textTransform: 'none' }}
-                >
-                  Refresh
-                </Button>
-              </Grid>
-            </Grid>
-          </Card>
+              </>
+            }
+          />
 
           {/* Invoices Table */}
-          {invoicesLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress />
-            </Box>
-          ) : invoicesError ? (
+          {invoicesError ? (
             <Alert severity="error" sx={{ mb: 3 }}>
               {(invoicesError as any).message || 'Failed to load invoices'}
             </Alert>
-          ) : invoices.length === 0 ? (
-            <Card sx={{ p: 6, textAlign: 'center', borderRadius: 2 }}>
-              <Typography variant="h6" color="text.secondary">
-                No invoices found
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Record an invoice or adjust your search and filters above.
-              </Typography>
-            </Card>
           ) : (
-            <TableContainer
-              component={Card}
-              sx={{ borderRadius: 2, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}
-            >
-              <Table>
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Invoice #</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Direction</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Party Name</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }} align="right">
-                      Amount
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Taxes</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }} align="center">
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {invoices.map((inv) => (
-                    <TableRow key={inv.id} hover>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{ cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' }}
-                          onClick={() => setDetailsInvoice(inv)}
-                        >
-                          {inv.number}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{getDirectionChip(inv.direction)}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{inv.date}</Typography>
-                        {inv.dueDate && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Due: {inv.dueDate}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {inv.partyName || inv.partyId}
-                        </Typography>
-                        {inv.partyName && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {inv.partyId}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight={700}>
-                          {formatCurrency(inv.amount, inv.currency)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {inv.taxFields.gstRate ? (
-                          <Typography variant="caption" display="block">
-                            GST: {inv.taxFields.gstRate}% (
-                            {formatCurrency(Number(inv.taxFields.gstAmount ?? 0))})
-                          </Typography>
-                        ) : null}
-                        {inv.taxFields.tdsRate ? (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            TDS: {inv.taxFields.tdsRate}%
-                          </Typography>
-                        ) : null}
-                        {!inv.taxFields.gstRate && !inv.taxFields.tdsRate && (
-                          <Typography variant="caption" color="text.secondary">
-                            None
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>{getStatusChip(inv.status)}</TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          {canManage && inv.status === 'DRAFT' && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="warning"
-                              disabled={statusMutation.isPending}
-                              onClick={() =>
-                                statusMutation.mutate({
-                                  id: inv.id,
-                                  status: 'ISSUED',
-                                  lockVersion: inv.lockVersion,
-                                })
-                              }
-                              sx={{ textTransform: 'none', py: 0.25 }}
-                            >
-                              Issue
-                            </Button>
-                          )}
-
-                          {canManage && inv.status === 'ISSUED' && (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="success"
-                              disabled={statusMutation.isPending}
-                              onClick={() =>
-                                statusMutation.mutate({
-                                  id: inv.id,
-                                  status: 'PAID',
-                                  lockVersion: inv.lockVersion,
-                                })
-                              }
-                              sx={{ textTransform: 'none', py: 0.25 }}
-                            >
-                              Mark Paid
-                            </Button>
-                          )}
-
-                          {canManage && (inv.status === 'DRAFT' || inv.status === 'ISSUED') && (
-                            <Button
-                              size="small"
-                              variant="text"
-                              color="error"
-                              disabled={statusMutation.isPending}
-                              onClick={() =>
-                                statusMutation.mutate({
-                                  id: inv.id,
-                                  status: 'VOID',
-                                  lockVersion: inv.lockVersion,
-                                })
-                              }
-                              sx={{ textTransform: 'none', py: 0.25 }}
-                            >
-                              Void
-                            </Button>
-                          )}
-
-                          <Button
-                            size="small"
-                            variant="text"
-                            onClick={() => setDetailsInvoice(inv)}
-                            sx={{ textTransform: 'none', py: 0.25 }}
-                          >
-                            Details
-                          </Button>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<InvoiceRecord>
+              columns={invoiceColumns}
+              data={invoices}
+              loading={invoicesLoading}
+              emptyMessage="No invoices found"
+              onRowClick={(inv) => setDetailsInvoice(inv)}
+            />
           )}
         </Box>
       )}
@@ -730,96 +654,41 @@ export function InvoicesPage() {
           ) : (
             <Box>
               {/* Summary Cards */}
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6} md={2.4}>
-                  <Card sx={{ borderRadius: 2 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                        Opening Balance
-                      </Typography>
-                      <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
-                        {formatCurrency(statementData.openingBalance, statementData.currency)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        As of {statementData.fromDate}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={2.4}>
-                  <Card sx={{ borderRadius: 2 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="success.main" fontWeight={600}>
-                        Total Credits (+)
-                      </Typography>
-                      <Typography variant="h6" fontWeight={700} color="success.main" sx={{ mt: 0.5 }}>
-                        +{formatCurrency(statementData.totalCredits, statementData.currency)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Commissions & Adjustments
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={2.4}>
-                  <Card sx={{ borderRadius: 2 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="error.main" fontWeight={600}>
-                        Total Debits (-)
-                      </Typography>
-                      <Typography variant="h6" fontWeight={700} color="error.main" sx={{ mt: 0.5 }}>
-                        -{formatCurrency(statementData.totalDebits, statementData.currency)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Disbursed Payouts
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={2.4}>
-                  <Card sx={{ borderRadius: 2 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="primary.main" fontWeight={600}>
-                        Net Change
-                      </Typography>
-                      <Typography
-                        variant="h6"
-                        fontWeight={700}
-                        color={statementData.netChange >= 0 ? 'success.main' : 'error.main'}
-                        sx={{ mt: 0.5 }}
-                      >
-                        {formatCurrency(statementData.netChange, statementData.currency)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        During statement period
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={2.4}>
-                  <Card sx={{ borderRadius: 2, bgcolor: 'primary.50' }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="caption" color="primary.dark" fontWeight={700}>
-                        Closing Balance
-                      </Typography>
-                      <Typography variant="h6" fontWeight={800} color="primary.dark" sx={{ mt: 0.5 }}>
-                        {formatCurrency(statementData.closingBalance, statementData.currency)}
-                      </Typography>
-                      <Typography variant="caption" color="primary.dark">
-                        As of {statementData.toDate}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <StatCardGrid columns={{ xs: 1, sm: 2, md: 5 }} sx={{ mb: 3 }}>
+                <StatCard
+                  title="Opening Balance"
+                  value={formatCurrency(statementData.openingBalance, statementData.currency)}
+                  subtext={`As of ${statementData.fromDate}`}
+                />
+                <StatCard
+                  title="Total Credits (+)"
+                  value={`+${formatCurrency(statementData.totalCredits, statementData.currency)}`}
+                  subtext="Commissions & Adjustments"
+                  colorVariant="success"
+                />
+                <StatCard
+                  title="Total Debits (-)"
+                  value={`-${formatCurrency(statementData.totalDebits, statementData.currency)}`}
+                  subtext="Disbursed Payouts"
+                  colorVariant="error"
+                />
+                <StatCard
+                  title="Net Change"
+                  value={formatCurrency(statementData.netChange, statementData.currency)}
+                  subtext="During statement period"
+                  colorVariant={statementData.netChange >= 0 ? 'success' : 'error'}
+                />
+                <StatCard
+                  title="Closing Balance"
+                  value={formatCurrency(statementData.closingBalance, statementData.currency)}
+                  subtext={`As of ${statementData.toDate}`}
+                  colorVariant="primary"
+                />
+              </StatCardGrid>
 
               {/* Transactions Table */}
-              <Card sx={{ borderRadius: 2, mb: 3 }}>
-                <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Card sx={{ borderRadius: 2, mb: 3, p: 2 }}>
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="subtitle1" fontWeight={700}>
                     Account Activity: <ConnectorName id={statementData.connectorId} typographyProps={{ fontWeight: 700 }} /> ({statementData.fromDate} to{' '}
                     {statementData.toDate})
@@ -833,73 +702,58 @@ export function InvoicesPage() {
                     Print / Export
                   </Button>
                 </Box>
-                <TableContainer>
-                  <Table>
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">
-                          Credit (+)
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">
-                          Debit (-)
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">
-                          Balance
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {statementData.entries.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              No ledger entries found during this period.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        statementData.entries.map((entry) => (
-                          <TableRow key={entry.id} hover>
-                            <TableCell>{entry.date}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={entry.type}
-                                size="small"
-                                color={
-                                  entry.type === 'COMMISSION_EARNED'
-                                    ? 'success'
-                                    : entry.type === 'PAYOUT_DISBURSED'
-                                      ? 'info'
-                                      : 'default'
-                                }
-                                sx={{ fontSize: '0.75rem', fontWeight: 600 }}
-                              />
-                            </TableCell>
-                            <TableCell>{entry.description}</TableCell>
-                            <TableCell>
-                              <Typography variant="caption" color="text.secondary">
-                                {entry.referenceId || '—'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
-                              {entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : '—'}
-                            </TableCell>
-                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 600 }}>
-                              {entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : '—'}
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 700 }}>
-                              {formatCurrency(entry.runningBalance)}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <DataTable
+                  columns={[
+                    { id: 'date', label: 'Date', render: (entry: any) => entry.date },
+                    {
+                      id: 'type',
+                      label: 'Type',
+                      render: (entry: any) => <StatusBadge status={entry.type} />,
+                    },
+                    { id: 'description', label: 'Description', render: (entry: any) => entry.description },
+                    {
+                      id: 'referenceId',
+                      label: 'Reference',
+                      render: (entry: any) => (
+                        <Typography variant="caption" color="text.secondary">
+                          {entry.referenceId || '—'}
+                        </Typography>
+                      ),
+                    },
+                    {
+                      id: 'credit',
+                      label: 'Credit (+)',
+                      align: 'right',
+                      render: (entry: any) => (
+                        <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 600 }}>
+                          {entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : '—'}
+                        </Typography>
+                      ),
+                    },
+                    {
+                      id: 'debit',
+                      label: 'Debit (-)',
+                      align: 'right',
+                      render: (entry: any) => (
+                        <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 600 }}>
+                          {entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : '—'}
+                        </Typography>
+                      ),
+                    },
+                    {
+                      id: 'runningBalance',
+                      label: 'Balance',
+                      align: 'right',
+                      render: (entry: any) => (
+                        <Typography variant="body2" fontWeight={700}>
+                          {formatCurrency(entry.runningBalance)}
+                        </Typography>
+                      ),
+                    },
+                  ]}
+                  data={statementData.entries}
+                  emptyMessage="No ledger entries found during this period."
+                />
               </Card>
             </Box>
           )}
