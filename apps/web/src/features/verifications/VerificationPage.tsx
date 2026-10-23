@@ -31,6 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import type {
@@ -386,104 +387,96 @@ export function VerificationPage() {
               </Button>
             </Box>
           ) : (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
-                    <TableCell>
-                      <strong>Check ID</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Check Type</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Subject & ID</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Method / Purpose</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Result</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Masked Details</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Evidence Ref</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Performed At</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {listData.data.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{row.id}</TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <span>{CHECK_TYPE_ICONS[row.checkType] || '📄'}</span>
-                          <Typography variant="body2" fontWeight={600}>
-                            {row.checkType.replace(/_/g, ' ')}
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {row.subjectType.replace(/_/g, ' ')}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                          {row.subjectId}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={row.method}
-                          size="small"
-                          variant="outlined"
-                          color={row.method === 'PROVIDER_AUTOMATED' ? 'primary' : 'default'}
-                          sx={{ mb: 0.5 }}
-                        />
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {row.purpose.replace(/_/g, ' ')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{getResultBadge(row.result)}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {row.minimalResult.maskedIdentifier || 'N/A'}
-                        </Typography>
-                        {row.minimalResult.matchScore !== undefined && (
-                          <Typography variant="caption" color="text.secondary">
-                            Match: {row.minimalResult.matchScore}%
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontFamily: 'monospace', display: 'block' }}
-                        >
-                          {row.evidenceRef}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {new Date(row.performedAt).toLocaleDateString()}
-                        </Typography>
+            <DataTable<(typeof listData.data)[number]>
+              dataTestId="verif.table.checks"
+              data={listData.data}
+              keyExtractor={(row) => row.id}
+              columns={[
+                { id: 'id', header: 'Check ID', render: (row) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{row.id}</Box> },
+                {
+                  id: 'type',
+                  header: 'Check Type',
+                  render: (row) => (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <span>{CHECK_TYPE_ICONS[row.checkType] || '📄'}</span>
+                      <Typography variant="body2" fontWeight={600}>
+                        {row.checkType.replace(/_/g, ' ')}
+                      </Typography>
+                    </Stack>
+                  ),
+                },
+                {
+                  id: 'subject',
+                  header: 'Subject & ID',
+                  render: (row) => (
+                    <>
+                      <Typography variant="body2" fontWeight={600}>
+                        {row.subjectType.replace(/_/g, ' ')}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                        {row.subjectId}
+                      </Typography>
+                    </>
+                  ),
+                },
+                {
+                  id: 'method',
+                  header: 'Method / Purpose',
+                  render: (row) => (
+                    <>
+                      <Chip
+                        label={row.method}
+                        size="small"
+                        variant="outlined"
+                        color={row.method === 'PROVIDER_AUTOMATED' ? 'primary' : 'default'}
+                        sx={{ mb: 0.5 }}
+                      />
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {row.purpose.replace(/_/g, ' ')}
+                      </Typography>
+                    </>
+                  ),
+                },
+                { id: 'result', header: 'Result', render: (row) => getResultBadge(row.result) },
+                {
+                  id: 'masked',
+                  header: 'Masked Details',
+                  render: (row) => (
+                    <>
+                      <Typography variant="body2" fontWeight={600}>
+                        {row.minimalResult.maskedIdentifier || 'N/A'}
+                      </Typography>
+                      {row.minimalResult.matchScore !== undefined && (
                         <Typography variant="caption" color="text.secondary">
-                          {new Date(row.performedAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          Match: {row.minimalResult.matchScore}%
                         </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  id: 'evidence',
+                  header: 'Evidence Ref',
+                  render: (row) => (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', display: 'block' }}>
+                      {row.evidenceRef}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'performed',
+                  header: 'Performed At',
+                  render: (row) => (
+                    <>
+                      <Typography variant="body2">{new Date(row.performedAt).toLocaleDateString()}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(row.performedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Typography>
+                    </>
+                  ),
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>

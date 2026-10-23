@@ -32,6 +32,7 @@ import {
   Typography,
   Paper,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { getCustomer, getCustomerConsents, recordCustomerConsent, withdrawConsent } from './api';
 import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
@@ -316,93 +317,75 @@ export function CustomerConsents(): React.ReactElement {
 
             <Divider sx={{ mb: 2 }} />
 
-            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1.5 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                    <TableCell sx={{ fontWeight: 600 }}>Purpose</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Notice Version</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Channel</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Target / Scope</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Captured Date</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      Action
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {consents.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        No consent records found for this customer.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    consents.map((c: ConsentResource) => (
-                      <TableRow key={c.id} hover>
-                        <TableCell>
-                          <Chip
-                            label={c.purpose}
-                            size="small"
-                            color="info"
-                            variant="outlined"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                            {c.noticeVersion}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={c.channel}
-                            size="small"
-                            variant="filled"
-                            sx={{ fontSize: '0.75rem' }}
-                          />
-                        </TableCell>
-                        <TableCell>{c.purposeTarget || '—'}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary">
-                            {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={c.status}
-                            color={c.status === 'ACTIVE' ? 'success' : 'error'}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {c.status === 'ACTIVE' && (
-                            <Can action="consent.record">
-                              <Button
-                                size="small"
-                                color="error"
-                                variant="outlined"
-                                onClick={() => withdrawMutation.mutate(c.id)}
-                                disabled={withdrawMutation.isPending}
-                              >
-                                Withdraw
-                              </Button>
-                            </Can>
-                          )}
-                          {c.status === 'WITHDRAWN' && (
-                            <Typography variant="caption" color="text.secondary">
-                              Revoked
-                            </Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<ConsentResource>
+              dataTestId="consents.table"
+              data={consents}
+              keyExtractor={(c) => c.id}
+              emptyMessage="No consent records found for this customer."
+              columns={[
+                {
+                  id: 'purpose',
+                  header: 'Purpose',
+                  render: (c) => (
+                    <Chip label={c.purpose} size="small" color="info" variant="outlined" sx={{ fontWeight: 600 }} />
+                  ),
+                },
+                {
+                  id: 'notice',
+                  header: 'Notice Version',
+                  render: (c) => (
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      {c.noticeVersion}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'channel',
+                  header: 'Channel',
+                  render: (c) => <Chip label={c.channel} size="small" variant="filled" sx={{ fontSize: '0.75rem' }} />,
+                },
+                { id: 'scope', header: 'Target / Scope', render: (c) => c.purposeTarget || '—' },
+                {
+                  id: 'captured',
+                  header: 'Captured Date',
+                  render: (c) => (
+                    <Typography variant="body2" color="text.secondary">
+                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (c) => (
+                    <Chip label={c.status} color={c.status === 'ACTIVE' ? 'success' : 'error'} size="small" sx={{ fontWeight: 600 }} />
+                  ),
+                },
+                {
+                  id: 'action',
+                  header: 'Action',
+                  align: 'right',
+                  render: (c) =>
+                    c.status === 'ACTIVE' ? (
+                      <Can action="consent.record">
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          onClick={() => withdrawMutation.mutate(c.id)}
+                          disabled={withdrawMutation.isPending}
+                        >
+                          Withdraw
+                        </Button>
+                      </Can>
+                    ) : c.status === 'WITHDRAWN' ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Revoked
+                      </Typography>
+                    ) : null,
+                },
+              ]}
+            />
           </CardContent>
         </Card>
       </Stack>

@@ -17,12 +17,6 @@ import {
   RadioGroup,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Typography,
@@ -33,6 +27,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { errorText, newIdempotencyKey } from '../../api/client';
 import { useList } from '../admin/api';
 import { ErrorAlert, LoadMore, Loading, PageHeader, formatDate } from '../admin/components';
+import { DataTable } from '../../ui';
 import { fetchLeadById, resolveDuplicateReview, type DuplicateReview } from './api';
 
 type Status = DuplicateReview['status'];
@@ -86,56 +81,43 @@ export function DuplicateReviewsPage() {
           </Typography>
         </Card>
       ) : (
-        <TableContainer component={Card}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Classification</TableCell>
-                <TableCell>Existing lead</TableCell>
-                <TableCell>New lead</TableCell>
-                <TableCell>Flagged</TableCell>
-                <TableCell align="right">{status === 'OPEN' ? 'Action' : 'Outcome'}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.id} data-testid="duplicates.row">
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      color={r.classification === 'EXACT' ? 'error' : 'warning'}
-                      label={r.classification.toLowerCase().replace(/_/g, ' ')}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <LeadCell id={r.leftId} />
-                  </TableCell>
-                  <TableCell>
-                    <LeadCell id={r.rightId} />
-                  </TableCell>
-                  <TableCell>{formatDate(r.createdAt)}</TableCell>
-                  <TableCell align="right">
-                    {r.status === 'OPEN' ? (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => setResolving(r)}
-                        data-testid="duplicates.resolve"
-                      >
-                        Resolve
-                      </Button>
-                    ) : (
-                      <Typography variant="body2">
-                        {r.status.toLowerCase()}
-                        {r.resolution ? `: ${r.resolution}` : ''}
-                      </Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <DataTable<DuplicateReview>
+          dataTestId="duplicates.table"
+          data={rows}
+          keyExtractor={(r) => r.id}
+          columns={[
+            {
+              id: 'classification',
+              header: 'Classification',
+              render: (r) => (
+                <Chip
+                  size="small"
+                  color={r.classification === 'EXACT' ? 'error' : 'warning'}
+                  label={r.classification.toLowerCase().replace(/_/g, ' ')}
+                />
+              ),
+            },
+            { id: 'existing', header: 'Existing lead', render: (r) => <LeadCell id={r.leftId} /> },
+            { id: 'new', header: 'New lead', render: (r) => <LeadCell id={r.rightId} /> },
+            { id: 'flagged', header: 'Flagged', render: (r) => formatDate(r.createdAt) },
+            {
+              id: 'action',
+              header: status === 'OPEN' ? 'Action' : 'Outcome',
+              align: 'right',
+              render: (r) =>
+                r.status === 'OPEN' ? (
+                  <Button size="small" variant="outlined" onClick={() => setResolving(r)} data-testid="duplicates.resolve">
+                    Resolve
+                  </Button>
+                ) : (
+                  <Typography variant="body2">
+                    {r.status.toLowerCase()}
+                    {r.resolution ? `: ${r.resolution}` : ''}
+                  </Typography>
+                ),
+            },
+          ]}
+        />
       )}
       <LoadMore
         hasNext={!!list.hasNextPage}

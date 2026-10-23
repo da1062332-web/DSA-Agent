@@ -9,13 +9,6 @@ import {
   CircularProgress,
   Container,
   IconButton,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -24,6 +17,7 @@ import { apiFetch, errorText } from '../../api/client';
 import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
 import { UserName } from '../../shell/display';
+import { DataTable } from '../../ui';
 
 // Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
 export function ActivitiesPage() {
@@ -117,83 +111,86 @@ export function ActivitiesPage() {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Kind</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Subject</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Outcome</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Note</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Logged By</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Occurred At</TableCell>
-                    <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {activities.map((a) => (
-                    <TableRow key={a.id} hover>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={a.kind}
-                          color={getKindColor(a.kind) as any}
-                          variant="filled"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={600}>
-                          {a.subjectType}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                          {a.subjectId}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {a.outcomeCode ? (
-                          <Chip size="small" label={a.outcomeCode} variant="outlined" />
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            &mdash;
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {a.durationSeconds ? `${Math.round(a.durationSeconds / 60)} min` : '&mdash;'}
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
-                        <Typography variant="body2">{a.note || '&mdash;'}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <UserName id={a.actorId} typographyProps={{ fontWeight: 500 }} />
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                        {new Date(a.occurredAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: 'right' }}>
-                        <Button
-                          size="small"
-                          color="inherit"
-                          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-                          onClick={() => handleHideActivity(a)}
-                        >
-                          Hide
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {activities.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={8} sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
-                        No activities logged yet. Click &quot;Log Activity&quot; above to record your first
-                        interaction.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<Activity>
+              dataTestId="act.table"
+              data={activities}
+              keyExtractor={(a) => a.id}
+              emptyMessage='No activities logged yet. Click "Log Activity" above to record your first interaction.'
+              columns={[
+                {
+                  id: 'kind',
+                  header: 'Kind',
+                  render: (a) => <Chip size="small" label={a.kind} color={getKindColor(a.kind) as any} variant="filled" />,
+                },
+                {
+                  id: 'subject',
+                  header: 'Subject',
+                  render: (a) => (
+                    <>
+                      <Typography variant="body2" fontWeight={600}>
+                        {a.subjectType}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                        {a.subjectId}
+                      </Typography>
+                    </>
+                  ),
+                },
+                {
+                  id: 'outcome',
+                  header: 'Outcome',
+                  render: (a) =>
+                    a.outcomeCode ? (
+                      <Chip size="small" label={a.outcomeCode} variant="outlined" />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        —
+                      </Typography>
+                    ),
+                },
+                {
+                  id: 'duration',
+                  header: 'Duration',
+                  render: (a) => (a.durationSeconds ? `${Math.round(a.durationSeconds / 60)} min` : '—'),
+                },
+                {
+                  id: 'note',
+                  header: 'Note',
+                  render: (a) => (
+                    <Box sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
+                      <Typography variant="body2">{a.note || '—'}</Typography>
+                    </Box>
+                  ),
+                },
+                {
+                  id: 'by',
+                  header: 'Logged By',
+                  render: (a) => <UserName id={a.actorId} typographyProps={{ fontWeight: 500 }} />,
+                },
+                {
+                  id: 'occurred',
+                  header: 'Occurred At',
+                  render: (a) => (
+                    <Box sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{new Date(a.occurredAt).toLocaleString()}</Box>
+                  ),
+                },
+                {
+                  id: 'actions',
+                  header: 'Actions',
+                  align: 'right',
+                  render: (a) => (
+                    <Button
+                      size="small"
+                      color="inherit"
+                      sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                      onClick={() => handleHideActivity(a)}
+                    >
+                      Hide
+                    </Button>
+                  ),
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>

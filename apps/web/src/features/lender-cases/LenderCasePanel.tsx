@@ -28,6 +28,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { Can } from '../../shell/Can';
 import { ApplicationSelect } from '../../shell/selectors';
 import { LenderName } from '../../shell/display';
@@ -300,150 +301,124 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
             </Typography>
           </Paper>
         ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.100' }}>
-                <TableRow>
-                  <TableCell>
-                    <strong>Attempt</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Lender ID</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Status</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Channel</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Reference</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Submitted At</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>Actions</strong>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {cases.map((c) => (
-                  <TableRow key={c.id} hover>
-                    <TableCell>
-                      <Chip label={`#${c.attemptNo}`} size="small" variant="outlined" />
-                    </TableCell>
-                    <TableCell>
-                      <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} />
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={c.status} size="small" color={statusColors[c.status] || 'default'} />
-                      {c.declineReasonCode && (
-                        <Typography variant="caption" display="block" color="error">
-                          {c.declineReasonCode}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>{c.submissionChannel || '—'}</TableCell>
-                    <TableCell>{c.lenderReference || '—'}</TableCell>
-                    <TableCell>
-                      {c.submittedAt ? new Date(c.submittedAt).toLocaleDateString() : '—'}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        {c.status === 'DRAFT' && (
-                          <Can action="lender_case.submit">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => packageMutation.mutate(c)}
-                              disabled={packageMutation.isPending}
-                            >
-                              Build Package
-                            </Button>
-                          </Can>
-                        )}
-                        {c.status === 'PACKAGE_READY' && (
-                          <Can action="lender_case.submit">
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="primary"
-                              onClick={() => {
-                                setActiveCase(c);
-                                setSubmitDialogOpen(true);
-                              }}
-                            >
-                              Submit
-                            </Button>
-                          </Can>
-                        )}
-                        {['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status) && (
-                          <>
-                            <Can action="lender_case.update_status">
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  setActiveCase(c);
-                                  setNewStatus('UNDER_PROCESSING');
-                                  setStatusDialogOpen(true);
-                                }}
-                              >
-                                Update Status
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="warning"
-                                onClick={() => {
-                                  setActiveCase(c);
-                                  setQueryDialogOpen(true);
-                                }}
-                              >
-                                Query
-                              </Button>
-                            </Can>
-                          </>
-                        )}
-                        {c.status === 'QUERY_RAISED' && (
-                          <Can action="lender_case.update_status">
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="warning"
-                              onClick={() => {
-                                setActiveCase(c);
-                                setResponseDialogOpen(true);
-                              }}
-                            >
-                              Respond to Query
-                            </Button>
-                          </Can>
-                        )}
-                        {c.status === 'SANCTIONED' && (
-                          <Can action="disbursement.record">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="success"
-                              onClick={() => {
-                                setActiveCase(c);
-                                setNewStatus('DISBURSED');
-                                setStatusDialogOpen(true);
-                              }}
-                            >
-                              Disbursement
-                            </Button>
-                          </Can>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<(typeof cases)[number]>
+            dataTestId="lc.table.cases"
+            data={cases}
+            keyExtractor={(c) => c.id}
+            columns={[
+              { id: 'attempt', header: 'Attempt', render: (c) => <Chip label={`#${c.attemptNo}`} size="small" variant="outlined" /> },
+              { id: 'lender', header: 'Lender ID', render: (c) => <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} /> },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (c) => (
+                  <>
+                    <Chip label={c.status} size="small" color={statusColors[c.status] || 'default'} />
+                    {c.declineReasonCode && (
+                      <Typography variant="caption" display="block" color="error">
+                        {c.declineReasonCode}
+                      </Typography>
+                    )}
+                  </>
+                ),
+              },
+              { id: 'channel', header: 'Channel', render: (c) => c.submissionChannel || '—' },
+              { id: 'reference', header: 'Reference', render: (c) => c.lenderReference || '—' },
+              {
+                id: 'submitted',
+                header: 'Submitted At',
+                render: (c) => (c.submittedAt ? new Date(c.submittedAt).toLocaleDateString() : '—'),
+              },
+              {
+                id: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (c) => (
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    {c.status === 'DRAFT' && (
+                      <Can action="lender_case.submit">
+                        <Button size="small" variant="outlined" onClick={() => packageMutation.mutate(c)} disabled={packageMutation.isPending}>
+                          Build Package
+                        </Button>
+                      </Can>
+                    )}
+                    {c.status === 'PACKAGE_READY' && (
+                      <Can action="lender_case.submit">
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="primary"
+                          onClick={() => {
+                            setActiveCase(c);
+                            setSubmitDialogOpen(true);
+                          }}
+                        >
+                          Submit
+                        </Button>
+                      </Can>
+                    )}
+                    {['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status) && (
+                      <Can action="lender_case.update_status">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => {
+                            setActiveCase(c);
+                            setNewStatus('UNDER_PROCESSING');
+                            setStatusDialogOpen(true);
+                          }}
+                        >
+                          Update Status
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="warning"
+                          onClick={() => {
+                            setActiveCase(c);
+                            setQueryDialogOpen(true);
+                          }}
+                        >
+                          Query
+                        </Button>
+                      </Can>
+                    )}
+                    {c.status === 'QUERY_RAISED' && (
+                      <Can action="lender_case.update_status">
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="warning"
+                          onClick={() => {
+                            setActiveCase(c);
+                            setResponseDialogOpen(true);
+                          }}
+                        >
+                          Respond to Query
+                        </Button>
+                      </Can>
+                    )}
+                    {c.status === 'SANCTIONED' && (
+                      <Can action="disbursement.record">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="success"
+                          onClick={() => {
+                            setActiveCase(c);
+                            setNewStatus('DISBURSED');
+                            setStatusDialogOpen(true);
+                          }}
+                        >
+                          Disbursement
+                        </Button>
+                      </Can>
+                    )}
+                  </Stack>
+                ),
+              },
+            ]}
+          />
         )}
 
         {/* Create Lender Attempt Dialog */}

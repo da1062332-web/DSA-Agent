@@ -24,6 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
@@ -372,76 +373,63 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 No disbursement tranches recorded yet.
               </Typography>
             ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Tranche #</TableCell>
-                      <TableCell>Amount</TableCell>
-                      <TableCell>Disbursed On</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>UTR (Masked)</TableCell>
-                      <TableCell>Loan Account</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tranches.map((t) => {
+              <DataTable<(typeof tranches)[number]>
+                dataTestId="sanctions.table.tranches"
+                data={tranches}
+                keyExtractor={(t) => t.id}
+                columns={[
+                  { id: 'no', header: 'Tranche #', render: (t) => `#${t.trancheNo}` },
+                  { id: 'amount', header: 'Amount', render: (t) => <Box sx={{ fontWeight: 'bold' }}>₹{t.amount.toLocaleString('en-IN')}</Box> },
+                  { id: 'on', header: 'Disbursed On', render: (t) => t.disbursedOn },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (t) => (
+                      <Chip
+                        label={t.status}
+                        size="small"
+                        color={
+                          t.status === 'VERIFIED'
+                            ? 'success'
+                            : t.status === 'RECORDED'
+                              ? 'warning'
+                              : t.status === 'RETURNED'
+                                ? 'error'
+                                : 'default'
+                        }
+                      />
+                    ),
+                  },
+                  { id: 'utr', header: 'UTR (Masked)', render: (t) => t.utrMasked ?? '—' },
+                  { id: 'loan', header: 'Loan Account', render: (t) => t.loanAccountMasked ?? '—' },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (t) => {
                       const isRecorder = currentUserId && t.recordedBy === currentUserId;
-                      return (
-                        <TableRow key={t.id} data-testid={`tranche-row-${t.id}`}>
-                          <TableCell>#{t.trancheNo}</TableCell>
-                          <TableCell sx={{ fontWeight: 'bold' }}>
-                            ₹{t.amount.toLocaleString('en-IN')}
-                          </TableCell>
-                          <TableCell>{t.disbursedOn}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={t.status}
-                              size="small"
-                              color={
-                                t.status === 'VERIFIED'
-                                  ? 'success'
-                                  : t.status === 'RECORDED'
-                                    ? 'warning'
-                                    : t.status === 'RETURNED'
-                                      ? 'error'
-                                      : 'default'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>{t.utrMasked ?? '—'}</TableCell>
-                          <TableCell>{t.loanAccountMasked ?? '—'}</TableCell>
-                          <TableCell align="right">
-                            {t.status === 'RECORDED' && (
-                              <Can action="disbursement.verify">
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="primary"
-                                  disabled={Boolean(isRecorder)}
-                                  title={
-                                    isRecorder
-                                      ? 'Segregation of duties: Creator cannot verify'
-                                      : 'Verify Tranche'
-                                  }
-                                  onClick={() => {
-                                    setSelectedTranche(t);
-                                    setVerifyDialogOpen(true);
-                                  }}
-                                  data-testid={`verify-tranche-btn-${t.id}`}
-                                >
-                                  {isRecorder ? 'SOD Lock' : 'Verify'}
-                                </Button>
-                              </Can>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                      return t.status === 'RECORDED' ? (
+                        <Can action="disbursement.verify">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            disabled={Boolean(isRecorder)}
+                            title={isRecorder ? 'Segregation of duties: Creator cannot verify' : 'Verify Tranche'}
+                            onClick={() => {
+                              setSelectedTranche(t);
+                              setVerifyDialogOpen(true);
+                            }}
+                            data-testid={`verify-tranche-btn-${t.id}`}
+                          >
+                            {isRecorder ? 'SOD Lock' : 'Verify'}
+                          </Button>
+                        </Can>
+                      ) : null;
+                    },
+                  },
+                ]}
+              />
             )}
           </CardContent>
         </Card>
