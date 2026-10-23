@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS, setupPersonaSession, pauseForDemo, humanClick, humanType, showDemoBanner } from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, PayoutPage, CommissionPage } from './pages';
 
 test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE-COMMISSION-APPROVER)', () => {
   const mockPayoutRequest = {
@@ -21,48 +22,62 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     ],
   };
 
-  test('TC-FIN-01: Finance Executive proposes payout request and verifies Maker SOD-03 lock', async ({
-    page,
-  }) => {
-    await setupPersonaSession(page, PERSONAS.financeExec);
-    await showDemoBanner(page, 'Proposing Partner Payout Batch', 'To submit connector payout batches and enforce maker lockout from approving them');
+  // =========================================================================
+  // TC-FIN-01 QA-CA-001: SOD-03 — a payout request's submitter cannot approve it
+  // (Notion Roles §4 SOD-03: approved_by <> created_by; QA plan Module 13 10B step 5)
+  // No Notion role holds both payout.request and payout.approve, so the QA plan's own case is used: the Commission
+  // Approver holds payout.approve, a request it submitted is locked, and a request from the Finance Executive is not.
+  // =========================================================================
+  test('TC-FIN-01 QA-CA-001: SOD-03 approver cannot approve a payout request they submitted', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const payoutPage = new PayoutPage(page);
 
-    // Mock payout requests
+    await payoutPage.showBanner('Enforcing Payout Maker-Checker', 'The approver holds payout.approve but submitted one request');
+
+    const ownRequest = {
+      ...mockPayoutRequest,
+      id: 'pay_req_qa_own_001',
+      total: '5000',
+      submittedBy: PERSONAS.commissionApprover.userId,
+      lines: [{ id: 'pline_qa_own_001', payableId: 'pyb_qa_own_001', amount: '5000', currency: 'INR' }],
+    };
+    const approvalCalls: string[] = [];
     await page.route('**/v1/payout-requests**', async (route) => {
+      if (route.request().method() === 'POST') approvalCalls.push(route.request().url());
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [mockPayoutRequest], meta: { total: 1 } }),
+        body: JSON.stringify({ data: [mockPayoutRequest, ownRequest], meta: { nextCursor: null, limit: 50 } }),
       });
     });
 
-    await page.goto('/payouts');
-    await pauseForDemo(page, 1500);
-
-    // 1. Verify Payout Dashboard loaded
-    await showDemoBanner(page, 'Payouts Hub Loaded', 'Reviewing connector payout requests register');
+    await authPage.loginAs(PERSONAS.commissionApprover, '/payouts');
     await expect(page.getByText('Payouts & Settlement Hub')).toBeVisible();
-    await expect(page.getByText('pay_req_001')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await payoutPage.switchToApprovalQueue();
 
-    // 2. Check tab "Approval Queue"
-    await showDemoBanner(page, 'Approval Queue Tab', 'Inspecting pending approvals for maker-checker lock');
-    const approvalTab = page.getByRole('tab', { name: /Approval Queue/i });
-    await humanClick(approvalTab, 1500);
+    const decideIn = (requestId: string) =>
+      page.getByRole('row').filter({ hasText: requestId }).getByRole('button', { name: /Review & Decide \(SOD-03\)/i });
 
-    // 3. SOD-03: Maker (usr_finance_01) CANNOT approve own payout request!
-    await showDemoBanner(page, 'Maker Approval Disabled', 'Submitter cannot approve own payout to enforce separation of duties');
-    const approveBtn = page.getByRole('button', { name: /Review & Decide \(SOD-03\)/i });
-    await expect(approveBtn).toBeVisible();
-    await expect(approveBtn).toBeDisabled();
-    await pauseForDemo(page, 2500);
+    // 1. The approver's own request is locked although the approver holds payout.approve
+    await payoutPage.showBanner('Own Request Locked', 'Submitter cannot approve their own payout (SOD-03)');
+    await expect(decideIn('pay_req_qa_own_001')).toBeVisible();
+    await expect(decideIn('pay_req_qa_own_001')).toBeDisabled();
+
+    // 2. The Finance Executive's request stays open to the same approver, so the lock is the SOD rule, not the permission
+    await payoutPage.showBanner('Independent Request Open', "Finance Executive's request can be reviewed");
+    await expect(decideIn('pay_req_001')).toBeEnabled();
+    expect(approvalCalls).toHaveLength(0);
+    await payoutPage.pause(2500);
+    await authPage.logout();
   });
 
   test('TC-FIN-02: Commission Approver authorizes payout request (Independent Dual Control)', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
-    await showDemoBanner(page, 'Authorizing Payout as Independent Checker', 'To review payout calculations and approve bank disbursement independently');
+    const authPage = new AuthPage(page);
+    const payoutPage = new PayoutPage(page);
+
+    await payoutPage.showBanner('Authorizing Payout as Independent Checker', 'To review payout calculations and approve bank disbursement independently');
 
     let currentRequest = { ...mockPayoutRequest };
 
@@ -94,46 +109,36 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       }
     });
 
-    await page.goto('/payouts');
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.commissionApprover, '/payouts');
+    await payoutPage.pause(1500);
 
     // 1. Go to "Approval Queue" tab
-    await showDemoBanner(page, 'Approval Queue Tab', 'Independent checker reviewing pending payout requests');
-    const approvalTab = page.getByRole('tab', { name: /Approval Queue/i });
-    await humanClick(approvalTab, 1500);
+    await payoutPage.showBanner('Approval Queue Tab', 'Independent checker reviewing pending payout requests');
+    await payoutPage.switchToApprovalQueue();
 
     // 2. Approver is NOT the maker (usr_cfo_01 !== usr_finance_01), so button is enabled
-    await showDemoBanner(page, 'Open Approval Review', 'Checker opening independent maker-checker payout review');
-    const reviewBtn = page.getByRole('button', { name: /Review & Decide \(SOD-03\)/i });
-    await expect(reviewBtn).toBeVisible();
-    await expect(reviewBtn).toBeEnabled();
-    await humanClick(reviewBtn, 1500);
+    await payoutPage.showBanner('Open Approval Review', 'Checker opening independent maker-checker payout review');
+    await expect(payoutPage.reviewAndDecideBtn).toBeVisible();
+    await expect(payoutPage.reviewAndDecideBtn).toBeEnabled();
 
-    // 3. Dialog opens
-    await expect(page.getByText(/Maker-Checker Payout Review/i)).toBeVisible();
-    await showDemoBanner(page, 'Justification Entry', 'Entering decision comment: Verified against lender remittance');
-    const commentInput = page.getByLabel(/Decision Justification|Comment/i);
-    if (await commentInput.isVisible()) {
-      await humanType(commentInput, 'Verified against lender remittance statement; approved for payment.');
-      await pauseForDemo(page, 1200);
-    }
+    // 3. Dialog opens and approve
+    await payoutPage.showBanner('Justification Entry', 'Entering decision comment: Verified against lender remittance');
+    await payoutPage.approvePayout('Verified against lender remittance statement; approved for payment.');
 
-    // 4. Confirm approval
-    await showDemoBanner(page, 'Confirm Payout Approval', 'Authorizing payout request for bank disbursement');
-    const confirmBtn = page.getByRole('button', { name: /Confirm APPROVED/i });
-    await humanClick(confirmBtn, 2000);
-
-    // 5. Verify confirmation message
-    await showDemoBanner(page, 'Payout Approved', 'Request marked as APPROVED for payment settlement');
+    // 4. Verify confirmation message
+    await payoutPage.showBanner('Payout Approved', 'Request marked as APPROVED for payment settlement');
     await expect(page.getByText(/marked as APPROVED/i)).toBeVisible();
-    await pauseForDemo(page, 2500);
+    await payoutPage.pause(2500);
+    await authPage.logout();
   });
 
   test('TC-FIN-03: Payment Operations records bank UTR with validation & batch generation', async ({
     page,
   }) => {
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
-    await showDemoBanner(page, 'Recording Bank Settlement & UTR', 'To record official bank reference numbers and mark partner payouts settled');
+    const authPage = new AuthPage(page);
+    const payoutPage = new PayoutPage(page);
+
+    await payoutPage.showBanner('Recording Bank Settlement & UTR', 'To record official bank reference numbers and mark partner payouts settled');
 
     const approvedRequest = {
       ...mockPayoutRequest,
@@ -167,47 +172,45 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       }
     });
 
-    await page.goto('/payouts');
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.commissionApprover, '/payouts');
+    await payoutPage.pause(1500);
 
     // 1. Go to "Payment Recording & Batches" tab
-    await showDemoBanner(page, 'Payment Operations Tab', 'Reviewing approved payouts ready for bank dispatch');
-    const paymentTab = page.getByRole('tab', { name: /Payment Recording & Batches/i });
-    await humanClick(paymentTab, 1500);
+    await payoutPage.showBanner('Payment Operations Tab', 'Reviewing approved payouts ready for bank dispatch');
+    await payoutPage.switchToPaymentTab();
     await expect(page.getByText('pay_req_001')).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await payoutPage.pause(1200);
 
     // 2. Click "Record UTR"
-    await showDemoBanner(page, 'Open Record UTR', 'Opening bank transaction reference modal');
-    const recordUtrBtn = page.getByRole('button', { name: /Record UTR/i });
-    await expect(recordUtrBtn).toBeVisible();
-    await humanClick(recordUtrBtn, 1500);
+    await payoutPage.showBanner('Open Record UTR', 'Opening bank transaction reference modal');
+    await expect(payoutPage.openRecordUtrBtn).toBeVisible();
+    await payoutPage.click(payoutPage.openRecordUtrBtn, 1500);
 
     // 3. Test validation: empty UTR submission
-    await showDemoBanner(page, 'Empty UTR Validation', 'Testing required bank reference field validation');
-    const utrInput = page.locator('input[data-testid="payment.utr"]');
-    await utrInput.fill('');
-    const submitPaymentBtn = page.locator('button[data-testid="payment.submit"]');
-    await humanClick(submitPaymentBtn, 1500);
+    await payoutPage.showBanner('Empty UTR Validation', 'Testing required bank reference field validation');
+    await payoutPage.utrInput.fill('');
+    await payoutPage.click(payoutPage.submitPaymentBtn, 1500);
     await expect(page.getByText('Bank reference (UTR) is required.').first()).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await payoutPage.pause(1500);
 
     // 4. Fill valid UTR and submit
-    await showDemoBanner(page, 'Fill Valid UTR', 'Recording transaction UTR9876543210');
-    await humanType(utrInput, 'UTR9876543210');
-    await pauseForDemo(page, 1200);
-    await humanClick(submitPaymentBtn, 2000);
+    await payoutPage.showBanner('Fill Valid UTR', 'Recording transaction UTR9876543210');
+    await payoutPage.type(payoutPage.utrInput, 'UTR9876543210');
+    await payoutPage.pause(1200);
+    await payoutPage.click(payoutPage.submitPaymentBtn, 2000);
 
     // 5. Verify success toast / feedback
-    await showDemoBanner(page, 'Payment Recorded', 'Settlement confirmed & encrypted NEFT/RTGS batch generated');
+    await payoutPage.showBanner('Payment Recorded', 'Settlement confirmed & encrypted NEFT/RTGS batch generated');
     await expect(page.getByText(/Payment recorded for payout/i)).toBeVisible();
-    await pauseForDemo(page, 2500);
+    await payoutPage.pause(2500);
+    await authPage.logout();
   });
 
   test('TC-FIN-04: Commission Plan Maker-Checker Dual Control (SOD-02)', async ({ page }) => {
-    // Session as Commission Approver (Independent Checker)
-    await setupPersonaSession(page, PERSONAS.commissionApprover);
-    await showDemoBanner(page, 'Governing Commission Plans Dual Control', 'To ensure lender commission schemes require independent checker sign-off before activation');
+    const authPage = new AuthPage(page);
+    const commissionPage = new CommissionPage(page);
+
+    await commissionPage.showBanner('Governing Commission Plans Dual Control', 'To ensure lender commission schemes require independent checker sign-off before activation');
 
     const mockPlan = {
       id: 'cplan_qa_001',
@@ -280,26 +283,26 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
       });
     });
 
-    await page.goto('/commission');
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.commissionApprover, '/commission');
+    await commissionPage.pause(1500);
 
     // 1. Verify Commission Dashboard loaded
-    await showDemoBanner(page, 'Commission Hub Loaded', 'Reviewing lender plans with maker-checker governance');
+    await commissionPage.showBanner('Commission Hub Loaded', 'Reviewing lender plans with maker-checker governance');
     await expect(page.getByText('Commission Management Hub')).toBeVisible();
     await expect(page.getByText('HDFC Bank').first()).toBeVisible();
     await expect(page.getByText('rset_hl_01').first()).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await commissionPage.pause(1200);
 
     // 2. Checker (usr_cfo_01) sees enabled "Approve (SOD-02)" button
-    await showDemoBanner(page, 'Independent Plan Review', 'Checker authorizing draft commission plan under SOD-02');
-    const approveBtn = page.getByRole('button', { name: /Approve \(SOD-02\)/i });
-    await expect(approveBtn).toBeVisible();
-    await expect(approveBtn).toBeEnabled();
-    await humanClick(approveBtn, 2000);
+    await commissionPage.showBanner('Independent Plan Review', 'Checker authorizing draft commission plan under SOD-02');
+    await expect(commissionPage.approvePlanBtn).toBeVisible();
+    await expect(commissionPage.approvePlanBtn).toBeEnabled();
+    await commissionPage.approvePlan(2000);
 
     // 3. Verify success message and ACTIVE state transition
-    await showDemoBanner(page, 'Commission Plan ACTIVE', 'Plan approved and active for tranche calculations');
+    await commissionPage.showBanner('Commission Plan ACTIVE', 'Plan approved and active for tranche calculations');
     await expect(page.getByText(/approved and marked ACTIVE/i)).toBeVisible();
-    await pauseForDemo(page, 2500);
+    await commissionPage.pause(2500);
+    await authPage.logout();
   });
 });

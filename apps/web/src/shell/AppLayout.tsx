@@ -250,7 +250,13 @@ export function AppLayout() {
               >
                 {me.data?.displayName}
               </Button>
-              <Menu anchorEl={menu} open={!!menu} onClose={() => setMenu(null)}>
+              <Menu
+                anchorEl={menu}
+                open={!!menu}
+                onClose={() => setMenu(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
                 <MenuItem disabled>
                   <ListItemText primary={me.data?.displayName} secondary={me.data?.email} />
                 </MenuItem>

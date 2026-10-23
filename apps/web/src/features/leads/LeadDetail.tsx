@@ -88,6 +88,11 @@ export function LeadDetail() {
     queryKey: ['lead', id],
     queryFn: () => (id ? fetchLeadById(id) : Promise.reject(new Error('Missing lead id'))),
     enabled: !!id,
+    retry: (failureCount, err: any) => {
+      const status = err?.httpStatus ?? err?.status;
+      if (status && [400, 401, 403, 404, 422].includes(status)) return false;
+      return failureCount < 2;
+    },
   });
 
   const lead = data?.lead;
@@ -810,9 +815,10 @@ export function LeadDetail() {
               error={Boolean(qualifyErrors.income)}
               helperText={qualifyErrors.income}
               onChange={(e) => {
-                setQualMonthlyIncome(e.target.value);
+                setQualMonthlyIncome(e.target.value.replace(/[^0-9.]/g, ''));
                 if (qualifyErrors.income) setQualifyErrors((prev) => ({ ...prev, income: undefined }));
               }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               placeholder="e.g. 75000"
               data-testid="qualify.monthlyIncome"
             />
@@ -824,11 +830,12 @@ export function LeadDetail() {
               error={Boolean(qualifyErrors.amount)}
               helperText={qualifyErrors.amount}
               onChange={(e) => {
-                setQualAmount(e.target.value);
+                setQualAmount(e.target.value.replace(/[^0-9.]/g, ''));
                 if (qualifyErrors.amount) {
                   setQualifyErrors((prev) => ({ ...prev, amount: undefined }));
                 }
               }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               placeholder="e.g. 500000"
               data-testid="qualify.amount"
               inputProps={{ 'data-testid': 'qualify.requestedAmount' }}

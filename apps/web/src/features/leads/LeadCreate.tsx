@@ -252,7 +252,8 @@ export function LeadCreate() {
                   fullWidth
                   label="Indicative Amount (INR)"
                   value={form.amount}
-                  onChange={(e) => set('amount')(e.target.value)}
+                  onChange={(e) => set('amount')(e.target.value.replace(/[^0-9.]/g, ''))}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                   onBlur={() => {
                     const n = form.amount.trim() ? normalizeAmount(form.amount) : null;
                     if (n) setForm((f) => ({ ...f, amount: n }));

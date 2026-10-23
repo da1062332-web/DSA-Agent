@@ -677,7 +677,12 @@ export function RuleVersionDetailPage() {
           <Button onClick={() => setSubmitOpen(false)} disabled={actionLoading}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={actionLoading}>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={actionLoading}
+            data-testid="rules.confirm-submit-version"
+          >
             {actionLoading ? 'Submitting...' : 'Submit Version'}
           </Button>
         </DialogActions>

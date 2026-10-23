@@ -37,8 +37,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     headless: !isHeaded,
+    viewport: isHeaded ? null : { width: 1536, height: 864 },
     launchOptions: {
       slowMo: slowMoMs,
+      args: isHeaded ? ['--start-maximized'] : [],
     },
   },
   webServer: {
@@ -50,7 +52,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: isHeaded
+        ? {
+            viewport: null,
+          }
+        : {
+            viewport: { width: 1536, height: 864 },
+          },
     },
   ],
 });

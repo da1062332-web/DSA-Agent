@@ -4,6 +4,7 @@
 // refreshes the session and retries once. Screen owners call it through TanStack Query hooks.
 import { ErrorEnvelope, type ErrorDetail } from '@dsa/contracts';
 import { getSupabase } from '../auth/supabase';
+import { getStoredAuthToken } from '../auth/token';
 import { readConfig } from '../config';
 
 export class ApiError extends Error {
@@ -71,7 +72,7 @@ async function send<T>(path: string, req: ApiRequest): Promise<{ data: T; etag?:
 
   const { data } = await getSupabase().auth.getSession();
   const headers = new Headers({ Accept: 'application/json' });
-  const token = data.session?.access_token;
+  const token = data.session?.access_token ?? getStoredAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (req.headers) {
     for (const [k, v] of Object.entries(req.headers)) {

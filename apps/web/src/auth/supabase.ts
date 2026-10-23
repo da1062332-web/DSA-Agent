@@ -31,8 +31,36 @@ export function getStorageKey(): string {
 export function saveBypassSession(session: unknown): void {
   const key = getStorageKey();
   try {
-    localStorage.setItem(key, JSON.stringify(session));
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('dsa_bypass_active', 'true');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('dsa_bypass_active', 'true');
+      localStorage.setItem(key, JSON.stringify(session));
+    }
   } catch {
     // Storage might be blocked
   }
+}
+
+export function isBypassActive(): boolean {
+  try {
+    if (
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dsa_bypass_active') === 'true') ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem('dsa_bypass_active') === 'true')
+    ) {
+      return true;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const key = getStorageKey();
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.refresh_token === 'bypass-refresh-token') {
+          return true;
+        }
+      }
+    }
+  } catch {
+    // Storage might be blocked or unparseable
+  }
+  return false;
 }

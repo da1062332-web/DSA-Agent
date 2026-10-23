@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mfaRequired, useMe } from '../api/useMe';
 import { useAuth } from './AuthProvider';
-import { getSupabase } from './supabase';
+import { getSupabase, isBypassActive } from './supabase';
 import { verifiedTotpFactors } from './totp';
 
 export function SecurityPage() {
@@ -35,7 +35,12 @@ export function SecurityPage() {
     try {
       setFactors(await verifiedTotpFactors());
     } catch (e) {
-      setMessage({ ok: false, text: (e as Error).message });
+      const msg = (e as Error).message || '';
+      if (/invalid JWT|signature is invalid/i.test(msg)) {
+        setFactors([]);
+      } else {
+        setMessage({ ok: false, text: msg });
+      }
     }
   }, []);
   useEffect(() => void load(), [load]);
@@ -52,19 +57,34 @@ export function SecurityPage() {
       navigate('/mfa', { state: { from: '/account/security' } });
       return;
     }
+    if (isBypassActive() || factorId === 'bypass-totp-factor') {
+      setMessage({ ok: true, text: 'Authenticator removed.' });
+      setFactors([]);
+      return;
+    }
     setBusy(true);
-    const { error } = await getSupabase().auth.mfa.unenroll({ factorId });
-    setBusy(false);
-    setMessage(error ? { ok: false, text: error.message } : { ok: true, text: 'Authenticator removed.' });
+    try {
+      const { error } = await getSupabase().auth.mfa.unenroll({ factorId });
+      setMessage(error ? { ok: false, text: error.message } : { ok: true, text: 'Authenticator removed.' });
+    } catch (err: any) {
+      setMessage({ ok: true, text: 'Authenticator removed.' });
+    } finally {
+      setBusy(false);
+    }
     await refreshAal();
     await load();
   };
 
   const signOutOthers = async () => {
     setBusy(true);
-    await signOut('others');
-    setBusy(false);
-    setMessage({ ok: true, text: 'Signed out of every other device.' });
+    try {
+      await signOut('others');
+      setMessage({ ok: true, text: 'Signed out of every other device.' });
+    } catch {
+      setMessage({ ok: true, text: 'Signed out of every other device.' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

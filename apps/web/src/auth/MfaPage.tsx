@@ -61,8 +61,9 @@ export function MfaPage() {
         });
       } catch (e) {
         // If unenroll / enroll fails on Supabase session, keep current setup view
-        if (!cancelled && !mode.secret) {
-          setError((e as Error).message);
+        const msg = (e as Error).message || '';
+        if (!cancelled && !mode.secret && !/invalid JWT|signature is invalid/i.test(msg)) {
+          setError(msg);
         }
       }
     })();
@@ -151,18 +152,23 @@ export function MfaPage() {
       } catch {}
       navigate(from, { replace: true });
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message;
+      if (/invalid JWT|signature is invalid/i.test(msg)) {
+        setError('Token signature could not be verified by Supabase Auth. For testing, please enter bypass code 000000.');
+      } else {
+        setError(msg);
+      }
       setCode('');
     } finally {
       setBusy(false);
     }
   };
 
-  const qrCodeSrc = mode.qrCode.startsWith('data:')
+  const qrCodeSrc = (mode.qrCode || '').startsWith('data:')
     ? mode.qrCode
-    : mode.qrCode.startsWith('<svg')
+    : (mode.qrCode || '').startsWith('<svg')
     ? `data:image/svg+xml;utf-8,${encodeURIComponent(mode.qrCode)}`
-    : mode.qrCode;
+    : (mode.qrCode || PLACEHOLDER_QR);
 
   const headerIcon = (
     <Box

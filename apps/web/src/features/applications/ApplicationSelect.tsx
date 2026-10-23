@@ -3,6 +3,7 @@
 import { MenuItem, TextField } from '@mui/material';
 import { errorText } from '../../api/client';
 import { useLookup } from '../admin/api';
+import { CustomerName } from '../../shell/display';
 import { STATUS_LABELS } from './rules';
 import type { Application } from './ApplicationsPage';
 
@@ -40,7 +41,8 @@ export function ApplicationSelect(props: {
       {!known && <MenuItem value={props.value}>{props.value}</MenuItem>}
       {rows.map((a) => (
         <MenuItem key={a.id} value={a.id}>
-          {a.id} · {a.productCategory} · {a.currency} {a.requestedAmount} ·{' '}
+          <CustomerName id={a.customerId} fallback={`App #${a.id.slice(-6)}`} typographyProps={{ component: 'span', fontWeight: 600 }} />
+          {' '}· {a.productCategory} · {a.currency} {a.requestedAmount} ·{' '}
           {STATUS_LABELS[a.status] ?? a.status}
         </MenuItem>
       ))}

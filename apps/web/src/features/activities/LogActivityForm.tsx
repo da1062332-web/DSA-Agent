@@ -310,10 +310,14 @@ export function LogActivityForm({
             label="Duration (seconds)"
             type="number"
             value={durationSeconds}
-            onChange={(e) => setDurationSeconds(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '' || Number(val) >= 0) setDurationSeconds(val);
+            }}
             error={Boolean(fieldErrors.duration)}
             helperText={fieldErrors.duration || 'Optional duration'}
             inputProps={{ min: 0 }}
+            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
             data-testid="activity.log-form.duration"
           />
         </Grid>

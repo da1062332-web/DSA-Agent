@@ -79,7 +79,7 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/sanctions',
         anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
       },
-      { label: 'Eligibility', task: 'MOD-ELG' },
+      { label: 'Eligibility', to: '/eligibility', anyOf: ['application.read'] },
       { label: 'Lenders', to: '/lenders' },
       { label: 'Products', to: '/products' },
     ],
@@ -107,7 +107,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
       { label: 'Workforce', to: '/workforce' },
-      { label: 'Connector portal', task: 'MOD-CPT' },
+      { label: 'Connector portal', to: '/connector-portal', anyOf: ['connector.read', 'connector.manage'] },
     ],
   },
   {

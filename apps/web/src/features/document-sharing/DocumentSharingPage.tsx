@@ -249,6 +249,7 @@ export function DocumentSharingPage() {
                   setCreatedLinkResult(null);
                   setIsLinkModalOpen(true);
                 }}
+                data-testid="sharing.link.open"
               >
                 + Generate Upload Link
               </Button>
@@ -324,7 +325,12 @@ export function DocumentSharingPage() {
                       const isLocked = Boolean(link.lockedAt);
                       return !isRevoked && !isExpired && !isLocked ? (
                         <Can action="document.upload">
-                          <Button size="small" color="error" onClick={() => revokeLinkMutation.mutate(link.id)}>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => revokeLinkMutation.mutate(link.id)}
+                            data-testid="sharing.link.revoke"
+                          >
                             Revoke
                           </Button>
                         </Can>

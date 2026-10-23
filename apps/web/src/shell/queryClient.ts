@@ -11,10 +11,19 @@ declare module '@tanstack/react-query' {
   }
 }
 
-/** A refused request (401, 403) gets the same answer on every retry, so only other failures are retried. */
+/** A refused or not found request (400, 401, 403, 404, 422) gets the same answer on retry, so only transient failures are retried. */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && (error.httpStatus === 401 || error.httpStatus === 403)) return false;
-  return failureCount < 3;
+  if (failureCount >= 3) return false;
+  const status =
+    error instanceof ApiError
+      ? error.httpStatus
+      : typeof (error as any)?.httpStatus === 'number'
+        ? (error as any).httpStatus
+        : typeof (error as any)?.status === 'number'
+          ? (error as any).status
+          : undefined;
+  if (status !== undefined && [400, 401, 403, 404, 422].includes(status)) return false;
+  return true;
 }
 
 export function createQueryClient(): QueryClient {

@@ -414,7 +414,9 @@ export function ApiManagementPage() {
             label="Rate Limit (Requests per Minute)"
             type="number"
             value={rateLimitRpm}
-            onChange={(e) => setRateLimitRpm(Number(e.target.value))}
+            onChange={(e) => setRateLimitRpm(Math.max(10, Math.min(10000, Number(e.target.value))))}
+            inputProps={{ min: 10, max: 10000 }}
+            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
             helperText="Default 120 RPM (Allowed range: 10 - 10,000)"
             fullWidth
           />

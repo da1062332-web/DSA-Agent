@@ -27,6 +27,7 @@ import {
 import { DataTable, PageHeader } from '../../ui';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { sanctionsApi } from './api';
 import type {
@@ -45,8 +46,11 @@ interface SanctionsPanelProps {
 
 export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
   lenderCaseId: propLenderCaseId,
-  currentUserId,
+  currentUserId: propCurrentUserId,
 }) => {
+  // SOD-04 (verified_by <> recorded_by) needs the signed-in user; the route renders the panel without the prop.
+  const me = useMe();
+  const currentUserId = propCurrentUserId ?? me.data?.id;
   const { lenderCaseId: paramLenderCaseId } = useParams<{ lenderCaseId?: string }>();
   const [searchParams] = useSearchParams();
   const queryLenderCaseId = searchParams.get('lenderCaseId');
@@ -458,12 +462,14 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 required
                 error={Boolean(sanctionErrors.amount)}
                 helperText={sanctionErrors.amount}
-                value={sanctionForm.amount}
+                value={sanctionForm.amount || ''}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, amount: Number(e.target.value) });
+                  const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, amount: val });
                   if (sanctionErrors.amount) setSanctionErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.amount' }}
+                inputProps={{ min: 0, 'data-testid': 'sanction.amount' }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -474,12 +480,14 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 required
                 error={Boolean(sanctionErrors.tenureMonths)}
                 helperText={sanctionErrors.tenureMonths}
-                value={sanctionForm.tenureMonths}
+                value={sanctionForm.tenureMonths || ''}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, tenureMonths: Number(e.target.value) });
+                  const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, tenureMonths: val });
                   if (sanctionErrors.tenureMonths) setSanctionErrors((prev) => ({ ...prev, tenureMonths: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.tenureMonths' }}
+                inputProps={{ min: 1, 'data-testid': 'sanction.tenureMonths' }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -490,12 +498,14 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 required
                 error={Boolean(sanctionErrors.rateValue)}
                 helperText={sanctionErrors.rateValue}
-                value={sanctionForm.rateValue}
+                value={sanctionForm.rateValue || ''}
                 onChange={(e) => {
-                  setSanctionForm({ ...sanctionForm, rateValue: Number(e.target.value) });
+                  const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                  setSanctionForm({ ...sanctionForm, rateValue: val });
                   if (sanctionErrors.rateValue) setSanctionErrors((prev) => ({ ...prev, rateValue: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'sanction.rateValue' }}
+                inputProps={{ min: 0, step: 0.01, 'data-testid': 'sanction.rateValue' }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -569,12 +579,14 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 required
                 error={Boolean(trancheErrors.amount)}
                 helperText={trancheErrors.amount}
-                value={trancheForm.amount}
+                value={trancheForm.amount || ''}
                 onChange={(e) => {
-                  setTrancheForm({ ...trancheForm, amount: Number(e.target.value) });
+                  const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                  setTrancheForm({ ...trancheForm, amount: val });
                   if (trancheErrors.amount) setTrancheErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
-                inputProps={{ 'data-testid': 'tranche.amount' }}
+                inputProps={{ min: 0, 'data-testid': 'tranche.amount' }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

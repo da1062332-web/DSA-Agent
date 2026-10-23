@@ -926,7 +926,12 @@ export function ReconciliationDashboardPage() {
                           label="Settled Amount (₹)"
                           type="number"
                           value={bankAmount}
-                          onChange={(e) => setBankAmount(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || Number(val) >= 0) setBankAmount(val);
+                          }}
+                          inputProps={{ min: 0, step: 'any' }}
+                          onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                           fullWidth
                           required
                           data-testid="rec.input.bank-amount"
@@ -1160,7 +1165,12 @@ export function ReconciliationDashboardPage() {
               label="Adjustment Amount (₹)"
               type="number"
               value={adjAmount}
-              onChange={(e) => setAdjAmount(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || Number(val) >= 0) setAdjAmount(val);
+              }}
+              inputProps={{ min: 0, step: 'any' }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               fullWidth
               required
             />

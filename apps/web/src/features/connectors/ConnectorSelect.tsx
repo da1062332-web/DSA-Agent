@@ -6,6 +6,7 @@ import React from 'react';
 import { Autocomplete, Box, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
+import { useMe, hasPermission } from '../../api/useMe';
 import type { ConnectorResource } from '@dsa/contracts';
 
 export interface ConnectorSelectProps {
@@ -39,6 +40,9 @@ export function ConnectorSelect({
   testId = 'lead-form.connector',
   allowFreeText = true,
 }: ConnectorSelectProps) {
+  const me = useMe();
+  const canRead = hasPermission(me.data, 'connector.read');
+
   const query = useQuery({
     queryKey: ['connectors', 'select', status],
     queryFn: async () => {
@@ -53,11 +57,33 @@ export function ConnectorSelect({
         return [];
       }
     },
+    enabled: canRead,
+    retry: false,
     staleTime: 60_000,
   });
 
   const connectors = query.data ?? [];
   const selectedConnector = connectors.find((c) => c.id === value) ?? null;
+
+  if (!canRead) {
+    return (
+      <TextField
+        fullWidth={fullWidth}
+        size={size}
+        label={label}
+        placeholder={placeholder ?? 'e.g. con_01...'}
+        required={required}
+        disabled={disabled}
+        error={error}
+        helperText={helperText}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value.trim() || null)}
+        inputProps={{
+          'data-testid': testId,
+        }}
+      />
+    );
+  }
 
   return (
     <Autocomplete
@@ -66,8 +92,11 @@ export function ConnectorSelect({
       disabled={disabled}
       options={connectors}
       getOptionLabel={(option) => {
-        if (typeof option === 'string') return option;
-        return `${option.legalName} (${option.id})`;
+        if (typeof option === 'string') {
+          const match = connectors.find((c) => c.id === option);
+          return match ? (match.tradeName || match.legalName || match.id) : option;
+        }
+        return option.tradeName || option.legalName || option.id;
       }}
       isOptionEqualToValue={(option, val) => {
         const valId = typeof val === 'string' ? val : val.id;
@@ -93,7 +122,8 @@ export function ConnectorSelect({
         <li {...props} key={option.id}>
           <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5, width: '100%' }}>
             <Typography variant="body2" fontWeight={600} color="text.primary">
-              {option.legalName}
+              {option.tradeName || option.legalName}
+              {option.tradeName && option.legalName && option.tradeName !== option.legalName ? ` (${option.legalName})` : ''}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ID: {option.id}

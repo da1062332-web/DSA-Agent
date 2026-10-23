@@ -32,6 +32,7 @@ import type { DataCorrectionRequest, SupportAccessGrant } from '@dsa/contracts';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ConnectorName, LenderName } from '../../shell/display';
 import { fetchCommissionPlans } from '../commission/api';
 import { fetchPayoutRequests } from '../payouts/api';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -163,7 +164,9 @@ function FinanceApprovalsTab({
                         <br />
                         {own(p.createdBy)}
                       </TableCell>
-                      <TableCell>{p.lenderId}</TableCell>
+                      <TableCell>
+                        <LenderName id={p.lenderId} typographyProps={{ fontWeight: 600 }} />
+                      </TableCell>
                       <TableCell>
                         {p.qualifyingEvent} · {p.basis}
                       </TableCell>
@@ -208,7 +211,9 @@ function FinanceApprovalsTab({
                         <br />
                         {own(r.submittedBy)}
                       </TableCell>
-                      <TableCell>{r.connectorId}</TableCell>
+                      <TableCell>
+                        <ConnectorName id={r.connectorId} typographyProps={{ fontWeight: 600 }} />
+                      </TableCell>
                       <TableCell align="right">
                         {r.currency} {r.total}
                       </TableCell>

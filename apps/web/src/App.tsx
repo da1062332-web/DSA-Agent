@@ -12,7 +12,11 @@ import { theme } from './shell/theme';
 import { ToastProvider } from './shell/toast';
 
 const queryClient = createQueryClient();
-const router = createBrowserRouter(routes);
+const router = createBrowserRouter(routes, {
+  future: {
+    v7_relativeSplatPath: true,
+  },
+});
 
 export function App() {
   const config = readConfig();
@@ -23,7 +27,7 @@ export function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <ToastProvider>
-              <RouterProvider router={router} />
+              <RouterProvider router={router} future={{ v7_startTransition: true }} />
             </ToastProvider>
           </AuthProvider>
         </QueryClientProvider>
