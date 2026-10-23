@@ -32,6 +32,7 @@ import { UserPicker } from '../admin/components';
 import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
 import { ApplicationName, BranchName, UserName } from '../../shell/display';
+import { PageHeader } from '../../ui';
 import { attestChecklistItem, completeVerification, fetchVerification, updateVerification } from './api';
 import type {
   ChecklistAttestationInput,
@@ -201,54 +202,53 @@ export function VerificationDetailPage() {
         <Typography color="text.primary">{data.id}</Typography>
       </Breadcrumbs>
 
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Typography variant="h4" fontWeight={700}>
-              Case {data.id}
-            </Typography>
+      <PageHeader
+        title={`Case ${data.id}`}
+        backTo="/verifications"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
             <Chip label={data.status} color={data.status === 'VERIFIED' ? 'success' : 'primary'} />
             {data.outcome && (
               <Chip
                 label={data.outcome}
-                color={
-                  data.outcome === 'POSITIVE' ? 'success' : data.outcome === 'NEGATIVE' ? 'error' : 'warning'
-                }
+                color={data.outcome === 'POSITIVE' ? 'success' : data.outcome === 'NEGATIVE' ? 'error' : 'warning'}
                 variant="outlined"
               />
             )}
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        }
+        subtitle={
+          <Typography variant="body2" color="text.secondary">
             Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} /> • Type:{' '}
             {data.verificationType?.replace(/_/g, ' ') || 'VERIFICATION'}
           </Typography>
-        </Box>
-
-        <Stack direction="row" spacing={1.5}>
-          <Can action="verification.perform">
-            <Button
-              variant="outlined"
-              onClick={() => setAssignOpen(true)}
-              disabled={isFinalized}
-              data-testid="verification.btn.assign"
-            >
-              Update / Assign
-            </Button>
-          </Can>
-          <Can action="verification.complete">
-            <Button
-              variant="contained"
-              color="success"
-              onClick={() => setCompleteOpen(true)}
-              disabled={isFinalized}
-              data-testid="verification.btn.complete"
-            >
-              Complete Assessment
-            </Button>
-          </Can>
-        </Stack>
-      </Box>
+        }
+        actions={
+          <Stack direction="row" spacing={1.5}>
+            <Can action="verification.perform">
+              <Button
+                variant="outlined"
+                onClick={() => setAssignOpen(true)}
+                disabled={isFinalized}
+                data-testid="verification.btn.assign"
+              >
+                Update / Assign
+              </Button>
+            </Can>
+            <Can action="verification.complete">
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => setCompleteOpen(true)}
+                disabled={isFinalized}
+                data-testid="verification.btn.complete"
+              >
+                Complete Assessment
+              </Button>
+            </Can>
+          </Stack>
+        }
+      />
 
       {/* Alerts */}
       {error && (

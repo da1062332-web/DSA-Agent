@@ -20,6 +20,7 @@ import {
 import { fetchLenderCase } from './api';
 import { LenderCasePanel } from './LenderCasePanel';
 import { ApplicationName, LenderName } from '../../shell/display';
+import { PageHeader } from '../../ui';
 
 export function LenderCaseDetailPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
@@ -50,17 +51,15 @@ export function LenderCaseDetailPage(): React.ReactElement {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h5" component="h1" fontWeight="bold">
-            Lender Case: {c.id}
-          </Typography>
+      <PageHeader
+        title={`Lender Case: ${c.id}`}
+        badge={<Chip label={c.status} color="primary" />}
+        subtitle={
           <Typography variant="body2" color="text.secondary">
             Application: <ApplicationName id={c.applicationId} linkToApp /> | Attempt #{c.attemptNo}
           </Typography>
-        </Box>
-        <Chip label={c.status} color="primary" />
-      </Stack>
+        }
+      />
 
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} md={6}>

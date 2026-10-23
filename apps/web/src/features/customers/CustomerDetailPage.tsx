@@ -30,6 +30,7 @@ import { getCustomer, updateCustomer, ApiError } from './api';
 import { Can } from '../../shell/Can';
 import { BranchSelect } from '../../shell/selectors';
 import { BranchName } from '../../shell/display';
+import { PageHeader } from '../../ui';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useLookup } from '../admin/api';
 import { STATUS_LABELS } from '../applications/rules';
@@ -125,36 +126,30 @@ export function CustomerDetailPage() {
         ← Back to Customers
       </Button>
 
-      {/* Header Banner */}
-      <Box sx={{ mb: 4 }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ sm: 'center' }}
-          spacing={2}
-        >
-          <Box>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Typography variant="h4" fontWeight={700}>
-                {customer.fullName}
-              </Typography>
-              <Chip
-                size="small"
-                label={customer.partyType}
-                color={customer.partyType === 'INDIVIDUAL' ? 'primary' : 'secondary'}
-                variant="outlined"
-              />
-              <Chip
-                size="small"
-                label={customer.status}
-                color={customer.status === 'ACTIVE' ? 'success' : 'default'}
-              />
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Customer ID: <strong>{customer.id}</strong> · Lock Version: {customer.lockVersion}
-            </Typography>
-          </Box>
-
+      <PageHeader
+        title={customer.fullName}
+        backTo="/customers"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              size="small"
+              label={customer.partyType}
+              color={customer.partyType === 'INDIVIDUAL' ? 'primary' : 'secondary'}
+              variant="outlined"
+            />
+            <Chip
+              size="small"
+              label={customer.status}
+              color={customer.status === 'ACTIVE' ? 'success' : 'default'}
+            />
+          </Stack>
+        }
+        subtitle={
+          <Typography variant="body2" color="text.secondary">
+            Customer ID: <strong>{customer.id}</strong> · Lock Version: {customer.lockVersion}
+          </Typography>
+        }
+        actions={
           <Stack direction="row" spacing={1.5}>
             <Can action="customer.update">
               <Button variant="outlined" onClick={handleOpenEdit}>
@@ -170,8 +165,8 @@ export function CustomerDetailPage() {
               Manage Consents
             </Button>
           </Stack>
-        </Stack>
-      </Box>
+        }
+      />
 
       {/* Notifications */}
       {successMessage && (
