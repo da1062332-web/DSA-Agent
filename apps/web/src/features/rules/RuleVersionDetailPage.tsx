@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
+import { PageHeader } from '../../ui';
 import {
   fetchRuleSetVersion,
   publishVersion,
@@ -336,81 +337,78 @@ export function RuleVersionDetailPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={3}>
-        <Box>
-          <Button size="small" onClick={() => navigate(`/rules/${version.ruleSetId}`)} sx={{ mb: 1 }}>
-            ← Back to Rule Set
-          </Button>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Typography variant="h4" fontWeight={700}>
-              Version {version.versionNo}
-            </Typography>
+      <PageHeader
+        title={`Version ${version.versionNo}`}
+        backTo={`/rules/${version.ruleSetId}`}
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="medium" label={version.status} color={getStatusColor(version.status)} />
             <Chip size="medium" label={`Hit Policy: ${version.hitPolicy}`} variant="outlined" />
           </Stack>
+        }
+        subtitle={
           <Typography variant="caption" color="text.secondary" fontFamily="monospace">
             ID: {version.id} | Hash: {version.contentHash}
           </Typography>
-        </Box>
-
-        {/* Action Toolbar */}
-        <Stack direction="row" spacing={1.5} flexWrap="wrap">
-          <Can action="rule.simulate">
-            <Button variant="outlined" onClick={() => setSimOpen(true)}>
-              Simulate / Test
+        }
+        actions={
+          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            <Can action="rule.simulate">
+              <Button variant="outlined" onClick={() => setSimOpen(true)}>
+                Simulate / Test
+              </Button>
+            </Can>
+            <Button variant="outlined" onClick={handleValidate} disabled={validating}>
+              {validating ? 'Validating...' : 'Validate'}
             </Button>
-          </Can>
-          <Button variant="outlined" onClick={handleValidate} disabled={validating}>
-            {validating ? 'Validating...' : 'Validate'}
-          </Button>
 
-          {isDraft && (
-            <Can action="rule.author">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setSubmitOpen(true)}
-                disabled={!validationReport || validationReport.result !== 'PASS'}
-              >
-                Submit for Review
-              </Button>
-            </Can>
-          )}
+            {isDraft && (
+              <Can action="rule.author">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setSubmitOpen(true)}
+                  disabled={!validationReport || validationReport.result !== 'PASS'}
+                >
+                  Submit for Review
+                </Button>
+              </Can>
+            )}
 
-          {isReview && (
-            <Can action="rule.approve">
-              <Button variant="contained" color="warning" onClick={() => setReviewOpen(true)}>
-                Review / Approve (SOD-01)
-              </Button>
-            </Can>
-          )}
+            {isReview && (
+              <Can action="rule.approve">
+                <Button variant="contained" color="warning" onClick={() => setReviewOpen(true)}>
+                  Review / Approve (SOD-01)
+                </Button>
+              </Can>
+            )}
 
-          {isApproved && (
-            <Can action="rule.publish">
-              <Button variant="contained" color="success" onClick={() => setPublishOpen(true)}>
-                Publish to Production
-              </Button>
-            </Can>
-          )}
+            {isApproved && (
+              <Can action="rule.publish">
+                <Button variant="contained" color="success" onClick={() => setPublishOpen(true)}>
+                  Publish to Production
+                </Button>
+              </Can>
+            )}
 
-          {isActive && (
-            <Can action="rule.suspend">
-              <Button variant="contained" color="error" onClick={() => setSuspendOpen(true)}>
-                Emergency Suspend
-              </Button>
-            </Can>
-          )}
+            {isActive && (
+              <Can action="rule.suspend">
+                <Button variant="contained" color="error" onClick={() => setSuspendOpen(true)}>
+                  Emergency Suspend
+                </Button>
+              </Can>
+            )}
 
-          {isSuspended && (
-            <Can action="rule.publish">
-              <Button variant="contained" color="primary" onClick={() => setReinstateOpen(true)}>
-                Reinstate Version
-              </Button>
-            </Can>
-          )}
-        </Stack>
-      </Stack>
+            {isSuspended && (
+              <Can action="rule.publish">
+                <Button variant="contained" color="primary" onClick={() => setReinstateOpen(true)}>
+                  Reinstate Version
+                </Button>
+              </Can>
+            )}
+          </Stack>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
