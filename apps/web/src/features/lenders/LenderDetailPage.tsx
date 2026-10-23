@@ -31,6 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -389,88 +390,60 @@ export function LenderDetailPage() {
           }
         />
         <Divider />
-        <TableContainer>
-          {(lender.empanelments ?? []).length === 0 ? (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                No active empanelment agreements registered. Case submissions will fail the empanelment gate.
-              </Typography>
-            </Box>
-          ) : (
-            <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell>
-                    <strong>DSA Code</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Valid Range</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Permitted Categories</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Agreement Ref</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Status</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>Actions</strong>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {lender.empanelments?.map((emp) => (
-                  <TableRow key={emp.id}>
-                    <TableCell>
-                      <strong>{emp.dsaCode}</strong>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(emp.validFrom).toLocaleDateString()} —{' '}
-                      {emp.validTo ? new Date(emp.validTo).toLocaleDateString() : 'Indefinite'}
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                        {emp.permittedCategories.map((c) => (
-                          <Chip key={c} label={c} size="small" />
-                        ))}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>{emp.agreementDocumentId || '—'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={emp.status}
-                        size="small"
-                        color={emp.status === 'ACTIVE' ? 'success' : 'warning'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      {canManage && emp.status === 'ACTIVE' && (
-                        <Button
-                          size="small"
-                          color="warning"
-                          onClick={() => handleToggleEmpanelmentStatus(emp, 'SUSPENDED')}
-                        >
-                          Suspend
-                        </Button>
-                      )}
-                      {canManage && emp.status === 'SUSPENDED' && (
-                        <Button
-                          size="small"
-                          color="success"
-                          onClick={() => handleToggleEmpanelmentStatus(emp, 'ACTIVE')}
-                        >
-                          Reactivate
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TableContainer>
+        <DataTable<(typeof lender.empanelments)[number]>
+          dataTestId="lender.table.empanelments"
+          data={lender.empanelments ?? []}
+          keyExtractor={(emp) => emp.id}
+          emptyMessage="No active empanelment agreements registered. Case submissions will fail the empanelment gate."
+          columns={[
+            { id: 'code', header: 'DSA Code', render: (emp) => <strong>{emp.dsaCode}</strong> },
+            {
+              id: 'range',
+              header: 'Valid Range',
+              render: (emp) => (
+                <>
+                  {new Date(emp.validFrom).toLocaleDateString()} — {emp.validTo ? new Date(emp.validTo).toLocaleDateString() : 'Indefinite'}
+                </>
+              ),
+            },
+            {
+              id: 'categories',
+              header: 'Permitted Categories',
+              render: (emp) => (
+                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                  {emp.permittedCategories.map((c) => (
+                    <Chip key={c} label={c} size="small" />
+                  ))}
+                </Stack>
+              ),
+            },
+            { id: 'agreement', header: 'Agreement Ref', render: (emp) => emp.agreementDocumentId || '—' },
+            {
+              id: 'status',
+              header: 'Status',
+              render: (emp) => <Chip label={emp.status} size="small" color={emp.status === 'ACTIVE' ? 'success' : 'warning'} />,
+            },
+            {
+              id: 'actions',
+              header: 'Actions',
+              align: 'right',
+              render: (emp) => (
+                <>
+                  {canManage && emp.status === 'ACTIVE' && (
+                    <Button size="small" color="warning" onClick={() => handleToggleEmpanelmentStatus(emp, 'SUSPENDED')}>
+                      Suspend
+                    </Button>
+                  )}
+                  {canManage && emp.status === 'SUSPENDED' && (
+                    <Button size="small" color="success" onClick={() => handleToggleEmpanelmentStatus(emp, 'ACTIVE')}>
+                      Reactivate
+                    </Button>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       {/* Contacts & Escalation Matrix */}
@@ -491,56 +464,24 @@ export function LenderDetailPage() {
           }
         />
         <Divider />
-        <TableContainer>
-          {(lender.contacts ?? []).length === 0 ? (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                No contacts registered for this lender.
-              </Typography>
-            </Box>
-          ) : (
-            <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell>
-                    <strong>Escalation Level</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Contact Name</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Role</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Channel</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Email</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Phone</strong>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {lender.contacts?.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>
-                      <Chip label={`Level ${c.escalationLevel}`} size="small" color="primary" />
-                    </TableCell>
-                    <TableCell>
-                      <strong>{c.name}</strong>
-                    </TableCell>
-                    <TableCell>{c.role}</TableCell>
-                    <TableCell>{c.channel}</TableCell>
-                    <TableCell>{c.email}</TableCell>
-                    <TableCell>{c.phone}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TableContainer>
+        <DataTable<(typeof lender.contacts)[number]>
+          dataTestId="lender.table.contacts"
+          data={lender.contacts ?? []}
+          keyExtractor={(c) => c.id}
+          emptyMessage="No contacts registered for this lender."
+          columns={[
+            {
+              id: 'level',
+              header: 'Escalation Level',
+              render: (c) => <Chip label={`Level ${c.escalationLevel}`} size="small" color="primary" />,
+            },
+            { id: 'name', header: 'Contact Name', render: (c) => <strong>{c.name}</strong> },
+            { id: 'role', header: 'Role', render: (c) => c.role },
+            { id: 'channel', header: 'Channel', render: (c) => c.channel },
+            { id: 'email', header: 'Email', render: (c) => c.email },
+            { id: 'phone', header: 'Phone', render: (c) => c.phone },
+          ]}
+        />
       </Card>
 
       {/* Edit Profile Modal */}
