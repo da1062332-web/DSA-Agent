@@ -249,3 +249,28 @@ export function ExpandLessIcon(props: SvgIconProps) {
     </SvgIcon>
   );
 }
+
+export function InboxIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z" />
+    </SvgIcon>
+  );
+}
+
+export function TrendingUpIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
+    </SvgIcon>
+  );
+}
+
+export function TrendingDownIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" />
+    </SvgIcon>
+  );
+}
+
