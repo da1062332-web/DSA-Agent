@@ -30,7 +30,7 @@ import { useLookup } from '../admin/api';
 import type { Product } from '../admin/ProductsPage';
 import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
 import { ProductSelect } from '../../shell/selectors';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import {
   DIMENSION_LABELS,
   METRIC_LABELS,
@@ -172,28 +172,17 @@ export function TargetsPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary">
-            Performance Targets (MOD-PERF SUB-PERF.01)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Operational target setting, version revisions, and dual-control approvals (SOD-04).
-          </Typography>
-        </Box>
-        {hasManage && (
-          <Button variant="contained" color="primary" onClick={() => setCreateOpen(true)}>
-            Create Target
-          </Button>
-        )}
-      </Stack>
+      <PageHeader
+        title="Performance Targets (MOD-PERF SUB-PERF.01)"
+        subtitle="Operational target setting, version revisions, and dual-control approvals (SOD-04)."
+        actions={
+          hasManage && (
+            <Button variant="contained" color="primary" onClick={() => setCreateOpen(true)}>
+              Create Target
+            </Button>
+          )
+        }
+      />
 
       {/* Tabs */}
       <Tabs

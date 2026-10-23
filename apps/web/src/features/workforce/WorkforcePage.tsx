@@ -30,7 +30,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { BranchName } from '../../shell/display';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import {
   checkIn,
   checkOut,
@@ -245,60 +245,53 @@ export function WorkforcePage() {
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
-      {/* Page Header */}
-      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
-            Workforce Management
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-            Availability & capacity routing, leave coverage planner, and daily attendance.
-          </Typography>
-        </Box>
-
-        {/* Self Availability Switcher Banner */}
-        <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', p: 1.5 }}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Typography variant="caption" fontWeight={600} sx={{ color: '#475569', textTransform: 'uppercase' }}>
-              My Status:
-            </Typography>
-            {(['AVAILABLE', 'BUSY', 'OFF_DUTY', 'ON_LEAVE'] as AvailabilityStatus[]).map((status) => {
-              const isSelected = currentAvailability === status;
-              const config = AVAILABILITY_CONFIG[status];
-              return (
-                <Chip
-                  key={status}
-                  label={config.label}
-                  color={isSelected ? 'success' : 'default'}
-                  variant={isSelected ? 'filled' : 'outlined'}
-                  size="small"
-                  clickable
-                  disabled={availabilityMutation.isPending}
-                  onClick={() => availabilityMutation.mutate(status)}
-                  sx={{
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    transform: isSelected ? 'scale(1.05)' : 'none',
-                    ...(isSelected
-                      ? {
-                          bgcolor: '#16a34a !important',
-                          color: '#ffffff !important',
-                          borderColor: '#16a34a !important',
-                          boxShadow: '0 2px 6px rgba(22, 163, 74, 0.35)',
-                        }
-                      : {
-                          borderColor: '#cbd5e1',
-                          color: '#475569',
-                          '&:hover': { bgcolor: '#f1f5f9' },
-                        }),
-                  }}
-                />
-              );
-            })}
-          </Stack>
-        </Card>
-      </Stack>
+      <PageHeader
+        title="Workforce Management"
+        subtitle="Availability & capacity routing, leave coverage planner, and daily attendance."
+        actions={
+          <Card sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', p: 1.5 }}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Typography variant="caption" fontWeight={600} sx={{ color: '#475569', textTransform: 'uppercase' }}>
+                My Status:
+              </Typography>
+              {(['AVAILABLE', 'BUSY', 'OFF_DUTY', 'ON_LEAVE'] as AvailabilityStatus[]).map((status) => {
+                const isSelected = currentAvailability === status;
+                const config = AVAILABILITY_CONFIG[status];
+                return (
+                  <Chip
+                    key={status}
+                    label={config.label}
+                    color={isSelected ? 'success' : 'default'}
+                    variant={isSelected ? 'filled' : 'outlined'}
+                    size="small"
+                    clickable
+                    disabled={availabilityMutation.isPending}
+                    onClick={() => availabilityMutation.mutate(status)}
+                    sx={{
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      transform: isSelected ? 'scale(1.05)' : 'none',
+                      ...(isSelected
+                        ? {
+                            bgcolor: '#16a34a !important',
+                            color: '#ffffff !important',
+                            borderColor: '#16a34a !important',
+                            boxShadow: '0 2px 6px rgba(22, 163, 74, 0.35)',
+                          }
+                        : {
+                            borderColor: '#cbd5e1',
+                            color: '#475569',
+                            '&:hover': { bgcolor: '#f1f5f9' },
+                          }),
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          </Card>
+        }
+      />
 
       {/* Toast Alert */}
       {toastMessage && (
