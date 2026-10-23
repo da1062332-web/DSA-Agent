@@ -36,7 +36,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   ConfigureIntegrationRequest,
@@ -188,55 +188,39 @@ export function IntegrationsPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header Banner */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
-              Integration Management &amp; Adapter Framework
-            </Typography>
-            <Chip
-              label="MOD-INT"
-              color="primary"
-              variant="outlined"
-              size="small"
-              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-            />
-            <Chip
-              label="DOM-M"
-              color="secondary"
-              variant="outlined"
-              size="small"
-              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-            />
+      <PageHeader
+        title="Integration Management &amp; Adapter Framework"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip label="MOD-INT" color="primary" variant="outlined" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
+            <Chip label="DOM-M" color="secondary" variant="outlined" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
             <Chip label="SUB-INT.01" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Centralized third-party provider adapters, capability descriptors, sandbox boundaries &amp; zero
-            plaintext credential management.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<HubIcon />}
-            onClick={handleOpenNewDialog}
-            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-          >
-            Configure Integration
-          </Button>
-          <Tooltip title="Refresh Feeds">
-            <IconButton
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['integrations'] })}
+          </Stack>
+        }
+        subtitle="Centralized third-party provider adapters, capability descriptors, sandbox boundaries & zero plaintext credential management."
+        actions={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              variant="contained"
               color="primary"
-              sx={{ border: '1px solid #e0e0e0' }}
+              startIcon={<HubIcon />}
+              onClick={handleOpenNewDialog}
+              sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
             >
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
+              Configure Integration
+            </Button>
+            <Tooltip title="Refresh Feeds">
+              <IconButton
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['integrations'] })}
+                color="primary"
+                sx={{ border: '1px solid #e0e0e0' }}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        }
+      />
 
       {/* Security Callout */}
       <Alert severity="info" sx={{ mb: 3 }} icon={<SecurityIcon />}>

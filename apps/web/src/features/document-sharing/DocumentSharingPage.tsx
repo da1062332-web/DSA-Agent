@@ -37,7 +37,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
@@ -232,41 +232,30 @@ export function DocumentSharingPage() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1300, mx: 'auto' }}>
-      {/* Header */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems="flex-start"
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Document Sharing
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Secure upload links for customers, and consent-checked case packages for lenders
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Can action="share.create">
-            <Button variant="outlined" onClick={() => setIsShareModalOpen(true)}>
-              + Create Share Package
-            </Button>
-          </Can>
-          <Can action="document.upload">
-            <Button
-              variant="contained"
-              onClick={() => {
-                setCreatedLinkResult(null);
-                setIsLinkModalOpen(true);
-              }}
-            >
-              + Generate Upload Link
-            </Button>
-          </Can>
-        </Stack>
-      </Stack>
+      <PageHeader
+        title="Document Sharing"
+        subtitle="Secure upload links for customers, and consent-checked case packages for lenders"
+        actions={
+          <Stack direction="row" spacing={1.5}>
+            <Can action="share.create">
+              <Button variant="outlined" onClick={() => setIsShareModalOpen(true)}>
+                + Create Share Package
+              </Button>
+            </Can>
+            <Can action="document.upload">
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setCreatedLinkResult(null);
+                  setIsLinkModalOpen(true);
+                }}
+              >
+                + Generate Upload Link
+              </Button>
+            </Can>
+          </Stack>
+        }
+      />
 
       {feedback && (
         <Alert severity={feedback.severity} onClose={() => setFeedback(null)} sx={{ mb: 3 }}>

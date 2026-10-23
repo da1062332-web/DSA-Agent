@@ -40,7 +40,7 @@ import {
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import type {
   AutomationDefinition,
   AutomationExecution,
@@ -183,26 +183,20 @@ export function AutomationListPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} sx={{ color: 'primary.main', mb: 0.5 }}>
-            Workflow Automation Engine
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 24 (MOD-WFA): Design multi-step workflows, configure event triggers, and supervise
-            execution pipelines.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
-            Refresh
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
-            New Automation Rule
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Workflow Automation Engine"
+        subtitle="Module 24 (MOD-WFA): Design multi-step workflows, configure event triggers, and supervise execution pipelines."
+        actions={
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
+              Refresh
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+              New Automation Rule
+            </Button>
+          </Box>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
