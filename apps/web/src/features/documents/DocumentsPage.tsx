@@ -1,25 +1,60 @@
 // /documents (owner: Dev 3, MOD-DOC; QA plan Module 09 document verifier). Pick an application and work its document checklist.
-// Needs application.read.
-import { Alert, Card, MenuItem, TextField, Typography } from '@mui/material';
-import { useState } from 'react';
+// Needs application.read. The page lists the applications in the user's scope; choosing one opens its checklist below the list.
+import { Alert, Box, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
-import { ErrorAlert, Loading, PageHeader } from '../admin/components';
+import { ErrorAlert, LoadMore, Loading } from '../admin/components';
+import { CustomerName } from '../../shell/display';
+import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from '../applications/rules';
+import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
+import type { ColumnDef } from '../../ui';
 import { ChecklistCard } from './ChecklistCard';
 
 interface ApplicationRow {
   id: string;
-  productCategory?: string;
-  status?: string;
+  customerId: string;
+  productCategory: string;
+  currency: string;
+  requestedAmount: string;
+  status: ApplicationStatus;
+  createdAt: string;
 }
+
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+  DOCUMENTS_PENDING: 'warning',
+  UNDER_REVIEW: 'info',
+  READY_FOR_SUBMISSION: 'success',
+  SUBMITTED: 'info',
+  SANCTIONED: 'success',
+  DISBURSED: 'success',
+  REJECTED: 'error',
+  WITHDRAWN: 'neutral',
+  CANCELLED: 'neutral',
+  CLOSED: 'neutral',
+};
 
 export function DocumentsPage() {
   const me = useMe();
   const allowed = !me.data || hasPermission(me.data, 'application.read');
   const [params, setParams] = useSearchParams();
   const [selected, setSelected] = useState(params.get('application') ?? '');
-  const apps = useList<ApplicationRow>('/v1/applications', {}, 50, allowed);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const apps = useList<ApplicationRow>('/v1/applications', { status: status || undefined }, 50, allowed);
+
+  const rows = useMemo(() => apps.data?.pages.flatMap((p) => p.data) ?? [], [apps.data]);
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (a) =>
+        a.id.toLowerCase().includes(q) ||
+        (a.productCategory ?? '').toLowerCase().includes(q) ||
+        STATUS_LABELS[a.status]?.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
 
   if (!allowed) {
     return (
@@ -29,42 +64,148 @@ export function DocumentsPage() {
     );
   }
 
-  const rows = apps.data?.pages.flatMap((p) => p.data) ?? [];
+  const choose = (id: string) => {
+    setSelected(id);
+    setParams(id ? { application: id } : {});
+  };
+
+  const chosen = rows.find((a) => a.id === selected);
+  const awaiting = rows.filter((a) => a.status === 'DOCUMENTS_PENDING').length;
+  const inReview = rows.filter((a) => a.status === 'UNDER_REVIEW').length;
+
+  const columns: ColumnDef<ApplicationRow>[] = [
+    {
+      id: 'customer',
+      header: 'Customer',
+      render: (a) => <CustomerName id={a.customerId} fallback={`Application ${a.id.slice(-6)}`} />,
+    },
+    { id: 'product', header: 'Product', render: (a) => a.productCategory || '—' },
+    {
+      id: 'amount',
+      header: 'Requested amount',
+      align: 'right',
+      render: (a) => `${a.currency} ${Number(a.requestedAmount).toLocaleString('en-IN')}`,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      render: (a) => (
+        <StatusBadge status={STATUS_TONE[a.status] ?? 'neutral'} label={STATUS_LABELS[a.status] ?? a.status} />
+      ),
+    },
+    {
+      id: 'action',
+      header: '',
+      align: 'right',
+      render: (a) => (
+        <Button
+          size="small"
+          variant={a.id === selected ? 'contained' : 'outlined'}
+          onClick={() => choose(a.id)}
+          data-testid={`documents.open.${a.id}`}
+        >
+          {a.id === selected ? 'Viewing' : 'Open checklist'}
+        </Button>
+      ),
+    },
+  ];
+
   return (
-    <div>
+    <Box>
       <PageHeader
         title="Documents"
-        subtitle="The documents each application needs and where each one stands. Upload, view, review (accept or reject with a reason) and waive from the checklist; customers can also upload through Document sharing."
+        subtitle="Choose an application to see the documents it needs and where each one stands. Upload, view, review (accept or reject with a reason) and waive from the checklist; customers can also upload through Document sharing."
       />
+
+      <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }}>
+        <StatCard title="Applications in scope" value={rows.length} format="number" status="default" />
+        <StatCard title="Awaiting documents" value={awaiting} format="number" status="warning" />
+        <StatCard title="Under review" value={inReview} format="number" status="info" />
+        <StatCard
+          title="Selected"
+          value={chosen ? STATUS_LABELS[chosen.status] ?? chosen.status : 'None'}
+          format="raw"
+          status="primary"
+        />
+      </StatCardGrid>
+
       <ErrorAlert error={apps.error} />
-      {apps.isLoading ? (
-        <Loading />
-      ) : rows.length === 0 && !apps.error ? (
-        <Card sx={{ p: 3 }} data-testid="documents-empty">
-          <Typography color="text.secondary">There are no applications in your scope yet.</Typography>
-        </Card>
-      ) : (
-        <TextField
-          select
-          size="small"
-          label="Application"
-          value={selected}
-          onChange={(e) => {
-            setSelected(e.target.value);
-            setParams(e.target.value ? { application: e.target.value } : {});
-          }}
-          sx={{ minWidth: 320, mb: 1 }}
-        >
-          {rows.map((a) => (
-            <MenuItem key={a.id} value={a.id}>
-              {a.id}
-              {a.productCategory ? ` · ${a.productCategory}` : ''}
-              {a.status ? ` · ${a.status}` : ''}
-            </MenuItem>
-          ))}
-        </TextField>
-      )}
-      {selected && <ChecklistCard applicationId={selected} />}
-    </div>
+
+      <DetailCard
+        title="Applications"
+        subtitle="Open an application to work its checklist."
+      >
+        <FilterToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by application, product or status"
+          searchTestId="documents.search"
+          filters={
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="documents-status-label">Status</InputLabel>
+              <Select
+                labelId="documents-status-label"
+                label="Status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                data-testid="documents.status"
+              >
+                <MenuItem value="">All statuses</MenuItem>
+                {APPLICATION_STATUSES.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          }
+        />
+
+        {apps.isLoading ? (
+          <Loading />
+        ) : rows.length === 0 && !apps.error ? (
+          <Typography color="text.secondary" data-testid="documents-empty">
+            There are no applications in your scope yet.
+          </Typography>
+        ) : (
+          <>
+            <DataTable<ApplicationRow>
+              dataTestId="documents.table"
+              data={visible}
+              columns={columns}
+              keyExtractor={(a) => a.id}
+              onRowClick={(a) => choose(a.id)}
+              emptyMessage="No applications match your search or status filter."
+            />
+            <LoadMore
+              hasNext={!!apps.hasNextPage}
+              loading={apps.isFetchingNextPage}
+              onClick={() => apps.fetchNextPage()}
+            />
+          </>
+        )}
+      </DetailCard>
+
+      <Box sx={{ mt: 3 }}>
+        {selected ? (
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip label={`Application ${selected.slice(-6)}`} size="small" variant="outlined" />
+              <Typography variant="body2" color="text.secondary">
+                Documents for this application
+              </Typography>
+              <Button size="small" onClick={() => choose('')}>
+                Close checklist
+              </Button>
+            </Stack>
+            <ChecklistCard applicationId={selected} />
+          </Stack>
+        ) : (
+          <Typography color="text.secondary" data-testid="documents-select-hint">
+            Select an application above to see its document checklist.
+          </Typography>
+        )}
+      </Box>
+    </Box>
   );
 }
