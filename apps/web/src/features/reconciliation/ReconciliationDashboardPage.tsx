@@ -32,7 +32,7 @@ import { LenderSelect } from '../../shell/selectors';
 import { LenderName } from '../../shell/display';
 import { useLookup } from '../admin/api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
-import { DataTable, StatCard, StatCardGrid } from '../../ui';
+import { DataTable, PageHeader, StatCard, StatCardGrid } from '../../ui';
 import {
   approveAdjustment,
   autoIngestBankFeed,
@@ -423,18 +423,10 @@ export function ReconciliationDashboardPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }} data-testid="rec.dashboard">
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-          <Box>
-            <Typography variant="h4" fontWeight={700} sx={{ color: 'primary.main', letterSpacing: '-0.5px' }}>
-              Reconciliation Management
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Domain DOM-K Finance Squad · Statement Ingestion, Commission Matching, Variance Resolution &
-              Settlement
-            </Typography>
-          </Box>
+      <PageHeader
+        title="Reconciliation Management"
+        subtitle="Domain DOM-K Finance Squad · Statement Ingestion, Commission Matching, Variance Resolution & Settlement"
+        actions={
           <Stack direction="row" spacing={2}>
             <Can action="finance.reconcile">
               <Button
@@ -470,8 +462,8 @@ export function ReconciliationDashboardPage() {
               </Button>
             </Can>
           </Stack>
-        </Stack>
-      </Box>
+        }
+      />
 
       {/* Feedback banner */}
       {feedback && (

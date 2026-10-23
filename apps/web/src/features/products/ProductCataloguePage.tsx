@@ -30,7 +30,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { Link as RouterLink } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -162,28 +162,24 @@ export function ProductCataloguePage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Loan Product Catalogue
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 15 / 29 — Lender product catalogue, parameter ranges, and immutable version governance
-          </Typography>
-        </Box>
-        {canManage && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => {
-              setCreateError(null);
-              setCreateDialogOpen(true);
-            }}
-          >
-            Add Loan Product
-          </Button>
-        )}
-      </Stack>
+      <PageHeader
+        title="Loan Product Catalogue"
+        subtitle="Module 15 / 29 — Lender product catalogue, parameter ranges, and immutable version governance"
+        actions={
+          canManage && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                setCreateError(null);
+                setCreateDialogOpen(true);
+              }}
+            >
+              Add Loan Product
+            </Button>
+          )
+        }
+      />
 
       {successMsg && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMsg(null)}>
