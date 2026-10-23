@@ -15,18 +15,13 @@ import {
   ListItemIcon,
   ListItemText,
   MenuItem,
-  Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
   SvgIcon,
   type SvgIconProps,
 } from '@mui/material';
+import { DataTable, DetailCard, PageHeader, StatusBadge } from '../../ui';
+import type { ColumnDef } from '../../ui';
 import { useLeaderboardDashboard } from './api';
 import type { DashboardFilterState } from './types';
 
@@ -76,58 +71,98 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+type LeaderboardEntry = NonNullable<NonNullable<ReturnType<typeof useLeaderboardDashboard>['data']>['entries']>[number];
+
 export function LeaderboardPage() {
   const [filters, setFilters] = useState<DashboardFilterState>({
     period: '2026-10',
   });
   const [isBannerExpanded, setIsBannerExpanded] = useState<boolean>(false);
 
-  const { data: leaderboard, isLoading, isError, error } =
-    useLeaderboardDashboard(filters);
+  const { data: leaderboard, isLoading, isError, error } = useLeaderboardDashboard(filters);
+
+  const columns: ColumnDef<LeaderboardEntry>[] = [
+    {
+      id: 'rank',
+      header: 'Rank',
+      render: () => (
+        <Chip size="small" label="Pending" variant="outlined" sx={{ color: 'text.secondary', borderStyle: 'dashed' }} />
+      ),
+    },
+    {
+      id: 'participant',
+      header: 'Participant',
+      render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.entityName}</Typography>,
+    },
+    {
+      id: 'branch',
+      header: 'Branch',
+      render: (row) => (
+        <Typography color="text.secondary">{row.branchName || 'Unassigned'}</Typography>
+      ),
+    },
+    { id: 'volume', header: 'Lead Volume', align: 'right', render: (row) => row.volume },
+    { id: 'sanctions', header: 'Sanctions', align: 'right', render: (row) => row.sanctionCount },
+    {
+      id: 'disbursed',
+      header: 'Disbursed Amount',
+      align: 'right',
+      render: (row) => <Typography sx={{ fontWeight: 600 }}>{formatCurrency(row.disbursementAmount)}</Typography>,
+    },
+    { id: 'conversion', header: 'Conversion %', align: 'right', render: (row) => `${row.conversionRate}%` },
+    {
+      id: 'score',
+      header: 'Calculated Score',
+      align: 'center',
+      render: () => (
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+          — (Pending Formula)
+        </Typography>
+      ),
+    },
+    {
+      id: 'guardrail',
+      header: 'Guardrail',
+      align: 'center',
+      render: (row) => (
+        <StatusBadge
+          label={row.guardrailStatus}
+          status={row.guardrailStatus === 'NORMAL' ? 'success' : 'warning'}
+        />
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3,
-        }}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Performance Leaderboards
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            CMP-PERF.03.1 — Balanced scorecard rankings and quality guardrails.
-          </Typography>
-        </Box>
-
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="leaderboard-period-label">Period</InputLabel>
-          <Select
-            labelId="leaderboard-period-label"
-            value={filters.period}
-            label="Period"
-            onChange={(e) => setFilters({ ...filters, period: e.target.value })}
-          >
-            <MenuItem value="2026-10">October 2026</MenuItem>
-            <MenuItem value="2026-09">September 2026</MenuItem>
-            <MenuItem value="2026-Q4">2026 Q4 (Oct - Dec)</MenuItem>
-            <MenuItem value="2026-Q3">2026 Q3 (Jul - Sep)</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+    <Box sx={{ py: 3, maxWidth: 1400, margin: '0 auto' }}>
+      <PageHeader
+        title="Performance Leaderboards"
+        subtitle="CMP-PERF.03.1 — Balanced scorecard rankings and quality guardrails."
+        actions={
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <InputLabel id="leaderboard-period-label">Period</InputLabel>
+            <Select
+              labelId="leaderboard-period-label"
+              value={filters.period}
+              label="Period"
+              onChange={(e) => setFilters({ ...filters, period: e.target.value })}
+            >
+              <MenuItem value="2026-10">October 2026</MenuItem>
+              <MenuItem value="2026-09">September 2026</MenuItem>
+              <MenuItem value="2026-Q4">2026 Q4 (Oct - Dec)</MenuItem>
+              <MenuItem value="2026-Q3">2026 Q3 (Jul - Sep)</MenuItem>
+            </Select>
+          </FormControl>
+        }
+      />
 
       {/* Governance & Business-Rule Blocker Banner (Collapsible) */}
       <Alert
         severity="warning"
         icon={<WarningAmberIcon fontSize="large" />}
         sx={{
-          mb: 4,
-          borderRadius: 2,
+          mb: 3,
+          borderRadius: 2.5,
           alignItems: 'flex-start',
           '& .MuiAlert-message': { width: '100%' },
         }}
@@ -172,19 +207,13 @@ export function LeaderboardPage() {
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <ErrorOutlineIcon color="warning" fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText
-                      primary={<Typography variant="caption">{decision}</Typography>}
-                    />
+                    <ListItemText primary={<Typography variant="caption">{decision}</Typography>} />
                   </ListItem>
                 ))
               ) : (
                 <ListItem disableGutters>
                   <ListItemText
-                    primary={
-                      <Typography variant="caption">
-                        Loading unresolved business decisions...
-                      </Typography>
-                    }
+                    primary={<Typography variant="caption">Loading unresolved business decisions...</Typography>}
                   />
                 </ListItem>
               )}
@@ -205,106 +234,20 @@ export function LeaderboardPage() {
         </Alert>
       )}
 
-      {/* Participant Operational Metrics Overview Table */}
+      {/* Participant Operational Metrics Overview */}
       {leaderboard && (
-        <Paper sx={{ p: 3, boxShadow: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box>
-              <Typography variant="h6" fontWeight="bold">
-                Participant Operational Activity (Unranked)
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Operational records for eligible loan officers during period {leaderboard.period}.
-              </Typography>
-            </Box>
-            <Chip
-              label="Ranking Status: Blocked"
-              color="warning"
-              variant="outlined"
-              size="small"
-            />
-          </Box>
-
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Rank</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Participant</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Branch</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    Lead Volume
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    Sanctions
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    Disbursed Amount
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    Conversion %
-                  </TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 'bold' }}>
-                    Calculated Score
-                  </TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 'bold' }}>
-                    Guardrail
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {leaderboard.entries.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No active participants recorded for the selected period.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  leaderboard.entries.map((entry) => (
-                    <TableRow key={entry.entityId} hover>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label="Pending"
-                          variant="outlined"
-                          sx={{ color: 'text.secondary', borderStyle: 'dashed' }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{entry.entityName}</TableCell>
-                      <TableCell color="text.secondary">
-                        {entry.branchName || 'Unassigned'}
-                      </TableCell>
-                      <TableCell align="right">{entry.volume}</TableCell>
-                      <TableCell align="right">{entry.sanctionCount}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(entry.disbursementAmount)}
-                      </TableCell>
-                      <TableCell align="right">{entry.conversionRate}%</TableCell>
-                      <TableCell align="center">
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ fontStyle: 'italic' }}
-                        >
-                          — (Pending Formula)
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          size="small"
-                          label={entry.guardrailStatus}
-                          color={entry.guardrailStatus === 'NORMAL' ? 'success' : 'warning'}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
+        <DetailCard
+          title="Participant Operational Activity (Unranked)"
+          subtitle={`Operational records for eligible loan officers during period ${leaderboard.period}.`}
+          badge={<Chip label="Ranking Status: Blocked" color="warning" variant="outlined" size="small" />}
+        >
+          <DataTable<LeaderboardEntry>
+            columns={columns}
+            data={leaderboard.entries}
+            keyExtractor={(row) => row.entityId}
+            emptyMessage="No active participants recorded for the selected period."
+          />
+        </DetailCard>
       )}
     </Box>
   );
