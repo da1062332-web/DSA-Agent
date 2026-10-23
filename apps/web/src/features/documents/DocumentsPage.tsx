@@ -1,7 +1,7 @@
 // /documents (owner: Dev 3, MOD-DOC; QA plan Module 09 document verifier). Pick an application and work its document checklist.
 // Needs application.read. The page lists the applications in the user's scope; choosing one opens its checklist below the list.
 import { Alert, Box, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
@@ -64,9 +64,14 @@ export function DocumentsPage() {
     );
   }
 
+  const checklistRef = useRef<HTMLDivElement | null>(null);
   const choose = (id: string) => {
     setSelected(id);
     setParams(id ? { application: id } : {});
+  };
+  const showChecklist = (id: string) => {
+    if (id !== selected) choose(id);
+    requestAnimationFrame(() => checklistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
   const chosen = rows.find((a) => a.id === selected);
@@ -101,10 +106,10 @@ export function DocumentsPage() {
         <Button
           size="small"
           variant={a.id === selected ? 'contained' : 'outlined'}
-          onClick={() => choose(a.id)}
+          onClick={() => showChecklist(a.id)}
           data-testid={`documents.open.${a.id}`}
         >
-          {a.id === selected ? 'Viewing' : 'Open checklist'}
+          {a.id === selected ? 'View checklist' : 'Open checklist'}
         </Button>
       ),
     },
@@ -174,7 +179,7 @@ export function DocumentsPage() {
               data={visible}
               columns={columns}
               keyExtractor={(a) => a.id}
-              onRowClick={(a) => choose(a.id)}
+              onRowClick={(a) => showChecklist(a.id)}
               emptyMessage="No applications match your search or status filter."
             />
             <LoadMore
@@ -188,7 +193,7 @@ export function DocumentsPage() {
 
       <Box sx={{ mt: 3 }}>
         {selected ? (
-          <Stack spacing={1}>
+          <Stack spacing={1} ref={checklistRef}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip label={`Application ${selected.slice(-6)}`} size="small" variant="outlined" />
               <Typography variant="body2" color="text.secondary">
