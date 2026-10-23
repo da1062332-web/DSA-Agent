@@ -31,6 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { createBranch, fetchBranches, fetchTenantConfig, updateBranch, updateTenantConfig } from './api';
 import type {
   BranchConfig,
@@ -463,50 +464,33 @@ export function ConfigurationPage() {
             }
           />
           <Divider />
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Branch Code</TableCell>
-                  <TableCell>Branch Name</TableCell>
-                  <TableCell>Pincode</TableCell>
-                  <TableCell>Timezone</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {branches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No branches found for this tenant.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  branches.map((b) => (
-                    <TableRow key={b.id} hover>
-                      <TableCell sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{b.code}</TableCell>
-                      <TableCell>{b.name}</TableCell>
-                      <TableCell>{b.pincode || '—'}</TableCell>
-                      <TableCell>{b.timezone}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={b.status}
-                          color={b.status === 'ACTIVE' ? 'success' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button variant="outlined" size="small" onClick={() => handleOpenEditBranch(b)}>
-                          Edit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<(typeof branches)[number]>
+            dataTestId="config.table.branches"
+            data={branches}
+            keyExtractor={(b) => b.id}
+            emptyMessage="No branches found for this tenant."
+            columns={[
+              { id: 'code', header: 'Branch Code', render: (b) => <Box sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{b.code}</Box> },
+              { id: 'name', header: 'Branch Name', render: (b) => b.name },
+              { id: 'pincode', header: 'Pincode', render: (b) => b.pincode || '—' },
+              { id: 'timezone', header: 'Timezone', render: (b) => b.timezone },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (b) => <Chip label={b.status} color={b.status === 'ACTIVE' ? 'success' : 'default'} size="small" />,
+              },
+              {
+                id: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (b) => (
+                  <Button variant="outlined" size="small" onClick={() => handleOpenEditBranch(b)}>
+                    Edit
+                  </Button>
+                ),
+              },
+            ]}
+          />
         </Card>
       )}
 

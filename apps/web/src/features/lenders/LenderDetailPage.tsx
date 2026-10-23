@@ -411,7 +411,7 @@ export function LenderDetailPage() {
               header: 'Permitted Categories',
               render: (emp) => (
                 <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                  {emp.permittedCategories.map((c) => (
+                  {emp.permittedCategories?.map((c: string) => (
                     <Chip key={c} label={c} size="small" />
                   ))}
                 </Stack>

@@ -36,6 +36,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   ConfigureIntegrationRequest,
@@ -358,143 +359,129 @@ export function IntegrationsPage() {
               </Button>
             </Box>
           ) : (
-            <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
-              <Table sx={{ minWidth: 920 }}>
-                <TableHead sx={{ bgcolor: 'grey.50' }}>
-                  <TableRow>
-                    <TableCell sx={{ minWidth: 160 }}>
-                      <strong>Provider &amp; Connection ID</strong>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 150 }}>
-                      <strong>Standard Capability</strong>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 110 }}>
-                      <strong>Environment</strong>
-                    </TableCell>
-                    <TableCell sx={{ maxWidth: 220 }}>
-                      <strong>Vault Credential Reference</strong>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 130 }}>
-                      <strong>Health &amp; Latency</strong>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>
-                      <strong>Status</strong>
-                    </TableCell>
-                    <TableCell align="right" sx={{ minWidth: 140 }}>
-                      <strong>Actions</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredConnections.map((conn) => (
-                    <TableRow key={conn.id} hover>
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight={700}>
-                          {conn.provider}
-                        </Typography>
+            <DataTable<(typeof filteredConnections)[number]>
+              dataTestId="int.table.connections"
+              data={filteredConnections}
+              keyExtractor={(conn) => conn.id}
+              columns={[
+                {
+                  id: 'provider',
+                  header: 'Provider & Connection ID',
+                  render: (conn) => (
+                    <>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        {conn.provider}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {conn.id} (v{conn.lockVersion})
+                      </Typography>
+                    </>
+                  ),
+                },
+                {
+                  id: 'capability',
+                  header: 'Standard Capability',
+                  render: (conn) => (
+                    <Chip label={conn.capability} size="small" variant="outlined" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }} />
+                  ),
+                },
+                {
+                  id: 'environment',
+                  header: 'Environment',
+                  render: (conn) => (
+                    <Chip
+                      label={conn.environment}
+                      size="small"
+                      color={conn.environment === 'PRODUCTION' ? 'secondary' : 'default'}
+                      sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                    />
+                  ),
+                },
+                {
+                  id: 'credential',
+                  header: 'Vault Credential Reference',
+                  render: (conn) => (
+                    <Tooltip title={conn.credentialRef} arrow>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.75rem',
+                          color: 'primary.dark',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {conn.credentialRef}
+                      </Typography>
+                    </Tooltip>
+                  ),
+                },
+                {
+                  id: 'health',
+                  header: 'Health & Latency',
+                  render: (conn) =>
+                    conn.health ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={conn.health.healthy ? 'HEALTHY' : 'UNHEALTHY'}
+                          size="small"
+                          color={conn.health.healthy ? 'success' : 'error'}
+                          sx={{ fontWeight: 600, fontSize: '0.65rem' }}
+                        />
                         <Typography variant="caption" color="text.secondary">
-                          {conn.id} (v{conn.lockVersion})
+                          {conn.health.latencyMs}ms
                         </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={conn.capability}
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={conn.environment}
-                          size="small"
-                          color={conn.environment === 'PRODUCTION' ? 'secondary' : 'default'}
-                          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 220 }}>
-                        <Tooltip title={conn.credentialRef} arrow>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontFamily: 'monospace',
-                              fontSize: '0.75rem',
-                              color: 'primary.dark',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {conn.credentialRef}
-                          </Typography>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        {conn.health ? (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Chip
-                              label={conn.health.healthy ? 'HEALTHY' : 'UNHEALTHY'}
-                              size="small"
-                              color={conn.health.healthy ? 'success' : 'error'}
-                              sx={{ fontWeight: 600, fontSize: '0.65rem' }}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              {conn.health.latencyMs}ms
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            Not pinged yet
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={conn.status}
-                          size="small"
-                          color={
-                            conn.status === 'ACTIVE'
-                              ? 'success'
-                              : conn.status === 'DEGRADED'
-                                ? 'warning'
-                                : 'default'
-                          }
-                          variant="outlined"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<FlashIcon />}
-                            onClick={() =>
-                              pingMutation.mutate({
-                                provider: conn.provider,
-                                capability: conn.capability,
-                              })
-                            }
-                            disabled={pingMutation.isPending}
-                            sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-                          >
-                            Ping
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => handleEdit(conn)}
-                            sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-                          >
-                            Edit
-                          </Button>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      </Box>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        Not pinged yet
+                      </Typography>
+                    ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (conn) => (
+                    <Chip
+                      label={conn.status}
+                      size="small"
+                      color={conn.status === 'ACTIVE' ? 'success' : conn.status === 'DEGRADED' ? 'warning' : 'default'}
+                      variant="outlined"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  ),
+                },
+                {
+                  id: 'actions',
+                  header: 'Actions',
+                  align: 'right',
+                  render: (conn) => (
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ whiteSpace: 'nowrap' }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<FlashIcon />}
+                        onClick={() => pingMutation.mutate({ provider: conn.provider, capability: conn.capability })}
+                        disabled={pingMutation.isPending}
+                        sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                      >
+                        Ping
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleEdit(conn)}
+                        sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                      >
+                        Edit
+                      </Button>
+                    </Stack>
+                  ),
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>
