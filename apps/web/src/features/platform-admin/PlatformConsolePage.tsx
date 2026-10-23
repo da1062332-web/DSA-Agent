@@ -372,8 +372,8 @@ export function PlatformConsolePage() {
                   <CircularProgress size={32} />
                 </Box>
               ) : (
-                <TableContainer>
-                  <Table>
+                <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                  <Table sx={{ minWidth: 850 }}>
                     <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
                         <TableCell>
