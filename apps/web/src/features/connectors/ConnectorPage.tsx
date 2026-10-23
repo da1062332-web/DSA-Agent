@@ -40,7 +40,7 @@ import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { ConnectorSelect, LeadSelect } from '../../shell/selectors';
 import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import type {
   AttributionChangeRequestResource,
   AttributionDisputeResource,
@@ -426,91 +426,69 @@ export function ConnectorPage() {
           </Breadcrumbs>
         </Stack>
 
-        {/* Connector Header Card */}
-        <Card variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              justifyContent="space-between"
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-              spacing={2}
-            >
-              <Box>
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-                  <Typography variant="h5" fontWeight={700}>
-                    {selectedConnector.legalName}
-                  </Typography>
-                  <Chip
-                    label={selectedConnector.status}
-                    color={STATUS_COLORS[selectedConnector.status] || 'default'}
-                    size="small"
-                    sx={{ fontWeight: 600 }}
-                  />
-                  <Chip
-                    label={selectedConnector.connectorType}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 500 }}
-                  />
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>ID:</strong>{' '}
-                  <span style={{ fontFamily: 'monospace' }}>{selectedConnector.id}</span> •{' '}
-                  <strong>Contact:</strong> {selectedConnector.contactPerson} •{' '}
-                  <strong>Mobile:</strong> {selectedConnector.mobileE164} •{' '}
-                  <strong>Email:</strong> {selectedConnector.email} •{' '}
-                  <strong>PAN:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
-                </Typography>
-              </Box>
-
-              {/* Status Action Buttons */}
-              <Stack direction="row" spacing={1}>
-                {selectedConnector.status === 'DRAFT' && (
-                  <Can action="connector.manage">
-                    <Button
-                      size="small"
-                      color="success"
-                      variant="contained"
-                      onClick={() => setActivateModalOpen(true)}
-                    >
-                      Activate Connector
-                    </Button>
-                  </Can>
-                )}
-                {selectedConnector.status === 'ACTIVE' && (
-                  <Can action="connector.manage">
-                    <Button
-                      size="small"
-                      color="warning"
-                      variant="outlined"
-                      onClick={() => {
-                        setTargetStatus('SUSPENDED');
-                        setStatusModalOpen(true);
-                      }}
-                    >
-                      Suspend
-                    </Button>
-                  </Can>
-                )}
-                {selectedConnector.status === 'SUSPENDED' && (
-                  <Can action="connector.manage">
-                    <Button
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      onClick={() => {
-                        setTargetStatus('ACTIVE');
-                        setStatusModalOpen(true);
-                      }}
-                    >
-                      Reinstate
-                    </Button>
-                  </Can>
-                )}
-              </Stack>
+        <PageHeader
+          title={selectedConnector.legalName}
+          badge={
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip
+                label={selectedConnector.status}
+                color={STATUS_COLORS[selectedConnector.status] || 'default'}
+                size="small"
+                sx={{ fontWeight: 600 }}
+              />
+              <Chip label={selectedConnector.connectorType} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
             </Stack>
-          </CardContent>
-        </Card>
+          }
+          subtitle={
+            <Typography variant="body2" color="text.secondary">
+              <strong>ID:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.id}</span> •{' '}
+              <strong>Contact:</strong> {selectedConnector.contactPerson} • <strong>Mobile:</strong>{' '}
+              {selectedConnector.mobileE164} • <strong>Email:</strong> {selectedConnector.email} •{' '}
+              <strong>PAN:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
+            </Typography>
+          }
+          actions={
+            <Stack direction="row" spacing={1}>
+              {selectedConnector.status === 'DRAFT' && (
+                <Can action="connector.manage">
+                  <Button size="small" color="success" variant="contained" onClick={() => setActivateModalOpen(true)}>
+                    Activate Connector
+                  </Button>
+                </Can>
+              )}
+              {selectedConnector.status === 'ACTIVE' && (
+                <Can action="connector.manage">
+                  <Button
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    onClick={() => {
+                      setTargetStatus('SUSPENDED');
+                      setStatusModalOpen(true);
+                    }}
+                  >
+                    Suspend
+                  </Button>
+                </Can>
+              )}
+              {selectedConnector.status === 'SUSPENDED' && (
+                <Can action="connector.manage">
+                  <Button
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    onClick={() => {
+                      setTargetStatus('ACTIVE');
+                      setStatusModalOpen(true);
+                    }}
+                  >
+                    Reinstate
+                  </Button>
+                </Can>
+              )}
+            </Stack>
+          }
+        />
 
         {/* Contextual Tabs inside this Connector */}
         <Paper sx={{ mb: 3, borderRadius: 2 }}>
