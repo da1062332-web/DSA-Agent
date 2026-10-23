@@ -30,7 +30,7 @@ import { getCustomer, updateCustomer, ApiError } from './api';
 import { Can } from '../../shell/Can';
 import { BranchSelect } from '../../shell/selectors';
 import { BranchName } from '../../shell/display';
-import { PageHeader } from '../../ui';
+import { DetailCard, PageHeader } from '../../ui';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useLookup } from '../admin/api';
 import { STATUS_LABELS } from '../applications/rules';
@@ -195,13 +195,7 @@ export function CustomerDetailPage() {
       <Grid container spacing={3}>
         {/* Personal Details Card */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%', borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Personal & Party Details
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-
+          <DetailCard title="Personal & Party Details">
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -232,19 +226,12 @@ export function CustomerDetailPage() {
                   <Typography variant="body1">{customer.status}</Typography>
                 </Box>
               </Stack>
-            </CardContent>
-          </Card>
+          </DetailCard>
         </Grid>
 
         {/* Contact and DPDP Privacy Card */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%', borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Contact & DPDP Masking
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-
+          <DetailCard title="Contact & DPDP Masking">
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -273,8 +260,7 @@ export function CustomerDetailPage() {
                   <Typography variant="body1">{new Date(customer.updatedAt).toLocaleString()}</Typography>
                 </Box>
               </Stack>
-            </CardContent>
-          </Card>
+          </DetailCard>
         </Grid>
 
         {/* DPDP Consents Lifecycle Card */}
