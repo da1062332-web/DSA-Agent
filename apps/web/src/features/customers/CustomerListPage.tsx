@@ -4,31 +4,26 @@ import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
   Container,
   FormControl,
-  Grid,
-  InputAdornment,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
   Typography,
 } from '@mui/material';
 import { listCustomers } from './api';
 import type { CustomerResource } from './types';
 import { BranchName } from '../../shell/display';
+import {
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  FilterToolbar,
+  DataTable,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 
 export function CustomerListPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,252 +63,187 @@ export function CustomerListPage() {
     return { total, individuals, entities, active };
   }, [customers]);
 
-  return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ sm: 'center' }}
-        spacing={2}
-        sx={{ mb: 4 }}
-      >
+  const columns: ColumnDef<CustomerResource>[] = [
+    {
+      id: 'fullName',
+      header: 'Customer Name',
+      accessor: (c) => (
         <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Customers
+          <Typography
+            component={RouterLink}
+            to={`/customers/${c.id}`}
+            variant="body2"
+            fontWeight={600}
+            color="info.main"
+            sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            {c.fullName}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Borrower party profiles, entity records, and DPDP consented parties (MOD-CUST).
+          <Typography variant="caption" display="block" color="text.secondary" fontFamily="monospace">
+            {c.id}
           </Typography>
         </Box>
-      </Stack>
+      ),
+    },
+    {
+      id: 'partyType',
+      header: 'Party Type',
+      accessor: (c) => (
+        <StatusBadge
+          status={c.partyType === 'INDIVIDUAL' ? 'info' : 'warning'}
+          label={c.partyType}
+          variant="outlined"
+          dot={false}
+        />
+      ),
+    },
+    {
+      id: 'contact',
+      header: 'Contact Info',
+      accessor: (c) => (
+        <Box>
+          <Typography variant="body2">{c.primaryMobileMasked || '—'}</Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {c.primaryEmailMasked || '—'}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'homeBranchId',
+      header: 'Home Branch',
+      accessor: (c) => <BranchName id={c.homeBranchId} fallback="—" />,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (c) => <StatusBadge status={c.status} />,
+    },
+    {
+      id: 'createdAt',
+      header: 'Created',
+      accessor: (c) => (
+        <Typography variant="caption" color="text.secondary">
+          {new Date(c.createdAt).toLocaleDateString()}
+        </Typography>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (c) => (
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button
+            size="small"
+            variant="outlined"
+            component={RouterLink}
+            to={`/customers/${c.id}`}
+            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600, fontSize: 12 }}
+          >
+            Profile
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            color="secondary"
+            component={RouterLink}
+            to={`/customers/${c.id}/consents`}
+            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 12 }}
+          >
+            Consents
+          </Button>
+        </Stack>
+      ),
+    },
+  ];
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-            <CardContent>
-              <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                Total Profiles
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="primary.main">
-                {stats.total}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Registered borrower parties
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-            <CardContent>
-              <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                Individuals
-              </Typography>
-              <Typography variant="h4" fontWeight={700}>
-                {stats.individuals}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Retail borrowers
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-            <CardContent>
-              <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                Entities
-              </Typography>
-              <Typography variant="h4" fontWeight={700}>
-                {stats.entities}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Commercial / corporate borrowers
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-            <CardContent>
-              <Typography variant="overline" color="text.secondary" fontWeight={600}>
-                Active Status
-              </Typography>
-              <Typography variant="h4" fontWeight={700} color="success.main">
-                {stats.active}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Verified party profiles
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+  return (
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <PageHeader
+        title="Customers"
+        subtitle="Borrower party profiles, entity records, and DPDP consented parties (MOD-CUST)."
+      />
 
-      {/* Filter and Search Bar */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Search by customer name, ID, phone, or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              data-testid="customer-search-input"
-            />
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <FormControl fullWidth size="small">
+      <StatCardGrid>
+        <StatCard
+          title="Total Profiles"
+          value={stats.total}
+          subtitle="Registered borrower parties"
+          status="primary"
+        />
+        <StatCard
+          title="Individuals"
+          value={stats.individuals}
+          subtitle="Retail borrowers"
+          status="info"
+        />
+        <StatCard
+          title="Entities"
+          value={stats.entities}
+          subtitle="Commercial / corporate"
+          status="warning"
+        />
+        <StatCard
+          title="Active Status"
+          value={stats.active}
+          subtitle="Verified party profiles"
+          status="success"
+        />
+      </StatCardGrid>
+
+      <FilterToolbar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by customer name, ID, phone, or email..."
+        searchTestId="customer-search-input"
+        filters={
+          <>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Party Type</InputLabel>
               <Select
                 value={partyTypeFilter}
                 label="Party Type"
                 onChange={(e) => setPartyTypeFilter(e.target.value as any)}
+                sx={{ borderRadius: 2 }}
               >
                 <MenuItem value="ALL">All Types</MenuItem>
                 <MenuItem value="INDIVIDUAL">Individual</MenuItem>
                 <MenuItem value="ENTITY">Entity</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <FormControl fullWidth size="small">
+            <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
                 label="Status"
                 onChange={(e) => setStatusFilter(e.target.value as any)}
+                sx={{ borderRadius: 2 }}
               >
                 <MenuItem value="ALL">All Statuses</MenuItem>
                 <MenuItem value="ACTIVE">Active</MenuItem>
                 <MenuItem value="MERGED">Merged</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
+          </>
+        }
+      />
 
-      {/* Customer List Table */}
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : isError ? (
-        <Paper sx={{ p: 4, textAlign: 'center', color: 'error.main' }}>
-          <Typography variant="h6" gutterBottom>
-            Error loading customers
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            {(error as Error)?.message || 'Failed to fetch customer list from API.'}
-          </Typography>
-          <Button variant="outlined" onClick={() => refetch()}>
-            Try Again
-          </Button>
-        </Paper>
-      ) : filteredCustomers.length === 0 ? (
-        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 2 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            No customers found
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {searchTerm
-              ? 'Try modifying your search query or filters.'
-              : 'Customers will be created automatically when qualified leads are converted.'}
-          </Typography>
-        </Paper>
-      ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 1 }}>
-          <Table>
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Customer Name</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Party Type</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Contact Info</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Home Branch</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredCustomers.map((customer) => (
-                <TableRow key={customer.id} hover>
-                  <TableCell>
-                    <Typography
-                      component={RouterLink}
-                      to={`/customers/${customer.id}`}
-                      variant="body2"
-                      fontWeight={600}
-                      color="primary.main"
-                      sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                    >
-                      {customer.fullName}
-                    </Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      {customer.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={customer.partyType}
-                      variant="outlined"
-                      color={customer.partyType === 'INDIVIDUAL' ? 'primary' : 'secondary'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{customer.primaryMobileMasked || '—'}</Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {customer.primaryEmailMasked || '—'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <BranchName id={customer.homeBranchId} fallback="—" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={customer.status}
-                      color={customer.status === 'ACTIVE' ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(customer.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        component={RouterLink}
-                        to={`/customers/${customer.id}`}
-                      >
-                        Profile
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="secondary"
-                        component={RouterLink}
-                        to={`/customers/${customer.id}/consents`}
-                      >
-                        Consents
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <DataTable<CustomerResource>
+        columns={columns}
+        data={filteredCustomers}
+        keyExtractor={(c) => c.id}
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        onRetry={refetch}
+        emptyTitle="No customers found"
+        emptyDescription={
+          searchTerm
+            ? 'Try modifying your search query or filters.'
+            : 'Customers will be created automatically when qualified leads are converted.'
+        }
+      />
     </Container>
   );
 }
