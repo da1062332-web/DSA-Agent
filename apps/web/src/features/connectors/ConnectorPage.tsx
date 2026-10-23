@@ -1065,18 +1065,10 @@ export function ConnectorPage() {
   // ==========================================
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* Header Banner */}
-      <Box sx={{ mb: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Typography variant="h4" fontWeight={700} color="text.primary">
-              Connector Management (MOD-CON)
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute
-              Workbench
-            </Typography>
-          </Box>
+      <PageHeader
+        title="Connector Management (MOD-CON)"
+        subtitle="Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute Workbench"
+        actions={
           <Can action="connector.manage">
             <Button
               variant="contained"
@@ -1087,8 +1079,8 @@ export function ConnectorPage() {
               + Onboard Connector
             </Button>
           </Can>
-        </Stack>
-      </Box>
+        }
+      />
 
       {/* Main Tabs */}
       <Paper sx={{ mb: 3, borderRadius: 2 }}>
