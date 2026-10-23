@@ -17,7 +17,7 @@ import { apiFetch, errorText } from '../../api/client';
 import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
 import { UserName } from '../../shell/display';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 
 // Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
 export function ActivitiesPage() {
@@ -85,24 +85,20 @@ export function ActivitiesPage() {
           {error}
         </Alert>
       )}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Activities & Interactions (MOD-ACT)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 10 &bull; Interaction Logging &bull; Calls, Meetings, Notes &bull; S2/S3 Data Protection
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button variant="outlined" onClick={fetchActivities}>
-            Refresh
-          </Button>
-          <Button variant="contained" onClick={() => setFormOpen(true)} data-testid="activity.log-button">
-            + Log Activity
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Activities & Interactions (MOD-ACT)"
+        subtitle="Module 10 • Interaction Logging • Calls, Meetings, Notes • S2/S3 Data Protection"
+        actions={
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button variant="outlined" onClick={fetchActivities}>
+              Refresh
+            </Button>
+            <Button variant="contained" onClick={() => setFormOpen(true)} data-testid="activity.log-button">
+              + Log Activity
+            </Button>
+          </Box>
+        }
+      />
 
       <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
         <CardContent sx={{ p: 0 }}>

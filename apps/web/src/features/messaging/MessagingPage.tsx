@@ -5,7 +5,7 @@ import { ApiError, apiFetch } from '../../api/client';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 import { Can } from '../../shell/Can';
-import { DataTable, DetailCard } from '../../ui';
+import { DataTable, DetailCard, PageHeader } from '../../ui';
 import type { ColumnDef } from '../../ui';
 
 export interface MessagingPageProps {
@@ -115,21 +115,17 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
           You don't have access to messaging. Ask your administrator to grant you the message.send permission.
         </Alert>
       )}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Omnichannel Messaging (MOD-MSG)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Templates &bull; Dispatch &bull; Delivery Tracking &bull; Consent & Quiet Hours Guard
-          </Typography>
-        </Box>
-        <Can action="config.manage">
-          <Button variant="contained" onClick={() => setEditorOpen(true)}>
-            New Template
-          </Button>
-        </Can>
-      </Box>
+      <PageHeader
+        title="Omnichannel Messaging (MOD-MSG)"
+        subtitle="Templates • Dispatch • Delivery Tracking • Consent & Quiet Hours Guard"
+        actions={
+          <Can action="config.manage">
+            <Button variant="contained" onClick={() => setEditorOpen(true)}>
+              New Template
+            </Button>
+          </Can>
+        }
+      />
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)}>

@@ -29,7 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { Link as RouterLink } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -162,28 +162,24 @@ export function LenderListPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Lender Directory
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 14 / 28 — Lender standing, empanelment agreements, and escalation contacts
-          </Typography>
-        </Box>
-        {canManage && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => {
-              setCreateError(null);
-              setCreateDialogOpen(true);
-            }}
-          >
-            Add Lender
-          </Button>
-        )}
-      </Stack>
+      <PageHeader
+        title="Lender Directory"
+        subtitle="Module 14 / 28 — Lender standing, empanelment agreements, and escalation contacts"
+        actions={
+          canManage && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => {
+                setCreateError(null);
+                setCreateDialogOpen(true);
+              }}
+            >
+              Add Lender
+            </Button>
+          )
+        }
+      />
 
       {successMsg && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMsg(null)}>
