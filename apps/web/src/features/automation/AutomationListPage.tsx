@@ -40,6 +40,7 @@ import {
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
+import { DataTable } from '../../ui';
 import type {
   AutomationDefinition,
   AutomationExecution,
@@ -325,165 +326,167 @@ export function AutomationListPage() {
               </FormControl>
             </Box>
 
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ backgroundColor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Rule Code</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Entity</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Trigger</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Pinned Version</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredDefinitions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">No automation rules found.</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredDefinitions.map((d) => (
-                      <TableRow key={d.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-                            {d.code}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>
-                            {d.name}
-                          </Typography>
-                          {d.description && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              {d.description}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip size="small" label={d.entityType} variant="outlined" />
-                        </TableCell>
-                        <TableCell>
-                          <Chip size="small" label={d.triggerType} color="primary" variant="outlined" />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">
-                            {d.pinnedVersionId ? d.pinnedVersionId.slice(0, 12) + '...' : 'None (Draft)'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={d.status}
-                            color={
-                              d.status === 'ACTIVE' ? 'success' : d.status === 'DRAFT' ? 'warning' : 'default'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="Trigger / Execute">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => {
-                                setSelectedDefForExec(d);
-                                setExecuteDialogOpen(true);
-                              }}
-                            >
-                              <PlayArrowIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="View Details & Versions">
-                            <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
-                              <VisibilityIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<(typeof filteredDefinitions)[number]>
+              dataTestId="wfa.table.rules"
+              data={filteredDefinitions}
+              keyExtractor={(d) => d.id}
+              emptyMessage="No automation rules found."
+              columns={[
+                {
+                  id: 'code',
+                  header: 'Rule Code',
+                  render: (d) => (
+                    <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
+                      {d.code}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'name',
+                  header: 'Name',
+                  render: (d) => (
+                    <>
+                      <Typography variant="body2" fontWeight={600}>
+                        {d.name}
+                      </Typography>
+                      {d.description && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {d.description}
+                        </Typography>
+                      )}
+                    </>
+                  ),
+                },
+                { id: 'entity', header: 'Entity', render: (d) => <Chip size="small" label={d.entityType} variant="outlined" /> },
+                {
+                  id: 'trigger',
+                  header: 'Trigger',
+                  render: (d) => <Chip size="small" label={d.triggerType} color="primary" variant="outlined" />,
+                },
+                {
+                  id: 'pinned',
+                  header: 'Pinned Version',
+                  render: (d) => (
+                    <Typography variant="caption" fontFamily="monospace">
+                      {d.pinnedVersionId ? d.pinnedVersionId.slice(0, 12) + '...' : 'None (Draft)'}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (d) => (
+                    <Chip
+                      size="small"
+                      label={d.status}
+                      color={d.status === 'ACTIVE' ? 'success' : d.status === 'DRAFT' ? 'warning' : 'default'}
+                    />
+                  ),
+                },
+                {
+                  id: 'actions',
+                  header: 'Actions',
+                  align: 'right',
+                  render: (d) => (
+                    <>
+                      <Tooltip title="Trigger / Execute">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => {
+                            setSelectedDefForExec(d);
+                            setExecuteDialogOpen(true);
+                          }}
+                        >
+                          <PlayArrowIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="View Details & Versions">
+                        <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  ),
+                },
+              ]}
+            />
           </Box>
         )}
 
         {/* Tab 1: Execution Logs */}
         {tabIndex === 1 && (
           <Box sx={{ p: 2 }}>
-            <TableContainer>
-              <Table size="medium">
-                <TableHead sx={{ backgroundColor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Execution ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Definition ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Subject</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Triggered At</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Completed At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {executions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                        <Typography color="text.secondary">No execution logs recorded yet.</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    executions.map((e) => (
-                      <TableRow key={e.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {e.id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">
-                            {e.definitionId}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {e.subjectType}: {e.subjectId}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={e.status}
-                            color={
-                              e.status === 'SUCCEEDED'
-                                ? 'success'
-                                : e.status === 'FAILED'
-                                  ? 'error'
-                                  : e.status === 'RUNNING'
-                                    ? 'info'
-                                    : 'warning'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption">
-                            {new Date(e.startedAt ?? e.createdAt).toLocaleString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption">
-                            {e.completedAt ? new Date(e.completedAt).toLocaleString() : 'In Progress'}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <DataTable<(typeof executions)[number]>
+              dataTestId="wfa.table.executions"
+              data={executions}
+              keyExtractor={(e) => e.id}
+              emptyMessage="No execution logs recorded yet."
+              columns={[
+                {
+                  id: 'id',
+                  header: 'Execution ID',
+                  render: (e) => (
+                    <Typography variant="body2" fontFamily="monospace">
+                      {e.id}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'definition',
+                  header: 'Definition ID',
+                  render: (e) => (
+                    <Typography variant="caption" fontFamily="monospace">
+                      {e.definitionId}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'subject',
+                  header: 'Subject',
+                  render: (e) => (
+                    <Typography variant="body2">
+                      {e.subjectType}: {e.subjectId}
+                    </Typography>
+                  ),
+                },
+                {
+                  id: 'status',
+                  header: 'Status',
+                  render: (e) => (
+                    <Chip
+                      size="small"
+                      label={e.status}
+                      color={
+                        e.status === 'SUCCEEDED'
+                          ? 'success'
+                          : e.status === 'FAILED'
+                            ? 'error'
+                            : e.status === 'RUNNING'
+                              ? 'info'
+                              : 'warning'
+                      }
+                    />
+                  ),
+                },
+                {
+                  id: 'started',
+                  header: 'Triggered At',
+                  render: (e) => (
+                    <Typography variant="caption">{new Date(e.startedAt ?? e.createdAt).toLocaleString()}</Typography>
+                  ),
+                },
+                {
+                  id: 'completed',
+                  header: 'Completed At',
+                  render: (e) => (
+                    <Typography variant="caption">
+                      {e.completedAt ? new Date(e.completedAt).toLocaleString() : 'In Progress'}
+                    </Typography>
+                  ),
+                },
+              ]}
+            />
           </Box>
         )}
 
@@ -501,66 +504,64 @@ export function AutomationListPage() {
                 </Typography>
               </Box>
             ) : (
-              <TableContainer>
-                <Table size="medium">
-                  <TableHead sx={{ backgroundColor: 'action.hover' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600 }}>Dead Letter ID</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Execution ID</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Step Execution ID</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        Operator Actions
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {deadLetters.map((dl) => (
-                      <TableRow key={dl.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontFamily="monospace">
-                            {dl.id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">
-                            {dl.executionId}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{dl.stepExecutionId}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip size="small" color="error" label={dl.reason} />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{dl.resolutionStatus}</Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            sx={{ mr: 1 }}
-                            onClick={() => handleResolveDeadLetter(dl.id, 'RETRY')}
-                          >
-                            Retry
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => handleResolveDeadLetter(dl.id, 'SKIP')}
-                          >
-                            Skip
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <DataTable<(typeof deadLetters)[number]>
+                dataTestId="wfa.table.dead-letters"
+                data={deadLetters}
+                keyExtractor={(dl) => dl.id}
+                columns={[
+                  {
+                    id: 'id',
+                    header: 'Dead Letter ID',
+                    render: (dl) => (
+                      <Typography variant="body2" fontFamily="monospace">
+                        {dl.id}
+                      </Typography>
+                    ),
+                  },
+                  {
+                    id: 'execution',
+                    header: 'Execution ID',
+                    render: (dl) => (
+                      <Typography variant="caption" fontFamily="monospace">
+                        {dl.executionId}
+                      </Typography>
+                    ),
+                  },
+                  {
+                    id: 'step',
+                    header: 'Step Execution ID',
+                    render: (dl) => <Typography variant="body2">{dl.stepExecutionId}</Typography>,
+                  },
+                  { id: 'reason', header: 'Reason', render: (dl) => <Chip size="small" color="error" label={dl.reason} /> },
+                  { id: 'status', header: 'Status', render: (dl) => <Typography variant="body2">{dl.resolutionStatus}</Typography> },
+                  {
+                    id: 'actions',
+                    header: 'Operator Actions',
+                    align: 'right',
+                    render: (dl) => (
+                      <>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          sx={{ mr: 1 }}
+                          onClick={() => handleResolveDeadLetter(dl.id, 'RETRY')}
+                        >
+                          Retry
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => handleResolveDeadLetter(dl.id, 'SKIP')}
+                        >
+                          Skip
+                        </Button>
+                      </>
+                    ),
+                  },
+                ]}
+              />
             )}
           </Box>
         )}
