@@ -6,37 +6,26 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
   Container,
-  Grid,
-  InputAdornment,
+  FormControl,
+  InputLabel,
   MenuItem,
-  Paper,
+  Select,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
-  TextField,
   Typography,
 } from '@mui/material';
+import { OpenInNewIcon } from '../../shell/icons';
 import {
-  SearchIcon,
-  OpenInNewIcon,
-  AccountBalanceIcon,
-  PaymentIcon,
-  MonetizationOnIcon,
-  CheckCircleOutlineIcon,
-  FilterListIcon,
-} from '../../shell/icons';
-import { PageHeader } from '../admin/components';
+  DataTable,
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+  type ColumnDef,
+} from '../../ui';
 import { sanctionsApi } from './api';
 import type { DisbursementTranche, Sanction } from './types';
 
@@ -47,26 +36,6 @@ function formatCurrency(amount: number): string {
     maximumFractionDigits: 2,
   }).format(amount);
 }
-
-const SANCTION_STATUS_COLORS: Record<
-  string,
-  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
-> = {
-  ACTIVE: 'success',
-  REVISED: 'info',
-  EXPIRED: 'warning',
-  CANCELLED: 'error',
-};
-
-const TRANCHE_STATUS_COLORS: Record<
-  string,
-  'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
-> = {
-  RECORDED: 'info',
-  VERIFIED: 'success',
-  RETURNED: 'warning',
-  VOIDED: 'error',
-};
 
 export function SanctionsListPage(): React.ReactElement {
   const navigate = useNavigate();
@@ -79,7 +48,6 @@ export function SanctionsListPage(): React.ReactElement {
     data: sanctionsData,
     isLoading: isSanctionsLoading,
     error: sanctionsError,
-    refetch: refetchSanctions,
   } = useQuery({
     queryKey: ['all-sanctions', sanctionStatusFilter],
     queryFn: () =>
@@ -90,7 +58,6 @@ export function SanctionsListPage(): React.ReactElement {
     data: tranchesData,
     isLoading: isTranchesLoading,
     error: tranchesError,
-    refetch: refetchTranches,
   } = useQuery({
     queryKey: ['all-tranches', trancheStatusFilter],
     queryFn: () =>
@@ -128,7 +95,7 @@ export function SanctionsListPage(): React.ReactElement {
         const term = searchTerm.toLowerCase();
         const matchesId = t.id.toLowerCase().includes(term);
         const matchesSanction = t.sanctionId.toLowerCase().includes(term);
-        const matchesUtr = t.utrMasked?.toLowerCase().includes(term) ?? false;
+        const matchesUtr = t.utrMasked?.toLowerCase().includes(term);
         if (!matchesId && !matchesSanction && !matchesUtr) return false;
       }
       return true;
@@ -137,143 +104,224 @@ export function SanctionsListPage(): React.ReactElement {
 
   const isLoading = isSanctionsLoading || isTranchesLoading;
 
+  const sanctionColumns: ColumnDef<Sanction>[] = [
+    {
+      id: 'id',
+      header: 'Sanction ID',
+      accessor: (s) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600} color="primary.main">
+            {s.id}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            v{s.version} • {s.source}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'lenderCaseId',
+      header: 'Lender Case',
+      accessor: (s) => (
+        <Typography
+          component={RouterLink}
+          to={`/lender-cases/${s.lenderCaseId}`}
+          variant="body2"
+          sx={{
+            color: 'text.primary',
+            textDecoration: 'none',
+            '&:hover': { textDecoration: 'underline', color: 'primary.main' },
+          }}
+        >
+          {s.lenderCaseId}
+        </Typography>
+      ),
+    },
+    {
+      id: 'amount',
+      header: 'Sanctioned Amount',
+      accessor: (s) => (
+        <Typography variant="body2" fontWeight={700}>
+          {formatCurrency(Number(s.amount))}
+        </Typography>
+      ),
+    },
+    {
+      id: 'tenureMonths',
+      header: 'Tenure',
+      accessor: (s) => `${s.tenureMonths} mos`,
+    },
+    {
+      id: 'rate',
+      header: 'Rate & Type',
+      accessor: (s) => `${s.rateValue}% (${s.rateType})`,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (s) => <StatusBadge status={s.status} />,
+    },
+    {
+      id: 'sanctionDate',
+      header: 'Sanction Date',
+      accessor: (s) => (
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            {s.sanctionDate || '—'}
+          </Typography>
+          {s.validUntil && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              Valid: {s.validUntil}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (s) => (
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          onClick={() => navigate(`/sanctions/${s.lenderCaseId}`)}
+          endIcon={<OpenInNewIcon fontSize="small" />}
+          sx={{ textTransform: 'none', borderRadius: 1.5 }}
+        >
+          Manage Panel
+        </Button>
+      ),
+    },
+  ];
+
+  const trancheColumns: ColumnDef<DisbursementTranche>[] = [
+    {
+      id: 'trancheNo',
+      header: 'Tranche ID',
+      accessor: (t) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>
+            Tranche #{t.trancheNo}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {t.id}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'sanctionId',
+      header: 'Sanction ID',
+      accessor: (t) => (
+        <Typography variant="body2" color="text.secondary">
+          {t.sanctionId}
+        </Typography>
+      ),
+    },
+    {
+      id: 'amount',
+      header: 'Amount',
+      accessor: (t) => (
+        <Typography variant="body2" fontWeight={700}>
+          {formatCurrency(Number(t.amount))}
+        </Typography>
+      ),
+    },
+    {
+      id: 'disbursedOn',
+      header: 'Disbursed On',
+      accessor: (t) => t.disbursedOn || '—',
+    },
+    {
+      id: 'utrMasked',
+      header: 'UTR (Masked)',
+      accessor: (t) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+          {t.utrMasked || '—'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'loanAccountMasked',
+      header: 'Loan Account',
+      accessor: (t) => (
+        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+          {t.loanAccountMasked || '—'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: (t) => <StatusBadge status={t.status} />,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      accessor: (t) => {
+        const parentSanction = sanctions.find((s) => s.id === t.sanctionId);
+        return parentSanction ? (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => navigate(`/sanctions/${parentSanction.lenderCaseId}`)}
+            sx={{ textTransform: 'none', borderRadius: 1.5 }}
+          >
+            Manage
+          </Button>
+        ) : (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setCurrentTab('sanctions')}
+            sx={{ textTransform: 'none', borderRadius: 1.5 }}
+          >
+            View Sanction
+          </Button>
+        );
+      },
+    },
+  ];
+
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <PageHeader
         title="Sanctions & Disbursements"
-        subtitle="Manage lender sanctions, approved limits, interest terms, and verified disbursement tranches."
-        action={
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              refetchSanctions();
-              refetchTranches();
-            }}
-            startIcon={<FilterListIcon />}
-          >
-            Refresh
-          </Button>
-        }
+        subtitle="Manage lender credit sanctions, conditional letters, and recorded disbursement tranches across all lender cases"
       />
 
-      {/* KPI / Metric Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={1} sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ py: 2 }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'primary.50',
-                    color: 'primary.main',
-                    display: 'flex',
-                  }}
-                >
-                  <AccountBalanceIcon />
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Sanctions
-                  </Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    {totalSanctions}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={1} sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ py: 2 }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'success.50',
-                    color: 'success.main',
-                    display: 'flex',
-                  }}
-                >
-                  <CheckCircleOutlineIcon />
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Active Sanctions
-                  </Typography>
-                  <Typography variant="h5" fontWeight="bold" color="success.main">
-                    {activeSanctions}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={1} sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ py: 2 }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'info.50',
-                    color: 'info.main',
-                    display: 'flex',
-                  }}
-                >
-                  <MonetizationOnIcon />
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Active Limit
-                  </Typography>
-                  <Typography variant="h6" fontWeight="bold" color="info.main">
-                    {formatCurrency(totalSanctionedAmount)}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card elevation={1} sx={{ borderRadius: 2 }}>
-            <CardContent sx={{ py: 2 }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'warning.50',
-                    color: 'warning.main',
-                    display: 'flex',
-                  }}
-                >
-                  <PaymentIcon />
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Disbursed
-                  </Typography>
-                  <Typography variant="h6" fontWeight="bold" color="warning.dark">
-                    {formatCurrency(totalDisbursedAmount)}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Metrics Row */}
+      <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Sanctions"
+          value={totalSanctions}
+          subtext="Recorded credit facilities"
+        />
+        <StatCard
+          title="Active Sanctions"
+          value={activeSanctions}
+          subtext="Currently serviceable"
+          colorVariant="success"
+        />
+        <StatCard
+          title="Active Limit"
+          value={formatCurrency(totalSanctionedAmount)}
+          subtext="Total sanctioned capital"
+          colorVariant="info"
+        />
+        <StatCard
+          title="Total Disbursed"
+          value={formatCurrency(totalDisbursedAmount)}
+          subtext="Net disbursed to borrowers"
+          colorVariant="warning"
+        />
+      </StatCardGrid>
 
       {/* Navigation Tabs */}
-      <Paper elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs
           value={currentTab}
           onChange={(_, val) => setCurrentTab(val)}
@@ -291,83 +339,56 @@ export function SanctionsListPage(): React.ReactElement {
             sx={{ fontWeight: 600, textTransform: 'none' }}
           />
         </Tabs>
-      </Paper>
+      </Box>
 
       {/* Filter and Search Bar */}
-      <Paper elevation={0} sx={{ p: 2, mb: 3, border: '1px solid #e2e8f0', borderRadius: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-          <TextField
-            size="small"
-            placeholder={
-              currentTab === 'sanctions'
-                ? 'Search by sanction ID or lender case ID...'
-                : 'Search by tranche ID, sanction ID, or UTR...'
-            }
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" color="action" />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flex: 1, minWidth: 260 }}
-          />
-
-          {currentTab === 'sanctions' ? (
-            <TextField
-              size="small"
-              select
-              label="Status"
-              value={sanctionStatusFilter}
-              onChange={(e) => setSanctionStatusFilter(e.target.value)}
-              sx={{ minWidth: 160 }}
-            >
-              <MenuItem value="">All Statuses</MenuItem>
-              <MenuItem value="ACTIVE">Active</MenuItem>
-              <MenuItem value="REVISED">Revised</MenuItem>
-              <MenuItem value="EXPIRED">Expired</MenuItem>
-              <MenuItem value="CANCELLED">Cancelled</MenuItem>
-            </TextField>
+      <FilterToolbar
+        searchPlaceholder={
+          currentTab === 'sanctions'
+            ? 'Search by sanction ID or lender case ID...'
+            : 'Search by tranche ID, sanction ID, or UTR...'
+        }
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        onReset={() => {
+          setSearchTerm('');
+          setSanctionStatusFilter('');
+          setTrancheStatusFilter('');
+        }}
+        filters={
+          currentTab === 'sanctions' ? (
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={sanctionStatusFilter}
+                label="Status"
+                onChange={(e) => setSanctionStatusFilter(e.target.value)}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="REVISED">Revised</MenuItem>
+                <MenuItem value="EXPIRED">Expired</MenuItem>
+                <MenuItem value="CANCELLED">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
           ) : (
-            <TextField
-              size="small"
-              select
-              label="Status"
-              value={trancheStatusFilter}
-              onChange={(e) => setTrancheStatusFilter(e.target.value)}
-              sx={{ minWidth: 160 }}
-            >
-              <MenuItem value="">All Statuses</MenuItem>
-              <MenuItem value="RECORDED">Recorded</MenuItem>
-              <MenuItem value="VERIFIED">Verified</MenuItem>
-              <MenuItem value="RETURNED">Returned</MenuItem>
-              <MenuItem value="VOIDED">Voided</MenuItem>
-            </TextField>
-          )}
-
-          {(searchTerm || sanctionStatusFilter || trancheStatusFilter) && (
-            <Button
-              size="small"
-              onClick={() => {
-                setSearchTerm('');
-                setSanctionStatusFilter('');
-                setTrancheStatusFilter('');
-              }}
-            >
-              Clear
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-
-      {/* Loading & Error States */}
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      )}
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={trancheStatusFilter}
+                label="Status"
+                onChange={(e) => setTrancheStatusFilter(e.target.value)}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                <MenuItem value="RECORDED">Recorded</MenuItem>
+                <MenuItem value="VERIFIED">Verified</MenuItem>
+                <MenuItem value="RETURNED">Returned</MenuItem>
+                <MenuItem value="VOIDED">Voided</MenuItem>
+              </Select>
+            </FormControl>
+          )
+        }
+      />
 
       {(sanctionsError || tranchesError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -375,204 +396,21 @@ export function SanctionsListPage(): React.ReactElement {
         </Alert>
       )}
 
-      {/* Sanctions Tab Content */}
-      {!isLoading && currentTab === 'sanctions' && (
-        <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-          <TableContainer>
-            <Table size="medium">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Sanction ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Lender Case</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Sanctioned Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Tenure</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Rate & Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Sanction Date</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredSanctions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                      <Typography variant="body1" color="text.secondary">
-                        No sanction records found.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredSanctions.map((s) => {
-                    const chipColor = SANCTION_STATUS_COLORS[s.status] || 'default';
-                    return (
-                      <TableRow key={s.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600} color="primary.main">
-                            {s.id}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            v{s.version} • {s.source}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography
-                            component={RouterLink}
-                            to={`/lender-cases/${s.lenderCaseId}`}
-                            variant="body2"
-                            sx={{
-                              color: 'text.primary',
-                              textDecoration: 'none',
-                              '&:hover': { textDecoration: 'underline', color: 'primary.main' },
-                            }}
-                          >
-                            {s.lenderCaseId}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={700}>
-                            {formatCurrency(Number(s.amount))}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{s.tenureMonths} mos</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {s.rateValue}% ({s.rateType})
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={s.status} color={chipColor} size="small" sx={{ fontWeight: 500 }} />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary">
-                            {s.sanctionDate || '—'}
-                          </Typography>
-                          {s.validUntil && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              Valid: {s.validUntil}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="primary"
-                            onClick={() => navigate(`/sanctions/${s.lenderCaseId}`)}
-                            endIcon={<OpenInNewIcon fontSize="small" />}
-                          >
-                            Manage Panel
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
-
-      {/* Tranches Tab Content */}
-      {!isLoading && currentTab === 'tranches' && (
-        <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-          <TableContainer>
-            <Table size="medium">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Tranche ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Sanction ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Disbursed On</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>UTR (Masked)</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Loan Account</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
-                    Actions
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTranches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                      <Typography variant="body1" color="text.secondary">
-                        No disbursement tranches found.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredTranches.map((t) => {
-                    const chipColor = TRANCHE_STATUS_COLORS[t.status] || 'default';
-                    // Find parent sanction to get lenderCaseId if available
-                    const parentSanction = sanctions.find((s) => s.id === t.sanctionId);
-                    return (
-                      <TableRow key={t.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600}>
-                            Tranche #{t.trancheNo}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {t.id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary">
-                            {t.sanctionId}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={700}>
-                            {formatCurrency(Number(t.amount))}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{t.disbursedOn || '—'}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                            {t.utrMasked || '—'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                            {t.loanAccountMasked || '—'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={t.status} color={chipColor} size="small" sx={{ fontWeight: 500 }} />
-                        </TableCell>
-                        <TableCell align="right">
-                          {parentSanction ? (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => navigate(`/sanctions/${parentSanction.lenderCaseId}`)}
-                            >
-                              Manage
-                            </Button>
-                          ) : (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => setCurrentTab('sanctions')}
-                            >
-                              View Sanction
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
+      {/* Tab Content */}
+      {currentTab === 'sanctions' ? (
+        <DataTable<Sanction>
+          columns={sanctionColumns}
+          data={filteredSanctions}
+          loading={isLoading}
+          emptyTitle="No sanction records found."
+        />
+      ) : (
+        <DataTable<DisbursementTranche>
+          columns={trancheColumns}
+          data={filteredTranches}
+          loading={isLoading}
+          emptyTitle="No disbursement tranches found."
+        />
       )}
     </Container>
   );
