@@ -31,7 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -307,34 +307,30 @@ export function LenderDetailPage() {
         </Alert>
       )}
 
+      <PageHeader
+        title={lender.name}
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip label={lender.lenderType} size="small" variant="outlined" />
+            <Chip
+              label={lender.status}
+              size="small"
+              color={lender.status === 'ACTIVE' ? 'success' : lender.status === 'PAUSED' ? 'warning' : 'error'}
+            />
+          </Stack>
+        }
+        subtitle={`ID: ${lender.id} | Lock Version: ${lender.lockVersion}`}
+        actions={
+          canManage && (
+            <Button variant="outlined" size="small" onClick={() => setEditProfileOpen(true)}>
+              Edit Profile
+            </Button>
+          )
+        }
+      />
+
       {/* Profile Card */}
       <Card sx={{ mb: 4 }}>
-        <CardHeader
-          title={
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="h5" fontWeight={700}>
-                {lender.name}
-              </Typography>
-              <Chip label={lender.lenderType} size="small" variant="outlined" />
-              <Chip
-                label={lender.status}
-                size="small"
-                color={
-                  lender.status === 'ACTIVE' ? 'success' : lender.status === 'PAUSED' ? 'warning' : 'error'
-                }
-              />
-            </Stack>
-          }
-          subheader={`ID: ${lender.id} | Lock Version: ${lender.lockVersion}`}
-          action={
-            canManage && (
-              <Button variant="outlined" size="small" onClick={() => setEditProfileOpen(true)}>
-                Edit Profile
-              </Button>
-            )
-          }
-        />
-        <Divider />
         <CardContent>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={4}>
