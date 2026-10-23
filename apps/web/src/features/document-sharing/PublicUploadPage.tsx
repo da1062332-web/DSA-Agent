@@ -25,6 +25,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { PageHeader } from '../../ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import type { PublicUploadLinkStatus, VerifyUploadOtpResponse, UploadFileResponse } from '@dsa/contracts';
@@ -419,31 +420,12 @@ export function PublicUploadPage() {
   // STEP 2: Authenticated Document Upload Portal
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
+      <PageHeader
+        title="Document Upload Portal"
+        subtitle="Secure Upload Session Active"
+        badge={<Chip label={`${uploadedFiles.length} Uploaded`} color="primary" variant="outlined" />}
+      />
       <Card sx={{ borderRadius: 3, boxShadow: 4, overflow: 'hidden' }}>
-        <Box
-          sx={{
-            bgcolor: '#0f172a',
-            color: 'white',
-            p: 3,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Box>
-            <Typography variant="h5" fontWeight={700}>
-              Document Upload Portal
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.5 }}>
-              Secure Upload Session Active
-            </Typography>
-          </Box>
-          <Chip
-            label={`${uploadedFiles.length} Uploaded`}
-            sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 600 }}
-          />
-        </Box>
-
         <CardContent sx={{ p: 4 }}>
           {/* Requested Items Checklist */}
           <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 2, bgcolor: '#f8fafc' }}>

@@ -24,7 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
@@ -257,6 +257,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
           {error}
         </Alert>
       )}
+
+      <PageHeader
+        title="Sanctions & Disbursements"
+        subtitle="Lender case sanctions, tranche disbursements and UTR verification"
+      />
 
       {/* Sanction Summary Card */}
       <Card variant="outlined" sx={{ mb: 3 }}>
