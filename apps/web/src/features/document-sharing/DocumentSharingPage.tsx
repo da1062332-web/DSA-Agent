@@ -260,6 +260,7 @@ export function DocumentSharingPage() {
                 setCreatedLinkResult(null);
                 setIsLinkModalOpen(true);
               }}
+              data-testid="sharing.link.open"
             >
               + Generate Upload Link
             </Button>
@@ -354,6 +355,7 @@ export function DocumentSharingPage() {
                                   size="small"
                                   color="error"
                                   onClick={() => revokeLinkMutation.mutate(link.id)}
+                                  data-testid="sharing.link.revoke"
                                 >
                                   Revoke
                                 </Button>
@@ -611,7 +613,12 @@ export function DocumentSharingPage() {
         <DialogActions>
           <Button onClick={() => setIsLinkModalOpen(false)}>Close</Button>
           {!createdLinkResult && (
-            <Button variant="contained" onClick={handleCreateLink} disabled={createLinkMutation.isPending}>
+            <Button
+              variant="contained"
+              onClick={handleCreateLink}
+              disabled={createLinkMutation.isPending}
+              data-testid="sharing.link.submit"
+            >
               {createLinkMutation.isPending ? 'Generating...' : 'Generate Link'}
             </Button>
           )}

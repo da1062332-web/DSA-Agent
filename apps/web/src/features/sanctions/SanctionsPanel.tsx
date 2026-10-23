@@ -26,6 +26,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { sanctionsApi } from './api';
 import type {
@@ -44,8 +45,11 @@ interface SanctionsPanelProps {
 
 export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
   lenderCaseId: propLenderCaseId,
-  currentUserId,
+  currentUserId: propCurrentUserId,
 }) => {
+  // SOD-04 (verified_by <> recorded_by) needs the signed-in user; the route renders the panel without the prop.
+  const me = useMe();
+  const currentUserId = propCurrentUserId ?? me.data?.id;
   const { lenderCaseId: paramLenderCaseId } = useParams<{ lenderCaseId?: string }>();
   const [searchParams] = useSearchParams();
   const queryLenderCaseId = searchParams.get('lenderCaseId');
