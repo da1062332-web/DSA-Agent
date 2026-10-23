@@ -40,6 +40,7 @@ import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { ConnectorSelect, LeadSelect } from '../../shell/selectors';
 import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
+import { DataTable } from '../../ui';
 import type {
   AttributionChangeRequestResource,
   AttributionDisputeResource,
@@ -661,94 +662,78 @@ export function ConnectorPage() {
                   <CircularProgress size={24} />
                 </Box>
               ) : selectedBankAccountsQuery.data && selectedBankAccountsQuery.data.length > 0 ? (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                      <TableRow>
-                        <TableCell>Account Holder</TableCell>
-                        <TableCell>Account Number (Masked)</TableCell>
-                        <TableCell>IFSC Code</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Cooling Period</TableCell>
-                        <TableCell>Created By</TableCell>
-                        <TableCell align="right">Dual-Control SOD Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedBankAccountsQuery.data.map((acc) => (
-                        <TableRow key={acc.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>{acc.accountHolderName}</TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{acc.accountMasked}</TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{acc.ifscCode}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={acc.status}
-                              color={STATUS_COLORS[acc.status] || 'default'}
-                              size="small"
-                              sx={{ fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {acc.coolingUntil ? (
-                              <Typography variant="caption" color="warning.main">
-                                Until {new Date(acc.coolingUntil).toLocaleTimeString()}
-                              </Typography>
-                            ) : (
-                              '—'
-                            )}
-                          </TableCell>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{acc.createdBy}</TableCell>
-                          <TableCell align="right">
-                            {acc.status === 'PENDING_APPROVAL' && (
-                              <Can action="connector.bank_change_approve">
-                                <Button
-                                  size="small"
-                                  color="success"
-                                  variant="contained"
-                                  onClick={() =>
-                                    approveBankAccountMutation.mutate({
-                                      connectorId: selectedConnector.id,
-                                      accountId: acc.id,
-                                    })
-                                  }
-                                >
-                                  Approve (SOD)
-                                </Button>
-                              </Can>
-                            )}
-                            {acc.status === 'ACTIVE' && (
-                              <Box
-                                sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
+                <DataTable<(typeof selectedBankAccountsQuery.data)[number]>
+                  dataTestId="con.table.bank-accounts"
+                  data={selectedBankAccountsQuery.data}
+                  keyExtractor={(acc) => acc.id}
+                  columns={[
+                    { id: 'holder', header: 'Account Holder', render: (acc) => <Box sx={{ fontWeight: 600 }}>{acc.accountHolderName}</Box> },
+                    { id: 'masked', header: 'Account Number (Masked)', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.accountMasked}</Box> },
+                    { id: 'ifsc', header: 'IFSC Code', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.ifscCode}</Box> },
+                    {
+                      id: 'status',
+                      header: 'Status',
+                      render: (acc) => (
+                        <Chip label={acc.status} color={STATUS_COLORS[acc.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                      ),
+                    },
+                    {
+                      id: 'cooling',
+                      header: 'Cooling Period',
+                      render: (acc) =>
+                        acc.coolingUntil ? (
+                          <Typography variant="caption" color="warning.main">
+                            Until {new Date(acc.coolingUntil).toLocaleTimeString()}
+                          </Typography>
+                        ) : (
+                          '—'
+                        ),
+                    },
+                    { id: 'createdBy', header: 'Created By', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.createdBy}</Box> },
+                    {
+                      id: 'sod',
+                      header: 'Dual-Control SOD Actions',
+                      align: 'right',
+                      render: (acc) => (
+                        <>
+                          {acc.status === 'PENDING_APPROVAL' && (
+                            <Can action="connector.bank_change_approve">
+                              <Button
+                                size="small"
+                                color="success"
+                                variant="contained"
+                                onClick={() =>
+                                  approveBankAccountMutation.mutate({
+                                    connectorId: selectedConnector.id,
+                                    accountId: acc.id,
+                                  })
+                                }
                               >
-                                <Chip
-                                  label="✓ Approved (Dual-Control Verified)"
-                                  color="success"
-                                  size="small"
-                                  sx={{
-                                    fontWeight: 600,
-                                    bgcolor: 'rgba(46, 125, 50, 0.12)',
-                                    color: 'success.main',
-                                  }}
-                                />
-                                {acc.approvedBy && (
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}
-                                  >
-                                    Approver: {acc.approvedBy}
-                                  </Typography>
-                                )}
-                              </Box>
-                            )}
-                            {acc.status === 'DISABLED' && (
-                              <Chip label="Disabled" size="small" variant="outlined" color="default" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                                Approve (SOD)
+                              </Button>
+                            </Can>
+                          )}
+                          {acc.status === 'ACTIVE' && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                              <Chip
+                                label="✓ Approved (Dual-Control Verified)"
+                                color="success"
+                                size="small"
+                                sx={{ fontWeight: 600, bgcolor: 'rgba(46, 125, 50, 0.12)', color: 'success.main' }}
+                              />
+                              {acc.approvedBy && (
+                                <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}>
+                                  Approver: {acc.approvedBy}
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+                          {acc.status === 'DISABLED' && <Chip label="Disabled" size="small" variant="outlined" color="default" />}
+                        </>
+                      ),
+                    },
+                  ]}
+                />
               ) : (
                 <Alert severity="info">
                   No bank accounts registered for this connector yet. Add an account to enable automated payout disbursements.
@@ -788,48 +773,43 @@ export function ConnectorPage() {
                   <CircularProgress size={24} />
                 </Box>
               ) : selectedAgreementsQuery.data && selectedAgreementsQuery.data.length > 0 ? (
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                      <TableRow>
-                        <TableCell>Agreement ID</TableCell>
-                        <TableCell>Version</TableCell>
-                        <TableCell>Permitted Products</TableCell>
-                        <TableCell>Rule Scope</TableCell>
-                        <TableCell>Validity Period</TableCell>
-                        <TableCell>Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedAgreementsQuery.data.map((agr) => (
-                        <TableRow key={agr.id} hover>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{agr.id}</TableCell>
-                          <TableCell>v{agr.version}</TableCell>
-                          <TableCell>
-                            <Stack direction="row" spacing={0.5}>
-                              {agr.permittedProducts.map((p) => (
-                                <Chip key={p} label={p} size="small" />
-                              ))}
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>{agr.shareRuleScope}</TableCell>
-                          <TableCell>
-                            {new Date(agr.validFrom).toLocaleDateString()} –{' '}
-                            {new Date(agr.validTo).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={agr.status}
-                              color={STATUS_COLORS[agr.status] || 'default'}
-                              size="small"
-                              sx={{ fontWeight: 600 }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <DataTable<(typeof selectedAgreementsQuery.data)[number]>
+                  dataTestId="con.table.agreements"
+                  data={selectedAgreementsQuery.data}
+                  keyExtractor={(agr) => agr.id}
+                  columns={[
+                    { id: 'id', header: 'Agreement ID', render: (agr) => <Box sx={{ fontFamily: 'monospace' }}>{agr.id}</Box> },
+                    { id: 'version', header: 'Version', render: (agr) => `v${agr.version}` },
+                    {
+                      id: 'products',
+                      header: 'Permitted Products',
+                      render: (agr) => (
+                        <Stack direction="row" spacing={0.5}>
+                          {agr.permittedProducts.map((p) => (
+                            <Chip key={p} label={p} size="small" />
+                          ))}
+                        </Stack>
+                      ),
+                    },
+                    { id: 'scope', header: 'Rule Scope', render: (agr) => <Box sx={{ fontWeight: 600 }}>{agr.shareRuleScope}</Box> },
+                    {
+                      id: 'validity',
+                      header: 'Validity Period',
+                      render: (agr) => (
+                        <>
+                          {new Date(agr.validFrom).toLocaleDateString()} – {new Date(agr.validTo).toLocaleDateString()}
+                        </>
+                      ),
+                    },
+                    {
+                      id: 'status',
+                      header: 'Status',
+                      render: (agr) => (
+                        <Chip label={agr.status} color={STATUS_COLORS[agr.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                      ),
+                    },
+                  ]}
+                />
               ) : (
                 <Alert severity="info">
                   No active commission agreements attached to this connector yet.
@@ -1175,123 +1155,119 @@ export function ConnectorPage() {
                 <CircularProgress />
               </Box>
             ) : connectorsQuery.data && connectorsQuery.data.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'action.hover' }}>
-                    <TableRow>
-                      <TableCell>Connector ID</TableCell>
-                      <TableCell>Legal Name / Contact</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>PAN (Masked)</TableCell>
-                      <TableCell>Email / Mobile</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {connectorsQuery.data.map((con) => (
-                      <TableRow
-                        key={con.id}
-                        hover
-                        sx={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          setSelectedConnector(con);
-                          setActiveConnectorTab(0);
-                        }}
-                      >
-                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{con.id}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={600} color="primary.main">
-                            {con.legalName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {con.contactPerson}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={con.connectorType} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{con.panMasked}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{con.email}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {con.mobileE164}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={con.status}
-                            color={STATUS_COLORS[con.status] || 'default'}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <DataTable<(typeof connectorsQuery.data)[number]>
+                dataTestId="con.table.connectors"
+                data={connectorsQuery.data}
+                keyExtractor={(con) => con.id}
+                onRowClick={(con) => {
+                  setSelectedConnector(con);
+                  setActiveConnectorTab(0);
+                }}
+                columns={[
+                  { id: 'id', header: 'Connector ID', render: (con) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{con.id}</Box> },
+                  {
+                    id: 'legal',
+                    header: 'Legal Name / Contact',
+                    render: (con) => (
+                      <>
+                        <Typography variant="body2" fontWeight={600} color="primary.main">
+                          {con.legalName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {con.contactPerson}
+                        </Typography>
+                      </>
+                    ),
+                  },
+                  { id: 'type', header: 'Type', render: (con) => <Chip label={con.connectorType} size="small" variant="outlined" /> },
+                  { id: 'pan', header: 'PAN (Masked)', render: (con) => <Box sx={{ fontFamily: 'monospace' }}>{con.panMasked}</Box> },
+                  {
+                    id: 'contact',
+                    header: 'Email / Mobile',
+                    render: (con) => (
+                      <>
+                        <Typography variant="body2">{con.email}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {con.mobileE164}
+                        </Typography>
+                      </>
+                    ),
+                  },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (con) => (
+                      <Chip label={con.status} color={STATUS_COLORS[con.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                    ),
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (con) => (
+                      <Stack direction="row" spacing={1} justifyContent="flex-end" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => {
+                            setSelectedConnector(con);
+                            setActiveConnectorTab(0);
+                          }}
+                        >
+                          Manage Details →
+                        </Button>
+                        {con.status === 'DRAFT' && (
+                          <Can action="connector.manage">
                             <Button
                               size="small"
+                              color="success"
+                              variant="contained"
+                              onClick={() => {
+                                setSelectedConnector(con);
+                                setActivateModalOpen(true);
+                              }}
+                            >
+                              Activate
+                            </Button>
+                          </Can>
+                        )}
+                        {con.status === 'ACTIVE' && (
+                          <Can action="connector.manage">
+                            <Button
+                              size="small"
+                              color="warning"
                               variant="outlined"
                               onClick={() => {
                                 setSelectedConnector(con);
-                                setActiveConnectorTab(0);
+                                setTargetStatus('SUSPENDED');
+                                setStatusModalOpen(true);
                               }}
                             >
-                              Manage Details →
+                              Suspend
                             </Button>
-                            {con.status === 'DRAFT' && (
-                              <Can action="connector.manage">
-                                <Button
-                                  size="small"
-                                  color="success"
-                                  variant="contained"
-                                  onClick={() => {
-                                    setSelectedConnector(con);
-                                    setActivateModalOpen(true);
-                                  }}
-                                >
-                                  Activate
-                                </Button>
-                              </Can>
-                            )}
-                            {con.status === 'ACTIVE' && (
-                              <Can action="connector.manage">
-                                <Button
-                                  size="small"
-                                  color="warning"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    setSelectedConnector(con);
-                                    setTargetStatus('SUSPENDED');
-                                    setStatusModalOpen(true);
-                                  }}
-                                >
-                                  Suspend
-                                </Button>
-                              </Can>
-                            )}
-                            {con.status === 'SUSPENDED' && (
-                              <Can action="connector.manage">
-                                <Button
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    setSelectedConnector(con);
-                                    setTargetStatus('ACTIVE');
-                                    setStatusModalOpen(true);
-                                  }}
-                                >
-                                  Reinstate
-                                </Button>
-                              </Can>
-                            )}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          </Can>
+                        )}
+                        {con.status === 'SUSPENDED' && (
+                          <Can action="connector.manage">
+                            <Button
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              onClick={() => {
+                                setSelectedConnector(con);
+                                setTargetStatus('ACTIVE');
+                                setStatusModalOpen(true);
+                              }}
+                            >
+                              Reinstate
+                            </Button>
+                          </Can>
+                        )}
+                      </Stack>
+                    ),
+                  },
+                ]}
+              />
             ) : (
               <Alert severity="info">No connectors found matching filter criteria.</Alert>
             )}
@@ -1328,65 +1304,55 @@ export function ConnectorPage() {
             {attributionRequestsQuery.isLoading ? (
               <CircularProgress size={24} />
             ) : attributionRequestsQuery.data && attributionRequestsQuery.data.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'action.hover' }}>
-                    <TableRow>
-                      <TableCell>Request ID</TableCell>
-                      <TableCell>Lead ID</TableCell>
-                      <TableCell>Previous Connector</TableCell>
-                      <TableCell>Proposed Connector</TableCell>
-                      <TableCell>Reason</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Requester</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {attributionRequestsQuery.data.map((req) => (
-                      <TableRow key={req.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{req.id}</TableCell>
-                        <TableCell>
-                          <LeadName id={req.leadId} linkToLead />
-                        </TableCell>
-                        <TableCell>
-                          <ConnectorName id={req.previousConnectorId} fallback="None (Organic)" />
-                        </TableCell>
-                        <TableCell>
-                          <ConnectorName id={req.proposedConnectorId} typographyProps={{ fontWeight: 600 }} />
-                        </TableCell>
-                        <TableCell>{req.reason}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={req.status}
-                            color={STATUS_COLORS[req.status] || 'default'}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{req.requesterId}</TableCell>
-                        <TableCell align="right">
-                          {req.status === 'PENDING' && (
-                            <Button
-                              size="small"
-                              color="success"
-                              variant="contained"
-                              onClick={() =>
-                                approveAttributionMutation.mutate({
-                                    id: req.id,
-                                    lockVersion: req.lockVersion,
-                                  })
-                              }
-                            >
-                              Approve (SOD-09)
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <DataTable<(typeof attributionRequestsQuery.data)[number]>
+                dataTestId="con.table.attribution"
+                data={attributionRequestsQuery.data}
+                keyExtractor={(req) => req.id}
+                columns={[
+                  { id: 'id', header: 'Request ID', render: (req) => <Box sx={{ fontFamily: 'monospace' }}>{req.id}</Box> },
+                  { id: 'lead', header: 'Lead ID', render: (req) => <LeadName id={req.leadId} linkToLead /> },
+                  {
+                    id: 'previous',
+                    header: 'Previous Connector',
+                    render: (req) => <ConnectorName id={req.previousConnectorId} fallback="None (Organic)" />,
+                  },
+                  {
+                    id: 'proposed',
+                    header: 'Proposed Connector',
+                    render: (req) => <ConnectorName id={req.proposedConnectorId} typographyProps={{ fontWeight: 600 }} />,
+                  },
+                  { id: 'reason', header: 'Reason', render: (req) => req.reason },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (req) => (
+                      <Chip label={req.status} color={STATUS_COLORS[req.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                    ),
+                  },
+                  { id: 'requester', header: 'Requester', render: (req) => <Box sx={{ fontFamily: 'monospace' }}>{req.requesterId}</Box> },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (req) =>
+                      req.status === 'PENDING' ? (
+                        <Button
+                          size="small"
+                          color="success"
+                          variant="contained"
+                          onClick={() =>
+                            approveAttributionMutation.mutate({
+                              id: req.id,
+                              lockVersion: req.lockVersion,
+                            })
+                          }
+                        >
+                          Approve (SOD-09)
+                        </Button>
+                      ) : null,
+                  },
+                ]}
+              />
             ) : (
               <Alert severity="info">No attribution change requests pending.</Alert>
             )}
@@ -1410,63 +1376,54 @@ export function ConnectorPage() {
             {disputesQuery.isLoading ? (
               <CircularProgress size={24} />
             ) : disputesQuery.data && disputesQuery.data.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'action.hover' }}>
-                    <TableRow>
-                      <TableCell>Dispute ID</TableCell>
-                      <TableCell>Lead ID</TableCell>
-                      <TableCell>Claimant Connectors</TableCell>
-                      <TableCell>Resolution</TableCell>
-                      <TableCell>Winner Connector</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {disputesQuery.data.map((disp) => (
-                      <TableRow key={disp.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{disp.id}</TableCell>
-                        <TableCell>
-                          <LeadName id={disp.leadId} linkToLead />
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>
-                          {disp.claimantConnectorIds.join(', ')}
-                        </TableCell>
-                        <TableCell>{disp.resolution || 'Pending Adjudication'}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>
-                          {disp.resolvedConnectorId || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={disp.status}
-                            color={STATUS_COLORS[disp.status] || 'default'}
+              <DataTable<(typeof disputesQuery.data)[number]>
+                dataTestId="con.table.disputes"
+                data={disputesQuery.data}
+                keyExtractor={(disp) => disp.id}
+                columns={[
+                  { id: 'id', header: 'Dispute ID', render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.id}</Box> },
+                  { id: 'lead', header: 'Lead ID', render: (disp) => <LeadName id={disp.leadId} linkToLead /> },
+                  {
+                    id: 'claimants',
+                    header: 'Claimant Connectors',
+                    render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.claimantConnectorIds.join(', ')}</Box>,
+                  },
+                  { id: 'resolution', header: 'Resolution', render: (disp) => disp.resolution || 'Pending Adjudication' },
+                  {
+                    id: 'winner',
+                    header: 'Winner Connector',
+                    render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.resolvedConnectorId || '—'}</Box>,
+                  },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (disp) => (
+                      <Chip label={disp.status} color={STATUS_COLORS[disp.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                    ),
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (disp) =>
+                      disp.status !== 'RESOLVED' ? (
+                        <Can action="connector.dispute_resolve">
+                          <Button
                             size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {disp.status !== 'RESOLVED' && (
-                            <Can action="connector.dispute_resolve">
-                              <Button
-                                size="small"
-                                color="primary"
-                                variant="contained"
-                                onClick={() => {
-                                  setSelectedDispute(disp);
-                                  setDisputeModalOpen(true);
-                                }}
-                              >
-                                Adjudicate
-                              </Button>
-                            </Can>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                            color="primary"
+                            variant="contained"
+                            onClick={() => {
+                              setSelectedDispute(disp);
+                              setDisputeModalOpen(true);
+                            }}
+                          >
+                            Adjudicate
+                          </Button>
+                        </Can>
+                      ) : null,
+                  },
+                ]}
+              />
             ) : (
               <Alert severity="info">No active attribution disputes found.</Alert>
             )}
