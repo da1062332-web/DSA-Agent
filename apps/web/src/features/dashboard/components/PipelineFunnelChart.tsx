@@ -104,7 +104,8 @@ export function PipelineFunnelChart({
         ) : (
           <Stack spacing={1.5}>
             {stages.map((stage, idx) => {
-              const referenceBase = stages[0]?.count > 0 ? stages[0].count : peakStageCount;
+              const firstCount = stages[0]?.count ?? 0;
+              const referenceBase = firstCount > 0 ? firstCount : peakStageCount;
               const conversionPercent =
                 referenceBase > 0 ? Math.round((stage.count / referenceBase) * 100) : 0;
 
@@ -169,7 +170,7 @@ export function PipelineFunnelChart({
                     sx={{
                       width: '100%',
                       height: 8,
-                      bgcolor: 'action.hover',
+                      bgcolor: 'grey.100',
                       borderRadius: 1,
                       overflow: 'hidden',
                     }}

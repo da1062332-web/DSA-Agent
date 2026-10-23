@@ -33,12 +33,19 @@ export function DashboardDateFilter({
         aria-label="dashboard date range"
         sx={{
           bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          p: 0.25,
           '& .MuiToggleButton-root': {
             px: { xs: 1, sm: 1.5 },
-            py: 0.5,
+            py: 0.4,
             fontSize: 12,
             textTransform: 'none',
             fontWeight: 500,
+            borderRadius: 1.5,
+            border: 0,
+            color: 'text.secondary',
             '&.Mui-selected': {
               fontWeight: 700,
               bgcolor: 'action.selected',

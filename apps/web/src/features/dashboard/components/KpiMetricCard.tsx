@@ -92,13 +92,19 @@ export function KpiMetricCard({
           {icon && (
             <Box
               sx={{
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 borderRadius: 2,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                bgcolor: `${status}.main` === 'default' ? 'action.hover' : 'primary.50',
+                bgcolor: () => {
+                  if (status === 'success') return '#ecfdf5';
+                  if (status === 'warning') return '#fffbeb';
+                  if (status === 'error') return '#fef2f2';
+                  if (status === 'info') return '#f0f9ff';
+                  return '#eff6ff';
+                },
                 color: `${status}.main`,
                 '& svg': { fontSize: 20 },
               }}

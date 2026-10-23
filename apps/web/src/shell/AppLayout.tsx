@@ -106,7 +106,7 @@ export function AppLayout() {
               variant="h6"
               component={RouterLink}
               to="/"
-              sx={{ color: 'inherit', textDecoration: 'none', mr: 2, fontWeight: 700 }}
+              sx={{ color: 'primary.main', textDecoration: 'none', mr: 2, fontWeight: 800, letterSpacing: '-0.02em' }}
             >
               {tenant.data?.legalName ?? 'DSA CRM'}
             </Typography>

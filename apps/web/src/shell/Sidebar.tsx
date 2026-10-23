@@ -163,14 +163,20 @@ export function SidebarContent({
                       onClick={onNavigate}
                       data-testid={`shell.nav.${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                       sx={{
-                        pl: 3.5,
-                        py: 0.5,
-                        borderRadius: 1,
+                        pl: 3,
+                        py: 0.6,
+                        borderRadius: 1.5,
                         mx: 1,
-                        my: 0.25,
+                        my: 0.2,
+                        color: 'text.secondary',
+                        transition: 'all 0.15s ease',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                          color: 'text.primary',
+                        },
                         '&.active': {
                           bgcolor: 'action.selected',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: 'primary.main',
                         },
                       }}
