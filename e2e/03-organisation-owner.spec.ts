@@ -1,39 +1,38 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, OrgOwnerPage } from './pages';
 
 test.describe('Persona 03: Organisation Owner (ROLE-ORG-OWNER)', () => {
   // =========================================================================
   // TC-OWN-01: Executive Portfolio Overview & Platform Financial Visibility
   // =========================================================================
   test('TC-OWN-01: Executive Portfolio Overview & Platform Financial Visibility', async ({ page }) => {
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.orgOwner, '/');
+    const authPage = new AuthPage(page);
+    const orgOwnerPage = new OrgOwnerPage(page);
+
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.orgOwner, '/');
 
     // 2. Verify Executive Overview
-    await showDemoBanner(
-      page,
+    await orgOwnerPage.showBanner(
       'Executive Overview',
       'Reviewing high-level DSA portfolio and financial operations',
     );
-    await expect(page.getByRole('heading', { name: 'Leads & CRM' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Loan Applications' })).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await expect(orgOwnerPage.leadsCrmHeading).toBeVisible();
+    await expect(orgOwnerPage.loanAppsHeading).toBeVisible();
+    await orgOwnerPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-OWN-02: Channel Partner & Connector Management (MOD-CON)
   // =========================================================================
   test('TC-OWN-02: Channel Partner & Connector Management', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const orgOwnerPage = new OrgOwnerPage(page);
+
     await page.route('**/v1/connectors**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -87,34 +86,37 @@ test.describe('Persona 03: Organisation Owner (ROLE-ORG-OWNER)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.orgOwner, '/connectors');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.orgOwner, '/connectors');
 
     // 2. Verify Connectors Directory
-    await showDemoBanner(page, 'Connector Directory', 'Inspecting channel partners, commission tiers and bank accounts');
+    await orgOwnerPage.showBanner('Connector Directory', 'Inspecting channel partners, commission tiers and bank accounts');
     await expect(page.getByText('Apex Advisory Partners')).toBeVisible();
     await expect(page.getByText('BlueStar Wealth Management')).toBeVisible();
     await expect(page.getByText('INDIVIDUAL')).toBeVisible();
     await expect(page.getByText('INSTITUTIONAL')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await orgOwnerPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-OWN-03: Segregation of Duties Enforcement (SOD-03 / Dual-Control)
   // =========================================================================
   test('TC-OWN-03: Segregation of Duties Enforcement (SOD-03 / Dual-Control)', async ({ page }) => {
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.orgOwner, '/');
+    const authPage = new AuthPage(page);
+    const orgOwnerPage = new OrgOwnerPage(page);
+
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.orgOwner, '/');
 
     // 2. Verify Org Owner operational visibility
-    await showDemoBanner(page, 'Dual-Control Enforcement', 'Verifying maker-checker segregation on financial authorizations');
-    await expect(page.getByTestId('shell.account')).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await orgOwnerPage.showBanner('Dual-Control Enforcement', 'Verifying maker-checker segregation on financial authorizations');
+    await expect(authPage.accountBtn).toBeVisible();
+    await orgOwnerPage.pause(1200);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 });

@@ -1,18 +1,15 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, ManagerDashboardPage, TasksPage } from './pages';
 
 test.describe('Persona 05: Team Manager (ROLE-TEAM-MGR)', () => {
   // =========================================================================
   // TC-TM-01: Team Management Hub & Workload Allocation
   // =========================================================================
   test('TC-TM-01: Team Management Hub & Workload Allocation', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const dashboardPage = new ManagerDashboardPage(page);
+
     // Mock unassigned leads for team queue
     await page.route('**/v1/leads**', async (route) => {
       await route.fulfill({
@@ -63,28 +60,30 @@ test.describe('Persona 05: Team Manager (ROLE-TEAM-MGR)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.teamMgr, '/');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.teamMgr, '/');
 
     // 2. Verify Team Management Hub
-    await showDemoBanner(
-      page,
+    await dashboardPage.showBanner(
       'Team Hub',
       'Supervising team task queues, SLA milestones and inbound leads',
     );
-    await expect(page.getByTestId('manager-dashboard')).toBeVisible();
-    await expect(page.getByText('Branch & Team Management Hub')).toBeVisible();
+    await expect(dashboardPage.dashboard).toBeVisible();
+    await expect(dashboardPage.hubHeading).toBeVisible();
     await expect(page.getByText('Deepak Verma')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await dashboardPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-TM-02: Team Task Supervision & SLA Tracking (MOD-TASK)
   // =========================================================================
   test('TC-TM-02: Team Task Supervision & SLA Tracking', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const tasksPage = new TasksPage(page);
+
     await page.route('**/v1/tasks**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -111,40 +110,41 @@ test.describe('Persona 05: Team Manager (ROLE-TEAM-MGR)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.teamMgr, '/tasks');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.teamMgr, '/tasks');
 
     // 2. Verify Tasks Management
-    await showDemoBanner(page, 'Team Tasks', 'Reviewing team task items and active SLA clocks (MOD-TASK)');
+    await tasksPage.showBanner('Team Tasks', 'Reviewing team task items and active SLA clocks (MOD-TASK)');
     await expect(page.getByText('Verify Financials & Bank Statement Analysis')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await tasksPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-TM-03: Segregation of Duties & Access Control Boundaries
   // =========================================================================
   test('TC-TM-03: Segregation of Duties & Access Control Boundaries', async ({ page }) => {
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.teamMgr, '/');
+    const authPage = new AuthPage(page);
+    const dashboardPage = new ManagerDashboardPage(page);
+
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.teamMgr, '/');
 
     // 2. Verify Team Manager authority
-    await showDemoBanner(
-      page,
+    await dashboardPage.showBanner(
       'Access Boundary Check',
       'Verifying Team Manager operational scope and denial of admin/financial screens',
     );
-    await expect(page.getByTestId('manager-dashboard')).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await expect(dashboardPage.dashboard).toBeVisible();
+    await dashboardPage.pause(1200);
 
     // 3. Attempt direct access to platform console
-    await page.goto('/platform-admin');
-    await page.waitForLoadState('domcontentloaded');
-    await pauseForDemo(page, 1500);
+    await dashboardPage.goto('/platform-admin');
+    await dashboardPage.pause(1500);
 
-    // 4. Role Logout
-    await performRoleLogout(page);
+    // 4. Role Logout via Page Object
+    await authPage.logout();
   });
 });

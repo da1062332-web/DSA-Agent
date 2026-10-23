@@ -1,18 +1,15 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, ManagerDashboardPage, TasksPage } from './pages';
 
 test.describe('Persona 04: Branch Manager (ROLE-BRANCH-MGR)', () => {
   // =========================================================================
   // TC-BM-01: Branch Management Hub & Pipeline Queue Monitoring
   // =========================================================================
   test('TC-BM-01: Branch Management Hub & Pipeline Queue Monitoring', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const dashboardPage = new ManagerDashboardPage(page);
+
     // Mock unassigned leads
     await page.route('**/v1/leads**', async (route) => {
       await route.fulfill({
@@ -58,28 +55,30 @@ test.describe('Persona 04: Branch Manager (ROLE-BRANCH-MGR)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.branchMgr, '/');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.branchMgr, '/');
 
     // 2. Verify Branch & Team Management Hub
-    await showDemoBanner(
-      page,
+    await dashboardPage.showBanner(
       'Branch Hub',
       'Supervising team task queues and unassigned lead pipelines',
     );
-    await expect(page.getByTestId('manager-dashboard')).toBeVisible();
-    await expect(page.getByText('Branch & Team Management Hub')).toBeVisible();
+    await expect(dashboardPage.dashboard).toBeVisible();
+    await expect(dashboardPage.hubHeading).toBeVisible();
     await expect(page.getByText('Sunil Sharma')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await dashboardPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-BM-02: Branch Task Queue Oversight & Delegation (MOD-TASK)
   // =========================================================================
   test('TC-BM-02: Branch Task Queue Oversight & Delegation', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const tasksPage = new TasksPage(page);
+
     await page.route('**/v1/tasks**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -106,40 +105,41 @@ test.describe('Persona 04: Branch Manager (ROLE-BRANCH-MGR)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.branchMgr, '/tasks');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.branchMgr, '/tasks');
 
     // 2. Verify Tasks Management Page
-    await showDemoBanner(page, 'Tasks Oversight', 'Reviewing active branch tasks and SLAs (MOD-TASK)');
+    await tasksPage.showBanner('Tasks Oversight', 'Reviewing active branch tasks and SLAs (MOD-TASK)');
     await expect(page.getByText('Collect Bank Statements for Pre-Sanction')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await tasksPage.pause(1500);
 
-    // 3. Role Logout
-    await performRoleLogout(page);
+    // 3. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-BM-03: Branch Data Scope & Operational Boundary Enforcement
   // =========================================================================
   test('TC-BM-03: Branch Data Scope & Operational Boundary Enforcement', async ({ page }) => {
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.branchMgr, '/');
+    const authPage = new AuthPage(page);
+    const dashboardPage = new ManagerDashboardPage(page);
+
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.branchMgr, '/');
 
     // 2. Verify Branch Scoping (Assigned to MUM01)
-    await showDemoBanner(
-      page,
+    await dashboardPage.showBanner(
       'Branch Boundary',
       'Verifying Branch Manager operational boundary and lack of platform console access',
     );
-    await expect(page.getByTestId('manager-dashboard')).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await expect(dashboardPage.dashboard).toBeVisible();
+    await dashboardPage.pause(1200);
 
     // 3. Attempt direct access to platform console
-    await page.goto('/platform-admin');
-    await page.waitForLoadState('domcontentloaded');
-    await pauseForDemo(page, 1500);
+    await dashboardPage.goto('/platform-admin');
+    await dashboardPage.pause(1500);
 
-    // 4. Role Logout
-    await performRoleLogout(page);
+    // 4. Role Logout via Page Object
+    await authPage.logout();
   });
 });

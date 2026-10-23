@@ -1,14 +1,6 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  setupPersonaSession,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanType,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, LeadPage, CustomerConsentPage, ApplicationPage } from './pages';
 
 test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
 
@@ -17,6 +9,9 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   // (Notion: Module 06 Steps 1-3, SUB-LEAD.01, CMP-LEAD.01.1, ENT-020)
   // =========================================================================
   test('TC-RM-01: Lead Intake with proactive client-side field validation & creation', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const leadPage = new LeadPage(page);
+
     // Mock lead creation endpoint
     await page.route('**/v1/leads', async (route) => {
       if (route.request().method() === 'POST') {
@@ -73,74 +68,71 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, '/leads/new');
-    await showDemoBanner(page, 'Opening Lead Intake Form', 'To capture applicant details with proactive field validation');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, '/leads/new');
+    await leadPage.showBanner('Opening Lead Intake Form', 'To capture applicant details with proactive field validation');
+    await leadPage.pause(1200);
 
     // 1. Check page title and subtitle
-    await expect(page.locator('h1')).toContainText('Create New Lead');
+    await expect(leadPage.heading).toContainText('Create New Lead');
 
     // 2. Test empty submission validation
-    await showDemoBanner(page, 'Empty Submission Check', 'Triggering required field validation');
-    const submitBtn = page.getByRole('button', { name: /Create Lead/i });
-    await humanClick(submitBtn);
+    await leadPage.showBanner('Empty Submission Check', 'Triggering required field validation');
+    await leadPage.click(leadPage.submitLeadBtn);
 
     // Verify inline field validation errors
     await expect(page.getByText('Enter the full name (at least 2 characters).')).toBeVisible();
     await expect(page.getByText('Enter a mobile number.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 3. Test invalid mobile number validation (must be 10 digits starting 6, 7, 8, or 9)
-    await showDemoBanner(page, 'Mobile Number Validation', 'Entering invalid mobile "12345"');
-    const mobileInput = page.locator('input[data-testid="lead-form.mobile"]');
-    await humanType(mobileInput, '12345');
-    await humanClick(submitBtn);
+    await leadPage.showBanner('Mobile Number Validation', 'Entering invalid mobile "12345"');
+    await leadPage.type(leadPage.mobileInput, '12345');
+    await leadPage.click(leadPage.submitLeadBtn);
     await expect(page.getByText('Enter a 10-digit mobile number starting with 6, 7, 8 or 9.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 4. Test invalid email format validation
-    await showDemoBanner(page, 'Email Format Validation', 'Entering invalid email "invalid-email"');
-    const emailInput = page.locator('input[data-testid="lead-form.email"]');
-    await humanType(emailInput, 'invalid-email');
-    await humanClick(submitBtn);
+    await leadPage.showBanner('Email Format Validation', 'Entering invalid email "invalid-email"');
+    await leadPage.type(leadPage.emailInput, 'invalid-email');
+    await leadPage.click(leadPage.submitLeadBtn);
     await expect(page.getByText('Enter a valid email address, or leave it blank.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 5. Test invalid pincode validation (6 digits, non-zero starting)
-    await showDemoBanner(page, 'Pincode Validation', 'Entering invalid pincode "012345" (must not start with 0)');
-    const pincodeInput = page.locator('input[data-testid="lead-form.pincode"]');
-    await humanType(pincodeInput, '012345');
-    await humanClick(submitBtn);
+    await leadPage.showBanner('Pincode Validation', 'Entering invalid pincode "012345" (must not start with 0)');
+    await leadPage.type(leadPage.pincodeInput, '012345');
+    await leadPage.click(leadPage.submitLeadBtn);
     await expect(page.getByText('Enter a 6-digit pincode that does not start with 0.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 6. Test invalid amount (zero or negative)
-    await showDemoBanner(page, 'Loan Amount Validation', 'Entering zero amount "0"');
-    const amountInput = page.locator('input[data-testid="lead-form.amount"]');
-    await humanType(amountInput, '0');
-    await humanClick(submitBtn);
+    await leadPage.showBanner('Loan Amount Validation', 'Entering zero amount "0"');
+    await leadPage.type(leadPage.amountInput, '0');
+    await leadPage.click(leadPage.submitLeadBtn);
     await expect(page.getByText(/Enter an amount greater than zero/i)).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 7. Fill valid Notion QA test data
-    await showDemoBanner(page, 'Submitting Valid Lead', 'Filling synthetic data for Test Customer Alpha');
-    await humanType(page.locator('input[data-testid="lead-form.fullName"]'), 'Test Customer Alpha');
-    await humanType(mobileInput, '9000000101');
-    await humanType(emailInput, 'alpha.qa@example.com');
-    await humanType(pincodeInput, '411001');
-    await humanType(amountInput, '300000');
-    await pauseForDemo(page, 1200);
+    await leadPage.showBanner('Submitting Valid Lead', 'Filling synthetic data for Test Customer Alpha');
+    await leadPage.fillLeadForm({
+      fullName: 'Test Customer Alpha',
+      mobile: '9000000101',
+      email: 'alpha.qa@example.com',
+      pincode: '411001',
+      amount: '300000',
+    });
+    await leadPage.pause(1200);
 
     // Submit valid lead intake form
-    await humanClick(submitBtn);
+    await leadPage.click(leadPage.submitLeadBtn);
 
     // Verify redirection to lead detail page with newly created lead in state NEW
     await expect(page).toHaveURL(/\/leads\/led_test_alpha_001/);
-    await showDemoBanner(page, 'Lead Created Successfully', 'State: NEW with masked mobile +91 ••••• ••101');
-    await expect(page.locator('h1')).toContainText('Test Customer Alpha');
+    await leadPage.showBanner('Lead Created Successfully', 'State: NEW with masked mobile +91 ••••• ••101');
+    await expect(leadPage.heading).toContainText('Test Customer Alpha');
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 1800);
-    await performRoleLogout(page);
+    await leadPage.pause(1800);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -148,6 +140,9 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   // (Notion: Module 06 Step 4, SUB-LEAD.04, ENT-020 duplicate_flag)
   // =========================================================================
   test('TC-RM-02: Lead Duplicate Detection & Classification Surfacing', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const leadPage = new LeadPage(page);
+
     const mockDuplicateLead = {
       id: 'led_dup_alpha_002',
       fullName: 'Test Customer Alpha (Duplicate)',
@@ -190,27 +185,27 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, '/leads/led_dup_alpha_002');
-    await showDemoBanner(page, 'Checking for Duplicate Leads', 'To prevent redundant entries and protect CRM data integrity');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, '/leads/led_dup_alpha_002');
+    await leadPage.showBanner('Checking for Duplicate Leads', 'To prevent redundant entries and protect CRM data integrity');
+    await leadPage.pause(1200);
 
     // 1. Verify lead loaded
-    await expect(page.locator('h1')).toContainText('Test Customer Alpha (Duplicate)');
+    await expect(leadPage.heading).toContainText('Test Customer Alpha (Duplicate)');
 
     // 2. Verify duplicate flag badge rendered prominently
-    await showDemoBanner(page, 'Duplicate Badge Surfaced', 'Badge displays "Duplicate: POSSIBLE"');
+    await leadPage.showBanner('Duplicate Badge Surfaced', 'Badge displays "Duplicate: POSSIBLE"');
     const dupBadge = page.locator('[data-testid="lead.duplicate-flag"]');
     await expect(dupBadge).toBeVisible();
     await expect(dupBadge).toContainText('Duplicate: POSSIBLE');
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 3. Verify duplicate candidate link is surfaced for merge review
-    await showDemoBanner(page, 'Duplicate Candidate Link', 'Candidate led_existing_099 surfaced for merge review');
+    await leadPage.showBanner('Duplicate Candidate Link', 'Candidate led_existing_099 surfaced for merge review');
     const dupCandidates = page.locator('[data-testid="lead.duplicate-candidates"]');
     await expect(dupCandidates).toBeVisible();
     await expect(dupCandidates).toContainText('led_existing_099');
-    await pauseForDemo(page, 1800);
-    await performRoleLogout(page);
+    await leadPage.pause(1800);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -220,6 +215,9 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   test('TC-RM-03: Lead Lifecycle Tracking — Contact Attempt (T-LEAD-01) & In Progress (T-LEAD-02)', async ({
     page,
   }) => {
+    const authPage = new AuthPage(page);
+    const leadPage = new LeadPage(page);
+
     const mockLead = {
       id: 'led_lifecycle_001',
       fullName: 'Vikram Joshi',
@@ -249,12 +247,12 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
 
     // Mock lifecycle transitions
     await page.route('**/v1/leads/led_lifecycle_001/transitions', async (route) => {
-      const payload = JSON.parse(route.request().postData() || '{}');
-      if (payload.transitionCode === 'T-LEAD-01') {
+      const body = JSON.parse(route.request().postData() || '{}');
+      if (body.transitionCode === 'T-LEAD-01') {
         mockLead.state = 'CONTACT_ATTEMPTED';
         mockLead.contactAttempts = 1;
         mockLead.lockVersion = 2;
-      } else if (payload.transitionCode === 'T-LEAD-02') {
+      } else if (body.transitionCode === 'T-LEAD-02') {
         mockLead.state = 'IN_PROGRESS';
         mockLead.lockVersion = 3;
       }
@@ -266,37 +264,35 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, '/leads/led_lifecycle_001');
-    await showDemoBanner(page, 'Progressing Lead Lifecycle Stages', 'To track customer engagement from initial contact to active evaluation');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, '/leads/led_lifecycle_001');
+    await leadPage.showBanner('Advancing Lead Lifecycle State', 'To record applicant communication outcomes and loan qualification');
+    await leadPage.pause(1200);
 
-    // Initial state: NEW
+    // Verify initial lead in state NEW
+    await expect(leadPage.heading).toContainText('Vikram Joshi');
     await expect(page.getByText('NEW', { exact: true })).toBeVisible();
+    await leadPage.pause(1200);
 
-    // 1. Trigger T-LEAD-01: Attempt Contact
-    await showDemoBanner(page, 'Recording First Contact Attempt', 'To log that the borrower was contacted by phone or visit');
-    const attemptContactBtn = page.locator('[data-testid="lead.action.attempt-contact"]');
-    await expect(attemptContactBtn).toBeVisible();
-    await humanClick(attemptContactBtn);
+    // 1. Trigger T-LEAD-01: Contact Attempted
+    await leadPage.showBanner('Attempting Customer Contact', 'To register outreach attempts towards the borrower');
+    await leadPage.attemptContact();
 
     // Verify state transitioned to CONTACT_ATTEMPTED
-    await showDemoBanner(page, 'State: CONTACT_ATTEMPTED', 'Contact attempt registered on lead');
+    await leadPage.showBanner('State: CONTACT_ATTEMPTED', 'Contact attempt registered on lead');
     await expect(page.getByText('Lead status updated.')).toBeVisible();
     await expect(page.getByText('CONTACT_ATTEMPTED', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 2. Trigger T-LEAD-02: Mark In Progress
-    await showDemoBanner(page, 'Advancing Lead to In-Progress', 'To indicate borrower interest and begin loan discussions');
-    const inProgressBtn = page.locator('[data-testid="lead.action.in-progress"]');
-    await expect(inProgressBtn).toBeVisible();
-    await humanClick(inProgressBtn);
+    await leadPage.showBanner('Advancing Lead to In-Progress', 'To indicate borrower interest and begin loan discussions');
+    await leadPage.markInProgress();
 
     // Verify state transitioned to IN_PROGRESS
-    await showDemoBanner(page, 'State: IN_PROGRESS', 'Lead is now in active progress');
+    await leadPage.showBanner('State: IN_PROGRESS', 'Lead is now in active progress');
     await expect(page.getByText('Lead status updated.')).toBeVisible();
     await expect(page.getByText('IN_PROGRESS', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 1800);
-    await performRoleLogout(page);
+    await leadPage.pause(1800);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -306,6 +302,9 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   test('TC-RM-04: Lead Qualification (T-LEAD-04) & Atomic Conversion to Loan Application', async ({
     page,
   }) => {
+    const authPage = new AuthPage(page);
+    const leadPage = new LeadPage(page);
+
     const mockLead = {
       id: 'led_qual_alpha_001',
       fullName: 'Test Customer Alpha',
@@ -359,51 +358,42 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, '/leads/led_qual_alpha_001');
-    await showDemoBanner(page, 'Qualifying & Converting Lead', 'To approve loan terms and generate official customer & application records');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, '/leads/led_qual_alpha_001');
+    await leadPage.showBanner('Qualifying & Converting Lead', 'To approve loan terms and generate official customer & application records');
+    await leadPage.pause(1200);
 
     // 1. Open Qualify Dialog (T-LEAD-04)
-    const qualifyBtn = page.locator('[data-testid="lead.action.qualify"]');
-    await expect(qualifyBtn).toBeVisible();
-    await humanClick(qualifyBtn);
+    await expect(leadPage.qualifyBtn).toBeVisible();
+    await leadPage.openQualifyDialog();
 
     // 2. Validate empty amount check
-    await showDemoBanner(page, 'Qualify Form Validation', 'Testing empty loan amount check');
-    const amountField = page.locator('[data-testid="qualify.amount"] input');
-    await expect(amountField).toBeVisible();
-    await amountField.clear();
-    await amountField.fill('');
-    await expect(amountField).toHaveValue('');
+    await leadPage.showBanner('Qualify Form Validation', 'Testing empty loan amount check');
+    await expect(leadPage.qualifyAmountField).toBeVisible();
+    await leadPage.qualifyAmountField.clear();
+    await leadPage.qualifyAmountField.fill('');
+    await expect(leadPage.qualifyAmountField).toHaveValue('');
 
-    const submitQualifyBtn = page.locator('[data-testid="qualify.submit"]');
-    await humanClick(submitQualifyBtn);
+    await leadPage.click(leadPage.submitQualifyBtn);
     await expect(page.getByText('Enter a valid loan amount greater than zero.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // Fill valid qualification data: amount and monthly income, then submit
-    await showDemoBanner(page, 'Submitting Qualification', 'Income ₹75,000, Requested amount ₹3,00,000');
-    const incomeField = page.locator('[data-testid="qualify.monthlyIncome"] input');
-    if (await incomeField.isVisible()) {
-      await humanType(incomeField, '75000');
-    }
-    await humanType(amountField, '300000');
-    await humanClick(submitQualifyBtn);
+    await leadPage.showBanner('Submitting Qualification', 'Income ₹75,000, Requested amount ₹3,00,000');
+    await leadPage.submitQualification('300000', '75000');
 
     // 3. Confirm transition to QUALIFIED
-    await showDemoBanner(page, 'State: QUALIFIED', 'Lead successfully qualified');
+    await leadPage.showBanner('State: QUALIFIED', 'Lead successfully qualified');
     await expect(page.getByText('Lead lifecycle state updated successfully.')).toBeVisible();
     await expect(page.getByText('QUALIFIED', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await leadPage.pause(1500);
 
     // 4. Execute Atomic Conversion to Loan Application (SUB-LEAD.09)
-    await showDemoBanner(page, 'Atomic Conversion', 'Converting lead to Customer & Loan Application');
-    const convertBtn = page.locator('[data-testid="lead.action.convert"]');
-    await expect(convertBtn).toBeVisible();
-    await humanClick(convertBtn);
+    await leadPage.showBanner('Atomic Conversion', 'Converting lead to Customer & Loan Application');
+    await expect(leadPage.convertBtn).toBeVisible();
+    await leadPage.convertLead();
 
     // 5. Verify Atomic Conversion Result: Application & Customer entities created
-    await showDemoBanner(page, 'Conversion Complete', 'Generated Application & Customer records');
+    await leadPage.showBanner('Conversion Complete', 'Generated Application & Customer records');
     await expect(page.getByRole('heading', { name: 'Lead Converted Successfully' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'app_loan_alpha_001' })).toBeVisible();
     await expect(page.getByText('cus_alpha_001', { exact: true })).toBeVisible();
@@ -411,8 +401,8 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     // Verify navigation link to DPDP Consents is displayed
     const consentsLink = page.getByRole('link', { name: /Manage Customer DPDP Consents/i });
     await expect(consentsLink).toBeVisible();
-    await pauseForDemo(page, 2000);
-    await performRoleLogout(page);
+    await leadPage.pause(2000);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -420,6 +410,9 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   // (Notion: Module 06 Step 7, consent.record, MOD-PRV, ENT-028)
   // =========================================================================
   test('TC-RM-05: DPDP Act Compliance & Customer Consent Recording and Revocation', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const consentPage = new CustomerConsentPage(page);
+
     const customerId = 'cus_alpha_001';
     const mockCustomer = {
       id: customerId,
@@ -493,52 +486,35 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, `/customers/${customerId}/consents`);
-    await showDemoBanner(page, 'Managing DPDP Customer Consents', 'To ensure regulatory compliance for data processing under the DPDP Act');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, `/customers/${customerId}/consents`);
+    await consentPage.showBanner('Managing DPDP Customer Consents', 'To ensure regulatory compliance for data processing under the DPDP Act');
+    await consentPage.pause(1200);
 
     // 1. Verify customer header and profile details
     await expect(page.getByRole('heading', { name: 'Customer Consent Management' })).toBeVisible();
     await expect(page.getByText('Test Customer Alpha')).toBeVisible();
 
-    // 2. Open "+ Record New Consent" dialog
-    await showDemoBanner(page, 'Recording Consent', 'Opening + Record New Consent dialog');
-    const recordConsentBtn = page.getByRole('button', { name: /\+ Record New Consent/i });
-    await expect(recordConsentBtn).toBeVisible();
-    await humanClick(recordConsentBtn);
+    // 2. Open "+ Record New Consent" dialog and fill details
+    await consentPage.showBanner('Recording Consent', 'Opening + Record New Consent dialog');
+    await consentPage.recordConsent('QA-CONSENT-V1', 'DOC-SIGNED-001');
 
-    // 3. Fill DPDP consent details
-    await showDemoBanner(page, 'Notice & Evidence', 'Notice: QA-CONSENT-V1, Evidence: DOC-SIGNED-001');
-    const noticeVersionInput = page.locator('input[data-testid="consent.noticeVersion"]');
-    await noticeVersionInput.fill('');
-    await humanType(noticeVersionInput, 'QA-CONSENT-V1');
-
-    const evidenceRefInput = page.locator('input[data-testid="consent.evidenceRef"]');
-    await humanType(evidenceRefInput, 'DOC-SIGNED-001');
-    await pauseForDemo(page, 1000);
-
-    // Submit consent
-    const submitConsentBtn = page.locator('[data-testid="consent.submit"]');
-    await humanClick(submitConsentBtn);
-
-    // 4. Verify consent record rendered in active table
-    await showDemoBanner(page, 'Consent Recorded: ACTIVE', 'Status confirmed ACTIVE in consent table');
+    // 3. Verify consent record rendered in active table
+    await consentPage.showBanner('Consent Recorded: ACTIVE', 'Status confirmed ACTIVE in consent table');
     await expect(page.getByRole('cell', { name: 'CONTACT' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'QA-CONSENT-V1' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'ACTIVE' })).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await consentPage.pause(1500);
 
-    // 5. Test Revocation / Withdrawal (Right to Withdraw under DPDP Act)
-    await showDemoBanner(page, 'Exercising Right to Withdraw', 'Clicking Withdraw to revoke consent');
-    const withdrawBtn = page.getByRole('button', { name: 'Withdraw' });
-    await expect(withdrawBtn).toBeVisible();
-    await humanClick(withdrawBtn);
+    // 4. Test Revocation / Withdrawal (Right to Withdraw under DPDP Act)
+    await consentPage.showBanner('Exercising Right to Withdraw', 'Clicking Withdraw to revoke consent');
+    await expect(consentPage.withdrawBtn).toBeVisible();
+    await consentPage.withdrawConsent();
 
     // Verify status updated to WITHDRAWN / Revoked
-    await showDemoBanner(page, 'Consent Withdrawal', 'Customer exercised Right to Withdraw');
+    await consentPage.showBanner('Consent Withdrawal', 'Customer exercised Right to Withdraw');
     await expect(page.getByText('Revoked', { exact: true })).toBeVisible();
-    await pauseForDemo(page, 1800);
-    await performRoleLogout(page);
+    await consentPage.pause(1800);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -546,6 +522,8 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
   // (Notion: SoD Dual Control, SOD-01 to SOD-05, Restricted Permissions)
   // =========================================================================
   test('TC-RM-06: Segregation of Duties (SoD) & Access Control Enforcement', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const appPage = new ApplicationPage(page);
     const applicationId = 'app_loan_alpha_001';
 
     // Mock application in DOCUMENTS_PENDING state
@@ -612,23 +590,21 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.rm, `/applications/${applicationId}`);
-    await showDemoBanner(page, 'Enforcing Role Boundaries & SoD', 'To verify Relationship Managers cannot self-approve or sanction loans');
-    await pauseForDemo(page, 1200);
+    await authPage.loginAs(PERSONAS.rm, `/applications/${applicationId}`);
+    await appPage.showBanner('Enforcing Role Boundaries & SoD', 'To verify Relationship Managers cannot self-approve or sanction loans');
+    await appPage.pause(1200);
 
     // 1. Verify RM can view application details header
     await expect(page.getByRole('heading', { name: `Application ${applicationId}` })).toBeVisible();
 
     // 2. SoD Boundary Verification: RM lacks `application.review` permission
     // "Send to review" button MUST NOT be visible for RM
-    const reviewBtn = page.getByRole('button', { name: /Send to review/i });
-    await expect(reviewBtn).not.toBeVisible();
+    await expect(appPage.sendToReviewBtn).not.toBeVisible();
 
     // 3. SoD Boundary Verification: RM lacks `sanction.record` / `verification.complete`
-    const approveSanctionBtn = page.getByRole('button', { name: /Record Sanction/i });
-    await expect(approveSanctionBtn).not.toBeVisible();
-    await showDemoBanner(page, 'SoD Confirmed', 'Review & Sanction actions are hidden for Relationship Managers');
-    await pauseForDemo(page, 1500);
+    await expect(appPage.recordSanctionBtn).not.toBeVisible();
+    await appPage.showBanner('SoD Confirmed', 'Review & Sanction actions are hidden for Relationship Managers');
+    await appPage.pause(1500);
 
     // 4. Negative test: Cross-Tenant / Unauthorized Branch Lead Access
     await page.route('**/v1/leads/led_forbidden_999', async (route) => {
@@ -645,15 +621,15 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
       });
     });
 
-    await page.goto('/leads/led_forbidden_999');
-    await showDemoBanner(page, 'Route Guard Check', 'Navigating to forbidden lead outside branch scope');
-    await pauseForDemo(page, 1200);
+    await appPage.goto('/leads/led_forbidden_999');
+    await appPage.showBanner('Route Guard Check', 'Navigating to forbidden lead outside branch scope');
+    await appPage.pause(1200);
 
     // Verify fail-closed security: error alert displayed
-    await showDemoBanner(page, 'Branch Policy Enforced', 'Access blocked outside assigned branch scope');
+    await appPage.showBanner('Branch Policy Enforced', 'Access blocked outside assigned branch scope');
     await expect(page.getByRole('alert')).toBeVisible();
     await expect(page.getByRole('alert').getByText(/Cannot reach the lead|Request failed \(403\)|Access denied/i)).toBeVisible();
-    await pauseForDemo(page, 2000);
-    await performRoleLogout(page);
+    await appPage.pause(2000);
+    await authPage.logout();
   });
 });

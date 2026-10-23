@@ -1,18 +1,15 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, PlatformAdminPage } from './pages';
 
 test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-ADMIN)', () => {
   // =========================================================================
   // TC-PSA-01: Multi-Tenant Platform Console & Tenant Directory Inspection
   // =========================================================================
   test('TC-PSA-01: Multi-Tenant Platform Console & Tenant Directory Inspection', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const platformPage = new PlatformAdminPage(page);
+
     // Mock platform tenants endpoint
     await page.route('**/platform/v1/tenants**', async (route) => {
       await route.fulfill({
@@ -95,30 +92,33 @@ test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-ADMIN)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.platformSuperAdmin, '/platform-admin');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.platformSuperAdmin, '/platform-admin');
 
     // 2. Verify Platform Operations Console
-    await showDemoBanner(page, 'Platform Console', 'Reviewing multi-tenant directory (MOD-TEN / MOD-ADM)');
-    await expect(page.getByText('Platform Operations')).toBeVisible();
+    await platformPage.showBanner('Platform Console', 'Reviewing multi-tenant directory (MOD-TEN / MOD-ADM)');
+    await expect(platformPage.heading).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Qloax Finserv Private Limited' })).toBeVisible();
     await expect(page.getByText('qloax-dsa')).toBeVisible();
     await expect(page.getByText('Alpha Financial Services Ltd')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await platformPage.pause(1500);
 
     // 3. Inspect tenant status chips
     const activeChips = page.getByText('ACTIVE');
     await expect(activeChips.first()).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await platformPage.pause(1200);
 
-    // 4. Role Logout
-    await performRoleLogout(page);
+    // 4. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-PSA-02: Platform Feature Flags & Background Jobs Oversight
   // =========================================================================
   test('TC-PSA-02: Platform Feature Flags & Background Jobs Oversight', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const platformPage = new PlatformAdminPage(page);
+
     await page.route('**/platform/v1/tenants**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -195,57 +195,56 @@ test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-ADMIN)', () => {
       });
     });
 
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.platformSuperAdmin, '/platform-admin');
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.platformSuperAdmin, '/platform-admin');
 
     // 2. Switch to Feature Flags Tab
-    await showDemoBanner(page, 'Feature Flags Tab', 'Inspecting platform feature toggles');
-    const flagsTab = page.getByRole('tab', { name: /Feature Flags/i });
-    await expect(flagsTab).toBeVisible();
-    await humanClick(flagsTab, 1200);
+    await platformPage.showBanner('Feature Flags Tab', 'Inspecting platform feature toggles');
+    await expect(platformPage.flagsTab).toBeVisible();
+    await platformPage.switchToFlagsTab();
 
     await expect(page.getByText('FF_ENABLE_NEW_BRE_SIMULATOR')).toBeVisible();
     await expect(page.getByText('Enable next-generation rule simulator engine')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await platformPage.pause(1500);
 
     // 3. Switch to Background Jobs Tab
-    await showDemoBanner(page, 'Background Jobs Tab', 'Monitoring queue throughput and dead-letter backlog');
-    const jobsTab = page.getByRole('tab', { name: /Background Jobs/i });
-    await expect(jobsTab).toBeVisible();
-    await humanClick(jobsTab, 1200);
+    await platformPage.showBanner('Background Jobs Tab', 'Monitoring queue throughput and dead-letter backlog');
+    await expect(platformPage.jobsTab).toBeVisible();
+    await platformPage.switchToJobsTab();
 
     await expect(page.getByText('document_ocr_queue')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await platformPage.pause(1500);
 
-    // 4. Role Logout
-    await performRoleLogout(page);
+    // 4. Role Logout via Page Object
+    await authPage.logout();
   });
 
   // =========================================================================
   // TC-PSA-03: Segregation of Duties & Operational Boundary Enforcement
   // =========================================================================
   test('TC-PSA-03: Segregation of Duties & Operational Boundary Enforcement', async ({ page }) => {
-    // 1. Role Login
-    await performRoleLogin(page, PERSONAS.platformSuperAdmin, '/platform-admin');
+    const authPage = new AuthPage(page);
+    const platformPage = new PlatformAdminPage(page);
+
+    // 1. Role Login via Page Object
+    await authPage.loginAs(PERSONAS.platformSuperAdmin, '/platform-admin');
 
     // 2. Verify platform console enforces zero business data projection
-    await showDemoBanner(
-      page,
+    await platformPage.showBanner(
       'Data Privacy Boundary',
       'Verifying Platform Super Admin is isolated from tenant business data',
     );
-    await expect(page.getByText(/Zero Business Data Projection/i)).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await expect(platformPage.zeroBusinessDataBanner).toBeVisible();
+    await platformPage.pause(1500);
 
     // 3. Navigate to an operational borrower applications route
-    await showDemoBanner(page, 'Access Boundary Check', 'Attempting direct navigation to tenant borrower loans');
-    await page.goto('/applications');
-    await page.waitForLoadState('domcontentloaded');
+    await platformPage.showBanner('Access Boundary Check', 'Attempting direct navigation to tenant borrower loans');
+    await platformPage.goto('/applications');
 
     // Platform Super Admin without support access cannot originate or approve tenant loans
-    await pauseForDemo(page, 1500);
+    await platformPage.pause(1500);
 
-    // 4. Role Logout
-    await performRoleLogout(page);
+    // 4. Role Logout via Page Object
+    await authPage.logout();
   });
 });

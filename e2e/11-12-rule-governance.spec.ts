@@ -1,14 +1,6 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  setupPersonaSession,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanClick,
-  humanType,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, RuleEditorPage } from './pages';
 
 test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-APPROVER)', () => {
   const versionId = 'rsv_01J00000000000000000000001';
@@ -43,7 +35,10 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
   test('TC-BRE-01: Rule Author drafts decision table, encounters syntax validation, and runs simulation', async ({
     page,
   }) => {
-    await showDemoBanner(page, 'Drafting Business Decision Rule', 'To create policy rules, test syntax, and safely simulate test cases in sandbox');
+    const authPage = new AuthPage(page);
+    const rulePage = new RuleEditorPage(page);
+
+    await rulePage.showBanner('Drafting Business Decision Rule', 'To create policy rules, test syntax, and safely simulate test cases in sandbox');
 
     let currentVersion = { ...mockRuleSetVersion };
 
@@ -115,94 +110,76 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await performRoleLogin(page, PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
+    await rulePage.pause(1500);
 
     // 1. Verify Rule Version page loaded in DRAFT state
-    await showDemoBanner(page, 'Rule Version Loaded', 'Version in DRAFT status with hit policy FIRST');
+    await rulePage.showBanner('Rule Version Loaded', 'Version in DRAFT status with hit policy FIRST');
     await expect(page.getByText(versionId).first()).toBeVisible();
     await expect(page.getByText('DRAFT').first()).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await rulePage.pause(1200);
 
     // 2. Test Syntax Validation Error: Enter malformed JSON and click Save Draft
-    await showDemoBanner(page, 'Syntax Error Check', 'Testing malformed JSON handling in rule definition');
-    const definitionEditor = page.locator('textarea').first();
-    await definitionEditor.fill('{ "invalid_json": ');
-    await pauseForDemo(page, 1200);
-
-    const saveDraftBtn = page.getByRole('button', { name: /Save Draft/i });
-    await humanClick(saveDraftBtn, 1500);
+    await rulePage.showBanner('Syntax Error Check', 'Testing malformed JSON handling in rule definition');
+    await rulePage.definitionEditor.fill('{ "invalid_json": ');
+    await rulePage.pause(1200);
+    await rulePage.click(rulePage.saveDraftBtn, 1500);
 
     // Verify error banner
-    await showDemoBanner(page, 'Syntax Error Detected', 'Error banner: Definition is not valid JSON');
+    await rulePage.showBanner('Syntax Error Detected', 'Error banner: Definition is not valid JSON');
     await expect(page.getByText(/Definition is not valid JSON/i)).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await rulePage.pause(1500);
 
     // 3. Restore valid JSON schema and save
-    await showDemoBanner(page, 'Valid AST Schema', 'Restoring valid JSON rules definition AST');
-    await definitionEditor.fill(JSON.stringify(mockRuleSetVersion.definition, null, 2));
-    await pauseForDemo(page, 1200);
-    await humanClick(saveDraftBtn, 2000);
+    await rulePage.showBanner('Valid AST Schema', 'Restoring valid JSON rules definition AST');
+    await rulePage.saveDefinition(JSON.stringify(mockRuleSetVersion.definition, null, 2));
     await expect(page.getByText(/Draft definition updated successfully/i)).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await rulePage.pause(1500);
 
     // 4. Open Rule Simulation Modal (Safe Sandbox)
-    await showDemoBanner(page, 'Safe Sandbox Simulation', 'Opening simulation modal with synthetic facts');
-    const simBtn = page.getByRole('button', { name: /Simulate \/ Test/i });
-    await expect(simBtn).toBeVisible();
-    await humanClick(simBtn, 1500);
+    await rulePage.showBanner('Safe Sandbox Simulation', 'Opening simulation modal with synthetic facts');
+    await expect(rulePage.simulateBtn).toBeVisible();
+    await rulePage.click(rulePage.simulateBtn, 1500);
 
     // 5. Check Simulation dialog is open
     await expect(page.getByText(/Safe Rule Simulation Environment/i)).toBeVisible();
-    await showDemoBanner(page, 'Run Simulation', 'Evaluating rule set against test inputs');
-    const runBtn = page.getByRole('button', { name: /Run Simulation/i });
-    await expect(runBtn).toBeVisible();
-    await humanClick(runBtn, 2000);
+    await rulePage.showBanner('Run Simulation', 'Evaluating rule set against test inputs');
+    await expect(rulePage.runSimulationBtn).toBeVisible();
+    await rulePage.click(rulePage.runSimulationBtn, 2000);
 
     // 6. Verify simulation output renders
-    await showDemoBanner(page, 'Simulation: COMPLETED', 'Matched rule_1 with output: ELIGIBLE');
+    await rulePage.showBanner('Simulation: COMPLETED', 'Matched rule_1 with output: ELIGIBLE');
     await expect(page.getByText(/Simulation Outcome: COMPLETED/i)).toBeVisible();
     await expect(page.getByText('ELIGIBLE').first()).toBeVisible();
-    await pauseForDemo(page, 2000);
+    await rulePage.pause(2000);
 
     // Close simulation dialog
-    const closeDialogBtn = page.getByRole('button', { name: /Close/i });
-    await humanClick(closeDialogBtn, 1200);
+    await rulePage.closeSimulation();
 
     // 7. Run AST / schema validation to satisfy prerequisite for review submission
-    await showDemoBanner(page, 'Validate Rule Schema', 'Running AST validator to meet review prerequisite');
-    const validateBtn = page.getByRole('button', { name: /^Validate$/i });
-    await expect(validateBtn).toBeVisible();
-    await humanClick(validateBtn, 1500);
+    await rulePage.showBanner('Validate Rule Schema', 'Running AST validator to meet review prerequisite');
+    await expect(rulePage.validateAstBtn).toBeVisible();
+    await rulePage.validateAST();
     await expect(page.getByText(/Validation Status: PASS/i)).toBeVisible();
-    await pauseForDemo(page, 1200);
+    await rulePage.pause(1200);
 
     // 8. Submit draft for independent review
-    await showDemoBanner(page, 'Submit for Review', 'Freezing draft into IN_REVIEW state for maker-checker review');
-    const submitBtn = page.getByRole('button', { name: /Submit for Review/i });
-    await expect(submitBtn).toBeVisible();
-    await expect(submitBtn).toBeEnabled();
-    await humanClick(submitBtn, 1500);
+    await rulePage.showBanner('Submit for Review', 'Freezing draft into IN_REVIEW state for maker-checker review');
+    await expect(rulePage.submitForReviewBtn).toBeVisible();
+    await expect(rulePage.submitForReviewBtn).toBeEnabled();
+    await rulePage.submitForReview('Policy v1 draft validated with positive simulation outcome.');
 
-    const submitModal = page.getByRole('dialog');
-    await expect(submitModal).toBeVisible();
-    await expect(page.getByText(/Submit Version for Review/i)).toBeVisible();
-    const submitReasonInput = submitModal.getByLabel(/Submission Notes/i);
-    await humanType(submitReasonInput, 'Policy v1 draft validated with positive simulation outcome.');
-    await pauseForDemo(page, 1200);
-
-    const confirmSubmitBtn = submitModal.getByRole('button', { name: /Submit Version/i });
-    await expect(confirmSubmitBtn).toBeVisible();
-    await humanClick(confirmSubmitBtn, 2000);
-
-    await showDemoBanner(page, 'Submitted for Review', 'Version successfully submitted for independent review');
+    await rulePage.showBanner('Submitted for Review', 'Version successfully submitted for independent review');
     await expect(page.getByText(/Version successfully submitted for review/i)).toBeVisible();
-    await pauseForDemo(page, 2500);
-    await performRoleLogout(page);
+    await rulePage.pause(2500);
+    await authPage.logout();
   });
 
   test('TC-BRE-02: Rule Approver reviews & approves with SOD-01 dual-control check', async ({ page }) => {
-    await showDemoBanner(page, 'Independent Rule Checker Review', 'To ensure an independent approver validates business rules prior to production release');
+    const authPage = new AuthPage(page);
+    const rulePage = new RuleEditorPage(page);
+
+    await rulePage.showBanner('Independent Rule Checker Review', 'To ensure an independent approver validates business rules prior to production release');
 
     const inReviewVersion = {
       ...mockRuleSetVersion,
@@ -235,41 +212,29 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await performRoleLogin(page, PERSONAS.ruleApprover, `/rules/versions/${versionId}`);
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.ruleApprover, `/rules/versions/${versionId}`);
+    await rulePage.pause(1500);
 
     // 1. Approver sees review action
-    await showDemoBanner(page, 'Opening Checker Review', 'Approver opening independent maker-checker review dialog');
-    const reviewBtn = page.getByRole('button', { name: /Review \/ Approve \(SOD-01\)/i });
-    await expect(reviewBtn).toBeVisible();
-    await humanClick(reviewBtn, 1500);
+    await rulePage.showBanner('Opening Checker Review', 'Approver opening independent maker-checker review dialog');
+    await expect(rulePage.reviewApproveBtn).toBeVisible();
 
-    // 2. Maker-checker modal opened
-    await expect(page.getByText(/Independent Maker-Checker Review \(SOD-01\)/i)).toBeVisible();
-    await expect(page.getByText(/Per SOD-01 separation of duties/i)).toBeVisible();
+    // 2. Maker-checker modal opened and approved
+    await rulePage.approveRuleVersion('Independent risk validation verified; approved for deployment.');
 
-    // 3. Fill reviewer comments
-    await showDemoBanner(page, 'Reviewer Justification', 'Attesting risk compliance & guidelines alignment');
-    const commentField = page.getByLabel(/Reviewer Comments/i);
-    await humanType(commentField, 'Independent risk validation verified; approved for deployment.');
-    await pauseForDemo(page, 1200);
-
-    // 4. Confirm Approval
-    await showDemoBanner(page, 'Confirm Approval', 'Authorizing version deployment (status ➔ APPROVED)');
-    const confirmBtn = page.getByRole('button', { name: /Confirm APPROVE/i });
-    await expect(confirmBtn).toBeVisible();
-    await humanClick(confirmBtn, 2000);
-
-    // 5. Verify review success notification and status change
-    await showDemoBanner(page, 'Rule Version Approved', 'Review completed successfully by independent checker');
+    // 3. Verify review success notification and status change
+    await rulePage.showBanner('Rule Version Approved', 'Review completed successfully by independent checker');
     await expect(page.getByText(/Version review completed: APPROVE/i)).toBeVisible();
-    await pauseForDemo(page, 2500);
-    await performRoleLogout(page);
+    await rulePage.pause(2500);
+    await authPage.logout();
   });
 
   test('TC-BRE-03: Segregation of Duties (SOD-01) Enforces Maker Cannot Self-Approve Rule', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const rulePage = new RuleEditorPage(page);
+
     // Session as Rule Author (who has rule.author permission, but tries to invoke review directly)
-    await showDemoBanner(page, 'Enforcing Rule Maker Lockout', 'To ensure rule authors cannot approve or deploy their own decision logic');
+    await rulePage.showBanner('Enforcing Rule Maker Lockout', 'To ensure rule authors cannot approve or deploy their own decision logic');
 
     // Rule version in IN_REVIEW authored by usr_ruleauthor_01
     const inReviewVersion = {
@@ -302,24 +267,24 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
       }
     });
 
-    await performRoleLogin(page, PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.ruleAuthor, `/rules/versions/${versionId}`);
+    await rulePage.pause(1500);
 
     // 1. In UI, rule.approve action button is NOT shown to rule author because they lack rule.approve permission
-    await showDemoBanner(page, 'Self-Approval Blocked', 'Review and approve actions are hidden for the original author');
-    await expect(page.getByRole('button', { name: /Review \/ Approve \(SOD-01\)/i })).toHaveCount(0);
-    await pauseForDemo(page, 1200);
+    await rulePage.showBanner('Self-Approval Blocked', 'Review and approve actions are hidden for the original author');
+    await expect(rulePage.reviewApproveBtn).toHaveCount(0);
+    await rulePage.pause(1200);
 
     // 2. Author also cannot publish directly
-    await showDemoBanner(page, 'Publish Action Guard', 'Publish to Production button is hidden for author');
-    await expect(page.getByRole('button', { name: /Publish Version/i })).toHaveCount(0);
-    await pauseForDemo(page, 1200);
+    await rulePage.showBanner('Publish Action Guard', 'Publish to Production button is hidden for author');
+    await expect(rulePage.publishBtn).toHaveCount(0);
+    await rulePage.pause(1200);
 
     // 3. Verify locked status
-    await showDemoBanner(page, 'Definition Locked', 'Rule definition is read-only in IN_REVIEW state');
+    await rulePage.showBanner('Definition Locked', 'Rule definition is read-only in IN_REVIEW state');
     await expect(page.getByText('IN_REVIEW').first()).toBeVisible();
     await expect(page.getByText(/Locked Rule Definition/i)).toBeVisible();
-    await pauseForDemo(page, 2000);
-    await performRoleLogout(page);
+    await rulePage.pause(2000);
+    await authPage.logout();
   });
 });

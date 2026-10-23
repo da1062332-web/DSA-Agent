@@ -1,23 +1,17 @@
 import { test, expect } from '@playwright/test';
-import {
-  PERSONAS,
-  setupPersonaSession,
-  performRoleLogin,
-  performRoleLogout,
-  pauseForDemo,
-  humanType,
-  humanClick,
-  showDemoBanner,
-} from './helpers/mock-session';
+import { PERSONAS } from './helpers/mock-session';
+import { AuthPage, SanctionPage } from './pages';
 
 test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
-
 
   // =========================================================================
   // TC-LO-01: Sanction Terms Recording & Tranche Limit Validation
   // (Notion QA Plan Module 08 Steps 7-8, MOD-SNC, MOD-TRN)
   // =========================================================================
   test('TC-LO-01: Sanction Terms Recording & Tranche Limit Validation', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const sanctionPage = new SanctionPage(page);
+
     const mockSanctions: any[] = [];
     const mockTranches: any[] = [];
 
@@ -81,86 +75,78 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       }
     });
 
-    await performRoleLogin(page, PERSONAS.loanOps, '/sanctions/lcs_case_001');
-    await showDemoBanner(page, 'Recording Loan Sanction Terms', 'To set approved loan amounts, interest rates, and enforce disbursement tranche limits');
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.loanOps, '/sanctions/lcs_case_001');
+    await sanctionPage.showBanner('Recording Loan Sanction Terms', 'To set approved loan amounts, interest rates, and enforce disbursement tranche limits');
+    await sanctionPage.pause(1500);
 
     // 1. Verify Sanctions Panel loaded
-    await showDemoBanner(page, 'Sanctions Workspace', 'Loading lender case sanction management');
-    await expect(page.locator('[data-testid="sanctions-panel"]')).toBeVisible();
+    await sanctionPage.showBanner('Sanctions Workspace', 'Loading lender case sanction management');
+    await expect(sanctionPage.sanctionsPanel).toBeVisible();
 
     // 2. Open Record Sanction Dialog
-    await showDemoBanner(page, 'Open Record Sanction', 'Opening sanction term sheet modal');
-    const recordSanctionBtn = page.locator('[data-testid="record-sanction-btn"]');
-    await expect(recordSanctionBtn).toBeVisible();
-    await humanClick(recordSanctionBtn, 1500);
+    await sanctionPage.showBanner('Open Record Sanction', 'Opening sanction term sheet modal');
+    await expect(sanctionPage.openRecordSanctionBtn).toBeVisible();
+    await sanctionPage.click(sanctionPage.openRecordSanctionBtn, 1500);
 
     // 3. Test Sanction field validations (amount = 0, tenure = 0, rate > 100%)
-    await showDemoBanner(page, 'Sanction Validation Check', 'Testing zero amount, zero tenure & excessive rate');
-    const amountField = page.locator('input[data-testid="sanction.amount"]');
-    await amountField.fill('0');
-    const tenureField = page.locator('input[data-testid="sanction.tenureMonths"]');
-    await tenureField.fill('0');
-    const rateField = page.locator('input[data-testid="sanction.rateValue"]');
-    await rateField.fill('150');
+    await sanctionPage.showBanner('Sanction Validation Check', 'Testing zero amount, zero tenure & excessive rate');
+    await sanctionPage.sanctionAmountInput.fill('0');
+    await sanctionPage.sanctionTenureInput.fill('0');
+    await sanctionPage.sanctionRateInput.fill('150');
 
-    const saveSanctionBtn = page.locator('button[data-testid="sanction.save-btn"]');
-    await humanClick(saveSanctionBtn);
+    await sanctionPage.click(sanctionPage.saveSanctionBtn);
 
     await expect(page.getByText('Sanction amount must be greater than zero.')).toBeVisible();
     await expect(page.getByText('Tenure must be at least 1 month.')).toBeVisible();
     await expect(page.getByText('Interest rate must be between 0.01% and 100%.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await sanctionPage.pause(1500);
 
     // 4. Fill valid Notion QA Sanction Details
-    await showDemoBanner(page, 'Fill Valid Sanction Terms', 'Sanction ₹15,00,000 at 9.25% for 180 months');
-    await humanType(amountField, '1500000');
-    await humanType(tenureField, '180');
-    await humanType(rateField, '9.25');
-    await pauseForDemo(page, 1200);
+    await sanctionPage.showBanner('Fill Valid Sanction Terms', 'Sanction ₹15,00,000 at 9.25% for 180 months');
+    await sanctionPage.type(sanctionPage.sanctionAmountInput, '1500000');
+    await sanctionPage.type(sanctionPage.sanctionTenureInput, '180');
+    await sanctionPage.type(sanctionPage.sanctionRateInput, '9.25');
+    await sanctionPage.pause(1200);
 
-    await showDemoBanner(page, 'Save Sanction Offer', 'Persisting approved sanction terms');
-    await humanClick(saveSanctionBtn, 2000);
+    await sanctionPage.showBanner('Save Sanction Offer', 'Persisting approved sanction terms');
+    await sanctionPage.click(sanctionPage.saveSanctionBtn, 2000);
 
     // Verify Sanction recorded
-    await showDemoBanner(page, 'Sanction Recorded', 'Sanction ₹15,00,000 active in case overview');
+    await sanctionPage.showBanner('Sanction Recorded', 'Sanction ₹15,00,000 active in case overview');
     await expect(page.getByRole('heading', { name: '₹15,00,000' }).first()).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await sanctionPage.pause(1500);
 
     // 5. Open Record Tranche Dialog
-    await showDemoBanner(page, 'Open Record Tranche', 'Opening disbursement tranche dialog');
-    const recordTrancheBtn = page.locator('[data-testid="record-tranche-btn"]');
-    await expect(recordTrancheBtn).toBeVisible();
-    await humanClick(recordTrancheBtn, 1500);
+    await sanctionPage.showBanner('Open Record Tranche', 'Opening disbursement tranche dialog');
+    await expect(sanctionPage.openRecordTrancheBtn).toBeVisible();
+    await sanctionPage.click(sanctionPage.openRecordTrancheBtn, 1500);
 
     // 6. Test Tranche validation: amount exceeding remaining limit
-    await showDemoBanner(page, 'Tranche Limit Validation', 'Attempting tranche ₹20,00,000 (exceeds ₹15L limit)');
-    const trancheAmountField = page.locator('input[data-testid="tranche.amount"]');
-    await trancheAmountField.fill('2000000');
-    const trancheSaveBtn = page.locator('button[data-testid="tranche.save-btn"]');
-    if (await trancheSaveBtn.isEnabled()) {
-      await humanClick(trancheSaveBtn);
+    await sanctionPage.showBanner('Tranche Limit Validation', 'Attempting tranche ₹20,00,000 (exceeds ₹15L limit)');
+    await sanctionPage.trancheAmountInput.fill('2000000');
+    if (await sanctionPage.saveTrancheBtn.isEnabled()) {
+      await sanctionPage.click(sanctionPage.saveTrancheBtn);
       await expect(page.getByText(/exceed remaining limit/i)).toBeVisible();
     }
-    await pauseForDemo(page, 1500);
+    await sanctionPage.pause(1500);
 
     // Fill valid tranche details
-    await showDemoBanner(page, 'Fill Valid Tranche', 'Tranche #1 ₹7,50,000 with UTR & Loan Account');
-    await humanType(trancheAmountField, '750000');
-    await humanType(page.locator('input[data-testid="tranche.utr"]'), 'UTR202610219999');
-    await humanType(page.locator('input[data-testid="tranche.loanAccount"]'), 'LN8877665544');
-    await pauseForDemo(page, 1200);
+    await sanctionPage.showBanner('Fill Valid Tranche', 'Tranche #1 ₹7,50,000 with UTR & Loan Account');
+    await sanctionPage.type(sanctionPage.trancheAmountInput, '750000');
+    await sanctionPage.type(sanctionPage.trancheUtrInput, 'UTR202610219999');
+    await sanctionPage.type(sanctionPage.trancheLoanAccountInput, 'LN8877665544');
+    await sanctionPage.pause(1200);
 
-    await showDemoBanner(page, 'Submit Tranche', 'Recording disbursement evidence');
-    await humanClick(trancheSaveBtn, 2000);
+    await sanctionPage.showBanner('Submit Tranche', 'Recording disbursement evidence');
+    await sanctionPage.click(sanctionPage.saveTrancheBtn, 2000);
 
     // Verify Tranche rendered in table
-    await showDemoBanner(page, 'Tranche #1 Recorded', 'Status: RECORDED (Pending dual-control verification)');
+    await sanctionPage.showBanner('Tranche #1 Recorded', 'Status: RECORDED (Pending dual-control verification)');
     await expect(page.getByRole('cell', { name: '₹7,50,000' })).toBeVisible();
     await expect(page.getByText('#1')).toBeVisible();
     await expect(page.getByText('RECORDED')).toBeVisible();
-    await pauseForDemo(page, 2500);
-    await performRoleLogout(page);
+    await sanctionPage.pause(2500);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -168,6 +154,9 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
   // (Notion Architecture §4 SOD-04: recorded_by != verified_by)
   // =========================================================================
   test('TC-LO-02: Maker-Checker Dual-Control Enforcement (SOD-04 Disbursement Verification)', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const sanctionPage = new SanctionPage(page);
+
     const sanction = {
       id: 'snc_002',
       lenderCaseId: 'lcs_case_002',
@@ -210,18 +199,18 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       });
     });
 
-    await performRoleLogin(page, PERSONAS.loanOps, '/sanctions/lcs_case_002');
-    await showDemoBanner(page, 'Maker-Checker Dual Control', 'To prevent the maker who entered a disbursement tranche from self-verifying it');
-    await pauseForDemo(page, 1500);
+    await authPage.loginAs(PERSONAS.loanOps, '/sanctions/lcs_case_002');
+    await sanctionPage.showBanner('Maker-Checker Dual Control', 'To prevent the maker who entered a disbursement tranche from self-verifying it');
+    await sanctionPage.pause(1500);
 
     // Verify SOD-04 Enforcement: Loan Operations has `disbursement.record` to log tranches,
     // but CANNOT verify tranches (`disbursement.verify` is strictly restricted to Finance)
-    await showDemoBanner(page, 'Tranche Verification Restricted', 'Disbursement verify action hidden for the tranche maker');
-    const verifyBtn = page.locator('[data-testid="verify-tranche-btn-trn_sod_001"]');
+    await sanctionPage.showBanner('Tranche Verification Restricted', 'Disbursement verify action hidden for the tranche maker');
+    const verifyBtn = sanctionPage.getVerifyTrancheBtn('trn_sod_001');
     await expect(verifyBtn).not.toBeVisible();
-    await showDemoBanner(page, 'Dual Control Verified', 'Separation of duties between recorder and verifier enforced');
-    await pauseForDemo(page, 2500);
-    await performRoleLogout(page);
+    await sanctionPage.showBanner('Dual Control Verified', 'Separation of duties between recorder and verifier enforced');
+    await sanctionPage.pause(2500);
+    await authPage.logout();
   });
 
   // =========================================================================
@@ -229,26 +218,29 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
   // (Notion Architecture SoD Boundaries: Denies Rule Publishing & Payout Approvals)
   // =========================================================================
   test('TC-LO-03: Downstream Segregation of Duties (SoD) & Access Boundaries', async ({ page }) => {
-    await performRoleLogin(page, PERSONAS.loanOps, '/rules');
-    await showDemoBanner(page, 'Restricting Loan Operations Routes', 'To prevent Loan Operations staff from accessing rule engines or finance payouts');
-    await pauseForDemo(page, 1200);
+    const authPage = new AuthPage(page);
+    const sanctionPage = new SanctionPage(page);
+
+    await authPage.loginAs(PERSONAS.loanOps, '/rules');
+    await sanctionPage.showBanner('Restricting Loan Operations Routes', 'To prevent Loan Operations staff from accessing rule engines or finance payouts');
+    await sanctionPage.pause(1200);
 
     // 1. Verify Loan Operations cannot access Rules Authoring / Publishing
-    await showDemoBanner(page, 'Route Guard: Rules', 'Navigating to /rules (Expect 403 Forbidden)');
+    await sanctionPage.showBanner('Route Guard: Rules', 'Navigating to /rules (Expect 403 Forbidden)');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await sanctionPage.pause(1500);
 
     // 2. Verify Loan Operations cannot access Commission Approvals / Payouts
-    await showDemoBanner(page, 'Route Guard: Commission', 'Navigating to /commission (Expect 403 Forbidden)');
-    await page.goto('/commission');
+    await sanctionPage.showBanner('Route Guard: Commission', 'Navigating to /commission (Expect 403 Forbidden)');
+    await sanctionPage.goto('/commission');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
-    await pauseForDemo(page, 1500);
+    await sanctionPage.pause(1500);
 
-    await showDemoBanner(page, 'Route Guard: Approvals', 'Navigating to /approvals (Expect 403 Forbidden)');
-    await page.goto('/approvals');
+    await sanctionPage.showBanner('Route Guard: Approvals', 'Navigating to /approvals (Expect 403 Forbidden)');
+    await sanctionPage.goto('/approvals');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
-    await showDemoBanner(page, 'Access Boundaries Enforced', 'Loan Operations restricted strictly to origination');
-    await pauseForDemo(page, 2000);
-    await performRoleLogout(page);
+    await sanctionPage.showBanner('Access Boundaries Enforced', 'Loan Operations restricted strictly to origination');
+    await sanctionPage.pause(2000);
+    await authPage.logout();
   });
 });
