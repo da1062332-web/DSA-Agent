@@ -108,9 +108,9 @@ export const theme = createTheme({
       defaultProps: { elevation: 0 },
       styleOverrides: {
         root: {
-          backgroundColor: '#215988', // Swatch BG/700 Deep Blue
-          color: '#ffffff',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          backgroundColor: '#656565',
+          color: '#0f172a',
+          borderBottom: '1px solid #e2e8f0',
         },
       },
     },

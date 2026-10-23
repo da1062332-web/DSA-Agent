@@ -130,7 +130,18 @@ export function AppLayout() {
     <StepUpProvider>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
-        <AppBar position="sticky" elevation={0} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }}>
+        <AppBar
+          position="sticky"
+          elevation={0}
+          sx={{
+            top: 0,
+            zIndex: (t) => t.zIndex.drawer + 1,
+            bgcolor: '#ffffff',
+            color: '#0f172a',
+            borderBottom: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+          }}
+        >
           <Toolbar disableGutters sx={{ gap: 1, minHeight: 64, pr: { xs: 2, md: 3 } }}>
             {/* Fixed-width 72px column so the hamburger icon NEVER jumps and stays perfectly aligned with the collapsed rail */}
             <Box
@@ -152,8 +163,9 @@ export function AppLayout() {
                     sx={{
                       width: 44,
                       height: 44,
-                      bgcolor: 'rgba(255, 255, 255, 0.12)',
-                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.22)' },
+                      color: '#334155',
+                      bgcolor: 'rgba(15, 23, 42, 0.04)',
+                      '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)', color: '#0f172a' },
                       borderRadius: 2.5,
                     }}
                   >
@@ -167,8 +179,9 @@ export function AppLayout() {
                   data-testid="shell.menu"
                   sx={{
                     textTransform: 'none',
-                    bgcolor: 'rgba(255, 255, 255, 0.12)',
-                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+                    bgcolor: 'rgba(15, 23, 42, 0.04)',
+                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
+                    color: '#0f172a',
                     borderRadius: 1.5,
                     px: 1.5,
                     fontWeight: 600,
@@ -200,16 +213,13 @@ export function AppLayout() {
                   height: 34,
                   borderRadius: 1.5,
                   objectFit: 'contain',
-                  bgcolor: '#ffffff',
-                  p: 0.4,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
                   flexShrink: 0,
                 }}
               />
               <Typography
                 variant="h6"
                 sx={{
-                  color: '#ffffff',
+                  color: '#0f172a',
                   fontWeight: 800,
                   letterSpacing: '-0.02em',
                   display: 'flex',
@@ -232,20 +242,24 @@ export function AppLayout() {
             </Box>
 
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <NotificationCenter />
+              <Box sx={{ color: '#334155' }}>
+                <NotificationCenter />
+              </Box>
               <Button
                 color="inherit"
                 onClick={(e) => setMenu(e.currentTarget)}
                 data-testid="shell.account"
                 sx={{
                   textTransform: 'none',
-                  bgcolor: 'rgba(255, 255, 255, 0.12)',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.20)' },
+                  bgcolor: 'rgba(15, 23, 42, 0.04)',
+                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
+                  border: '1px solid #e2e8f0',
                   borderRadius: 2,
                   px: 1.5,
                   py: 0.5,
                   fontSize: '0.875rem',
-                  color: '#ffffff',
+                  fontWeight: 600,
+                  color: '#0f172a',
                 }}
               >
                 {me.data?.displayName}
