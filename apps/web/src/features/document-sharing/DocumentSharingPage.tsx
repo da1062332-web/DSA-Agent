@@ -37,6 +37,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
@@ -297,75 +298,52 @@ export function DocumentSharingPage() {
                 </Button>
               </Box>
             ) : (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead sx={{ bgcolor: '#fafafa' }}>
-                    <TableRow>
-                      <TableCell>
-                        <strong>Link ID</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Application ID</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Items Requested</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Uses / Max</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Expires At</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Status</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>Actions</strong>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {uploadLinksData.data.map((link) => {
+              <DataTable<(typeof uploadLinksData.data)[number]>
+                dataTestId="docshare.table.links"
+                data={uploadLinksData.data}
+                keyExtractor={(link) => link.id}
+                columns={[
+                  {
+                    id: 'id',
+                    header: 'Link ID',
+                    render: (link) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</Box>,
+                  },
+                  { id: 'application', header: 'Application ID', render: (link) => <ApplicationName id={link.applicationId} linkToApp /> },
+                  { id: 'items', header: 'Items Requested', render: (link) => `${link.items.length} items` },
+                  { id: 'uses', header: 'Uses / Max', render: (link) => `${link.uses} / ${link.maxUses}` },
+                  { id: 'expires', header: 'Expires At', render: (link) => new Date(link.expiresAt).toLocaleString() },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (link) => {
                       const isExpired = new Date(link.expiresAt) < new Date();
                       const isRevoked = Boolean(link.revokedAt);
                       const isLocked = Boolean(link.lockedAt);
-
-                      let statusBadge = <Chip label="ACTIVE" color="success" size="small" />;
-                      if (isRevoked) statusBadge = <Chip label="REVOKED" color="error" size="small" />;
-                      else if (isLocked) statusBadge = <Chip label="LOCKED" color="error" size="small" />;
-                      else if (isExpired) statusBadge = <Chip label="EXPIRED" color="default" size="small" />;
-
-                      return (
-                        <TableRow key={link.id} hover>
-                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</TableCell>
-                          <TableCell>
-                            <ApplicationName id={link.applicationId} linkToApp />
-                          </TableCell>
-                          <TableCell>{link.items.length} items</TableCell>
-                          <TableCell>
-                            {link.uses} / {link.maxUses}
-                          </TableCell>
-                          <TableCell>{new Date(link.expiresAt).toLocaleString()}</TableCell>
-                          <TableCell>{statusBadge}</TableCell>
-                          <TableCell align="right">
-                            {!isRevoked && !isExpired && !isLocked && (
-                              <Can action="document.upload">
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => revokeLinkMutation.mutate(link.id)}
-                                >
-                                  Revoke
-                                </Button>
-                              </Can>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                      if (isRevoked) return <Chip label="REVOKED" color="error" size="small" />;
+                      if (isLocked) return <Chip label="LOCKED" color="error" size="small" />;
+                      if (isExpired) return <Chip label="EXPIRED" color="default" size="small" />;
+                      return <Chip label="ACTIVE" color="success" size="small" />;
+                    },
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (link) => {
+                      const isExpired = new Date(link.expiresAt) < new Date();
+                      const isRevoked = Boolean(link.revokedAt);
+                      const isLocked = Boolean(link.lockedAt);
+                      return !isRevoked && !isExpired && !isLocked ? (
+                        <Can action="document.upload">
+                          <Button size="small" color="error" onClick={() => revokeLinkMutation.mutate(link.id)}>
+                            Revoke
+                          </Button>
+                        </Can>
+                      ) : null;
+                    },
+                  },
+                ]}
+              />
             )}
           </CardContent>
         </Card>
@@ -387,86 +365,66 @@ export function DocumentSharingPage() {
                 </Button>
               </Box>
             ) : (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead sx={{ bgcolor: '#fafafa' }}>
-                    <TableRow>
-                      <TableCell>
-                        <strong>Share ID</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Application ID</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Recipient</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Purpose</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Consent Verified</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Expires At</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Status</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>Actions</strong>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {sharesData.data.map((share) => {
+              <DataTable<(typeof sharesData.data)[number]>
+                dataTestId="docshare.table.shares"
+                data={sharesData.data}
+                keyExtractor={(share) => share.id}
+                columns={[
+                  {
+                    id: 'id',
+                    header: 'Share ID',
+                    render: (share) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</Box>,
+                  },
+                  { id: 'application', header: 'Application ID', render: (share) => <ApplicationName id={share.applicationId} linkToApp /> },
+                  {
+                    id: 'recipient',
+                    header: 'Recipient',
+                    render: (share) => (
+                      <>
+                        <Typography variant="body2" fontWeight={600}>
+                          {share.recipientContact.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {share.recipientContact.email}
+                        </Typography>
+                      </>
+                    ),
+                  },
+                  { id: 'purpose', header: 'Purpose', render: (share) => <Chip label={share.purpose} size="small" variant="outlined" /> },
+                  {
+                    id: 'consent',
+                    header: 'Consent Verified',
+                    render: (share) => <Chip label={`${share.consentIds.length} Active`} color="info" size="small" />,
+                  },
+                  { id: 'expires', header: 'Expires At', render: (share) => new Date(share.expiresAt).toLocaleDateString() },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    render: (share) => {
+                      const isExpired = new Date(share.expiresAt) < new Date();
+                      if (share.revokedAt) return <Chip label="REVOKED" color="error" size="small" />;
+                      if (isExpired) return <Chip label="EXPIRED" color="default" size="small" />;
+                      return <Chip label="ACTIVE" color="success" size="small" />;
+                    },
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    align: 'right',
+                    render: (share) => {
                       const isExpired = new Date(share.expiresAt) < new Date();
                       const isRevoked = Boolean(share.revokedAt);
-
-                      let statusBadge = <Chip label="ACTIVE" color="success" size="small" />;
-                      if (isRevoked) statusBadge = <Chip label="REVOKED" color="error" size="small" />;
-                      else if (isExpired) statusBadge = <Chip label="EXPIRED" color="default" size="small" />;
-
-                      return (
-                        <TableRow key={share.id} hover>
-                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</TableCell>
-                          <TableCell>
-                            <ApplicationName id={share.applicationId} linkToApp />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight={600}>
-                              {share.recipientContact.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {share.recipientContact.email}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={share.purpose} size="small" variant="outlined" />
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={`${share.consentIds.length} Active`} color="info" size="small" />
-                          </TableCell>
-                          <TableCell>{new Date(share.expiresAt).toLocaleDateString()}</TableCell>
-                          <TableCell>{statusBadge}</TableCell>
-                          <TableCell align="right">
-                            {!isRevoked && !isExpired && (
-                              <Can action="share.create">
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => revokeShareMutation.mutate(share.id)}
-                                >
-                                  Revoke
-                                </Button>
-                              </Can>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                      return !isRevoked && !isExpired ? (
+                        <Can action="share.create">
+                          <Button size="small" color="error" onClick={() => revokeShareMutation.mutate(share.id)}>
+                            Revoke
+                          </Button>
+                        </Can>
+                      ) : null;
+                    },
+                  },
+                ]}
+              />
             )}
           </CardContent>
         </Card>
