@@ -2,7 +2,7 @@
 // Module 30: Administration and Platform Operations (MOD-ADM) UI Console
 import React, { useState } from 'react';
 import type { FeatureFlag, MasterDataItem, PlatformTenantSummary } from '@dsa/contracts';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import {
   Alert,
   Box,
@@ -295,41 +295,35 @@ export function PlatformConsolePage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header Banner */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
-              Platform Operations & Administration
-            </Typography>
-            <Chip
-              label="MOD-ADM"
-              color="primary"
-              variant="outlined"
-              size="small"
-              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-            />
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Operator console, feature flags, master data catalogues, background job queues, break-glass
-            support access & governed release register.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <PageHeader
+        title="Platform Operations & Administration"
+        badge={
           <Chip
-            icon={<HealthAndSafetyIcon />}
-            label={`System: ${sysStatus}`}
-            color={sysStatus === 'HEALTHY' ? 'success' : sysStatus === 'DEGRADED' ? 'warning' : 'error'}
-            variant="filled"
-            sx={{ fontWeight: 700 }}
+            label="MOD-ADM"
+            color="primary"
+            variant="outlined"
+            size="small"
+            sx={{ fontWeight: 600, fontSize: '0.75rem' }}
           />
-          <Tooltip title="Refresh All Feeds">
-            <IconButton onClick={handleRefreshAll} color="primary" sx={{ border: '1px solid #e0e0e0' }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
+        }
+        subtitle="Operator console, feature flags, master data catalogues, background job queues, break-glass support access & governed release register."
+        actions={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              icon={<HealthAndSafetyIcon />}
+              label={`System: ${sysStatus}`}
+              color={sysStatus === 'HEALTHY' ? 'success' : sysStatus === 'DEGRADED' ? 'warning' : 'error'}
+              variant="filled"
+              sx={{ fontWeight: 700 }}
+            />
+            <Tooltip title="Refresh All Feeds">
+              <IconButton onClick={handleRefreshAll} color="primary" sx={{ border: '1px solid #e0e0e0' }}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        }
+      />
 
       {/* Tabs */}
       <Paper elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, borderRadius: 2 }}>

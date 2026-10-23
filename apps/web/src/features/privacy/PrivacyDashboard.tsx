@@ -33,7 +33,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
@@ -156,38 +156,32 @@ export function PrivacyDashboard(): React.ReactElement {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }} data-testid="privacy.dashboard">
-      {/* Page Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="h4" component="h1" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
-              Privacy &amp; Consent Governance
-            </Typography>
-            <Chip
-              label="MOD-PRV"
-              size="small"
-              sx={{ fontWeight: 600, bgcolor: 'primary.main', color: 'primary.contrastText' }}
-            />
+      <PageHeader
+        title="Privacy &amp; Consent Governance"
+        badge={
+          <Chip
+            label="MOD-PRV"
+            size="small"
+            sx={{ fontWeight: 600, bgcolor: 'primary.main', color: 'primary.contrastText' }}
+          />
+        }
+        subtitle="DPDP Act 2023 & RBI Digital Lending Regulatory Governance • Data Classification, Consent Registry, and Sharing Audit"
+        actions={
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              id="privacy-refresh-btn"
+              variant="outlined"
+              onClick={() => {
+                void refetchStats();
+                void refetchSharing();
+              }}
+              disabled={statsLoading || sharingLoading}
+            >
+              Refresh Metrics
+            </Button>
           </Stack>
-          <Typography variant="body1" color="text.secondary">
-            DPDP Act 2023 &amp; RBI Digital Lending Regulatory Governance • Data Classification, Consent
-            Registry, and Sharing Audit
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Button
-            id="privacy-refresh-btn"
-            variant="outlined"
-            onClick={() => {
-              void refetchStats();
-              void refetchSharing();
-            }}
-            disabled={statsLoading || sharingLoading}
-          >
-            Refresh Metrics
-          </Button>
-        </Stack>
-      </Box>
+        }
+      />
 
       {/* KPI Metric Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

@@ -10,6 +10,7 @@ import {
   Button,
   Card,
   CardContent,
+  Stack,
   Chip,
   CircularProgress,
   Dialog,
@@ -29,7 +30,7 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import type { TenantFeatureFlag } from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
@@ -122,24 +123,29 @@ export function TenantDetailPage() {
 
       {tenant && (
         <>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: '-0.5px' }}>
-              {tenant.legalName}
-            </Typography>
-            <Chip
-              label={tenant.status}
-              size="small"
-              color={tenant.status === 'ACTIVE' ? 'primary' : 'default'}
-            />
-            <Chip
-              label={tenant.healthStatus}
-              size="small"
-              color={tenant.healthStatus === 'HEALTHY' ? 'success' : 'warning'}
-            />
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            <code>{tenant.id}</code>
-          </Typography>
+          <PageHeader
+            title={tenant.legalName}
+            backTo="/platform-admin"
+            badge={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  label={tenant.status}
+                  size="small"
+                  color={tenant.status === 'ACTIVE' ? 'primary' : 'default'}
+                />
+                <Chip
+                  label={tenant.healthStatus}
+                  size="small"
+                  color={tenant.healthStatus === 'HEALTHY' ? 'success' : 'warning'}
+                />
+              </Stack>
+            }
+            subtitle={
+              <Typography variant="body2" color="text.secondary">
+                <code>{tenant.id}</code>
+              </Typography>
+            }
+          />
 
           <Paper elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, borderRadius: 2 }}>
             <Tabs
