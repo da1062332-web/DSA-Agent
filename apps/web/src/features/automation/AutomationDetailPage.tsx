@@ -1,6 +1,7 @@
 // apps/web/src/features/automation/AutomationDetailPage.tsx — owner: Akash (Module 24: Workflow Automation MOD-WFA)
 import React, { useEffect, useState } from 'react';
 import {
+  Stack,
   Box,
   Button,
   Card,
@@ -37,6 +38,7 @@ import {
   HourglassEmptyIcon,
 } from '../../shell/icons';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PageHeader } from '../../ui';
 import type { AutomationDefinition, AutomationVersion, StepDefinition } from '@dsa/contracts';
 import {
   getAutomation,
@@ -160,42 +162,23 @@ export function AutomationDetailPage() {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* Top Navigation */}
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/automations')} sx={{ mb: 2 }}>
-        Back to Automation Rules
-      </Button>
-
-      {/* Header Card */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: 2,
-          }}
-        >
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-              <Typography variant="h5" fontWeight={700}>
-                {definition.name}
-              </Typography>
-              <Chip
-                label={definition.status}
-                color={
-                  definition.status === 'ACTIVE'
-                    ? 'success'
-                    : definition.status === 'DRAFT'
-                      ? 'warning'
-                      : 'default'
-                }
-                size="small"
-              />
-              <Chip label={definition.entityType} variant="outlined" size="small" />
-              <Chip label={definition.triggerType} color="primary" variant="outlined" size="small" />
-            </Box>
-            <Typography variant="body2" fontFamily="monospace" color="text.secondary" sx={{ mb: 1 }}>
+      <PageHeader
+        title={definition.name}
+        backTo="/automations"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              label={definition.status}
+              color={definition.status === 'ACTIVE' ? 'success' : definition.status === 'DRAFT' ? 'warning' : 'default'}
+              size="small"
+            />
+            <Chip label={definition.entityType} variant="outlined" size="small" />
+            <Chip label={definition.triggerType} color="primary" variant="outlined" size="small" />
+          </Stack>
+        }
+        subtitle={
+          <>
+            <Typography variant="body2" fontFamily="monospace" color="text.secondary">
               Rule Code: <strong>{definition.code}</strong> | ID: {definition.id}
             </Typography>
             {definition.description && (
@@ -203,7 +186,9 @@ export function AutomationDetailPage() {
                 {definition.description}
               </Typography>
             )}
-          </Box>
+          </>
+        }
+        actions={
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <Button
               variant="outlined"
@@ -216,8 +201,8 @@ export function AutomationDetailPage() {
               Draft New Version
             </Button>
           </Box>
-        </Box>
-      </Paper>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
