@@ -452,22 +452,18 @@ function NewVersionDialog({ productId, onClose }: { productId: string; onClose: 
               label="Minimum tenure (months)"
               type="number"
               value={tenureMin}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTenureMin(val === '' ? '' : String(Math.max(1, Number(val))));
-              }}
+              onChange={(e) => setTenureMin(e.target.value.replace(/[^0-9]/g, ''))}
               inputProps={{ min: 1 }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               fullWidth
             />
             <TextField
               label="Maximum tenure (months)"
               type="number"
               value={tenureMax}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTenureMax(val === '' ? '' : String(Math.max(1, Number(val))));
-              }}
+              onChange={(e) => setTenureMax(e.target.value.replace(/[^0-9]/g, ''))}
               inputProps={{ min: 1 }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               error={tenureMax !== '' && tMax < tMin}
               helperText={tenureMax !== '' && tMax < tMin ? 'Must be at least the minimum.' : undefined}
               fullWidth

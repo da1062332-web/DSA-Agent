@@ -137,8 +137,10 @@ export function BranchSelect(props: {
   allowNone?: boolean;
   required?: boolean;
   disabled?: boolean;
+  testId?: string;
 }) {
   const branches = useLookup<Branch>('/v1/branches', { status: 'ACTIVE' });
+  const known = !props.value || (branches.data ?? []).some((b) => b.id === props.value);
   return (
     <TextField
       select
@@ -150,7 +152,13 @@ export function BranchSelect(props: {
       onChange={(e) => props.onChange(e.target.value || null)}
       helperText={branches.isError ? errorText(branches.error) : undefined}
       error={branches.isError}
+      inputProps={props.testId ? { 'data-testid': props.testId } : undefined}
     >
+      {!known && props.value && (
+        <MenuItem key={props.value} value={props.value}>
+          {props.value}
+        </MenuItem>
+      )}
       {props.allowNone && (
         <MenuItem value="">
           <em>None</em>

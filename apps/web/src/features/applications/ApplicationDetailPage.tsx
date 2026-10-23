@@ -176,19 +176,18 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             disabled={!canEdit}
             error={amount !== '' && !isValidAmount(amount)}
             helperText="Decimal, for example 300000.00"
+            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
           />
           <TextField
             label="Tenure (months)"
             type="number"
             value={tenure}
-            onChange={(e) => {
-              const val = e.target.value;
-              setTenure(val === '' ? '' : String(Math.max(1, Number(val))));
-            }}
+            onChange={(e) => setTenure(e.target.value)}
             disabled={!canEdit}
             error={tenure !== '' && !isValidTenure(tenure)}
             helperText="1 to 480"
             inputProps={{ min: 1, max: 480 }}
+            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
           />
           <TextField
             select

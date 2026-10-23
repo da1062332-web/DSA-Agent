@@ -994,9 +994,10 @@ export function InvoicesPage() {
                 value={formAmount}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setFormAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+                  if (val === '' || Number(val) >= 0) setFormAmount(val);
                 }}
-                inputProps={{ min: 0 }}
+                inputProps={{ min: 0, step: 'any' }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
 
               <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ pt: 1 }}>

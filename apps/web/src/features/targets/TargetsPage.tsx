@@ -465,9 +465,10 @@ export function TargetsPage() {
               value={targetValue}
               onChange={(e) => {
                 const val = e.target.value;
-                setTargetValue(val === '' ? '' : String(Math.max(0, Number(val))));
+                if (val === '' || Number(val) >= 0) setTargetValue(val);
               }}
-              inputProps={{ min: 0 }}
+              inputProps={{ min: 0, step: 'any' }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               fullWidth
               required
             />

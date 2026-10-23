@@ -595,6 +595,7 @@ export function DocumentSharingPage() {
                     value={linkMaxUses}
                     onChange={(e) => setLinkMaxUses(Math.max(1, Number(e.target.value)))}
                     inputProps={{ min: 1 }}
+                    onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                   />
                 </Stack>
 
@@ -738,6 +739,7 @@ export function DocumentSharingPage() {
                   value={shareDays}
                   onChange={(e) => setShareDays(Math.max(1, Number(e.target.value)))}
                   inputProps={{ min: 1 }}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                 />
               </Stack>
             </Stack>

@@ -754,6 +754,7 @@ export function CommissionDashboardPage() {
                 value={planClawbackDays}
                 onChange={(e) => setPlanClawbackDays(Math.max(0, Number(e.target.value)))}
                 inputProps={{ min: 0 }}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
               <TextField
                 fullWidth
@@ -813,10 +814,11 @@ export function CommissionDashboardPage() {
                 required
                 fullWidth
                 type="number"
-                inputProps={{ step: 0.001, min: 0 }}
+                inputProps={{ min: 0, step: 0.001 }}
                 label="Commission Rate (e.g. 0.015 for 1.5%)"
                 value={calcRate}
                 onChange={(e) => setCalcRate(Math.max(0, Number(e.target.value)))}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
               <ConnectorSelect
                 label="Attributed Connector"
@@ -828,10 +830,11 @@ export function CommissionDashboardPage() {
               <TextField
                 fullWidth
                 type="number"
-                inputProps={{ step: 0.05, min: 0 }}
+                inputProps={{ min: 0, max: 1, step: 0.05 }}
                 label="Connector Share Rate (e.g. 0.70 for 70%)"
                 value={calcConnectorShare}
                 onChange={(e) => setCalcConnectorShare(Math.max(0, Number(e.target.value)))}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               />
             </Stack>
           </DialogContent>

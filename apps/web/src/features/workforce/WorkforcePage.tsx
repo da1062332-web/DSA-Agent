@@ -711,6 +711,7 @@ export function WorkforcePage() {
             value={editCapacityVal}
             onChange={(e) => setEditCapacityVal(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
             inputProps={{ min: 0, max: 100 }}
+            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
             helperText="Allowed range: 0 - 100 leads"
           />
         </DialogContent>

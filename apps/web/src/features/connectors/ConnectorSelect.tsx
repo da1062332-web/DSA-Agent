@@ -6,6 +6,7 @@ import React from 'react';
 import { Autocomplete, Box, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
+import { useMe, hasPermission } from '../../api/useMe';
 import type { ConnectorResource } from '@dsa/contracts';
 
 export interface ConnectorSelectProps {
@@ -39,6 +40,9 @@ export function ConnectorSelect({
   testId = 'lead-form.connector',
   allowFreeText = true,
 }: ConnectorSelectProps) {
+  const me = useMe();
+  const canRead = hasPermission(me.data, 'connector.read');
+
   const query = useQuery({
     queryKey: ['connectors', 'select', status],
     queryFn: async () => {
@@ -53,11 +57,33 @@ export function ConnectorSelect({
         return [];
       }
     },
+    enabled: canRead,
+    retry: false,
     staleTime: 60_000,
   });
 
   const connectors = query.data ?? [];
   const selectedConnector = connectors.find((c) => c.id === value) ?? null;
+
+  if (!canRead) {
+    return (
+      <TextField
+        fullWidth={fullWidth}
+        size={size}
+        label={label}
+        placeholder={placeholder ?? 'e.g. con_01...'}
+        required={required}
+        disabled={disabled}
+        error={error}
+        helperText={helperText}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value.trim() || null)}
+        inputProps={{
+          'data-testid': testId,
+        }}
+      />
+    );
+  }
 
   return (
     <Autocomplete
@@ -92,50 +118,22 @@ export function ConnectorSelect({
         }
       }}
       loading={query.isPending}
-      renderOption={(props, option) => {
-        const primaryName = option.tradeName || option.legalName || option.id;
-        const details: string[] = [];
-        if (option.connectorType) {
-          details.push(option.connectorType);
-        }
-        if (
-          option.contactPerson &&
-          option.contactPerson !== option.legalName &&
-          option.contactPerson !== option.tradeName
-        ) {
-          details.push(`Contact: ${option.contactPerson}`);
-        }
-        if (
-          option.panMasked &&
-          option.panMasked !== option.legalName &&
-          option.panMasked !== option.tradeName
-        ) {
-          details.push(`PAN: ${option.panMasked}`);
-        }
-        if (
-          option.mobileE164 &&
-          option.mobileE164 !== option.legalName &&
-          option.mobileE164 !== option.tradeName
-        ) {
-          details.push(`Mobile: ${option.mobileE164}`);
-        }
-
-        return (
-          <li {...props} key={option.id}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5, width: '100%' }}>
-              <Typography variant="body2" fontWeight={600} color="text.primary">
-                {primaryName}
-                {option.tradeName && option.legalName && option.tradeName !== option.legalName ? ` (${option.legalName})` : ''}
-              </Typography>
-              {details.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  {details.join(' · ')}
-                </Typography>
-              )}
-            </Box>
-          </li>
-        );
-      }}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5, width: '100%' }}>
+            <Typography variant="body2" fontWeight={600} color="text.primary">
+              {option.tradeName || option.legalName}
+              {option.tradeName && option.legalName && option.tradeName !== option.legalName ? ` (${option.legalName})` : ''}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ID: {option.id}
+              {option.contactPerson ? ` · Contact: ${option.contactPerson}` : ''}
+              {option.panMasked ? ` · PAN: ${option.panMasked}` : ''}
+              {option.mobileE164 ? ` · Mobile: ${option.mobileE164}` : ''}
+            </Typography>
+          </Box>
+        </li>
+      )}
       renderInput={(params) => (
         <TextField
           {...params}

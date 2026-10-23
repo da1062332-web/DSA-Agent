@@ -1077,11 +1077,12 @@ export function ReconciliationDashboardPage() {
                           value={bankAmount}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setBankAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+                            if (val === '' || Number(val) >= 0) setBankAmount(val);
                           }}
+                          inputProps={{ min: 0, step: 'any' }}
+                          onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                           fullWidth
                           required
-                          inputProps={{ min: 0 }}
                           data-testid="rec.input.bank-amount"
                         />
                       </Grid>
@@ -1315,9 +1316,10 @@ export function ReconciliationDashboardPage() {
               value={adjAmount}
               onChange={(e) => {
                 const val = e.target.value;
-                setAdjAmount(val === '' ? '' : String(Math.max(0, Number(val))));
+                if (val === '' || Number(val) >= 0) setAdjAmount(val);
               }}
-              inputProps={{ min: 0 }}
+              inputProps={{ min: 0, step: 'any' }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               fullWidth
               required
             />

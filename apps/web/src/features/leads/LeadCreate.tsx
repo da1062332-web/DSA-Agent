@@ -253,6 +253,7 @@ export function LeadCreate() {
                   label="Indicative Amount (INR)"
                   value={form.amount}
                   onChange={(e) => set('amount')(e.target.value.replace(/[^0-9.]/g, ''))}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                   onBlur={() => {
                     const n = form.amount.trim() ? normalizeAmount(form.amount) : null;
                     if (n) setForm((f) => ({ ...f, amount: n }));
@@ -260,7 +261,7 @@ export function LeadCreate() {
                   placeholder="e.g. 300000"
                   error={!!errors.amount}
                   helperText={errors.amount ?? 'Optional'}
-                  inputProps={{ 'data-testid': 'lead-form.amount', inputMode: 'decimal', min: 0 }}
+                  inputProps={{ 'data-testid': 'lead-form.amount', inputMode: 'decimal' }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>

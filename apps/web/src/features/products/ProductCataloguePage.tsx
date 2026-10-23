@@ -444,6 +444,7 @@ export function ProductCataloguePage() {
                   value={formAmountMin}
                   onChange={(e) => setFormAmountMin(Math.max(0, Number(e.target.value)))}
                   inputProps={{ min: 0 }}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -455,6 +456,7 @@ export function ProductCataloguePage() {
                   value={formAmountMax}
                   onChange={(e) => setFormAmountMax(Math.max(0, Number(e.target.value)))}
                   inputProps={{ min: 0 }}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -466,6 +468,7 @@ export function ProductCataloguePage() {
                   value={formTenureMin}
                   onChange={(e) => setFormTenureMin(Math.max(1, Number(e.target.value)))}
                   inputProps={{ min: 1 }}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -477,6 +480,7 @@ export function ProductCataloguePage() {
                   value={formTenureMax}
                   onChange={(e) => setFormTenureMax(Math.max(1, Number(e.target.value)))}
                   inputProps={{ min: 1 }}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

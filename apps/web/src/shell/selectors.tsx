@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
+import { useMe, hasPermission } from '../api/useMe';
 
 export interface BaseSelectorProps {
   value: string | null | undefined;
@@ -29,7 +30,11 @@ export interface BaseSelectorProps {
 }
 
 /** Resilient lookup hook handling array, { data: [] }, or { items: [] } */
-function useLookupItems<T>(path: string, query?: Record<string, string | number | undefined>) {
+function useLookupItems<T>(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+  enabled = true,
+) {
   return useQuery({
     queryKey: [path, query],
     queryFn: async () => {
@@ -43,6 +48,8 @@ function useLookupItems<T>(path: string, query?: Record<string, string | number 
         return [] as T[];
       }
     },
+    enabled,
+    retry: false,
     staleTime: 60_000,
   });
 }
@@ -163,9 +170,9 @@ export function UserSelect({
             <Typography variant="body2" fontWeight={600}>
               {opt.displayName || opt.fullName || opt.email || opt.id}
             </Typography>
-            {opt.email && opt.email !== (opt.displayName || opt.fullName) && (
+            {opt.email && (
               <Typography variant="caption" color="text.secondary">
-                {opt.email}
+                {opt.email} • {opt.id}
               </Typography>
             )}
           </Box>
@@ -224,7 +231,13 @@ export function ConnectorSelect({
   sx,
   'data-testid': testId,
 }: BaseSelectorProps) {
-  const { data: connectors = [], isLoading } = useLookupItems<ConnectorItem>('/v1/connectors');
+  const me = useMe();
+  const canRead = hasPermission(me.data, 'connector.read');
+  const { data: connectors = [], isLoading } = useLookupItems<ConnectorItem>(
+    '/v1/connectors',
+    undefined,
+    canRead,
+  );
 
   const filter = createFilterOptions<ConnectorItem>({
     stringify: (c) => `${c.tradeName ?? ''} ${c.contactName ?? ''} ${c.legalName ?? ''} ${c.mobile ?? ''} ${c.id}`,
@@ -233,6 +246,27 @@ export function ConnectorSelect({
   const selectedOption =
     connectors.find((c) => c.id === value) ||
     (value ? ({ id: value, tradeName: value } as ConnectorItem) : null);
+
+  if (!canRead) {
+    return (
+      <TextField
+        fullWidth={fullWidth}
+        size={size}
+        label={label}
+        placeholder={placeholder ?? 'e.g. con_01...'}
+        required={required}
+        disabled={disabled}
+        error={error}
+        helperText={helperText}
+        sx={sx}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value.trim() || null)}
+        inputProps={{
+          'data-testid': testId,
+        }}
+      />
+    );
+  }
 
   return (
     <Autocomplete<ConnectorItem, false, false, false>
@@ -253,24 +287,15 @@ export function ConnectorSelect({
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => {
         const name = opt.tradeName || opt.contactName || opt.legalName || 'Unnamed Connector';
-        const details: string[] = [];
-        if (opt.mobile && opt.mobile !== name) {
-          details.push(`Mobile: ${opt.mobile}`);
-        }
-        if (opt.firmName && opt.firmName !== name) {
-          details.push(opt.firmName);
-        }
         return (
           <li {...props} key={opt.id}>
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
               <Typography variant="body2" fontWeight={600}>
                 {name}
               </Typography>
-              {details.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  {details.join(' • ')}
-                </Typography>
-              )}
+              <Typography variant="caption" color="text.secondary">
+                {opt.mobile ? `Mobile: ${opt.mobile} • ` : ''}ID: {opt.id}
+              </Typography>
             </Box>
           </li>
         );
@@ -361,7 +386,7 @@ export function LeadSelect({
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {opt.productCategory ? `[${opt.productCategory}] ` : ''}
-              {opt.mobileMasked ? `${opt.mobileMasked}` : ''}
+              {opt.mobileMasked ? `${opt.mobileMasked} • ` : ''}ID: {opt.id}
             </Typography>
           </Box>
         </li>
@@ -547,11 +572,9 @@ export function CustomerSelect({
             <Typography variant="body2" fontWeight={600}>
               {opt.fullName}
             </Typography>
-            {opt.primaryPhoneMasked && (
-              <Typography variant="caption" color="text.secondary">
-                {opt.primaryPhoneMasked}
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary">
+              {opt.primaryPhoneMasked ? `${opt.primaryPhoneMasked} • ` : ''}ID: {opt.id}
+            </Typography>
           </Box>
         </li>
       )}

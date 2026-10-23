@@ -1125,13 +1125,11 @@ export function PlatformConsolePage() {
               label="Access Duration (Hours - Max 4.0h)"
               type="number"
               inputProps={{ min: 0.5, max: 4.0, step: 0.5 }}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
               fullWidth
               required
               value={supportDuration}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSupportDuration(val === '' ? '' : String(Math.max(0.5, Math.min(4.0, Number(val)))));
-              }}
+              onChange={(e) => setSupportDuration(e.target.value)}
             />
             <TextField
               label="Justification & Reason"
