@@ -30,7 +30,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -193,16 +193,11 @@ export function RuleSetDetailPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={3}>
-        <Box>
-          <Button size="small" onClick={() => navigate('/rules')} sx={{ mb: 1 }}>
-            ← All Rule Sets
-          </Button>
-          <Typography variant="h4" fontWeight={700}>
-            {ruleSet.name}
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center" mt={0.5}>
+      <PageHeader
+        title={ruleSet.name}
+        backTo="/rules"
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="small" label={ruleSet.decisionKey} color="primary" variant="outlined" />
             <Chip size="small" label={ruleSet.scopeType} />
             {ruleSet.scopeRef && <Chip size="small" label={`Ref: ${ruleSet.scopeRef}`} variant="outlined" />}
@@ -212,13 +207,13 @@ export function RuleSetDetailPage() {
               color={ruleSet.status === 'ACTIVE' ? 'success' : 'default'}
             />
           </Stack>
-        </Box>
-        <Stack direction="row" spacing={2}>
+        }
+        actions={
           <Button variant="contained" onClick={() => setDraftOpen(true)}>
             New Draft Version
           </Button>
-        </Stack>
-      </Stack>
+        }
+      />
 
       {/* Meta cards */}
       <Grid container spacing={2} mb={3}>
