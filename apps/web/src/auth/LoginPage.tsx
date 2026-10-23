@@ -1,5 +1,5 @@
 // Sign-in screen (owner: Dev 1, UI-PLT-001).
-// Light theme with transparent glassmorphism split-card layout, live moving fluid canvas,
+// Clean light theme on pure white background with split-card layout
 // and in-page frosted glass MFA modal with background blur effect.
 import React, { useState } from 'react';
 import {
@@ -24,7 +24,6 @@ import { useAuth } from './AuthProvider';
 import { getSupabase, saveBypassSession } from './supabase';
 import { readConfig } from '../config';
 import { TimeoutError, withTimeout } from './timeout';
-import { FluidCanvas } from './FluidCanvas';
 import { setAuthToken } from './token';
 import { verifyTotp } from './totp';
 
@@ -237,14 +236,11 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#f8fafc',
+        bgcolor: '#ffffff',
         overflow: 'hidden',
         p: { xs: 2, sm: 3, md: 4 },
       }}
     >
-      {/* Interactive Light-Theme Fluid Ribbon Canvas Background */}
-      <FluidCanvas interactive />
-
       {/* Main Centerpiece Card — Blurs dynamically when MFA Modal opens */}
       <Card
         sx={{
@@ -255,10 +251,9 @@ export function LoginPage() {
           minHeight: 700,
           borderRadius: { xs: 4, md: 6 },
           overflow: 'hidden',
-          bgcolor: 'rgba(255, 255, 255, 0.18)',
-          backdropFilter: 'blur(20px)',
-          border: '1.5px solid rgba(255, 255, 255, 0.65)',
-          boxShadow: '0 30px 90px -20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5)',
+          bgcolor: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 25px 70px -15px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.6)',
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           p: { xs: 1.5, sm: 2, md: 2.5 },
@@ -270,14 +265,14 @@ export function LoginPage() {
           transition: 'filter 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, transform 0.35s ease',
         }}
       >
-        {/* Left Visual Quote Box: Completely transparent with white outline so moving fluid is 100% visible */}
+        {/* Left Visual Quote Box: Subtle clean slate background */}
         <Box
           sx={{
             flex: { xs: 'none', md: '1 1 50%' },
             minHeight: { xs: 320, md: 640 },
             borderRadius: { xs: 3.5, md: 5 },
-            border: '1.5px solid rgba(255, 255, 255, 0.8)',
-            bgcolor: 'transparent',
+            border: '1px solid #e2e8f0',
+            bgcolor: '#f8fafc',
             position: 'relative',
             overflow: 'hidden',
             display: 'flex',
@@ -335,15 +330,14 @@ export function LoginPage() {
           </Box>
         </Box>
 
-        {/* Right Form Box: Transparent frosted glass so fluid flow is visible behind form */}
+        {/* Right Form Box: Clean crisp white card */}
         <Box
           sx={{
             flex: { xs: 'none', md: '1 1 50%' },
-            bgcolor: 'rgba(255, 255, 255, 0.45)',
-            backdropFilter: 'blur(28px)',
+            bgcolor: '#ffffff',
             borderRadius: { xs: 3.5, md: 5 },
-            border: '1.5px solid rgba(255, 255, 255, 0.75)',
-            boxShadow: '0 20px 60px -15px rgba(33, 89, 136, 0.12)',
+            border: '1px solid #f1f5f9',
+            boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.04)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -455,11 +449,10 @@ export function LoginPage() {
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,
-                      bgcolor: 'rgba(255, 255, 255, 0.75)',
-                      backdropFilter: 'blur(12px)',
+                      bgcolor: '#ffffff',
                       fontSize: '0.925rem',
                       '& fieldset': {
-                        borderColor: 'rgba(33, 89, 136, 0.25)',
+                        borderColor: '#cbd5e1',
                       },
                       '&:hover fieldset': {
                         borderColor: '#215988',
@@ -519,11 +512,10 @@ export function LoginPage() {
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,
-                      bgcolor: 'rgba(255, 255, 255, 0.75)',
-                      backdropFilter: 'blur(12px)',
+                      bgcolor: '#ffffff',
                       fontSize: '0.925rem',
                       '& fieldset': {
-                        borderColor: 'rgba(33, 89, 136, 0.25)',
+                        borderColor: '#cbd5e1',
                       },
                       '&:hover fieldset': {
                         borderColor: '#215988',
@@ -644,11 +636,9 @@ export function LoginPage() {
         PaperProps={{
           sx: {
             borderRadius: { xs: 3, sm: 4.5 },
-            bgcolor: 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1.5px solid rgba(255, 255, 255, 0.85)',
-            boxShadow: '0 30px 80px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.6)',
+            bgcolor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 30px 80px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8)',
             p: { xs: 2.5, sm: 4 },
             maxWidth: 440,
             width: '100%',
