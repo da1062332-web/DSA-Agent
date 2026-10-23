@@ -349,8 +349,124 @@ export async function pauseForDemo(page: Page, ms = 1400): Promise<void> {
   }
 }
 
+async function showSpotlight(locator: Locator, action: 'click' | 'type'): Promise<void> {
+  if (!isHeaded) return;
+  try {
+    await locator.evaluate((el: HTMLElement, { action }) => {
+      // Find or create host with closed shadow DOM to prevent Playwright locator collisions
+      let host = document.getElementById('demo-spotlight-host') as any;
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'demo-spotlight-host';
+        host.style.position = 'fixed';
+        host.style.top = '0';
+        host.style.left = '0';
+        host.style.width = '0';
+        host.style.height = '0';
+        host.style.zIndex = '999998';
+        host.style.pointerEvents = 'none';
+        const shadow = host.attachShadow({ mode: 'closed' });
+        host._shadow = shadow;
+        document.body.appendChild(host);
+      }
+
+      const rect = el.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+
+      // Extract a short readable label from the element (button text, placeholder, or aria-label)
+      let label = (
+        el.getAttribute('aria-label') ||
+        el.getAttribute('placeholder') ||
+        el.innerText ||
+        el.getAttribute('name') ||
+        el.getAttribute('data-testid') ||
+        el.tagName
+      ).trim().split('\n')[0].trim();
+      if (label.length > 26) label = label.slice(0, 23) + '...';
+
+      const isClick = action === 'click';
+      const color = isClick ? '#f59e0b' : '#3b82f6';
+      const bg = isClick ? '#b45309' : '#1d4ed8';
+      const icon = isClick ? '👉 Click:' : '✍️ Fill:';
+
+      const shadow = host._shadow;
+      if (shadow) {
+        shadow.innerHTML = `
+          <div style="
+            position: fixed;
+            left: ${Math.max(0, rect.left - 4)}px;
+            top: ${Math.max(0, rect.top - 4)}px;
+            width: ${rect.width + 8}px;
+            height: ${rect.height + 8}px;
+            border-radius: 8px;
+            border: 3px solid ${color};
+            box-shadow: 0 0 18px 4px ${color}, inset 0 0 8px ${color};
+            pointer-events: none;
+            box-sizing: border-box;
+            transition: all 0.15s ease-out;
+          ">
+            <div style="
+              position: absolute;
+              bottom: calc(100% + 5px);
+              left: 50%;
+              transform: translateX(-50%);
+              background: ${bg};
+              color: #ffffff;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-size: 11px;
+              font-weight: 700;
+              letter-spacing: 0.02em;
+              padding: 3px 8px;
+              border-radius: 6px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+              white-space: nowrap;
+              border: 1px solid rgba(255,255,255,0.4);
+            ">
+              ${icon} ${label}
+            </div>
+            ${isClick ? `
+            <div style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: #ef4444;
+              border: 2px solid #ffffff;
+              box-shadow: 0 0 12px 4px #ef4444;
+              pointer-events: none;
+            "></div>
+            ` : ''}
+          </div>
+        `;
+      }
+    }, { action });
+  } catch {
+    // Ignore in case element is navigating or unmounted
+  }
+}
+
+async function clearSpotlight(locator: Locator): Promise<void> {
+  if (!isHeaded) return;
+  try {
+    await locator.page().evaluate(() => {
+      const host = document.getElementById('demo-spotlight-host') as any;
+      if (host?._shadow) {
+        host._shadow.innerHTML = '';
+      }
+    });
+  } catch {}
+}
+
 export async function humanType(locator: Locator, text: string, charDelay = 30): Promise<void> {
   await locator.scrollIntoViewIfNeeded();
+  if (isHeaded) {
+    await showSpotlight(locator, 'type');
+    await locator.page().waitForTimeout(200);
+    await clearSpotlight(locator);
+  }
   await locator.click();
   await locator.fill('');
   await locator.pressSequentially(text, { delay: charDelay });
@@ -362,8 +478,10 @@ export async function humanType(locator: Locator, text: string, charDelay = 30):
 export async function humanClick(locator: Locator, pauseAfter = 400): Promise<void> {
   await locator.scrollIntoViewIfNeeded();
   if (isHeaded) {
+    await showSpotlight(locator, 'click');
     await locator.hover();
-    await locator.page().waitForTimeout(180);
+    await locator.page().waitForTimeout(380); // Clear visual pause so observer registers the target
+    await clearSpotlight(locator);
   }
   await locator.click();
   if (isHeaded) {

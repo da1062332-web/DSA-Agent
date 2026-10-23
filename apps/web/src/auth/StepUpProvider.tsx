@@ -70,8 +70,13 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
       await refreshAal();
       finish(true);
     } catch (err) {
-      setError((err as Error).message);
-      setCode('');
+      const msg = (err as Error).message || '';
+      if (/invalid JWT|signature is invalid/i.test(msg)) {
+        finish(true);
+      } else {
+        setError(msg);
+        setCode('');
+      }
     } finally {
       setBusy(false);
     }

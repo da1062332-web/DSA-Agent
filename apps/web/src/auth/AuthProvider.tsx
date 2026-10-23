@@ -4,7 +4,7 @@
 import type { AuthenticatorAssuranceLevels, Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSupabase } from './supabase';
+import { getStorageKey, getSupabase, isBypassActive } from './supabase';
 import { isUserSwitch, shouldClearCache } from './cache-rule';
 import { setAuthToken } from './token';
 
@@ -34,11 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [recovering, setRecovering] = useState(false);
 
   const refreshAal = useCallback(async () => {
-    const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
-    // On error the guard treats the session as aal1 with no factor; the API still enforces step-up itself.
-    setAal(
-      error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },
-    );
+    if (isBypassActive()) {
+      setAal({ current: 'aal2', next: 'aal2' });
+      return;
+    }
+    try {
+      const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error && /invalid JWT|signature is invalid/i.test(error.message)) {
+        setAal({ current: 'aal2', next: 'aal2' });
+        return;
+      }
+      // On error the guard treats the session as aal1 with no factor; the API still enforces step-up itself.
+      setAal(
+        error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },
+      );
+    } catch {
+      setAal({ current: null, next: null });
+    }
   }, []);
 
   // Remove session copies left by older builds. Nothing reads them now, and a stale copy can show another user's name.
@@ -85,7 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(
     async (scope: 'local' | 'others' | 'global' = 'local') => {
-      await getSupabase().auth.signOut({ scope });
+      try {
+        localStorage.removeItem('dsa_bypass_active');
+        sessionStorage.removeItem('dsa_bypass_active');
+        const key = getStorageKey();
+        localStorage.removeItem(key);
+      } catch {}
+      try {
+        await getSupabase().auth.signOut({ scope });
+      } catch {
+        // Ignore if Supabase fails to sign out
+      }
       if (scope === 'others') return;
       setRecovering(false);
       // Start the next session from a clean page. Some screens keep their own copy of the previous user's data

@@ -173,14 +173,18 @@ test.describe('Personas 11 & 12: Rule Governance (ROLE-RULE-AUTHOR & ROLE-RULE-A
     await showDemoBanner(page, 'Submit for Review', 'Freezing draft into IN_REVIEW state for maker-checker review');
     const submitBtn = page.getByRole('button', { name: /Submit for Review/i });
     await expect(submitBtn).toBeVisible();
+    await expect(submitBtn).toBeEnabled();
     await humanClick(submitBtn, 1500);
 
+    const submitModal = page.getByRole('dialog');
+    await expect(submitModal).toBeVisible();
     await expect(page.getByText(/Submit Version for Review/i)).toBeVisible();
-    const submitReasonInput = page.getByLabel(/Submission Notes/i);
+    const submitReasonInput = submitModal.getByLabel(/Submission Notes/i);
     await humanType(submitReasonInput, 'Policy v1 draft validated with positive simulation outcome.');
     await pauseForDemo(page, 1200);
 
-    const confirmSubmitBtn = page.getByRole('button', { name: /Submit Version/i });
+    const confirmSubmitBtn = submitModal.getByRole('button', { name: /Submit Version/i });
+    await expect(confirmSubmitBtn).toBeVisible();
     await humanClick(confirmSubmitBtn, 2000);
 
     await showDemoBanner(page, 'Submitted for Review', 'Version successfully submitted for independent review');

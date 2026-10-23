@@ -372,8 +372,12 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await expect(page.getByText('Enter a valid loan amount greater than zero.')).toBeVisible();
     await pauseForDemo(page, 1500);
 
-    // Fill valid qualification data: amount and submit
-    await showDemoBanner(page, 'Submitting Qualification', 'Requested amount ₹3,00,000');
+    // Fill valid qualification data: amount and monthly income, then submit
+    await showDemoBanner(page, 'Submitting Qualification', 'Income ₹75,000, Requested amount ₹3,00,000');
+    const incomeField = page.locator('[data-testid="qualify.monthlyIncome"] input');
+    if (await incomeField.isVisible()) {
+      await humanType(incomeField, '75000');
+    }
     await humanType(amountField, '300000');
     await humanClick(submitQualifyBtn);
 
