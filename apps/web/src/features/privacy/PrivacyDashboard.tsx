@@ -33,6 +33,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
@@ -411,67 +412,66 @@ export function PrivacyDashboard(): React.ReactElement {
                 No data sharing events match the current filter criteria.
               </Alert>
             ) : (
-              <TableContainer
-                component={Paper}
-                elevation={0}
-                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
-              >
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'action.hover' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600 }}>RECORD ID</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>APPLICATION</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>RECIPIENT</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>PURPOSE</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>CHANNEL</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>SHARED AT</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>ACTIONS</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredSharingRecords.map((r) => (
-                      <TableRow key={r.id} hover>
-                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 500 }}>
-                          {r.id}
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace', fontSize: 13 }}>{r.subjectId}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip
-                              label={r.recipientType}
-                              size="small"
-                              variant="outlined"
-                              sx={{ height: 20, fontSize: 11 }}
-                            />
-                            <Typography variant="body2">{r.recipientId}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary">
-                            {r.purpose.replace(/_/g, ' ')}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={r.channel} size="small" sx={{ height: 20, fontSize: 11 }} />
-                        </TableCell>
-                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 13 }}>
-                          {new Date(r.sharedAt).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            variant="text"
-                            onClick={() => setSelectedRecord(r)}
-                            sx={{ fontSize: 12, textTransform: 'none', p: 0.5 }}
-                          >
-                            Inspect Manifest
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <DataTable<(typeof filteredSharingRecords)[number]>
+                dataTestId="privacy.table.sharing"
+                data={filteredSharingRecords}
+                keyExtractor={(r) => r.id}
+                columns={[
+                  {
+                    id: 'id',
+                    header: 'Record ID',
+                    render: (r) => <Box sx={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 500 }}>{r.id}</Box>,
+                  },
+                  {
+                    id: 'application',
+                    header: 'Application',
+                    render: (r) => <Box sx={{ fontFamily: 'monospace', fontSize: 13 }}>{r.subjectId}</Box>,
+                  },
+                  {
+                    id: 'recipient',
+                    header: 'Recipient',
+                    render: (r) => (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Chip label={r.recipientType} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
+                        <Typography variant="body2">{r.recipientId}</Typography>
+                      </Stack>
+                    ),
+                  },
+                  {
+                    id: 'purpose',
+                    header: 'Purpose',
+                    render: (r) => (
+                      <Typography variant="body2" color="text.secondary">
+                        {r.purpose.replace(/_/g, ' ')}
+                      </Typography>
+                    ),
+                  },
+                  {
+                    id: 'channel',
+                    header: 'Channel',
+                    render: (r) => <Chip label={r.channel} size="small" sx={{ height: 20, fontSize: 11 }} />,
+                  },
+                  {
+                    id: 'shared',
+                    header: 'Shared At',
+                    render: (r) => <Box sx={{ whiteSpace: 'nowrap', fontSize: 13 }}>{new Date(r.sharedAt).toLocaleString()}</Box>,
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    render: (r) => (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => setSelectedRecord(r)}
+                        sx={{ fontSize: 12, textTransform: 'none', p: 0.5 }}
+                      >
+                        Inspect Manifest
+                      </Button>
+                    ),
+                  },
+                ]}
+              />
             )}
           </Box>
         )}
@@ -723,58 +723,44 @@ export function PrivacyDashboard(): React.ReactElement {
             </Box>
 
             {/* Policy Tiers Table */}
-            <TableContainer
-              component={Paper}
-              elevation={0}
-              sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 4 }}
-            >
-              <Table size="small">
-                <TableHead sx={{ bgcolor: 'action.hover' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>TIER</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>FIELD CATEGORY</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>PROTECTION STRATEGY</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>GOVERNANCE DESCRIPTION</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(stats?.protectionPolicies || []).map((p) => (
-                    <TableRow key={p.field} hover>
-                      <TableCell>
-                        <Chip
-                          label={p.tier}
-                          size="small"
-                          color={
-                            p.tier === 'S4'
-                              ? 'error'
-                              : p.tier === 'S3'
-                                ? 'warning'
-                                : p.tier === 'S2'
-                                  ? 'info'
-                                  : p.tier === 'S1'
-                                    ? 'primary'
-                                    : 'default'
-                          }
-                          sx={{ fontWeight: 700, height: 22 }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13 }}>
-                        {p.field}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={p.strategy}
-                          size="small"
-                          variant="outlined"
-                          sx={{ height: 20, fontSize: 11 }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>{p.description}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box sx={{ mb: 4 }}>
+              <DataTable<NonNullable<typeof stats>['protectionPolicies'][number]>
+                dataTestId="privacy.table.policies"
+                data={stats?.protectionPolicies || []}
+                keyExtractor={(p) => p.field}
+                columns={[
+                  {
+                    id: 'tier',
+                    header: 'Tier',
+                    render: (p) => (
+                      <Chip
+                        label={p.tier}
+                        size="small"
+                        color={
+                          p.tier === 'S4' ? 'error' : p.tier === 'S3' ? 'warning' : p.tier === 'S2' ? 'info' : p.tier === 'S1' ? 'primary' : 'default'
+                        }
+                        sx={{ fontWeight: 700, height: 22 }}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'field',
+                    header: 'Field Category',
+                    render: (p) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13 }}>{p.field}</Box>,
+                  },
+                  {
+                    id: 'strategy',
+                    header: 'Protection Strategy',
+                    render: (p) => <Chip label={p.strategy} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />,
+                  },
+                  {
+                    id: 'description',
+                    header: 'Governance Description',
+                    render: (p) => <Box sx={{ fontSize: 13, color: 'text.secondary' }}>{p.description}</Box>,
+                  },
+                ]}
+              />
+            </Box>
 
             {/* Interactive Masking Sandbox */}
             <Paper

@@ -31,6 +31,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { apiDownload } from '../../api/client';
 import { Can } from '../../shell/Can';
@@ -281,43 +282,36 @@ export function ImportExportPage() {
                   </Typography>
 
                   {selectedBatch.previewData && selectedBatch.previewData.length > 0 && (
-                    <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Source CSV Column</TableCell>
-                            <TableCell>Target Entity Field</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {Object.keys(selectedBatch.previewData[0]!).map((col) => (
-                            <TableRow key={col}>
-                              <TableCell sx={{ fontWeight: 500 }}>{col}</TableCell>
-                              <TableCell>
-                                <Select
-                                  size="small"
-                                  value={columnMapping[col] || ''}
-                                  onChange={(e) =>
-                                    setColumnMapping({ ...columnMapping, [col]: e.target.value })
-                                  }
-                                  displayEmpty
-                                  sx={{ minWidth: 200 }}
-                                >
-                                  <MenuItem value="">
-                                    <em>-- Ignore Column --</em>
-                                  </MenuItem>
-                                  <MenuItem value="fullName">Full Name (Required)</MenuItem>
-                                  <MenuItem value="mobile">Mobile Number (Required)</MenuItem>
-                                  <MenuItem value="email">Email Address</MenuItem>
-                                  <MenuItem value="productCategory">Product Category</MenuItem>
-                                  <MenuItem value="indicativeAmount">Indicative Amount</MenuItem>
-                                </Select>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                    <DataTable<string>
+                      dataTestId="import.table.mapping"
+                      data={Object.keys(selectedBatch.previewData[0]!)}
+                      keyExtractor={(col) => col}
+                      columns={[
+                        { id: 'source', header: 'Source CSV Column', render: (col) => <Box sx={{ fontWeight: 500 }}>{col}</Box> },
+                        {
+                          id: 'target',
+                          header: 'Target Entity Field',
+                          render: (col) => (
+                            <Select
+                              size="small"
+                              value={columnMapping[col] || ''}
+                              onChange={(e) => setColumnMapping({ ...columnMapping, [col]: e.target.value })}
+                              displayEmpty
+                              sx={{ minWidth: 200 }}
+                            >
+                              <MenuItem value="">
+                                <em>-- Ignore Column --</em>
+                              </MenuItem>
+                              <MenuItem value="fullName">Full Name (Required)</MenuItem>
+                              <MenuItem value="mobile">Mobile Number (Required)</MenuItem>
+                              <MenuItem value="email">Email Address</MenuItem>
+                              <MenuItem value="productCategory">Product Category</MenuItem>
+                              <MenuItem value="indicativeAmount">Indicative Amount</MenuItem>
+                            </Select>
+                          ),
+                        },
+                      ]}
+                    />
                   )}
 
                   <Box sx={{ display: 'flex', gap: 2 }}>
@@ -424,48 +418,34 @@ export function ImportExportPage() {
                 {loadingBatches ? (
                   <CircularProgress size={24} />
                 ) : (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Batch ID</TableCell>
-                          <TableCell>Entity</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell align="right">Rows</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {importBatches?.map((b) => (
-                          <TableRow
-                            key={b.id}
-                            hover
-                            sx={{ cursor: 'pointer' }}
-                            onClick={() => setSelectedBatch(b)}
-                          >
-                            <TableCell sx={{ fontSize: 12 }}>{b.id}</TableCell>
-                            <TableCell sx={{ fontSize: 12 }}>{b.targetEntity}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={b.status}
-                                size="small"
-                                color={
-                                  b.status === 'COMPLETED'
-                                    ? 'success'
-                                    : b.status === 'ROLLED_BACK'
-                                      ? 'default'
-                                      : 'primary'
-                                }
-                                sx={{ height: 20, fontSize: 10 }}
-                              />
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12 }}>
-                              {b.importedRows}/{b.totalRows}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<NonNullable<typeof importBatches>[number]>
+                    dataTestId="import.table.batches"
+                    data={importBatches ?? []}
+                    keyExtractor={(b) => b.id}
+                    onRowClick={(b) => setSelectedBatch(b)}
+                    columns={[
+                      { id: 'id', header: 'Batch ID', render: (b) => <Box sx={{ fontSize: 12 }}>{b.id}</Box> },
+                      { id: 'entity', header: 'Entity', render: (b) => <Box sx={{ fontSize: 12 }}>{b.targetEntity}</Box> },
+                      {
+                        id: 'status',
+                        header: 'Status',
+                        render: (b) => (
+                          <Chip
+                            label={b.status}
+                            size="small"
+                            color={b.status === 'COMPLETED' ? 'success' : b.status === 'ROLLED_BACK' ? 'default' : 'primary'}
+                            sx={{ height: 20, fontSize: 10 }}
+                          />
+                        ),
+                      },
+                      {
+                        id: 'rows',
+                        header: 'Rows',
+                        align: 'right',
+                        render: (b) => <Box sx={{ fontSize: 12 }}>{b.importedRows}/{b.totalRows}</Box>,
+                      },
+                    ]}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -551,57 +531,50 @@ export function ImportExportPage() {
                 {loadingExports ? (
                   <CircularProgress size={24} />
                 ) : (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Job ID</TableCell>
-                          <TableCell>Dataset</TableCell>
-                          <TableCell>Scope</TableCell>
-                          <TableCell align="right">Rows</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell align="right">Action</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {exportJobs?.map((job) => (
-                          <TableRow key={job.id}>
-                            <TableCell sx={{ fontSize: 12 }}>{job.id}</TableCell>
-                            <TableCell sx={{ fontSize: 12 }}>{job.exportType}</TableCell>
-                            <TableCell sx={{ fontSize: 12 }}>{job.scopeType}</TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12 }}>
-                              {job.rowCount}
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={job.status}
-                                size="small"
-                                color={job.status === 'COMPLETED' ? 'success' : 'default'}
-                                sx={{ height: 20, fontSize: 10 }}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              {job.status === 'COMPLETED' && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    void apiDownload(
-                                      `/v1/exports/${job.id}/download`,
-                                      `export_${job.id}.${job.fileFormat.toLowerCase()}`,
-                                    );
-                                  }}
-                                  sx={{ fontSize: 11, py: 0.2 }}
-                                >
-                                  Download
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<NonNullable<typeof exportJobs>[number]>
+                    dataTestId="import.table.exports"
+                    data={exportJobs ?? []}
+                    keyExtractor={(job) => job.id}
+                    columns={[
+                      { id: 'id', header: 'Job ID', render: (job) => <Box sx={{ fontSize: 12 }}>{job.id}</Box> },
+                      { id: 'dataset', header: 'Dataset', render: (job) => <Box sx={{ fontSize: 12 }}>{job.exportType}</Box> },
+                      { id: 'scope', header: 'Scope', render: (job) => <Box sx={{ fontSize: 12 }}>{job.scopeType}</Box> },
+                      { id: 'rows', header: 'Rows', align: 'right', render: (job) => <Box sx={{ fontSize: 12 }}>{job.rowCount}</Box> },
+                      {
+                        id: 'status',
+                        header: 'Status',
+                        render: (job) => (
+                          <Chip
+                            label={job.status}
+                            size="small"
+                            color={job.status === 'COMPLETED' ? 'success' : 'default'}
+                            sx={{ height: 20, fontSize: 10 }}
+                          />
+                        ),
+                      },
+                      {
+                        id: 'action',
+                        header: 'Action',
+                        align: 'right',
+                        render: (job) =>
+                          job.status === 'COMPLETED' ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                void apiDownload(
+                                  `/v1/exports/${job.id}/download`,
+                                  `export_${job.id}.${job.fileFormat.toLowerCase()}`,
+                                );
+                              }}
+                              sx={{ fontSize: 11, py: 0.2 }}
+                            >
+                              Download
+                            </Button>
+                          ) : null,
+                      },
+                    ]}
+                  />
                 )}
               </CardContent>
             </Card>
