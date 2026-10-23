@@ -374,45 +374,37 @@ export function QueueDetailPage() {
             Members ({q.memberCount})
           </Typography>
           <ErrorAlert error={saveMembers.error} />
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>User</TableCell>
-                  <TableCell align="center">Can pick</TableCell>
-                  <TableCell align="center">Can assign</TableCell>
-                  {canEditMembers && <TableCell />}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {members.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary' }}>
-                      No members.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {members.map((m) => (
-                  <TableRow key={m.userId}>
-                    <TableCell>{m.displayName}</TableCell>
-                    {(['canPick', 'canAssign'] as const).map((flag) => (
-                      <TableCell align="center" key={flag}>
-                        <Switch
-                          size="small"
-                          checked={m[flag]}
-                          disabled={!canEditMembers}
-                          onChange={(e) =>
-                            setMembers((all) =>
-                              all.map((x) =>
-                                x.userId === m.userId ? { ...x, [flag]: e.target.checked } : x,
-                              ),
-                            )
-                          }
-                        />
-                      </TableCell>
-                    ))}
-                    {canEditMembers && (
-                      <TableCell align="right">
+          <DataTable<(typeof members)[number]>
+            dataTestId="queues.table.members"
+            data={members}
+            keyExtractor={(m) => m.userId}
+            emptyMessage="No members."
+            columns={[
+              { id: 'user', header: 'User', render: (m) => m.displayName },
+              ...(['canPick', 'canAssign'] as const).map((flag) => ({
+                id: flag,
+                header: flag === 'canPick' ? 'Can pick' : 'Can assign',
+                align: 'center' as const,
+                render: (m: (typeof members)[number]) => (
+                  <Switch
+                    size="small"
+                    checked={m[flag]}
+                    disabled={!canEditMembers}
+                    onChange={(e) =>
+                      setMembers((all) =>
+                        all.map((x) => (x.userId === m.userId ? { ...x, [flag]: e.target.checked } : x)),
+                      )
+                    }
+                  />
+                ),
+              })),
+              ...(canEditMembers
+                ? [
+                    {
+                      id: 'remove',
+                      header: '',
+                      align: 'right' as const,
+                      render: (m: (typeof members)[number]) => (
                         <IconButton
                           size="small"
                           aria-label={`Remove ${m.displayName}`}
@@ -420,13 +412,12 @@ export function QueueDetailPage() {
                         >
                           ✕
                         </IconButton>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
           {canEditMembers && (
             <Stack spacing={2} sx={{ mt: 2 }}>
               <AddMember

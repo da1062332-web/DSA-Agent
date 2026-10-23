@@ -390,7 +390,7 @@ export function LenderDetailPage() {
           }
         />
         <Divider />
-        <DataTable<(typeof lender.empanelments)[number]>
+        <DataTable<NonNullable<typeof lender.empanelments>[number]>
           dataTestId="lender.table.empanelments"
           data={lender.empanelments ?? []}
           keyExtractor={(emp) => emp.id}
@@ -464,7 +464,7 @@ export function LenderDetailPage() {
           }
         />
         <Divider />
-        <DataTable<(typeof lender.contacts)[number]>
+        <DataTable<NonNullable<typeof lender.contacts>[number]>
           dataTestId="lender.table.contacts"
           data={lender.contacts ?? []}
           keyExtractor={(c) => c.id}

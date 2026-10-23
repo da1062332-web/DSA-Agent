@@ -4,6 +4,7 @@
 // was based on (If-Match), so a stale save shows the API's version conflict instead of overwriting someone else.
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
@@ -22,6 +23,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { DataTable } from '../../ui';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -303,79 +305,57 @@ function EmpanelmentsCard({
         {loading ? (
           <Loading />
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>DSA code</TableCell>
-                <TableCell>Valid from</TableCell>
-                <TableCell>Valid to</TableCell>
-                <TableCell>Categories</TableCell>
-                <TableCell>Geographies</TableCell>
-                <TableCell>Status</TableCell>
-                {canEdit && <TableCell align="right">Actions</TableCell>}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>
-                    No empanelments yet.
-                  </TableCell>
-                </TableRow>
-              )}
-              {rows.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>{e.dsaCode}</TableCell>
-                  <TableCell>{e.validFrom}</TableCell>
-                  <TableCell>{e.validTo ?? 'open-ended'}</TableCell>
-                  <TableCell>
-                    {e.permittedCategories.map((c) => (
-                      <Chip key={c} label={c} size="small" sx={{ mr: 0.5 }} />
-                    ))}
-                  </TableCell>
-                  <TableCell>{e.permittedGeos.join(', ') || '—'}</TableCell>
-                  <TableCell>
-                    <StatusChip active={e.status === 'ACTIVE'} label={e.status} />
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                      {e.status !== 'EXPIRED' && (
-                        <Button size="small" onClick={() => setEditing(e)}>
-                          Edit
-                        </Button>
-                      )}
-                      {e.status === 'ACTIVE' && (
-                        <Button
-                          size="small"
-                          color="warning"
-                          onClick={() => setActing({ empanelment: e, action: 'deactivate' })}
-                        >
-                          Deactivate
-                        </Button>
-                      )}
-                      {e.status === 'SUSPENDED' && (
-                        <Button
-                          size="small"
-                          onClick={() => setActing({ empanelment: e, action: 'reactivate' })}
-                        >
-                          Reactivate
-                        </Button>
-                      )}
-                      {e.status !== 'EXPIRED' && (
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => setActing({ empanelment: e, action: 'terminate' })}
-                        >
-                          Terminate
-                        </Button>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable<(typeof rows)[number]>
+            dataTestId="admin.table.empanelments"
+            data={rows}
+            keyExtractor={(e) => e.id}
+            emptyMessage="No empanelments yet."
+            columns={[
+              { id: 'code', header: 'DSA code', render: (e) => <Box sx={{ fontFamily: 'monospace' }}>{e.dsaCode}</Box> },
+              { id: 'from', header: 'Valid from', render: (e) => e.validFrom },
+              { id: 'to', header: 'Valid to', render: (e) => e.validTo ?? 'open-ended' },
+              {
+                id: 'categories',
+                header: 'Categories',
+                render: (e) => e.permittedCategories.map((c) => <Chip key={c} label={c} size="small" sx={{ mr: 0.5 }} />),
+              },
+              { id: 'geos', header: 'Geographies', render: (e) => e.permittedGeos.join(', ') || '—' },
+              { id: 'status', header: 'Status', render: (e) => <StatusChip active={e.status === 'ACTIVE'} label={e.status} /> },
+              ...(canEdit
+                ? [
+                    {
+                      id: 'actions',
+                      header: 'Actions',
+                      align: 'right' as const,
+                      render: (e: (typeof rows)[number]) => (
+                        <Box sx={{ whiteSpace: 'nowrap' }}>
+                          {e.status !== 'EXPIRED' && (
+                            <Button size="small" onClick={() => setEditing(e)}>
+                              Edit
+                            </Button>
+                          )}
+                          {e.status === 'ACTIVE' && (
+                            <Button size="small" color="warning" onClick={() => setActing({ empanelment: e, action: 'deactivate' })}>
+                              Deactivate
+                            </Button>
+                          )}
+                          {e.status === 'SUSPENDED' && (
+                            <Button size="small" onClick={() => setActing({ empanelment: e, action: 'reactivate' })}>
+                              Reactivate
+                            </Button>
+                          )}
+                          {e.status !== 'EXPIRED' && (
+                            <Button size="small" color="error" onClick={() => setActing({ empanelment: e, action: 'terminate' })}>
+                              Terminate
+                            </Button>
+                          )}
+                        </Box>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
       </CardContent>
       {adding && <AddEmpanelmentDialog lenderId={lenderId} onClose={() => setAdding(false)} />}
@@ -665,50 +645,34 @@ function ContactsCard({
           loading ? (
             <Loading />
           ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>Channel</TableCell>
-                  <TableCell>Escalation</TableCell>
-                  {canEdit && <TableCell align="right">Actions</TableCell>}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={canEdit ? 7 : 6} align="center" sx={{ color: 'text.secondary' }}>
-                      No contacts yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>{c.name}</TableCell>
-                    <TableCell>{c.role ?? '—'}</TableCell>
-                    <TableCell>{c.email ?? '—'}</TableCell>
-                    <TableCell>{c.phone ?? '—'}</TableCell>
-                    <TableCell>{c.channel ?? '—'}</TableCell>
-                    <TableCell>Level {c.escalationLevel}</TableCell>
-                    {canEdit && (
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          color="error"
-                          onClick={() => setRemoving(c)}
-                          data-testid="admin.contact.remove"
-                        >
-                          Remove
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable<(typeof rows)[number]>
+              dataTestId="admin.table.contacts"
+              data={rows}
+              keyExtractor={(c) => c.id}
+              emptyMessage="No contacts yet."
+              columns={[
+                { id: 'name', header: 'Name', render: (c) => c.name },
+                { id: 'role', header: 'Role', render: (c) => c.role ?? '—' },
+                { id: 'email', header: 'Email', render: (c) => c.email ?? '—' },
+                { id: 'phone', header: 'Phone', render: (c) => c.phone ?? '—' },
+                { id: 'channel', header: 'Channel', render: (c) => c.channel ?? '—' },
+                { id: 'escalation', header: 'Escalation', render: (c) => `Level ${c.escalationLevel}` },
+                ...(canEdit
+                  ? [
+                      {
+                        id: 'actions',
+                        header: 'Actions',
+                        align: 'right' as const,
+                        render: (c: (typeof rows)[number]) => (
+                          <Button size="small" color="error" onClick={() => setRemoving(c)} data-testid="admin.contact.remove">
+                            Remove
+                          </Button>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           )
         ) : (
           <Stack spacing={2}>
