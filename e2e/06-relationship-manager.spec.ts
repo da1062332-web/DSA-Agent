@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS } from './helpers/mock-session';
+import { PERSONAS, apiErrorBody } from './helpers/mock-session';
 import { AuthPage, LeadPage, CustomerConsentPage, ApplicationPage } from './pages';
 
 test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
@@ -607,28 +607,23 @@ test.describe('Persona 06: Relationship Manager (ROLE-RM)', () => {
     await appPage.pause(1500);
 
     // 4. Negative test: Cross-Tenant / Unauthorized Branch Lead Access
+    // Out-of-scope and other-tenant IDs answer 404, never 403 (CLAUDE.md tenancy rules; Contracts §6)
     await page.route('**/v1/leads/led_forbidden_999', async (route) => {
       await route.fulfill({
-        status: 403,
+        status: 404,
         contentType: 'application/json',
-        body: JSON.stringify({
-          error: {
-            code: 'FORBIDDEN',
-            httpStatus: 403,
-            message: 'Access denied outside assigned branch scope.',
-          },
-        }),
+        body: apiErrorBody('NOT_FOUND', 404, 'Lead not found.'),
       });
     });
 
     await appPage.goto('/leads/led_forbidden_999');
-    await appPage.showBanner('Route Guard Check', 'Navigating to forbidden lead outside branch scope');
+    await appPage.showBanner('Route Guard Check', 'Navigating to a lead outside the assigned branch scope');
     await appPage.pause(1200);
 
-    // Verify fail-closed security: error alert displayed
-    await appPage.showBanner('Branch Policy Enforced', 'Access blocked outside assigned branch scope');
-    await expect(page.getByRole('alert')).toBeVisible();
-    await expect(page.getByRole('alert').getByText(/Cannot reach the lead|Request failed \(403\)|Access denied/i)).toBeVisible();
+    // Verify fail-closed security: nothing of the lead is shown, only the not-found alert
+    await appPage.showBanner('Branch Policy Enforced', 'Out-of-scope lead answers 404 and shows nothing');
+    await expect(page.getByRole('alert').first()).toContainText('Lead not found.');
+    await expect(page.getByRole('button', { name: /Qualify|Convert/i })).toHaveCount(0);
     await appPage.pause(2000);
     await authPage.logout();
   });

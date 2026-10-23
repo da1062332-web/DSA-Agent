@@ -1,4 +1,4 @@
-import type { Page, Locator } from '@playwright/test';
+import { expect, type Page, type Locator } from '@playwright/test';
 import {
   humanClick,
   humanType,
@@ -12,6 +12,18 @@ import {
  */
 export class BasePage {
   constructor(public readonly page: Page) {}
+
+  /** The shell's access-denied panel (apps/web/src/shell/Forbidden.tsx), rendered instead of a screen the role may not open. */
+  get forbidden(): Locator {
+    return this.page.getByTestId('shell.forbidden');
+  }
+
+  /** Opens a screen the role may not use and checks the shell refuses it. */
+  async expectForbidden(path: string): Promise<void> {
+    await this.goto(path);
+    await expect(this.forbidden).toBeVisible();
+    await expect(this.forbidden).toContainText('You do not have permission to access this page.');
+  }
 
   /** Display a high-visibility demo step banner */
   async showBanner(title: string, subtitle?: string): Promise<void> {

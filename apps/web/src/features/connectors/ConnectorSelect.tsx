@@ -66,8 +66,11 @@ export function ConnectorSelect({
       disabled={disabled}
       options={connectors}
       getOptionLabel={(option) => {
-        if (typeof option === 'string') return option;
-        return `${option.legalName} (${option.id})`;
+        if (typeof option === 'string') {
+          const match = connectors.find((c) => c.id === option);
+          return match ? (match.tradeName || match.legalName || match.id) : option;
+        }
+        return option.tradeName || option.legalName || option.id;
       }}
       isOptionEqualToValue={(option, val) => {
         const valId = typeof val === 'string' ? val : val.id;
@@ -93,7 +96,8 @@ export function ConnectorSelect({
         <li {...props} key={option.id}>
           <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5, width: '100%' }}>
             <Typography variant="body2" fontWeight={600} color="text.primary">
-              {option.legalName}
+              {option.tradeName || option.legalName}
+              {option.tradeName && option.legalName && option.tradeName !== option.legalName ? ` (${option.legalName})` : ''}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ID: {option.id}

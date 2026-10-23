@@ -11,6 +11,8 @@ export class CustomerPortalPage extends BasePage {
   readonly verifyOtpBtn = this.page.getByRole('button', { name: /Verify Code & Access/i });
 
   readonly uploadPortalHeading = this.page.getByText('Document Upload Portal');
+  /** Shown when the API refuses the token: 404 unknown, 410 expired or revoked, 423 locked. */
+  readonly inaccessibleHeading = this.page.getByRole('heading', { name: 'Link Inaccessible' });
   readonly checklistHeading = this.page.getByText('Requested Documents Checklist');
   readonly fileInput = this.page.locator('#public-file-input');
   readonly uploadBtn = this.page.getByRole('button', { name: /Upload Document/i });

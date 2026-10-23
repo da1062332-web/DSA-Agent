@@ -22,40 +22,51 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     ],
   };
 
-  test('TC-FIN-01: Finance Executive proposes payout request and verifies Maker SOD-03 lock', async ({
-    page,
-  }) => {
+  // =========================================================================
+  // TC-FIN-01 QA-CA-001: SOD-03 — a payout request's submitter cannot approve it
+  // (Notion Roles §4 SOD-03: approved_by <> created_by; QA plan Module 13 10B step 5)
+  // No Notion role holds both payout.request and payout.approve, so the QA plan's own case is used: the Commission
+  // Approver holds payout.approve, a request it submitted is locked, and a request from the Finance Executive is not.
+  // =========================================================================
+  test('TC-FIN-01 QA-CA-001: SOD-03 approver cannot approve a payout request they submitted', async ({ page }) => {
     const authPage = new AuthPage(page);
     const payoutPage = new PayoutPage(page);
 
-    await payoutPage.showBanner('Proposing Partner Payout Batch', 'To submit connector payout batches and enforce maker lockout from approving them');
+    await payoutPage.showBanner('Enforcing Payout Maker-Checker', 'The approver holds payout.approve but submitted one request');
 
-    // Mock payout requests
+    const ownRequest = {
+      ...mockPayoutRequest,
+      id: 'pay_req_qa_own_001',
+      total: '5000',
+      submittedBy: PERSONAS.commissionApprover.userId,
+      lines: [{ id: 'pline_qa_own_001', payableId: 'pyb_qa_own_001', amount: '5000', currency: 'INR' }],
+    };
+    const approvalCalls: string[] = [];
     await page.route('**/v1/payout-requests**', async (route) => {
+      if (route.request().method() === 'POST') approvalCalls.push(route.request().url());
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [mockPayoutRequest], meta: { total: 1 } }),
+        body: JSON.stringify({ data: [mockPayoutRequest, ownRequest], meta: { nextCursor: null, limit: 50 } }),
       });
     });
 
-    await authPage.loginAs(PERSONAS.financeExec, '/payouts');
-    await payoutPage.pause(1500);
-
-    // 1. Verify Payout Dashboard loaded
-    await payoutPage.showBanner('Payouts Hub Loaded', 'Reviewing connector payout requests register');
+    await authPage.loginAs(PERSONAS.commissionApprover, '/payouts');
     await expect(page.getByText('Payouts & Settlement Hub')).toBeVisible();
-    await expect(page.getByText('pay_req_001')).toBeVisible();
-    await payoutPage.pause(1500);
-
-    // 2. Check tab "Approval Queue"
-    await payoutPage.showBanner('Approval Queue Tab', 'Inspecting pending approvals for maker-checker lock');
     await payoutPage.switchToApprovalQueue();
 
-    // 3. SOD-03: Maker (usr_finance_01) CANNOT approve own payout request!
-    await payoutPage.showBanner('Maker Approval Disabled', 'Submitter cannot approve own payout to enforce separation of duties');
-    await expect(payoutPage.reviewAndDecideBtn).toBeVisible();
-    await expect(payoutPage.reviewAndDecideBtn).toBeDisabled();
+    const decideIn = (requestId: string) =>
+      page.getByRole('row').filter({ hasText: requestId }).getByRole('button', { name: /Review & Decide \(SOD-03\)/i });
+
+    // 1. The approver's own request is locked although the approver holds payout.approve
+    await payoutPage.showBanner('Own Request Locked', 'Submitter cannot approve their own payout (SOD-03)');
+    await expect(decideIn('pay_req_qa_own_001')).toBeVisible();
+    await expect(decideIn('pay_req_qa_own_001')).toBeDisabled();
+
+    // 2. The Finance Executive's request stays open to the same approver, so the lock is the SOD rule, not the permission
+    await payoutPage.showBanner('Independent Request Open', "Finance Executive's request can be reviewed");
+    await expect(decideIn('pay_req_001')).toBeEnabled();
+    expect(approvalCalls).toHaveLength(0);
     await payoutPage.pause(2500);
     await authPage.logout();
   });

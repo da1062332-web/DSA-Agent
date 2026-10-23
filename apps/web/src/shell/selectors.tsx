@@ -246,8 +246,9 @@ export function ConnectorSelect({
       sx={sx}
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
       getOptionLabel={(opt) => {
-        const name = opt.tradeName || opt.contactName || opt.legalName;
-        return name ? `${name} (${opt.id})` : opt.id;
+        const match = connectors.find((c) => c.id === opt.id);
+        const name = opt.tradeName || opt.legalName || opt.contactName || match?.tradeName || match?.legalName;
+        return name || opt.id;
       }}
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => {
@@ -334,7 +335,14 @@ export function LeadSelect({
       filterOptions={filter}
       sx={sx}
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
-      getOptionLabel={(opt) => `${opt.fullName} (${opt.id})`}
+      getOptionLabel={(opt) => {
+        const match = leads.find((l) => l.id === opt.id);
+        const name = opt.fullName || match?.fullName;
+        if (name && name !== opt.id) {
+          return `${name} (${opt.productCategory || match?.productCategory || 'Lead'})`;
+        }
+        return opt.id;
+      }}
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => (
         <li {...props} key={opt.id}>
@@ -426,8 +434,13 @@ export function ApplicationSelect({
       sx={sx}
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
       getOptionLabel={(opt) => {
-        const cat = opt.productCategory ? `[${opt.productCategory}] ` : '';
-        return `${cat}App #${opt.id}`;
+        const match = applications.find((a) => a.id === opt.id);
+        const name = opt.applicantName || match?.applicantName;
+        const cat = opt.productCategory || match?.productCategory;
+        if (name) {
+          return `${name} — ${cat ? `[${cat}] ` : ''}App #${opt.id.slice(-6)}`;
+        }
+        return `${cat ? `[${cat}] ` : ''}App #${opt.id}`;
       }}
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => (
@@ -513,7 +526,11 @@ export function CustomerSelect({
       filterOptions={filter}
       sx={sx}
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
-      getOptionLabel={(opt) => `${opt.fullName} (${opt.id})`}
+      getOptionLabel={(opt) => {
+        const match = customers.find((c) => c.id === opt.id);
+        const name = opt.fullName || match?.fullName;
+        return name || opt.id;
+      }}
       onChange={(_e, opt) => onChange(opt ? opt.id : null)}
       renderOption={(props, opt) => (
         <li {...props} key={opt.id}>

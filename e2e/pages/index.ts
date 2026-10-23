@@ -15,3 +15,5 @@ export * from './RuleEditorPage';
 export * from './PayoutPage';
 export * from './CommissionPage';
 export * from './CustomerPortalPage';
+export * from './LenderCasePage';
+export * from './DocumentSharingPage';

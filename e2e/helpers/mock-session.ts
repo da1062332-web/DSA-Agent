@@ -10,13 +10,16 @@ export interface PersonaConfig {
   tenantId?: string;
 }
 
+// Grants follow the Notion "Roles, Workflows & Permissions Architecture" page: §6 core permissions per role, plus the §7
+// mapping table where it names the role as a primary holder. Where §6 is silent, the "Permission Catalogue, Access Matrix &
+// Qloax Tenant Reference" page (DB snapshot of qloax-dsa) is the source. Keep these in step with both pages.
 export const PERSONAS: Record<string, PersonaConfig> = {
-  // 01 — Platform Super Admin
+  // 01 — Platform Superadmin (§6.1; platform.tenant.* and user.manage from the Qloax reference snapshot)
   platformSuperAdmin: {
     userId: 'usr_platform_admin_01',
     email: 'vaibhav.qloax@gmail.com',
     displayName: 'Vaibhav Super Admin',
-    roleCode: 'ROLE-PLATFORM-ADMIN',
+    roleCode: 'ROLE-PLATFORM-SUPERADMIN',
     permissions: [
       'platform.console',
       'platform.flags',
@@ -32,26 +35,43 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     ],
     tenantId: 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG',
   },
-  // 02 — Tenant Admin
+  // 02 — Tenant Administrator (§6.2 core; §7 rows naming ROLE-TENANT-ADMIN)
   tenantAdmin: {
     userId: 'usr_admin_01',
     email: 'admin@qloax.com',
     displayName: 'Asha Admin',
     roleCode: 'ROLE-TENANT-ADMIN',
     permissions: [
+      'config.manage',
       'user.manage',
       'role.manage',
-      'config.manage',
-      'lead.read',
-      'lead.create',
-      'application.read',
-      'finance.view',
-      'report.read',
       'audit.read',
+      'audit.export_evidence',
+      'api.manage',
+      'integration.manage',
+      'data_correction.approve',
+      'connector.attribution_change',
+      'lead.read',
+      'lead.assign',
+      'customer.read',
+      'consent.record',
+      'application.read',
+      'application.create',
+      'application.review',
+      'document.review',
+      'lender_case.submit',
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'rule.author',
+      'rule.approve',
+      'rule.publish',
+      'payout.request',
     ],
     primaryBranchId: 'MUM01',
   },
-  // 03 — Organisation Owner
+  // 03 — DSA Owner (§6.2 core; connector.* for "strategic connector agreements", /connectors in the Qloax reference).
+  // No payout.approve: §7 gives it to ROLE-COMMISSION-APPROVER only (SOD-03).
   orgOwner: {
     userId: 'usr_owner_01',
     email: 'owner@qloax.com',
@@ -60,18 +80,17 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     permissions: [
       'lead.read',
       'application.read',
+      'finance.view',
+      'report.read',
+      'target.manage',
+      'audit.read',
       'connector.read',
       'connector.manage',
-      'finance.view',
-      'payout.approve',
-      'invoice.manage',
-      'commission.calculate',
-      'report.read',
-      'audit.read',
     ],
     primaryBranchId: 'MUM01',
   },
-  // 04 — Branch Manager
+  // 04 — Branch Manager (§6.3 core; §7 lead.qualify, customer.read, application.review; the rest from the Qloax snapshot:
+  // tasks, rule simulation, connector viewing, complaints)
   branchMgr: {
     userId: 'usr_branchmgr_01',
     email: 'branchmgr@qloax.com',
@@ -79,23 +98,30 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     roleCode: 'ROLE-BRANCH-MGR',
     permissions: [
       'lead.read',
+      'lead.create',
+      'lead.update',
       'lead.assign',
+      'lead.qualify',
+      'customer.read',
       'application.read',
+      'application.update',
+      'application.review',
       'application.assign',
       'task.read',
-      'task.assign',
       'task.create',
       'task.update',
+      'task.assign',
       'activity.create',
       'activity.update',
       'report.read',
+      'target.manage',
       'rule.simulate',
       'connector.read',
       'complaint.manage',
     ],
     primaryBranchId: 'MUM01',
   },
-  // 05 — Team Manager
+  // 05 — Team Manager (no §6 list; §7 lead.assign, the rest from the Qloax snapshot: team tasks and reports)
   teamMgr: {
     userId: 'usr_teammgr_01',
     email: 'teammgr@qloax.com',
@@ -114,7 +140,8 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     ],
     primaryBranchId: 'MUM01',
   },
-  // 06 — Relationship Manager
+  // 06 — Relationship Manager (§6.3 core; application.read, task.read/create and activity.create for its /applications,
+  // /tasks and /activities screens)
   rm: {
     userId: 'usr_rm_01',
     email: 'rm@qloax.com',
@@ -132,7 +159,9 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'application.create',
       'application.update',
       'application.read',
+      'share.create',
       'document.upload',
+      'message.send',
       'task.read',
       'task.create',
       'task.update',
@@ -140,7 +169,8 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     ],
     primaryBranchId: 'MUM01',
   },
-  // 07 — Sales Executive
+  // 07 — Sales Executive (§6.3 core). task.create is not in §6.3, but QA plan Module 07 step 4 has this role create a
+  // follow-up task; the two Notion pages disagree, and the QA plan is followed here.
   salesExec: {
     userId: 'usr_sales_01',
     email: 'sales@qloax.com',
@@ -150,14 +180,15 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'lead.create',
       'lead.read',
       'lead.update',
+      'activity.create',
+      'activity.update',
       'task.read',
       'task.create',
       'task.update',
-      'activity.create',
     ],
     primaryBranchId: 'MUM01',
   },
-  // 08 — Loan Operations
+  // 08 — Loan Operations (§6.4, exact)
   loanOps: {
     userId: 'usr_loanops_01',
     email: 'loanops@qloax.com',
@@ -173,7 +204,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     ],
     primaryBranchId: 'MUM01',
   },
-  // 09 — Document Verifier
+  // 09 — Document Verifier (§6.4, exact)
   docVerifier: {
     userId: 'usr_verifier_01',
     email: 'verifier@qloax.com',
@@ -183,13 +214,14 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'verification.read',
       'verification.perform',
       'verification.create',
+      'verification.update',
       'verification.complete',
       'document.review',
       'application.read',
     ],
     primaryBranchId: 'MUM01',
   },
-  // 10 — Compliance Officer
+  // 10 — Compliance Officer (§6.6 core; privacy.manage from the Qloax snapshot: legal holds and privacy management)
   compliance: {
     userId: 'usr_compliance_01',
     email: 'compliance@qloax.com',
@@ -206,7 +238,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     ],
     primaryBranchId: 'MUM01',
   },
-  // 11 — Rule Author
+  // 11 — Rule Author (§6.4, exact)
   ruleAuthor: {
     userId: 'usr_ruleauthor_01',
     email: 'ruleauthor@qloax.com',
@@ -215,7 +247,7 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     permissions: ['rule.author', 'rule.simulate'],
     primaryBranchId: 'MUM01',
   },
-  // 12 — Rule Approver
+  // 12 — Rule Approver (§6.4, exact)
   ruleApprover: {
     userId: 'usr_ruleapprover_01',
     email: 'ruleapprover@qloax.com',
@@ -224,16 +256,26 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     permissions: ['rule.approve', 'rule.publish', 'rule.suspend', 'rule.simulate'],
     primaryBranchId: 'MUM01',
   },
-  // 13 — Finance Executive
+  // 13 — Finance Executive (§6.5 core; commission.plan.edit as the SOD-02 maker and disbursement.verify as the SOD-04
+  // checker, §4 and §7)
   financeExec: {
     userId: 'usr_finance_01',
     email: 'finance@qloax.com',
     displayName: 'Farhan Finance',
     roleCode: 'ROLE-FINANCE-EXEC',
-    permissions: ['finance.view', 'finance.reconcile', 'payout.request', 'adjustment.create', 'commission.plan.edit'],
+    permissions: [
+      'finance.view',
+      'finance.reconcile',
+      'finance.dispute',
+      'adjustment.create',
+      'payout.request',
+      'invoice.manage',
+      'commission.plan.edit',
+      'disbursement.verify',
+    ],
     primaryBranchId: 'MUM01',
   },
-  // 13 — Commission Approver
+  // 13 — Commission Approver (§6.5, exact)
   commissionApprover: {
     userId: 'usr_cfo_01',
     email: 'commission@qloax.com',
@@ -249,6 +291,13 @@ export const PERSONAS: Record<string, PersonaConfig> = {
     primaryBranchId: 'MUM01',
   },
 };
+
+/** A Contracts §6 error envelope, so mocked failures look exactly like the API's. */
+export function apiErrorBody(code: string, httpStatus: number, message: string): string {
+  return JSON.stringify({
+    error: { code, message, httpStatus, correlationId: 'corr_e2e_mock', details: [], retryable: false },
+  });
+}
 
 function base64UrlEncode(str: string): string {
   return Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

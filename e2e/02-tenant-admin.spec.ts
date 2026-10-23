@@ -196,9 +196,38 @@ test.describe('Persona 02: Tenant Admin (ROLE-TENANT-ADMIN)', () => {
 
     // 3. Attempt access to platform-wide operator console
     await tenantAdminPage.showBanner('Security Boundary', 'Verifying Tenant Admin cannot access multi-tenant platform console');
-    await tenantAdminPage.goto('/platform-admin');
+    // The Platform Console belongs to the platform realm only (Notion Roles §1, §6.1)
+    await tenantAdminPage.expectForbidden('/platform-admin');
+    await tenantAdminPage.pause(1500);
 
-    // Tenant admin cannot access platform console; redirected or denied
+    // payout.approve is ROLE-COMMISSION-APPROVER only (Notion Roles §7, SOD-03): the admin may request a payout but the
+    // approval queue offers no approve action
+    await tenantAdminPage.showBanner('Dual-Control Boundary', 'Tenant Admin cannot approve connector payouts (SOD-03)');
+    await page.route('**/v1/payout-requests**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: 'pay_req_qa_admin_001',
+              connectorId: 'con_qa_001',
+              origin: 'MANUAL',
+              total: '5000',
+              status: 'SUBMITTED',
+              submittedBy: 'usr_finance_01',
+              submittedAt: new Date().toISOString(),
+              paymentRefMasked: null,
+              lines: [{ id: 'pline_qa_admin_001', payableId: 'pyb_qa_001', amount: '5000', currency: 'INR' }],
+            },
+          ],
+          meta: { nextCursor: null, limit: 50 },
+        }),
+      });
+    });
+    await tenantAdminPage.goto('/payouts');
+    await page.getByRole('tab', { name: /Approval Queue/i }).click();
+    await expect(page.getByRole('button', { name: /Review & Decide \(SOD-03\)/i })).toBeDisabled();
     await tenantAdminPage.pause(1500);
 
     // 4. Role Logout via Page Object

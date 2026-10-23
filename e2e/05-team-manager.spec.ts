@@ -140,8 +140,12 @@ test.describe('Persona 05: Team Manager (ROLE-TEAM-MGR)', () => {
     await expect(dashboardPage.dashboard).toBeVisible();
     await dashboardPage.pause(1200);
 
-    // 3. Attempt direct access to platform console
-    await dashboardPage.goto('/platform-admin');
+    // 3. Admin and financial screens are refused (no user.manage, config.manage or finance grant)
+    await dashboardPage.expectForbidden('/platform-admin');
+    await dashboardPage.expectForbidden('/users');
+    await dashboardPage.expectForbidden('/config');
+    await dashboardPage.expectForbidden('/commission');
+    await dashboardPage.expectForbidden('/payouts');
     await dashboardPage.pause(1500);
 
     // 4. Role Logout via Page Object

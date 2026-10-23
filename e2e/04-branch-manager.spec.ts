@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS } from './helpers/mock-session';
+import { PERSONAS, apiErrorBody } from './helpers/mock-session';
 import { AuthPage, ManagerDashboardPage, TasksPage } from './pages';
 
 test.describe('Persona 04: Branch Manager (ROLE-BRANCH-MGR)', () => {
@@ -135,8 +135,23 @@ test.describe('Persona 04: Branch Manager (ROLE-BRANCH-MGR)', () => {
     await expect(dashboardPage.dashboard).toBeVisible();
     await dashboardPage.pause(1200);
 
-    // 3. Attempt direct access to platform console
-    await dashboardPage.goto('/platform-admin');
+    // 3. Platform console, user administration and finance are outside the Branch Manager's permissions (Notion Roles §6.3)
+    await dashboardPage.expectForbidden('/platform-admin');
+    await dashboardPage.expectForbidden('/users');
+    await dashboardPage.expectForbidden('/payouts');
+
+    // 4. Branch scope (Notion Roles §6.3, "restricted to the user's assigned branchIds"): a lead in another branch is out of
+    // scope, and the API answers 404 for out-of-scope IDs (CLAUDE.md tenancy rules), so the screen shows nothing of it
+    await page.route('**/v1/leads/led_qa_pun01_001', async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: apiErrorBody('NOT_FOUND', 404, 'Lead not found.'),
+      });
+    });
+    await dashboardPage.goto('/leads/led_qa_pun01_001');
+    await expect(page.getByRole('alert').first()).toContainText('Lead not found.');
+    await expect(page.getByRole('button', { name: /Qualify|Assign|Convert/i })).toHaveCount(0);
     await dashboardPage.pause(1500);
 
     // 4. Role Logout via Page Object

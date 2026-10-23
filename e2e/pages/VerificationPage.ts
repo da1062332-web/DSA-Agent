@@ -21,11 +21,22 @@ export class VerificationPage extends BasePage {
     return this.page.locator(`[data-testid="verification.attest.${chkId}"]`);
   }
 
-  async attestChecklistItem(chkId: string, verdict: 'ACCEPTED' | 'REJECTED' = 'ACCEPTED', note?: string): Promise<void> {
+  /**
+   * Attests one checklist item. The dialog keeps its last verdict between openings, so the verdict is always chosen.
+   * `rejectReason` is the option label of the structured reason code (e.g. 'Illegible / Blurry' for ILLEGIBLE).
+   */
+  async attestChecklistItem(
+    chkId: string,
+    verdict: 'ACCEPTED' | 'REJECTED' = 'ACCEPTED',
+    note?: string,
+    rejectReason?: string,
+  ): Promise<void> {
     await this.click(this.getAttestBtn(chkId), 1200);
-    if (verdict === 'REJECTED') {
-      await this.click(this.verdictSelect, 800);
-      await this.click(this.page.getByRole('option', { name: /REJECTED/i }), 800);
+    await this.click(this.verdictSelect, 800);
+    await this.click(this.page.getByRole('option', { name: new RegExp(`^${verdict}`) }), 800);
+    if (verdict === 'REJECTED' && rejectReason) {
+      await this.click(this.page.getByLabel('Reject Reason'), 800);
+      await this.click(this.page.getByRole('option', { name: rejectReason }), 800);
     }
     if (note) {
       await this.type(this.attestationNoteInput, note);

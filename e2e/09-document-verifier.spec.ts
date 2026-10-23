@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { PERSONAS } from './helpers/mock-session';
+import { PERSONAS, apiErrorBody } from './helpers/mock-session';
 import { AuthPage, VerificationPage } from './pages';
 
 test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
@@ -88,94 +88,129 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
   });
 
   // =========================================================================
-  // TC-DV-02: Document Rejection & Mandatory Findings Validation on Finalization
-  // (Notion QA Plan Module 09 Steps 5-7, MOD-VRF, CMP-VRF.02)
+  // TC-DV-02 QA-DV-001: reject an invalid document with a reason code; completion is blocked while a mandatory item is
+  // rejected, and allowed once every mandatory item is resolved
+  // (Notion QA Plan Module 09 steps 3-7: "mandatory checks gate completion as specified")
   // =========================================================================
-  test('TC-DV-02: Document Rejection & Mandatory Findings Validation on Finalization', async ({ page }) => {
+  test('TC-DV-02 QA-DV-001: completion blocked while a mandatory checklist item is rejected', async ({ page }) => {
     const authPage = new AuthPage(page);
     const vrfPage = new VerificationPage(page);
 
-    const mockVerificationCase = {
+    // QA plan test data: QA_ADDRESS_PROOF_001, QA_INCOME_PROOF_001 and QA_INVALID_DOCUMENT_001, all mandatory
+    const ADDRESS = 'chk_qa_address_001';
+    const INCOME = 'chk_qa_income_001';
+    const INVALID = 'chk_qa_invalid_001';
+    const mockVerificationCase: Record<string, unknown> = {
       id: 'vrf_case_002',
-      applicationId: 'APP-QA-001',
+      applicationId: 'app_qa_001',
       verificationType: 'DOCUMENT_REVIEW',
       status: 'IN_PROGRESS',
       priority: 'HIGH',
       findingsSummary: null,
       lockVersion: 1,
-      checklistItmIds: ['chk_invalid_doc_01'],
+      checklistItmIds: [ADDRESS, INCOME, INVALID],
+      createdBy: 'usr_rm_01',
       createdAt: new Date().toISOString(),
     };
 
+    // Mandatory checks gate completion: every mandatory item must be ACCEPTED or WAIVED
+    const attestations = new Map<string, { status: string; rejectReason?: string }>();
+    let completeCalls = 0;
     await page.route('**/v1/verification-requests**', async (route) => {
-      const url = route.request().url();
-      if (url.includes('/vrf_case_002/complete')) {
-        mockVerificationCase.status = 'VERIFIED';
-        mockVerificationCase.findingsSummary = 'All required documents reviewed and attested.';
+      const url = new URL(route.request().url()).pathname;
+      if (url.endsWith('/vrf_case_002/checklist-review')) {
+        const body = JSON.parse(route.request().postData() || '{}');
+        attestations.set(body.checklistItemId, { status: body.status, rejectReason: body.rejectReason });
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: mockVerificationCase }),
+          body: JSON.stringify({
+            checklistItemId: body.checklistItemId,
+            status: body.status,
+            reviewedBy: 'usr_verifier_01',
+            reviewedAt: new Date().toISOString(),
+          }),
         });
-      } else if (url.includes('/vrf_case_002/attestation')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
+      } else if (url.endsWith('/vrf_case_002/complete')) {
+        completeCalls += 1;
+        const open = (mockVerificationCase.checklistItmIds as string[]).filter(
+          (id) => !['ACCEPTED', 'WAIVED'].includes(attestations.get(id)?.status ?? 'PENDING'),
+        );
+        if (open.length > 0) {
+          await route.fulfill({
+            status: 422,
+            contentType: 'application/json',
+            body: apiErrorBody(
+              'COMPLETENESS_FAILED',
+              422,
+              `Mandatory checklist item ${open.join(', ')} is not accepted or waived.`,
+            ),
+          });
+          return;
+        }
+        Object.assign(mockVerificationCase, {
+          status: 'VERIFIED',
+          outcome: 'POSITIVE',
+          findingsSummary: JSON.parse(route.request().postData() || '{}').findingsSummary,
+          lockVersion: 2,
         });
-      } else if (url.includes('/vrf_case_002')) {
         await route.fulfill({
           status: 200,
+          headers: { ETag: '"2"' },
           contentType: 'application/json',
-          body: JSON.stringify({ data: mockVerificationCase }),
+          body: JSON.stringify(mockVerificationCase),
         });
       } else {
         await route.fulfill({
           status: 200,
+          headers: { ETag: `"${mockVerificationCase.lockVersion}"` },
           contentType: 'application/json',
-          body: JSON.stringify({ data: [mockVerificationCase], meta: { total: 1 } }),
+          body: JSON.stringify(mockVerificationCase),
         });
       }
     });
 
     await authPage.loginAs(PERSONAS.docVerifier, '/verifications/vrf_case_002');
-    await vrfPage.showBanner('Rejecting Illegible Document', 'To record verification rejection reasons and enforce mandatory assessment findings');
+    await vrfPage.showBanner('Checklist Review', 'Reviewing APP-QA-001 documents against the checklist');
     await vrfPage.pause(1500);
 
-    // 1. Open Attestation Dialog for Invalid Document
-    await vrfPage.showBanner('Review Invalid Document', 'Opening attestation dialog for unreadable file');
-    await expect(vrfPage.getAttestBtn('chk_invalid_doc_01')).toBeVisible();
+    // 3-4. Accept the address proof and the income proof
+    await vrfPage.attestChecklistItem(ADDRESS, 'ACCEPTED');
+    await expect(page.getByText(`Checklist item ${ADDRESS} marked as ACCEPTED!`)).toBeVisible();
+    await vrfPage.attestChecklistItem(INCOME, 'ACCEPTED');
+    await expect(page.getByText(`Checklist item ${INCOME} marked as ACCEPTED!`)).toBeVisible();
 
-    // 2. Select REJECTED verdict with ILLEGIBLE reason & note
-    await vrfPage.showBanner('Select REJECTED Verdict', 'Attesting verdict: REJECTED with reason ILLEGIBLE');
-    await vrfPage.showBanner('Attestation Note', 'Entering note: Document is unreadable and blurry');
-    await vrfPage.showBanner('Submit Rejection', 'Persisting REJECTED attestation code');
-    await vrfPage.attestChecklistItem('chk_invalid_doc_01', 'REJECTED', 'Document is unreadable and blurry');
-    await expect(page.getByText(/marked as REJECTED/i)).toBeVisible();
-    await vrfPage.pause(1500);
+    // 5. Reject the unreadable document with a structured reason code
+    await vrfPage.showBanner('Reject Invalid Document', 'Verdict REJECTED with reason code ILLEGIBLE');
+    await vrfPage.attestChecklistItem(INVALID, 'REJECTED', 'Document is unreadable and blurry', 'Illegible / Blurry');
+    await expect(page.getByText(`Checklist item ${INVALID} marked as REJECTED!`)).toBeVisible();
+    expect(attestations.get(INVALID)).toEqual({ status: 'REJECTED', rejectReason: 'ILLEGIBLE' });
 
-    // 3. Complete Verification Assessment: Test validation error for short findings (< 5 chars)
-    await vrfPage.showBanner('Finalize Assessment', 'Opening assessment completion dialog');
-    await expect(vrfPage.completeAssessmentBtn).toBeVisible();
+    // Findings are mandatory on finalization (client-side check)
     await vrfPage.click(vrfPage.completeAssessmentBtn, 1500);
-
-    await vrfPage.showBanner('Findings Length Check', 'Testing rejection of short findings (< 5 chars)');
-    await vrfPage.findingsField.fill('ok'); // < 5 chars
+    await vrfPage.findingsField.fill('ok');
     await vrfPage.click(vrfPage.submitVerdictBtn);
     await expect(page.getByText(/Findings summary must be at least 5 characters/i)).toBeVisible();
-    await vrfPage.pause(1500);
+    expect(completeCalls).toBe(0);
 
-    // 4. Enter valid findings and finalize verification
-    await vrfPage.showBanner('Submit Valid Findings', 'Entering comprehensive summary findings');
-    await vrfPage.type(vrfPage.findingsField, 'All required documents reviewed and attested.');
-    await vrfPage.pause(1200);
-
-    await vrfPage.showBanner('Confirm Finalization', 'Submitting final assessment');
+    // 6. Completion is refused while a mandatory item is rejected, and the case stays open
+    await vrfPage.showBanner('Completion Gate', 'Finalizing with a rejected mandatory document must fail');
+    await vrfPage.type(vrfPage.findingsField, 'Address and income proofs verified; one document unreadable.');
     await vrfPage.click(vrfPage.submitVerdictBtn, 2000);
+    await expect(page.getByText(`Mandatory checklist item ${INVALID} is not accepted or waived.`)).toBeVisible();
+    await expect(page.getByText(/successfully finalized/i)).toHaveCount(0);
+    expect(completeCalls).toBe(1);
+    await vrfPage.click(page.getByRole('dialog').getByRole('button', { name: 'Cancel' }), 800);
+    await expect(page.getByText('IN_PROGRESS', { exact: true })).toBeVisible();
 
-    // Verify successful finalization
-    await vrfPage.showBanner('Verification Finalized', 'Case successfully verified and closed');
+    // 7. The customer re-submitted a readable file: accept it, then completion succeeds
+    await vrfPage.showBanner('Resolve and Complete', 'Re-reviewed document accepted; verification completes');
+    await vrfPage.attestChecklistItem(INVALID, 'ACCEPTED', 'Readable replacement received');
+    await expect(page.getByText(`Checklist item ${INVALID} marked as ACCEPTED!`)).toBeVisible();
+    await vrfPage.completeVerification('All mandatory documents reviewed and accepted.');
     await expect(page.getByText(/successfully finalized/i)).toBeVisible();
+    await expect(page.locator('.MuiChip-label').getByText('VERIFIED', { exact: true })).toBeVisible();
+    expect(completeCalls).toBe(2);
     await vrfPage.pause(2500);
     await authPage.logout();
   });

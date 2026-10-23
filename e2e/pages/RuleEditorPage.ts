@@ -22,7 +22,7 @@ export class RuleEditorPage extends BasePage {
   readonly reviewApproveBtn = this.page.getByRole('button', { name: /Review \/ Approve \(SOD-01\)/i });
   readonly reviewerCommentsInput = this.page.getByLabel(/Reviewer Comments/i);
   readonly confirmApproveBtn = this.page.getByRole('button', { name: /Confirm APPROVE/i });
-  readonly publishBtn = this.page.getByRole('button', { name: /Publish Version/i });
+  readonly publishBtn = this.page.getByRole('button', { name: /Publish to Production/i });
 
   async saveDefinition(jsonText: string): Promise<void> {
     await this.definitionEditor.fill(jsonText);

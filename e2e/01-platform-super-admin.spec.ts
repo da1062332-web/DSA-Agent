@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { PERSONAS } from './helpers/mock-session';
 import { AuthPage, PlatformAdminPage } from './pages';
 
-test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-ADMIN)', () => {
+test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-SUPERADMIN)', () => {
   // =========================================================================
   // TC-PSA-01: Multi-Tenant Platform Console & Tenant Directory Inspection
   // =========================================================================
@@ -237,11 +237,11 @@ test.describe('Persona 01: Platform Super Admin (ROLE-PLATFORM-ADMIN)', () => {
     await expect(platformPage.zeroBusinessDataBanner).toBeVisible();
     await platformPage.pause(1500);
 
-    // 3. Navigate to an operational borrower applications route
+    // 3. Zero Business Data Policy (Notion Roles §1): the platform realm reaches no tenant lending, CRM or finance screen
     await platformPage.showBanner('Access Boundary Check', 'Attempting direct navigation to tenant borrower loans');
-    await platformPage.goto('/applications');
-
-    // Platform Super Admin without support access cannot originate or approve tenant loans
+    for (const path of ['/applications', '/leads', '/customers', '/payouts', '/audit']) {
+      await platformPage.expectForbidden(path);
+    }
     await platformPage.pause(1500);
 
     // 4. Role Logout via Page Object
