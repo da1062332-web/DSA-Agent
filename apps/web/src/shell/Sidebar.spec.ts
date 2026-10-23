@@ -70,7 +70,9 @@ describe('sidebar visibility by permission', () => {
       expect(shown).not.toContain(hidden);
     }
     const groups = visibleGroups(false, () => false).map((g) => g.title);
-    expect(groups).not.toContain('Business rules (DOM-G)');
+    expect(groups).not.toContain('Finance & Settlement');
+    expect(groups).not.toContain('Sales & CRM');
+    expect(groups).not.toContain('Analytics & Performance');
   });
 
   it('shows everything when no check is given', () => {

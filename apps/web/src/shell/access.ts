@@ -29,53 +29,42 @@ const RULE_PERMISSIONS = ['rule.author', 'rule.simulate', 'rule.approve', 'rule.
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    title: 'Overview',
-    items: [{ label: 'Home', to: '/' }],
-  },
-  {
-    title: 'Leads and customers (DOM-B)',
+    title: 'Workspace',
     items: [
-      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
-      { label: 'Customers', to: '/customers', anyOf: ['customer.read'] },
-    ],
-  },
-  {
-    title: 'Follow-ups and communication (DOM-C)',
-    items: [
+      { label: 'Home', to: '/' },
       { label: 'Tasks', to: '/tasks', anyOf: ['task.read'] },
+      {
+        label: 'Approvals',
+        to: '/approvals',
+        anyOf: [
+          'config.manage',
+          'data_correction.request',
+          'data_correction.approve',
+          'commission.plan.approve',
+          'payout.approve',
+        ],
+      },
       {
         label: 'Activity',
         to: '/activities',
         anyOf: ['lead.read', 'customer.read', 'application.read', 'activity.create'],
       },
-      { label: 'Messaging', to: '/messaging', anyOf: ['message.send', 'config.manage'] },
       { label: 'Notifications', to: '/notifications' },
+    ],
+  },
+  {
+    title: 'Sales & CRM',
+    items: [
+      { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
+      { label: 'Customers', to: '/customers', anyOf: ['customer.read'] },
+      { label: 'Messaging', to: '/messaging', anyOf: ['message.send', 'config.manage'] },
       { label: 'Grievances', to: '/complaints', anyOf: ['complaint.create', 'complaint.manage'] },
     ],
   },
   {
-    title: 'Lenders and products (DOM-D)',
-    items: [
-      { label: 'Lenders', to: '/lenders' },
-      { label: 'Products', to: '/products' },
-    ],
-  },
-  {
-    title: 'Origination (DOM-E)',
+    title: 'Loan Origination',
     items: [
       { label: 'Applications', to: '/applications', anyOf: ['application.read'] },
-      { label: 'Lender cases', to: '/lender-cases', anyOf: ['application.read', 'lender_case.submit'] },
-      { label: 'Eligibility', task: 'MOD-ELG' },
-      {
-        label: 'Sanction and disbursement',
-        to: '/sanctions',
-        anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
-      },
-    ],
-  },
-  {
-    title: 'KYC, documents and verification (DOM-F)',
-    items: [
       { label: 'Documents', to: '/documents', anyOf: ['application.read'] },
       { label: 'Document sharing', to: '/document-sharing', anyOf: ['document.upload', 'share.create'] },
       { label: 'Verification', to: '/verifications', anyOf: ['verification.read', 'verification.perform'] },
@@ -84,18 +73,57 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/verifications/workbench',
         anyOf: ['verification.read', 'verification.perform'],
       },
+      { label: 'Lender cases', to: '/lender-cases', anyOf: ['application.read', 'lender_case.submit'] },
+      {
+        label: 'Sanction and disbursement',
+        to: '/sanctions',
+        anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
+      },
+      { label: 'Eligibility', task: 'MOD-ELG' },
+      { label: 'Lenders', to: '/lenders' },
+      { label: 'Products', to: '/products' },
     ],
   },
   {
-    title: 'Business rules (DOM-G)',
+    title: 'Finance & Settlement',
+    items: [
+      {
+        label: 'Commission',
+        to: '/commission',
+        anyOf: ['finance.view', 'commission.plan.edit', 'commission.plan.approve'],
+      },
+      {
+        label: 'Payouts',
+        to: '/payouts',
+        anyOf: ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
+      },
+      { label: 'Ledger', to: '/ledger', anyOf: ['finance.view'] },
+      { label: 'Invoices', to: '/invoices', anyOf: ['finance.view', 'invoice.manage'] },
+      { label: 'Reconciliation', to: '/reconciliation', anyOf: ['finance.view', 'finance.reconcile'] },
+    ],
+  },
+  {
+    title: 'Partners & Operations',
+    items: [
+      { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
+      { label: 'Workforce', to: '/workforce' },
+      { label: 'Connector portal', task: 'MOD-CPT' },
+    ],
+  },
+  {
+    title: 'Analytics & Performance',
+    items: [
+      { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
+      { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
+      { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
+      { label: 'Reports & Catalogue', to: '/reports', anyOf: ['report.read', 'report.manage'] },
+    ],
+  },
+  {
+    title: 'Governance & Administration',
     items: [
       { label: 'Rule sets', to: '/rules', anyOf: RULE_PERMISSIONS },
       { label: 'Decisions', to: '/decisions', anyOf: RULE_PERMISSIONS },
-    ],
-  },
-  {
-    title: 'Workflow automation (DOM-H)',
-    items: [
       {
         label: 'Automation rules',
         to: '/automations',
@@ -107,93 +135,25 @@ export const NAV_GROUPS: NavGroup[] = [
           'automation.operator',
         ],
       },
-    ],
-  },
-  {
-    title: 'Team and performance (DOM-I)',
-    items: [
-      { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
-      { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
-      { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
-      { label: 'Workforce', to: '/workforce' },
-    ],
-  },
-  {
-    title: 'Connectors (DOM-J)',
-    items: [
-      { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
-      { label: 'Connector portal', task: 'MOD-CPT' },
-    ],
-  },
-  {
-    title: 'Commission, payouts and reconciliation (DOM-K)',
-    items: [
-      {
-        label: 'Commission',
-        to: '/commission',
-        anyOf: ['finance.view', 'commission.plan.edit', 'commission.plan.approve'],
-      },
-      { label: 'Ledger', to: '/ledger', anyOf: ['finance.view'] },
-      {
-        label: 'Payouts',
-        to: '/payouts',
-        anyOf: ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
-      },
-      { label: 'Reconciliation', to: '/reconciliation', anyOf: ['finance.view', 'finance.reconcile'] },
-      { label: 'Invoices', to: '/invoices', anyOf: ['finance.view', 'invoice.manage'] },
-    ],
-  },
-  {
-    // "Performance Dashboards" used to be listed here as well, pointing at the same /performance screen as "Performance Dashboard" above (F-15).
-    title: 'Reporting (DOM-L)',
-    items: [{ label: 'Reports & Catalogue', to: '/reports', anyOf: ['report.read', 'report.manage'] }],
-  },
-  {
-    title: 'Integrations and API (DOM-M)',
-    items: [
+      { label: 'Users', to: '/users', anyOf: ['user.manage'] },
+      { label: 'Access control', to: '/roles', anyOf: ['user.manage', 'role.manage'] },
+      { label: 'Organisation', to: '/admin/organisation', anyOf: ['config.manage'] },
+      { label: 'Branches', to: '/admin/branches', anyOf: ['config.manage'] },
+      { label: 'Teams', to: '/admin/teams', anyOf: ['config.manage'] },
+      { label: 'Work queues', to: '/admin/queues', anyOf: ['config.manage'] },
+      { label: 'Configuration', to: '/config', anyOf: ['config.manage'] },
+      { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
+      { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
+      { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
+      { label: 'Security', to: '/account/security' },
       {
         label: 'Integrations',
         to: '/integrations',
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
       },
       { label: 'API management', to: '/api-management', anyOf: ['api.read', 'api.manage', 'config.manage'] },
-    ],
-  },
-  {
-    title: 'Security and compliance (DOM-N)',
-    items: [
-      { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
-      { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
-      {
-        label: 'Approvals',
-        to: '/approvals',
-        // Finance checkers find their queue here too (QA plan Module 13B: "open /approvals").
-        anyOf: [
-          'config.manage',
-          'data_correction.request',
-          'data_correction.approve',
-          'commission.plan.approve',
-          'payout.approve',
-        ],
-      },
-      { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
-      { label: 'Security', to: '/account/security' },
-    ],
-  },
-  {
-    title: 'Administration (DOM-O)',
-    adminOnly: true,
-    items: [
-      { label: 'Organisation', to: '/admin/organisation', anyOf: ['config.manage'] },
-      { label: 'Branches', to: '/admin/branches', anyOf: ['config.manage'] },
-      { label: 'Teams', to: '/admin/teams', anyOf: ['config.manage'] },
-      { label: 'Work queues', to: '/admin/queues', anyOf: ['config.manage'] },
-      { label: 'Users', to: '/users', anyOf: ['user.manage'] },
-      // The API accepts user.manage or role.manage on every roles route; the DSA owner holds only role.manage (F-13).
-      { label: 'Access control', to: '/roles', anyOf: ['user.manage', 'role.manage'] },
-      { label: 'Configuration', to: '/config', anyOf: ['config.manage'] },
-      { label: 'Platform Console', to: '/platform-admin', anyOf: ['platform.console'] },
       { label: 'Import and export', to: '/admin/import-export', anyOf: ['import.run', 'export.run'] },
+      { label: 'Platform Console', to: '/platform-admin', anyOf: ['platform.console'] },
     ],
   },
 ];
