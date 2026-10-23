@@ -65,7 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Applications', to: '/applications', anyOf: ['application.read'] },
       { label: 'Lender cases', to: '/lender-cases', anyOf: ['application.read', 'lender_case.submit'] },
-      { label: 'Eligibility', task: 'MOD-ELG' },
+      { label: 'Eligibility', to: '/eligibility', anyOf: ['application.read'] },
       {
         label: 'Sanction and disbursement',
         to: '/sanctions',
@@ -122,7 +122,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Connectors (DOM-J)',
     items: [
       { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
-      { label: 'Connector portal', task: 'MOD-CPT' },
+      { label: 'Connector portal', to: '/connector-portal', anyOf: ['connector.read', 'connector.manage'] },
     ],
   },
   {

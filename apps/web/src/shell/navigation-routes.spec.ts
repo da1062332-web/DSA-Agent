@@ -26,7 +26,7 @@ describe('sidebar links and routes', () => {
       .filter((i) => !i.to)
       .map((i) => `${i.label}:${i.task}`)
       .sort();
-    // Eligibility authoring is Release 2 (TASK-416); the connector portal is Release 3. Documents and security are real screens now.
-    expect(soon).toEqual(['Connector portal:MOD-CPT', 'Eligibility:MOD-ELG']);
+    // All 41 modules are now fully integrated and routed; no placeholder items remain.
+    expect(soon).toEqual([]);
   });
 });
