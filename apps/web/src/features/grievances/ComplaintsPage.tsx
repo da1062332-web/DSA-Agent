@@ -3,20 +3,16 @@
 import {
   Alert,
   Button,
-  Card,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  InputLabel,
   Link,
   MenuItem,
+  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
@@ -24,7 +20,8 @@ import { Link as RouterLink } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList } from '../admin/api';
-import { ErrorAlert, LoadMore, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
+import { ErrorAlert, LoadMore, PageHeader, StatusChip, formatDate } from '../admin/components';
+import { DataTable, FilterToolbar, StatusBadge, type ColumnDef } from '../../ui';
 import {
   CATEGORY_LABELS,
   CHANNEL_LABELS,
@@ -104,94 +101,94 @@ export function ComplaintsPage() {
       )}
       {canManage && (
         <>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-            <TextField
-              size="small"
-              select
-              label="Status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              sx={{ minWidth: 160 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              {(Object.keys(STATUS_LABELS) as ComplaintStatus[]).map((s) => (
-                <MenuItem key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="Category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">All categories</MenuItem>
-              {COMPLAINT_CATEGORIES.map((c) => (
-                <MenuItem key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-          {!refused && <ErrorAlert error={list.error} />}
-          {list.isPending ? (
-            <Loading />
-          ) : (
-            <Card>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Reference</TableCell>
-                      <TableCell>Subject</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Channel</TableCell>
-                      <TableCell>Due</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                          No complaints match.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {rows.map((c) => (
-                      <TableRow key={c.id} hover>
-                        <TableCell>
-                          <Link
-                            component={RouterLink}
-                            to={`/complaints/${c.id}`}
-                            data-testid="complaints.open"
-                          >
-                            {c.ackRef}
-                          </Link>
-                        </TableCell>
-                        <TableCell>
-                          {c.complainantType === 'APPLICATION' ? (
-                            <ApplicationName id={c.complainantId} linkToApp />
-                          ) : (
-                            <LeadName id={c.complainantId} linkToLead />
-                          )}
-                        </TableCell>
-                        <TableCell>{CATEGORY_LABELS[c.category]}</TableCell>
-                        <TableCell>{CHANNEL_LABELS[c.channel]}</TableCell>
-                        <TableCell>{c.dueAt ? formatDate(c.dueAt) : '—'}</TableCell>
-                        <TableCell>
-                          <StatusChip active={c.status !== 'RESOLVED'} label={STATUS_LABELS[c.status]} />
-                        </TableCell>
-                      </TableRow>
+          <FilterToolbar
+            filters={
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={status}
+                    label="Status"
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    {(Object.keys(STATUS_LABELS) as ComplaintStatus[]).map((s) => (
+                      <MenuItem key={s} value={s}>
+                        {STATUS_LABELS[s]}
+                      </MenuItem>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Card>
-          )}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 180 }}>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={category}
+                    label="Category"
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    <MenuItem value="">All categories</MenuItem>
+                    {COMPLAINT_CATEGORIES.map((c) => (
+                      <MenuItem key={c} value={c}>
+                        {CATEGORY_LABELS[c]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
+            }
+          />
+          {!refused && <ErrorAlert error={list.error} />}
+          <DataTable<Complaint>
+            columns={[
+              {
+                id: 'reference',
+                header: 'Reference',
+                accessor: (c) => (
+                  <Link
+                    component={RouterLink}
+                    to={`/complaints/${c.id}`}
+                    data-testid="complaints.open"
+                    sx={{ fontWeight: 600, fontFamily: 'monospace' }}
+                  >
+                    {c.ackRef}
+                  </Link>
+                ),
+              },
+              {
+                id: 'subject',
+                header: 'Subject',
+                accessor: (c) =>
+                  c.complainantType === 'APPLICATION' ? (
+                    <ApplicationName id={c.complainantId} linkToApp />
+                  ) : (
+                    <LeadName id={c.complainantId} linkToLead />
+                  ),
+              },
+              {
+                id: 'category',
+                header: 'Category',
+                accessor: (c) => CATEGORY_LABELS[c.category],
+              },
+              {
+                id: 'channel',
+                header: 'Channel',
+                accessor: (c) => CHANNEL_LABELS[c.channel],
+              },
+              {
+                id: 'due',
+                header: 'Due',
+                accessor: (c) => (c.dueAt ? formatDate(c.dueAt) : '—'),
+              },
+              {
+                id: 'status',
+                header: 'Status',
+                accessor: (c) => <StatusBadge status={c.status} />,
+              },
+            ]}
+            data={rows}
+            loading={list.isPending}
+            emptyTitle="No complaints match."
+          />
           <LoadMore
             hasNext={!!list.hasNextPage}
             loading={list.isFetchingNextPage}
