@@ -138,27 +138,31 @@ export function LoginPage() {
           bgcolor: '#ffffff',
         }}
       >
-        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)' }} />
+        <Box sx={{ height: 4, background: 'linear-gradient(90deg, #215988 0%, #3876BE 50%, #F89344 100%)' }} />
         <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3.5 }}>
             <Box
               sx={{
-                width: 56,
-                height: 56,
+                width: 64,
+                height: 64,
                 borderRadius: '16px',
-                bgcolor: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #dbeafe',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)',
+                bgcolor: '#ffffff',
+                border: '1px solid rgba(33, 89, 136, 0.12)',
+                boxShadow: '0 6px 18px rgba(33, 89, 136, 0.12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 mb: 2,
-                fontSize: 26,
+                p: 1,
               }}
             >
-              🔐
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="DSA Platform"
+                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </Box>
             <Typography
               variant="h5"

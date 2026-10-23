@@ -28,6 +28,7 @@ import {
 import { useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
+import { DataTable } from '../../ui';
 import { useCommand, useList, useResource } from './api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 import type { Lender } from './LendersPage';
@@ -333,52 +334,30 @@ function VersionsCard({
         {loading ? (
           <Loading />
         ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>No.</TableCell>
-                  <TableCell>Effective from</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Tenure</TableCell>
-                  <TableCell>Illustrative rate</TableCell>
-                  <TableCell>Fee</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No terms yet. Add the first version.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((v) => (
-                  <TableRow key={v.id} hover>
-                    <TableCell>{v.versionNo}</TableCell>
-                    <TableCell>{formatDate(v.effectiveFrom)}</TableCell>
-                    <TableCell>
-                      {v.currency} {v.amountMin} – {v.amountMax}
-                    </TableCell>
-                    <TableCell>
-                      {v.tenureMinMonths}–{v.tenureMaxMonths} months
-                    </TableCell>
-                    <TableCell>{v.illustrativeRateText ?? '—'}</TableCell>
-                    <TableCell>{v.feeText ?? '—'}</TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        <StatusChip active={v.status === 'ACTIVE'} label={v.status} />
-                        {v.isCurrent && (
-                          <Chip size="small" color="success" variant="outlined" label="In force" />
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable<(typeof rows)[number]>
+            dataTestId="admin.table.product-versions"
+            data={rows}
+            keyExtractor={(v) => v.id}
+            emptyMessage="No terms yet. Add the first version."
+            columns={[
+              { id: 'no', header: 'No.', render: (v) => v.versionNo },
+              { id: 'effective', header: 'Effective from', render: (v) => formatDate(v.effectiveFrom) },
+              { id: 'amount', header: 'Amount', render: (v) => `${v.currency} ${v.amountMin} – ${v.amountMax}` },
+              { id: 'tenure', header: 'Tenure', render: (v) => `${v.tenureMinMonths}–${v.tenureMaxMonths} months` },
+              { id: 'rate', header: 'Illustrative rate', render: (v) => v.illustrativeRateText ?? '—' },
+              { id: 'fee', header: 'Fee', render: (v) => v.feeText ?? '—' },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (v) => (
+                  <Stack direction="row" spacing={1}>
+                    <StatusChip active={v.status === 'ACTIVE'} label={v.status} />
+                    {v.isCurrent && <Chip size="small" color="success" variant="outlined" label="In force" />}
+                  </Stack>
+                ),
+              },
+            ]}
+          />
         )}
       </CardContent>
       {adding && <NewVersionDialog productId={product.id} onClose={() => setAdding(false)} />}

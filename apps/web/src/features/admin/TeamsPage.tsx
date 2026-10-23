@@ -25,6 +25,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
+import { DataTable } from '../../ui';
 import {
   useCommand,
   useList,
@@ -105,45 +106,27 @@ export function TeamsPage() {
       {list.isPending ? (
         <Loading />
       ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Branch</TableCell>
-                  <TableCell>Manager</TableCell>
-                  <TableCell align="right">Members</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No teams match.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((t) => (
-                  <TableRow key={t.id} hover>
-                    <TableCell>
-                      <Link component={RouterLink} to={`/admin/teams/${t.id}`}>
-                        {t.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{names.branch(t.branchId)}</TableCell>
-                    <TableCell>{names.user(t.managerUserId)}</TableCell>
-                    <TableCell align="right">{t.memberCount}</TableCell>
-                    <TableCell>
-                      <StatusChip active={t.status === 'ACTIVE'} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
+        <DataTable<(typeof rows)[number]>
+          dataTestId="admin.table.teams"
+          data={rows}
+          keyExtractor={(t) => t.id}
+          emptyMessage="No teams match."
+          columns={[
+            {
+              id: 'name',
+              header: 'Name',
+              render: (t) => (
+                <Link component={RouterLink} to={`/admin/teams/${t.id}`}>
+                  {t.name}
+                </Link>
+              ),
+            },
+            { id: 'branch', header: 'Branch', render: (t) => names.branch(t.branchId) },
+            { id: 'manager', header: 'Manager', render: (t) => names.user(t.managerUserId) },
+            { id: 'members', header: 'Members', align: 'right', render: (t) => t.memberCount },
+            { id: 'status', header: 'Status', render: (t) => <StatusChip active={t.status === 'ACTIVE'} /> },
+          ]}
+        />
       )}
       <LoadMore
         hasNext={!!list.hasNextPage}

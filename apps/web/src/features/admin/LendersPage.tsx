@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
+import { DataTable } from '../../ui';
 import { useCommand, useList } from './api';
 import { ErrorAlert, LoadMore, Loading, PageHeader, StatusChip } from './components';
 
@@ -86,45 +87,31 @@ export function LendersPage() {
       {list.isPending ? (
         <Loading />
       ) : (
-        <Card>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Regulator ref</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Reason</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No lenders match.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.map((l) => (
-                  <TableRow key={l.id} hover>
-                    <TableCell>
-                      <Link component={RouterLink} to={`/lenders/${l.id}`} data-testid="admin.lender.open">
-                        {l.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{l.lenderType}</TableCell>
-                    <TableCell>{l.regulatorRef ?? '—'}</TableCell>
-                    <TableCell>
-                      <StatusChip active={l.status === 'ACTIVE'} label={l.status} />
-                    </TableCell>
-                    <TableCell>{l.statusReason ?? '—'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
+        <DataTable<(typeof rows)[number]>
+          dataTestId="admin.table.lenders"
+          data={rows}
+          keyExtractor={(l) => l.id}
+          emptyMessage="No lenders match."
+          columns={[
+            {
+              id: 'name',
+              header: 'Name',
+              render: (l) => (
+                <Link component={RouterLink} to={`/lenders/${l.id}`} data-testid="admin.lender.open">
+                  {l.name}
+                </Link>
+              ),
+            },
+            { id: 'type', header: 'Type', render: (l) => l.lenderType },
+            { id: 'regulator', header: 'Regulator ref', render: (l) => l.regulatorRef ?? '—' },
+            {
+              id: 'status',
+              header: 'Status',
+              render: (l) => <StatusChip active={l.status === 'ACTIVE'} label={l.status} />,
+            },
+            { id: 'reason', header: 'Reason', render: (l) => l.statusReason ?? '—' },
+          ]}
+        />
       )}
       <LoadMore
         hasNext={!!list.hasNextPage}

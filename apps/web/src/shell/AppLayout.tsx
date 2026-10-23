@@ -9,10 +9,12 @@ import {
   CircularProgress,
   Divider,
   Drawer,
+  IconButton,
   ListItemText,
   Menu,
   MenuItem,
   Toolbar,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -28,6 +30,7 @@ import { StepUpProvider } from '../auth/StepUpProvider';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { routeAllowed } from './access';
 import { Forbidden } from './Forbidden';
+import { MenuIcon } from './icons';
 import { SidebarContent } from './Sidebar';
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
@@ -49,9 +52,29 @@ export function AppLayout() {
   const tenant = useTenant(mfaPassed);
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dsa_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('dsa_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const theme = useTheme();
   const wide = useMediaQuery(theme.breakpoints.up('md'));
   useEffect(() => setDrawerOpen(false), [location.pathname]);
+
+  const sidebarWidth = wide ? (sidebarCollapsed ? 72 : 260) : 260;
 
   if (session === undefined)
     return (
@@ -101,39 +124,93 @@ export function AppLayout() {
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
         <AppBar position="sticky" elevation={0} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }}>
-          <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
-            <Typography
-              variant="h6"
-              component={RouterLink}
-              to="/"
-              sx={{
-                color: '#ffffff',
-                textDecoration: 'none',
-                mr: 2,
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              }}
-            >
-              {tenant.data?.legalName ?? 'DSA CRM'}
-              <Box
-                component="span"
+          <Toolbar sx={{ gap: 1, minHeight: 64, px: { xs: 2, md: 3 } }}>
+            {wide ? (
+              <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} arrow>
+                <IconButton
+                  color="inherit"
+                  onClick={toggleSidebarCollapse}
+                  aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  sx={{
+                    mr: 1,
+                    p: 1,
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+                    borderRadius: 1.5,
+                  }}
+                >
+                  <MenuIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Button
+                color="inherit"
+                onClick={() => setDrawerOpen(true)}
+                data-testid="shell.menu"
                 sx={{
-                  display: 'inline-block',
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: '#F89344',
+                  mr: 1,
+                  textTransform: 'none',
+                  bgcolor: 'rgba(255, 255, 255, 0.12)',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+                  borderRadius: 1.5,
+                  px: 1.5,
+                  fontWeight: 600,
                 }}
-              />
-            </Typography>
-            {!wide && (
-              <Button color="inherit" onClick={() => setDrawerOpen(true)} data-testid="shell.menu">
+              >
                 Menu
               </Button>
             )}
+
+            <Box
+              component={RouterLink}
+              to="/"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1.25,
+                textDecoration: 'none',
+                mr: 2,
+              }}
+            >
+              <Box
+                component="img"
+                src="/logo.png"
+                alt="DSA Platform Logo"
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 1.5,
+                  objectFit: 'contain',
+                  bgcolor: '#ffffff',
+                  p: 0.4,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                }}
+              >
+                {tenant.data?.legalName ?? 'DSA CRM'}
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-block',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: '#F89344',
+                  }}
+                />
+              </Typography>
+            </Box>
 
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
               <NotificationCenter />
@@ -186,17 +263,30 @@ export function AppLayout() {
             open={wide || drawerOpen}
             onClose={() => setDrawerOpen(false)}
             sx={{
-              width: 260,
+              width: sidebarWidth,
               flexShrink: 0,
-              // On desktop the sidebar sits below the 64px header, so it must be 64px shorter than the window,
-              // or its last items hang off the bottom of the screen and cannot be scrolled into view.
+              whiteSpace: 'nowrap',
+              boxSizing: 'border-box',
+              transition: (t) =>
+                t.transitions.create('width', {
+                  easing: t.transitions.easing.sharp,
+                  duration: t.transitions.duration.shorter,
+                }),
               '& .MuiDrawer-paper': {
-                width: 260,
+                width: sidebarWidth,
                 boxSizing: 'border-box',
                 top: { md: 64 },
                 height: { md: 'calc(100vh - 64px)', xs: '100%' },
+                overflowX: 'hidden',
                 overflowY: 'auto',
                 overscrollBehavior: 'contain',
+                borderRight: '1px solid',
+                borderColor: 'divider',
+                transition: (t) =>
+                  t.transitions.create('width', {
+                    easing: t.transitions.easing.sharp,
+                    duration: t.transitions.duration.shorter,
+                  }),
               },
             }}
           >
@@ -205,6 +295,8 @@ export function AppLayout() {
               can={(code) => hasPermission(me.data, code)}
               platformRealm={platformRealm}
               onNavigate={() => setDrawerOpen(false)}
+              collapsed={wide && sidebarCollapsed}
+              onToggleCollapse={wide ? toggleSidebarCollapse : undefined}
             />
           </Drawer>
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>

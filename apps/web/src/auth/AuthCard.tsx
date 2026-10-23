@@ -38,21 +38,43 @@ export function AuthCard({
         <Box
           sx={{
             height: 4,
-            background: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
+            background: 'linear-gradient(90deg, #215988 0%, #3876BE 50%, #F89344 100%)',
           }}
         />
         <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
-          {icon && (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-            >
-              {icon}
-            </Box>
-          )}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              mb: 2,
+            }}
+          >
+            {icon ? (
+              icon
+            ) : (
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '16px',
+                  bgcolor: '#ffffff',
+                  border: '1px solid rgba(33, 89, 136, 0.12)',
+                  boxShadow: '0 4px 14px rgba(33, 89, 136, 0.1)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 0.8,
+                }}
+              >
+                <Box
+                  component="img"
+                  src="/logo.png"
+                  alt="DSA Platform"
+                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </Box>
+            )}
+          </Box>
           <Typography
             variant="h5"
             component="h1"
