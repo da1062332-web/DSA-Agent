@@ -30,6 +30,7 @@ import { useLookup } from '../admin/api';
 import type { Product } from '../admin/ProductsPage';
 import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
 import { ProductSelect } from '../../shell/selectors';
+import { DataTable } from '../../ui';
 import {
   DIMENSION_LABELS,
   METRIC_LABELS,
@@ -255,115 +256,85 @@ export function TargetsPage() {
       )}
 
       {/* Table */}
-      <TableContainer component={Card}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: 'action.hover' }}>
-              <TableCell>Period</TableCell>
-              <TableCell>Dimension</TableCell>
-              <TableCell>Dimension ID</TableCell>
-              <TableCell>Metric</TableCell>
-              <TableCell align="right">Target Value</TableCell>
-              <TableCell>Actuals</TableCell>
-              <TableCell align="center">Ver</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created By</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Loading targets...
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : data?.items?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No targets found matching the current filters.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              data?.items?.map((item) => {
-                const isCreator = me?.id === item.createdBy;
-                const canApprove = item.status === 'PENDING_APPROVAL' && hasManage && !isCreator;
-
-                return (
-                  <TableRow key={item.id} hover>
-                    <TableCell sx={{ fontWeight: 600 }}>{item.period}</TableCell>
-                    <TableCell>{DIMENSION_LABELS[item.dimensionType]}</TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                      {item.dimensionId}
-                    </TableCell>
-                    <TableCell>{METRIC_LABELS[item.metricCode]}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      {formatTargetValue(item.targetValue, item.unit)}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Actuals computation deferred pending MOD-RPT (Reporting module)">
-                        <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                          — (Pending MOD-RPT)
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip label={`v${item.version}`} size="small" />
-                    </TableCell>
-                    <TableCell>{getStatusChip(item.status)}</TableCell>
-                    <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                      {item.createdBy}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={1} justifyContent="center">
-                        {item.status === 'PENDING_APPROVAL' && (
-                          <>
-                            {isCreator ? (
-                              <Tooltip title="Creator cannot self-approve target (Dual-Control SOD-04)">
-                                <span>
-                                  <Button size="small" disabled variant="outlined">
-                                    Approve
-                                  </Button>
-                                </span>
-                              </Tooltip>
-                            ) : canApprove ? (
-                              <>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="success"
-                                  onClick={() => handleApprove(item)}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  onClick={() => setRejectTarget(item)}
-                                >
-                                  Reject
-                                </Button>
-                              </>
-                            ) : null}
-                          </>
-                        )}
-                        <Button size="small" variant="text" onClick={() => setHistoryTargetId(item.id)}>
-                          History
-                        </Button>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable<TargetDto>
+        dataTestId="tgt.table"
+        loading={isLoading}
+        data={data?.items ?? []}
+        keyExtractor={(item) => item.id}
+        emptyMessage="No targets found matching the current filters."
+        columns={[
+          { id: 'period', header: 'Period', render: (item) => <Box sx={{ fontWeight: 600 }}>{item.period}</Box> },
+          { id: 'dimension', header: 'Dimension', render: (item) => DIMENSION_LABELS[item.dimensionType] },
+          {
+            id: 'dimensionId',
+            header: 'Dimension ID',
+            render: (item) => <Box sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{item.dimensionId}</Box>,
+          },
+          { id: 'metric', header: 'Metric', render: (item) => METRIC_LABELS[item.metricCode] },
+          {
+            id: 'target',
+            header: 'Target Value',
+            align: 'right',
+            render: (item) => <Box sx={{ fontWeight: 600 }}>{formatTargetValue(item.targetValue, item.unit)}</Box>,
+          },
+          {
+            id: 'actuals',
+            header: 'Actuals',
+            render: () => (
+              <Tooltip title="Actuals computation deferred pending MOD-RPT (Reporting module)">
+                <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                  — (Pending MOD-RPT)
+                </Typography>
+              </Tooltip>
+            ),
+          },
+          { id: 'version', header: 'Ver', align: 'center', render: (item) => <Chip label={`v${item.version}`} size="small" /> },
+          { id: 'status', header: 'Status', render: (item) => getStatusChip(item.status) },
+          {
+            id: 'createdBy',
+            header: 'Created By',
+            render: (item) => <Box sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{item.createdBy}</Box>,
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            align: 'center',
+            render: (item) => {
+              const isCreator = me?.id === item.createdBy;
+              const canApprove = item.status === 'PENDING_APPROVAL' && hasManage && !isCreator;
+              return (
+                <Stack direction="row" spacing={1} justifyContent="center">
+                  {item.status === 'PENDING_APPROVAL' && (
+                    <>
+                      {isCreator ? (
+                        <Tooltip title="Creator cannot self-approve target (Dual-Control SOD-04)">
+                          <span>
+                            <Button size="small" disabled variant="outlined">
+                              Approve
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      ) : canApprove ? (
+                        <>
+                          <Button size="small" variant="contained" color="success" onClick={() => handleApprove(item)}>
+                            Approve
+                          </Button>
+                          <Button size="small" variant="outlined" color="error" onClick={() => setRejectTarget(item)}>
+                            Reject
+                          </Button>
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                  <Button size="small" variant="text" onClick={() => setHistoryTargetId(item.id)}>
+                    History
+                  </Button>
+                </Stack>
+              );
+            },
+          },
+        ]}
+      />
 
       {/* Create Target Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
@@ -534,30 +505,20 @@ export function TargetsPage() {
               Loading revision history...
             </Typography>
           ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  <TableCell>Version</TableCell>
-                  <TableCell>Target Value</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Approved By</TableCell>
-                  <TableCell>Approved Date</TableCell>
-                  <TableCell>Rejection Reason</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {historyData?.items?.map((h) => (
-                  <TableRow key={h.id}>
-                    <TableCell sx={{ fontWeight: 600 }}>v{h.version}</TableCell>
-                    <TableCell>{formatTargetValue(h.targetValue, h.unit)}</TableCell>
-                    <TableCell>{getStatusChip(h.status)}</TableCell>
-                    <TableCell>{h.approvedBy ?? '—'}</TableCell>
-                    <TableCell>{h.approvedAt ? h.approvedAt.slice(0, 10) : '—'}</TableCell>
-                    <TableCell>{h.rejectionReason ?? '—'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable<TargetDto>
+              dataTestId="tgt.table.history"
+              data={historyData?.items ?? []}
+              keyExtractor={(h) => h.id}
+              emptyMessage="No revision history recorded."
+              columns={[
+                { id: 'version', header: 'Version', render: (h) => <Box sx={{ fontWeight: 600 }}>v{h.version}</Box> },
+                { id: 'target', header: 'Target Value', render: (h) => formatTargetValue(h.targetValue, h.unit) },
+                { id: 'status', header: 'Status', render: (h) => getStatusChip(h.status) },
+                { id: 'approvedBy', header: 'Approved By', render: (h) => h.approvedBy ?? '—' },
+                { id: 'approvedAt', header: 'Approved Date', render: (h) => (h.approvedAt ? h.approvedAt.slice(0, 10) : '—') },
+                { id: 'reason', header: 'Rejection Reason', render: (h) => h.rejectionReason ?? '—' },
+              ]}
+            />
           )}
         </DialogContent>
         <DialogActions>
