@@ -58,6 +58,7 @@ import {
 import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
 import { UserName } from '../../shell/display';
+import { PageHeader, StatCard, StatCardGrid } from '../../ui';
 
 // =========================================================================
 // HELPER: Format field values nicely (Currencies, Masked PII, Booleans, etc.)
@@ -553,38 +554,33 @@ export function AuditSearchPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Title Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} sx={{ color: 'primary.main', mb: 0.5 }}>
-            Audit Trail & Cryptographic Verification
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 37 (MOD-AUD): Tamper-evident immutable ledger with SHA-256 hash chaining, state diff
-            tracking, and compliance evidence packs.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Can action="config.manage">
-            <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
-              Seal Chain
+      <PageHeader
+        title="Audit Trail & Cryptographic Verification"
+        subtitle="Module 37 (MOD-AUD): Tamper-evident immutable ledger with SHA-256 hash chaining, state diff tracking, and compliance evidence packs."
+        actions={
+          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            <Can action="config.manage">
+              <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
+                Seal Chain
+              </Button>
+            </Can>
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<VerifiedUserIcon />}
+              onClick={handleVerifyChain}
+              disabled={verifyingChain}
+            >
+              {verifyingChain ? 'Verifying...' : 'Verify Chain Integrity'}
             </Button>
-          </Can>
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<VerifiedUserIcon />}
-            onClick={handleVerifyChain}
-            disabled={verifyingChain}
-          >
-            {verifyingChain ? 'Verifying...' : 'Verify Chain Integrity'}
-          </Button>
-          <Can action="audit.export_evidence">
-            <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => setEvidenceModalOpen(true)}>
-              Export Evidence Pack
-            </Button>
-          </Can>
-        </Box>
-      </Box>
+            <Can action="audit.export_evidence">
+              <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => setEvidenceModalOpen(true)}>
+                Export Evidence Pack
+              </Button>
+            </Can>
+          </Stack>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -599,44 +595,26 @@ export function AuditSearchPage() {
       )}
 
       {/* Chain Status Card */}
-      <Card elevation={2} sx={{ mb: 3, backgroundColor: 'background.paper', borderRadius: 2 }}>
-        <CardContent sx={{ py: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={4}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <ShieldIcon color="primary" sx={{ fontSize: 36 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                    Chain Health
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h6" fontWeight={700}>
-                      SHA-256 Hash Chained
-                    </Typography>
-                    <Chip size="small" color="success" label="Active & Verified" />
-                  </Box>
-                </Box>
-              </Box>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Logged Tenant Events
-              </Typography>
-              <Typography variant="h6" fontWeight={700}>
-                {totalCount} Events Recorded
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <Typography variant="caption" color="text.secondary" textTransform="uppercase">
-                Audit Standards
-              </Typography>
-              <Typography variant="body2" fontWeight={600} color="text.secondary">
-                RBI Digital Lending Guidelines & Section 65B Evidence Act Ready
-              </Typography>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      <StatCardGrid columns={{ xs: 12, sm: 4, md: 4 }} sx={{ mb: 3 }}>
+        <StatCard
+          title="Chain Integrity"
+          value="SHA-256 Chained"
+          subtext="Cryptographic hash active"
+          colorVariant="success"
+        />
+        <StatCard
+          title="Logged Tenant Events"
+          value={`${totalCount} Events`}
+          subtext="Total events in audit ledger"
+          colorVariant="info"
+        />
+        <StatCard
+          title="Governance Compliance"
+          value="RBI & Sec 65B"
+          subtext="Evidence Act compliant"
+          colorVariant="secondary"
+        />
+      </StatCardGrid>
 
       {/* Filter / Search Panel */}
       <Paper elevation={2} sx={{ p: 2.5, mb: 3, borderRadius: 2 }}>
