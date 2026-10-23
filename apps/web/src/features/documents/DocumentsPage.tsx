@@ -1,7 +1,7 @@
 // /documents (owner: Dev 3, MOD-DOC; QA plan Module 09 document verifier). Pick an application and work its document checklist.
 // Needs application.read. The page lists the applications in the user's scope; choosing one opens its checklist below the list.
 import { Alert, Box, Button, Chip, FormControl, InputLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
@@ -65,14 +65,39 @@ export function DocumentsPage() {
   }
 
   const checklistRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToView = () => {
+    if (typeof window === 'undefined') return;
+    const el = checklistRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const targetY = rect.top + scrollTop - 80;
+
+    window.scrollTo({
+      top: Math.max(0, targetY),
+      behavior: 'smooth',
+    });
+  };
+
   const choose = (id: string) => {
     setSelected(id);
     setParams(id ? { application: id } : {});
   };
+
   const showChecklist = (id: string) => {
-    if (id !== selected) choose(id);
-    requestAnimationFrame(() => checklistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    choose(id);
+    setTimeout(scrollToView, 60);
+    setTimeout(scrollToView, 220);
   };
+
+  useEffect(() => {
+    if (selected) {
+      const t = setTimeout(scrollToView, 100);
+      return () => clearTimeout(t);
+    }
+  }, [selected]);
 
   const chosen = rows.find((a) => a.id === selected);
   const awaiting = rows.filter((a) => a.status === 'DOCUMENTS_PENDING').length;
@@ -191,9 +216,9 @@ export function DocumentsPage() {
         )}
       </DetailCard>
 
-      <Box sx={{ mt: 3 }}>
+      <Box sx={{ mt: 3, scrollMarginTop: '80px' }} ref={checklistRef}>
         {selected ? (
-          <Stack spacing={1} ref={checklistRef}>
+          <Stack spacing={1}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip label={`Application ${selected.slice(-6)}`} size="small" variant="outlined" />
               <Typography variant="body2" color="text.secondary">
