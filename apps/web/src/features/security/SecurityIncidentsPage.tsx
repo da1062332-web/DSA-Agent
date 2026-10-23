@@ -14,12 +14,6 @@ import {
   MenuItem,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Tooltip,
@@ -41,6 +35,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { ErrorAlert, LoadMore, Loading, PageHeader } from '../admin/components';
+import { DataTable } from '../../ui';
 import { createIncident, listIncidents, listSecurityEvents, updateIncident } from './api';
 import { label, needsAuthorityNotice, nextStatuses, severityTone } from './model';
 
@@ -158,66 +153,58 @@ function IncidentsTab() {
           <Typography color="text.secondary">No incidents match these filters.</Typography>
         </Card>
       ) : (
-        <TableContainer component={Card}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Detected</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Severity</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Personal data</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((i) => (
-                <TableRow key={i.id} hover>
-                  <TableCell>{when(i.detectedAt)}</TableCell>
-                  <TableCell>{label(i.type)}</TableCell>
-                  <TableCell>
-                    <Chip size="small" color={severityTone(i.severity)} label={label(i.severity)} />
-                  </TableCell>
-                  <TableCell>{label(i.status)}</TableCell>
-                  <TableCell>
-                    {i.personalDataInvolved ? (
-                      needsAuthorityNotice(i) ? (
-                        <Tooltip title="Personal data is involved and no authority notification is recorded yet">
-                          <Chip size="small" color="warning" label="Authority not notified" />
-                        </Tooltip>
-                      ) : (
-                        <Chip size="small" label="Yes" />
-                      )
-                    ) : (
-                      'No'
+        <DataTable<(typeof rows)[number]>
+          dataTestId="sec.table.incidents"
+          data={rows}
+          keyExtractor={(i) => i.id}
+          columns={[
+            { id: 'detected', header: 'Detected', render: (i) => when(i.detectedAt) },
+            { id: 'type', header: 'Type', render: (i) => label(i.type) },
+            {
+              id: 'severity',
+              header: 'Severity',
+              render: (i) => <Chip size="small" color={severityTone(i.severity)} label={label(i.severity)} />,
+            },
+            { id: 'status', header: 'Status', render: (i) => label(i.status) },
+            {
+              id: 'personal',
+              header: 'Personal data',
+              render: (i) =>
+                i.personalDataInvolved ? (
+                  needsAuthorityNotice(i) ? (
+                    <Tooltip title="Personal data is involved and no authority notification is recorded yet">
+                      <Chip size="small" color="warning" label="Authority not notified" />
+                    </Tooltip>
+                  ) : (
+                    <Chip size="small" label="Yes" />
+                  )
+                ) : (
+                  'No'
+                ),
+            },
+            {
+              id: 'actions',
+              header: 'Actions',
+              align: 'right',
+              render: (i) => (
+                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  <Can action="security.incident">
+                    {i.personalDataInvolved && i.status !== 'CLOSED' && (
+                      <Button size="small" onClick={() => setNoticeFor(i)}>
+                        Record notice
+                      </Button>
                     )}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Can action="security.incident">
-                        {i.personalDataInvolved && i.status !== 'CLOSED' && (
-                          <Button size="small" onClick={() => setNoticeFor(i)}>
-                            Record notice
-                          </Button>
-                        )}
-                        {nextStatuses(i.status).map((s) => (
-                          <Button
-                            key={s}
-                            size="small"
-                            disabled={change.isPending}
-                            onClick={() => change.mutate({ incident: i, status: s })}
-                          >
-                            {label(s)}
-                          </Button>
-                        ))}
-                      </Can>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    {nextStatuses(i.status).map((s) => (
+                      <Button key={s} size="small" disabled={change.isPending} onClick={() => change.mutate({ incident: i, status: s })}>
+                        {label(s)}
+                      </Button>
+                    ))}
+                  </Can>
+                </Stack>
+              ),
+            },
+          ]}
+        />
       )}
       <LoadMore
         hasNext={!!list.hasNextPage}
@@ -407,32 +394,22 @@ function EventsTab() {
           <Typography color="text.secondary">No security events match these filters.</Typography>
         </Card>
       ) : (
-        <TableContainer component={Card}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>When</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Severity</TableCell>
-                <TableCell>Principal</TableCell>
-                <TableCell>IP</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((e) => (
-                <TableRow key={e.id} hover>
-                  <TableCell>{when(e.createdAt)}</TableCell>
-                  <TableCell>{label(e.type)}</TableCell>
-                  <TableCell>
-                    <Chip size="small" color={severityTone(e.severity)} label={label(e.severity)} />
-                  </TableCell>
-                  <TableCell>{e.principal}</TableCell>
-                  <TableCell>{e.ip}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <DataTable<(typeof rows)[number]>
+          dataTestId="sec.table.events"
+          data={rows}
+          keyExtractor={(e) => e.id}
+          columns={[
+            { id: 'when', header: 'When', render: (e) => when(e.createdAt) },
+            { id: 'type', header: 'Type', render: (e) => label(e.type) },
+            {
+              id: 'severity',
+              header: 'Severity',
+              render: (e) => <Chip size="small" color={severityTone(e.severity)} label={label(e.severity)} />,
+            },
+            { id: 'principal', header: 'Principal', render: (e) => e.principal },
+            { id: 'ip', header: 'IP', render: (e) => e.ip },
+          ]}
+        />
       )}
       <LoadMore
         hasNext={!!list.hasNextPage}
