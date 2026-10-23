@@ -46,6 +46,7 @@ import { leadActions } from './lead-actions';
 import { LeadFollowUps } from './LeadFollowUps';
 import { UserSelect } from '../../shell/selectors';
 import { CustomerName, ConnectorName, UserName } from '../../shell/display';
+import { PageHeader } from '../../ui';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
@@ -225,49 +226,32 @@ export function LeadDetail() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header and Breadcrumbs */}
-      <Box mb={3}>
-        <Stack direction="row" spacing={1} alignItems="center" mb={1}>
-          <Button component={RouterLink} to="/leads" size="small" variant="text">
-            ← Back to Leads
-          </Button>
-        </Stack>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ md: 'center' }}
-          spacing={2}
-        >
-          <Box>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Typography variant="h4" component="h1" fontWeight="bold">
-                {lead.fullName}
-              </Typography>
+      <PageHeader
+        backTo="/leads"
+        title={lead.fullName}
+        badge={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              label={lead.state}
+              color={lead.state === 'QUALIFIED' ? 'success' : lead.state === 'CONVERTED' ? 'primary' : 'info'}
+            />
+            {lead.duplicateFlag !== 'NONE' && (
               <Chip
-                label={lead.state}
-                color={
-                  lead.state === 'QUALIFIED' ? 'success' : lead.state === 'CONVERTED' ? 'primary' : 'info'
-                }
+                label={`Duplicate: ${lead.duplicateFlag}`}
+                color="warning"
+                variant="outlined"
+                data-testid="lead.duplicate-flag"
               />
-              {lead.duplicateFlag !== 'NONE' && (
-                <Chip
-                  label={`Duplicate: ${lead.duplicateFlag}`}
-                  color="warning"
-                  variant="outlined"
-                  data-testid="lead.duplicate-flag"
-                />
-              )}
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            )}
+          </Stack>
+        }
+        subtitle={
+          <>
+            <Typography variant="body2" color="text.secondary">
               Lead ID: <code>{lead.id}</code> · Version: {lead.lockVersion}
             </Typography>
             {lead.duplicateFlag !== 'NONE' && (
-              <Typography
-                variant="body2"
-                color="warning.main"
-                sx={{ mt: 0.5 }}
-                data-testid="lead.duplicate-candidates"
-              >
+              <Typography variant="body2" color="warning.main" data-testid="lead.duplicate-candidates">
                 May duplicate:{' '}
                 {(lead.duplicateCandidateIds ?? []).length === 0
                   ? 'an existing lead'
@@ -289,9 +273,9 @@ export function LeadDetail() {
                 )}
               </Typography>
             )}
-          </Box>
-
-          {/* Action Buttons */}
+          </>
+        }
+        actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
             {actions.attemptContact && (
               <Can permission="lead.update">
@@ -451,8 +435,8 @@ export function LeadDetail() {
               </Button>
             )}
           </Stack>
-        </Stack>
-      </Box>
+        }
+      />
 
       {/* Notifications */}
       {successMessage && (
