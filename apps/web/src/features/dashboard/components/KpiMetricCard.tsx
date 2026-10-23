@@ -100,12 +100,18 @@ export function KpiMetricCard({
                 justifyContent: 'center',
                 bgcolor: () => {
                   if (status === 'success') return '#ecfdf5';
-                  if (status === 'warning') return '#fffbeb';
-                  if (status === 'error') return '#fef2f2';
-                  if (status === 'info') return '#f0f9ff';
-                  return '#eff6ff';
+                  if (status === 'warning') return '#fff7ed';
+                  if (status === 'error') return '#fff1ec';
+                  if (status === 'info') return '#ebf4f9';
+                  return '#fff7ed';
                 },
-                color: `${status}.main`,
+                color: () => {
+                  if (status === 'success') return '#059669';
+                  if (status === 'warning') return '#F89344';
+                  if (status === 'error') return '#FF642F';
+                  if (status === 'info') return '#215988';
+                  return '#F89344';
+                },
                 '& svg': { fontSize: 20 },
               }}
             >

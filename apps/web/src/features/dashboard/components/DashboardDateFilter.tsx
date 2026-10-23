@@ -48,8 +48,8 @@ export function DashboardDateFilter({
             color: 'text.secondary',
             '&.Mui-selected': {
               fontWeight: 700,
-              bgcolor: 'action.selected',
-              color: 'primary.main',
+              bgcolor: 'rgba(33, 89, 136, 0.08)',
+              color: '#215988',
             },
           },
         }}

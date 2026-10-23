@@ -4,71 +4,78 @@ import { createTheme } from '@mui/material';
 
 const FONT = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
 
+// Exact Palette Tokens from Brand Swatch Guide:
+// Primary: #F89344 (Tangerine / Warm Orange)
+// Secondary: #FF642F (Vibrant Coral / Red-Orange)
+// BG/700: #215988 (Deep Navy / Enterprise Slate Blue)
+// BG/500: #3876BE (Vibrant Ocean / Mid Blue)
+// BG/300: #B8D5E7 (Soft Light Ice Blue)
+
 export const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1d4ed8', // Enterprise Cobalt Blue (Blue 700)
-      light: '#3b82f6', // Blue 500
-      dark: '#1e40af', // Blue 800
+      main: '#F89344', // Swatch Primary: Tangerine Orange
+      light: '#FFAA66',
+      dark: '#D97324',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#475569', // Slate 600
-      light: '#64748b', // Slate 500
-      dark: '#334155', // Slate 700
+      main: '#FF642F', // Swatch Secondary: Coral / Red-Orange
+      light: '#FF885E',
+      dark: '#DB4512',
+      contrastText: '#ffffff',
+    },
+    info: {
+      main: '#215988', // Swatch BG/700: Deep Navy / Slate Blue
+      light: '#3876BE', // Swatch BG/500: Vibrant Ocean Blue
+      dark: '#174368',
       contrastText: '#ffffff',
     },
     success: {
       main: '#059669', // Emerald 600
-      light: '#10b981', // Emerald 500
-      dark: '#047857', // Emerald 700
+      light: '#10b981',
+      dark: '#047857',
       contrastText: '#ffffff',
     },
     warning: {
-      main: '#d97706', // Amber 600
-      light: '#f59e0b', // Amber 500
-      dark: '#b45309', // Amber 700
+      main: '#F89344', // Tangerine
+      light: '#FFB87D',
+      dark: '#D97324',
       contrastText: '#ffffff',
     },
     error: {
-      main: '#dc2626', // Red 600
-      light: '#ef4444', // Red 500
-      dark: '#b91c1c', // Red 700
-      contrastText: '#ffffff',
-    },
-    info: {
-      main: '#0284c7', // Sky 600
-      light: '#38bdf8', // Sky 400
-      dark: '#0369a1', // Sky 700
+      main: '#FF642F', // Coral Accent
+      light: '#FF885E',
+      dark: '#D32F2F',
       contrastText: '#ffffff',
     },
     grey: {
-      50: '#f8fafc',
-      100: '#f1f5f9',
-      200: '#e2e8f0',
-      300: '#cbd5e1',
-      400: '#94a3b8',
-      500: '#64748b',
+      50: '#F8FAFC',
+      100: '#F1F5F9',
+      200: '#E2E8F0',
+      300: '#CBD5E1',
+      400: '#94A3B8',
+      500: '#64748B',
       600: '#475569',
       700: '#334155',
-      800: '#1e293b',
-      900: '#0f172a',
+      800: '#1E293B',
+      900: '#0F172A',
     },
     text: {
-      primary: '#0f172a', // Slate 900
-      secondary: '#64748b', // Slate 500
-      disabled: '#94a3b8', // Slate 400
+      primary: '#0F172A', // Slate 900
+      secondary: '#64748B', // Slate 500
+      disabled: '#94A3B8', // Slate 400
     },
     background: {
-      default: '#f8fafc', // Crisp clean slate-50
-      paper: '#ffffff',
+      default: '#F8FAFC', // Crisp clean slate-50 canvas
+      paper: '#FFFFFF',
     },
-    divider: '#e2e8f0', // Slate 200 hairline border
+    divider: '#E2E8F0', // Slate 200 hairline border
     action: {
-      active: '#475569',
-      hover: 'rgba(15, 23, 42, 0.04)',
-      selected: 'rgba(29, 78, 216, 0.08)',
+      active: '#215988',
+      hover: 'rgba(33, 89, 136, 0.04)',
+      selected: 'rgba(56, 118, 190, 0.08)',
       disabled: 'rgba(15, 23, 42, 0.26)',
       disabledBackground: 'rgba(15, 23, 42, 0.06)',
     },
@@ -76,10 +83,8 @@ export const theme = createTheme({
   shape: { borderRadius: 8 },
   typography: {
     fontFamily: FONT,
-    // Page titles: pages use h4 or h5 for their title; both render at the same size so every screen matches.
     h4: { fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em' },
     h5: { fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em' },
-    // Card and section titles.
     h6: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
     subtitle1: { fontSize: '0.9375rem', fontWeight: 600 },
     subtitle2: { fontSize: '0.875rem', fontWeight: 600 },
@@ -94,8 +99,8 @@ export const theme = createTheme({
         body: {
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
-          backgroundColor: '#f8fafc',
-          color: '#0f172a',
+          backgroundColor: '#F8FAFC',
+          color: '#0F172A',
         },
       },
     },
@@ -103,9 +108,9 @@ export const theme = createTheme({
       defaultProps: { elevation: 0 },
       styleOverrides: {
         root: {
-          backgroundColor: '#ffffff',
-          color: '#0f172a',
-          borderBottom: '1px solid #e2e8f0',
+          backgroundColor: '#215988', // Swatch BG/700 Deep Blue
+          color: '#ffffff',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
         },
       },
     },
@@ -113,7 +118,7 @@ export const theme = createTheme({
       styleOverrides: {
         paper: {
           backgroundColor: '#ffffff',
-          borderRight: '1px solid #e2e8f0',
+          borderRight: '1px solid #E2E8F0',
         },
       },
     },
@@ -127,9 +132,32 @@ export const theme = createTheme({
           textTransform: 'none',
         },
         containedPrimary: {
-          backgroundColor: '#1d4ed8',
+          backgroundColor: '#F89344', // Swatch Primary Tangerine Orange
+          color: '#ffffff',
           '&:hover': {
-            backgroundColor: '#1e40af',
+            backgroundColor: '#D97324',
+          },
+        },
+        containedSecondary: {
+          backgroundColor: '#FF642F', // Swatch Secondary Coral
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#DB4512',
+          },
+        },
+        containedInfo: {
+          backgroundColor: '#215988',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#174368',
+          },
+        },
+        outlinedPrimary: {
+          borderColor: '#F89344',
+          color: '#D97324',
+          '&:hover': {
+            borderColor: '#D97324',
+            backgroundColor: 'rgba(248, 147, 68, 0.06)',
           },
         },
       },
@@ -138,7 +166,7 @@ export const theme = createTheme({
       defaultProps: { elevation: 0 },
       styleOverrides: {
         root: {
-          border: '1px solid #e2e8f0',
+          border: '1px solid #E2E8F0',
           borderRadius: 12,
           backgroundColor: '#ffffff',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
@@ -170,13 +198,13 @@ export const theme = createTheme({
           fontSize: '0.75rem',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
-          color: '#475569',
-          backgroundColor: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
+          color: '#215988', // Swatch BG/700 Deep Blue for headers
+          backgroundColor: '#F8FAFC',
+          borderBottom: '1px solid #E2E8F0',
         },
         root: {
-          borderColor: '#f1f5f9',
-          color: '#0f172a',
+          borderColor: '#F1F5F9',
+          color: '#0F172A',
         },
       },
     },
@@ -184,7 +212,7 @@ export const theme = createTheme({
       styleOverrides: {
         hover: {
           '&:hover': {
-            backgroundColor: '#f8fafc',
+            backgroundColor: '#F8FAFC',
           },
         },
       },
@@ -196,7 +224,41 @@ export const theme = createTheme({
           borderRadius: 6,
         },
         outlined: {
-          borderColor: '#cbd5e1',
+          borderColor: '#CBD5E1',
+        },
+        colorPrimary: {
+          backgroundColor: '#F89344',
+          color: '#ffffff',
+        },
+        colorSecondary: {
+          backgroundColor: '#FF642F',
+          color: '#ffffff',
+        },
+        colorInfo: {
+          backgroundColor: '#3876BE',
+          color: '#ffffff',
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#F89344',
+          height: 3,
+          borderRadius: '3px 3px 0 0',
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          color: '#64748B',
+          '&.Mui-selected': {
+            color: '#215988',
+            fontWeight: 700,
+          },
         },
       },
     },
@@ -207,36 +269,33 @@ export const theme = createTheme({
           border: '1px solid',
         },
         standardSuccess: {
-          backgroundColor: '#f0fdf4',
+          backgroundColor: '#F0FDF4',
           color: '#166534',
-          borderColor: '#bbf7d0',
-          '& .MuiAlert-icon': { color: '#16a34a' },
+          borderColor: '#BBF7D0',
+          '& .MuiAlert-icon': { color: '#16A34A' },
         },
         standardInfo: {
-          backgroundColor: '#f0f9ff',
-          color: '#075985',
-          borderColor: '#bae6fd',
-          '& .MuiAlert-icon': { color: '#0284c7' },
+          backgroundColor: '#F0F7FB', // BG/300 tint
+          color: '#174368',
+          borderColor: '#B8D5E7', // BG/300 border
+          '& .MuiAlert-icon': { color: '#215988' },
         },
         standardWarning: {
-          backgroundColor: '#fffbeb',
-          color: '#92400e',
-          borderColor: '#fde68a',
-          '& .MuiAlert-icon': { color: '#d97706' },
+          backgroundColor: '#FFF7ED', // Tangerine tint
+          color: '#9A3412',
+          borderColor: '#FED7AA',
+          '& .MuiAlert-icon': { color: '#F89344' },
         },
         standardError: {
-          backgroundColor: '#fef2f2',
-          color: '#991b1b',
-          borderColor: '#fecaca',
-          '& .MuiAlert-icon': { color: '#dc2626' },
+          backgroundColor: '#FFF1EC', // Coral tint
+          color: '#991B1B',
+          borderColor: '#FECDD3',
+          '& .MuiAlert-icon': { color: '#FF642F' },
         },
       },
     },
-    MuiTab: {
-      styleOverrides: { root: { textTransform: 'none', fontWeight: 600 } },
-    },
     MuiDialogTitle: {
-      styleOverrides: { root: { fontSize: '1.125rem', fontWeight: 600 } },
+      styleOverrides: { root: { fontSize: '1.125rem', fontWeight: 600, color: '#215988' } },
     },
   },
 });

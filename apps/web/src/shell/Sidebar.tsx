@@ -175,9 +175,20 @@ export function SidebarContent({
                           color: 'text.primary',
                         },
                         '&.active': {
-                          bgcolor: 'action.selected',
+                          bgcolor: 'rgba(56, 118, 190, 0.08)',
                           fontWeight: 700,
-                          color: 'primary.main',
+                          color: '#215988',
+                          position: 'relative',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 4,
+                            top: '20%',
+                            bottom: '20%',
+                            width: 3.5,
+                            borderRadius: 2,
+                            bgcolor: '#F89344',
+                          },
                         },
                       }}
                     >

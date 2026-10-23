@@ -106,9 +106,28 @@ export function AppLayout() {
               variant="h6"
               component={RouterLink}
               to="/"
-              sx={{ color: 'primary.main', textDecoration: 'none', mr: 2, fontWeight: 800, letterSpacing: '-0.02em' }}
+              sx={{
+                color: '#ffffff',
+                textDecoration: 'none',
+                mr: 2,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
             >
               {tenant.data?.legalName ?? 'DSA CRM'}
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: '#F89344',
+                }}
+              />
             </Typography>
             {!wide && (
               <Button color="inherit" onClick={() => setDrawerOpen(true)} data-testid="shell.menu">
@@ -122,7 +141,16 @@ export function AppLayout() {
                 color="inherit"
                 onClick={(e) => setMenu(e.currentTarget)}
                 data-testid="shell.account"
-                sx={{ textTransform: 'none' }}
+                sx={{
+                  textTransform: 'none',
+                  bgcolor: 'rgba(255, 255, 255, 0.12)',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.20)' },
+                  borderRadius: 2,
+                  px: 1.5,
+                  py: 0.5,
+                  fontSize: '0.875rem',
+                  color: '#ffffff',
+                }}
               >
                 {me.data?.displayName}
               </Button>

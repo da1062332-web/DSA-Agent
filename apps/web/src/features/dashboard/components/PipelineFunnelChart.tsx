@@ -30,6 +30,14 @@ export interface PipelineFunnelChartProps {
   dataTestId?: string;
 }
 
+const DEFAULT_STAGE_PALETTE = [
+  '#3876BE', // BG/500 Ocean Blue
+  '#215988', // BG/700 Deep Blue
+  '#FF642F', // Secondary Coral
+  '#F89344', // Primary Tangerine
+  '#059669', // Emerald
+];
+
 export function PipelineFunnelChart({
   title = 'Pipeline Conversion Funnel',
   subtitle,
@@ -149,7 +157,13 @@ export function PipelineFunnelChart({
                         <Chip
                           label={`${conversionPercent}%`}
                           size="small"
-                          sx={{ height: 18, fontSize: 10, fontWeight: 700, bgcolor: 'action.selected' }}
+                          sx={{
+                            height: 18,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            bgcolor: 'rgba(56, 118, 190, 0.08)',
+                            color: '#215988',
+                          }}
                         />
                       )}
                     </Stack>
@@ -170,7 +184,7 @@ export function PipelineFunnelChart({
                     sx={{
                       width: '100%',
                       height: 8,
-                      bgcolor: 'grey.100',
+                      bgcolor: '#f1f5f9',
                       borderRadius: 1,
                       overflow: 'hidden',
                     }}
@@ -179,7 +193,7 @@ export function PipelineFunnelChart({
                       sx={{
                         width: `${stagePercentageOfPeak}%`,
                         height: '100%',
-                        bgcolor: stage.color ?? 'primary.main',
+                        bgcolor: stage.color ?? DEFAULT_STAGE_PALETTE[idx % DEFAULT_STAGE_PALETTE.length],
                         borderRadius: 1,
                         transition: 'width 0.5s ease-in-out',
                       }}
