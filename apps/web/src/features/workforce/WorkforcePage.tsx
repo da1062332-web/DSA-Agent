@@ -30,6 +30,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { BranchName } from '../../shell/display';
+import { DataTable } from '../../ui';
 import {
   checkIn,
   checkOut,
@@ -341,115 +342,110 @@ export function WorkforcePage() {
             </Typography>
           </Stack>
 
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Agent</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Branch</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Working Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Active Workload</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Capacity Meter</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {agentsQuery.isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                        <CircularProgress size={32} />
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredAgents.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#94a3b8' }}>
-                        No workforce agents found matching your query.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredAgents.map((agent) => {
-                      const statusConfig = AVAILABILITY_CONFIG[agent.availability] || AVAILABILITY_CONFIG.AVAILABLE;
-                      const activeItems = (agent.activeLeadCount || 0) + (agent.activeApplicationCount || 0);
-                      const capacity = agent.capacity || 10;
-                      const percent = Math.min(Math.round((activeItems / capacity) * 100), 100);
-
-                      let barColor: 'success' | 'warning' | 'error' = 'success';
-                      if (percent >= 90) barColor = 'error';
-                      else if (percent >= 70) barColor = 'warning';
-
-                      const canEditThisAgent = canManageUsers || agent.id === me?.id;
-
-                      return (
-                        <TableRow key={agent.id} hover>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight={600} sx={{ color: '#0f172a' }}>
-                              {agent.displayName}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#64748b' }}>
-                              {agent.email}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <BranchName id={agent.primaryBranchId} fallback="General" typographyProps={{ sx: { color: '#334155' } }} />
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={statusConfig.label}
-                              color={statusConfig.color}
-                              size="small"
-                              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight={600}>
-                              {activeItems}{' '}
-                              <Typography component="span" variant="caption" sx={{ color: '#64748b' }}>
-                                ({agent.activeLeadCount} leads, {agent.activeApplicationCount ?? 0} apps)
-                              </Typography>
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 160 }}>
-                            <Stack spacing={0.5}>
-                              <Stack direction="row" justifyContent="space-between">
-                                <Typography variant="caption" sx={{ color: '#64748b' }}>
-                                  {activeItems} of {capacity}
-                                </Typography>
-                                <Typography variant="caption" fontWeight={600} sx={{ color: '#475569' }}>
-                                  {percent}%
-                                </Typography>
-                              </Stack>
-                              <LinearProgress
-                                variant="determinate"
-                                value={percent}
-                                color={barColor}
-                                sx={{ height: 6, borderRadius: 3 }}
-                              />
-                            </Stack>
-                          </TableCell>
-                          <TableCell align="right">
-                            {canEditThisAgent && (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  setEditingAgent(agent);
-                                  setEditCapacityVal(agent.capacity || 10);
-                                }}
-                                sx={{ textTransform: 'none', borderRadius: 2 }}
-                              >
-                                Edit Capacity
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Card>
+          <DataTable<(typeof filteredAgents)[number]>
+            dataTestId="wrk.table.capacity"
+            loading={agentsQuery.isLoading}
+            data={filteredAgents}
+            keyExtractor={(agent) => agent.id}
+            emptyMessage="No workforce agents found matching your query."
+            columns={[
+              {
+                id: 'agent',
+                header: 'Agent',
+                render: (agent) => (
+                  <>
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#0f172a' }}>
+                      {agent.displayName}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>
+                      {agent.email}
+                    </Typography>
+                  </>
+                ),
+              },
+              {
+                id: 'branch',
+                header: 'Branch',
+                render: (agent) => (
+                  <BranchName id={agent.primaryBranchId} fallback="General" typographyProps={{ sx: { color: '#334155' } }} />
+                ),
+              },
+              {
+                id: 'status',
+                header: 'Working Status',
+                render: (agent) => {
+                  const statusConfig = AVAILABILITY_CONFIG[agent.availability] || AVAILABILITY_CONFIG.AVAILABLE;
+                  return (
+                    <Chip
+                      label={statusConfig.label}
+                      color={statusConfig.color}
+                      size="small"
+                      sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                    />
+                  );
+                },
+              },
+              {
+                id: 'workload',
+                header: 'Active Workload',
+                render: (agent) => {
+                  const activeItems = (agent.activeLeadCount || 0) + (agent.activeApplicationCount || 0);
+                  return (
+                    <Typography variant="body2" fontWeight={600}>
+                      {activeItems}{' '}
+                      <Typography component="span" variant="caption" sx={{ color: '#64748b' }}>
+                        ({agent.activeLeadCount} leads, {agent.activeApplicationCount ?? 0} apps)
+                      </Typography>
+                    </Typography>
+                  );
+                },
+              },
+              {
+                id: 'meter',
+                header: 'Capacity Meter',
+                render: (agent) => {
+                  const activeItems = (agent.activeLeadCount || 0) + (agent.activeApplicationCount || 0);
+                  const capacity = agent.capacity || 10;
+                  const percent = Math.min(Math.round((activeItems / capacity) * 100), 100);
+                  let barColor: 'success' | 'warning' | 'error' = 'success';
+                  if (percent >= 90) barColor = 'error';
+                  else if (percent >= 70) barColor = 'warning';
+                  return (
+                    <Stack spacing={0.5} sx={{ minWidth: 160 }}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                          {activeItems} of {capacity}
+                        </Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ color: '#475569' }}>
+                          {percent}%
+                        </Typography>
+                      </Stack>
+                      <LinearProgress variant="determinate" value={percent} color={barColor} sx={{ height: 6, borderRadius: 3 }} />
+                    </Stack>
+                  );
+                },
+              },
+              {
+                id: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (agent) =>
+                  (canManageUsers || agent.id === me?.id) ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        setEditingAgent(agent);
+                        setEditCapacityVal(agent.capacity || 10);
+                      }}
+                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                    >
+                      Edit Capacity
+                    </Button>
+                  ) : null,
+              },
+            ]}
+          />
         </Box>
       )}
 
@@ -469,91 +465,81 @@ export function WorkforcePage() {
             </Button>
           </Stack>
 
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-            <TableContainer>
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>On Leave (Delegator)</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Covering Agent (Delegate)</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Coverage Window</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Reason</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {delegationsQuery.isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                        <CircularProgress size={32} />
-                      </TableCell>
-                    </TableRow>
-                  ) : (delegationsQuery.data || []).length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#94a3b8' }}>
-                        No leave delegations currently recorded.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    (delegationsQuery.data || []).map((dlg) => {
-                      const isActive = dlg.status === 'ACTIVE';
-                      const canEnd = canManageUsers || dlg.delegatorId === me?.id;
-                      const starts = new Date(dlg.startsAt).toLocaleDateString();
-                      const ends = new Date(dlg.endsAt).toLocaleDateString();
-
-                      return (
-                        <TableRow key={dlg.id} hover>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight={600} sx={{ color: '#0f172a' }}>
-                              {dlg.delegatorName || dlg.delegatorId}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ color: '#0f172a' }}>
-                              {dlg.delegateName || dlg.delegateId}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ color: '#334155' }}>
-                              {starts} → {ends}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ color: '#64748b' }}>
-                              {dlg.reason || '—'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={dlg.status}
-                              color={isActive ? 'success' : 'default'}
-                              size="small"
-                              sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {isActive && canEnd && (
-                              <Button
-                                size="small"
-                                color="error"
-                                variant="outlined"
-                                disabled={endDelegationMutation.isPending}
-                                onClick={() => endDelegationMutation.mutate(dlg.id)}
-                                sx={{ textTransform: 'none', borderRadius: 2 }}
-                              >
-                                End Coverage
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Card>
+          <DataTable<(typeof delegationsQuery.data extends (infer D)[] | undefined ? D : never)>
+            dataTestId="wrk.table.delegations"
+            loading={delegationsQuery.isLoading}
+            data={delegationsQuery.data || []}
+            keyExtractor={(dlg) => dlg.id}
+            emptyMessage="No leave delegations currently recorded."
+            columns={[
+              {
+                id: 'delegator',
+                header: 'On Leave (Delegator)',
+                render: (dlg) => (
+                  <Typography variant="body2" fontWeight={600} sx={{ color: '#0f172a' }}>
+                    {dlg.delegatorName || dlg.delegatorId}
+                  </Typography>
+                ),
+              },
+              {
+                id: 'delegate',
+                header: 'Covering Agent (Delegate)',
+                render: (dlg) => (
+                  <Typography variant="body2" sx={{ color: '#0f172a' }}>
+                    {dlg.delegateName || dlg.delegateId}
+                  </Typography>
+                ),
+              },
+              {
+                id: 'window',
+                header: 'Coverage Window',
+                render: (dlg) => (
+                  <Typography variant="body2" sx={{ color: '#334155' }}>
+                    {new Date(dlg.startsAt).toLocaleDateString()} → {new Date(dlg.endsAt).toLocaleDateString()}
+                  </Typography>
+                ),
+              },
+              {
+                id: 'reason',
+                header: 'Reason',
+                render: (dlg) => (
+                  <Typography variant="body2" sx={{ color: '#64748b' }}>
+                    {dlg.reason || '—'}
+                  </Typography>
+                ),
+              },
+              {
+                id: 'status',
+                header: 'Status',
+                render: (dlg) => (
+                  <Chip
+                    label={dlg.status}
+                    color={dlg.status === 'ACTIVE' ? 'success' : 'default'}
+                    size="small"
+                    sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                  />
+                ),
+              },
+              {
+                id: 'actions',
+                header: 'Actions',
+                align: 'right',
+                render: (dlg) =>
+                  dlg.status === 'ACTIVE' && (canManageUsers || dlg.delegatorId === me?.id) ? (
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      disabled={endDelegationMutation.isPending}
+                      onClick={() => endDelegationMutation.mutate(dlg.id)}
+                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                    >
+                      End Coverage
+                    </Button>
+                  ) : null,
+              },
+            ]}
+          />
         </Box>
       )}
 
@@ -650,46 +636,32 @@ export function WorkforcePage() {
                   <Typography variant="h6" fontWeight={600} sx={{ color: '#0f172a', mb: 2 }}>
                     Workforce Attendance Log {canManageAttendance ? '(All Agents)' : '(My Log)'}
                   </Typography>
-                  <TableContainer sx={{ maxHeight: 320 }}>
-                    <Table size="small">
-                      <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 600 }}>Employee</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>In</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Out</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {attendanceLogQuery.isLoading ? (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                              <CircularProgress size={24} />
-                            </TableCell>
-                          </TableRow>
-                        ) : (attendanceLogQuery.data || []).length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#94a3b8' }}>
-                              No attendance records logged yet.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          (attendanceLogQuery.data || []).map((row) => (
-                            <TableRow key={row.id}>
-                              <TableCell sx={{ fontWeight: 500 }}>{row.userName || row.userId}</TableCell>
-                              <TableCell>{row.date}</TableCell>
-                              <TableCell>{row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
-                              <TableCell>{row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
-                              <TableCell>
-                                <Chip label={row.status} size="small" color="success" sx={{ fontSize: '0.7rem' }} />
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <DataTable<(typeof attendanceLogQuery.data extends (infer D)[] | undefined ? D : never)>
+                    dataTestId="wrk.table.attendance"
+                    loading={attendanceLogQuery.isLoading}
+                    data={attendanceLogQuery.data || []}
+                    keyExtractor={(row) => row.id}
+                    emptyMessage="No attendance records logged yet."
+                    columns={[
+                      { id: 'employee', header: 'Employee', render: (row) => <Box sx={{ fontWeight: 500 }}>{row.userName || row.userId}</Box> },
+                      { id: 'date', header: 'Date', render: (row) => row.date },
+                      {
+                        id: 'in',
+                        header: 'In',
+                        render: (row) => (row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+                      },
+                      {
+                        id: 'out',
+                        header: 'Out',
+                        render: (row) => (row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+                      },
+                      {
+                        id: 'status',
+                        header: 'Status',
+                        render: (row) => <Chip label={row.status} size="small" color="success" sx={{ fontSize: '0.7rem' }} />,
+                      },
+                    ]}
+                  />
                 </CardContent>
               </Card>
             </Grid>
