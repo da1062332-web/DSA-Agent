@@ -1,4 +1,13 @@
 // Process entry point (owner: Dev 1). The dependencies come from wiring.ts, the same function the database test harnesses use.
+import dns from 'node:dns';
+
+// Ensure IPv4 is resolved first on dual-stack networks (prevents ENOTFOUND on Windows with pooler.supabase.com)
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignore on environments where setDefaultResultOrder is unavailable
+}
+
 import { createPrincipalResolver, createTokenVerifier } from '@dsa/kernel';
 import { pino } from 'pino';
 import { createApp } from './app';
@@ -115,13 +124,23 @@ if (config.DATA_CORRECTION_EXECUTOR) {
 }
 
 // Publishes outbox events to their subscribers (automation triggers), and runs queued jobs and storage retention.
+const formatWorkerError = (err: unknown): string => {
+  if (err instanceof Error) {
+    return err.message || err.name || 'Error';
+  }
+  if (typeof err === 'object' && err !== null) {
+    return (err as any).message || (err as any).error || JSON.stringify(err);
+  }
+  return String(err || 'unknown');
+};
+
 const worker = startBackgroundWorker({
   txRunner,
   outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
   onWarning: (message) => logger.warn(`Background worker: ${message}`),
   onError: (stage, err) =>
     logger.error(
-      { stage, error: err instanceof Error ? err.message : 'unknown' },
+      { stage, error: formatWorkerError(err) },
       'background worker tick failed',
     ),
 });

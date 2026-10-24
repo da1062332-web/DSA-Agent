@@ -40,6 +40,21 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
   const report = opts.onError ?? (() => undefined);
   const warn = opts.onWarning ?? (() => undefined);
 
+  const isConnectionError = (err: unknown): boolean => {
+    const code = (err as any)?.code;
+    const msg = String((err as any)?.message ?? '');
+    return (
+      code === 'ECONNRESET' ||
+      code === 'ENOTFOUND' ||
+      code === 'ECONNREFUSED' ||
+      code === 'ETIMEDOUT' ||
+      code === 'EAI_AGAIN' ||
+      msg.includes('Connection terminated') ||
+      msg.includes('connection reset') ||
+      msg.includes('getaddrinfo')
+    );
+  };
+
   // Pause flags set from the platform console (app.worker_queue_state, M-069). Unknown or unreadable means not paused.
   const pausedQueues = async (): Promise<Set<string>> => {
     try {
@@ -54,17 +69,28 @@ export function startBackgroundWorker(opts: BackgroundWorkerOptions): { stop: ()
         if (!pauseTableMissingReported)
           warn('pause switches unavailable until migration 0069 is applied; all queues keep running');
         pauseTableMissingReported = true;
-      } else {
-        report('outbox', err);
+        return new Set();
       }
-      return new Set();
+      report('outbox', err);
+      throw err;
     }
   };
 
   const tick = async () => {
-    const paused = await pausedQueues();
+    let paused: Set<string>;
+    try {
+      paused = await pausedQueues();
+    } catch {
+      return;
+    }
+
     if (opts.outboxRelay && !paused.has('outbox-relay')) {
-      await opts.outboxRelay.drain().catch((err) => report('outbox', err));
+      let connectionLost = false;
+      await opts.outboxRelay.drain().catch((err) => {
+        report('outbox', err);
+        if (isConnectionError(err)) connectionLost = true;
+      });
+      if (connectionLost) return;
     }
 
     if (globalJobQueue.hasHandlers() && !paused.has('job-queue')) {
