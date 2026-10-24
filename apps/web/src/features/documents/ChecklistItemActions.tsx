@@ -56,10 +56,21 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
   const view = useMutation({
     meta: { handled: true },
     mutationFn: async () => {
-      const doc = await getDocument(item.documentId!);
-      const v = currentVersion(doc);
-      if (!v) throw new Error('This document has no version to open.');
-      await openDocumentVersion(v.id);
+      if (!item.documentId) {
+        throw new Error('No document has been linked to this checklist item.');
+      }
+      try {
+        const doc = await getDocument(item.documentId);
+        const v = currentVersion(doc);
+        if (!v) throw new Error('This document has no version to open.');
+        await openDocumentVersion(v.id);
+      } catch (err: unknown) {
+        const errorObj = err as { httpStatus?: number; status?: number; code?: string; message?: string };
+        if (errorObj?.httpStatus === 404 || errorObj?.status === 404 || errorObj?.code === 'NOT_FOUND') {
+          throw new Error('Document record was not found or is no longer available on the server.');
+        }
+        throw err;
+      }
     },
   });
 

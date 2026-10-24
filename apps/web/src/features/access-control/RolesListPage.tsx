@@ -228,7 +228,7 @@ export function RolesListPage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Access Control & Roles"
         subtitle="Manage tenant roles, system permissions, and role-based access security policies."

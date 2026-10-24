@@ -11,6 +11,7 @@ import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from '../
 import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
 import type { ColumnDef } from '../../ui';
 import { ChecklistCard } from './ChecklistCard';
+import { SupabaseStorageCard } from './SupabaseStorageCard';
 
 interface ApplicationRow {
   id: string;
@@ -56,14 +57,6 @@ export function DocumentsPage() {
     );
   }, [rows, search]);
 
-  if (!allowed) {
-    return (
-      <Alert severity="warning" data-testid="documents-no-access">
-        You do not have access to application documents. This needs the application read permission.
-      </Alert>
-    );
-  }
-
   const checklistRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToView = () => {
@@ -98,6 +91,14 @@ export function DocumentsPage() {
       return () => clearTimeout(t);
     }
   }, [selected]);
+
+  if (!allowed) {
+    return (
+      <Alert severity="warning" data-testid="documents-no-access">
+        You do not have access to application documents. This needs the application read permission.
+      </Alert>
+    );
+  }
 
   const chosen = rows.find((a) => a.id === selected);
   const awaiting = rows.filter((a) => a.status === 'DOCUMENTS_PENDING').length;
@@ -215,6 +216,8 @@ export function DocumentsPage() {
           </>
         )}
       </DetailCard>
+
+      <SupabaseStorageCard />
 
       <Box sx={{ mt: 3, scrollMarginTop: '80px' }} ref={checklistRef}>
         {selected ? (

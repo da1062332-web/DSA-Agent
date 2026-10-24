@@ -3,6 +3,7 @@ import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../api/useMe';
 import { routeAllowed } from './access';
+import { PageHeader } from '../ui';
 
 export function HomePage() {
   const me = useMe();
@@ -57,13 +58,13 @@ export function HomePage() {
     },
     {
       title: 'Verification Workbench',
-      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification (MOD-VER).',
+      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification.',
       to: '/verifications',
       badge: 'Verification',
     },
     {
       title: 'Connector Management',
-      desc: 'Onboarding, bank dual-control SOD, agreements, reattribution, and disputes (MOD-CON).',
+      desc: 'Onboarding, bank dual-control SOD, agreements, reattribution, and disputes.',
       to: '/connectors',
       badge: 'Connectors',
     },
@@ -124,16 +125,11 @@ export function HomePage() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 5 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Welcome{me.data ? `, ${me.data.displayName}` : ''}! 👋
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          DSA Loan Distribution & CRM Platform
-          {me.isError && ' · Could not load your profile from the API.'}
-        </Typography>
-      </Box>
+    <Container maxWidth={false} disableGutters>
+      <PageHeader
+        title={`Welcome${me.data ? `, ${me.data.displayName}` : ''}`}
+        subtitle={`DSA Loan Distribution & CRM Platform${me.isError ? ' · Could not load your profile from the API.' : ''}`}
+      />
 
       <Grid container spacing={3}>
         {shownCards.map((c) => (

@@ -135,7 +135,7 @@ export function RoleDetailPage() {
 
   if (!role) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
         <Alert severity="error">Role not found.</Alert>
         <Button sx={{ mt: 2 }} variant="outlined" component={RouterLink} to="/roles">
           &larr; Back to Roles
@@ -145,7 +145,7 @@ export function RoleDetailPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title={role.name}
         backTo="/roles"

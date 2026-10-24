@@ -162,7 +162,7 @@ export function LeadList() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Leads"
         subtitle="Manage, qualify, and convert loan enquiry leads"

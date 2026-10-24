@@ -1,4 +1,4 @@
-// apps/web/src/features/workforce/WorkforcePage.tsx — Module 26: Workforce (MOD-WRK) UI
+// apps/web/src/features/workforce/WorkforcePage.tsx — Module 26: Workforce UI
 import {
   Alert,
   Box,
@@ -244,7 +244,7 @@ export function WorkforcePage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       <PageHeader
         title="Workforce Management"
         subtitle="Availability & capacity routing, leave coverage planner, and daily attendance."
@@ -313,9 +313,9 @@ export function WorkforcePage() {
             '& .MuiTab-root': { fontWeight: 600, textTransform: 'none', fontSize: '0.95rem' },
           }}
         >
-          <Tab label="Capacity & Availability (SUB-WRK.01)" id="tab-capacity" />
-          <Tab label="Leave Coverage Planner (SUB-WRK.02)" id="tab-leave" />
-          <Tab label="Attendance & Check-in (SUB-WRK.03)" id="tab-attendance" />
+          <Tab label="Capacity & Availability" id="tab-capacity" />
+          <Tab label="Leave Coverage Planner" id="tab-leave" />
+          <Tab label="Attendance & Check-in" id="tab-attendance" />
         </Tabs>
       </Box>
 

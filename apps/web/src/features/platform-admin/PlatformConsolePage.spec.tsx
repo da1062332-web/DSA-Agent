@@ -38,7 +38,6 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     );
 
     expect(html).toContain('Platform Operations &amp; Administration');
-    expect(html).toContain('MOD-ADM');
     expect(html).toContain('Zero Business Data Projection');
   });
 

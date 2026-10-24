@@ -412,7 +412,7 @@ export function LedgerPage() {
   ];
 
   return (
-    <Box sx={{ p: { xs: 2.5, sm: 3.5 }, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       {/* Header Section */}
       <PageHeader
         title="Ledger Management"
@@ -463,9 +463,9 @@ export function LedgerPage() {
             },
           }}
         >
-          <Tab id="tab-accounts" value="accounts" label="Chart of Accounts (SUB-LED.01)" />
-          <Tab id="tab-journals" value="journals" label="Journal Postings (SUB-LED.02)" />
-          <Tab id="tab-statements" value="statements" label="Connector Statements (SUB-LED.03)" />
+          <Tab id="tab-accounts" value="accounts" label="Chart of Accounts" />
+          <Tab id="tab-journals" value="journals" label="Journal Postings" />
+          <Tab id="tab-statements" value="statements" label="Connector Statements" />
           <Tab id="tab-period_close" value="period_close" label="Trial Balance & Period Close" />
           <Tab id="tab-exports" value="exports" label="Exports" />
         </Tabs>
@@ -505,8 +505,8 @@ export function LedgerPage() {
                     <MenuItem value="INCOME">INCOME</MenuItem>
                     <MenuItem value="EXPENSE">EXPENSE</MenuItem>
                     <MenuItem value="SUSPENSE">SUSPENSE</MenuItem>
-                    <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</MenuItem>
-                    <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</MenuItem>
+                    <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (inactive)</MenuItem>
+                    <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (inactive)</MenuItem>
                   </Select>
                 </FormControl>
               </Stack>
@@ -1053,14 +1053,14 @@ export function LedgerPage() {
                   <MenuItem value="INCOME">INCOME</MenuItem>
                   <MenuItem value="EXPENSE">EXPENSE</MenuItem>
                   <MenuItem value="SUSPENSE">SUSPENSE</MenuItem>
-                  <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (OD-021 Dormant)</MenuItem>
-                  <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (OD-021 Dormant)</MenuItem>
+                  <MenuItem value="TAX_PAYABLE">TAX_PAYABLE (inactive)</MenuItem>
+                  <MenuItem value="TAX_RECEIVABLE">TAX_RECEIVABLE (inactive)</MenuItem>
                 </Select>
               </FormControl>
 
               {(newAccountType === 'TAX_PAYABLE' || newAccountType === 'TAX_RECEIVABLE') && (
                 <Alert severity="warning" sx={{ borderRadius: 2 }}>
-                  Under Open Decision OD-021, tax accounts will be created in INACTIVE state until tax
+                  Tax accounts will be created in INACTIVE state until tax
                   withholding rules are finalized.
                 </Alert>
               )}

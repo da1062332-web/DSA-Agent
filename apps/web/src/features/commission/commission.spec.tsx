@@ -44,10 +44,10 @@ describe('Commission Management Frontend Components & API Compatibility', () => 
   it('CommissionDashboardPage renders header, 3 tabs, and action buttons', () => {
     const html = renderWithProviders(<CommissionDashboardPage />);
     expect(html).toContain('Commission Management Hub');
-    expect(html).toContain('Module 29 / 30 Part A');
-    expect(html).toContain('1. Commission Plans (CMP-COM.01.1)');
-    expect(html).toContain('2. Calculations &amp; Connector Payables (CMP-COM.02.1)');
-    expect(html).toContain('3. Recalculation Proposals (CMP-COM.05.1)');
+    expect(html).toContain('Lender plans, disbursement tranche');
+    expect(html).toContain('1. Commission Plans');
+    expect(html).toContain('2. Calculations &amp; Connector Payables');
+    expect(html).toContain('3. Recalculation Proposals');
   });
 
   it('approveCommissionPlan passes lockVersion for If-Match and body comment', async () => {

@@ -161,7 +161,7 @@ export function AutomationDetailPage() {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       <PageHeader
         title={definition.name}
         backTo="/automations"

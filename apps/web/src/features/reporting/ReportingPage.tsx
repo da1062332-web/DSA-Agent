@@ -1,4 +1,4 @@
-// apps/web/src/features/reporting/ReportingPage.tsx — Enterprise Reporting & Analytics Suite (MOD-RPT)
+// apps/web/src/features/reporting/ReportingPage.tsx — Enterprise Reporting & Analytics Suite
 import {
   Alert,
   Box,
@@ -204,7 +204,7 @@ export function ReportingPage() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       {notification && (
         <Alert severity={notification.severity} onClose={() => setNotification(null)} sx={{ mb: 3 }}>
           {notification.message}
@@ -222,11 +222,10 @@ export function ReportingPage() {
         }}
       >
         <PageHeader
-          title="Reporting and Analytics (MOD-RPT)"
-          subtitle="Canonical reporting engine, metric registry (ENT-094), multi-category dashboards, automated schedules, and daily control totals (FR-RPT-008)."
+          title="Reports and Analytics"
+          subtitle="Canonical reporting engine, metric registry, multi-category dashboards, automated schedules, and daily control totals."
           badge={
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <Chip label="TASK-414 Complete" color="success" size="small" variant="outlined" />
               <Chip label="Data Squad" color="primary" size="small" />
               <Chip label="RLS Enforced" color="secondary" size="small" />
             </Box>
@@ -248,12 +247,12 @@ export function ReportingPage() {
           <Tab label="Multi-Category Dashboards" />
           <Tab label="Metric Registry (ENT-094)" />
           <Tab label="Exports & Schedules (ENT-111)" />
-          <Tab label="Daily Control Totals (FR-RPT-008)" />
+          <Tab label="Daily Control Totals" />
         </Tabs>
       </Paper>
 
       {/* ======================================================== */}
-      {/* Tab 0: Standard Reports & Runner (SUB-RPT.04) */}
+      {/* Tab 0: Standard Reports & Runner */}
       {/* ======================================================== */}
       {activeTab === 0 && (
         <Box>
@@ -360,7 +359,7 @@ export function ReportingPage() {
       )}
 
       {/* ======================================================== */}
-      {/* Tab 1: Multi-Category Dashboards (SUB-RPT.03) */}
+      {/* Tab 1: Multi-Category Dashboards */}
       {/* ======================================================== */}
       {activeTab === 1 && (
         <Box>
@@ -686,7 +685,7 @@ export function ReportingPage() {
               ) : conData ? (
                 <Box>
                   <Alert severity="info" sx={{ mb: 3 }}>
-                    MOD-CPT (Connector Portal) remains deferred to Release 3. Connector metrics below reflect
+                    The Connector Portal is not yet available. Connector metrics below reflect
                     canonical core channel reporting without third-party connector dependencies.
                   </Alert>
                   <Grid container spacing={2} sx={{ mb: 3 }}>

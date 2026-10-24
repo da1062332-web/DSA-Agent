@@ -1,5 +1,5 @@
 // apps/web/src/features/privacy/PrivacyDashboard.tsx
-// Module 29: Privacy and Consent Governance Dashboard (MOD-PRV)
+// Module 29: Privacy and Consent Governance Dashboard
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -9,6 +9,7 @@ import {
   Card,
   Chip,
   CircularProgress,
+  Collapse,
   Container,
   Dialog,
   DialogActions,
@@ -37,6 +38,46 @@ import { DataTable, PageHeader } from '../../ui';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
+import { ApplicationName, LenderName } from '../../shell/display';
+
+const KNOWN_FIELD_LABELS: Record<string, string> = {
+  name: 'Full Name',
+  pan: 'PAN Card Number',
+  phone: 'Phone Number',
+  mobile: 'Mobile Number',
+  email: 'Email Address',
+  address: 'Residential Address',
+  dob: 'Date of Birth',
+  income: 'Income / Salary Details',
+  employment: 'Employment Status',
+  aadhaar: 'Aadhaar (Last 4)',
+  bank_account: 'Bank Account Details',
+  cibil_score: 'Credit Score',
+  cibil: 'CIBIL / Credit Score',
+};
+
+function formatFieldLabel(key: string): string {
+  const normalized = key.toLowerCase().trim();
+  if (KNOWN_FIELD_LABELS[normalized]) {
+    return KNOWN_FIELD_LABELS[normalized];
+  }
+  return key
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatPurposeLabel(purpose: string): string {
+  switch (purpose) {
+    case 'LENDER_SUBMISSION':
+      return 'Lender Submission (Loan Processing)';
+    case 'PORTFOLIO_REVIEW':
+      return 'Portfolio Review';
+    case 'AUDIT_INSPECTION':
+      return 'Audit & Compliance Inspection';
+    default:
+      return purpose.replace(/[_-]/g, ' ');
+  }
+}
 
 export function PrivacyDashboard(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -48,6 +89,7 @@ export function PrivacyDashboard(): React.ReactElement {
 
   // Selected sharing record for manifest modal
   const [selectedRecord, setSelectedRecord] = useState<DataSharingRecord | null>(null);
+  const [showRawJson, setShowRawJson] = useState<boolean>(false);
 
   // Consent verification auditor form states
   const [verifyCustomerId, setVerifyCustomerId] = useState<string>('');
@@ -155,16 +197,9 @@ export function PrivacyDashboard(): React.ReactElement {
   });
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="privacy.dashboard">
+    <Container maxWidth={false} disableGutters data-testid="privacy.dashboard">
       <PageHeader
         title="Privacy &amp; Consent Governance"
-        badge={
-          <Chip
-            label="MOD-PRV"
-            size="small"
-            sx={{ fontWeight: 600, bgcolor: 'primary.main', color: 'primary.contrastText' }}
-          />
-        }
         subtitle="DPDP Act 2023 & RBI Digital Lending Regulatory Governance • Data Classification, Consent Registry, and Sharing Audit"
         actions={
           <Stack direction="row" spacing={1.5}>
@@ -419,16 +454,34 @@ export function PrivacyDashboard(): React.ReactElement {
                   {
                     id: 'application',
                     header: 'Application',
-                    render: (r) => <Box sx={{ fontFamily: 'monospace', fontSize: 13 }}>{r.subjectId}</Box>,
+                    render: (r) => (
+                      <Box>
+                        <ApplicationName id={r.subjectId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                          {r.subjectId}
+                        </Typography>
+                      </Box>
+                    ),
                   },
                   {
                     id: 'recipient',
                     header: 'Recipient',
                     render: (r) => (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Chip label={r.recipientType} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
-                        <Typography variant="body2">{r.recipientId}</Typography>
-                      </Stack>
+                      <Box>
+                        {r.recipientType === 'LENDER' || r.recipientType === 'CO_LENDER' ? (
+                          <LenderName id={r.recipientId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                        ) : (
+                          <Typography variant="body2" fontWeight={600}>
+                            {r.recipientId}
+                          </Typography>
+                        )}
+                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.25 }}>
+                          <Chip label={r.recipientType} size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                            {r.recipientId}
+                          </Typography>
+                        </Stack>
+                      </Box>
                     ),
                   },
                   {
@@ -829,12 +882,12 @@ export function PrivacyDashboard(): React.ReactElement {
           </Box>
         )}
 
-        {/* TAB 3: Retention & Legal Hold Status (OD-008) */}
+        {/* TAB 3: Retention & Legal Hold Status */}
         {activeTab === 3 && (
           <Box sx={{ p: 3 }}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                Retention Schedules &amp; Legal Hold Governance (OD-008)
+                Retention Schedules &amp; Legal Hold Governance
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Compliance with statutory record-keeping periods under RBI, PMLA, and Limitation Act
@@ -844,12 +897,9 @@ export function PrivacyDashboard(): React.ReactElement {
 
             <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
               <Typography variant="subtitle2" fontWeight={700}>
-                GOVERNANCE NOTICE: SUB-PRV.03 DEFERRED PENDING OD-008
+                Retention notice: hard deletion is not yet enabled
               </Typography>
-              Retention schedules below are proposed baselines. Formal hard-deletion and database entity
-              creation (ENT-097 <code>retention_policy</code> and ENT-098 <code>legal_hold</code>) remain
-              deferred under <strong>TASK-426</strong> pending formal legal opinion under{' '}
-              <strong>OD-008</strong>.
+              Retention schedules below are proposed baselines. Hard deletion and legal-hold records stay disabled until a formal legal opinion on retention is received.
             </Alert>
 
             <Grid container spacing={3}>
@@ -936,7 +986,7 @@ export function PrivacyDashboard(): React.ReactElement {
           <Box sx={{ p: 3 }}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                Data-Principal Rights Management (DSR / SUB-PRV.04)
+                Data-Principal Rights Management (DSR)
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Digital Personal Data Protection (DPDP) Act 2023 statutory rights for Indian data principals.
@@ -945,10 +995,9 @@ export function PrivacyDashboard(): React.ReactElement {
 
             <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
               <Typography variant="subtitle2" fontWeight={700}>
-                SUB-PRV.04 DEFERRED (TASK-426) • DEPENDENT ON MOD-GRV
+                Data-principal requests are handled through Grievances
               </Typography>
-              Data-Principal Request ticketing (ENT-099 <code>data_subject_request</code>) is architecturally
-              managed through the Grievance and Ticketing Engine (<strong>MOD-GRV</strong>).
+              Data-principal request tickets are managed in the Grievances module.
             </Alert>
 
             <Grid container spacing={3}>
@@ -1019,97 +1068,224 @@ export function PrivacyDashboard(): React.ReactElement {
       {/* Manifest Inspection Modal */}
       <Dialog
         open={Boolean(selectedRecord)}
-        onClose={() => setSelectedRecord(null)}
+        onClose={() => {
+          setSelectedRecord(null);
+          setShowRawJson(false);
+        }}
         maxWidth="sm"
         fullWidth
         data-testid="dialog-sharing-manifest"
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Data Sharing Manifest Inspection</DialogTitle>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" fontWeight={700}>
+            Data Sharing Delivery Receipt
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Verified proof of personal data disclosed to an external lender
+          </Typography>
+        </DialogTitle>
         <DialogContent dividers>
-          {selectedRecord && (
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  RECORD IDENTIFIER (ENT-100)
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  {selectedRecord.id}
-                </Typography>
-              </Box>
+          {selectedRecord && (() => {
+            const fields: string[] = Array.isArray(selectedRecord.items?.fields)
+              ? selectedRecord.items.fields
+              : [];
+            const checklistItems: string[] = Array.isArray(selectedRecord.items?.checklistItemIds)
+              ? selectedRecord.items.checklistItemIds
+              : [];
 
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    RECIPIENT
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedRecord.recipientType}: {selectedRecord.recipientId}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    PURPOSE
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedRecord.purpose}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    TRANSMISSION CHANNEL
-                  </Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {selectedRecord.channel}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">
-                    SOURCE REFERENCE
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 13 }}>
-                    {selectedRecord.sourceRef}
-                  </Typography>
-                </Grid>
-              </Grid>
-
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  CONSENT CITATIONS
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                  {selectedRecord.consentIds.map((cid) => (
-                    <Chip key={cid} label={cid} size="small" sx={{ fontFamily: 'monospace', fontSize: 12 }} />
-                  ))}
-                </Stack>
-              </Box>
-
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                  SHARED ITEMS MANIFEST
-                </Typography>
+            return (
+              <Stack spacing={2.5}>
+                {/* Verified Consent & Legal Basis Card */}
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 2,
-                    bgcolor: 'background.default',
+                    p: 1.75,
                     border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1.5,
+                    borderColor: 'success.main',
+                    borderRadius: 2,
+                    bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(46, 125, 50, 0.15)' : '#f0fdf4'),
                   }}
                 >
-                  <pre style={{ margin: 0, fontSize: 12, overflow: 'auto' }}>
-                    {JSON.stringify(selectedRecord.items, null, 2)}
-                  </pre>
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: 'success.main',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight={700} color="success.main">
+                        Customer Consent Verified
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                        Authorized under Consent ID:{' '}
+                        <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                          {selectedRecord.consentIds.join(', ')}
+                        </Box>
+                      </Typography>
+                    </Box>
+                  </Stack>
                 </Paper>
-              </Box>
-            </Stack>
-          )}
+
+                {/* Transfer Summary Grid */}
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      RECIPIENT LENDER
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      {selectedRecord.recipientType === 'LENDER' || selectedRecord.recipientType === 'CO_LENDER' ? (
+                        <LenderName id={selectedRecord.recipientId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                      ) : (
+                        <Typography variant="body2" fontWeight={600}>
+                          {selectedRecord.recipientId}
+                        </Typography>
+                      )}
+                      <Chip
+                        label={selectedRecord.recipientType}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: 10, mt: 0.5 }}
+                      />
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      PURPOSE
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
+                      {formatPurposeLabel(selectedRecord.purpose)}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      TRANSMISSION CHANNEL
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip
+                        label={selectedRecord.channel}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ fontWeight: 600, height: 22, fontSize: 11 }}
+                      />
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      SOURCE REFERENCE
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 13, mt: 0.5 }}>
+                      {selectedRecord.sourceRef}
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                <Divider />
+
+                {/* Shared Data - User Friendly Badges */}
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mb: 0.5 }}>
+                    SHARED PERSONAL DATA (MINIMIZATION COMPLIANT)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                    Only these specific field categories were shared with the lender (raw values are never stored in audit logs):
+                  </Typography>
+
+                  {fields.length > 0 ? (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                      {fields.map((field) => (
+                        <Chip
+                          key={field}
+                          label={formatFieldLabel(field)}
+                          size="small"
+                          color="info"
+                          variant="filled"
+                          sx={{ fontWeight: 600, fontSize: 12 }}
+                        />
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                      No personal profile fields listed.
+                    </Typography>
+                  )}
+
+                  {checklistItems.length > 0 && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 0.5 }}>
+                        Checklist Documents Attached:
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {checklistItems.map((docId) => (
+                          <Chip
+                            key={docId}
+                            label={docId}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontFamily: 'monospace', fontSize: 11 }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
+
+                <Divider />
+
+                {/* Technical / Audit Details Collapsible */}
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Audit Record ID: <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{selectedRecord.id}</Box>
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setShowRawJson((prev) => !prev)}
+                      sx={{ fontSize: 11, textTransform: 'none', py: 0 }}
+                    >
+                      {showRawJson ? 'Hide Technical JSON' : 'View Technical JSON'}
+                    </Button>
+                  </Box>
+
+                  <Collapse in={showRawJson}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        mt: 1.5,
+                        p: 1.5,
+                        bgcolor: 'background.default',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <pre style={{ margin: 0, fontSize: 11, fontFamily: 'monospace', overflow: 'auto' }}>
+                        {JSON.stringify(selectedRecord.items, null, 2)}
+                      </pre>
+                    </Paper>
+                  </Collapse>
+                </Box>
+              </Stack>
+            );
+          })()}
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setSelectedRecord(null)}>Close</Button>
+          <Button
+            onClick={() => {
+              setSelectedRecord(null);
+              setShowRawJson(false);
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

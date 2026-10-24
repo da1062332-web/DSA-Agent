@@ -47,7 +47,7 @@ export function DecisionRecordDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -55,7 +55,7 @@ export function DecisionRecordDetailPage() {
 
   if (error || !record) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">{error || 'Decision record not found'}</Alert>
         <Button sx={{ mt: 2 }} onClick={() => navigate('/decisions')}>
           Back to Execution Logs
@@ -65,7 +65,7 @@ export function DecisionRecordDetailPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Decision Record"
         backTo="/decisions"

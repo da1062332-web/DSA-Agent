@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
 import { PageHeader } from '../../ui';
+import { UserName } from '../../shell/display';
 import {
   fetchRuleSetVersion,
   publishVersion,
@@ -310,7 +311,7 @@ export function RuleVersionDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -318,7 +319,7 @@ export function RuleVersionDetailPage() {
 
   if (error && !version) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">{error}</Alert>
         <Button sx={{ mt: 2 }} onClick={() => navigate('/rules')}>
           Back to Rule Sets
@@ -336,7 +337,7 @@ export function RuleVersionDetailPage() {
   const isSuspended = version.status === 'SUSPENDED';
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title={`Version ${version.versionNo}`}
         backTo={`/rules/${version.ruleSetId}`}
@@ -563,24 +564,32 @@ export function RuleVersionDetailPage() {
                 Version Audit & Lineage
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
-                Created By: {version.createdBy}
+                Created By: <UserName id={version.createdBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} />
               </Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Editors: {(version.editors || []).join(', ')}
-              </Typography>
+              {(version.editors || []).length > 0 && (
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Editors:{' '}
+                  {version.editors.map((ed, idx) => (
+                    <span key={ed}>
+                      {idx > 0 && ', '}
+                      <UserName id={ed} typographyProps={{ variant: 'caption', color: 'text.secondary' }} />
+                    </span>
+                  ))}
+                </Typography>
+              )}
               {version.submittedBy && (
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Submitted By: {version.submittedBy}
+                  Submitted By: <UserName id={version.submittedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} />
                 </Typography>
               )}
               {version.publishedBy && (
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Published By: {version.publishedBy}
+                  Published By: <UserName id={version.publishedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} />
                 </Typography>
               )}
               {version.suspendedBy && (
                 <Typography variant="caption" color="error" display="block">
-                  Suspended By: {version.suspendedBy} (Reason: {version.suspendReason})
+                  Suspended By: <UserName id={version.suspendedBy} typographyProps={{ variant: 'caption', color: 'error' }} /> (Reason: {version.suspendReason})
                 </Typography>
               )}
             </CardContent>

@@ -10,11 +10,25 @@ vi.mock('../../api/useMe', async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
   useMe: () => ({ data: { id: 'usr_me', grants: me.grants } as Me }),
 }));
-vi.mock('../../auth/supabase', () => ({
-  getSupabase: () => ({
-    auth: { getSession: async () => ({ data: { session: { access_token: 'test-token' } } }) },
-  }),
-}));
+vi.mock('../../auth/supabase', () => {
+  const fakeStorage = {
+    from: () => ({
+      list: async () => ({ data: [], error: null }),
+      upload: async () => ({ data: { path: 'test' }, error: null }),
+      createSignedUrl: async () => ({ data: { signedUrl: 'http://test' }, error: null }),
+      remove: async () => ({ error: null }),
+    }),
+  };
+  return {
+    getSupabase: () => ({
+      auth: { getSession: async () => ({ data: { session: { access_token: 'test-token' } } }) },
+      storage: fakeStorage,
+    }),
+    getSupabaseStorageClient: () => ({
+      storage: fakeStorage,
+    }),
+  };
+});
 vi.mock('../../config', () => ({
   readConfig: () => ({ success: true, data: { VITE_API_BASE_URL: 'http://api.test' } }),
 }));

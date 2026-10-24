@@ -1,4 +1,4 @@
-// apps/web/src/features/invoices/InvoicesPage.tsx — Module 33: Invoices (MOD-INV) UI
+// apps/web/src/features/invoices/InvoicesPage.tsx — Module 33: Invoices UI
 import {
   Alert,
   Box,
@@ -33,7 +33,7 @@ import {
 } from '../../ui';
 import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
-import { ConnectorName } from '../../shell/display';
+import { ConnectorName, UserName } from '../../shell/display';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
 
 export function InvoicesPage() {
@@ -451,7 +451,7 @@ export function InvoicesPage() {
       {/* Top Header */}
       <PageHeader
         title="Invoices & Statements"
-        subtitle="Module 33 (MOD-INV) — Manage lender billing, connector invoices, and periodic payout account statements."
+        subtitle="Manage lender billing, connector invoices, and periodic payout account statements."
         actions={
           canManage ? (
             <Button
@@ -475,8 +475,8 @@ export function InvoicesPage() {
           indicatorColor="primary"
           sx={{ '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.95rem' } }}
         >
-          <Tab label="CMP-INV.01.1 Invoice Register" />
-          <Tab label="CMP-INV.02.1 Statement Generator" />
+          <Tab label="Invoice Register" />
+          <Tab label="Statement Generator" />
         </Tabs>
       </Box>
 
@@ -1021,7 +1021,8 @@ export function InvoicesPage() {
 
               <Box sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
                 <Typography variant="caption" color="text.secondary">
-                  System ID: {detailsInvoice.id} · Created by {detailsInvoice.createdBy} at{' '}
+                  System ID: {detailsInvoice.id} · Created by{' '}
+                  <UserName id={detailsInvoice.createdBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} /> at{' '}
                   {detailsInvoice.createdAt}
                 </Typography>
               </Box>

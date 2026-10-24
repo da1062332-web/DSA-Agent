@@ -206,7 +206,7 @@ describe('ReportingPage (MOD-RPT Suite)', () => {
       </QueryClientProvider>,
     );
 
-    expect(html).toContain('Reporting and Analytics (MOD-RPT)');
+    expect(html).toContain('Reports and Analytics');
     expect(html).toContain('Lead Pipeline Register');
     expect(html).toContain('Disbursement Tranche Register');
     expect(html).toContain('Run Report');

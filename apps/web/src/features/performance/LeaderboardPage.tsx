@@ -134,10 +134,10 @@ export function LeaderboardPage() {
   ];
 
   return (
-    <Box sx={{ py: 3, maxWidth: 1400, margin: '0 auto' }}>
+    <Box>
       <PageHeader
         title="Performance Leaderboards"
-        subtitle="CMP-PERF.03.1 — Balanced scorecard rankings and quality guardrails."
+        subtitle="Balanced scorecard rankings and quality guardrails."
         actions={
           <FormControl size="small" sx={{ minWidth: 170 }}>
             <InputLabel id="leaderboard-period-label">Period</InputLabel>
@@ -183,7 +183,7 @@ export function LeaderboardPage() {
           >
             {isBannerExpanded
               ? 'Hide Governance Decisions'
-              : `View ${leaderboard?.unresolvedDecisions?.length ?? 9} Decisions`}
+              : `View ${leaderboard?.unresolvedDecisions?.length ?? 0} Decisions`}
           </Button>
         }
       >

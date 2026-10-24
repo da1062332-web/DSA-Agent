@@ -254,7 +254,7 @@ export function UserListPage() {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Header */}
       <PageHeader
         title="Staff User Management"

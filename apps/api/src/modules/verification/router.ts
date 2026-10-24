@@ -42,6 +42,15 @@ function requirePermission(ctx: RequestContext, code: PermissionCode): void {
   }
 }
 
+function requireAnyPermission(ctx: RequestContext, codes: PermissionCode[]): void {
+  const { principal } = ctx;
+  if (principal.kind === 'SERVICE') return;
+  const hasGrant = principal.grants.some((g) => codes.includes(g.code));
+  if (!hasGrant) {
+    throw AppError.of('FORBIDDEN', `Permission denied: one of [${codes.join(', ')}] required.`);
+  }
+}
+
 function parseIfMatch(req: Request): number {
   const header = req.header('If-Match');
   if (!header) {
@@ -143,7 +152,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.patch('/verification-requests/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'verification.update');
+      requireAnyPermission(ctx, ['verification.update', 'verification.perform']);
 
       const id = extractId(req);
       const ifMatch = parseIfMatch(req);
@@ -198,7 +207,7 @@ export function createRouter(deps: ApiDeps): Router {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const ctx = getContext(req);
-        requirePermission(ctx, 'document.review');
+        requireAnyPermission(ctx, ['document.review', 'verification.perform']);
 
         const id = extractId(req);
 

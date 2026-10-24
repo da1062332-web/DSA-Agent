@@ -1,4 +1,4 @@
-// apps/web/src/features/verifications/routes.tsx — Module 22: Verification (MOD-VER)
+// apps/web/src/features/verifications/routes.tsx — Module 22: Verification
 import type { RouteObject } from 'react-router-dom';
 import { VerificationDetailPage } from './VerificationDetailPage';
 import { VerificationListPage } from './VerificationListPage';

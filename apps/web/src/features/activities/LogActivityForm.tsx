@@ -384,7 +384,7 @@ export function LogActivityForm({
   return (
     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
       <Typography variant="h6" fontWeight={700} gutterBottom>
-        Log Activity (CMP-ACT.01.1)
+        Log Activity
       </Typography>
       {formContent}
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>

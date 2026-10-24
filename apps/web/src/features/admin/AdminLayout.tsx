@@ -14,7 +14,7 @@ export function AdminLayout() {
   const allowed = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth={false} disableGutters>
       {allowed ? (
         <Outlet />
       ) : (

@@ -31,6 +31,7 @@ import {
   Typography,
 } from '@mui/material';
 import { DataTable, PageHeader } from '../../ui';
+import { LenderName } from '../../shell/display';
 import { Link as RouterLink } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -161,10 +162,10 @@ export function ProductCataloguePage() {
   });
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Loan Product Catalogue"
-        subtitle="Module 15 / 29 — Lender product catalogue, parameter ranges, and immutable version governance"
+        subtitle="Lender product catalogue, parameter ranges, and immutable version governance"
         actions={
           canManage && (
             <Button
@@ -270,7 +271,7 @@ export function ProductCataloguePage() {
               </Typography>
             ),
           },
-          { id: 'lender', header: 'Lender', render: (p) => p.lenderName || p.lenderId },
+          { id: 'lender', header: 'Lender', render: (p) => <LenderName id={p.lenderId} fallback={p.lenderName || p.lenderId} /> },
           { id: 'category', header: 'Category', render: (p) => <Chip label={p.category} size="small" variant="outlined" /> },
           {
             id: 'security',

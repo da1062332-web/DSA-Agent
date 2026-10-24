@@ -135,6 +135,8 @@ export function createRouter(deps: ApiDeps): Router {
       let lockVersion = 0;
       let notificationPreferences: unknown = null;
       let roles: string[] = [];
+      let userType = 'STAFF';
+      let connectorId: string | null = null;
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
           const r = await sql<{
@@ -142,14 +144,18 @@ export function createRouter(deps: ApiDeps): Router {
             display_name: string;
             lock_version: number;
             notification_preferences?: unknown;
+            user_type?: string;
+            connector_id?: string | null;
           }>`
-            SELECT email, display_name, lock_version, notification_preferences FROM app.app_user WHERE id = ${p.id}
+            SELECT email, display_name, lock_version, notification_preferences, user_type, connector_id FROM app.app_user WHERE id = ${p.id}
           `.execute(tx);
           if (r.rows[0]) {
             email = r.rows[0].email;
             displayName = r.rows[0].display_name;
             lockVersion = Number(r.rows[0].lock_version ?? 0);
             notificationPreferences = r.rows[0].notification_preferences;
+            userType = r.rows[0].user_type ?? 'STAFF';
+            connectorId = r.rows[0].connector_id ?? null;
           }
 
           const rRoles = await sql<{ code: string }>`
@@ -202,6 +208,8 @@ export function createRouter(deps: ApiDeps): Router {
         queueIds: p.queueIds || [],
         grants: p.grants || [],
         roles,
+        userType,
+        connectorId,
         authTime: p.authTime,
         mfaVerifiedAt: p.authTime,
         lockVersion,

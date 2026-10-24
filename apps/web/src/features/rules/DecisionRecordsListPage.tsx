@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchDecisionRecords } from './api';
+import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import {
   DataTable,
   FilterToolbar,
@@ -91,11 +92,30 @@ export function DecisionRecordsListPage() {
     {
       id: 'subject',
       header: 'Subject',
-      accessor: (r) => (
-        <Typography variant="body2">
-          {r.subjectType ? `${r.subjectType}:${r.subjectId?.slice(0, 10)}...` : '—'}
-        </Typography>
-      ),
+      accessor: (r) => {
+        if (!r.subjectType || !r.subjectId) return '—';
+        let subjectNode = null;
+        if (r.subjectType === 'LEAD') {
+          subjectNode = <LeadName id={r.subjectId} linkToLead />;
+        } else if (r.subjectType === 'CUSTOMER') {
+          subjectNode = <CustomerName id={r.subjectId} linkToProfile />;
+        } else if (r.subjectType === 'APPLICATION' || r.subjectType === 'LOAN_APPLICATION') {
+          subjectNode = <ApplicationName id={r.subjectId} linkToApp />;
+        }
+
+        return (
+          <Box>
+            {subjectNode && (
+              <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                {subjectNode}
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              {r.subjectType} • {r.subjectId}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       id: 'status',
@@ -152,7 +172,7 @@ export function DecisionRecordsListPage() {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Decision Execution Audit Records"
         subtitle="Immutable audit log of all live decisions evaluated by the rule engine"

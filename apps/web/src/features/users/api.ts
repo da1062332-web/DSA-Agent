@@ -42,10 +42,14 @@ export async function assignUserRole(
   userId: string,
   roleId: string,
   scopeType: string = 'TENANT',
+  scopeBranchIds: string[] = [],
 ): Promise<{ id: string; alreadyAssigned: boolean }> {
+  if (!roleId || !roleId.trim()) {
+    throw new Error('Please select a valid role to assign.');
+  }
   return apiFetch<{ id: string; alreadyAssigned: boolean }>(`/v1/users/${encodeURIComponent(userId)}/roles`, {
     method: 'POST',
-    body: { roleId, scopeType, scopeBranchIds: [] },
+    body: { roleId: roleId.trim(), scopeType, scopeBranchIds },
   });
 }
 

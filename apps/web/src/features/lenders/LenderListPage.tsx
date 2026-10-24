@@ -161,10 +161,10 @@ export function LenderListPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Lender Directory"
-        subtitle="Module 14 / 28 — Lender standing, empanelment agreements, and escalation contacts"
+        subtitle="Lender standing, empanelment agreements, and escalation contacts"
         actions={
           canManage && (
             <Button

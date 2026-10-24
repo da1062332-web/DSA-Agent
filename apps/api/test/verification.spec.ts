@@ -530,6 +530,35 @@ describe('Module 19: Verification API & Integration Tests', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
+  it('TEST-VRF-028 allows checklist review with verification.perform even without document.review', async () => {
+    const store = createMockVerificationStore();
+    const verifierWithPerform = testPrincipal({
+      id: 'usr_perf_only',
+      tenantId: 'ten_01JTESTTENANT00000000000000',
+      grants: [
+        { code: 'verification.read', scope: 'TENANT', branchIds: [] },
+        { code: 'verification.perform', scope: 'TENANT', branchIds: [] },
+      ],
+    });
+
+    const app = createTestApp({
+      auth: fakeAuth(verifierWithPerform),
+      deps: { txRunner: store.runner },
+    });
+
+    const res = await request(app)
+      .post('/v1/verification-requests/vrf_01JTESTVRF0000000000000001/checklist-review')
+      .send({
+        checklistItemId: 'chk_pan_01',
+        status: 'ACCEPTED',
+        attestationNote: 'Verified via manual check',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.checklistItemId).toBe('chk_pan_01');
+    expect(res.body.status).toBe('ACCEPTED');
+  });
+
   it('TEST-VRF-026 branch scoping: user with Mumbai branch grant cannot see Pune verification case', async () => {
     const store = createMockVerificationStore();
     const mumbaiUser = testPrincipal({

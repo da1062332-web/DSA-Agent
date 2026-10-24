@@ -36,7 +36,6 @@ describe('PrivacyDashboard Frontend Component Rendering', () => {
     );
 
     expect(html).toContain('Privacy &amp; Consent Governance');
-    expect(html).toContain('MOD-PRV');
     expect(html).toContain('ACTIVE CONSENTS');
     expect(html).toContain('WITHDRAWN CONSENTS');
     expect(html).toContain('DATA SHARING EVENTS');
@@ -54,7 +53,7 @@ describe('PrivacyDashboard Frontend Component Rendering', () => {
     expect(html).toContain('Data Sharing Inventory (ENT-100)');
     expect(html).toContain('Consent Verification Auditor');
     expect(html).toContain('Data Classification &amp; Masking');
-    expect(html).toContain('Retention &amp; Legal Hold (OD-008)');
+    expect(html).toContain('Retention &amp; Legal Hold');
     expect(html).toContain('Data-Principal Rights (DSR)');
   });
 });

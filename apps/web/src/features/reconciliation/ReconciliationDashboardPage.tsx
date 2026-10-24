@@ -29,7 +29,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
-import { LenderName } from '../../shell/display';
+import { ConnectorName, LenderName, UserName } from '../../shell/display';
 import { useLookup } from '../admin/api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { DataTable, PageHeader, StatCard, StatCardGrid } from '../../ui';
@@ -422,10 +422,10 @@ export function ReconciliationDashboardPage() {
   const pendingAdjustments = adjustments.filter((a) => a.status === 'PENDING').length;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }} data-testid="rec.dashboard">
+    <Container maxWidth={false} disableGutters data-testid="rec.dashboard">
       <PageHeader
         title="Reconciliation Management"
-        subtitle="Domain DOM-K Finance Squad · Statement Ingestion, Commission Matching, Variance Resolution & Settlement"
+        subtitle="Statement Ingestion, Commission Matching, Variance Resolution & Settlement"
         actions={
           <Stack direction="row" spacing={2}>
             <Can action="finance.reconcile">
@@ -520,12 +520,12 @@ export function ReconciliationDashboardPage() {
           scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2, bgcolor: 'background.paper' }}
         >
-          <Tab label="Lender Statements (SUB-REC.01)" data-testid="rec.tab.statements" />
-          <Tab label="Commission Matches (SUB-REC.02)" data-testid="rec.tab.matches" />
-          <Tab label="Exceptions Workbench (SUB-REC.03)" data-testid="rec.tab.exceptions" />
-          <Tab label="Adjustments & SOD-07 (SUB-REC.03)" data-testid="rec.tab.adjustments" />
-          <Tab label="Disputes & Holds (SUB-REC.04)" data-testid="rec.tab.disputes" />
-          <Tab label="Bank Settlement (SUB-REC.05)" data-testid="rec.tab.settlement" />
+          <Tab label="Lender Statements" data-testid="rec.tab.statements" />
+          <Tab label="Commission Matches" data-testid="rec.tab.matches" />
+          <Tab label="Exceptions Workbench" data-testid="rec.tab.exceptions" />
+          <Tab label="Adjustments & SOD-07" data-testid="rec.tab.adjustments" />
+          <Tab label="Disputes & Holds" data-testid="rec.tab.disputes" />
+          <Tab label="Bank Settlement" data-testid="rec.tab.settlement" />
         </Tabs>
 
         {/* Tab 0: Lender Statements */}
@@ -551,7 +551,18 @@ export function ReconciliationDashboardPage() {
               emptyMessage='No lender commission statements imported yet. Click "+ Ingest Lender Statement" to import.'
               columns={[
                 { id: 'id', header: 'Statement ID', render: (stmt) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{stmt.id}</Box> },
-                { id: 'lender', header: 'Lender ID', render: (stmt) => <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 500 }} /> },
+                {
+                  id: 'lender',
+                  header: 'Lender',
+                  render: (stmt) => (
+                    <Box>
+                      <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                        {stmt.lenderId}
+                      </Typography>
+                    </Box>
+                  ),
+                },
                 { id: 'period', header: 'Period', render: (stmt) => <Chip label={stmt.period} size="small" variant="outlined" /> },
                 { id: 'lines', header: 'Lines', render: (stmt) => stmt.totals?.lineCount ?? 0 },
                 { id: 'disbursed', header: 'Disbursed Total (₹)', render: (stmt) => `₹${stmt.totals?.totalDisbursed?.toLocaleString() ?? 0}` },
@@ -614,7 +625,7 @@ export function ReconciliationDashboardPage() {
         {activeTab === 1 && (
           <Box sx={{ p: 3 }}>
             <Alert severity="info" sx={{ mb: 3 }}>
-              <strong>SUB-REC.02 Active Match Protection:</strong> Only one active match is permitted per
+              <strong>Active Match Protection:</strong> Only one active match is permitted per
               statement line. Deterministic reconciliation matching runs through rules evaluation with audit
               trails.
             </Alert>
@@ -767,14 +778,12 @@ export function ReconciliationDashboardPage() {
                 {
                   id: 'createdBy',
                   header: 'Created By',
-                  render: (adj) => <Box sx={{ fontSize: 12, fontFamily: 'monospace' }}>{adj.createdBy}</Box>,
+                  render: (adj) => <UserName id={adj.createdBy} />,
                 },
                 {
                   id: 'approvedBy',
                   header: 'Approved By',
-                  render: (adj) => (
-                    <Box sx={{ fontSize: 12, fontFamily: 'monospace' }}>{adj.approvedBy || 'Pending'}</Box>
-                  ),
+                  render: (adj) => <UserName id={adj.approvedBy} fallback="Pending" />,
                 },
                 {
                   id: 'sod07',
@@ -827,7 +836,7 @@ export function ReconciliationDashboardPage() {
         {activeTab === 4 && (
           <Box sx={{ p: 3 }}>
             <Alert severity="info" sx={{ mb: 3 }}>
-              <strong>SUB-REC.04 Dispute Invariant:</strong> An open dispute places associated commission
+              <strong>Dispute Invariant:</strong> An open dispute places associated commission
               payables atomically on <code>ON_HOLD</code> to prevent premature payment processing.
             </Alert>
             <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
@@ -846,11 +855,39 @@ export function ReconciliationDashboardPage() {
                     <Chip label={disp.partyType} size="small" color={disp.partyType === 'LENDER' ? 'secondary' : 'primary'} />
                   ),
                 },
-                { id: 'partyId', header: 'Party ID', render: (disp) => disp.partyId },
+                {
+                  id: 'partyId',
+                  header: 'Party',
+                  render: (disp) => (
+                    <Box>
+                      {disp.partyType === 'LENDER' ? (
+                        <LenderName id={disp.partyId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                      ) : disp.partyType === 'CONNECTOR' ? (
+                        <ConnectorName id={disp.partyId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                      ) : (
+                        <Typography variant="body2" fontWeight={600}>
+                          {disp.partyId}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                        {disp.partyId}
+                      </Typography>
+                    </Box>
+                  ),
+                },
                 {
                   id: 'subject',
                   header: 'Subject',
-                  render: (disp) => <Box sx={{ fontSize: 13 }}>{disp.subjectType}: {disp.subjectId}</Box>,
+                  render: (disp) => (
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {disp.subjectType.replace(/_/g, ' ')}
+                      </Typography>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                        {disp.subjectId}
+                      </Typography>
+                    </Box>
+                  ),
                 },
                 { id: 'reason', header: 'Reason', render: (disp) => <Box sx={{ fontSize: 13 }}>{disp.reason}</Box> },
                 {
@@ -888,14 +925,14 @@ export function ReconciliationDashboardPage() {
           </Box>
         )}
 
-        {/* Tab 5: Bank Settlement (SUB-REC.05) */}
+        {/* Tab 5: Bank Settlement */}
         {activeTab === 5 && (
           <Box sx={{ p: 4 }}>
             <Grid container spacing={4} justifyContent="center">
               <Grid item xs={12} md={8}>
                 <Card sx={{ borderRadius: 3, p: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <Typography variant="h6" fontWeight={700} sx={{ mb: 1, color: 'primary.main' }}>
-                    SUB-REC.05: Payout Bank Settlement Reconciliation
+                    Payout Bank Settlement Reconciliation
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Reconciles recorded connector payout requests against imported bank settlement records.
@@ -972,7 +1009,7 @@ export function ReconciliationDashboardPage() {
       {/* MODAL 1: Ingest Lender Statement */}
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle fontWeight={700}>
-          Automated Bank Statement Ingestion Engine (SUB-REC.01 / TASK-418)
+          Automated Bank Statement Ingestion Engine
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
@@ -1145,7 +1182,7 @@ export function ReconciliationDashboardPage() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle fontWeight={700}>Propose Financial Adjustment (SUB-REC.03)</DialogTitle>
+        <DialogTitle fontWeight={700}>Propose Financial Adjustment</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <FormControl fullWidth>
@@ -1215,7 +1252,7 @@ export function ReconciliationDashboardPage() {
 
       {/* MODAL 4: Raise Dispute */}
       <Dialog open={disputeDialogOpen} onClose={() => setDisputeDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Raise Financial Dispute (SUB-REC.04)</DialogTitle>
+        <DialogTitle fontWeight={700}>Raise Financial Dispute</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Grid container spacing={2}>

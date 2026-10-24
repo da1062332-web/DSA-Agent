@@ -37,9 +37,6 @@ describe('IntegrationsPage Frontend Component Rendering', () => {
     );
 
     expect(html).toContain('Integration Management &amp; Adapter Framework');
-    expect(html).toContain('MOD-INT');
-    expect(html).toContain('DOM-M');
-    expect(html).toContain('SUB-INT.01');
     expect(html).toContain('Classification S4 Protection');
     expect(html).toContain('credential_ref');
   });

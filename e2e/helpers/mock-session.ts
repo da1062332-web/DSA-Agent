@@ -517,12 +517,12 @@ export async function performRoleLogin(
   }
 
   // 3. Handle MFA OTP step if presented
-  const mfaInput = page.locator('[data-testid="auth.mfa.code"]');
+  const mfaInput = page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
   const isMfaPage = await mfaInput.isVisible({ timeout: 4000 }).catch(() => false);
 
   if (isMfaPage) {
     await showDemoBanner(page, '2FA Step-Up', 'Verifying MFA TOTP Code: 000000');
-    const mfaSubmit = page.locator('[data-testid="auth.mfa.submit"]');
+    const mfaSubmit = page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
     await humanType(mfaInput, '000000');
     await pauseForDemo(page, 400);
     await humanClick(mfaSubmit, 800);

@@ -174,7 +174,7 @@ export function RuleSetDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -182,7 +182,7 @@ export function RuleSetDetailPage() {
 
   if (error || !ruleSet) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">{error || 'Rule set not found'}</Alert>
         <Button sx={{ mt: 2 }} onClick={() => navigate('/rules')}>
           Back to Rule Sets
@@ -192,7 +192,7 @@ export function RuleSetDetailPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title={ruleSet.name}
         backTo="/rules"

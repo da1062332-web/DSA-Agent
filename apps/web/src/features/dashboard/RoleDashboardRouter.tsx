@@ -53,7 +53,7 @@ export function RoleDashboardRouter() {
 
   if (me.isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 10, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 10, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );

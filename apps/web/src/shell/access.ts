@@ -332,10 +332,10 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
 
   // Verifications & Documents
   'verification.create': ['verification.create'],
-  'verification.update': ['verification.update'],
-  'verification.perform': ['verification.perform'],
+  'verification.update': ['verification.update', 'verification.perform'],
+  'verification.perform': ['verification.perform', 'document.review'],
   'verification.complete': ['verification.complete'],
-  'document.review': ['document.review'],
+  'document.review': ['document.review', 'verification.perform'],
   'document.upload': ['document.upload'],
   'share.create': ['share.create'],
 

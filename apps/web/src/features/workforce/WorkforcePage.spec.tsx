@@ -70,7 +70,7 @@ describe('Module 26 — WorkforcePage Frontend Component (MOD-WRK)', () => {
     );
   });
 
-  it('renders quick self-availability switcher chips (SUB-WRK.01)', () => {
+  it('renders quick self-availability switcher chips', () => {
     const html = renderWorkforcePage();
 
     expect(html).toContain('My Status:');
@@ -83,9 +83,9 @@ describe('Module 26 — WorkforcePage Frontend Component (MOD-WRK)', () => {
   it('renders all 3 submodule tabs: Capacity, Leave Coverage, Attendance', () => {
     const html = renderWorkforcePage();
 
-    expect(html).toContain('Capacity &amp; Availability (SUB-WRK.01)');
-    expect(html).toContain('Leave Coverage Planner (SUB-WRK.02)');
-    expect(html).toContain('Attendance &amp; Check-in (SUB-WRK.03)');
+    expect(html).toContain('Capacity &amp; Availability');
+    expect(html).toContain('Leave Coverage Planner');
+    expect(html).toContain('Attendance &amp; Check-in');
   });
 
   it('renders capacity & availability table headers on initial load', () => {

@@ -19,8 +19,8 @@ import {
 } from '@mui/material';
 import { fetchLenderCase } from './api';
 import { LenderCasePanel } from './LenderCasePanel';
-import { ApplicationName, LenderName } from '../../shell/display';
-import { PageHeader } from '../../ui';
+import { ApplicationName, LenderName, ProductName } from '../../shell/display';
+import { PageHeader, AppCard } from '../../ui';
 
 export function LenderCaseDetailPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +33,7 @@ export function LenderCaseDetailPage(): React.ReactElement {
 
   if (isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -41,7 +41,7 @@ export function LenderCaseDetailPage(): React.ReactElement {
 
   if (error || !data) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">Failed to load lender case details.</Alert>
       </Container>
     );
@@ -50,9 +50,17 @@ export function LenderCaseDetailPage(): React.ReactElement {
   const { case: c } = data;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
-        title={`Lender Case: ${c.id}`}
+        title={
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            <LenderName id={c.lenderId} />
+            <span>Case</span>
+            <Typography component="span" variant="h5" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+              ({c.id})
+            </Typography>
+          </Box>
+        }
         badge={<Chip label={c.status} color="primary" />}
         subtitle={
           <Typography variant="body2" color="text.secondary">
@@ -63,48 +71,44 @@ export function LenderCaseDetailPage(): React.ReactElement {
 
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} md={6}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Case Placement Details
-            </Typography>
-            <Divider sx={{ mb: 1.5 }} />
-            <Typography variant="body2">
-              <strong>Lender:</strong> <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} />
-            </Typography>
-            <Typography variant="body2">
-              <strong>Product Version:</strong> {c.productVersionId}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Empanelment ID:</strong> {c.empanelmentId}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Channel:</strong> {c.submissionChannel || '—'}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Reference:</strong> {c.lenderReference || '—'}
-            </Typography>
-          </Paper>
+          <AppCard title="Case Placement Details" divider>
+            <Stack spacing={1}>
+              <Typography variant="body2">
+                <strong>Lender:</strong> <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} />
+              </Typography>
+              <Typography variant="body2">
+                <strong>Product:</strong> <ProductName id={c.productVersionId} fallback={c.productVersionId} />
+              </Typography>
+              <Typography variant="body2">
+                <strong>Empanelment ID:</strong> {c.empanelmentId}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Channel:</strong> {c.submissionChannel || '—'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Reference:</strong> {c.lenderReference || '—'}
+              </Typography>
+            </Stack>
+          </AppCard>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Audit & Versioning
-            </Typography>
-            <Divider sx={{ mb: 1.5 }} />
-            <Typography variant="body2">
-              <strong>Lock Version:</strong> {c.lockVersion}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Package ID:</strong> {c.packageId || '—'}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Created At:</strong> {new Date(c.createdAt).toLocaleString()}
-            </Typography>
-            <Typography variant="body2">
-              <strong>Last Status At:</strong>{' '}
-              {c.lastStatusAt ? new Date(c.lastStatusAt).toLocaleString() : '—'}
-            </Typography>
-          </Paper>
+          <AppCard title="Audit & Versioning" divider>
+            <Stack spacing={1}>
+              <Typography variant="body2">
+                <strong>Lock Version:</strong> {c.lockVersion}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Package ID:</strong> {c.packageId || '—'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Created At:</strong> {new Date(c.createdAt).toLocaleString()}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Last Status At:</strong>{' '}
+                {c.lastStatusAt ? new Date(c.lastStatusAt).toLocaleString() : '—'}
+              </Typography>
+            </Stack>
+          </AppCard>
         </Grid>
       </Grid>
 

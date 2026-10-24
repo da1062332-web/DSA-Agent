@@ -10,8 +10,24 @@ import type {
 } from '@dsa/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch, newIdempotencyKey } from '../../api/client';
+import { getSupabase, getSupabaseStorageClient } from '../../auth/supabase';
 import { readConfig } from '../../config';
 import type { ChecklistResponse } from './model';
+
+export interface SupabaseStorageFile {
+  name: string;
+  id?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  last_accessed_at?: string | null;
+  metadata?: {
+    size?: number;
+    mimetype?: string;
+    eTag?: string;
+    lastModified?: string;
+    [key: string]: unknown;
+  } | null;
+}
 
 export const getChecklist = (applicationId: string) =>
   apiFetch<ChecklistResponse>(`/v1/applications/${encodeURIComponent(applicationId)}/checklist`);
@@ -42,6 +58,24 @@ const apiUrl = (path: string) => {
   return `${config.data.VITE_API_BASE_URL}${path}`;
 };
 
+function normalizeDocumentMimeType(file: File): 'application/pdf' | 'image/jpeg' | 'image/png' {
+  const t = file.type?.toLowerCase();
+  if (t === 'application/pdf') return 'application/pdf';
+  if (t === 'image/jpeg' || t === 'image/jpg' || t === 'image/pjpeg') return 'image/jpeg';
+  if (t === 'image/png') return 'image/png';
+
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+
+  throw new ApiError(
+    'VALIDATION_ERROR',
+    422,
+    `Unsupported file format (${file.type || ext || 'unknown'}). Only PDF, JPEG, and PNG files are accepted.`,
+  );
+}
+
 /**
  * Staff upload for one checklist item: register an intent with the file's size and sha256 (API-DOC-001), PUT the bytes to the
  * signed url, then complete it (API-DOC-002), which scans the file and moves the item to SUBMITTED when it is clean.
@@ -51,20 +85,40 @@ export async function uploadChecklistDocument(
   file: File,
 ): Promise<CompleteUploadResponse> {
   const bytes = await file.arrayBuffer();
+  const mimeType = normalizeDocumentMimeType(file);
+  const cleanFileName = file.name.replace(/^.*[\\/]/, '') || `document.${mimeType === 'application/pdf' ? 'pdf' : mimeType === 'image/png' ? 'png' : 'jpg'}`;
+
+  // Also mirror direct upload to Supabase Storage 'Media' bucket in 'Documents/' folder
+  try {
+    const supabase = getSupabaseStorageClient();
+    const { error: storageError } = await supabase.storage
+      .from('Media')
+      .upload(`Documents/${checklistItemId}_${cleanFileName}`, file, {
+        upsert: true,
+        cacheControl: '3600',
+      });
+    if (storageError) {
+      console.warn('Direct Supabase Storage sync notice:', storageError.message);
+    }
+  } catch (err) {
+    // Non-fatal warning if direct Supabase mirror upload encounters any network friction
+    console.warn('Direct Supabase Storage sync notice:', err);
+  }
+
   const intent = await apiFetch<UploadIntentResponse>('/v1/documents/upload-intents', {
     method: 'POST',
     idempotencyKey: newIdempotencyKey(),
     body: {
       checklistItemId,
-      fileName: file.name,
+      fileName: cleanFileName,
       sizeBytes: file.size,
-      mimeType: file.type,
+      mimeType,
       sha256: await sha256(bytes),
     },
   });
   const put = await fetch(apiUrl(intent.url), {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': mimeType },
     body: bytes,
   });
   if (!put.ok) {
@@ -90,6 +144,77 @@ export async function openDocumentVersion(versionId: string): Promise<void> {
     { method: 'POST', body: { purpose: 'Checklist review' } },
   );
   window.open(apiUrl(link.url), '_blank', 'noopener');
+}
+
+/**
+ * Uploads a file directly from the browser into Supabase Storage bucket 'Media'.
+ * Bypasses the API server for fast, direct cloud storage.
+ */
+export async function uploadDirectToSupabase(
+  file: File,
+  folder = 'Documents',
+  customName?: string,
+): Promise<{ path: string; fullPath: string }> {
+  const supabase = getSupabaseStorageClient();
+  const cleanName = (customName || file.name).replace(/[^A-Za-z0-9_.-]/g, '_');
+  const path = `${folder}/${cleanName}`;
+
+  const { data, error } = await supabase.storage
+    .from('Media')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+  if (error) {
+    throw new ApiError('STORAGE_ERROR', 400, `Supabase storage upload failed: ${error.message}`);
+  }
+
+  return { path: data.path, fullPath: data.fullPath };
+}
+
+/** Lists all files in the Supabase 'Media' bucket inside the given folder (default 'Documents'). */
+export async function listSupabaseStorageFiles(folder = 'Documents'): Promise<SupabaseStorageFile[]> {
+  const supabase = getSupabaseStorageClient();
+  const { data, error } = await supabase.storage
+    .from('Media')
+    .list(folder, {
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
+
+  if (error) {
+    throw new ApiError('STORAGE_ERROR', 400, `Failed to list files: ${error.message}`);
+  }
+
+  return (data || [])
+    .filter((f) => f.name && !f.name.startsWith('.'))
+    .map((f) => ({ ...f, id: f.id ?? undefined }) as SupabaseStorageFile);
+}
+
+/** Generates a secure, temporary signed preview URL for a file in Supabase Storage. */
+export async function getSupabaseSignedUrl(path: string, expiresInSeconds = 3600): Promise<string> {
+  const supabase = getSupabaseStorageClient();
+  const { data, error } = await supabase.storage
+    .from('Media')
+    .createSignedUrl(path, expiresInSeconds);
+
+  if (error || !data?.signedUrl) {
+    throw new ApiError('STORAGE_ERROR', 400, error?.message || 'Could not generate signed preview link.');
+  }
+
+  return data.signedUrl;
+}
+
+/** Deletes a file from the Supabase 'Media' bucket. */
+export async function deleteSupabaseStorageFile(path: string): Promise<void> {
+  const supabase = getSupabaseStorageClient();
+  const { error } = await supabase.storage
+    .from('Media')
+    .remove([path]);
+
+  if (error) {
+    throw new ApiError('STORAGE_ERROR', 400, `Failed to delete file: ${error.message}`);
+  }
 }
 
 export const reviewDocumentVersion = (

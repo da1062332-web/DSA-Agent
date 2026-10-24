@@ -31,6 +31,7 @@ import {
   Typography,
 } from '@mui/material';
 import { DataTable, PageHeader } from '../../ui';
+import { UserName } from '../../shell/display';
 import type { TenantFeatureFlag } from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
@@ -94,7 +95,7 @@ export function TenantDetailPage() {
   const globals = (globalQuery.data?.data ?? []).filter((f) => f.scope === 'GLOBAL');
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
+    <Box>
       <Breadcrumbs sx={{ mb: 1 }}>
         <RouterLink to="/platform-admin">Platform console</RouterLink>
         <Typography color="text.primary">Tenants</Typography>
@@ -165,19 +166,21 @@ export function TenantDetailPage() {
                 No leads, loans or customer financial records of the tenant are read or shown.
               </Alert>
               <Grid container spacing={2}>
-                {[
-                  ['Slug', tenant.slug],
-                  ['Legal name', tenant.legalName],
-                  ['Type', tenant.tenantType],
-                  ['Region / timezone', `${tenant.dataRegion} / ${tenant.timezone}`],
-                  ['Active users', String(tenant.activeUsersCount)],
-                  ['Created', new Date(tenant.createdAt).toLocaleDateString()],
-                  ['Created by', tenant.createdBy],
+                {(
                   [
-                    'Entitlements',
-                    tenant.entitlements.length ? tenant.entitlements.join(', ') : 'None recorded',
-                  ],
-                ].map(([label, value]) => (
+                    { label: 'Slug', value: tenant.slug },
+                    { label: 'Legal name', value: tenant.legalName },
+                    { label: 'Type', value: tenant.tenantType },
+                    { label: 'Region / timezone', value: `${tenant.dataRegion} / ${tenant.timezone}` },
+                    { label: 'Active users', value: String(tenant.activeUsersCount) },
+                    { label: 'Created', value: new Date(tenant.createdAt).toLocaleDateString() },
+                    { label: 'Created by', value: <UserName id={tenant.createdBy} /> },
+                    {
+                      label: 'Entitlements',
+                      value: tenant.entitlements.length ? tenant.entitlements.join(', ') : 'None recorded',
+                    },
+                  ] as Array<{ label: string; value: React.ReactNode }>
+                ).map(({ label, value }) => (
                   <Grid item xs={12} sm={6} md={3} key={label}>
                     <Card variant="outlined" sx={{ borderRadius: 2, height: '100%' }}>
                       <CardContent>

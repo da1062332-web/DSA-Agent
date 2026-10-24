@@ -65,7 +65,9 @@ export function AppLayout() {
       const next = !prev;
       try {
         localStorage.setItem('dsa_sidebar_collapsed', String(next));
-      } catch {}
+      } catch {
+        // storage unavailable (private mode or blocked); safe to ignore
+      }
       return next;
     });
   };
@@ -74,7 +76,9 @@ export function AppLayout() {
     setSidebarCollapsed(false);
     try {
       localStorage.setItem('dsa_sidebar_collapsed', 'false');
-    } catch {}
+    } catch {
+      // storage unavailable (private mode or blocked); safe to ignore
+    }
   };
 
   const theme = useTheme();
@@ -155,7 +159,11 @@ export function AppLayout() {
               }}
             >
               {wide ? (
-                <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right" arrow>
+                <Tooltip
+                  title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  placement="right"
+                  arrow
+                >
                   <IconButton
                     color="inherit"
                     onClick={toggleSidebarCollapse}

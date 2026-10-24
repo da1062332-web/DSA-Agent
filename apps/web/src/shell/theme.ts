@@ -123,26 +123,65 @@ export const theme = createTheme({
       },
     },
     MuiButton: {
-      defaultProps: { disableElevation: true },
+      defaultProps: { disableElevation: true, color: 'primary' },
       styleOverrides: {
         root: {
           borderRadius: 8,
-          paddingInline: 16,
           fontWeight: 600,
           textTransform: 'none',
+          letterSpacing: 0,
+          whiteSpace: 'nowrap',
+          transition: 'all 0.15s ease-in-out',
+        },
+        sizeSmall: {
+          height: 32,
+          padding: '4px 12px',
+          fontSize: '0.8125rem',
+          borderRadius: 6,
+        },
+        sizeMedium: {
+          height: 38,
+          padding: '6px 16px',
+          fontSize: '0.875rem',
+          borderRadius: 8,
+        },
+        sizeLarge: {
+          height: 44,
+          padding: '10px 22px',
+          fontSize: '0.9375rem',
+          borderRadius: 8,
+        },
+        contained: {
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         },
         containedPrimary: {
           backgroundColor: '#F89344', // Swatch Primary Tangerine Orange
           color: '#ffffff',
           '&:hover': {
             backgroundColor: '#D97324',
+            boxShadow: '0 2px 4px 0 rgba(217, 115, 36, 0.25)',
           },
         },
         containedSecondary: {
+          backgroundColor: '#215988', // Swatch BG/700 Deep Blue
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#174368',
+            boxShadow: '0 2px 4px 0 rgba(23, 67, 104, 0.25)',
+          },
+        },
+        containedError: {
           backgroundColor: '#FF642F', // Swatch Secondary Coral
           color: '#ffffff',
           '&:hover': {
             backgroundColor: '#DB4512',
+          },
+        },
+        containedSuccess: {
+          backgroundColor: '#059669',
+          color: '#ffffff',
+          '&:hover': {
+            backgroundColor: '#047857',
           },
         },
         containedInfo: {
@@ -152,12 +191,39 @@ export const theme = createTheme({
             backgroundColor: '#174368',
           },
         },
+        outlined: {
+          borderColor: '#CBD5E1',
+          color: '#0F172A',
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+          '&:hover': {
+            borderColor: '#94A3B8',
+            backgroundColor: '#F8FAFC',
+          },
+        },
         outlinedPrimary: {
           borderColor: '#F89344',
           color: '#D97324',
+          backgroundColor: '#FFFFFF',
           '&:hover': {
             borderColor: '#D97324',
             backgroundColor: 'rgba(248, 147, 68, 0.06)',
+          },
+        },
+        outlinedSecondary: {
+          borderColor: '#215988',
+          color: '#215988',
+          backgroundColor: '#FFFFFF',
+          '&:hover': {
+            borderColor: '#174368',
+            backgroundColor: 'rgba(33, 89, 136, 0.06)',
+          },
+        },
+        text: {
+          color: '#475569',
+          '&:hover': {
+            backgroundColor: '#F1F5F9',
+            color: '#0F172A',
           },
         },
       },

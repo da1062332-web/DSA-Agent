@@ -97,7 +97,12 @@ export function PageHeader({
           </Stack>
 
           {subtitle && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 840 }}>
+            <Typography
+              component="div"
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75, maxWidth: 840 }}
+            >
               {subtitle}
             </Typography>
           )}

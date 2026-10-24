@@ -1,5 +1,5 @@
 // /leads/:id (owner: Dev 5; DSA Notion MODULE 7; QA plan Modules 06 and 07). The lead, its lifecycle actions (SUB-LEAD.06, .09,
-// .10), assignment (CMP-LEAD.05.2 assign dialog), duplicate flag (SUB-LEAD.04), and its activity and follow-up tasks.
+// .10), assignment (CMP-LEAD.05.2 assign dialog), duplicate flag, and its activity and follow-up tasks.
 import { useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,7 +46,7 @@ import { leadActions } from './lead-actions';
 import { LeadFollowUps } from './LeadFollowUps';
 import { UserSelect } from '../../shell/selectors';
 import { CustomerName, ConnectorName, UserName } from '../../shell/display';
-import { PageHeader } from '../../ui';
+import { PageHeader, AppButton } from '../../ui';
 import type { ConversionResponse } from './types';
 
 export function LeadDetail() {
@@ -197,7 +197,7 @@ export function LeadDetail() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -205,7 +205,7 @@ export function LeadDetail() {
 
   if (isError || !lead) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error" sx={{ mb: 3 }}>
           {(error as Error)?.message || 'Lead not found or access denied.'}
         </Alert>
@@ -230,7 +230,7 @@ export function LeadDetail() {
   const actions = leadActions(lead.state, (code) => hasPermission(me.data, code));
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         backTo="/leads"
         title={lead.fullName}
@@ -312,9 +312,8 @@ export function LeadDetail() {
 
             {actions.qualify && (
               <Can permission="lead.qualify">
-                <Button
-                  variant="contained"
-                  color="success"
+                <AppButton
+                  variant="success"
                   disabled={isTransitionPending}
                   onClick={() => {
                     setQualAmount(lead.indicativeAmount?.amount ?? '');
@@ -323,121 +322,104 @@ export function LeadDetail() {
                   data-testid="lead.action.qualify"
                 >
                   Qualify Lead
-                </Button>
+                </AppButton>
               </Can>
             )}
             {actions.disqualify && (
               <Can permission="lead.qualify">
-                <Button
-                  variant="outlined"
-                  color="error"
+                <AppButton
+                  variant="danger"
                   disabled={isTransitionPending}
                   onClick={() => setDisqualifyOpen(true)}
                   data-testid="lead.action.disqualify"
                 >
                   Disqualify
-                </Button>
+                </AppButton>
               </Can>
             )}
 
             {actions.reopen && (
               <Can permission="lead.reopen">
-                <Button
-                  variant="contained"
-                  color="warning"
+                <AppButton
+                  variant="secondary"
                   disabled={isTransitionPending}
                   onClick={() => setReopenOpen(true)}
                   data-testid="lead.action.reopen"
                 >
                   Reopen Lead
-                </Button>
+                </AppButton>
               </Can>
             )}
 
             {actions.convert && (
               <Can permission="application.create">
-                <Button
-                  variant="contained"
-                  color="primary"
+                <AppButton
+                  variant="primary"
                   disabled={isTransitionPending}
+                  loading={convertMutation.isPending}
                   onClick={() => convertMutation.mutate()}
                   data-testid="lead.action.convert"
                 >
                   Convert to Loan Application
-                </Button>
+                </AppButton>
               </Can>
             )}
 
-            {actions.reopen && (
-              <Button
-                variant="outlined"
-                disabled={isTransitionPending}
-                onClick={() => setReopenOpen(true)}
-                data-testid="lead.action.reopen"
-              >
-                Reopen
-              </Button>
-            )}
-
             {actions.restore && (
-              <Button
-                variant="contained"
+              <AppButton
+                variant="primary"
                 disabled={isTransitionPending}
                 onClick={() => setRestoreOpen(true)}
                 data-testid="lead.action.restore"
               >
                 Restore
-              </Button>
+              </AppButton>
             )}
 
             {actions.assign && (
               <Can permission="lead.assign">
-                <Button
+                <AppButton
                   variant="outlined"
-                  color="inherit"
                   disabled={isTransitionPending}
                   onClick={() => setAssignOpen(true)}
                   data-testid="lead.action.assign"
                 >
                   Assign
-                </Button>
+                </AppButton>
               </Can>
             )}
 
             {actions.reroute && (
-              <Button
-                variant="text"
-                color="inherit"
+              <AppButton
+                variant="ghost"
                 disabled={isTransitionPending}
+                loading={rerouteMutation.isPending}
                 onClick={() => rerouteMutation.mutate()}
                 data-testid="lead.action.reroute"
               >
                 Re-run routing
-              </Button>
+              </AppButton>
             )}
 
             {actions.archive && (
-              <Button
-                variant="text"
-                color="inherit"
+              <AppButton
+                variant="ghost"
                 disabled={isTransitionPending}
                 onClick={() => setArchiveOpen(true)}
                 data-testid="lead.action.archive"
               >
                 Archive
-              </Button>
+              </AppButton>
             )}
 
             {canComplain && (
-              <Button
+              <AppButton
                 variant="outlined"
-                color="warning"
-                component={RouterLink}
                 to={`/complaints?complainantType=LEAD&complainantId=${lead.id}`}
                 data-testid="lead.action.grievance"
               >
                 Grievance / Complaint
-              </Button>
+              </AppButton>
             )}
           </Stack>
         }
@@ -760,7 +742,7 @@ export function LeadDetail() {
                       Grievances & Customer Complaints
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Registered complaints for this lead are linked to the Grievances module (MOD-GRV).
+                      Registered complaints for this lead are linked to the Grievances module.
                     </Typography>
                   </Box>
                   <Button

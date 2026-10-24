@@ -1,5 +1,6 @@
 // /account/security (owner: Dev 1, SUB-AUTH.02/.03): authenticator apps and sessions, all from Supabase Auth.
 // Removing a factor needs an aal2 session (Supabase enforces it); a user whose role requires MFA keeps at least one.
+import { PageHeader } from '../ui';
 import {
   Alert,
   Box,
@@ -88,10 +89,8 @@ export function SecurityPage() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Security
-      </Typography>
+    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+      <PageHeader title="Security" subtitle="Manage your sign-in methods and authenticator apps." />
       {message && (
         <Alert severity={message.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}

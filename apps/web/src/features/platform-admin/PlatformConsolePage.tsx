@@ -1,5 +1,5 @@
 // apps/web/src/features/platform-admin/PlatformConsolePage.tsx
-// Module 30: Administration and Platform Operations (MOD-ADM) UI Console
+// Module 30: Administration and Platform Operations UI Console
 import React, { useState } from 'react';
 import type { FeatureFlag, MasterDataItem, PlatformTenantSummary } from '@dsa/contracts';
 import { DataTable, PageHeader } from '../../ui';
@@ -294,18 +294,9 @@ export function PlatformConsolePage() {
   const sysStatus = healthQuery.data?.status ?? 'HEALTHY';
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
+    <Box>
       <PageHeader
         title="Platform Operations & Administration"
-        badge={
-          <Chip
-            label="MOD-ADM"
-            color="primary"
-            variant="outlined"
-            size="small"
-            sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-          />
-        }
         subtitle="Operator console, feature flags, master data catalogues, background job queues, break-glass support access & governed release register."
         actions={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -348,7 +339,7 @@ export function PlatformConsolePage() {
         </Tabs>
       </Paper>
 
-      {/* TAB 0: TENANTS / PLATFORM CONSOLE (SUB-ADM.01) */}
+      {/* TAB 0: TENANTS / PLATFORM CONSOLE */}
       {tabIndex === 0 && (
         <Box>
           <Alert severity="info" sx={{ mb: 3 }} icon={<SecurityIcon />}>
@@ -451,12 +442,12 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 1: FEATURE FLAGS (SUB-ADM.02) */}
+      {/* TAB 1: FEATURE FLAGS */}
       {tabIndex === 1 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" fontWeight={600}>
-              Platform & Tenant Feature Flags (CMP-ADM.02.1)
+              Platform & Tenant Feature Flags
             </Typography>
             <Chip
               label="Optimistic Concurrency (If-Match) Active"
@@ -522,12 +513,12 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 2: MASTER DATA (SUB-ADM.03) */}
+      {/* TAB 2: MASTER DATA */}
       {tabIndex === 2 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6" fontWeight={600}>
-              Master Data Catalogues (CMP-ADM.03.1)
+              Master Data Catalogues
             </Typography>
             <Button
               variant="contained"
@@ -580,11 +571,11 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 3: BACKGROUND JOBS (SUB-ADM.04) */}
+      {/* TAB 3: BACKGROUND JOBS */}
       {tabIndex === 3 && (
         <Box>
           <Typography variant="h6" fontWeight={600} gutterBottom>
-            Job Console & Queue State (CMP-ADM.04.1)
+            Job Console & Queue State
           </Typography>
           {jobsQuery.data?.sampleData && (
             <Alert severity="warning" sx={{ mb: 2 }} data-testid="platform.jobs.sample-notice">
@@ -724,11 +715,11 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 4: SYSTEM HEALTH (SUB-ADM.05) */}
+      {/* TAB 4: SYSTEM HEALTH */}
       {tabIndex === 4 && (
         <Box>
           <Typography variant="h6" fontWeight={600} gutterBottom>
-            Real-Time Observability & System Health (CMP-ADM.05.1)
+            Real-Time Observability & System Health
           </Typography>
 
           <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -789,13 +780,13 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 5: SUPPORT ACCESS (SUB-ADM.06) */}
+      {/* TAB 5: SUPPORT ACCESS */}
       {tabIndex === 5 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Box>
               <Typography variant="h6" fontWeight={600}>
-                Break-Glass Support Access Grants (CMP-ADM.06.1)
+                Break-Glass Support Access Grants
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Platform operators request access. The target tenant's administrator approves, denies or
@@ -874,13 +865,13 @@ export function PlatformConsolePage() {
         </Box>
       )}
 
-      {/* TAB 6: RELEASE MANAGEMENT (SUB-ADM.08) */}
+      {/* TAB 6: RELEASE MANAGEMENT */}
       {tabIndex === 6 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Box>
               <Typography variant="h6" fontWeight={600}>
-                Release Register & Version Tracking (CMP-ADM.08.1)
+                Release Register & Version Tracking
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Rule-packs and seed data are immutable migrations; candidate v0.1.0-rc.1 checklist status.

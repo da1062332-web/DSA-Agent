@@ -42,6 +42,7 @@ describe('Module 28 — ConnectorPortalPage Component Rendering & Workflows', ()
         tenantId: 'ten_test',
         email: 'connector@partner.com',
         displayName: 'Partner Connector',
+        userType: 'CONNECTOR',
         primaryBranchId: 'br_main',
         queueIds: [],
         grants: grants.map((code) => ({ code, scope: 'TENANT', branchIds: [] })),
@@ -57,7 +58,7 @@ describe('Module 28 — ConnectorPortalPage Component Rendering & Workflows', ()
     const html = renderConnectorPortalPage();
 
     expect(html).toContain('Connector Partner Portal');
-    expect(html).toContain('MOD-CPT: Manage referred leads');
+    expect(html).toContain('Manage referred leads');
     expect(html).toContain('My Referrals');
     expect(html).toContain('Commission Statements');
   });

@@ -1,5 +1,5 @@
 // apps/web/src/features/document-sharing/DocumentSharingPage.tsx
-// Document sharing (MOD-DSH): customer upload links (SUB-DSH.01) and case share packages (SUB-DSH.02); QA plan Module 14.
+// Document sharing: customer upload links and case share packages; QA plan Module 14.
 // The forms pick a real application, its open checklist items and a lender from the API: nothing is typed or prefilled from
 // fixtures. Opening /document-sharing?applicationId=…&action=upload-link (from a customer or application page) starts a link.
 import React, { useEffect, useState } from 'react';
@@ -231,7 +231,7 @@ export function DocumentSharingPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1300, mx: 'auto' }}>
+    <Box>
       <PageHeader
         title="Document Sharing"
         subtitle="Secure upload links for customers, and consent-checked case packages for lenders"
@@ -267,8 +267,8 @@ export function DocumentSharingPage() {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)}>
-          <Tab label="Customer Upload Links (SUB-DSH.01)" />
-          <Tab label="Case Share Packages (SUB-DSH.02)" />
+          <Tab label="Customer Upload Links" />
+          <Tab label="Case Share Packages" />
         </Tabs>
       </Box>
 
@@ -427,7 +427,7 @@ export function DocumentSharingPage() {
 
       {/* Modal: Generate Upload Link */}
       <Dialog open={isLinkModalOpen} onClose={() => setIsLinkModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Generate Customer Upload Link (SUB-DSH.01)</DialogTitle>
+        <DialogTitle>Generate Customer Upload Link</DialogTitle>
         <DialogContent dividers>
           {createdLinkResult ? (
             <Stack spacing={2.5}>
@@ -459,7 +459,7 @@ export function DocumentSharingPage() {
               {createdLinkResult.generatedOtp && (
                 <Box sx={{ p: 2, bgcolor: '#e8f4fd', borderRadius: 1.5 }}>
                   <Typography variant="caption" color="text.secondary">
-                    Demonstration OTP (Simulated via MOD-MSG)
+                    Demonstration OTP (Simulated)
                   </Typography>
                   <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: 2, mt: 0.5 }}>
                     {createdLinkResult.generatedOtp}
@@ -573,7 +573,7 @@ export function DocumentSharingPage() {
 
       {/* Modal: Create Share Package */}
       <Dialog open={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Case Share Package (SUB-DSH.02)</DialogTitle>
+        <DialogTitle>Create Case Share Package</DialogTitle>
         <DialogContent dividers>
           <Box component="form" onSubmit={handleCreateShare}>
             <Stack spacing={2.5}>

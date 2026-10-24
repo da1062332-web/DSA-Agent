@@ -22,7 +22,7 @@ import {
 import { listTasks } from './api';
 import { Can } from '../../shell/Can';
 import { TaskCompleteDialog, TaskCreateDialog, linkedPath } from './TaskDialogs';
-import { ApplicationName, LeadName } from '../../shell/display';
+import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import {
   DataTable,
   FilterToolbar,
@@ -89,7 +89,7 @@ export function TaskList(): React.ReactElement {
           <ApplicationName id={task.linkedId} linkToApp />
         ) : (
           <Link component={RouterLink} to={linkedPath(task.linkedType, task.linkedId)}>
-            {task.linkedType}: {task.linkedId}
+            Case #{task.linkedId.slice(-8)}
           </Link>
         ),
     },
@@ -129,7 +129,7 @@ export function TaskList(): React.ReactElement {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Header */}
       <PageHeader
         title="Tasks"

@@ -100,7 +100,7 @@ export function CustomerDetailPage() {
 
   if (isLoading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -108,7 +108,7 @@ export function CustomerDetailPage() {
 
   if (isError || !customer) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error" sx={{ mb: 3 }}>
           {(error as Error)?.message || 'Customer profile not found.'}
         </Alert>
@@ -120,7 +120,7 @@ export function CustomerDetailPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Top Navigation */}
       <Button component={RouterLink} to="/customers" sx={{ mb: 3 }}>
         ← Back to Customers
@@ -350,7 +350,7 @@ export function CustomerDetailPage() {
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   Track service tickets, fee disputes, and escalate borrower grievances directly to the
-                  Grievances module (MOD-GRV).
+                  Grievances module.
                 </Typography>
                 <Button
                   variant="outlined"

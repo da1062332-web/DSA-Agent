@@ -181,14 +181,22 @@ export function NotificationCenter(_props: NotificationCenterProps) {
   }, []);
 
   const handleMarkAsRead = async (notificationIds: string[]) => {
-    if (notificationIds.length === 0) return;
+    const validIds = (notificationIds || [])
+      .map((id) => (typeof id === 'string' ? id.trim() : ''))
+      .filter((id) => id.length > 0);
+    if (validIds.length === 0) return;
     try {
-      await apiFetch('/v1/notifications/read', { method: 'POST', body: { notificationIds } });
+      const normalizedIds = validIds.map((id) =>
+        !id.startsWith('ntf_') && /^[0-9A-Za-z]{26}$/.test(id) ? `ntf_${id}` : id,
+      );
+      await apiFetch('/v1/notifications/read', { method: 'POST', body: { notificationIds: normalizedIds } });
       const nowIso = new Date().toISOString();
       setNotifications((prev) =>
-        prev.map((n) => (notificationIds.includes(n.id) ? { ...n, readAt: nowIso } : n)),
+        prev.map((n) =>
+          validIds.includes(n.id) || normalizedIds.includes(n.id) ? { ...n, readAt: nowIso } : n,
+        ),
       );
-      setUnreadCount((c) => Math.max(0, c - notificationIds.length));
+      setUnreadCount((c) => Math.max(0, c - validIds.length));
     } catch (err) {
       setError(errorText(err));
     }

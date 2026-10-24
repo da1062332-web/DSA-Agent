@@ -29,7 +29,7 @@ import { errorText } from '../../api/client';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
-import { ConnectorName } from '../../shell/display';
+import { ConnectorName, LenderName } from '../../shell/display';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import {
@@ -316,8 +316,8 @@ export function CommissionDashboardPage() {
   const planColumns: ColumnDef<CommissionPlan>[] = [
     {
       id: 'lender',
-      header: 'Lender ID',
-      accessor: (p) => <strong>{lenders.find((l) => l.id === p.lenderId)?.name || p.lenderId}</strong>,
+      header: 'Lender',
+      accessor: (p) => <LenderName id={p.lenderId} typographyProps={{ fontWeight: 600 }} />,
     },
     {
       id: 'qualifyingEvent',
@@ -375,7 +375,7 @@ export function CommissionDashboardPage() {
     {
       id: 'lender',
       header: 'Lender',
-      accessor: (c) => lenders.find((l) => l.id === c.lenderId)?.name || c.lenderId,
+      accessor: (c) => <LenderName id={c.lenderId} />,
     },
     {
       id: 'basisAmount',
@@ -469,10 +469,10 @@ export function CommissionDashboardPage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Commission Management Hub"
-        subtitle="Module 29 / 30 Part A — Lender plans, disbursement tranche calculations, splits, and clawbacks"
+        subtitle="Lender plans, disbursement tranche calculations, splits, and clawbacks"
         actions={
           <Stack direction="row" spacing={1}>
             {canEditPlan && activeTab === 0 && (
@@ -555,9 +555,9 @@ export function CommissionDashboardPage() {
 
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
-          <Tab label="1. Commission Plans (CMP-COM.01.1)" />
-          <Tab label="2. Calculations & Connector Payables (CMP-COM.02.1)" />
-          <Tab label="3. Recalculation Proposals (CMP-COM.05.1)" />
+          <Tab label="1. Commission Plans" />
+          <Tab label="2. Calculations & Connector Payables" />
+          <Tab label="3. Recalculation Proposals" />
         </Tabs>
       </Paper>
 

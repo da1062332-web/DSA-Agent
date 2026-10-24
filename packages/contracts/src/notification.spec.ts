@@ -59,9 +59,14 @@ describe('Notification Contracts (packages/contracts/src/notification.ts)', () =
     expect(() => MarkNotificationsReadSchema.parse({ notificationIds: [] })).toThrow();
 
     const valid = MarkNotificationsReadSchema.parse({
-      notificationIds: ['ntf_01J00000000000000000000001', 'ntf_01J00000000000000000000002'],
+      notificationIds: [
+        'ntf_01J00000000000000000000001',
+        'ntf_01J00000000000000000000002',
+        '01M5PQB2M2P6KX7HKVDPYCP8PN', // bare ULID
+        'ntf_alpha_001', // seed format
+      ],
     });
-    expect(valid.notificationIds.length).toBe(2);
+    expect(valid.notificationIds.length).toBe(4);
   });
 
   it('validates and applies defaults for NotificationPreferences', () => {

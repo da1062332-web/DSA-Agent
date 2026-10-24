@@ -32,7 +32,7 @@ import type { DataCorrectionRequest, SupportAccessGrant } from '@dsa/contracts';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ConnectorName, LenderName } from '../../shell/display';
+import { ConnectorName, LenderName, UserName } from '../../shell/display';
 import { fetchCommissionPlans } from '../commission/api';
 import { fetchPayoutRequests } from '../payouts/api';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -160,8 +160,17 @@ function FinanceApprovalsTab({
                   {(plans.data?.data ?? []).map((p) => (
                     <TableRow key={p.id} data-testid="approvals.finance.plan">
                       <TableCell>
-                        {p.id}
-                        <br />
+                        <Typography variant="body2" fontWeight={600}>
+                          <LenderName id={p.lenderId} /> Plan
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                          {p.id}
+                        </Typography>
+                        <Box sx={{ mt: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Created by <UserName id={p.createdBy} fallback={p.createdBy} />
+                          </Typography>
+                        </Box>
                         {own(p.createdBy)}
                       </TableCell>
                       <TableCell>
@@ -299,7 +308,9 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
           {grant.reason}
         </Typography>
       </TableCell>
-      <TableCell>{grant.requester}</TableCell>
+      <TableCell>
+        <UserName id={grant.requester} fallback={grant.requester} />
+      </TableCell>
       <TableCell>
         <Typography variant="caption">
           {when(grant.startsAt)} to {when(grant.endsAt)}
@@ -481,9 +492,9 @@ function CorrectionCard({
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
           {c.dryRunDiff ? `Dry-run diff (${c.dryRunDiffKey ?? 'no key'}) is attached.` : NO_DIFF_NOTE}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', color: 'text.secondary', fontSize: '0.75rem' }}>
-          <span>Requested by: {c.requestedBy}</span>
-          <span>Approved by: {c.approvedBy ?? 'not yet'}</span>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', color: 'text.secondary', fontSize: '0.75rem', alignItems: 'center' }}>
+          <span>Requested by: <UserName id={c.requestedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} /></span>
+          <span>Approved by: {c.approvedBy ? <UserName id={c.approvedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} /> : 'not yet'}</span>
           <span>Executor: {c.executorIdentity}</span>
           {c.executedAt && <span>Executed: {when(c.executedAt)}</span>}
         </Box>

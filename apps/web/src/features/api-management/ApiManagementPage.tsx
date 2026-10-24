@@ -304,10 +304,10 @@ export function ApiManagementPage() {
   ];
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       <PageHeader
         title="API Management & Credentials"
-        subtitle="Module 36 (MOD-API): Manage partner API credentials, configure per-client rate limits, assign granular scopes, and rotate client secrets."
+        subtitle="Manage partner API credentials, configure per-client rate limits, assign granular scopes, and rotate client secrets."
         actions={
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>

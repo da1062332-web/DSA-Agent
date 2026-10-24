@@ -18,7 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
-import { PageHeader, StatCard, StatCardGrid } from '../../ui';
+import { PageHeader, StatCard, StatCardGrid, AppButton } from '../../ui';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 const CATEGORY_COLORS: Record<
@@ -63,34 +63,50 @@ export function NotificationsPage() {
   }, [fetchNotifications]);
 
   const handleMarkAsRead = async (ids: string[]) => {
-    if (ids.length === 0) return;
+    const validIds = (ids || [])
+      .map((id) => (typeof id === 'string' ? id.trim() : ''))
+      .filter((id) => id.length > 0);
+    if (validIds.length === 0) return;
     try {
-      await apiFetch('/v1/notifications/read', { method: 'POST', body: { notificationIds: ids } });
+      const normalizedIds = validIds.map((id) =>
+        !id.startsWith('ntf_') && /^[0-9A-Za-z]{26}$/.test(id) ? `ntf_${id}` : id,
+      );
+      await apiFetch('/v1/notifications/read', { method: 'POST', body: { notificationIds: normalizedIds } });
       const nowIso = new Date().toISOString();
-      setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, readAt: nowIso } : n)));
-      setUnreadCount((c) => Math.max(0, c - ids.length));
+      setNotifications((prev) =>
+        prev.map((n) =>
+          validIds.includes(n.id) || normalizedIds.includes(n.id) ? { ...n, readAt: nowIso } : n,
+        ),
+      );
+      setUnreadCount((c) => Math.max(0, c - validIds.length));
     } catch (err) {
       setError(errorText(err));
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
       <PageHeader
         title="Notification Inbox"
         subtitle="Manage your personal alerts, assignments, and updates"
         actions={
           <Stack direction="row" spacing={1}>
-            <Button variant="outlined" onClick={() => setPreferencesOpen(true)}>
+            <AppButton variant="outlined" size="small" onClick={() => setPreferencesOpen(true)}>
               Preferences
-            </Button>
+            </AppButton>
             {unreadCount > 0 && (
-              <Button
-                variant="contained"
-                onClick={() => handleMarkAsRead(notifications.filter((n) => !n.readAt).map((n) => n.id))}
+              <AppButton
+                variant="primary"
+                size="small"
+                onClick={() => {
+                  const unreadIds = notifications.filter((n) => !n.readAt).map((n) => n.id);
+                  if (unreadIds.length > 0) {
+                    handleMarkAsRead(unreadIds);
+                  }
+                }}
               >
                 Mark all read ({unreadCount})
-              </Button>
+              </AppButton>
             )}
           </Stack>
         }

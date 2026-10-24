@@ -57,7 +57,7 @@ describe('Module 17 — EligibilityPage Component Rendering & Permissions', () =
     const html = renderEligibilityPage();
 
     expect(html).toContain('Credit &amp; Eligibility Engine');
-    expect(html).toContain('MOD-ELG: Evaluate applicant financial criteria');
+    expect(html).toContain('Evaluate applicant financial criteria');
     expect(html).toContain('Loading applications...');
   });
 
@@ -73,5 +73,13 @@ describe('Module 17 — EligibilityPage Component Rendering & Permissions', () =
     const html = renderEligibilityPage();
 
     expect(html).not.toContain('Supervisor Override');
+  });
+
+  it('renders application table headers and instructions for popup modal inspection', () => {
+    mockGrants(['application.read']);
+    const html = renderEligibilityPage();
+
+    expect(html).toContain('Loan Applications');
+    expect(html).toContain('popup');
   });
 });

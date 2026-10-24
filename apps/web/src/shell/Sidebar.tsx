@@ -128,7 +128,9 @@ export function SidebarContent({
       const next = { ...prev, [title]: true };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {}
+      } catch {
+        // storage unavailable (private mode or blocked); safe to ignore
+      }
       return next;
     });
 
@@ -315,7 +317,10 @@ export function SidebarContent({
                         <Box sx={{ display: 'inline-flex', mr: 1, alignItems: 'center' }}>
                           {getMainCategoryIcon(group.title, 18)}
                         </Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: 11.5, color: 'inherit' }}>
+                        <Typography
+                          variant="caption"
+                          sx={{ fontWeight: 700, fontSize: 11.5, color: 'inherit' }}
+                        >
                           {group.title}
                         </Typography>
                       </Box>
@@ -383,7 +388,10 @@ export function SidebarContent({
                         >
                           <span>
                             <ListItemButton disabled sx={{ pl: 3.5, pr: 2, py: 0.5, mx: 1, my: 0.2 }}>
-                              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, color: '#94a3b8' }} />
+                              <ListItemText
+                                primary={item.label}
+                                primaryTypographyProps={{ fontSize: 13, color: '#94a3b8' }}
+                              />
                               <Chip
                                 label="Soon"
                                 size="small"
@@ -422,7 +430,11 @@ export function SidebarContent({
             alignItems: 'center',
           }}
         >
-          <Tooltip title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement={collapsed ? 'right' : 'top'} arrow>
+          <Tooltip
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            placement={collapsed ? 'right' : 'top'}
+            arrow
+          >
             <IconButton
               size="small"
               onClick={onToggleCollapse}

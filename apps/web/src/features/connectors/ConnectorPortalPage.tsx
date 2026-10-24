@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -18,6 +19,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { useToast } from '../../shell/toast';
+import { useMe } from '../../api/useMe';
 import {
   DataTable,
   DetailCard,
@@ -73,14 +75,19 @@ export function ConnectorPortalPage() {
   const [payoutAmount, setPayoutAmount] = useState('10000');
   const [payoutNotes, setPayoutNotes] = useState('');
 
+  const me = useMe();
+  const isConnector = me.data?.userType === 'CONNECTOR';
+
   const { data: referralsData, isLoading: loadingReferrals } = useQuery<{ data: Referral[] }>({
     queryKey: ['/portal/v1/referrals'],
     queryFn: () => apiFetch<{ data: Referral[] }>('/portal/v1/referrals').catch(() => ({ data: [] })),
+    enabled: isConnector,
   });
 
   const { data: statementsData, isLoading: loadingStatements } = useQuery<{ data: Statement[] }>({
     queryKey: ['/portal/v1/statements'],
     queryFn: () => apiFetch<{ data: Statement[] }>('/portal/v1/statements').catch(() => ({ data: [] })),
+    enabled: isConnector,
   });
 
   const referrals = referralsData?.data ?? [];
@@ -214,7 +221,7 @@ export function ConnectorPortalPage() {
     <Box sx={{ p: 3 }}>
       <PageHeader
         title="Connector Partner Portal"
-        subtitle="MOD-CPT: Manage referred leads, monitor commission payouts, and view product rate cards."
+        subtitle="Manage referred leads, monitor commission payouts, and view product rate cards."
         actions={
           <Stack direction="row" spacing={2}>
             <Button variant="outlined" onClick={() => setPayoutOpen(true)} data-testid="cpt.request-payout">
@@ -226,6 +233,13 @@ export function ConnectorPortalPage() {
           </Stack>
         }
       />
+
+      {!isConnector && !me.isLoading && (
+        <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+          <strong>Partner Portal Preview:</strong> You are signed in as internal staff ({me.data?.displayName || me.data?.email || 'Staff'}).
+          This self-service portal is dedicated to external Connector partners (Sub-DSAs) to submit customer referrals with OTP consent, track payouts, and inspect commission statements.
+        </Alert>
+      )}
 
       <StatCardGrid columns={{ xs: 12, sm: 4 }}>
         <StatCard

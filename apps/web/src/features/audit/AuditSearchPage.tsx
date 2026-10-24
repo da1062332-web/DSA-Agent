@@ -552,11 +552,11 @@ export function AuditSearchPage() {
   const hasDiff = Boolean(selectedEvent?.before && selectedEvent?.after);
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       {/* Title Header */}
       <PageHeader
         title="Audit Trail & Cryptographic Verification"
-        subtitle="Module 37 (MOD-AUD): Tamper-evident immutable ledger with SHA-256 hash chaining, state diff tracking, and compliance evidence packs."
+        subtitle="Tamper-evident immutable ledger with SHA-256 hash chaining, state diff tracking, and compliance evidence packs."
         actions={
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
             <Can action="config.manage">

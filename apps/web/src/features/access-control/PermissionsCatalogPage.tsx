@@ -62,7 +62,7 @@ export function PermissionsCatalogPage() {
   });
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Permissions Catalog"
         subtitle="Global catalog of platform permissions governed by Role-Based Access Control (RBAC)."

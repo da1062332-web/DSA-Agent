@@ -57,7 +57,7 @@ describe('Module 18 — LenderCasePanel Frontend Component (UI-LCS-001)', () => 
     mockGrants(['application.read']);
     const html = renderPanel();
 
-    expect(html).toContain('Lender Attempts (MOD-LCS)');
+    expect(html).toContain('Lender Attempts');
     expect(html).not.toContain('+ New Lender Attempt');
     expect(html).toContain('Sequential and parallel lender submissions');
   });
@@ -66,7 +66,7 @@ describe('Module 18 — LenderCasePanel Frontend Component (UI-LCS-001)', () => 
     mockGrants(['application.read', 'lender_case.submit']);
     const html = renderPanel();
 
-    expect(html).toContain('Lender Attempts (MOD-LCS)');
+    expect(html).toContain('Lender Attempts');
     expect(html).toContain('+ New Lender Attempt');
   });
 

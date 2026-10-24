@@ -165,8 +165,11 @@ export function UserDetailPage() {
 
   const handleRemoveRole = async (roleName: string) => {
     if (!user) return;
-    const roleObj = roles.find((r) => r.name === roleName);
-    if (!roleObj) return;
+    const roleObj = roles.find((r) => r.name === roleName || r.code === roleName || r.id === roleName);
+    if (!roleObj) {
+      setError(`Role definition for "${roleName}" was not found.`);
+      return;
+    }
 
     if (!window.confirm(`Are you sure you want to unassign role "${roleName}"?`)) return;
 
@@ -187,7 +190,7 @@ export function UserDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -195,7 +198,7 @@ export function UserDetailPage() {
 
   if (!user) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">User not found or access denied.</Alert>
         <Button component={RouterLink} to="/users" sx={{ mt: 2 }}>
           Back to Staff Directory
@@ -205,7 +208,7 @@ export function UserDetailPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Back button */}
       <Button component={RouterLink} to="/users" variant="text" sx={{ mb: 2, fontWeight: 500 }}>
         &larr; Back to Staff Directory

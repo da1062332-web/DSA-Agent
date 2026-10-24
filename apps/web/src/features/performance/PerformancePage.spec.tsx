@@ -123,7 +123,7 @@ describe('CMP-PERF.02.1 — Team Performance Dashboard (SUB-PERF.02)', () => {
     const html = renderWithClient(<PerformanceDashboardPage />);
 
     expect(html).toContain('Team Performance Dashboard');
-    expect(html).toContain('CMP-PERF.02.1');
+    expect(html).toContain('Performance');
     expect(html).toContain('Period');
     expect(html).toContain('Filter Branch ID');
   });
@@ -172,7 +172,7 @@ describe('CMP-PERF.03.1 — Performance Leaderboard (SUB-PERF.03)', () => {
     const html = renderWithClient(<LeaderboardPage />);
 
     expect(html).toContain('Performance Leaderboards');
-    expect(html).toContain('CMP-PERF.03.1');
+    expect(html).toContain('Performance');
     expect(html).toContain('Competitive Ranking Calculation Blocked Pending Business-Rule Sign-Off');
   });
 

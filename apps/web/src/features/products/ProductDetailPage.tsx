@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
   Typography,
 } from '@mui/material';
 import { DataTable, PageHeader } from '../../ui';
+import { LenderName } from '../../shell/display';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -115,7 +117,7 @@ export function ProductDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -123,7 +125,7 @@ export function ProductDetailPage() {
 
   if (!product) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">Loan product not found.</Alert>
         <Button component={RouterLink} to="/products" sx={{ mt: 2 }}>
           Back to Catalogue
@@ -135,7 +137,7 @@ export function ProductDetailPage() {
   const versionsList = product.versions ?? (product.activeVersion ? [product.activeVersion] : []);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <Button component={RouterLink} to="/products" sx={{ mb: 2 }}>
         ← Back to Product Catalogue
       </Button>
@@ -165,7 +167,13 @@ export function ProductDetailPage() {
             <Chip label={product.status} size="small" color={product.status === 'ACTIVE' ? 'success' : 'default'} />
           </Stack>
         }
-        subtitle={`Lender: ${product.lenderName || product.lenderId} | Active Version: v${product.activeVersionNo ?? 1}`}
+        subtitle={
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            <span>Lender: </span>
+            <LenderName id={product.lenderId} fallback={product.lenderName || product.lenderId} />
+            <span> | Active Version: v{product.activeVersionNo ?? 1}</span>
+          </Box>
+        }
       />
 
       {/* Product Overview Card */}
@@ -217,7 +225,7 @@ export function ProductDetailPage() {
         <CardHeader
           title={
             <Typography variant="h6" fontWeight={700}>
-              Product Version Governance (CMP-PRD.03.1)
+              Product Version Governance
             </Typography>
           }
           subheader="Effective-dated, immutable versions pinned by applications and lender cases"

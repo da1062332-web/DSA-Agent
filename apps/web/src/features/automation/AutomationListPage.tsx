@@ -40,7 +40,7 @@ import {
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
-import { DataTable, PageHeader } from '../../ui';
+import { DataTable, PageHeader, AppButton, SearchInput } from '../../ui';
 import type {
   AutomationDefinition,
   AutomationExecution,
@@ -182,18 +182,18 @@ export function AutomationListPage() {
   ).length;
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       <PageHeader
         title="Workflow Automation Engine"
-        subtitle="Module 24 (MOD-WFA): Design multi-step workflows, configure event triggers, and supervise execution pipelines."
+        subtitle="Design multi-step workflows, configure event triggers, and supervise execution pipelines."
         actions={
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} disabled={loading}>
+            <AppButton variant="outlined" startIcon={<RefreshIcon />} onClick={loadData} loading={loading}>
               Refresh
-            </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
+            </AppButton>
+            <AppButton variant="primary" startIcon={<AddIcon />} onClick={() => setCreateDialogOpen(true)}>
               New Automation Rule
-            </Button>
+            </AppButton>
           </Box>
         }
       />
@@ -283,12 +283,11 @@ export function AutomationListPage() {
         {/* Tab 0: Automation Rules */}
         {tabIndex === 0 && (
           <Box sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-              <TextField
-                size="small"
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <SearchInput
                 placeholder="Search rules by name or code..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onSearchChange={setSearch}
                 sx={{ minWidth: 260 }}
               />
               <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -381,27 +380,41 @@ export function AutomationListPage() {
                   id: 'actions',
                   header: 'Actions',
                   align: 'right',
-                  render: (d) => (
-                    <>
-                      <Tooltip title="Trigger / Execute">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => {
-                            setSelectedDefForExec(d);
-                            setExecuteDialogOpen(true);
-                          }}
+                  render: (d) => {
+                    const canExecute = d.status === 'ACTIVE' && Boolean(d.pinnedVersionId);
+                    return (
+                      <>
+                        <Tooltip
+                          title={
+                            canExecute
+                              ? 'Trigger / Execute'
+                              : !d.pinnedVersionId
+                                ? 'No pinned active version. Publish and approve a version first.'
+                                : `Automation is currently in ${d.status} status.`
+                          }
                         >
-                          <PlayArrowIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="View Details & Versions">
-                        <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  ),
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              disabled={!canExecute}
+                              onClick={() => {
+                                setSelectedDefForExec(d);
+                                setExecuteDialogOpen(true);
+                              }}
+                            >
+                              <PlayArrowIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="View Details & Versions">
+                          <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    );
+                  },
                 },
               ]}
             />
@@ -623,14 +636,15 @@ export function AutomationListPage() {
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={!newCode.trim() || !newName.trim() || loading}
+          <AppButton variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancel</AppButton>
+          <AppButton
+            variant="primary"
+            disabled={!newCode.trim() || !newName.trim()}
+            loading={loading}
             onClick={handleCreate}
           >
             Create Rule
-          </Button>
+          </AppButton>
         </DialogActions>
       </Dialog>
 
@@ -641,6 +655,15 @@ export function AutomationListPage() {
           <Typography variant="body2" color="text.secondary">
             Trigger rule: <strong>{selectedDefForExec?.name}</strong> ({selectedDefForExec?.code})
           </Typography>
+          {(!selectedDefForExec?.pinnedVersionId || selectedDefForExec?.status !== 'ACTIVE') && (
+            <Alert severity="warning">
+              This automation cannot be triggered because it{' '}
+              {selectedDefForExec?.status !== 'ACTIVE'
+                ? `is currently in ${selectedDefForExec?.status} status`
+                : 'has no pinned active version'}
+              . Publish and approve a version in its details page first (Maker-Checker).
+            </Alert>
+          )}
           {selectedDefForExec?.entityType === 'LEAD' ? (
             <LeadSelect
               label="Select Lead"
@@ -680,15 +703,19 @@ export function AutomationListPage() {
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setExecuteDialogOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!execSubjectId.trim() || loading}
+          <AppButton variant="ghost" onClick={() => setExecuteDialogOpen(false)}>Cancel</AppButton>
+          <AppButton
+            variant="primary"
+            disabled={
+              !execSubjectId.trim() ||
+              !selectedDefForExec?.pinnedVersionId ||
+              selectedDefForExec?.status !== 'ACTIVE'
+            }
+            loading={loading}
             onClick={handleExecuteTrigger}
           >
             Trigger Now
-          </Button>
+          </AppButton>
         </DialogActions>
       </Dialog>
     </Box>

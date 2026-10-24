@@ -21,7 +21,7 @@ function useDisplayLookup<T>(path: string, query?: Record<string, string | numbe
     queryKey: [path, query],
     queryFn: async () => {
       try {
-        const res = await apiFetch<any>(path, { query: { ...query, limit: 200 } });
+        const res = await apiFetch<any>(path, { query: { limit: 100, ...query } });
         if (Array.isArray(res)) return res as T[];
         if (Array.isArray(res?.items)) return res.items as T[];
         if (Array.isArray(res?.data)) return res.data as T[];
@@ -35,27 +35,81 @@ function useDisplayLookup<T>(path: string, query?: Record<string, string | numbe
 }
 
 // ---------------------------------------------------------------------------
+// Friendly ID Formatter (Avoids showing raw database ULIDs to users)
+// ---------------------------------------------------------------------------
+export function formatFriendlyId(id: string | null | undefined): string {
+  if (!id) return '—';
+  if (id.startsWith('cust_')) {
+    return `Customer (${id.slice(-6)})`;
+  }
+  if (id.startsWith('usr_')) {
+    return `User (${id.slice(-6)})`;
+  }
+  if (id.startsWith('app_')) {
+    return `Application #${id.slice(-6)}`;
+  }
+  if (id.startsWith('br_')) {
+    return `Branch (${id.slice(-6)})`;
+  }
+  if (id.startsWith('lnd_')) {
+    return `Lender (${id.slice(-6)})`;
+  }
+  if (id.startsWith('ver_') || id.startsWith('vrf_')) {
+    return `Verification #${id.slice(-6)}`;
+  }
+  if (id.startsWith('ten_')) {
+    return `Tenant (${id.slice(-6)})`;
+  }
+  if (id.startsWith('lead_')) {
+    return `Lead #${id.slice(-6)}`;
+  }
+  if (id.length > 20) {
+    return `#${id.slice(-6)}`;
+  }
+  return id;
+}
+
+// ---------------------------------------------------------------------------
 // Lookup Hooks
 // ---------------------------------------------------------------------------
 export function useBranchName(id: string | null | undefined): string | null {
   const { data: branches = [] } = useDisplayLookup<BranchItem>('/v1/branches');
   if (!id) return null;
   const match = branches.find((b) => b.id === id);
-  return match ? match.name : id;
+  return match ? match.name : formatFriendlyId(id);
 }
 
 export function useUserName(id: string | null | undefined): string | null {
   const { data: users = [] } = useDisplayLookup<UserItem>('/v1/users');
+  const match = id ? users.find((u) => u.id === id) : null;
+
+  const { data: singleUser } = useQuery({
+    queryKey: ['/v1/users', id],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch<any>(`/v1/users/${id}`);
+        return (res?.displayName || res?.fullName || res?.name || res?.email || null) as string | null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id && !match),
+    staleTime: 5 * 60_000,
+  });
+
   if (!id) return null;
-  const match = users.find((u) => u.id === id);
-  return (match ? match.fullName || match.email : id) ?? id;
+  const name =
+    match
+      ? match.displayName || match.fullName || (match as any).name || match.email || id
+      : singleUser;
+  return name || formatFriendlyId(id);
 }
 
 export function useConnectorName(id: string | null | undefined): string | null {
   const { data: connectors = [] } = useDisplayLookup<ConnectorItem>('/v1/connectors');
   if (!id) return null;
   const match = connectors.find((c) => c.id === id);
-  if (!match) return id;
+  if (!match) return formatFriendlyId(id);
   const displayName = match.tradeName || match.legalName || match.contactName || match.fullName || id;
   const firm = match.firmName || match.tradeName;
   return firm && firm !== displayName ? `${displayName} (${firm})` : displayName;
@@ -65,28 +119,43 @@ export function useLenderName(id: string | null | undefined): string | null {
   const { data: lenders = [] } = useDisplayLookup<LenderItem>('/v1/lenders');
   if (!id) return null;
   const match = lenders.find((l) => l.id === id);
-  return match ? match.name : id;
+  return match ? match.name : formatFriendlyId(id);
 }
 
 export function useCustomerName(id: string | null | undefined): string | null {
   const { data: customers = [] } = useDisplayLookup<CustomerItem>('/v1/customers');
+  const match = id ? customers.find((c) => c.id === id) : null;
+
+  const { data: singleCustomer } = useQuery({
+    queryKey: ['/v1/customers', id],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch<any>(`/v1/customers/${id}`);
+        return (res?.fullName || res?.data?.fullName || res?.name || null) as string | null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id && !match),
+    staleTime: 5 * 60_000,
+  });
+
   if (!id) return null;
-  const match = customers.find((c) => c.id === id);
-  return match ? match.fullName : id;
+  return match ? match.fullName : singleCustomer || formatFriendlyId(id);
 }
 
 export function useLeadName(id: string | null | undefined): string | null {
   const { data: leads = [] } = useDisplayLookup<LeadItem>('/v1/leads');
   if (!id) return null;
   const match = leads.find((l) => l.id === id);
-  return match ? `${match.fullName} (${match.productCategory})` : id;
+  return match ? `${match.fullName} (${match.productCategory})` : formatFriendlyId(id);
 }
 
 export function useProductName(id: string | null | undefined): string | null {
   const { data: products = [] } = useDisplayLookup<ProductItem>('/v1/products');
   if (!id) return null;
   const match = products.find((p) => p.id === id);
-  return match ? match.name : id;
+  return match ? match.name : formatFriendlyId(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +178,8 @@ function BaseDisplay({
   sx,
 }: DisplayProps & { name: string | null | undefined }) {
   if (!id) return <>{fallback}</>;
-  const text = name || id;
+  const isRawId = !name || name === id;
+  const text = !isRawId ? name : formatFriendlyId(id);
 
   const content = (
     <Typography
@@ -124,7 +194,7 @@ function BaseDisplay({
 
   if (showIdTooltip && id) {
     return (
-      <Tooltip title={`ID: ${id}`} arrow placement="top">
+      <Tooltip title={`Full ID: ${id}`} arrow placement="top">
         {content}
       </Tooltip>
     );
@@ -148,7 +218,7 @@ export function BranchName({
   if (isLoading && branches.length === 0) return <Skeleton width={100} height={20} sx={{ display: 'inline-block' }} />;
 
   const match = branches.find((b) => b.id === id);
-  const name = match ? match.name : id;
+  const name = match ? match.name : null;
 
   return (
     <BaseDisplay
@@ -173,11 +243,30 @@ export function UserName({
   sx,
 }: DisplayProps) {
   const { data: users = [], isLoading } = useDisplayLookup<UserItem>('/v1/users');
-  if (!id) return <>{fallback}</>;
-  if (isLoading && users.length === 0) return <Skeleton width={90} height={20} sx={{ display: 'inline-block' }} />;
+  const match = id ? users.find((u) => u.id === id) : null;
 
-  const match = users.find((u) => u.id === id);
-  const name = match ? match.fullName || match.email : id;
+  const { data: singleUser } = useQuery({
+    queryKey: ['/v1/users', id],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch<any>(`/v1/users/${id}`);
+        return (res?.displayName || res?.fullName || res?.name || res?.email || null) as string | null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id && !match),
+    staleTime: 5 * 60_000,
+  });
+
+  if (!id) return <>{fallback}</>;
+  if (isLoading && users.length === 0 && !singleUser) {
+    return <Skeleton width={90} height={20} sx={{ display: 'inline-block' }} />;
+  }
+
+  const name = match
+    ? match.displayName || match.fullName || (match as any).name || match.email || (match as any).emailMasked
+    : singleUser || (fallback !== '—' && fallback !== 'Unassigned' ? fallback : null);
 
   return (
     <BaseDisplay
@@ -267,15 +356,33 @@ export function CustomerName({
   sx,
 }: DisplayProps & { linkToProfile?: boolean }) {
   const { data: customers = [], isLoading } = useDisplayLookup<CustomerItem>('/v1/customers');
-  if (!id) return <>{fallback}</>;
-  if (isLoading && customers.length === 0) return <Skeleton width={100} height={20} sx={{ display: 'inline-block' }} />;
+  const match = id ? customers.find((c) => c.id === id) : null;
 
-  const match = customers.find((c) => c.id === id);
-  const name = match ? match.fullName : id;
+  const { data: singleCustomer, isLoading: isSingleLoading } = useQuery({
+    queryKey: ['/v1/customers', id],
+    queryFn: async () => {
+      try {
+        const res = await apiFetch<any>(`/v1/customers/${id}`);
+        return (res?.fullName || res?.data?.fullName || res?.name || null) as string | null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(id && !match),
+    staleTime: 5 * 60_000,
+  });
+
+  if (!id) return <>{fallback}</>;
+  if ((isLoading || (isSingleLoading && !match)) && !singleCustomer && (!fallback || fallback === id || fallback === '—')) {
+    return <Skeleton width={100} height={20} sx={{ display: 'inline-block' }} />;
+  }
+
+  const validFallback = typeof fallback === 'string' && fallback !== id && fallback !== '—' ? fallback : null;
+  const name = match ? match.fullName : singleCustomer || validFallback;
 
   if (linkToProfile) {
     return (
-      <Tooltip title={`Customer ID: ${id}`} arrow placement="top">
+      <Tooltip title={`Full ID: ${id}`} arrow placement="top">
         <Link
           component={RouterLink}
           to={`/customers/${id}`}
@@ -284,7 +391,7 @@ export function CustomerName({
           fontWeight="medium"
           sx={sx}
         >
-          {name}
+          {name || formatFriendlyId(id)}
         </Link>
       </Tooltip>
     );

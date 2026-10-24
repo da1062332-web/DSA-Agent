@@ -34,7 +34,7 @@ import {
 import { errorText } from '../../api/client';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { hasPermission, useMe } from '../../api/useMe';
-import { ConnectorName } from '../../shell/display';
+import { ConnectorName, UserName } from '../../shell/display';
 import { fetchPayables } from '../commission/api';
 import type { CommissionPayable } from '../commission/types';
 import {
@@ -459,7 +459,7 @@ export function PayoutsDashboardPage() {
     {
       id: 'submittedBy',
       header: 'Submitted By',
-      accessor: (req) => req.submittedBy,
+      accessor: (req) => <UserName id={req.submittedBy} />,
     },
     {
       id: 'submittedAt',
@@ -575,10 +575,10 @@ export function PayoutsDashboardPage() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Payouts & Settlement Hub"
-        subtitle="Module 31 / 30 Part B — Connector payouts with maker-checker controls, bank batching, and payment recording"
+        subtitle="Connector payouts with maker-checker controls, bank batching, and payment recording"
         actions={
           canRequestPayout && (
             <Button variant="contained" onClick={handleOpenCreateDialog}>
@@ -678,7 +678,7 @@ export function PayoutsDashboardPage() {
           {activeTab === 1 && (
             <Card>
               <CardHeader
-                title="Maker-Checker Approval Queue (CMP-PAY.03.1)"
+                title="Maker-Checker Approval Queue"
                 subheader="Requester cannot approve their own payout request (SOD-03). Dynamic payable eligibility is checked."
               />
               <Divider />
@@ -695,7 +695,7 @@ export function PayoutsDashboardPage() {
             <Stack spacing={4}>
               <Card>
                 <CardHeader
-                  title="Approved Payouts Ready for Payment (CMP-PAY.04.1)"
+                  title="Approved Payouts Ready for Payment"
                   subheader="Record bank reference (UTR) or record bank payment failures"
                   action={
                     canRecordPayment &&
@@ -726,7 +726,7 @@ export function PayoutsDashboardPage() {
               {createdBatches.length > 0 && (
                 <Card>
                   <CardHeader
-                    title="Exported Bank Batches (CMP-PAY.02.1)"
+                    title="Exported Bank Batches"
                     subheader="Batches with SHA-256 integrity hash for secure bank transfer files"
                   />
                   <Divider />

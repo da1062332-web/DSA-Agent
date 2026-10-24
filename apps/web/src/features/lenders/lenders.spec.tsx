@@ -40,7 +40,7 @@ describe('Lender Management Frontend Components & API Compatibility', () => {
   it('LenderListPage renders directory header, search, filters, and Add Lender button', () => {
     const html = renderWithProviders(<LenderListPage />);
     expect(html).toContain('Lender Directory');
-    expect(html).toContain('Module 14 / 28');
+    expect(html).toContain('Lender standing');
     expect(html).toContain('Search Lenders');
     expect(html).toContain('Status');
     expect(html).toContain('Type');

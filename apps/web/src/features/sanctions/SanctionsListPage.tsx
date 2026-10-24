@@ -123,18 +123,24 @@ export function SanctionsListPage(): React.ReactElement {
       id: 'lenderCaseId',
       header: 'Lender Case',
       accessor: (s) => (
-        <Typography
-          component={RouterLink}
-          to={`/lender-cases/${s.lenderCaseId}`}
-          variant="body2"
-          sx={{
-            color: 'text.primary',
-            textDecoration: 'none',
-            '&:hover': { textDecoration: 'underline', color: 'primary.main' },
-          }}
-        >
-          {s.lenderCaseId}
-        </Typography>
+        <Box>
+          <Typography
+            component={RouterLink}
+            to={`/lender-cases/${s.lenderCaseId}`}
+            variant="body2"
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'none',
+              fontWeight: 600,
+              '&:hover': { textDecoration: 'underline' },
+            }}
+          >
+            Case #{s.lenderCaseId.slice(-8)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', display: 'block' }}>
+            {s.lenderCaseId}
+          </Typography>
+        </Box>
       ),
     },
     {
@@ -287,7 +293,7 @@ export function SanctionsListPage(): React.ReactElement {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Sanctions & Disbursements"
         subtitle="Manage lender credit sanctions, conditional letters, and recorded disbursement tranches across all lender cases"

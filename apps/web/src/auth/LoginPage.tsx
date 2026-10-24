@@ -76,7 +76,9 @@ export function LoginPage() {
         try {
           sessionStorage.setItem('dsa_pending_email', email);
           localStorage.setItem('dsa_pending_email', email);
-        } catch {}
+        } catch {
+          // storage unavailable (private mode or blocked); safe to ignore
+        }
         setPendingEmail(email);
         setShowMfaModal(true);
         return;
@@ -98,7 +100,9 @@ export function LoginPage() {
           try {
             sessionStorage.setItem('dsa_pending_email', email);
             localStorage.setItem('dsa_pending_email', email);
-          } catch {}
+          } catch {
+            // storage unavailable (private mode or blocked); safe to ignore
+          }
           setPendingEmail(email);
           setShowMfaModal(true);
           return;
@@ -164,7 +168,9 @@ export function LoginPage() {
         try {
           sessionStorage.removeItem('dsa_pending_email');
           localStorage.removeItem('dsa_pending_email');
-        } catch {}
+        } catch {
+          // storage unavailable (private mode or blocked); safe to ignore
+        }
         window.location.replace(from);
         return;
       }
@@ -180,7 +186,9 @@ export function LoginPage() {
             try {
               sessionStorage.removeItem('dsa_pending_email');
               localStorage.removeItem('dsa_pending_email');
-            } catch {}
+            } catch {
+              // storage unavailable (private mode or blocked); safe to ignore
+            }
             navigate(from, { replace: true });
             return;
           }
@@ -208,7 +216,9 @@ export function LoginPage() {
         try {
           sessionStorage.removeItem('dsa_pending_email');
           localStorage.removeItem('dsa_pending_email');
-        } catch {}
+        } catch {
+          // storage unavailable (private mode or blocked); safe to ignore
+        }
         window.location.replace(from);
         return;
       }
@@ -408,11 +418,7 @@ export function LoginPage() {
 
           {/* Feedback Alerts */}
           {errorMessage && (
-            <Alert
-              severity="error"
-              sx={{ mb: 2.5, borderRadius: 2 }}
-              onClose={() => setErrorMessage(null)}
-            >
+            <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setErrorMessage(null)}>
               {errorMessage}
             </Alert>
           )}
@@ -555,7 +561,10 @@ export function LoginPage() {
                     />
                   }
                   label={
-                    <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.825rem', userSelect: 'none' }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: '#475569', fontSize: '0.825rem', userSelect: 'none' }}
+                    >
                       Remember me
                     </Typography>
                   }

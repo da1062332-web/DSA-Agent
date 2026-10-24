@@ -101,9 +101,9 @@ describe('CMP-IMP.01.1 — ImportExportPage Frontend Component', () => {
       </QueryClientProvider>,
     );
 
-    expect(html).toContain('Import and Export Framework (MOD-IMP)');
-    expect(html).toContain('Bulk Import Wizard (CMP-IMP.01.1)');
-    expect(html).toContain('Data Exports (SUB-IMP.02)');
+    expect(html).toContain('Import and Export');
+    expect(html).toContain('Bulk Import Wizard');
+    expect(html).toContain('Data Exports');
   });
 
   it('renders Step 1 upload controls and recent batches table', () => {

@@ -12,8 +12,8 @@ export class AuthPage extends BasePage {
   readonly emailInput = this.page.locator('[data-testid="auth.email"]');
   readonly passwordInput = this.page.locator('[data-testid="auth.password"]');
   readonly submitBtn = this.page.locator('[data-testid="auth.submit"]');
-  readonly mfaCodeInput = this.page.locator('[data-testid="auth.mfa.code"]');
-  readonly mfaSubmitBtn = this.page.locator('[data-testid="auth.mfa.submit"]');
+  readonly mfaCodeInput = this.page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
+  readonly mfaSubmitBtn = this.page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
   readonly accountBtn = this.page.locator('[data-testid="shell.account"]');
   readonly signOutBtn = this.page.locator('[data-testid="shell.signout"]');
 

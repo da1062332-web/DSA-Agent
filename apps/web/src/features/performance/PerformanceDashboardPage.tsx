@@ -139,10 +139,10 @@ export function PerformanceDashboardPage() {
   ];
 
   return (
-    <Box sx={{ py: 3, maxWidth: 1400, margin: '0 auto' }}>
+    <Box>
       <PageHeader
         title="Team Performance Dashboard"
-        subtitle="CMP-PERF.02.1 — Operational activity, conversion outcomes, and target achievement."
+        subtitle="Operational activity, conversion outcomes, and target achievement."
       />
 
       <FilterToolbar

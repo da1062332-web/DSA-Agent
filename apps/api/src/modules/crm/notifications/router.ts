@@ -58,7 +58,34 @@ export function createRouter(
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
 
-      const input = MarkNotificationsReadSchema.parse(req.body);
+      // Gracefully handle empty notificationIds without failing schema validation
+      if (Array.isArray(req.body?.notificationIds) && req.body.notificationIds.length === 0) {
+        res.status(200).json({
+          newlyMarkedRead: 0,
+          readAt: ctx.now.toISOString(),
+        });
+        return;
+      }
+
+      // Normalize IDs: handle bare ULIDs, trim, and uppercase ULID portion where applicable
+      const rawIds = Array.isArray(req.body?.notificationIds)
+        ? req.body.notificationIds.map((id: unknown) => {
+            if (typeof id !== 'string') return id;
+            const trimmed = id.trim();
+            if (/^[0-9A-Za-z]{26}$/.test(trimmed)) {
+              return `ntf_${trimmed.toUpperCase()}`;
+            }
+            if (trimmed.toLowerCase().startsWith('ntf_') && trimmed.length === 30) {
+              return `ntf_${trimmed.slice(4).toUpperCase()}`;
+            }
+            return trimmed;
+          })
+        : req.body?.notificationIds;
+
+      const input = MarkNotificationsReadSchema.parse({
+        ...req.body,
+        notificationIds: rawIds,
+      });
       const result = await notificationService.markAsRead(ctx, input);
 
       res.status(200).json({

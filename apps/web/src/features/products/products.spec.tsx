@@ -40,7 +40,7 @@ describe('Loan Products Frontend Components & API Compatibility', () => {
   it('ProductCataloguePage renders catalogue title, search, category filter, and Add Product dialog controls', () => {
     const html = renderWithProviders(<ProductCataloguePage />);
     expect(html).toContain('Loan Product Catalogue');
-    expect(html).toContain('Module 15 / 29');
+    expect(html).toContain('Lender product catalogue');
     expect(html).toContain('Search Products');
     expect(html).toContain('Category');
     expect(html).toContain('Lender');

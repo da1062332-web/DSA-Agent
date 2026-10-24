@@ -227,7 +227,7 @@ export function RulesListPage() {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Business Rule Engine"
         subtitle="Manage, author, validate, and simulate decision rule sets and review audit records"

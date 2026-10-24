@@ -20,7 +20,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, UserPicker, formatDate } from '../admin/components';
 import type { Lender } from '../admin/LendersPage';
-import { UserName, LenderName } from '../../shell/display';
+import { ApplicationName, LeadName, LenderName, UserName } from '../../shell/display';
 import {
   CATEGORY_LABELS,
   CHANNEL_LABELS,
@@ -70,8 +70,12 @@ export function ComplaintDetailPage() {
           </Typography>
           <Stack spacing={0.5}>
             <Typography variant="body2">
-              <strong>Raised against:</strong> {c.complainantType === 'APPLICATION' ? 'Application' : 'Lead'}{' '}
-              {c.complainantId}
+              <strong>Raised against:</strong>{' '}
+              {c.complainantType === 'APPLICATION' ? (
+                <ApplicationName id={c.complainantId} linkToApp />
+              ) : (
+                <LeadName id={c.complainantId} linkToLead />
+              )}
             </Typography>
             <Typography variant="body2">
               <strong>Owner:</strong> <UserName id={c.ownerUserId} fallback="Unassigned" typographyProps={{ fontWeight: 500 }} />

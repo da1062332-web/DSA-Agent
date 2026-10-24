@@ -130,7 +130,7 @@ export function UserCreatePage() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
       {/* Navigation */}
       <Button component={RouterLink} to="/users" variant="text" sx={{ mb: 2, fontWeight: 500 }}>
         &larr; Back to Staff Directory

@@ -70,10 +70,29 @@ export const ListNotificationsQuerySchema = z.object({
 export type ListNotificationsQuery = z.infer<typeof ListNotificationsQuerySchema>;
 
 /**
+ * Identifier schema for notifications. Accepts:
+ * - Canonical ULID: ntf_01J... (with or without case-sensitivity)
+ * - Seed / test identifiers: ntf_alpha_001, ntf_test_...
+ * - Bare ULID: 01J... (26 chars)
+ */
+export const NotificationIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .refine(
+    (id) =>
+      /^ntf_[0-9A-HJKMNP-TV-Z]{26}$/i.test(id) ||
+      /^ntf_[a-zA-Z0-9_.-]+$/i.test(id) ||
+      /^[0-9A-HJKMNP-TV-Z]{26}$/i.test(id),
+    { message: 'must be a valid notification identifier' },
+  );
+
+/**
  * API-NTF-002: Payload for marking notifications as read
  */
 export const MarkNotificationsReadSchema = z.object({
-  notificationIds: z.array(IdSchema('ntf')).min(1).max(100),
+  notificationIds: z.array(NotificationIdSchema).min(1).max(100),
 });
 export type MarkNotificationsReadInput = z.infer<typeof MarkNotificationsReadSchema>;
 

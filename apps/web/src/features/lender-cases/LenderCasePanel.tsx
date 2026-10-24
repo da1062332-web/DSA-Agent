@@ -237,7 +237,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Box>
             <Typography variant="h6" component="h2" fontWeight="bold">
-              Lender Attempts (MOD-LCS)
+              Lender Attempts
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Sequential and parallel lender submissions, frozen package manifests, and status roll-up.
@@ -307,7 +307,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
             keyExtractor={(c) => c.id}
             columns={[
               { id: 'attempt', header: 'Attempt', render: (c) => <Chip label={`#${c.attemptNo}`} size="small" variant="outlined" /> },
-              { id: 'lender', header: 'Lender ID', render: (c) => <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} /> },
+              { id: 'lender', header: 'Lender', render: (c) => <LenderName id={c.lenderId} typographyProps={{ fontWeight: 500 }} /> },
               {
                 id: 'status',
                 header: 'Status',

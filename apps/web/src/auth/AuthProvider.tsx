@@ -102,7 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionStorage.removeItem('dsa_bypass_active');
         const key = getStorageKey();
         localStorage.removeItem(key);
-      } catch {}
+      } catch {
+        // storage unavailable (private mode or blocked); safe to ignore
+      }
       try {
         await getSupabase().auth.signOut({ scope });
       } catch {

@@ -1,5 +1,5 @@
 // apps/web/src/features/verifications/VerificationPage.tsx
-// Module 22: Verification (MOD-VER) — Verification Workbench
+// Module 22: Verification — Verification Workbench
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -31,7 +31,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, PageHeader } from '../../ui';
+import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import type {
@@ -192,48 +193,21 @@ export function VerificationPage() {
     listData?.data.filter((r) => r.result === 'FLAGGED' || r.result === 'REJECTED').length ?? 0;
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1400, mx: 'auto' }}>
-      {/* Header */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
-        spacing={2}
-        sx={{ mb: 4 }}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Verification Workbench
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Module 22 (MOD-VER) • Identity, income, bureau & compliance check verification records (S3 /
-            R-LOAN)
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={() => navigate('/verifications')}
-            sx={{ fontWeight: 600 }}
-          >
-            Cases List View
-          </Button>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => setIsCreateOpen(true)}
-            sx={{
-              fontWeight: 600,
-              bgcolor: '#2563eb',
-              '&:hover': { bgcolor: '#1d4ed8' },
-              boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
-            }}
-          >
-            + Perform Verification Check
-          </Button>
-        </Stack>
-      </Stack>
+    <Box>
+      <PageHeader
+        title="Verification Workbench"
+        subtitle="Identity, income, bureau and compliance check verification records."
+        actions={
+          <>
+            <Button variant="outlined" onClick={() => navigate('/verifications')}>
+              Cases list
+            </Button>
+            <Button variant="contained" onClick={() => setIsCreateOpen(true)}>
+              + Perform verification check
+            </Button>
+          </>
+        }
+      />
 
       {/* Feedback Alert */}
       {feedback && (
@@ -408,16 +382,37 @@ export function VerificationPage() {
                 {
                   id: 'subject',
                   header: 'Subject & ID',
-                  render: (row) => (
-                    <>
-                      <Typography variant="body2" fontWeight={600}>
-                        {row.subjectType.replace(/_/g, ' ')}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                        {row.subjectId}
-                      </Typography>
-                    </>
-                  ),
+                  render: (row) => {
+                    let subjectName = null;
+                    if (row.subjectType === 'CUSTOMER') {
+                      subjectName = <CustomerName id={row.subjectId} fallback={row.subjectType.replace(/_/g, ' ')} />;
+                    } else if (row.subjectType === 'LEAD') {
+                      subjectName = <LeadName id={row.subjectId} fallback={row.subjectType.replace(/_/g, ' ')} />;
+                    } else if (row.subjectType === 'LOAN_APPLICATION') {
+                      subjectName = <ApplicationName id={row.subjectId} fallback={row.subjectType.replace(/_/g, ' ')} />;
+                    }
+
+                    return (
+                      <Box>
+                        {subjectName && (
+                          <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                            {subjectName}
+                          </Box>
+                        )}
+                        <Typography
+                          variant={subjectName ? 'caption' : 'body2'}
+                          color={subjectName ? 'text.secondary' : 'text.primary'}
+                          fontWeight={subjectName ? 400 : 600}
+                          sx={{ display: 'block' }}
+                        >
+                          {row.subjectType.replace(/_/g, ' ')}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                          {row.subjectId}
+                        </Typography>
+                      </Box>
+                    );
+                  },
                 },
                 {
                   id: 'method',

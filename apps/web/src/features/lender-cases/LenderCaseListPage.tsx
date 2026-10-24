@@ -94,14 +94,17 @@ export function LenderCaseListPage(): React.ReactElement {
       header: 'Case ID',
       accessor: (c) => (
         <Box>
+          <Box sx={{ fontWeight: 600, mb: 0.25 }}>
+            <LenderName id={c.lenderId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+          </Box>
           <Typography
             component={RouterLink}
             to={`/lender-cases/${c.id}`}
-            variant="body2"
+            variant="caption"
             sx={{
               color: 'info.main',
               textDecoration: 'none',
-              fontWeight: 600,
+              fontFamily: 'monospace',
               '&:hover': { textDecoration: 'underline' },
             }}
           >
@@ -182,7 +185,7 @@ export function LenderCaseListPage(): React.ReactElement {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Lender Cases"
         subtitle="Track and manage lender submission cases, underwriting progress, and sanction milestones across applications."

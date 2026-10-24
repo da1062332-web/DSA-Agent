@@ -3,6 +3,7 @@
 // to a failed result. Until an eligibility rule set is published every result is "cannot be assessed yet".
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardContent,
@@ -31,9 +32,11 @@ import {
 export function EligibilityCard({
   applicationId,
   hasProduct,
+  variant = 'card',
 }: {
   applicationId: string;
   hasProduct: boolean;
+  variant?: 'card' | 'dialog';
 }) {
   const me = useMe();
   const canRun = hasPermission(me.data, 'application.read');
@@ -53,74 +56,87 @@ export function EligibilityCard({
   const rows = history.data?.pages.flatMap((p) => p.data) ?? [];
   const latest = latestAssessment(rows);
 
-  return (
-    <Card sx={{ mb: 3 }} data-testid="application.eligibility">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Eligibility
-        </Typography>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {NO_PROMISE}
+  const content = (
+    <>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        {NO_PROMISE}
+      </Alert>
+      <ErrorAlert error={history.error ?? run.error} />
+      {!hasProduct && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Choose a product for this application before checking eligibility.
         </Alert>
-        <ErrorAlert error={history.error ?? run.error} />
-        {!hasProduct && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Choose a product for this application before checking eligibility.
-          </Alert>
-        )}
-        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            disabled={!hasProduct || run.isPending}
-            onClick={() => run.mutate({})}
-            data-testid="eligibility.run"
-          >
-            {latest ? 'Check again' : 'Check eligibility'}
-          </Button>
-        </Stack>
+      )}
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <Button
+          variant="contained"
+          disabled={!hasProduct || run.isPending}
+          onClick={() => run.mutate({})}
+          data-testid="eligibility.run"
+        >
+          {latest ? 'Check again' : 'Check eligibility'}
+        </Button>
+      </Stack>
 
-        {history.isPending ? (
-          <Loading />
-        ) : !latest ? (
-          <Typography variant="body2" color="text.secondary">
-            No eligibility check has been run for this application.
+      {history.isPending ? (
+        <Loading />
+      ) : !latest ? (
+        <Typography variant="body2" color="text.secondary">
+          No eligibility check has been run for this application.
+        </Typography>
+      ) : (
+        <>
+          <Typography variant="subtitle2" gutterBottom>
+            Latest check, {formatDate(latest.assessedAt)}
           </Typography>
-        ) : (
-          <>
-            <Typography variant="subtitle2" gutterBottom>
-              Latest check, {formatDate(latest.assessedAt)}
-            </Typography>
-            {latest.results.map((r) => (
-              <Stack key={r.productVersionId} spacing={1} sx={{ mb: 2 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Typography variant="body2">Product version {r.productVersionId}</Typography>
-                  <StatusChip active={r.result === 'PASS'} label={RESULT_LABELS[r.result]} />
-                  {canOverrideNow && canOverride(latest, r) && (
-                    <Button size="small" onClick={() => setTarget({ assessment: latest, result: r })}>
-                      Override
-                    </Button>
-                  )}
-                </Stack>
-                {r.criteria.map((c) => (
-                  <Typography key={c.code} variant="caption" color="text.secondary">
-                    {c.code}: {RESULT_LABELS[c.result]}. {c.reason}
-                  </Typography>
-                ))}
+          {latest.results.map((r) => (
+            <Stack key={r.productVersionId} spacing={1} sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="body2">Product version {r.productVersionId}</Typography>
+                <StatusChip active={r.result === 'PASS'} label={RESULT_LABELS[r.result]} />
+                {canOverrideNow && canOverride(latest, r) && (
+                  <Button size="small" onClick={() => setTarget({ assessment: latest, result: r })}>
+                    Override
+                  </Button>
+                )}
               </Stack>
-            ))}
-            {latest.overrides.map((o) => (
-              <Alert key={`${o.productVersionId}-${o.overriddenAt}`} severity="warning" sx={{ mb: 1 }}>
-                Overridden on {formatDate(o.overriddenAt)}: {o.reason}
-              </Alert>
-            ))}
-            {rows.length > 1 && (
-              <Typography variant="caption" color="text.secondary">
-                {rows.length - 1} earlier check{rows.length - 1 === 1 ? '' : 's'} on record.
-              </Typography>
-            )}
-          </>
-        )}
-      </CardContent>
+              {r.criteria.map((c) => (
+                <Typography key={c.code} variant="caption" color="text.secondary">
+                  {c.code}: {RESULT_LABELS[c.result]}. {c.reason}
+                </Typography>
+              ))}
+            </Stack>
+          ))}
+          {latest.overrides.map((o) => (
+            <Alert key={`${o.productVersionId}-${o.overriddenAt}`} severity="warning" sx={{ mb: 1 }}>
+              Overridden on {formatDate(o.overriddenAt)}: {o.reason}
+            </Alert>
+          ))}
+          {rows.length > 1 && (
+            <Typography variant="caption" color="text.secondary">
+              {rows.length - 1} earlier check{rows.length - 1 === 1 ? '' : 's'} on record.
+            </Typography>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {variant === 'card' ? (
+        <Card sx={{ mb: 3 }} data-testid="application.eligibility">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Eligibility
+            </Typography>
+            {content}
+          </CardContent>
+        </Card>
+      ) : (
+        <Box data-testid="application.eligibility">{content}</Box>
+      )}
+
       {target && (
         <OverrideDialog
           assessment={target.assessment}
@@ -129,7 +145,7 @@ export function EligibilityCard({
           onClose={() => setTarget(null)}
         />
       )}
-    </Card>
+    </>
   );
 }
 

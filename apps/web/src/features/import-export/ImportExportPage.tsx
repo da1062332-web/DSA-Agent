@@ -203,13 +203,13 @@ export function ImportExportPage() {
         </Alert>
       )}
       <PageHeader
-        title="Import and Export Framework (MOD-IMP)"
+        title="Import and Export"
         subtitle="Generic bulk data ingestion and scoped, masked, expiring record exports."
       />
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
-        <Tab label="Bulk Import Wizard (CMP-IMP.01.1)" value="import" />
-        <Tab label="Data Exports (SUB-IMP.02)" value="export" />
+        <Tab label="Bulk Import Wizard" value="import" />
+        <Tab label="Data Exports" value="export" />
       </Tabs>
 
       {/* ===================== TAB 1: BULK IMPORT ===================== */}

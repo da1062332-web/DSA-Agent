@@ -25,6 +25,7 @@ import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { EligibilityCard } from './EligibilityCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
+import { AppButton, AppCard } from '../../ui';
 import {
   STATUS_LABELS,
   canEditDetails,
@@ -98,37 +99,28 @@ export function ApplicationDetailPage() {
 function RelationsCard({ app }: { app: Application }) {
   const me = useMe();
   return (
-    <Card sx={{ mb: 3 }} data-testid="application.relations">
-      <CardContent>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
-          <Typography variant="body2">
-            Customer:{' '}
-            <Link
-              component={RouterLink}
-              to={`/customers/${app.customerId}`}
-              data-testid="application.customer-link"
-            >
-              <CustomerName id={app.customerId} fallback={app.customerId} />
-            </Link>
-          </Typography>
-          <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
-          <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
-          <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
-          <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
-          {hasPermission(me.data, 'document.upload') && (
-            <Button
-              size="small"
-              variant="outlined"
-              component={RouterLink}
-              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
-              data-testid="application.upload-link"
-            >
-              Send customer upload link
-            </Button>
-          )}
-        </Stack>
-      </CardContent>
-    </Card>
+    <AppCard dataTestId="application.relations" padding="dense">
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
+        <Typography variant="body2" component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+          Customer:{' '}
+          <CustomerName id={app.customerId} linkToProfile />
+        </Typography>
+        <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
+        <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
+        <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
+        <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
+        {hasPermission(me.data, 'document.upload') && (
+          <AppButton
+            size="small"
+            variant="outlined"
+            to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+            dataTestId="application.upload-link"
+          >
+            Send customer upload link
+          </AppButton>
+        )}
+      </Stack>
+    </AppCard>
   );
 }
 
@@ -218,9 +210,10 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
           </TextField>
           {canEdit && (
             <Stack direction="row">
-              <Button
-                variant="contained"
-                disabled={!dirty || !valid || save.isPending}
+              <AppButton
+                variant="primary"
+                loading={save.isPending}
+                disabled={!dirty || !valid}
                 onClick={() =>
                   save.mutate({
                     requestedAmount: amount.trim(),
@@ -231,7 +224,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
                 }
               >
                 Save details
-              </Button>
+              </AppButton>
             </Stack>
           )}
         </Stack>
@@ -259,13 +252,14 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
         {app.onHold ? (
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="body2">Reason: {app.holdReason}</Typography>
-            <Button
+            <AppButton
               variant="outlined"
-              disabled={hold.isPending}
+              size="small"
+              loading={hold.isPending}
               onClick={() => hold.mutate({ onHold: false })}
             >
               Clear hold
-            </Button>
+            </AppButton>
           </Stack>
         ) : (
           <Stack spacing={2} sx={{ maxWidth: 520 }}>
@@ -284,10 +278,10 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
               helperText="Optional."
             />
             <Stack direction="row">
-              <Button
-                variant="contained"
-                color="warning"
-                disabled={hold.isPending || !isValidHoldReason(reason)}
+              <AppButton
+                variant="danger"
+                loading={hold.isPending}
+                disabled={!isValidHoldReason(reason)}
                 onClick={() =>
                   hold.mutate({
                     onHold: true,
@@ -297,7 +291,7 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
                 }
               >
                 Put on hold
-              </Button>
+              </AppButton>
             </Stack>
           </Stack>
         )}
@@ -401,26 +395,27 @@ function TransitionCard({ app }: { app: Application }) {
                 ))}
               </TextField>
               <Stack direction="row">
-                <Button
-                  variant="contained"
-                  disabled={!versionId || run.isPending}
+                <AppButton
+                  variant="primary"
+                  loading={run.isPending}
+                  disabled={!versionId}
                   onClick={() => run.mutate({ transitionCode: 'T-APP-01', productVersionId: versionId })}
                 >
                   Start documents
-                </Button>
+                </AppButton>
               </Stack>
             </>
           )}
 
           {showReview && (
             <Stack direction="row">
-              <Button
-                variant="contained"
-                disabled={run.isPending}
+              <AppButton
+                variant="primary"
+                loading={run.isPending}
                 onClick={() => run.mutate({ transitionCode: 'T-APP-02' })}
               >
                 Send to review
-              </Button>
+              </AppButton>
             </Stack>
           )}
 
@@ -439,14 +434,14 @@ function TransitionCard({ app }: { app: Application }) {
                 ))}
               </TextField>
               <Stack direction="row">
-                <Button
-                  variant="outlined"
-                  color="error"
-                  disabled={!cancelReason || run.isPending}
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={!cancelReason}
                   onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
                 >
                   Cancel application
-                </Button>
+                </AppButton>
               </Stack>
             </>
           )}

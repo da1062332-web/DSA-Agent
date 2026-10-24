@@ -39,7 +39,7 @@ function useLookupItems<T>(
     queryKey: [path, query],
     queryFn: async () => {
       try {
-        const res = await apiFetch<any>(path, { query: { ...query, limit: 200 } });
+        const res = await apiFetch<any>(path, { query: { limit: 100, ...query } });
         if (Array.isArray(res)) return res as T[];
         if (Array.isArray(res?.items)) return res.items as T[];
         if (Array.isArray(res?.data)) return res.data as T[];

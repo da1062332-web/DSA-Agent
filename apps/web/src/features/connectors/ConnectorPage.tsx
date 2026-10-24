@@ -1,5 +1,5 @@
 // apps/web/src/features/connectors/ConnectorPage.tsx
-// Module 27: Connector Management (MOD-CON) — Interactive Connector Workbench
+// Module 27: Connector Management — Interactive Connector Workbench
 import React, { useState } from 'react';
 import {
   Alert,
@@ -400,7 +400,7 @@ export function ConnectorPage() {
   // ==========================================
   if (selectedConnector) {
     return (
-      <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+      <Box>
         {/* Navigation Breadcrumbs & Back Button */}
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
           <Button
@@ -667,7 +667,7 @@ export function ConnectorPage() {
                           '—'
                         ),
                     },
-                    { id: 'createdBy', header: 'Created By', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.createdBy}</Box> },
+                    { id: 'createdBy', header: 'Created By', render: (acc) => <UserName id={acc.createdBy} /> },
                     {
                       id: 'sod',
                       header: 'Dual-Control SOD Actions',
@@ -700,8 +700,8 @@ export function ConnectorPage() {
                                 sx={{ fontWeight: 600, bgcolor: 'rgba(46, 125, 50, 0.12)', color: 'success.main' }}
                               />
                               {acc.approvedBy && (
-                                <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.5 }}>
-                                  Approver: {acc.approvedBy}
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                                  Approver: <UserName id={acc.approvedBy} />
                                 </Typography>
                               )}
                             </Box>
@@ -843,7 +843,7 @@ export function ConnectorPage() {
           <DialogTitle>Activate Connector</DialogTitle>
           <DialogContent>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Activation requires evidence of a passed verification record in `MOD-VER`.
+              Activation requires evidence of a passed verification record in Verifications.
             </Typography>
             <TextField
               size="small"
@@ -1064,9 +1064,9 @@ export function ConnectorPage() {
   // VIEW: TOP-LEVEL DIRECTORY & WORKBENCH
   // ==========================================
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+    <Box>
       <PageHeader
-        title="Connector Management (MOD-CON)"
+        title="Connectors"
         subtitle="Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute Workbench"
         actions={
           <Can action="connector.manage">
@@ -1299,7 +1299,18 @@ export function ConnectorPage() {
                       <Chip label={req.status} color={STATUS_COLORS[req.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
                     ),
                   },
-                  { id: 'requester', header: 'Requester', render: (req) => <Box sx={{ fontFamily: 'monospace' }}>{req.requesterId}</Box> },
+                  {
+                    id: 'requester',
+                    header: 'Requester',
+                    render: (req) => (
+                      <Box>
+                        <UserName id={req.requesterId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                          {req.requesterId}
+                        </Typography>
+                      </Box>
+                    ),
+                  },
                   {
                     id: 'actions',
                     header: 'Actions',
@@ -1356,13 +1367,34 @@ export function ConnectorPage() {
                   {
                     id: 'claimants',
                     header: 'Claimant Connectors',
-                    render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.claimantConnectorIds.join(', ')}</Box>,
+                    render: (disp) => (
+                      <Stack spacing={0.5}>
+                        {disp.claimantConnectorIds.map((cid) => (
+                          <Box key={cid}>
+                            <ConnectorName id={cid} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                            <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                              {cid}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    ),
                   },
                   { id: 'resolution', header: 'Resolution', render: (disp) => disp.resolution || 'Pending Adjudication' },
                   {
                     id: 'winner',
                     header: 'Winner Connector',
-                    render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.resolvedConnectorId || '—'}</Box>,
+                    render: (disp) =>
+                      disp.resolvedConnectorId ? (
+                        <Box>
+                          <ConnectorName id={disp.resolvedConnectorId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                            {disp.resolvedConnectorId}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        '—'
+                      ),
                   },
                   {
                     id: 'status',

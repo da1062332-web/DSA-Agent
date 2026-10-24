@@ -35,7 +35,7 @@ describe('Module 20 — TargetsPage Frontend Component (MOD-PERF SUB-PERF.01)', 
   it('renders TargetsPage header and descriptions', () => {
     const html = renderTargetsPage();
 
-    expect(html).toContain('Performance Targets (MOD-PERF SUB-PERF.01)');
+    expect(html).toContain('Performance Targets');
     expect(html).toContain('Operational target setting, version revisions, and dual-control approvals');
   });
 

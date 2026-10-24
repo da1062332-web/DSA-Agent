@@ -1,8 +1,26 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Box, Button, Chip, Grid, MenuItem, TextField } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { CancelIcon, VisibilityIcon } from '../../shell/icons';
 import {
   DataTable,
   DetailCard,
@@ -73,9 +91,11 @@ export function EligibilityPage() {
       id: 'id',
       header: 'Application ID',
       render: (app) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-          {app.referenceNumber || `${app.id.slice(0, 12)}...`}
-        </span>
+        <Tooltip title={`Full ID: ${app.id}`} arrow placement="top">
+          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+            {app.referenceNumber || (app.id.length > 16 ? `${app.id.slice(0, 16)}...` : app.id)}
+          </span>
+        </Tooltip>
       ),
     },
     {
@@ -96,19 +116,34 @@ export function EligibilityPage() {
     },
     { id: 'tenure', header: 'Tenure', render: (app) => `${app.tenureMonths || 36}m` },
     {
+      id: 'product',
+      header: 'Product Assigned',
+      align: 'center',
+      render: (app) =>
+        app.productVersionId ? (
+          <Chip label="Configured" size="small" color="success" variant="outlined" />
+        ) : (
+          <Chip label="Not Assigned" size="small" color="warning" variant="outlined" />
+        ),
+    },
+    {
       id: 'action',
       header: 'Action',
       align: 'center',
       render: (app) => (
         <Button
           size="small"
-          variant={selectedAppId === app.id ? 'contained' : 'outlined'}
+          variant="contained"
+          color="primary"
+          startIcon={<VisibilityIcon fontSize="small" />}
           onClick={(e) => {
             e.stopPropagation();
             setSelectedAppId(app.id);
           }}
+          data-testid={`eligibility.view.${app.id}`}
+          sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
         >
-          Check
+          View Eligibility
         </Button>
       ),
     },
@@ -118,7 +153,7 @@ export function EligibilityPage() {
     <Box sx={{ p: 3 }}>
       <PageHeader
         title="Credit & Eligibility Engine"
-        subtitle="MOD-ELG: Evaluate applicant financial criteria, credit matrices, and policy constraints across loan products."
+        subtitle="Evaluate applicant financial criteria, credit matrices, and policy constraints across loan products."
         badge={
           <Chip
             label={canOverride ? 'Supervisor Override Active' : 'Read & Assessment Mode'}
@@ -138,16 +173,19 @@ export function EligibilityPage() {
         <StatCard title="Under review" value={underReview} format="number" status="warning" />
         <StatCard title="Sanctioned" value={sanctioned} format="number" status="success" />
         <StatCard
-          title="Selected"
-          value={selectedApp ? selectedApp.referenceNumber || selectedApp.id.slice(0, 12) : 'None'}
-          format="raw"
+          title="Configured products"
+          value={applications.filter((a) => Boolean(a.productVersionId)).length}
+          format="number"
           status="primary"
         />
       </StatCardGrid>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={selectedApp ? 6 : 12}>
-          <DetailCard title="Loan Applications" subtitle="Choose an application to run its eligibility check.">
+        <Grid item xs={12}>
+          <DetailCard
+            title="Loan Applications"
+            subtitle="Select an application or click 'View Eligibility' to inspect or run an assessment in a popup."
+          >
             <FilterToolbar
               searchValue={search}
               onSearchChange={setSearch}
@@ -172,16 +210,78 @@ export function EligibilityPage() {
             />
           </DetailCard>
         </Grid>
+      </Grid>
 
-        {selectedApp && (
-          <Grid item xs={12} md={6}>
+      {/* Eligibility Assessment Popup Modal */}
+      <Dialog
+        open={Boolean(selectedApp)}
+        onClose={() => setSelectedAppId(null)}
+        maxWidth="md"
+        fullWidth
+        data-testid="eligibility.dialog"
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            pb: 1.5,
+          }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={700}>
+              Eligibility Assessment
+            </Typography>
+            {selectedApp && (
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }} flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
+                  Application:{' '}
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                    {selectedApp.referenceNumber || selectedApp.id}
+                  </span>
+                </Typography>
+                <Chip label={selectedApp.applicantType || 'INDIVIDUAL'} size="small" variant="outlined" />
+                <StatusBadge status={STATUS_TONE[selectedApp.status] ?? 'neutral'} label={selectedApp.status} />
+                <Typography variant="caption" color="text.secondary">
+                  ₹{Number(selectedApp.requestedAmount?.amount || 0).toLocaleString('en-IN')} • {selectedApp.tenureMonths || 36}m
+                </Typography>
+              </Stack>
+            )}
+          </Box>
+          <IconButton
+            aria-label="close"
+            onClick={() => setSelectedAppId(null)}
+            size="small"
+            sx={{ color: 'text.secondary' }}
+          >
+            <CancelIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          {selectedApp && (
             <EligibilityCard
               applicationId={selectedApp.id}
-              hasProduct={Boolean(selectedApp.productVersionId || true)}
+              hasProduct={Boolean(selectedApp.productVersionId)}
+              variant="dialog"
             />
-          </Grid>
-        )}
-      </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+          {selectedApp && (
+            <Button
+              component={RouterLink}
+              to={`/applications/${selectedApp.id}`}
+              size="small"
+              variant="text"
+            >
+              Open Application Details
+            </Button>
+          )}
+          <Button onClick={() => setSelectedAppId(null)} variant="outlined">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

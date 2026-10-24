@@ -18,7 +18,7 @@ import type {
 } from './types';
 import { VerificationCreateDialog } from './VerificationCreateDialog';
 import { Can } from '../../shell/Can';
-import { ApplicationName, BranchName, UserName } from '../../shell/display';
+import { ApplicationName, BranchName, CustomerName, UserName } from '../../shell/display';
 import {
   PageHeader,
   StatCard,
@@ -75,9 +75,18 @@ export function VerificationListPage() {
       id: 'id',
       header: 'Verification ID',
       accessor: (row) => (
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-          {row.id}
-        </Typography>
+        <Box>
+          <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+            <CustomerName
+              id={row.customerId}
+              fallback="Applicant"
+              typographyProps={{ fontWeight: 600, variant: 'body2' }}
+            />
+          </Box>
+          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+            {row.id}
+          </Typography>
+        </Box>
       ),
     },
     {
@@ -166,10 +175,10 @@ export function VerificationListPage() {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Header */}
       <PageHeader
-        title="Verification Cases (Module 19)"
+        title="Verification Cases"
         subtitle="Manage document attestation, identity KYC, and field investigation workflows"
         actions={
           <Stack direction="row" spacing={1.5}>

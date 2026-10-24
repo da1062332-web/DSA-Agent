@@ -50,7 +50,7 @@ describe('Module 19 — VerificationListPage Component Rendering', () => {
     mockGrants(['verification.read']);
     const html = renderVerificationList();
 
-    expect(html).toContain('Verification Cases (Module 19)');
+    expect(html).toContain('Verification Cases');
     expect(html).not.toContain('+ New Verification');
     expect(html).toContain('Workbench View');
     expect(html).toContain('Manage document attestation, identity KYC, and field investigation workflows');
@@ -60,7 +60,7 @@ describe('Module 19 — VerificationListPage Component Rendering', () => {
     mockGrants(['verification.read', 'verification.perform']);
     const html = renderVerificationList();
 
-    expect(html).toContain('Verification Cases (Module 19)');
+    expect(html).toContain('Verification Cases');
     expect(html).toContain('+ New Verification');
   });
 

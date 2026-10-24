@@ -56,7 +56,7 @@ describe('Module 27 — ConnectorPage Component Rendering & Action Guarding', ()
     mockGrants(['connector.read']);
     const html = renderConnectorPage();
 
-    expect(html).toContain('Connector Management (MOD-CON)');
+    expect(html).toContain('Connectors');
     expect(html).not.toContain('+ Onboard Connector');
   });
 
@@ -64,7 +64,7 @@ describe('Module 27 — ConnectorPage Component Rendering & Action Guarding', ()
     mockGrants(['connector.read', 'connector.manage']);
     const html = renderConnectorPage();
 
-    expect(html).toContain('Connector Management (MOD-CON)');
+    expect(html).toContain('Connectors');
     expect(html).toContain('+ Onboard Connector');
   });
 

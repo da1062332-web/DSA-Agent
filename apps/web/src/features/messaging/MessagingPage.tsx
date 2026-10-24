@@ -5,6 +5,7 @@ import { ApiError, apiFetch } from '../../api/client';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 import { Can } from '../../shell/Can';
+import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import { DataTable, DetailCard, PageHeader } from '../../ui';
 import type { ColumnDef } from '../../ui';
 
@@ -87,7 +88,33 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
       header: 'Channel',
       render: (m) => <Chip size="small" label={m.channel} color="primary" variant="outlined" />,
     },
-    { id: 'subject', header: 'Subject', render: (m) => `${m.subjectType}: ${m.subjectId.slice(0, 12)}...` },
+    {
+      id: 'subject',
+      header: 'Subject',
+      render: (m) => {
+        let subjectNode = null;
+        if (m.subjectType === 'LEAD') {
+          subjectNode = <LeadName id={m.subjectId} linkToLead />;
+        } else if (m.subjectType === 'CUSTOMER') {
+          subjectNode = <CustomerName id={m.subjectId} linkToProfile />;
+        } else if (m.subjectType === 'APPLICATION' || m.subjectType === 'LOAN_APPLICATION') {
+          subjectNode = <ApplicationName id={m.subjectId} linkToApp />;
+        }
+
+        return (
+          <Box>
+            {subjectNode && (
+              <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                {subjectNode}
+              </Box>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+              {m.subjectType} • {m.subjectId}
+            </Typography>
+          </Box>
+        );
+      },
+    },
     { id: 'recipient', header: 'Recipient (Masked)', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.recipientMasked}</Box> },
     {
       id: 'status',
@@ -109,14 +136,14 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {denied && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="messaging.noAccess">
           You don't have access to messaging. Ask your administrator to grant you the message.send permission.
         </Alert>
       )}
       <PageHeader
-        title="Omnichannel Messaging (MOD-MSG)"
+        title="Messaging"
         subtitle="Templates • Dispatch • Delivery Tracking • Consent & Quiet Hours Guard"
         actions={
           <Can action="config.manage">
@@ -129,9 +156,9 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)}>
-          <Tab label="Message Templates (SUB-MSG.01)" />
-          <Tab label="Dispatch & Send Guard (SUB-MSG.02/04)" />
-          <Tab label="Delivery History (SUB-MSG.03)" />
+          <Tab label="Message Templates" />
+          <Tab label="Dispatch & Send Guard" />
+          <Tab label="Delivery History" />
         </Tabs>
       </Box>
 

@@ -159,10 +159,10 @@ export function CustomerListPage() {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Customers"
-        subtitle="Borrower party profiles, entity records, and DPDP consented parties (MOD-CUST)."
+        subtitle="Borrower party profiles, entity records, and DPDP consented parties."
       />
 
       <StatCardGrid>

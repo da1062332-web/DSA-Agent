@@ -111,7 +111,7 @@ export function CustomerConsents(): React.ReactElement {
 
   if (loadError) {
     return (
-      <Container sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">Failed to load customer profile: {(loadError as Error).message}</Alert>
         <Button component={Link} to="/customers" sx={{ mt: 2 }} variant="outlined">
           ← Back to Customers
@@ -123,7 +123,7 @@ export function CustomerConsents(): React.ReactElement {
   const customer = customerData?.customer;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <Stack spacing={3}>
         {/* Navigation & Header */}
         <Stack

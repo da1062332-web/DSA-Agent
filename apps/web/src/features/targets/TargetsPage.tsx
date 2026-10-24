@@ -30,6 +30,7 @@ import { useLookup } from '../admin/api';
 import type { Product } from '../admin/ProductsPage';
 import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from './api';
 import { ProductSelect } from '../../shell/selectors';
+import { BranchName, ProductName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
 import {
   DIMENSION_LABELS,
@@ -173,7 +174,7 @@ export function TargetsPage() {
   return (
     <Box sx={{ p: 3 }}>
       <PageHeader
-        title="Performance Targets (MOD-PERF SUB-PERF.01)"
+        title="Performance Targets"
         subtitle="Operational target setting, version revisions, and dual-control approvals (SOD-04)."
         actions={
           hasManage && (
@@ -257,7 +258,18 @@ export function TargetsPage() {
           {
             id: 'dimensionId',
             header: 'Dimension ID',
-            render: (item) => <Box sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{item.dimensionId}</Box>,
+            render: (item) => {
+              if (item.dimensionType === 'BRANCH') {
+                return <BranchName id={item.dimensionId} />;
+              }
+              if (item.dimensionType === 'USER') {
+                return <UserName id={item.dimensionId} />;
+              }
+              if (item.dimensionType === 'PRODUCT') {
+                return <ProductName id={item.dimensionId} />;
+              }
+              return <Box sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{item.dimensionId}</Box>;
+            },
           },
           { id: 'metric', header: 'Metric', render: (item) => METRIC_LABELS[item.metricCode] },
           {
@@ -270,9 +282,9 @@ export function TargetsPage() {
             id: 'actuals',
             header: 'Actuals',
             render: () => (
-              <Tooltip title="Actuals computation deferred pending MOD-RPT (Reporting module)">
+              <Tooltip title="Actuals computation deferred pending the Reporting module">
                 <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                  — (Pending MOD-RPT)
+                  — (Pending reporting)
                 </Typography>
               </Tooltip>
             ),
@@ -282,7 +294,7 @@ export function TargetsPage() {
           {
             id: 'createdBy',
             header: 'Created By',
-            render: (item) => <Box sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{item.createdBy}</Box>,
+            render: (item) => <UserName id={item.createdBy} />,
           },
           {
             id: 'actions',
@@ -327,7 +339,7 @@ export function TargetsPage() {
 
       {/* Create Target Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Performance Target (API-PERF-001)</DialogTitle>
+        <DialogTitle>Create Performance Target</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
@@ -508,7 +520,7 @@ export function TargetsPage() {
                 { id: 'version', header: 'Version', render: (h) => <Box sx={{ fontWeight: 600 }}>v{h.version}</Box> },
                 { id: 'target', header: 'Target Value', render: (h) => formatTargetValue(h.targetValue, h.unit) },
                 { id: 'status', header: 'Status', render: (h) => getStatusChip(h.status) },
-                { id: 'approvedBy', header: 'Approved By', render: (h) => h.approvedBy ?? '—' },
+                { id: 'approvedBy', header: 'Approved By', render: (h) => (h.approvedBy ? <UserName id={h.approvedBy} /> : '—') },
                 { id: 'approvedAt', header: 'Approved Date', render: (h) => (h.approvedAt ? h.approvedAt.slice(0, 10) : '—') },
                 { id: 'reason', header: 'Rejection Reason', render: (h) => h.rejectionReason ?? '—' },
               ]}

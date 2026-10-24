@@ -146,7 +146,7 @@ export function LeadCreate() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
       <Box mb={3}>
         <Stack direction="row" spacing={1} alignItems="center" mb={1}>
           <Button component={RouterLink} to="/leads" size="small" variant="text">

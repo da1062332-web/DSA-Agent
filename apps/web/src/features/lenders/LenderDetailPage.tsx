@@ -272,7 +272,7 @@ export function LenderDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -280,7 +280,7 @@ export function LenderDetailPage() {
 
   if (!lender) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">Lender not found.</Alert>
         <Button component={RouterLink} to="/lenders" sx={{ mt: 2 }}>
           Back to Lenders
@@ -290,7 +290,7 @@ export function LenderDetailPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <Button component={RouterLink} to="/lenders" sx={{ mb: 2 }}>
         ← Back to Lender Directory
       </Button>
@@ -366,7 +366,7 @@ export function LenderDetailPage() {
         <CardHeader
           title={
             <Typography variant="h6" fontWeight={700}>
-              Empanelment Register (CMP-LND.02.1)
+              Empanelment Register
             </Typography>
           }
           subheader="Agreements, DSA codes, permitted loan categories and geographic validity"
@@ -447,7 +447,7 @@ export function LenderDetailPage() {
         <CardHeader
           title={
             <Typography variant="h6" fontWeight={700}>
-              Contacts & Escalation Matrix (CMP-LND.03.1)
+              Contacts & Escalation Matrix
             </Typography>
           }
           subheader="Relationship managers and escalation hierarchy levels 1 to 5"

@@ -157,7 +157,7 @@ describe('Module 33 — InvoicesPage Frontend Component (MOD-INV)', () => {
     const html = renderInvoicesPage();
 
     expect(html).toContain('Invoices &amp; Statements');
-    expect(html).toContain('Module 33 (MOD-INV)');
+    expect(html).toContain('Manage lender billing');
     expect(html).toContain(
       'Manage lender billing, connector invoices, and periodic payout account statements.',
     );
@@ -166,8 +166,8 @@ describe('Module 33 — InvoicesPage Frontend Component (MOD-INV)', () => {
   it('renders both tabs: Invoice Register and Statement Generator', () => {
     const html = renderInvoicesPage();
 
-    expect(html).toContain('CMP-INV.01.1 Invoice Register');
-    expect(html).toContain('CMP-INV.02.1 Statement Generator');
+    expect(html).toContain('Invoice Register');
+    expect(html).toContain('Statement Generator');
   });
 
   it('renders action button for recording invoice when user has permission', () => {

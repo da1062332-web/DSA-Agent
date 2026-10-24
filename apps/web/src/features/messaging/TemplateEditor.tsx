@@ -121,7 +121,7 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Create Message Template (CMP-MSG.01.1)</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Create Message Template</DialogTitle>
         <DialogContent dividers>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

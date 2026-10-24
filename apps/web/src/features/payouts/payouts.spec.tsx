@@ -43,7 +43,7 @@ describe('Payouts Management Frontend Components & API Compatibility', () => {
   it('PayoutsDashboardPage renders header, 3 tabs, and create payout request controls', () => {
     const html = renderWithProviders(<PayoutsDashboardPage />);
     expect(html).toContain('Payouts &amp; Settlement Hub');
-    expect(html).toContain('Module 31 / 30 Part B');
+    expect(html).toContain('Connector payouts with maker-checker');
     expect(html).toContain('1. Payout Requests');
     expect(html).toContain('2. Approval Queue');
     expect(html).toContain('3. Payment Recording &amp; Batches');

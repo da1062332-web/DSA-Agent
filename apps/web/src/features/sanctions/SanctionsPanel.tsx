@@ -227,7 +227,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
       <Box data-testid="sanctions-panel" sx={{ mt: 2, p: 2 }}>
         <Card variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
           <Typography variant="h6" fontWeight="bold" mb={1}>
-            Sanctions and Disbursements (MOD-SND)
+            Sanctions and Disbursements
           </Typography>
           <Typography color="text.secondary" mb={3}>
             Please select a lender case or enter a Lender Case ID to manage sanctions and disbursements:

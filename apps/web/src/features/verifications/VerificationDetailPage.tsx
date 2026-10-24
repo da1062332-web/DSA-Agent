@@ -24,6 +24,7 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,8 +32,8 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { UserPicker } from '../admin/components';
 import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
-import { ApplicationName, BranchName, UserName } from '../../shell/display';
-import { PageHeader } from '../../ui';
+import { ApplicationName, BranchName, CustomerName, UserName } from '../../shell/display';
+import { PageHeader, AppButton, AppCard } from '../../ui';
 import { attestChecklistItem, completeVerification, fetchVerification, updateVerification } from './api';
 import type {
   ChecklistAttestationInput,
@@ -173,7 +174,7 @@ export function VerificationDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -181,7 +182,7 @@ export function VerificationDetailPage() {
 
   if (!data) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters>
         <Alert severity="error">Verification record not found.</Alert>
         <Button onClick={() => navigate('/verifications')} sx={{ mt: 2 }}>
           Back to list
@@ -193,17 +194,30 @@ export function VerificationDetailPage() {
   const isFinalized = data.status === 'VERIFIED' || data.status === 'REJECTED' || data.status === 'CANCELLED';
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {/* Breadcrumbs */}
       <Breadcrumbs sx={{ mb: 2 }}>
         <Link component={RouterLink} to="/verifications" color="inherit">
           Verifications
         </Link>
-        <Typography color="text.primary">{data.id}</Typography>
+        <Typography color="text.primary">
+          {data.verificationType ? `${data.verificationType.replace(/_/g, ' ')} Case` : 'Case Details'}
+        </Typography>
       </Breadcrumbs>
 
       <PageHeader
-        title={`Case ${data.id}`}
+        title={
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <CustomerName
+              id={data.customerId}
+              fallback="Verification Case"
+              typographyProps={{ variant: 'h5', fontWeight: 700 }}
+            />
+            <Typography component="span" variant="h5" color="text.secondary" fontWeight={500}>
+              — {data.verificationType?.replace(/_/g, ' ') || 'Verification'}
+            </Typography>
+          </Box>
+        }
         backTo="/verifications"
         badge={
           <Stack direction="row" spacing={1} alignItems="center">
@@ -218,33 +232,41 @@ export function VerificationDetailPage() {
           </Stack>
         }
         subtitle={
-          <Typography variant="body2" color="text.secondary">
-            Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} /> • Type:{' '}
-            {data.verificationType?.replace(/_/g, ' ') || 'VERIFICATION'}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Typography variant="body2" color="text.secondary">
+              Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} /> • Ref:
+            </Typography>
+            <Tooltip title={`Full Verification ID: ${data.id}`} arrow>
+              <Chip
+                label={`#${data.id.slice(-8)}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontFamily: 'monospace', fontSize: 11, height: 20 }}
+              />
+            </Tooltip>
+          </Stack>
         }
         actions={
           <Stack direction="row" spacing={1.5}>
             <Can action="verification.perform">
-              <Button
+              <AppButton
                 variant="outlined"
                 onClick={() => setAssignOpen(true)}
                 disabled={isFinalized}
                 data-testid="verification.btn.assign"
               >
                 Update / Assign
-              </Button>
+              </AppButton>
             </Can>
             <Can action="verification.complete">
-              <Button
-                variant="contained"
-                color="success"
+              <AppButton
+                variant="success"
                 onClick={() => setCompleteOpen(true)}
                 disabled={isFinalized}
                 data-testid="verification.btn.complete"
               >
                 Complete Assessment
-              </Button>
+              </AppButton>
             </Can>
           </Stack>
         }
@@ -265,145 +287,138 @@ export function VerificationDetailPage() {
       {/* Case Overview Grid */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={7}>
-          <Card variant="outlined">
-            <CardHeader title="Case Details & Audit Attributes" />
-            <Divider />
-            <CardContent>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Verification Type
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    {data.verificationType.replace(/_/g, ' ')}
-                  </Typography>
+          <AppCard title="Case Details & Audit Attributes" divider>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Verification Type
+                </Typography>
+                <Typography variant="body1" fontWeight={600}>
+                  {data.verificationType.replace(/_/g, ' ')}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Priority
+                </Typography>
+                <Typography variant="body1" fontWeight={600}>
+                  {data.priority}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Assigned Verifier
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <UserName id={data.assignedToUserId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
                 </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Scheduled Date
+                </Typography>
+                <Typography variant="body1">
+                  {data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : 'Not scheduled'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Created By
+                </Typography>
+                <Typography variant="body1">
+                  <UserName id={data.createdBy} fallback="Operations / System" />
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Created At
+                </Typography>
+                <Typography variant="body1">{new Date(data.createdAt).toLocaleString()}</Typography>
+              </Box>
+              {data.verifiedBy && (
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Priority
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    {data.priority}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Assigned Verifier
-                  </Typography>
-                  <Box sx={{ mt: 0.5 }}>
-                    <UserName id={data.assignedToUserId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 500 }} />
-                  </Box>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Scheduled Date
+                    Verified By
                   </Typography>
                   <Typography variant="body1">
-                    {data.scheduledAt ? new Date(data.scheduledAt).toLocaleString() : 'Not scheduled'}
+                    <UserName id={data.verifiedBy} fallback="Verifier" />
                   </Typography>
                 </Box>
+              )}
+              {data.completedAt && (
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Created By
+                    Completed At
                   </Typography>
-                  <Typography variant="body1">{data.createdBy}</Typography>
+                  <Typography variant="body1">{new Date(data.completedAt).toLocaleString()}</Typography>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Created At
-                  </Typography>
-                  <Typography variant="body1">{new Date(data.createdAt).toLocaleString()}</Typography>
-                </Box>
-                {data.verifiedBy && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Verified By
-                    </Typography>
-                    <Typography variant="body1">{data.verifiedBy}</Typography>
-                  </Box>
-                )}
-                {data.completedAt && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Completed At
-                    </Typography>
-                    <Typography variant="body1">{new Date(data.completedAt).toLocaleString()}</Typography>
-                  </Box>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
+              )}
+            </Box>
+          </AppCard>
         </Grid>
 
         <Grid item xs={12} md={5}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardHeader title="Findings & Evaluation Summary" />
-            <Divider />
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Assessment Notes / Scope:
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', mb: 2 }}>
-                <Typography variant="body2">{data.findingsSummary || 'No notes entered yet.'}</Typography>
-              </Paper>
+          <AppCard title="Findings & Evaluation Summary" divider sx={{ height: '100%' }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Assessment Notes / Scope:
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', mb: 2 }}>
+              <Typography variant="body2">{data.findingsSummary || 'No notes entered yet.'}</Typography>
+            </Paper>
 
-              {data.rejectionReason && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  <strong>Rejection Reason:</strong> {data.rejectionReason}
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+            {data.rejectionReason && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                <strong>Rejection Reason:</strong> {data.rejectionReason}
+              </Alert>
+            )}
+          </AppCard>
         </Grid>
       </Grid>
 
       {/* Linked Document Checklist Review Section */}
-      <Card variant="outlined">
-        <CardHeader
-          title="Document Checklist & Attestation Items"
-          subheader="Review and attest uploaded borrower documents against verification checklist"
-        />
-        <Divider />
-        <CardContent>
-          {(data.checklistItmIds || []).length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-              No specific checklist items linked to this case. General verification applies.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              {(data.checklistItmIds || []).map((itemId) => (
-                <Paper
-                  key={itemId}
-                  variant="outlined"
-                  sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={600}>
-                      Item: {itemId}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Linked checklist document requirement
-                    </Typography>
-                  </Box>
-                  <Can action="verification.perform">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        setSelectedChecklistId(itemId);
-                        setAttestOpen(true);
-                      }}
-                      data-testid={`verification.attest.${itemId}`}
-                    >
-                      Attest / Review
-                    </Button>
-                  </Can>
-                </Paper>
-              ))}
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
+      <AppCard
+        title="Document Checklist & Attestation Items"
+        subtitle="Review and attest uploaded borrower documents against verification checklist"
+        divider
+      >
+        {(data.checklistItmIds || []).length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+            No specific checklist items linked to this case. General verification applies.
+          </Typography>
+        ) : (
+          <Stack spacing={2}>
+            {(data.checklistItmIds || []).map((itemId) => (
+              <Paper
+                key={itemId}
+                variant="outlined"
+                sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Item: {itemId}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Linked checklist document requirement
+                  </Typography>
+                </Box>
+                <Can action="verification.perform">
+                  <AppButton
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      setSelectedChecklistId(itemId);
+                      setAttestOpen(true);
+                    }}
+                    data-testid={`verification.attest.${itemId}`}
+                  >
+                    Attest / Review
+                  </AppButton>
+                </Can>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </AppCard>
 
       {/* Complete Assessment Dialog */}
       <Dialog open={completeOpen} onClose={() => setCompleteOpen(false)} maxWidth="sm" fullWidth>

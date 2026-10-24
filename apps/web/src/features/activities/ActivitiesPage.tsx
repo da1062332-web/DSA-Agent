@@ -1,4 +1,4 @@
-// apps/web/src/features/activities/ActivitiesPage.tsx — Module 10: Activities (MOD-ACT)
+// apps/web/src/features/activities/ActivitiesPage.tsx — Module 10: Activities
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
@@ -16,7 +16,7 @@ import Alert from '@mui/material/Alert';
 import { apiFetch, errorText } from '../../api/client';
 import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
-import { UserName } from '../../shell/display';
+import { ApplicationName, CustomerName, LeadName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
 
 // Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
@@ -79,15 +79,15 @@ export function ActivitiesPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} data-testid="activities.error">
           {error}
         </Alert>
       )}
       <PageHeader
-        title="Activities & Interactions (MOD-ACT)"
-        subtitle="Module 10 • Interaction Logging • Calls, Meetings, Notes • S2/S3 Data Protection"
+        title="Activities"
+        subtitle="Calls, meetings, and notes logged against leads, customers, and applications."
         actions={
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <Button variant="outlined" onClick={fetchActivities}>
@@ -121,16 +121,37 @@ export function ActivitiesPage() {
                 {
                   id: 'subject',
                   header: 'Subject',
-                  render: (a) => (
-                    <>
-                      <Typography variant="body2" fontWeight={600}>
-                        {a.subjectType}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                        {a.subjectId}
-                      </Typography>
-                    </>
-                  ),
+                  render: (a) => {
+                    let subjectNode = null;
+                    if (a.subjectType === 'LEAD') {
+                      subjectNode = <LeadName id={a.subjectId} linkToLead />;
+                    } else if (a.subjectType === 'CUSTOMER') {
+                      subjectNode = <CustomerName id={a.subjectId} linkToProfile />;
+                    } else if (a.subjectType === 'LOAN_APPLICATION') {
+                      subjectNode = <ApplicationName id={a.subjectId} linkToApp />;
+                    }
+
+                    return (
+                      <Box>
+                        {subjectNode && (
+                          <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                            {subjectNode}
+                          </Box>
+                        )}
+                        <Typography
+                          variant={subjectNode ? 'caption' : 'body2'}
+                          color={subjectNode ? 'text.secondary' : 'text.primary'}
+                          fontWeight={subjectNode ? 400 : 600}
+                          sx={{ display: 'block' }}
+                        >
+                          {a.subjectType}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                          {a.subjectId}
+                        </Typography>
+                      </Box>
+                    );
+                  },
                 },
                 {
                   id: 'outcome',

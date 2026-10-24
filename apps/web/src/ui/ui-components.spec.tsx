@@ -3,6 +3,9 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import {
+  AppButton,
+  AppCard,
+  SearchInput,
   PageHeader,
   StatusBadge,
   DataTable,
@@ -284,6 +287,83 @@ describe('Enterprise UI Component Suite (apps/web/src/ui/)', () => {
 
       expect(html).toContain('Void Invoice');
       expect(html).toContain('Are you sure you want to void this invoice');
+    });
+  });
+
+  describe('AppButton', () => {
+    it('renders with default primary variant and text', () => {
+      const html = renderToString(<AppButton>Save Details</AppButton>);
+      expect(html).toContain('Save Details');
+    });
+
+    it('renders router link when "to" prop is passed', () => {
+      const html = renderToString(
+        <MemoryRouter>
+          <AppButton to="/applications/new" variant="primary">
+            + New Application
+          </AppButton>
+        </MemoryRouter>,
+      );
+      expect(html).toContain('href="/applications/new"');
+      expect(html).toContain('+ New Application');
+    });
+
+    it('handles loading state with spinner and loadingText', () => {
+      const html = renderToString(
+        <AppButton loading loadingText="Submitting...">
+          Submit
+        </AppButton>,
+      );
+      expect(html).toContain('Submitting...');
+      expect(html).toContain('MuiCircularProgress-root');
+      expect(html).toContain('aria-busy="true"');
+      expect(html).toContain('disabled');
+    });
+
+    it('renders various variants correctly', () => {
+      const primaryHtml = renderToString(<AppButton variant="primary">Primary</AppButton>);
+      const secondaryHtml = renderToString(<AppButton variant="secondary">Secondary</AppButton>);
+      const outlinedHtml = renderToString(<AppButton variant="outlined">Outlined</AppButton>);
+      const dangerHtml = renderToString(<AppButton variant="danger">Delete</AppButton>);
+
+      expect(primaryHtml).toContain('Primary');
+      expect(secondaryHtml).toContain('Secondary');
+      expect(outlinedHtml).toContain('Outlined');
+      expect(dangerHtml).toContain('Delete');
+    });
+  });
+
+  describe('AppCard', () => {
+    it('renders card with title, subtitle, badge, and actions', () => {
+      const html = renderToString(
+        <AppCard
+          title="Loan Terms"
+          subtitle="Interest and repayment specifications"
+          badge={<StatusBadge status="ACTIVE" />}
+          actions={<AppButton size="small">Edit</AppButton>}
+          footer={<div>Card Footer</div>}
+        >
+          <div>Card Body Content</div>
+        </AppCard>,
+      );
+
+      expect(html).toContain('Loan Terms');
+      expect(html).toContain('Interest and repayment specifications');
+      expect(html).toContain('ACTIVE');
+      expect(html).toContain('Edit');
+      expect(html).toContain('Card Body Content');
+      expect(html).toContain('Card Footer');
+    });
+  });
+
+  describe('SearchInput', () => {
+    it('renders search input with placeholder and value', () => {
+      const html = renderToString(
+        <SearchInput value="test query" onSearchChange={() => {}} placeholder="Search customers..." />,
+      );
+
+      expect(html).toContain('value="test query"');
+      expect(html).toContain('placeholder="Search customers..."');
     });
   });
 });

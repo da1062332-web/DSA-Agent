@@ -225,17 +225,17 @@ export function ConfigurationPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters>
       <PageHeader
         title="Tenant Configuration & Settings"
-        subtitle="Module 6: Manage organization parameters, operational SLAs, lead routing, and branches."
+        subtitle="Manage organization parameters, operational SLAs, lead routing, and branches."
       />
 
       {error && (

@@ -1,5 +1,5 @@
 // apps/web/src/features/integrations/IntegrationsPage.tsx
-// Module 28: Integration Management (MOD-INT) — SUB-INT.01: Adapter Framework Workbench
+// Module 28: Integration Management — SUB-INT.01: Adapter Framework Workbench
 
 import React, { useState } from 'react';
 import {
@@ -187,16 +187,9 @@ export function IntegrationsPage() {
   const capabilitiesCount = capabilitiesQuery.data?.data.length ?? 6;
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, margin: '0 auto' }}>
+    <Box>
       <PageHeader
         title="Integration Management &amp; Adapter Framework"
-        badge={
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip label="MOD-INT" color="primary" variant="outlined" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
-            <Chip label="DOM-M" color="secondary" variant="outlined" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
-            <Chip label="SUB-INT.01" size="small" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />
-          </Stack>
-        }
         subtitle="Centralized third-party provider adapters, capability descriptors, sandbox boundaries & zero plaintext credential management."
         actions={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

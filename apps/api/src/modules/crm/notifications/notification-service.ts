@@ -203,6 +203,17 @@ export class NotificationService {
       return { updatedCount: 0 };
     }
 
+    const searchIds = Array.from(
+      new Set(
+        ids.flatMap((id) => [
+          id,
+          id.startsWith('ntf_') ? id.slice(4) : `ntf_${id}`,
+          id.toLowerCase(),
+          id.toUpperCase(),
+        ]),
+      ),
+    );
+
     if (this.txRunner) {
       try {
         return await this.txRunner.withTenantTx(ctx, async (tx) => {
@@ -211,7 +222,7 @@ export class NotificationService {
             SET read_at = now()
             WHERE tenant_id = ${tenantId}
               AND user_id = ${userId}
-              AND id = ANY(${ids})
+              AND id = ANY(${searchIds})
               AND read_at IS NULL
             RETURNING id
           `.execute(tx);
@@ -226,9 +237,11 @@ export class NotificationService {
     // In-memory fallback
     let updatedCount = 0;
     const nowIso = ctx.now.toISOString();
-    for (const id of ids) {
+    const marked = new Set<string>();
+    for (const id of searchIds) {
       const record = NotificationService.memoryNotifications.get(id);
-      if (record && record.tenantId === tenantId && record.userId === userId && record.readAt === null) {
+      if (record && record.tenantId === tenantId && record.userId === userId && record.readAt === null && !marked.has(record.id)) {
+        marked.add(record.id);
         record.readAt = nowIso;
         record.lockVersion += 1;
         updatedCount += 1;
