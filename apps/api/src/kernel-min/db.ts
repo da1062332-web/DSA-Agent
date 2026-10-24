@@ -10,11 +10,20 @@ export function createDb(connectionString: string, opts: { poolMax?: number } = 
     max: opts.poolMax ?? 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   });
 
   // Handle idle connection errors (e.g. ECONNRESET from remote pooler) so they do not crash the Node process
   pool.on('error', (err) => {
-    console.warn('[pg pool] Unexpected error on idle client (reconnecting automatically):', err.message);
+    console.warn('[pg pool] Unexpected error on idle client (reconnecting automatically):', (err as Error)?.message || err);
+  });
+
+  // Handle errors directly on client instances so that dropped/reset connections (ECONNRESET) never throw unhandled 'error' events
+  pool.on('connect', (client) => {
+    client.on('error', (err) => {
+      console.warn('[pg client] Unexpected error on client:', (err as Error)?.message || err);
+    });
   });
 
   return new Kysely<Database>({
