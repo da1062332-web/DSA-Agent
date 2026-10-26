@@ -1,4 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
+import crypto from 'node:crypto';
 
 export interface PersonaConfig {
   userId: string;
@@ -292,6 +293,549 @@ export const PERSONAS: Record<string, PersonaConfig> = {
   },
 };
 
+/**
+ * Vaibhav Finserv active organization personas (Tenant: ten_01M5V9DW51908MVT3D6P4M7NDA, slug: vaibhav-finserv)
+ * Matches live Supabase Auth and database configuration with password 'Vaibhav@1234'.
+ */
+export const VAIBHAV_PERSONAS: Record<string, PersonaConfig> = {
+  platformSuperAdmin: {
+    userId: 'usr_platform_admin_01',
+    email: 'vaibhav.qloax@gmail.com',
+    displayName: 'Vaibhav Super Admin',
+    roleCode: 'ROLE-PLATFORM-SUPERADMIN',
+    permissions: [
+      'platform.console',
+      'platform.flags',
+      'platform.jobs',
+      'platform.master_data',
+      'platform.release',
+      'platform.support_access',
+      'platform.tenant.create',
+      'platform.tenant.entitlements',
+      'platform.tenant.offboard',
+      'platform.tenant.suspend',
+      'user.manage',
+    ],
+    tenantId: 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG',
+  },
+  tenantAdmin: {
+    userId: 'usr_vaibhav_admin_01',
+    email: 'vaibhav+admin@qloax.com',
+    displayName: 'Vaibhav Admin',
+    roleCode: 'ROLE-TENANT-ADMIN',
+    permissions: [
+      'config.manage',
+      'user.manage',
+      'role.manage',
+      'audit.read',
+      'audit.export_evidence',
+      'api.manage',
+      'integration.manage',
+      'data_correction.approve',
+      'connector.attribution_change',
+      'lead.read',
+      'lead.assign',
+      'customer.read',
+      'consent.record',
+      'application.read',
+      'application.create',
+      'application.review',
+      'document.review',
+      'lender_case.submit',
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'rule.author',
+      'rule.approve',
+      'rule.publish',
+      'payout.request',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  orgOwner: {
+    userId: 'usr_vaibhav_owner_01',
+    email: 'vaibhav+owner@qloax.com',
+    displayName: 'Vaibhav Owner',
+    roleCode: 'ROLE-ORG-OWNER',
+    permissions: [
+      'lead.read',
+      'application.read',
+      'finance.view',
+      'report.read',
+      'target.manage',
+      'audit.read',
+      'connector.read',
+      'connector.manage',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  branchMgr: {
+    userId: 'usr_vaibhav_branchmgr_01',
+    email: 'vaibhav+branchmgr@qloax.com',
+    displayName: 'Vaibhav Branch Mgr',
+    roleCode: 'ROLE-BRANCH-MGR',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.assign',
+      'lead.qualify',
+      'customer.read',
+      'application.read',
+      'application.update',
+      'application.review',
+      'application.assign',
+      'task.read',
+      'task.create',
+      'task.update',
+      'task.assign',
+      'activity.create',
+      'activity.update',
+      'report.read',
+      'target.manage',
+      'rule.simulate',
+      'connector.read',
+      'complaint.manage',
+      'disbursement.verify',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  teamMgr: {
+    userId: 'usr_vaibhav_teammgr_01',
+    email: 'vaibhav+teammgr@qloax.com',
+    displayName: 'Vaibhav Team Mgr',
+    roleCode: 'ROLE-TEAM-MGR',
+    permissions: [
+      'lead.read',
+      'lead.assign',
+      'application.read',
+      'task.read',
+      'task.assign',
+      'task.create',
+      'task.update',
+      'activity.create',
+      'report.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  rm1: {
+    userId: 'usr_vaibhav_rm1_01',
+    email: 'vaibhav+rm1@qloax.com',
+    displayName: 'Vaibhav RM 1',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  rm2: {
+    userId: 'usr_vaibhav_rm2_01',
+    email: 'vaibhav+rm2@qloax.com',
+    displayName: 'Vaibhav RM 2',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  rmpune: {
+    userId: 'usr_vaibhav_rmpune_01',
+    email: 'vaibhav+rmpune@qloax.com',
+    displayName: 'Vaibhav RM Pune',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'PUN01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  salesExec: {
+    userId: 'usr_vaibhav_sales_01',
+    email: 'vaibhav+sales@qloax.com',
+    displayName: 'Vaibhav Sales',
+    roleCode: 'ROLE-SALES-EXEC',
+    permissions: [
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'task.create',
+      'task.read',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  loanOps: {
+    userId: 'usr_vaibhav_loanops_01',
+    email: 'vaibhav+loanops@qloax.com',
+    displayName: 'Vaibhav Loan Ops',
+    roleCode: 'ROLE-LOAN-OPS',
+    permissions: [
+      'application.read',
+      'application.review',
+      'document.review',
+      'share.create',
+      'lender_case.submit',
+      'lender_case.update_status',
+      'sanction.record',
+      'disbursement.record',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  docVerifier: {
+    userId: 'usr_vaibhav_verifier_01',
+    email: 'vaibhav+verifier@qloax.com',
+    displayName: 'Vaibhav Verifier',
+    roleCode: 'ROLE-DOC-VERIFIER',
+    permissions: [
+      'verification.read',
+      'verification.perform',
+      'verification.create',
+      'verification.update',
+      'verification.complete',
+      'document.review',
+      'application.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  compliance: {
+    userId: 'usr_vaibhav_compliance_01',
+    email: 'vaibhav+compliance@qloax.com',
+    displayName: 'Vaibhav Compliance',
+    roleCode: 'ROLE-COMPLIANCE',
+    permissions: [
+      'audit.read',
+      'audit.export_evidence',
+      'customer.read',
+      'security.incident',
+      'security.vuln',
+      'report.read',
+      'privacy.manage',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  ruleAuthor: {
+    userId: 'usr_vaibhav_ruleauthor_01',
+    email: 'vaibhav+ruleauthor@qloax.com',
+    displayName: 'Vaibhav Rule Author',
+    roleCode: 'ROLE-RULE-AUTHOR',
+    permissions: ['rule.author', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  ruleApprover: {
+    userId: 'usr_vaibhav_ruleapprover_01',
+    email: 'vaibhav+ruleapprover@qloax.com',
+    displayName: 'Vaibhav Rule Approver',
+    roleCode: 'ROLE-RULE-APPROVER',
+    permissions: ['rule.approve', 'rule.publish', 'rule.suspend', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  financeExec: {
+    userId: 'usr_vaibhav_finance_01',
+    email: 'vaibhav+finance@qloax.com',
+    displayName: 'Vaibhav Finance',
+    roleCode: 'ROLE-FINANCE-EXEC',
+    permissions: [
+      'finance.view',
+      'finance.reconcile',
+      'finance.dispute',
+      'adjustment.create',
+      'payout.request',
+      'invoice.manage',
+      'commission.plan.edit',
+      'disbursement.verify',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+  commissionApprover: {
+    userId: 'usr_vaibhav_commission_01',
+    email: 'vaibhav+commission@qloax.com',
+    displayName: 'Vaibhav Commission',
+    roleCode: 'ROLE-COMMISSION-APPROVER',
+    permissions: [
+      'finance.view',
+      'commission.plan.approve',
+      'payout.approve',
+      'payout.record_payment',
+      'adjustment.approve',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5V9DW51908MVT3D6P4M7NDA',
+  },
+};
+
+/**
+ * Persona configurations matching the official Notion Manual Testing Suite:
+ * Tenant: demo-alpha (ten_01M4SXZ9E66W8T6DNJYBVNS3FA)
+ */
+export const ALPHA_PERSONAS: Record<string, PersonaConfig> = {
+  tenantAdmin: {
+    userId: 'usr_01M4X5JZS3T5ZCCGQ6SDVKTAB8',
+    email: 'admin@alpha.com',
+    displayName: 'Asha Admin',
+    roleCode: 'ROLE-TENANT-ADMIN',
+    permissions: [
+      'config.manage',
+      'user.manage',
+      'role.manage',
+      'audit.read',
+      'audit.export_evidence',
+      'api.manage',
+      'integration.manage',
+      'data_correction.approve',
+      'connector.attribution_change',
+      'lead.read',
+      'lead.assign',
+      'customer.read',
+      'consent.record',
+      'application.read',
+      'application.create',
+      'application.review',
+      'document.review',
+      'lender_case.submit',
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'rule.author',
+      'rule.approve',
+      'rule.publish',
+      'payout.request',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  orgOwner: {
+    userId: 'usr_01M4SXZ9Y2T8YN1J73D6YJ39EC',
+    email: 'owner@alpha.com',
+    displayName: 'Omkar Owner',
+    roleCode: 'ROLE-ORG-OWNER',
+    permissions: [
+      'lead.read',
+      'application.read',
+      'finance.view',
+      'report.read',
+      'target.manage',
+      'audit.read',
+      'connector.read',
+      'connector.manage',
+      'disbursement.verify',
+      'payout.approve',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  branchMgr: {
+    userId: 'usr_01M4SXZA4ER10DACBJXBV35S13',
+    email: 'branchmgr@alpha.com',
+    displayName: 'Bhavna Branch',
+    roleCode: 'ROLE-BRANCH-MGR',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.assign',
+      'lead.qualify',
+      'application.read',
+      'application.update',
+      'application.review',
+      'task.read',
+      'task.create',
+      'task.update',
+      'task.assign',
+      'report.read',
+      'target.manage',
+      'customer.read',
+      'activity.create',
+      'disbursement.verify',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  teamMgr: {
+    userId: 'usr_01M4SXZAABT2W016BQZMT9ASWF',
+    email: 'teammgr@alpha.com',
+    displayName: 'Tarun Team',
+    roleCode: 'ROLE-TEAM-MGR',
+    permissions: [
+      'lead.read',
+      'lead.assign',
+      'application.read',
+      'task.read',
+      'task.assign',
+      'task.create',
+      'task.update',
+      'activity.create',
+      'report.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  rm1: {
+    userId: 'usr_01M4SXZAEZ0S1EXSQP1HYTGV6T',
+    email: 'rm1@alpha.com',
+    displayName: 'Riya RM',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  salesExec: {
+    userId: 'usr_01M4SXZASSXCF41QA4WP14NGAV',
+    email: 'sales1@alpha.com',
+    displayName: 'Sameer Sales',
+    roleCode: 'ROLE-SALES-EXEC',
+    permissions: [
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'activity.create',
+      'activity.update',
+      'task.read',
+      'task.create',
+      'task.update',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  loanOps: {
+    userId: 'usr_01M4SXZAYZHQFJQHY939VRHGQB',
+    email: 'loanops@alpha.com',
+    displayName: 'Lata Loan Ops',
+    roleCode: 'ROLE-LOAN-OPS',
+    permissions: [
+      'application.read',
+      'application.review',
+      'lender_case.submit',
+      'lender_case.update_status',
+      'sanction.record',
+      'disbursement.record',
+      'document.review',
+      'share.create',
+      'verification.perform',
+      'verification.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  compliance: {
+    userId: 'usr_01M4SXZB7DARQG8AGMQ9EJ93P2',
+    email: 'compliance@alpha.com',
+    displayName: 'Chetan Compliance',
+    roleCode: 'ROLE-COMPLIANCE',
+    permissions: [
+      'audit.read',
+      'audit.export_evidence',
+      'customer.read',
+      'security.incident',
+      'security.vuln',
+      'report.read',
+      'privacy.manage',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  ruleAuthor: {
+    userId: 'usr_01M4SXZBDNB21GJVKFNZ8HFEP5',
+    email: 'ruleauthor@alpha.com',
+    displayName: 'Rekha Author',
+    roleCode: 'ROLE-RULE-AUTHOR',
+    permissions: ['rule.author', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+  ruleApprover: {
+    userId: 'usr_01M4SXZBJTK2PY78WYQG58XC9S',
+    email: 'ruleapprover@alpha.com',
+    displayName: 'Ravi Approver',
+    roleCode: 'ROLE-RULE-APPROVER',
+    permissions: ['rule.approve', 'rule.publish', 'rule.suspend', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
+  },
+};
+
 /** A Contracts §6 error envelope, so mocked failures look exactly like the API's. */
 export function apiErrorBody(code: string, httpStatus: number, message: string): string {
   return JSON.stringify({
@@ -307,6 +851,7 @@ export function createMockJwt(persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aa
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
+    iss: 'https://mlpkwwhnagxzinaohdxg.supabase.co/auth/v1',
     sub: persona.userId,
     role: 'authenticated',
     aud: 'authenticated',
@@ -322,9 +867,20 @@ export function createMockJwt(persona: PersonaConfig, aal: 'aal1' | 'aal2' = 'aa
     user_metadata: { display_name: persona.displayName },
   };
 
-  return `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(
-    JSON.stringify(payload),
-  )}.mock-signature`;
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+  const bypassSecret = process.env.BYPASS_JWT_SECRET || 'dsa-crm-test-bypass-jwt-secret-key-2026';
+  const signature = crypto
+    .createHmac('sha256', bypassSecret)
+    .update(signingInput)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  return `${signingInput}.${signature}`;
 }
 
 export async function setupPersonaSession(
@@ -385,14 +941,19 @@ export async function setupPersonaSession(
   });
 
   // Mock test-login endpoint for fast bypass fallback
+  const aal2Token = createMockJwt(persona, 'aal2');
+  const aal2SessionData = {
+    ...sessionData,
+    access_token: aal2Token,
+  };
   await page.route('**/public/v1/auth/test-login', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         data: {
-          access_token: token,
-          session: sessionData,
+          access_token: aal2Token,
+          session: aal2SessionData,
         },
       }),
     });
@@ -442,6 +1003,8 @@ export async function setupPersonaSession(
     });
   });
 
+  const isVaibhav = Object.values(VAIBHAV_PERSONAS).some((p) => p.userId === persona.userId);
+
   // Mock /v1/tenant endpoint
   await page.route('**/v1/tenant', async (route) => {
     await route.fulfill({
@@ -449,8 +1012,8 @@ export async function setupPersonaSession(
       contentType: 'application/json',
       body: JSON.stringify({
         id: tenantId,
-        slug: 'qloax-dsa',
-        legalName: 'Qloax Finserv Private Limited',
+        slug: isVaibhav ? 'vaibhav-finserv' : 'qloax-dsa',
+        legalName: isVaibhav ? 'Vaibhav Finserv Private Limited' : 'Qloax Finserv Private Limited',
         tenantType: 'DSA',
         dataRegion: 'ap-south-1',
         timezone: 'Asia/Kolkata',
@@ -481,6 +1044,124 @@ export async function setupPersonaSession(
         ],
       }),
     });
+  });
+
+  // Auxiliary background endpoints to prevent unauthenticated fallthrough warnings in backend logs
+  await page.route('**/v1/connectors**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { total: 0 } }),
+    });
+  });
+
+  await page.route('**/v1/timeline**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+
+  await page.route('**/platform/v1/master-data**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+
+  await page.route('**/platform/v1/support-access-requests**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { total: 0 } }),
+    });
+  });
+
+  await page.route('**/platform/v1/releases**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { total: 0 } }),
+    });
+  });
+
+  await page.route('**/v1/users**', async (route) => {
+    const url = route.request().url();
+    const idMatch = url.match(/\/v1\/users\/([^?]+)/);
+    if (idMatch) {
+      const userId = idMatch[1];
+      const matched = Object.values(VAIBHAV_PERSONAS).find((p) => p.userId === userId) ||
+        Object.values(ALPHA_PERSONAS).find((p) => p.userId === userId);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: userId,
+          email: matched?.email || 'staff@example.com',
+          displayName: matched?.displayName || 'Staff Member',
+          primaryBranchId: 'MUM01',
+          roles: [matched?.roleCode || 'ROLE-STAFF'],
+          assignedRoles: [matched?.roleCode || 'ROLE-STAFF'],
+          status: 'ACTIVE',
+        }),
+      });
+    } else {
+      const personaSource = isVaibhav ? VAIBHAV_PERSONAS : ALPHA_PERSONAS;
+      const usersList = Object.values(personaSource).map((p) => ({
+        id: p.userId,
+        email: p.email,
+        displayName: p.displayName,
+        emailMasked: p.email.replace(/(.{2})(.*)(@.*)/, '$1••••$3'),
+        mobileMasked: '+91 ••••• ••234',
+        primaryBranchId: p.primaryBranchId || 'MUM01',
+        roles: [p.roleCode],
+        assignedRoles: [p.roleCode],
+        status: 'ACTIVE',
+      }));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: usersList, meta: { total: usersList.length, limit: 50, nextCursor: null } }),
+      });
+    }
+  });
+
+  await page.route('**/v1/customers**', async (route) => {
+    const url = route.request().url();
+    if (url.includes('/cus_demo_kavya_001')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cus_demo_kavya_001',
+          fullName: 'Kavya Deshmukh',
+          mobileMasked: '+91 ••••• ••234',
+          emailMasked: 'kavya.deshmukh@example.com',
+          pincode: '400008',
+          status: 'ACTIVE',
+        }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: 'cus_demo_kavya_001',
+              fullName: 'Kavya Deshmukh',
+              mobileMasked: '+91 ••••• ••234',
+              emailMasked: 'kavya.deshmukh@example.com',
+              pincode: '400008',
+              status: 'ACTIVE',
+            },
+          ],
+          meta: { total: 1 },
+        }),
+      });
+    }
   });
 }
 
@@ -525,14 +1206,36 @@ export async function performRoleLogin(
     const mfaSubmit = page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
     await humanType(mfaInput, '000000');
     await pauseForDemo(page, 400);
+    // The app skips the real TOTP check for the bypass code, so it never upgrades the session itself. Swap in the aal2 token
+    // the real verify call would return, otherwise MFA-required roles are sent to the authenticator enrolment page.
+    const aal2Token = createMockJwt(persona, 'aal2');
+    await page.evaluate((token) => {
+      localStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_bypass_active', 'true');
+      for (const key of Object.keys(localStorage)) {
+        if (!/^sb-.*-auth-token$/.test(key)) continue;
+        const stored = JSON.parse(localStorage.getItem(key) || '{}');
+        stored.access_token = token;
+        localStorage.setItem(key, JSON.stringify(stored));
+      }
+    }, aal2Token);
     await humanClick(mfaSubmit, 800);
   }
 
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+
   // 4. Ensure destination is reached
   if (targetPath && targetPath !== '/' && !page.url().includes(targetPath)) {
-    await page.goto(targetPath);
+    try {
+      await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
+    } catch {
+      if (!page.url().includes(targetPath)) {
+        await page.waitForTimeout(500);
+        await page.goto(targetPath, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      }
+    }
   }
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
   await pauseForDemo(page, 800);
 }
 
@@ -732,32 +1435,36 @@ async function clearSpotlight(locator: Locator): Promise<void> {
   } catch {}
 }
 
-export async function humanType(locator: Locator, text: string, charDelay = 30): Promise<void> {
+export async function humanType(locator: Locator, text: string, charDelay = 15): Promise<void> {
   await locator.scrollIntoViewIfNeeded();
   if (isHeaded) {
     await showSpotlight(locator, 'type');
-    await locator.page().waitForTimeout(200);
+    await locator.page().waitForTimeout(120);
     await clearSpotlight(locator);
   }
   await locator.click();
   await locator.fill('');
   await locator.pressSequentially(text, { delay: charDelay });
+  const actual = await locator.inputValue().catch(() => '');
+  if (actual !== text) {
+    await locator.fill(text);
+  }
   if (isHeaded) {
-    await locator.page().waitForTimeout(300);
+    await locator.page().waitForTimeout(150);
   }
 }
 
-export async function humanClick(locator: Locator, pauseAfter = 400): Promise<void> {
-  await locator.scrollIntoViewIfNeeded();
+export async function humanClick(locator: Locator, pauseAfter = 250): Promise<void> {
+  await locator.scrollIntoViewIfNeeded().catch(() => {});
   if (isHeaded) {
-    await showSpotlight(locator, 'click');
-    await locator.hover();
-    await locator.page().waitForTimeout(380); // Clear visual pause so observer registers the target
-    await clearSpotlight(locator);
+    await showSpotlight(locator, 'click').catch(() => {});
+    await locator.hover().catch(() => {});
+    await locator.page().waitForTimeout(180); // Clear visual pause so observer registers the target
+    await clearSpotlight(locator).catch(() => {});
   }
   await locator.click();
   if (isHeaded) {
-    const tunedPause = Math.min(pauseAfter, 600);
+    const tunedPause = Math.min(pauseAfter, 300);
     await locator.page().waitForTimeout(tunedPause);
   }
 }

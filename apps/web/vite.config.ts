@@ -24,6 +24,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.spec.{ts,tsx}'],
     environment: 'node',
+    setupFiles: ['./src/test-setup.ts'],
     // Unit tests use relative API paths and test default MFA enforcement; a developer's .env must not change them.
     env: { VITE_API_BASE_URL: '', VITE_DISABLE_MFA: 'false' },
   },

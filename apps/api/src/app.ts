@@ -76,6 +76,16 @@ export function createApp(opts: CreateAppOptions): Express {
       pinoHttp({
         logger: opts.logger,
         genReqId: (req) => req.correlationId,
+        // One readable line: "GET /v1/users/usr_1 200 12ms [01M5V...]". The correlation id stays in the log record.
+        customSuccessMessage: (req, res, ms) =>
+          `${req.method} ${req.url?.split('?')[0]} ${res.statusCode} ${Math.round(ms)}ms${req.id ? ` [${req.id}]` : ''}`,
+        customErrorMessage: (req, res, err) =>
+          `${req.method} ${req.url?.split('?')[0]} ${res.statusCode} ${err.message}${req.id ? ` [${req.id}]` : ''}`,
+        customLogLevel: (_req, res, err) => {
+          if (err || res.statusCode >= 500 || res.statusCode === 401) return 'error';
+          if (res.statusCode >= 400) return 'warn';
+          return 'info';
+        },
         // Method, path and status only: no headers, query strings or bodies (Contracts §12).
         serializers: {
           req: (req: { id: string; method: string; url?: string }) => ({

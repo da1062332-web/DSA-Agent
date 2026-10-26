@@ -70,7 +70,6 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
         throw AppError.of('VALIDATION_ERROR', 'Valid email and OTP are required.');
       }
       const { email, otp } = parsed.data;
-      console.log(`[test-login] Received login request for email: "${email}", otp: "${otp}"`);
 
       // 1. Verify hardcoded OTP against configured test bypass OTP (defaults to 000000)
       if (otp !== opts.bypassOtp) {
