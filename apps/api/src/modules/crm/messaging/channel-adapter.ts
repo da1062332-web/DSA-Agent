@@ -4,7 +4,7 @@ import type { MessageChannel, MessageRecipient } from '@dsa/contracts';
 
 export interface SendResult {
   providerMessageId: string;
-  status: 'SENT' | 'QUEUED';
+  status: 'SENT' | 'QUEUED' | 'FAILED';
   sentAt: string;
   metadata?: Record<string, unknown>;
 }
@@ -40,7 +40,18 @@ export class UnconfiguredAdapter implements ChannelAdapter {
 }
 
 /**
- * Configured adapter for testing and approved mock provider setups.
+ * Test-only rule for the simulated provider: a recipient whose mobile ends in 999, or whose email local part ends in +fail,
+ * makes the simulated send FAIL. Synthetic test data only. Nothing is sent to a real customer.
+ */
+export function isSimulatedFailure(recipient: { email?: string; mobile?: string }): boolean {
+  const mobile = recipient.mobile ?? '';
+  const local = (recipient.email ?? '').split('@')[0] ?? '';
+  return mobile.endsWith('999') || local.endsWith('+fail');
+}
+
+/**
+ * Configured adapter for testing and approved mock provider setups. It never contacts a real provider. A simulated send
+ * succeeds (SENT) unless the recipient is a test failure case (see isSimulatedFailure).
  */
 export class ConfiguredTestAdapter implements ChannelAdapter {
   private sentMessages: Array<{
@@ -76,6 +87,14 @@ export class ConfiguredTestAdapter implements ChannelAdapter {
     }
 
     const providerMessageId = `pmsg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    if (isSimulatedFailure(params.recipient)) {
+      return {
+        providerMessageId,
+        status: 'FAILED',
+        sentAt: new Date().toISOString(),
+        metadata: { reason: 'SIMULATED_PROVIDER_FAILURE' },
+      };
+    }
     this.sentMessages.push({
       ...params,
       providerMessageId,

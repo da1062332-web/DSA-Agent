@@ -45,6 +45,7 @@ import {
   NO_DIFF_NOTE,
   canDecideCorrection,
   grantAction,
+  grantWindowEnded,
   isValidChangeDescription,
   isValidCorrection,
   isValidJustification,
@@ -286,6 +287,8 @@ function SupportAccessTab() {
 
 function GrantRow({ grant }: { grant: SupportAccessGrant }) {
   const action = grantAction(grant);
+  // The window can end while the page is open: decide it again from the clock on every render.
+  const windowEnded = grantWindowEnded(grant, new Date());
   const toast = useToast();
   const decide = useCommand<{ decision: 'APPROVED' | 'DENIED' }, SupportAccessGrant>(
     () => ({ path: `${GRANTS}/${grant.id}/approval`, method: 'POST' }),
@@ -317,10 +320,29 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
         </Typography>
       </TableCell>
       <TableCell>
-        <StatusChip active={grant.status === 'APPROVED'} label={GRANT_STATUS_LABELS[grant.status]} />
+        <StatusChip
+          active={grant.status === 'APPROVED'}
+          label={windowEnded ? GRANT_STATUS_LABELS.EXPIRED : GRANT_STATUS_LABELS[grant.status]}
+        />
       </TableCell>
       <TableCell align="right">
-        {action === 'DECIDE' && (
+        {action === 'DECIDE' && windowEnded && (
+          // Faint, disabled buttons plus the reason, so it is clear why nothing can be done here.
+          <Stack spacing={0.5} alignItems="flex-end" data-testid="approvals.grant.closed">
+            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ opacity: 0.4 }}>
+              <Button size="small" variant="outlined" color="inherit" disabled>
+                Approve
+              </Button>
+              <Button size="small" variant="outlined" color="inherit" disabled>
+                Deny
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              Closed: the access window ended on {when(grant.endsAt)}. It can no longer be approved or denied.
+            </Typography>
+          </Stack>
+        )}
+        {action === 'DECIDE' && !windowEnded && (
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               size="small"

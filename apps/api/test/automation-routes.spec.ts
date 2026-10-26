@@ -141,6 +141,8 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     expect(res.body.version.id).toMatch(/^wfv_/);
     expect(res.body.version.versionNo).toBe(1);
     expect(res.body.version.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    // A new draft is not pinned yet: the database rejects a definition that points at a version not written yet.
+    expect(res.body.definition.pinnedVersionId).toBeNull();
 
     // Verify audit log recorded
     expect(store.auditEntries.some((e) => e.action === 'automation.definition_created')).toBe(true);
@@ -163,6 +165,57 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     const res = await request(app).post('/v1/automations').send(invalidPayload);
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('TEST-WFA-API-019 a rule with no approved version cannot be activated; a pinned rule can', async () => {
+    const store = createMockAutomationStore();
+    const app = createTestApp({
+      auth: fakeAuth(authorPrincipal),
+      deps: { txRunner: store.runner, auditPort: store.mockAuditPort, audit: store.mockAuditPort },
+    });
+
+    // A brand-new draft has no pinned version yet, so activating it is refused.
+    const created = await request(app).post('/v1/automations').send({
+      code: 'lead_draft_only',
+      name: 'Draft only rule',
+      triggerType: 'EVENT',
+      entityType: 'LEAD',
+    });
+    expect(created.status).toBe(201);
+    const draftId = created.body.definition.id;
+    const refused = await request(app)
+      .patch(`/v1/automations/${draftId}`)
+      .set('If-Match', '"0"')
+      .send({ status: 'ACTIVE' });
+    expect(refused.status).toBeGreaterThanOrEqual(400);
+    expect(refused.body.error.code).toBe('INVALID_STATE');
+
+    // The seeded rule has an approved, pinned version, so it can be activated.
+    const allowed = await request(app)
+      .patch('/v1/automations/wfd_01JTESTWFD0000000000000001')
+      .set('If-Match', '"1"')
+      .send({ status: 'ACTIVE' });
+    expect(allowed.status).toBe(200);
+  });
+
+  it('TEST-WFA-API-020 a new version must name its event and have at least one action before End', async () => {
+    const store = createMockAutomationStore();
+    const app = createTestApp({
+      auth: fakeAuth(authorPrincipal),
+      deps: { txRunner: store.runner, auditPort: store.mockAuditPort, audit: store.mockAuditPort },
+    });
+    const notify = { id: 'step_n', name: 'Notify', type: 'NOTIFY', isSkippable: false, config: { title: 'New lead', category: 'LEAD' } };
+    const end = { id: 'step_e', name: 'End', type: 'END', isSkippable: false, config: { outcomeStatus: 'SUCCEEDED' } };
+
+    const noEvent = await request(app)
+      .post('/v1/automations/wfd_01JTESTWFD0000000000000001/versions')
+      .send({ triggerConfig: {}, steps: [notify, end] });
+    expect(noEvent.status).toBe(422);
+
+    const onlyEnd = await request(app)
+      .post('/v1/automations/wfd_01JTESTWFD0000000000000001/versions')
+      .send({ triggerConfig: { eventType: 'lead.created' }, steps: [end] });
+    expect(onlyEnd.status).toBe(422);
   });
 
   // 4. Updating Definition Metadata
@@ -255,8 +308,15 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     const createRes = await request(authorApp)
       .post('/v1/automations/wfd_01JTESTWFD0000000000000001/versions')
       .send({
-        triggerConfig: {},
+        triggerConfig: { eventType: 'lead.created' },
         steps: [
+          {
+            id: 'step_v2_notify',
+            name: 'Notify',
+            type: 'NOTIFY',
+            isSkippable: false,
+            config: { title: 'New lead: call within 1 hour', category: 'LEAD' },
+          },
           {
             id: 'step_v2',
             name: 'V2 Step',
@@ -649,8 +709,15 @@ describe('Module 24: Workflow Automation (MOD-WFA) Phase 4 HTTP APIs', () => {
     const created = await request(authorApp)
       .post('/v1/automations/wfd_01JTESTWFD0000000000000001/versions')
       .send({
-        triggerConfig: {},
+        triggerConfig: { eventType: 'lead.created' },
         steps: [
+          {
+            id: 'step_v2_notify',
+            name: 'Notify',
+            type: 'NOTIFY',
+            isSkippable: false,
+            config: { title: 'New lead: call within 1 hour', category: 'LEAD' },
+          },
           {
             id: 'step_v2',
             name: 'V2 Step',

@@ -336,3 +336,65 @@ export const UpdateReleaseRequestSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'Send at least one field to change.' });
 
 export type UpdateReleaseRequest = z.infer<typeof UpdateReleaseRequestSchema>;
+
+// ==========================================
+// SUB-ADM.06: Break-glass support view (read-only, metadata and configuration only)
+// ==========================================
+// What an approved support-access window shows: the tenant's status and its organisation and branch set-up.
+// No business records (leads, applications, customers, loans) are part of this shape.
+
+export const SupportTenantViewSchema = z.object({
+  grantId: z.string(),
+  endsAt: z.string(),
+  tenant: z.object({
+    id: z.string(),
+    slug: z.string(),
+    legalName: z.string(),
+    status: z.enum(['ACTIVE', 'SUSPENDED', 'OFFBOARDING']),
+    dataRegion: z.string(),
+    timezone: z.string(),
+  }),
+  organisations: z.array(
+    z.object({
+      id: z.string(),
+      legalName: z.string(),
+      constitution: z.string(),
+      status: z.enum(['ACTIVE', 'INACTIVE']),
+    }),
+  ),
+  branches: z.array(
+    z.object({
+      id: z.string(),
+      code: z.string(),
+      name: z.string(),
+      status: z.enum(['ACTIVE', 'INACTIVE']),
+      timezone: z.string(),
+    }),
+  ),
+  /** The tenant's settings at TENANT, ORGANISATION and BRANCH scope. USER-scope (personal) settings are never included. */
+  settings: z.array(
+    z.object({
+      key: z.string(),
+      scopeType: z.enum(['TENANT', 'ORGANISATION', 'BRANCH']),
+      scopeId: z.string(),
+      value: z.unknown(),
+      locked: z.boolean(),
+    }),
+  ),
+  /** The tenant's own feature-flag overrides. Platform-wide flags are not included. */
+  flags: z.array(z.object({ key: z.string(), value: z.boolean() })),
+});
+
+export type SupportTenantView = z.infer<typeof SupportTenantViewSchema>;
+
+/** One line of the support-view log: a view of a tenant's set-up, or a refused attempt to view it. */
+export const SupportViewLogEntrySchema = z.object({
+  occurredAt: z.string(),
+  action: z.enum(['platform.support_view_read', 'platform.support_view_denied']),
+  operatorId: z.string(),
+  /** The operator's display name, or null when it is not on record. */
+  operatorName: z.string().nullable(),
+  grantId: z.string().nullable(),
+});
+
+export type SupportViewLogEntry = z.infer<typeof SupportViewLogEntrySchema>;

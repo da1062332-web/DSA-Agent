@@ -18,6 +18,8 @@ import {
   type ReleaseRegisterItem,
   type RequestContext,
   type ResumeQueueRequest,
+  type SupportTenantView,
+  type SupportViewLogEntry,
   type SupportAccessGrant,
   type SystemHealthReport,
   type TenantFeatureFlag,
@@ -163,6 +165,19 @@ export class PlatformAdminService {
     const tenant = await this.store.getTenant(ctx, tenantId);
     if (!tenant) throw AppError.of('NOT_FOUND', `Tenant '${tenantId}' was not found.`);
     return tenant;
+  }
+
+  /**
+   * The read-only support view of one tenant, for the signed-in operator. Only metadata and configuration. The
+   * database checks the operator's approved window (migration 0088); this method adds nothing that could widen it.
+   */
+  async getSupportTenantView(ctx: RequestContext, tenantId: string): Promise<SupportTenantView> {
+    return this.store.getSupportTenantView(ctx, tenantId, ctx.principal.id);
+  }
+
+  /** The recent support-view events for one tenant (who looked, when, and refused attempts). Platform realm only. */
+  async listSupportViewLog(ctx: RequestContext, tenantId: string): Promise<SupportViewLogEntry[]> {
+    return this.store.listSupportViewLog(ctx, tenantId);
   }
 
   // ==========================================

@@ -41,7 +41,7 @@ export async function getAutomation(
 /** PATCH /v1/automations/{id}: If-Match carries the definition's lockVersion; the updated definition comes back bare. */
 export async function updateAutomation(
   id: string,
-  patch: { name?: string; description?: string; status?: string },
+  patch: { name?: string; description?: string | null; status?: string },
   lockVersion: number,
 ): Promise<AutomationDefinition> {
   return apiFetch<AutomationDefinition>(`/v1/automations/${id}`, {

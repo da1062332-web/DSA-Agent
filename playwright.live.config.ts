@@ -35,7 +35,7 @@ const headed = process.argv.includes('--headed') || process.env.HEADED === 'true
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'sales-executive-live.spec.ts',
+  testMatch: 'messaging-simulated-live.spec.ts',
   timeout: 240_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,

@@ -212,10 +212,16 @@ export function NotificationCenter(_props: NotificationCenterProps) {
     }
   };
 
+
+  /** Marks every unread notification of the user as read on the server, not only the ones loaded here. */
   const handleMarkAllAsRead = async () => {
-    const unreadIds = notifications.filter((n) => !n.readAt).map((n) => n.id);
-    if (unreadIds.length > 0) {
-      await handleMarkAsRead(unreadIds);
+    try {
+      await apiFetch('/v1/notifications/read-all', { method: 'POST' });
+      const nowIso = new Date().toISOString();
+      setNotifications((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: nowIso })));
+      setUnreadCount(0);
+    } catch (err) {
+      setError(errorText(err));
     }
   };
 

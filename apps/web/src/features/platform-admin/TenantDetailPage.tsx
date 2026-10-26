@@ -2,7 +2,7 @@
 // One tenant, opened from a row of the Tenants directory in the platform console: its overview and its own feature flags.
 // The tenant id comes from the URL and is passed on every call; the flags written here are this tenant's overrides only (migration 0068),
 // never the platform-wide flags on the Feature Flags tab of the console.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -39,20 +39,35 @@ import { ApiError } from '../../api/client';
 import {
   fetchFeatureFlags,
   fetchPlatformTenant,
+  fetchSupportAccessRequests,
+  fetchSupportTenantView,
+  fetchSupportViewLog,
   fetchTenantFeatureFlags,
   updateTenantFeatureFlag,
 } from './api';
 import { confirmMessage, flagState, onOff, updateRequest } from './tenant-flags-model';
 
 const notFound = (error: unknown) => error instanceof ApiError && error.httpStatus === 404;
+
+/** "1 h 12 min", "4 min 9 s" or "9 s": the time left in a support window. */
+function formatRemaining(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h} h ${m} min`;
+  if (m > 0) return `${m} min ${s} s`;
+  return `${s} s`;
+}
 const forbidden = (error: unknown) => error instanceof ApiError && error.httpStatus === 403;
 
 export function TenantDetailPage() {
   const { tenantId = '' } = useParams<{ tenantId: string }>();
   // The tab is in the URL (?tab=flags) so a link can open the flags directly and a reload keeps the place.
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'flags' ? 1 : 0;
-  const setTab = (i: number) => setParams(i === 1 ? { tab: 'flags' } : {}, { replace: true });
+  const tab = params.get('tab') === 'flags' ? 1 : params.get('tab') === 'support' ? 2 : 0;
+  const setTab = (i: number) =>
+    setParams(i === 1 ? { tab: 'flags' } : i === 2 ? { tab: 'support' } : {}, { replace: true });
   const [pending, setPending] = useState<{ flag: TenantFeatureFlag; next: boolean } | null>(null);
   const queryClient = useQueryClient();
 
@@ -62,6 +77,37 @@ export function TenantDetailPage() {
     enabled: tenantId !== '',
     retry: false,
   });
+  // The support view opens only on its own tab. Without an approved window the server answers 403, shown as a plain message.
+  const supportQuery = useQuery({
+    queryKey: ['platform-tenant-support-view', tenantId],
+    queryFn: () => fetchSupportTenantView(tenantId),
+    enabled: tenantId !== '' && tab === 2 && tenantQuery.isSuccess,
+    retry: false,
+  });
+  // The window details (incident, reason, approver) come from the grant list, which the platform realm may read.
+  const grantsQuery = useQuery({
+    queryKey: ['platform-tenant-support-grants', tenantId],
+    queryFn: () => fetchSupportAccessRequests(tenantId),
+    enabled: tenantId !== '' && tab === 2 && tenantQuery.isSuccess,
+    retry: false,
+  });
+  // Who has looked at this tenant's set-up, and when. Shown on the tab whether or not a window is open.
+  const supportLogQuery = useQuery({
+    queryKey: ['platform-tenant-support-log', tenantId],
+    queryFn: () => fetchSupportViewLog(tenantId),
+    enabled: tenantId !== '' && tab === 2 && tenantQuery.isSuccess,
+    retry: false,
+  });
+  // Ticks once a second, so the countdown runs and an expired window closes without a reload.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const supportEndsMs = supportQuery.data ? new Date(supportQuery.data.endsAt).getTime() : 0;
+  const supportWindowEnded = supportQuery.data !== undefined && now >= supportEndsMs;
+  const supportRemaining = formatRemaining(supportEndsMs - now);
+  const supportGrant = grantsQuery.data?.data.find((g) => g.id === supportQuery.data?.grantId);
   // The flag queries wait for the tab: an operator who may see the overview but not manage flags (support) is not shown an error up front.
   const flagsQuery = useQuery({
     queryKey: ['platform-tenant-flags', tenantId],
@@ -142,7 +188,8 @@ export function TenantDetailPage() {
               </Stack>
             }
             subtitle={
-              <Typography variant="body2" color="text.secondary">
+              // component="span": the header already sits inside a paragraph, and a <p> cannot nest inside a <p>.
+              <Typography component="span" variant="body2" color="text.secondary">
                 <code>{tenant.id}</code>
               </Typography>
             }
@@ -156,6 +203,7 @@ export function TenantDetailPage() {
             >
               <Tab label="Overview" />
               <Tab label="Feature Flags" />
+              <Tab label="Support view" />
             </Tabs>
           </Paper>
 
@@ -195,6 +243,248 @@ export function TenantDetailPage() {
                   </Grid>
                 ))}
               </Grid>
+            </Box>
+          )}
+
+          {tab === 2 && (
+            <Box>
+              {supportQuery.isLoading && <CircularProgress size={24} />}
+              {supportQuery.isError && (
+                <Alert severity="warning" data-testid="support.view.closed" sx={{ mb: 2 }}>
+                  {forbidden(supportQuery.error)
+                    ? 'No active support window for this tenant. Request one from the Support Access tab, and the tenant administrator must approve it before it can be opened.'
+                    : `The support view could not be loaded${
+                        supportQuery.error instanceof ApiError
+                          ? ` (${supportQuery.error.code}, HTTP ${supportQuery.error.httpStatus})`
+                          : ''
+                      }: ${supportQuery.error instanceof Error ? supportQuery.error.message : 'try again'}`}
+                </Alert>
+              )}
+              {supportWindowEnded && (
+                <Alert severity="warning" data-testid="support.view.ended" sx={{ mb: 2 }}>
+                  This support window ended at {new Date(supportQuery.data?.endsAt ?? 0).toLocaleString()}. The view is
+                  closed. Request a new window from the Support Access tab.
+                </Alert>
+              )}
+              {supportQuery.data && !supportWindowEnded && (
+                <Stack spacing={3} data-testid="support.view">
+                  <Alert
+                    severity="info"
+                    action={
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          void supportQuery.refetch();
+                          void grantsQuery.refetch();
+                        }}
+                      >
+                        Refresh
+                      </Button>
+                    }
+                  >
+                    Read-only. Metadata and configuration only. Time left:{' '}
+                    <strong data-testid="support.view.remaining">{supportRemaining}</strong>. The window ends at{' '}
+                    {new Date(supportQuery.data.endsAt).toLocaleString()}. Every view is recorded in the audit trail under
+                    grant {supportQuery.data.grantId}.
+                  </Alert>
+                  {supportGrant && (
+                    <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                      <CardContent>
+                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                          Window details
+                        </Typography>
+                        <Table size="small" data-testid="support.view.grant">
+                          <TableBody>
+                            {[
+                              ['Incident reference', supportGrant.incidentRef],
+                              ['Reason', supportGrant.reason],
+                              ['Scope', supportGrant.scope],
+                              ['Requested by', supportGrant.requester],
+                              ['Approved by', supportGrant.approver ?? 'Not recorded'],
+                              ['Starts', new Date(supportGrant.startsAt).toLocaleString()],
+                              ['Ends', new Date(supportGrant.endsAt).toLocaleString()],
+                              ['Status', supportGrant.status],
+                            ].map(([label, value]) => (
+                              <TableRow key={label}>
+                                <TableCell sx={{ fontWeight: 600, width: 200 }}>{label}</TableCell>
+                                <TableCell>{value}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                  <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        Tenant
+                      </Typography>
+                      <Typography variant="body2">
+                        {supportQuery.data.tenant.legalName} · {supportQuery.data.tenant.slug} ·{' '}
+                        {supportQuery.data.tenant.status} · {supportQuery.data.tenant.dataRegion} ·{' '}
+                        {supportQuery.data.tenant.timezone}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                  <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        Organisations
+                      </Typography>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Legal name</TableCell>
+                            <TableCell>Constitution</TableCell>
+                            <TableCell>Status</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {supportQuery.data.organisations.map((o) => (
+                            <TableRow key={o.id}>
+                              <TableCell>{o.legalName}</TableCell>
+                              <TableCell>{o.constitution}</TableCell>
+                              <TableCell>{o.status}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        Branches
+                      </Typography>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Code</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Timezone</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {supportQuery.data.branches.map((b) => (
+                            <TableRow key={b.id}>
+                              <TableCell>{b.code}</TableCell>
+                              <TableCell>{b.name}</TableCell>
+                              <TableCell>{b.status}</TableCell>
+                              <TableCell>{b.timezone}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        Settings
+                      </Typography>
+                      <Table size="small" data-testid="support.view.settings">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Key</TableCell>
+                            <TableCell>Scope</TableCell>
+                            <TableCell>Value</TableCell>
+                            <TableCell>Locked</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {supportQuery.data.settings.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4}>No settings changed from the platform defaults.</TableCell>
+                            </TableRow>
+                          )}
+                          {supportQuery.data.settings.map((s) => (
+                            <TableRow key={`${s.scopeType}:${s.scopeId}:${s.key}`}>
+                              <TableCell>{s.key}</TableCell>
+                              <TableCell>
+                                {s.scopeType === 'TENANT' ? 'Tenant' : `${s.scopeType}: ${s.scopeId}`}
+                              </TableCell>
+                              <TableCell>{JSON.stringify(s.value)}</TableCell>
+                              <TableCell>{s.locked ? 'Yes' : 'No'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        Feature flag overrides for this tenant
+                      </Typography>
+                      <Table size="small" data-testid="support.view.flags">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Flag</TableCell>
+                            <TableCell>This tenant</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {supportQuery.data.flags.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={2}>No overrides. The platform defaults apply.</TableCell>
+                            </TableRow>
+                          )}
+                          {supportQuery.data.flags.map((f) => (
+                            <TableRow key={f.key}>
+                              <TableCell>{f.key}</TableCell>
+                              <TableCell>{f.value ? 'On' : 'Off'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </Stack>
+              )}
+            </Box>
+          )}
+
+          {tab === 2 && (
+            <Box sx={{ mt: 3 }}>
+              <Card elevation={0} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                    Who looked at this tenant&apos;s set-up
+                  </Typography>
+                  {supportLogQuery.isError && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      The view log could not be loaded.
+                    </Alert>
+                  )}
+                  <Table size="small" data-testid="support.view.log">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>When</TableCell>
+                        <TableCell>Event</TableCell>
+                        <TableCell>Operator</TableCell>
+                        <TableCell>Window</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {(supportLogQuery.data?.data ?? []).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4}>No views yet.</TableCell>
+                        </TableRow>
+                      )}
+                      {(supportLogQuery.data?.data ?? []).map((e, i) => (
+                        <TableRow key={`${e.occurredAt}-${i}`}>
+                          <TableCell>{new Date(e.occurredAt).toLocaleString()}</TableCell>
+                          <TableCell>{e.action === 'platform.support_view_read' ? 'Viewed' : 'Refused'}</TableCell>
+                          <TableCell>{e.operatorName ?? e.operatorId}</TableCell>
+                          <TableCell>{e.grantId ?? '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </Box>
           )}
 

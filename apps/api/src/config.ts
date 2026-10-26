@@ -54,6 +54,11 @@ const EnvSchema = z
       .transform((v) => v === 'true'),
     /** Hardcoded OTP for test bypass authentication. */
     TEST_BYPASS_OTP: z.string().default('000000'),
+    /** Simulated messaging provider (email, SMS, WhatsApp). Test environments only: the server refuses to start with it in production. */
+    ENABLE_MOCK_PROVIDERS: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
     /** Secret for HMAC signing and verifying test bypass tokens. */
     BYPASS_JWT_SECRET: z.string().default('dsa-crm-test-bypass-jwt-secret-key-2026'),
   })
@@ -82,6 +87,13 @@ const EnvSchema = z
         path: ['APP_SIGNING_SECRET'],
         message:
           'is required in production (document links, archives and webhook secrets are signed or encrypted with it)',
+      });
+    }
+    if (env.ENABLE_MOCK_PROVIDERS && env.NODE_ENV === 'production') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ENABLE_MOCK_PROVIDERS'],
+        message: 'the simulated messaging provider is not allowed in production',
       });
     }
     if (env.TEST_TOKENS && !isLocalHost(env.SUPABASE_URL)) {

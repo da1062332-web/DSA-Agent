@@ -58,6 +58,7 @@ export class MessagingService {
     this.sendGuard = sendGuard ?? new SendEligibilityGuard();
     const useMock = process.env.ENABLE_MOCK_PROVIDERS === 'true';
     if (useMock) {
+      console.warn('[messaging] SIMULATED PROVIDER ENABLED: email, SMS and WhatsApp are simulated. Nothing is delivered to a real customer.');
       this.adapters.set('EMAIL', new ConfiguredTestAdapter('EMAIL', 'DEV_SIMULATED_SES', true));
       this.adapters.set('SMS', new ConfiguredTestAdapter('SMS', 'DEV_SIMULATED_TWILIO', true));
       this.adapters.set('WHATSAPP', new ConfiguredTestAdapter('WHATSAPP', 'DEV_SIMULATED_META', true));
@@ -286,7 +287,8 @@ export class MessagingService {
         variables: input.variables ?? [],
         providerTemplateId: input.providerTemplateId ?? null,
         version: nextVersion,
-        status: input.status ?? 'APPROVED',
+        // A new template is a DRAFT. It is approved by a different person (approveTemplate), never by its author.
+        status: 'DRAFT',
         lockVersion: 0,
         createdAt: nowIso,
         createdBy: ctx.principal.id,
@@ -340,6 +342,143 @@ export class MessagingService {
         if (err instanceof Error && err.message === 'No TxRunner configured for this test') {
           return run();
         }
+        throw err;
+      }
+    }
+    return run();
+  }
+
+  /**
+   * Approves a DRAFT template. The approver must be a different person from the author (independent review). Once approved
+   * a version is immutable (database rule), so a change needs a new version.
+   */
+  async approveTemplate(
+    ctx: RequestContext,
+    templateId: string,
+  ): Promise<{ id: string; code: string; version: number; status: 'APPROVED'; lockVersion: number }> {
+    const tenantId = ctx.principal.tenantId;
+    if (!ctx.principal.grants.some((g) => g.code === 'config.manage')) {
+      throw AppError.of('FORBIDDEN', 'Principal requires config.manage permission to approve templates');
+    }
+
+    const check = (status: string, createdBy: string) => {
+      if (status !== 'DRAFT') {
+        throw AppError.of('INVALID_STATE', `Only a draft can be approved. This version is ${status}.`);
+      }
+      if (createdBy === ctx.principal.id) {
+        throw AppError.of('SOD_VIOLATION', 'Separation of duties: the person who created a template cannot approve it.');
+      }
+    };
+
+    const run = async (tx?: Tx) => {
+      if (tx) {
+        const found = await sql<{ id: string; code: string; version: number; status: string; created_by: string; lock_version: number }>`
+          SELECT id, code, version, status, created_by, lock_version FROM app.message_template
+           WHERE id = ${templateId} AND tenant_id = ${tenantId}
+        `.execute(tx);
+        const row = found.rows[0];
+        if (!row) throw AppError.of('NOT_FOUND', `Template '${templateId}' was not found.`);
+        check(row.status, row.created_by);
+        const updated = await sql<{ lock_version: number }>`
+          UPDATE app.message_template
+             SET status = 'APPROVED', updated_by = ${ctx.principal.id}
+           WHERE id = ${templateId} AND tenant_id = ${tenantId} AND status = 'DRAFT'
+          RETURNING lock_version
+        `.execute(tx);
+        if (!updated.rows[0]) throw AppError.of('VERSION_CONFLICT', 'The template changed while it was being approved. Reload and try again.');
+        await sql`
+          INSERT INTO app.audit_event (
+            id, tenant_id, actor_type, actor_id, action, entity_type, entity_id, correlation_id, after, occurred_at
+          ) VALUES (
+            ${`aud_${nextUlid()}`}, ${tenantId}, ${ctx.principal.kind ?? 'USER'}, ${ctx.principal.id}, 'message_template.approved',
+            'message_template', ${templateId}, ${ctx.correlationId}, ${JSON.stringify({ status: 'APPROVED' })}::jsonb, now()
+          )
+        `.execute(tx);
+        return { id: row.id, code: row.code, version: row.version, status: 'APPROVED' as const, lockVersion: updated.rows[0].lock_version };
+      }
+      // Test-only in-memory path.
+      const tpl = Array.from(MessagingService.memoryTemplates.values()).find((t) => t.id === templateId && t.tenantId === tenantId);
+      if (!tpl) throw AppError.of('NOT_FOUND', `Template '${templateId}' was not found.`);
+      check(tpl.status, tpl.createdBy);
+      tpl.status = 'APPROVED';
+      tpl.lockVersion += 1;
+      tpl.updatedBy = ctx.principal.id;
+      return { id: tpl.id, code: tpl.code, version: tpl.version, status: 'APPROVED' as const, lockVersion: tpl.lockVersion };
+    };
+
+    if (this.txRunner) {
+      try {
+        return await this.txRunner.withTenantTx(ctx, (tx) => run(tx));
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === 'No TxRunner configured for this test') return run();
+        throw err;
+      }
+    }
+    return run();
+  }
+
+  /**
+   * Gives a SIMULATED message a delivery result (DELIVERED or UNDELIVERED) so the status flow can be tested. Only messages
+   * sent by the simulated provider can be changed this way; a real provider reports delivery by webhook.
+   */
+  async simulateDelivery(
+    ctx: RequestContext,
+    messageId: string,
+    outcome: 'DELIVERED' | 'UNDELIVERED',
+  ): Promise<{ id: string; status: string }> {
+    const tenantId = ctx.principal.tenantId;
+    if (!ctx.principal.grants.some((g) => g.code === 'message.send')) {
+      throw AppError.of('FORBIDDEN', 'Principal requires message.send permission');
+    }
+
+    const check = (provider: string, status: string) => {
+      if (!provider.startsWith('DEV_SIMULATED')) {
+        throw AppError.of('INVALID_STATE', 'Only simulated messages can be given a test delivery result. Real delivery comes from the provider webhook.');
+      }
+      if (status !== 'SENT') {
+        throw AppError.of('INVALID_STATE', `Only a SENT message can get a delivery result. This message is ${status}.`);
+      }
+    };
+    const entry = (status: 'DELIVERED' | 'UNDELIVERED') => ({ status, timestamp: new Date().toISOString() });
+
+    const run = async (tx?: Tx) => {
+      if (tx) {
+        const found = await sql<{ id: string; provider: string; status: string }>`
+          SELECT id, provider, status FROM app.message WHERE id = ${messageId} AND tenant_id = ${tenantId}
+        `.execute(tx);
+        const row = found.rows[0];
+        if (!row) throw AppError.of('NOT_FOUND', `Message '${messageId}' was not found.`);
+        check(row.provider, row.status);
+        await sql`
+          UPDATE app.message
+             SET status = ${outcome},
+                 status_history = status_history || ${JSON.stringify([entry(outcome)])}::jsonb
+           WHERE id = ${messageId} AND tenant_id = ${tenantId}
+        `.execute(tx);
+        await sql`
+          INSERT INTO app.audit_event (
+            id, tenant_id, actor_type, actor_id, action, entity_type, entity_id, correlation_id, after, occurred_at
+          ) VALUES (
+            ${`aud_${nextUlid()}`}, ${tenantId}, ${ctx.principal.kind ?? 'USER'}, ${ctx.principal.id}, 'message.simulated_delivery',
+            'message', ${messageId}, ${ctx.correlationId}, ${JSON.stringify({ status: outcome })}::jsonb, now()
+          )
+        `.execute(tx);
+        return { id: messageId, status: outcome };
+      }
+      // Test-only in-memory path.
+      const msg = MessagingService.memoryMessages.get(messageId);
+      if (!msg || msg.tenantId !== tenantId) throw AppError.of('NOT_FOUND', `Message '${messageId}' was not found.`);
+      check(msg.provider, msg.status);
+      msg.status = outcome;
+      msg.statusHistory = [...msg.statusHistory, entry(outcome)];
+      return { id: messageId, status: outcome };
+    };
+
+    if (this.txRunner) {
+      try {
+        return await this.txRunner.withTenantTx(ctx, (tx) => run(tx));
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === 'No TxRunner configured for this test') return run();
         throw err;
       }
     }

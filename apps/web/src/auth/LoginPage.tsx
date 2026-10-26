@@ -41,7 +41,18 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    // After an automatic sign-out, say why the person is back here. The notice is shown once.
+    try {
+      if (sessionStorage.getItem('dsa_session_expired')) {
+        sessionStorage.removeItem('dsa_session_expired');
+        return 'Your session has ended. Sign in again to continue.';
+      }
+    } catch {
+      // Storage can be blocked; no notice.
+    }
+    return null;
+  });
 
   // In-page MFA Modal State
   const [showMfaModal, setShowMfaModal] = useState(false);

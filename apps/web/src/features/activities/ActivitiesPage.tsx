@@ -173,8 +173,10 @@ export function ActivitiesPage() {
                 {
                   id: 'note',
                   header: 'Note',
+                  // A fixed share of the table, so the note wraps into lines of words instead of one word per line.
+                  width: '28%',
                   render: (a) => (
-                    <Box sx={{ maxWidth: 280, wordBreak: 'break-word' }}>
+                    <Box sx={{ minWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       <Typography variant="body2">{a.note || '—'}</Typography>
                     </Box>
                   ),

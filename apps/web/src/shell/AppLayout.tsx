@@ -34,7 +34,19 @@ import { MenuIcon } from './icons';
 import { SidebarContent } from './Sidebar';
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10, px: 2 }}>{children}</Box>
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      width: '100vw',
+      px: 2,
+    }}
+  >
+    {children}
+  </Box>
 );
 
 export function AppLayout() {
@@ -59,6 +71,90 @@ export function AppLayout() {
       return false;
     }
   });
+
+  const DEFAULT_SIDEBAR_WIDTH = 290;
+  const MIN_SIDEBAR_WIDTH = 240;
+  const MAX_SIDEBAR_WIDTH = 420;
+  const STEP_SIDEBAR_WIDTH = 35;
+  const COLLAPSED_WIDTH = 72;
+
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('dsa_sidebar_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= MAX_SIDEBAR_WIDTH) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Storage can be blocked or unavailable; the preference simply is not remembered.
+    }
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleIncreaseWidth = () => {
+    setSidebarWidth((prev) => {
+      const next = Math.min(MAX_SIDEBAR_WIDTH, prev + STEP_SIDEBAR_WIDTH);
+      try {
+        localStorage.setItem('dsa_sidebar_width', String(next));
+      } catch {
+      // Storage can be blocked or unavailable; the preference simply is not remembered.
+    }
+      return next;
+    });
+  };
+
+  const handleDecreaseWidth = () => {
+    setSidebarWidth((prev) => {
+      const next = Math.max(MIN_SIDEBAR_WIDTH, prev - STEP_SIDEBAR_WIDTH);
+      try {
+        localStorage.setItem('dsa_sidebar_width', String(next));
+      } catch {
+      // Storage can be blocked or unavailable; the preference simply is not remembered.
+    }
+      return next;
+    });
+  };
+
+  const handleResetWidth = () => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    try {
+      localStorage.setItem('dsa_sidebar_width', String(DEFAULT_SIDEBAR_WIDTH));
+    } catch {
+      // Storage can be blocked or unavailable; the preference simply is not remembered.
+    }
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, e.clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setSidebarWidth((latest) => {
+        try {
+          localStorage.setItem('dsa_sidebar_width', String(latest));
+        } catch {
+      // Storage can be blocked or unavailable; the preference simply is not remembered.
+    }
+        return latest;
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed((prev) => {
@@ -85,19 +181,19 @@ export function AppLayout() {
   const wide = useMediaQuery(theme.breakpoints.up('md'));
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
-  const sidebarWidth = wide ? (sidebarCollapsed ? 72 : 260) : 260;
+  const effectiveSidebarWidth = wide ? (sidebarCollapsed ? COLLAPSED_WIDTH : sidebarWidth) : sidebarWidth;
 
   if (session === undefined)
     return (
       <Centered>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#F89344' }} />
       </Centered>
     );
   if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (!aal || me.isPending)
     return (
       <Centered>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#F89344' }} />
       </Centered>
     );
   if (me.isError) {
@@ -310,17 +406,18 @@ export function AppLayout() {
             open={wide || drawerOpen}
             onClose={() => setDrawerOpen(false)}
             sx={{
-              width: sidebarWidth,
+              width: effectiveSidebarWidth,
               flexShrink: 0,
-              whiteSpace: 'nowrap',
               boxSizing: 'border-box',
               transition: (t) =>
-                t.transitions.create('width', {
-                  easing: t.transitions.easing.sharp,
-                  duration: t.transitions.duration.shorter,
-                }),
+                isResizing
+                  ? 'none'
+                  : t.transitions.create('width', {
+                      easing: t.transitions.easing.sharp,
+                      duration: t.transitions.duration.shorter,
+                    }),
               '& .MuiDrawer-paper': {
-                width: sidebarWidth,
+                width: effectiveSidebarWidth,
                 boxSizing: 'border-box',
                 top: { md: 64 },
                 height: { md: 'calc(100vh - 64px)', xs: '100%' },
@@ -329,14 +426,59 @@ export function AppLayout() {
                 overscrollBehavior: 'contain',
                 borderRight: '1px solid',
                 borderColor: 'divider',
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent',
+                '&::-webkit-scrollbar': {
+                  width: '6px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: 'transparent',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#cbd5e1',
+                  borderRadius: '3px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#94a3b8',
+                },
                 transition: (t) =>
-                  t.transitions.create('width', {
-                    easing: t.transitions.easing.sharp,
-                    duration: t.transitions.duration.shorter,
-                  }),
+                  isResizing
+                    ? 'none'
+                    : t.transitions.create('width', {
+                        easing: t.transitions.easing.sharp,
+                        duration: t.transitions.duration.shorter,
+                      }),
               },
             }}
           >
+            {/* Draggable resize handle on right edge of sidebar */}
+            {wide && !sidebarCollapsed && (
+              <Box
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsResizing(true);
+                }}
+                onDoubleClick={handleResetWidth}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: 6,
+                  height: '100%',
+                  cursor: 'col-resize',
+                  zIndex: 20,
+                  transition: 'background-color 0.15s ease',
+                  '&:hover': {
+                    bgcolor: 'rgba(248, 147, 68, 0.4)',
+                  },
+                  ...(isResizing && {
+                    bgcolor: '#F89344 !important',
+                    width: 4,
+                  }),
+                }}
+                title="Drag to resize sidebar width (double-click to reset)"
+              />
+            )}
             <SidebarContent
               isAdmin={isAdmin}
               can={(code) => hasPermission(me.data, code)}
@@ -345,6 +487,12 @@ export function AppLayout() {
               collapsed={wide && sidebarCollapsed}
               onToggleCollapse={wide ? toggleSidebarCollapse : undefined}
               onOpenSection={wide ? handleOpenSection : undefined}
+              currentWidth={sidebarWidth}
+              minWidth={MIN_SIDEBAR_WIDTH}
+              maxWidth={MAX_SIDEBAR_WIDTH}
+              onIncreaseWidth={wide && !sidebarCollapsed ? handleIncreaseWidth : undefined}
+              onDecreaseWidth={wide && !sidebarCollapsed ? handleDecreaseWidth : undefined}
+              onResetWidth={wide && !sidebarCollapsed ? handleResetWidth : undefined}
             />
           </Drawer>
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>

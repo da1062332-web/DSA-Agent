@@ -41,6 +41,14 @@ export function registerStepUpHandler(handler: StepUpHandler | null): void {
   stepUpHandler = handler;
 }
 
+type SessionExpiredHandler = () => void;
+let sessionExpiredHandler: SessionExpiredHandler | null = null;
+
+/** The AuthProvider registers here; the client calls it when the API rejects the session with 401. */
+export function registerSessionExpiredHandler(handler: SessionExpiredHandler | null): void {
+  sessionExpiredHandler = handler;
+}
+
 export const newIdempotencyKey = () => crypto.randomUUID();
 
 export async function apiFetch<T>(path: string, req: ApiRequest = {}): Promise<T> {
@@ -54,6 +62,10 @@ export async function apiRequest<T>(path: string, req: ApiRequest = {}): Promise
   try {
     return await send<T>(path, { ...req, method, idempotencyKey: key });
   } catch (err) {
+    // 401 other than a step-up request: the token has expired or was revoked. Sign the user out.
+    if (err instanceof ApiError && err.httpStatus === 401 && err.code !== 'STEP_UP_REQUIRED' && sessionExpiredHandler) {
+      sessionExpiredHandler();
+    }
     if (
       err instanceof ApiError &&
       err.code === 'STEP_UP_REQUIRED' &&

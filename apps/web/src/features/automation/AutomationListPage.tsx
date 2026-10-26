@@ -1,3 +1,4 @@
+import { createFailureMessage, isRuleValid, RULE_CODE_MAX, RULE_DESCRIPTION_MAX, RULE_NAME_MAX, RULE_NAME_MIN, TRIGGER_HELP, tidyRuleCode, validateNewRule } from './create-rule';
 // apps/web/src/features/automation/AutomationListPage.tsx — owner: Akash (Module 24: Workflow Automation MOD-WFA)
 import React, { useEffect, useState } from 'react';
 import {
@@ -39,6 +40,7 @@ import {
   VisibilityIcon,
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
+import { Can } from '../../shell/Can';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
 import { DataTable, PageHeader, AppButton, SearchInput } from '../../ui';
 import type {
@@ -63,6 +65,8 @@ export function AutomationListPage() {
   const [tabIndex, setTabIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreateErrors, setShowCreateErrors] = useState(false);
 
   const [definitions, setDefinitions] = useState<AutomationDefinition[]>([]);
   const [executions, setExecutions] = useState<AutomationExecution[]>([]);
@@ -111,24 +115,31 @@ export function AutomationListPage() {
     loadData();
   }, []);
 
+  const newRuleErrors = validateNewRule({ code: newCode, name: newName, description: newDesc });
+  const newRuleValid = isRuleValid(newRuleErrors);
+
   const handleCreate = async () => {
+    setShowCreateErrors(true);
+    if (!newRuleValid) return;
+    setCreateError(null);
     try {
       setLoading(true);
-      const payload: CreateAutomationDefinitionInput & { initialSteps?: unknown[] } = {
+      const created = await createAutomation({
         code: newCode.trim(),
         name: newName.trim(),
         description: newDesc.trim() || undefined,
         triggerType: newTriggerType,
         entityType: newEntityType,
-      };
-      await createAutomation(payload);
+      });
       setCreateDialogOpen(false);
       setNewCode('');
       setNewName('');
       setNewDesc('');
-      await loadData();
+      setShowCreateErrors(false);
+      // A new rule has no steps yet. Open it so the trigger and steps can be added next.
+      navigate('/automations/' + created.id);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create automation');
+      setCreateError(createFailureMessage(err));
     } finally {
       setLoading(false);
     }
@@ -407,6 +418,11 @@ export function AutomationListPage() {
                             </IconButton>
                           </span>
                         </Tooltip>
+                        <Can action="automation.author">
+                          <AppButton size="small" variant="ghost" onClick={() => navigate(`/automations/${d.id}?edit=1`)} data-testid="automation.row.edit">
+                            Edit
+                          </AppButton>
+                        </Can>
                         <Tooltip title="View Details & Versions">
                           <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
                             <VisibilityIcon fontSize="small" />
@@ -582,18 +598,23 @@ export function AutomationListPage() {
             label="Rule Code"
             placeholder="e.g. auto_lead_welcome_sms"
             value={newCode}
-            onChange={(e) => setNewCode(e.target.value)}
-            helperText="Alphanumeric with underscores or hyphens"
+            onChange={(e) => setNewCode(tidyRuleCode(e.target.value))}
+            error={(newCode.length > 0 || showCreateErrors) && !!newRuleErrors.code}
+            helperText={(newCode.length > 0 || showCreateErrors) && newRuleErrors.code ? newRuleErrors.code : RULE_CODE_MAX + ' characters at most: lowercase letters, numbers, _ or -. Spaces become _.'}
             fullWidth
             required
+            inputProps={{ maxLength: RULE_CODE_MAX, 'data-testid': 'automation.create.code' }}
           />
           <TextField
             label="Rule Name"
             placeholder="e.g. Lead Welcome Notification & Document Request"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            error={(newName.length > 0 || showCreateErrors) && !!newRuleErrors.name}
+            helperText={(newName.length > 0 || showCreateErrors) && newRuleErrors.name ? newRuleErrors.name : RULE_NAME_MIN + ' to ' + RULE_NAME_MAX + ' characters. Use a name people will recognise.'}
             fullWidth
             required
+            inputProps={{ maxLength: RULE_NAME_MAX, 'data-testid': 'automation.create.name' }}
           />
           <TextField
             label="Description"
@@ -603,6 +624,8 @@ export function AutomationListPage() {
             multiline
             rows={3}
             fullWidth
+            error={!!newRuleErrors.description}
+            helperText={newRuleErrors.description ?? newDesc.length + ' / ' + RULE_DESCRIPTION_MAX}
           />
           <FormControl fullWidth>
             <InputLabel>Trigger Type</InputLabel>
@@ -617,6 +640,9 @@ export function AutomationListPage() {
               <MenuItem value="WATCH">WATCH (State transition watcher)</MenuItem>
               <MenuItem value="MANUAL">MANUAL (Staff Triggered)</MenuItem>
             </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              {TRIGGER_HELP[newTriggerType]}
+            </Typography>
           </FormControl>
           <FormControl fullWidth>
             <InputLabel>Subject Entity Type</InputLabel>
@@ -634,14 +660,16 @@ export function AutomationListPage() {
               <MenuItem value="SYSTEM">SYSTEM</MenuItem>
             </Select>
           </FormControl>
+          {createError && <Alert severity="error">{createError}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <AppButton variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancel</AppButton>
           <AppButton
             variant="primary"
-            disabled={!newCode.trim() || !newName.trim()}
+            disabled={loading}
             loading={loading}
             onClick={handleCreate}
+            data-testid="automation.create.submit"
           >
             Create Rule
           </AppButton>

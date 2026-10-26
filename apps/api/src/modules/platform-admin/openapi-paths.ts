@@ -30,6 +30,20 @@ export function registerPaths(registry: OpenAPIRegistry): void {
   });
   registerOperation(registry, {
     method: 'get',
+    path: '/platform/v1/tenants/:id/support-view',
+    operationId: 'API-SUP-001',
+    summary: 'Read-only tenant metadata and configuration inside an approved break-glass window (platform.console; audited)',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/platform/v1/tenants/:id/support-view-log',
+    operationId: 'API-SUP-002',
+    summary: 'Who viewed a tenant through the support view, and when, including refused attempts (platform.console)',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'get',
     path: '/platform/v1/flags',
     operationId: 'API-ADM-002',
     summary: 'GET /platform/v1/flags',

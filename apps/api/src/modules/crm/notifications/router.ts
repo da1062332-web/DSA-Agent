@@ -97,6 +97,20 @@ export function createRouter(
     }
   });
 
+  /** Marks all of the signed-in user's unread notifications as read. The server counts them, not the screen. */
+  router.post('/notifications/read-all', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = req.ctx as RequestContext | undefined;
+      if (!ctx || !ctx.principal) {
+        throw AppError.of('UNAUTHENTICATED', 'Authentication required');
+      }
+      const result = await notificationService.markAllAsRead(ctx);
+      res.status(200).json({ newlyMarkedRead: result.updatedCount, readAt: ctx.now.toISOString() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   /**
    * API-NTF-003: Live notification stream (SSE)
    * GET /v1/notifications/stream

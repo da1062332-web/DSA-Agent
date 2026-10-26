@@ -129,8 +129,8 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     const authPage = new AuthPage(page);
     const leadPage = new LeadPage(page);
     const leadId = 'led_se_beta_001';
-    let activities: any[] = [];
-    let tasks: any[] = [];
+    const activities: any[] = [];
+    const tasks: any[] = [];
 
     await page.route(`**/v1/leads/${leadId}`, async (route) => {
       await route.fulfill({

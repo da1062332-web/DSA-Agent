@@ -11,6 +11,7 @@ import {
 } from '@dsa/kernel';
 import { AutomationEngine } from './modules/automation/engine';
 import { AutomationTriggerService } from './modules/automation/triggers';
+import { createNotificationSubscriber } from './modules/crm/notifications/event-subscriber';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 import { createConsentPort, createPartyPort } from './modules/crm/customers/consent-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
@@ -91,5 +92,7 @@ export function createOutboxSubscribers(deps: ApiDeps): OutboxSubscriber[] {
     (ctx, event) => automationTriggers.handleDomainEvent(ctx, event),
     // Outbound webhooks (MOD-API): one delivery per matching subscription, sent by the WEBHOOK_DELIVERY job.
     createWebhookOutboxSubscriber(deps),
+    // In-app notifications for the events that name a recipient (CMP-NTF.01.1).
+    createNotificationSubscriber(deps),
   ];
 }

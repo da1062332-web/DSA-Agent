@@ -191,6 +191,42 @@ export class NotificationService {
   /**
    * API-NTF-002: Mark notifications as read for authenticated user
    */
+  /** Marks every unread notification of the signed-in user as read, not only the ones loaded on screen. */
+  async markAllAsRead(ctx: RequestContext): Promise<{ updatedCount: number }> {
+    const tenantId = ctx.principal.tenantId;
+    const userId = ctx.principal.id;
+
+    if (this.txRunner) {
+      try {
+        return await this.txRunner.withTenantTx(ctx, async (tx) => {
+          const res = await sql<{ id: string }>`
+            UPDATE app.notification
+            SET read_at = now()
+            WHERE tenant_id = ${tenantId}
+              AND user_id = ${userId}
+              AND read_at IS NULL
+            RETURNING id
+          `.execute(tx);
+          return { updatedCount: res.rows.length };
+        });
+      } catch (err: unknown) {
+        if (!isNoDatabase(err)) throw err;
+      }
+    }
+
+    // In-memory fallback
+    let updatedCount = 0;
+    const nowIso = ctx.now.toISOString();
+    for (const record of NotificationService.memoryNotifications.values()) {
+      if (record.tenantId === tenantId && record.userId === userId && record.readAt === null) {
+        record.readAt = nowIso;
+        record.lockVersion += 1;
+        updatedCount += 1;
+      }
+    }
+    return { updatedCount };
+  }
+
   async markAsRead(
     ctx: RequestContext,
     input: MarkNotificationsReadInput,
@@ -254,6 +290,23 @@ export class NotificationService {
   /**
    * Internal Service: Create notification for user and stream via SSE
    */
+  /** Test double: stores the notification unless the same source event already produced one for this user. */
+  private rememberInMemory(record: NotificationRecord, sourceEventId?: string): boolean {
+    if (sourceEventId) {
+      for (const existing of NotificationService.memoryNotifications.values()) {
+        if (
+          existing.tenantId === record.tenantId &&
+          existing.userId === record.userId &&
+          (existing as NotificationRecord & { sourceEventId?: string }).sourceEventId === sourceEventId
+        ) {
+          return false;
+        }
+      }
+    }
+    NotificationService.memoryNotifications.set(record.id, { ...record, ...(sourceEventId ? { sourceEventId } : {}) } as NotificationRecord);
+    return true;
+  }
+
   async createNotification(
     ctx: RequestContext,
     rawInput: CreateNotificationInput,
@@ -285,28 +338,34 @@ export class NotificationService {
       createdAt: nowIso,
     };
 
+    // A source event that already produced a notification for this user creates nothing new (the relay may retry).
+    let created = true;
     if (this.txRunner) {
       try {
         await this.txRunner.withTenantTx(ctx, async (tx) => {
-          await sql`
+          const inserted = await sql<{ id: string }>`
             INSERT INTO app.notification (
               id, tenant_id, user_id, category, title, deep_link,
-              read_at, lock_version, created_at, updated_at
+              read_at, lock_version, created_at, updated_at, source_event_id
             ) VALUES (
               ${record.id}, ${record.tenantId}, ${record.userId}, ${record.category},
               ${record.title}, ${record.deepLink}, ${record.readAt}, ${record.lockVersion},
-              ${record.createdAt}, ${record.createdAt}
+              ${record.createdAt}, ${record.createdAt}, ${input.sourceEventId ?? null}
             )
+            ON CONFLICT DO NOTHING
+            RETURNING id
           `.execute(tx);
+          created = inserted.rows.length > 0;
         });
       } catch (err: unknown) {
         if (!isNoDatabase(err)) throw err;
         // In-memory fallback
-        NotificationService.memoryNotifications.set(record.id, record);
+        created = this.rememberInMemory(record, input.sourceEventId);
       }
     } else {
-      NotificationService.memoryNotifications.set(record.id, record);
+      created = this.rememberInMemory(record, input.sourceEventId);
     }
+    if (!created) return null;
 
     // 3. Emit SSE live event to connected user clients
     this.streamHub.emit(tenantId, userId, 'notification.created', record);

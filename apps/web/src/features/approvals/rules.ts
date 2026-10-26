@@ -22,6 +22,13 @@ export type GrantAction = 'DECIDE' | 'REVOKE' | 'NONE';
 export const grantAction = (g: Pick<SupportAccessGrant, 'status'>): GrantAction =>
   g.status === 'PENDING' ? 'DECIDE' : g.status === 'APPROVED' ? 'REVOKE' : 'NONE';
 
+/**
+ * A PENDING request whose access window has already ended. The API refuses both approve and deny for it, so the screen
+ * must not offer either button. Same rule as platform-store.ts (the request can no longer be decided).
+ */
+export const grantWindowEnded = (g: Pick<SupportAccessGrant, 'status' | 'endsAt'>, now: Date): boolean =>
+  g.status === 'PENDING' && new Date(g.endsAt).getTime() <= now.getTime();
+
 /** SOD-08: a person cannot approve a correction they requested. */
 export const canDecideCorrection = (
   c: Pick<DataCorrectionRequest, 'status' | 'requestedBy'>,

@@ -54,6 +54,13 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
 
+  // The migrations grant to Supabase's API roles. A plain Postgres container does not have them, so create them first.
+  await admin.query(`DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+  END $$;`);
+
   for (const file of readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
     .sort()) {
