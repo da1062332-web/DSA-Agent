@@ -22,6 +22,8 @@ import {
   type ReleaseRegisterItem,
   type RequestContext,
   type SupportAccessGrant,
+  type SupportTenantView,
+  type SupportViewLogEntry,
   type TenantFeatureFlag,
   type UpdateFeatureFlagRequest,
   type UpdateReleaseRequest,
@@ -36,6 +38,13 @@ export interface PlatformStore {
   listTenants(ctx: RequestContext): Promise<PlatformTenantSummary[]>;
   /** One customer tenant's metadata, or null (an unknown id and the platform tenant itself look the same). */
   getTenant(ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary | null>;
+  /**
+   * The read-only support view of one tenant, for the operator named by `supportUserId`. The database refuses it
+   * unless that operator holds an approved, unexpired, unrevoked window for this tenant (migration 0088).
+   */
+  getSupportTenantView(ctx: RequestContext, tenantId: string, supportUserId: string): Promise<SupportTenantView>;
+  /** The recent support-view events for one tenant: each view, and each refused attempt. Newest first. */
+  listSupportViewLog(ctx: RequestContext, tenantId: string): Promise<SupportViewLogEntry[]>;
   /** A platform operator files a request against another tenant. */
   createSupportGrant(ctx: RequestContext, req: CreateSupportAccessRequest): Promise<SupportAccessGrant>;
   /** Platform session: all requests (optionally one tenant). Tenant session: only its own tenant's. */
@@ -315,6 +324,60 @@ export class PgPlatformStore implements PlatformStore {
           LEFT JOIN platform_tenant_user_counts() c ON c.tenant_id = t.id
          WHERE t.id = ${tenantId} AND t.tenant_type <> 'PLATFORM'`.execute(tx);
       return r.rows[0] ? toTenantSummary(r.rows[0]) : null;
+    });
+  }
+
+  async getSupportTenantView(
+    ctx: RequestContext,
+    tenantId: string,
+    supportUserId: string,
+  ): Promise<SupportTenantView> {
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      // The database function does the window check. If there is no active window it raises 42501, which becomes 403 below.
+      let result: Row | undefined;
+      try {
+        const r = await sql<Row>`SELECT platform_support_view(${tenantId}, ${supportUserId}) AS view`.execute(tx);
+        result = r.rows[0];
+      } catch (err) {
+        if ((err as { code?: string }).code === '42501') {
+          throw AppError.of('FORBIDDEN', 'No active support access window for this tenant.');
+        }
+        throw err;
+      }
+      const view = result?.view as Record<string, unknown> | null | undefined;
+      if (!view) throw AppError.of('FORBIDDEN', 'No active support access window for this tenant.');
+      return {
+        grantId: String(view.grantId),
+        endsAt: iso(view.endsAt),
+        tenant: view.tenant as SupportTenantView['tenant'],
+        organisations: view.organisations as SupportTenantView['organisations'],
+        branches: view.branches as SupportTenantView['branches'],
+        settings: view.settings as SupportTenantView['settings'],
+        flags: view.flags as SupportTenantView['flags'],
+      };
+    });
+  }
+
+  async listSupportViewLog(ctx: RequestContext, tenantId: string): Promise<SupportViewLogEntry[]> {
+    // The view events are written under the platform tenant (the operator's session), so the platform session reads them
+    // with its own policies. Only the view and refusal actions are returned, never other audit rows.
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      // The operator is a user of the platform tenant, so the platform session can read their name here.
+      const r = await sql<Row>`
+        SELECT a.occurred_at, a.action, a.actor_id, a.after, u.display_name AS operator_name
+          FROM audit_event a
+          LEFT JOIN app_user u ON u.id = a.actor_id
+         WHERE a.entity_id = ${tenantId}
+           AND a.action IN ('platform.support_view_read', 'platform.support_view_denied')
+         ORDER BY a.occurred_at DESC
+         LIMIT 100`.execute(tx);
+      return r.rows.map((row) => ({
+        occurredAt: iso(row.occurred_at),
+        action: String(row.action) as SupportViewLogEntry['action'],
+        operatorId: String(row.actor_id),
+        operatorName: row.operator_name == null ? null : String(row.operator_name),
+        grantId: ((row.after as { grantId?: string } | null)?.grantId as string | undefined) ?? null,
+      }));
     });
   }
 
@@ -1132,6 +1195,52 @@ export class InMemoryPlatformStore implements PlatformStore {
 
   async getTenant(_ctx: RequestContext, tenantId: string): Promise<PlatformTenantSummary | null> {
     return this.tenants.find((t) => t.id === tenantId) ?? null;
+  }
+
+  async getSupportTenantView(
+    _ctx: RequestContext,
+    tenantId: string,
+    supportUserId: string,
+  ): Promise<SupportTenantView> {
+    // Same rule as the database: an approved, unexpired window for this operator and this tenant, or nothing.
+    const now = Date.now();
+    // The database picks the window that ends last, the newest one on a tie (ORDER BY expires_at DESC, created_at DESC).
+    // Walking the map in reverse insertion order makes the newest request win a tie here too.
+    let window: SupportAccessGrant | undefined;
+    for (const g of [...this.grants.values()].reverse()) {
+      if (
+        g.tenantId !== tenantId ||
+        g.requester !== supportUserId ||
+        g.status !== 'APPROVED' ||
+        new Date(g.endsAt).getTime() <= now
+      )
+        continue;
+      if (!window || new Date(g.endsAt).getTime() > new Date(window.endsAt).getTime()) window = g;
+    }
+    if (!window) throw AppError.of('FORBIDDEN', 'No active support access window for this tenant.');
+    const tenant = this.tenants.find((t) => t.id === tenantId);
+    if (!tenant) throw AppError.of('NOT_FOUND', 'Tenant not found.');
+    return {
+      grantId: window.id,
+      endsAt: window.endsAt,
+      tenant: {
+        id: tenant.id,
+        slug: tenant.slug,
+        legalName: tenant.legalName,
+        status: tenant.status,
+        dataRegion: tenant.dataRegion,
+        timezone: tenant.timezone,
+      },
+      organisations: [],
+      branches: [],
+      settings: [],
+      flags: [],
+    };
+  }
+
+  async listSupportViewLog(_ctx: RequestContext, _tenantId: string): Promise<SupportViewLogEntry[]> {
+    // The test double keeps no audit trail, so its log is empty. The database store reads the real events.
+    return [];
   }
 
   /** Per-tenant overrides, keyed by tenant then flag, like the table behind them. */

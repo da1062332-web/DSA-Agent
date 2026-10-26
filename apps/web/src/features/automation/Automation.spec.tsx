@@ -2,7 +2,13 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// No signed-in user in these render tests: permissions fail closed, as they do before sign-in.
+vi.mock('../../api/useMe', () => ({
+  useMe: () => ({ data: undefined, isLoading: false, isError: false }),
+  hasPermission: () => false,
+}));
 import { AutomationListPage } from './AutomationListPage';
 import { AutomationDetailPage } from './AutomationDetailPage';
 

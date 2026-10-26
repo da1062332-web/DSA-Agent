@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Can } from '../../shell/Can';
+import { useMe } from '../../api/useMe';
 import { PageHeader } from '../../ui';
 import { UserName } from '../../shell/display';
 import {
@@ -73,6 +74,7 @@ function getStatusColor(
 }
 
 export function RuleVersionDetailPage() {
+  const me = useMe();
   const { versionId } = useParams<{ versionId: string }>();
   const navigate = useNavigate();
 
@@ -332,6 +334,8 @@ export function RuleVersionDetailPage() {
 
   const isDraft = version.status === 'DRAFT';
   const isReview = version.status === 'IN_REVIEW';
+  // SOD-01: the API refuses an approval by any editor of the version. The screen says so instead of offering a refused button.
+  const ownVersion = !!me.data && version.editors.includes(me.data.id);
   const isApproved = version.status === 'APPROVED';
   const isActive = version.status === 'ACTIVE';
   const isSuspended = version.status === 'SUSPENDED';
@@ -378,7 +382,7 @@ export function RuleVersionDetailPage() {
 
             {isReview && (
               <Can action="rule.approve">
-                <Button variant="contained" color="warning" onClick={() => setReviewOpen(true)}>
+                <Button variant="contained" color="warning" disabled={ownVersion} onClick={() => setReviewOpen(true)}>
                   Review / Approve (SOD-01)
                 </Button>
               </Can>
@@ -411,6 +415,11 @@ export function RuleVersionDetailPage() {
         }
       />
 
+      {isReview && ownVersion && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          You wrote or edited this version, so another person must review and approve it (SOD-01).
+        </Alert>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}

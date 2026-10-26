@@ -62,6 +62,19 @@ export function NotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
+
+  /** Marks every unread notification of the user as read on the server, not only the ones loaded here. */
+  const handleMarkAllAsRead = async () => {
+    try {
+      await apiFetch('/v1/notifications/read-all', { method: 'POST' });
+      const nowIso = new Date().toISOString();
+      setNotifications((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: nowIso })));
+      setUnreadCount(0);
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
   const handleMarkAsRead = async (ids: string[]) => {
     const validIds = (ids || [])
       .map((id) => (typeof id === 'string' ? id.trim() : ''))
@@ -98,12 +111,7 @@ export function NotificationsPage() {
               <AppButton
                 variant="primary"
                 size="small"
-                onClick={() => {
-                  const unreadIds = notifications.filter((n) => !n.readAt).map((n) => n.id);
-                  if (unreadIds.length > 0) {
-                    handleMarkAsRead(unreadIds);
-                  }
-                }}
+                onClick={handleMarkAllAsRead}
               >
                 Mark all read ({unreadCount})
               </AppButton>

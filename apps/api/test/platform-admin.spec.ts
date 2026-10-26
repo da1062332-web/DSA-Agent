@@ -558,6 +558,86 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
   // ==========================================
   // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
   // ==========================================
+  describe('SUB-ADM.06 — Break-glass support view (read-only, inside an approved window)', () => {
+    // Files a 4-hour request (the maximum) as the operator, then has the target tenant's administrator approve it.
+    // The longest window is used on purpose: the view opens the window that ends last, and this one is then the newest.
+    const approvedWindow = async (incidentRef: string) => {
+      const made = await request(createTestApp(platformAdmin)).post('/platform/v1/support-access-requests').send({
+        tenantId: 'ten_demo_01',
+        reason: 'Check tenant configuration for a branch set-up fault',
+        incidentRef,
+        durationHours: 4,
+      });
+      expect(made.status).toBe(201);
+      const approved = await request(createTestApp(tenantAdmin))
+        .post(`/v1/support-access-requests/${made.body.id}/approval`)
+        .send({ decision: 'APPROVED' });
+      expect(approved.status).toBe(200);
+      return made.body.id as string;
+    };
+
+    it('TEST-SUPV-001 an operator with no approved window is refused the support view', async () => {
+      // A second operator, so windows approved for the first one in other tests cannot make this pass.
+      const otherOperator = testPrincipal({
+        id: 'usr_other_operator_02',
+        tenantId: PLATFORM_TENANT_ID,
+        grants: [{ code: 'platform.console', scope: 'TENANT', branchIds: [] }],
+      });
+      const res = await request(createTestApp(otherOperator)).get('/platform/v1/tenants/ten_demo_01/support-view');
+      expect(res.status).toBe(403);
+    });
+
+    it('TEST-SUPV-002 inside an approved window the operator reads metadata and configuration only', async () => {
+      const grantId = await approvedWindow('INC-2026-5001');
+      const res = await request(createTestApp(platformAdmin)).get('/platform/v1/tenants/ten_demo_01/support-view');
+      expect(res.status).toBe(200);
+      expect(res.body.grantId).toBe(grantId);
+      expect(res.body.tenant.id).toBe('ten_demo_01');
+      // The shape is fixed: no business records (leads, applications, customers, loans) can appear in it.
+      expect(Object.keys(res.body).sort()).toEqual([
+        'branches',
+        'endsAt',
+        'flags',
+        'grantId',
+        'organisations',
+        'settings',
+        'tenant',
+      ]);
+    });
+
+    it('TEST-SUPV-003 a customer tenant administrator cannot open the platform support view', async () => {
+      await approvedWindow('INC-2026-5002');
+      const res = await request(createTestApp(tenantAdmin)).get('/platform/v1/tenants/ten_demo_01/support-view');
+      expect(res.status).toBe(403);
+    });
+
+    it('TEST-SUPV-004 once the window has ended the operator is refused again', async () => {
+      await approvedWindow('INC-2026-5003');
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        // The longest window is 4 hours, so 5 hours later every window has ended.
+        vi.setSystemTime(Date.now() + 5 * 3600 * 1000);
+        const res = await request(createTestApp(platformAdmin)).get('/platform/v1/tenants/ten_demo_01/support-view');
+        expect(res.status).toBe(403);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe('SUB-ADM.06 — Support view log (who looked at a tenant)', () => {
+    it('TEST-SUPV-005 the view log is for platform operators only, and returns a list for them', async () => {
+      const refused = await request(createTestApp(tenantAdmin)).get(
+        '/platform/v1/tenants/ten_demo_01/support-view-log',
+      );
+      expect(refused.status).toBe(403);
+
+      const res = await request(createTestApp(platformAdmin)).get('/platform/v1/tenants/ten_demo_01/support-view-log');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+  });
+
   describe('SUB-ADM.07 — Governed Data Correction & SOD-08', () => {
     const body = {
       justification: 'Remediate malformed pincode metadata in legacy imported customers',

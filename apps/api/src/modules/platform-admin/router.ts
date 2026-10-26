@@ -162,6 +162,42 @@ function buildRouter(
     }),
   );
 
+  // Break-glass read-only view of one tenant (SUB-ADM.06). Open only inside an approved support window; the database
+  // makes the check (migration 0088). Both the reads and the refused attempts go to the audit trail, with the grant id.
+  on('platform').get(
+    '/v1/tenants/:tenantId/support-view',
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.console');
+      const tenantId = getParam(req, 'tenantId');
+      const view = await service.getSupportTenantView(ctx, tenantId).catch(async (err: unknown) => {
+        await audit(ctx, {
+          action: 'platform.support_view_denied',
+          entityType: 'TENANT',
+          entityId: tenantId,
+          permissionUsed: 'platform.console',
+        });
+        throw err;
+      });
+      await audit(ctx, {
+        action: 'platform.support_view_read',
+        entityType: 'TENANT',
+        entityId: view.tenant.id,
+        after: { grantId: view.grantId, endsAt: view.endsAt },
+        permissionUsed: 'platform.console',
+      });
+      res.json(view);
+    }),
+  );
+
+  // Who has looked at this tenant's set-up through the support view, and when (including refused attempts).
+  on('platform').get(
+    '/v1/tenants/:tenantId/support-view-log',
+    handle(async (ctx, req, res) => {
+      await requirePlatform(ctx, 'platform.console');
+      res.json({ data: await service.listSupportViewLog(ctx, getParam(req, 'tenantId')) });
+    }),
+  );
+
   // ==========================================
   // SUB-ADM.02: Feature Flags (API-ADM-001 / API-ADM-002)
   // ==========================================

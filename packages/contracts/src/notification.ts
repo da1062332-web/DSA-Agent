@@ -101,6 +101,8 @@ export type MarkNotificationsReadInput = z.infer<typeof MarkNotificationsReadSch
  */
 export const CreateNotificationInputSchema = z.object({
   userId: z.string(),
+  /** The domain event that produced this notification. One event gives a user at most one notification. */
+  sourceEventId: z.string().min(1).max(64).optional(),
   category: NotificationCategorySchema,
   title: z.string().min(1).max(250),
   deepLink: z

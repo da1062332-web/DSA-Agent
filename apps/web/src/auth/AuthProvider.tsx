@@ -7,6 +7,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getStorageKey, getSupabase, isBypassActive } from './supabase';
 import { isUserSwitch, shouldClearCache } from './cache-rule';
 import { setAuthToken } from './token';
+import { registerSessionExpiredHandler } from '../api/client';
+
+/** Set before an automatic sign-out, so the login page can say why the person is there. */
+export const SESSION_EXPIRED_FLAG = 'dsa_session_expired';
+
+// How often to check whether the session has run out. A timer alone can miss expiry while the laptop sleeps.
+const EXPIRY_CHECK_MS = 30_000;
 
 export interface Aal {
   current: AuthenticatorAssuranceLevels | null;
@@ -95,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else setAal(undefined);
   }, [session, refreshAal]);
 
+
   const signOut = useCallback(
     async (scope: 'local' | 'others' | 'global' = 'local') => {
       try {
@@ -120,6 +128,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [queryClient],
   );
+
+  // The current session, readable from callbacks that are registered once.
+  const sessionRef = useRef<Session | null | undefined>(undefined);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  // Ends the session when the person is no longer signed in: remember why, then sign out and go to the login page.
+  const expireSession = useCallback(async () => {
+    if (!sessionRef.current) return;
+    sessionRef.current = null;
+    try {
+      sessionStorage.setItem(SESSION_EXPIRED_FLAG, '1');
+    } catch {
+      // Storage can be blocked; the login page then simply shows no notice.
+    }
+    await signOut('local');
+  }, [signOut]);
+
+  // A 401 from the API while a session is active means the token is no longer accepted.
+  useEffect(() => {
+    registerSessionExpiredHandler(() => void expireSession());
+    return () => registerSessionExpiredHandler(null);
+  }, [expireSession]);
+
+  // Sign out once the session's expiry time has passed. Supabase refreshes a live session itself; this covers a session
+  // that can no longer be refreshed (for example after a revoked sign-in or a test sign-in with no refresh token).
+  useEffect(() => {
+    if (!session) return;
+    const check = () => {
+      const expiresAt = session.expires_at;
+      if (expiresAt !== undefined && Date.now() >= expiresAt * 1000) void expireSession();
+    };
+    check();
+    const timer = setInterval(check, EXPIRY_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [session, expireSession]);
 
   return (
     <AuthContext.Provider value={{ session, aal, recovering, refreshAal, signOut }}>

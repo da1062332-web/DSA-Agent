@@ -252,11 +252,11 @@ export function LeadDetail() {
         }
         subtitle={
           <>
-            <Typography variant="body2" color="text.secondary">
+            <Typography component="span" display="block" variant="body2" color="text.secondary">
               Lead ID: <code>{lead.id}</code> · Version: {lead.lockVersion}
             </Typography>
             {lead.duplicateFlag !== 'NONE' && (
-              <Typography variant="body2" color="warning.main" data-testid="lead.duplicate-candidates">
+              <Typography component="span" display="block" variant="body2" color="warning.main" data-testid="lead.duplicate-candidates">
                 May duplicate:{' '}
                 {(lead.duplicateCandidateIds ?? []).length === 0
                   ? 'an existing lead'

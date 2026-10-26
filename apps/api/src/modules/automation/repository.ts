@@ -282,10 +282,15 @@ export class AutomationRepository {
    * Retrieves definition and its pinned active version.
    * Scoped to caller tenantId OR system definitions (is_system = true).
    */
+  /**
+   * The definition and the version to show or run. For execution the version must be pinned (an approved, active one).
+   * For display, a draft that has never been approved has no pin yet: `latestIfUnpinned` shows its newest version instead.
+   */
   async getDefinitionAndVersion(
     tx: Tx,
     tenantId: string,
     definitionId: string,
+    opts: { latestIfUnpinned?: boolean } = {},
   ): Promise<{ definition: AutomationDefinition; version: AutomationVersion }> {
     const defRes = await sql<{
       id: string;
@@ -314,7 +319,15 @@ export class AutomationRepository {
       throw AppError.of('NOT_FOUND', `Automation definition '${definitionId}' not found.`);
     }
 
-    const versionId = defRow.pinned_version_id;
+    let versionId = defRow.pinned_version_id;
+    if (!versionId && opts.latestIfUnpinned) {
+      const latest = await sql<{ id: string }>`
+        SELECT id FROM app.automation_version
+         WHERE definition_id = ${definitionId} AND tenant_id = ${defRow.tenant_id}
+         ORDER BY version_no DESC
+         LIMIT 1`.execute(tx);
+      versionId = latest.rows[0]?.id ?? null;
+    }
     if (!versionId) {
       throw AppError.of(
         'INVALID_STATE',
@@ -1148,7 +1161,7 @@ export class AutomationRepository {
         AND d.status = 'ACTIVE'
         AND v.status = 'ACTIVE'
         AND d.trigger_type = 'EVENT'
-        AND (v.trigger_config->>'eventType' = ${eventType} OR v.trigger_config->>'eventType' IS NULL)
+        AND v.trigger_config->>'eventType' = ${eventType}
     `.execute(tx);
 
     return res.rows.map((row) => ({

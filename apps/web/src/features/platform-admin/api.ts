@@ -13,6 +13,8 @@ import type {
   MasterDataImportRequest,
   MasterDataItem,
   PlatformTenantSummary,
+  SupportTenantView,
+  SupportViewLogEntry,
   ReleaseRegisterItem,
   SupportAccessGrant,
   SystemHealthReport,
@@ -39,6 +41,23 @@ const needTenant = (tenantId: string): string => {
 /** One customer tenant's overview (the tenant page). */
 export async function fetchPlatformTenant(tenantId: string): Promise<PlatformTenantSummary> {
   return apiFetch<PlatformTenantSummary>(`/platform/v1/tenants/${needTenant(tenantId)}`);
+}
+
+/**
+ * The read-only support view (metadata and configuration). The server answers 403 unless this operator holds an
+ * approved, unexpired support-access window for this tenant.
+ */
+export async function fetchSupportTenantView(tenantId: string): Promise<SupportTenantView> {
+  return apiFetch<SupportTenantView>(`/platform/v1/tenants/${needTenant(tenantId)}/support-view`);
+}
+
+/** Who has viewed this tenant's set-up through the support view, newest first (platform operators only). */
+export async function fetchSupportViewLog(
+  tenantId: string,
+): Promise<{ data: SupportViewLogEntry[] }> {
+  return apiFetch<{ data: SupportViewLogEntry[] }>(
+    `/platform/v1/tenants/${needTenant(tenantId)}/support-view-log`,
+  );
 }
 
 /** The TENANT-scope flags as this one tenant sees them: platform default plus its own override. */

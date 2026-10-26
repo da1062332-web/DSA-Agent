@@ -149,7 +149,9 @@ export function createRouter(deps: ApiDeps): Router {
         entityType: input.entityType,
         status: 'DRAFT',
         isSystem: false,
-        pinnedVersionId: verId,
+        // A new draft is not pinned: pinning happens when a version is approved (the version row must exist first, and the
+        // database checks both directions of the link, so the definition cannot point at a version that is not written yet).
+        pinnedVersionId: null,
         lockVersion: 0,
         createdBy: ctx.principal.id,
         createdAt: now,
@@ -404,7 +406,7 @@ export function createRouter(deps: ApiDeps): Router {
 
     const definitionId = paramStr(req.params.id);
     const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      return repository.getDefinitionAndVersion(tx, ctx.principal.tenantId, definitionId);
+      return repository.getDefinitionAndVersion(tx, ctx.principal.tenantId, definitionId, { latestIfUnpinned: true });
     });
 
     res.setHeader('ETag', `"${result.definition.lockVersion}"`);
@@ -432,6 +434,19 @@ export function createRouter(deps: ApiDeps): Router {
       const existing = await repository.getDefinitionById(tx, ctx.principal.tenantId, definitionId);
       if (existing.isSystem) {
         throw AppError.of('FORBIDDEN', 'System automation definitions cannot be updated.');
+      }
+      // A rule can only be activated once a version has been approved and pinned: activating an unpinned draft
+      // would look live while nothing ever runs.
+      if (update.status === 'ACTIVE') {
+        if (!existing.pinnedVersionId) {
+          throw AppError.of('INVALID_STATE', 'This rule has no approved version yet. Add the steps as a new version, get it approved, then activate.');
+        }
+        if (existing.triggerType === 'EVENT') {
+          const pinned = await repository.getDefinitionAndVersion(tx, ctx.principal.tenantId, definitionId);
+          if (!pinned.version.triggerConfig.eventType) {
+            throw AppError.of('INVALID_STATE', 'The approved version does not say which event starts this rule. Add a new version that names the event, get it approved, then activate.');
+          }
+        }
       }
       if (existing.lockVersion !== expectedVersion) {
         throw AppError.of(
@@ -507,6 +522,16 @@ export function createRouter(deps: ApiDeps): Router {
       const def = await repository.getDefinitionById(tx, ctx.principal.tenantId, definitionId);
       if (def.isSystem) {
         throw AppError.of('FORBIDDEN', 'Cannot add versions to system automations.');
+      }
+      if (def.triggerType === 'EVENT' && !input.triggerConfig.eventType) {
+        throw AppError.of('VALIDATION_ERROR', 'Choose the event that starts this rule, for example lead.created.', [
+          { field: 'triggerConfig.eventType', issue: 'REQUIRED' },
+        ]);
+      }
+      if (input.steps.every((st) => st.type === 'END')) {
+        throw AppError.of('VALIDATION_ERROR', 'Add at least one action (notify or task) before End the run.', [
+          { field: 'steps', issue: 'NO_ACTION' },
+        ]);
       }
 
       const existingVersions = await repository.listVersions(tx, ctx.principal.tenantId, definitionId);

@@ -88,6 +88,18 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   });
 
   registry.registerPath({
+    method: 'post',
+    path: '/v1/notifications/read-all',
+    operationId: 'API-NTF-004',
+    summary: 'Mark all of the signed-in user\'s unread notifications as read (server-side, not only the loaded page)',
+    tags: ['MOD-NTF Notifications'],
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'The number of notifications marked as read' },
+    },
+  });
+
+  registry.registerPath({
     method: 'get',
     path: '/v1/notifications/stream',
     operationId: 'API-NTF-003',
