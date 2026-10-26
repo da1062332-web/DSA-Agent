@@ -30,6 +30,7 @@ import {
   ExpandLessIcon,
   ExpandMoreIcon,
   HubIcon,
+  KeyboardDoubleArrowLeftIcon,
   PeopleIcon,
 } from './icons';
 
@@ -68,6 +69,12 @@ export function SidebarContent({
   collapsed = false,
   onToggleCollapse,
   onOpenSection,
+  currentWidth = 290,
+  minWidth = 240,
+  maxWidth = 420,
+  onIncreaseWidth,
+  onDecreaseWidth,
+  onResetWidth,
 }: {
   isAdmin: boolean;
   can?: (code: string) => boolean;
@@ -76,6 +83,12 @@ export function SidebarContent({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   onOpenSection?: (title: string) => void;
+  currentWidth?: number;
+  minWidth?: number;
+  maxWidth?: number;
+  onIncreaseWidth?: () => void;
+  onDecreaseWidth?: () => void;
+  onResetWidth?: () => void;
 }) {
   const location = useLocation();
   const groups = visibleGroups(isAdmin, can, platformRealm);
@@ -156,7 +169,28 @@ export function SidebarContent({
         py: 1,
       }}
     >
-      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#cbd5e1 transparent',
+          '&::-webkit-scrollbar': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#cbd5e1',
+            borderRadius: '3px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#94a3b8',
+          },
+        }}
+      >
         {collapsed ? (
           // Collapsed rail mode: Perfectly centered orange icons aligned with the top hamburger menu
           <Box sx={{ py: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -287,19 +321,15 @@ export function SidebarContent({
                       sx={{
                         position: 'relative',
                         bgcolor: 'transparent',
-                        lineHeight: '34px',
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
+                        lineHeight: '32px',
                         color: '#334155',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         cursor: 'pointer',
                         userSelect: 'none',
-                        px: 1.5,
-                        mx: 1,
+                        px: 1.25,
+                        mx: 0.75,
                         my: 0.2,
                         borderRadius: 1.5,
                         outline: 'none !important',
@@ -313,8 +343,8 @@ export function SidebarContent({
                         },
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ display: 'inline-flex', mr: 1, alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, mr: 0.5 }}>
+                        <Box sx={{ display: 'inline-flex', mr: 1, alignItems: 'center', flexShrink: 0 }}>
                           {getMainCategoryIcon(group.title, 18)}
                         </Box>
                         <Typography
@@ -324,7 +354,7 @@ export function SidebarContent({
                           {group.title}
                         </Typography>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         {isOpen ? (
                           <ExpandLessIcon sx={{ fontSize: 18, color: '#64748b' }} />
                         ) : (
@@ -345,11 +375,11 @@ export function SidebarContent({
                           onClick={onNavigate}
                           data-testid={`shell.nav.${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                           sx={{
-                            pl: 3.5,
-                            pr: 2,
+                            pl: 3.25,
+                            pr: 1.25,
                             py: 0.55,
                             borderRadius: 1.5,
-                            mx: 1,
+                            mx: 0.75,
                             my: 0.2,
                             color: '#475569',
                             transition: 'all 0.15s ease',
@@ -377,7 +407,15 @@ export function SidebarContent({
                         >
                           <ListItemText
                             primary={item.label}
-                            primaryTypographyProps={{ fontSize: 13, fontWeight: 'inherit' }}
+                            primaryTypographyProps={{
+                              sx: {
+                                fontSize: 13,
+                                fontWeight: 'inherit',
+                                whiteSpace: 'normal',
+                                lineHeight: 1.35,
+                                wordBreak: 'break-word',
+                              },
+                            }}
                           />
                         </ListItemButton>
                       ) : (
@@ -417,40 +455,152 @@ export function SidebarContent({
         )}
       </Box>
 
-      {/* Collapse / Expand Toggle Control at bottom */}
-      {onToggleCollapse && (
-        <Box
-          sx={{
-            pt: 1,
-            px: collapsed ? 0.5 : 1.5,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: collapsed ? 'center' : 'flex-end',
-            alignItems: 'center',
-          }}
-        >
-          <Tooltip
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            placement={collapsed ? 'right' : 'top'}
-            arrow
-          >
-            <IconButton
-              size="small"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              sx={{
-                color: 'text.secondary',
-                bgcolor: 'action.hover',
-                borderRadius: 1.5,
-                '&:hover': { bgcolor: 'action.selected', color: 'primary.main' },
-              }}
-            >
-              {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )}
+      {/* Collapse / Expand & Width Adjustment Controls at bottom */}
+      <Box
+        sx={{
+          pt: 0.75,
+          pb: 0.5,
+          px: collapsed ? 0.5 : 1.25,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          display: 'flex',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          alignItems: 'center',
+          bgcolor: 'rgba(248, 250, 252, 0.7)',
+        }}
+      >
+        {collapsed ? (
+          onToggleCollapse && (
+            <Tooltip title="Expand sidebar" placement="right" arrow>
+              <IconButton
+                size="small"
+                onClick={onToggleCollapse}
+                aria-label="Expand sidebar"
+                sx={{
+                  color: 'text.secondary',
+                  bgcolor: 'action.hover',
+                  borderRadius: 1.5,
+                  '&:hover': { bgcolor: 'action.selected', color: '#F89344' },
+                }}
+              >
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )
+        ) : (
+          <>
+            {/* Sidebar Width Increase / Decrease Controls */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: 10.5,
+                  color: '#64748b',
+                  fontWeight: 600,
+                  mr: 0.25,
+                  userSelect: 'none',
+                }}
+              >
+                Width:
+              </Typography>
+              <Tooltip
+                title={
+                  onDecreaseWidth && currentWidth <= minWidth
+                    ? 'Minimum width reached'
+                    : 'Decrease sidebar width (-35px)'
+                }
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={onDecreaseWidth}
+                    disabled={!onDecreaseWidth || currentWidth <= minWidth}
+                    aria-label="Decrease sidebar width"
+                    sx={{
+                      color: 'text.secondary',
+                      bgcolor: 'action.hover',
+                      borderRadius: 1.5,
+                      p: 0.5,
+                      '&:hover': { bgcolor: 'action.selected', color: '#F89344' },
+                      '&.Mui-disabled': { opacity: 0.35 },
+                    }}
+                  >
+                    <ChevronLeftIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+
+              <Tooltip title="Double-click to reset width to default" arrow>
+                <Typography
+                  variant="caption"
+                  onDoubleClick={onResetWidth}
+                  sx={{
+                    fontSize: 11,
+                    color: '#334155',
+                    fontWeight: 700,
+                    px: 0.5,
+                    cursor: onResetWidth ? 'pointer' : 'default',
+                    userSelect: 'none',
+                    minWidth: 42,
+                    textAlign: 'center',
+                  }}
+                >
+                  {currentWidth}px
+                </Typography>
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  onIncreaseWidth && currentWidth >= maxWidth
+                    ? 'Maximum width reached'
+                    : 'Increase sidebar width (+35px)'
+                }
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={onIncreaseWidth}
+                    disabled={!onIncreaseWidth || currentWidth >= maxWidth}
+                    aria-label="Increase sidebar width"
+                    sx={{
+                      color: 'text.secondary',
+                      bgcolor: 'action.hover',
+                      borderRadius: 1.5,
+                      p: 0.5,
+                      '&:hover': { bgcolor: 'action.selected', color: '#F89344' },
+                      '&.Mui-disabled': { opacity: 0.35 },
+                    }}
+                  >
+                    <ChevronRightIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+
+            {/* Collapse to rail button */}
+            {onToggleCollapse && (
+              <Tooltip title="Collapse sidebar to mini rail" placement="top" arrow>
+                <IconButton
+                  size="small"
+                  onClick={onToggleCollapse}
+                  aria-label="Collapse sidebar to mini rail"
+                  sx={{
+                    color: 'text.secondary',
+                    bgcolor: 'action.hover',
+                    borderRadius: 1.5,
+                    p: 0.5,
+                    '&:hover': { bgcolor: 'action.selected', color: '#F89344' },
+                  }}
+                >
+                  <KeyboardDoubleArrowLeftIcon sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </>
+        )}
+      </Box>
     </Box>
   );
 }

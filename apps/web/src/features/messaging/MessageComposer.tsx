@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { ApiError, apiFetch } from '../../api/client';
 import { Can } from '../../shell/Can';
+import { isSimulatedProvider } from './simulated';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
 import {
   MESSAGE_CHANNELS,
@@ -119,8 +120,9 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
           <Grid container spacing={2.5}>
             <Grid item xs={12} sm={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Subject Type</InputLabel>
+                <InputLabel id="composer-subject-label">Subject Type</InputLabel>
                 <Select
+                  labelId="composer-subject-label"
                   value={subjectType}
                   label="Subject Type"
                   onChange={(e) => setSubjectType(e.target.value as 'LEAD' | 'CUSTOMER' | 'LOAN_APPLICATION')}
@@ -167,8 +169,9 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
 
             <Grid item xs={12} sm={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Channel</InputLabel>
+                <InputLabel id="composer-channel-label">Channel</InputLabel>
                 <Select
+                  labelId="composer-channel-label"
                   value={channel}
                   label="Channel"
                   onChange={(e) => setChannel(e.target.value as MessageChannel)}
@@ -184,8 +187,9 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
 
             <Grid item xs={12} sm={8}>
               <FormControl fullWidth size="small">
-                <InputLabel>Approved Template</InputLabel>
+                <InputLabel id="composer-template-label">Approved Template</InputLabel>
                 <Select
+                  labelId="composer-template-label"
                   value={selectedTemplateCode}
                   label="Approved Template"
                   onChange={(e) => handleTemplateChange(e.target.value)}
@@ -273,9 +277,13 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
         {sendResult && (
           <Box sx={{ mt: 3 }}>
             <Divider sx={{ mb: 2 }} />
-            {sendResult.success && sendResult.data && sendResult.data.status !== 'BLOCKED' ? (
-              <Alert severity="success">
-                <AlertTitle sx={{ fontWeight: 700 }}>Message Successfully Sent!</AlertTitle>
+            {sendResult.success && sendResult.data && sendResult.data.status !== 'BLOCKED' && sendResult.data.status !== 'FAILED' ? (
+              <Alert severity={isSimulatedProvider(sendResult.data.provider) ? 'info' : 'success'}>
+                <AlertTitle sx={{ fontWeight: 700 }}>
+                  {isSimulatedProvider(sendResult.data.provider)
+                    ? 'SIMULATED — NOT SENT'
+                    : 'Message Successfully Sent!'}
+                </AlertTitle>
                 <Typography variant="body2">
                   ID: <strong>{sendResult.data.id}</strong> &bull; Status:{' '}
                   <Chip size="small" label={sendResult.data.status} color="success" />

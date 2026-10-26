@@ -731,6 +731,16 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
 
       expect(tplRes.status).toBe(201);
       expect(tplRes.body.code).toBe('disbursal_notice');
+      expect(tplRes.body.status).toBe('DRAFT');
+
+      // Step 1b: a different person approves the draft (independent review). The author cannot approve it.
+      const checkerApp = express();
+      checkerApp.use(express.json());
+      checkerApp.use(fakeAuth(testPrincipal({ id: 'usr_demo_checker', tenantId: DEMO_TENANT_ID, grants: [{ code: 'config.manage', scope: 'TENANT', branchIds: [] }] })));
+      checkerApp.use('/v1', createMessagingRouter(createTestDeps({ txRunner: dummyTxRunner }), msgService));
+      checkerApp.use(errorHandler());
+      const approveRes = await request(checkerApp).post(`/v1/message-templates/${tplRes.body.id}/approval`);
+      expect(approveRes.status).toBe(200);
 
       // Step 2: Dispatch Message via POST /v1/messages
       const dispatchRes = await request(msgApp)

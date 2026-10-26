@@ -7,6 +7,7 @@
 //   API-MSG-004: GET /v1/messages?subjectType=&subjectId=
 //   API-MSG-005: POST /public/v1/webhooks/messaging/:provider/:connectionPathId
 import { Router, type Request, type Response, type NextFunction } from 'express';
+import { z } from 'zod';
 import {
   AppError,
   CreateTemplateSchema,
@@ -60,6 +61,42 @@ export function createRouter(deps: ApiDeps, serviceOverride?: MessagingService):
       } else {
         res.status(201).json(template);
       }
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * Approves a draft template. A different person from its author must do it (SOD).
+   * POST /v1/message-templates/:id/approval
+   */
+  router.post('/message-templates/:id/approval', async (req, res, next) => {
+    try {
+      const ctx = req.ctx as RequestContext | undefined;
+      if (!ctx || !ctx.principal) {
+        throw AppError.of('UNAUTHENTICATED', 'Authentication required');
+      }
+      const template = await messagingService.approveTemplate(ctx, String(req.params.id));
+      res.setHeader('ETag', `"${template.lockVersion}"`);
+      res.status(200).json(template);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * Test delivery result for a SIMULATED message (DELIVERED or UNDELIVERED). Refused for real providers.
+   * POST /v1/messages/:id/simulate-delivery
+   */
+  router.post('/messages/:id/simulate-delivery', async (req, res, next) => {
+    try {
+      const ctx = req.ctx as RequestContext | undefined;
+      if (!ctx || !ctx.principal) {
+        throw AppError.of('UNAUTHENTICATED', 'Authentication required');
+      }
+      const body = z.object({ outcome: z.enum(['DELIVERED', 'UNDELIVERED']) }).parse(req.body);
+      const result = await messagingService.simulateDelivery(ctx, String(req.params.id), body.outcome);
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }

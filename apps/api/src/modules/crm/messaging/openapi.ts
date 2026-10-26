@@ -93,6 +93,40 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
 
   registry.registerPath({
     method: 'post',
+    path: '/v1/message-templates/{id}/approval',
+    operationId: 'API-MSG-004',
+    summary: 'Approve a draft message template (a different person from its author; API-MSG-004)',
+    tags: ['MOD-MSG Messaging'],
+    security: [{ bearerAuth: [] }],
+    request: { params: z.object({ id: z.string() }) },
+    responses: {
+      200: { description: 'Template approved' },
+      400: { description: 'Invalid state (not a draft)', content: { 'application/json': { schema: ErrorEnvelope } } },
+      403: { description: 'Separation of duties or permission', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Template not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/messages/{id}/simulate-delivery',
+    operationId: 'API-MSG-005',
+    summary: 'Give a SIMULATED message a test delivery result (test environments only; API-MSG-005)',
+    tags: ['MOD-MSG Messaging'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: z.object({ outcome: z.enum(['DELIVERED', 'UNDELIVERED']) }) } } },
+    },
+    responses: {
+      200: { description: 'Delivery result recorded' },
+      400: { description: 'Not a simulated message, or not in SENT state', content: { 'application/json': { schema: ErrorEnvelope } } },
+      404: { description: 'Message not found', content: { 'application/json': { schema: ErrorEnvelope } } },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
     path: '/v1/messages',
     operationId: 'API-MSG-003',
     summary: 'Send outbound message (API-MSG-003)',

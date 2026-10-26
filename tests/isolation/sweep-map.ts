@@ -12,6 +12,8 @@ export const SEGMENT_TABLE: Record<string, string> = {
   agents: 'app_user',
   'api-clients': 'api_client',
   applications: 'loan_application',
+  'message-templates': 'message_template',
+  messages: 'message',
   'attribution-change-requests': 'attribution_change_request',
   'attribution-disputes': 'attribution_dispute',
   'audit-events': 'audit_event',

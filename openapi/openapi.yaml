@@ -2055,7 +2055,8 @@ components:
           type: array
           items:
             type: string
-            pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+            minLength: 1
+            maxLength: 100
           minItems: 1
           maxItems: 100
       required:
@@ -2474,7 +2475,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-24
+          default: 2026-10-26
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -9500,6 +9501,263 @@ paths:
                       - retryable
                 required:
                   - error
+  /v1/message-templates/{id}/approval:
+    post:
+      operationId: API-MSG-004
+      summary: Approve a draft message template (a different person from its author; API-MSG-004)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Template approved
+        "400":
+          description: Invalid state (not a draft)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Separation of duties or permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/messages/{id}/simulate-delivery:
+    post:
+      operationId: API-MSG-005
+      summary: Give a SIMULATED message a test delivery result (test environments only; API-MSG-005)
+      tags:
+        - MOD-MSG Messaging
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outcome:
+                  type: string
+                  enum:
+                    - DELIVERED
+                    - UNDELIVERED
+              required:
+                - outcome
+      responses:
+        "200":
+          description: Delivery result recorded
+        "400":
+          description: Not a simulated message, or not in SENT state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /v1/messages:
     post:
       operationId: API-MSG-003
@@ -10321,7 +10579,8 @@ paths:
                   type: array
                   items:
                     type: string
-                    pattern: ^ntf_[0-9A-HJKMNP-TV-Z]{26}$
+                    minLength: 1
+                    maxLength: 100
                   minItems: 1
                   maxItems: 100
               required:
@@ -12285,7 +12544,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-24T07:09:40.271Z
+                  default: 2026-10-26T04:31:09.836Z
               required:
                 - paymentRef
       responses:
@@ -47622,7 +47881,7 @@ paths:
                     - "null"
                 eventDate:
                   type: string
-                  default: 2026-10-24
+                  default: 2026-10-26
                 basisAmount:
                   type: string
                   pattern: ^\d+(\.\d{1,2})?$

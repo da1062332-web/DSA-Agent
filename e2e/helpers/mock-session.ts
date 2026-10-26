@@ -729,7 +729,9 @@ async function clearSpotlight(locator: Locator): Promise<void> {
         host._shadow.innerHTML = '';
       }
     });
-  } catch {}
+  } catch {
+    // Clearing storage is best effort; a blocked storage area is not an error for the test.
+  }
 }
 
 export async function humanType(locator: Locator, text: string, charDelay = 30): Promise<void> {

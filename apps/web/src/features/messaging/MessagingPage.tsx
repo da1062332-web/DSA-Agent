@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, Button, Chip, Container, Tab, Tabs, Typography } from '@mui/material';
 import type { MessageRecord, MessageTemplate } from '@dsa/contracts';
-import { ApiError, apiFetch } from '../../api/client';
+import { ApiError, apiFetch, errorText } from '../../api/client';
+import { hasPermission, useMe } from '../../api/useMe';
+import { isSimulatedProvider } from './simulated';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 import { Can } from '../../shell/Can';
@@ -19,6 +21,10 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const me = useMe();
+  const canApprove = hasPermission(me.data, 'config.manage');
+  const canSend = hasPermission(me.data, 'message.send');
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -47,6 +53,28 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
     }
   }, [tabIndex, fetchMessages]);
 
+  // Approval is a separate step by a different person from the author (the server refuses the author).
+  const approveTemplate = async (t: MessageTemplate) => {
+    setActionError(null);
+    try {
+      await apiFetch(`/v1/message-templates/${t.id}/approval`, { method: 'POST' });
+      await fetchTemplates();
+    } catch (err) {
+      setActionError(errorText(err));
+    }
+  };
+
+  // Test only: gives a SIMULATED message a delivery result. The server refuses this for real providers.
+  const setSimulatedDelivery = async (m: MessageRecord, outcome: 'DELIVERED' | 'UNDELIVERED') => {
+    setActionError(null);
+    try {
+      await apiFetch(`/v1/messages/${m.id}/simulate-delivery`, { method: 'POST', body: { outcome } });
+      await fetchMessages();
+    } catch (err) {
+      setActionError(errorText(err));
+    }
+  };
+
   const handleTemplateCreated = (tmpl: MessageTemplate) => {
     setTemplates((prev) => [tmpl, ...prev]);
   };
@@ -67,7 +95,28 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
     {
       id: 'status',
       header: 'Status',
-      render: (t) => <Chip size="small" label={t.status} color={t.status === 'APPROVED' ? 'success' : 'default'} />,
+      render: (t) => (
+        <Chip size="small" label={t.status} color={t.status === 'APPROVED' ? 'success' : t.status === 'DRAFT' ? 'warning' : 'default'} />
+      ),
+    },
+    {
+      id: 'approve',
+      header: 'Approval',
+      render: (t) => {
+        if (t.status !== 'DRAFT') return null;
+        if (canApprove && me.data?.id !== t.createdBy) {
+          return (
+            <Button size="small" variant="outlined" color="success" onClick={() => approveTemplate(t)}>
+              Approve
+            </Button>
+          );
+        }
+        return (
+          <Box sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+            {me.data?.id === t.createdBy ? 'Waiting for another approver' : 'Needs an approver'}
+          </Box>
+        );
+      },
     },
     {
       id: 'variables',
@@ -123,11 +172,40 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
         <Chip
           size="small"
           label={m.status}
-          color={m.status === 'SENT' || m.status === 'DELIVERED' ? 'success' : m.status === 'BLOCKED' ? 'error' : 'warning'}
+          color={isSimulatedProvider(m.provider) ? 'warning' : m.status === 'SENT' || m.status === 'DELIVERED' ? 'success' : m.status === 'BLOCKED' ? 'error' : 'warning'}
         />
       ),
     },
-    { id: 'provider', header: 'Provider', render: (m) => m.provider },
+    {
+      id: 'provider',
+      header: 'Provider',
+      render: (m) =>
+        isSimulatedProvider(m.provider) ? (
+          <Box>
+            <Chip size="small" color="warning" label="SIMULATED — NOT SENT" sx={{ mb: 0.5 }} />
+            <Typography variant="caption" display="block" color="text.secondary">
+              {m.provider}
+            </Typography>
+          </Box>
+        ) : (
+          m.provider
+        ),
+    },
+    {
+      id: 'simulate',
+      header: 'Test result',
+      render: (m) =>
+        isSimulatedProvider(m.provider) && m.status === 'SENT' && canSend ? (
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Button size="small" variant="outlined" onClick={() => setSimulatedDelivery(m, 'DELIVERED')}>
+              Mark delivered
+            </Button>
+            <Button size="small" variant="outlined" color="error" onClick={() => setSimulatedDelivery(m, 'UNDELIVERED')}>
+              Mark undelivered
+            </Button>
+          </Box>
+        ) : null,
+    },
     {
       id: 'dispatched',
       header: 'Dispatched At',
@@ -140,6 +218,11 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
       {denied && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="messaging.noAccess">
           You don't have access to messaging. Ask your administrator to grant you the message.send permission.
+        </Alert>
+      )}
+      {actionError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>
+          {actionError}
         </Alert>
       )}
       <PageHeader

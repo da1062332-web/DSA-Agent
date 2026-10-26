@@ -1,5 +1,5 @@
 // apps/web/src/features/messaging/TemplateEditor.tsx — CMP-MSG.01.1
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -34,6 +34,38 @@ export interface TemplateEditorProps {
   onSuccess: (template: MessageTemplate) => void;
 }
 
+// Languages the messaging templates can be written in (ISO codes, as the server stores them).
+const LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'Hindi (हिन्दी)' },
+  { code: 'mr', label: 'Marathi (मराठी)' },
+  { code: 'ta', label: 'Tamil (தமிழ்)' },
+  { code: 'te', label: 'Telugu (తెలుగు)' },
+  { code: 'gu', label: 'Gujarati (ગુજરાતી)' },
+  { code: 'bn', label: 'Bengali (বাংলা)' },
+  { code: 'kn', label: 'Kannada (ಕನ್ನಡ)' },
+];
+
+// Variables used in lending messages. Clicking one puts {{name}} into the body at the cursor and declares it.
+const COMMON_VARIABLES: { name: string; description: string }[] = [
+  { name: 'applicantName', description: 'Applicant full name' },
+  { name: 'customerName', description: 'Customer full name' },
+  { name: 'leadName', description: 'Lead full name' },
+  { name: 'applicationId', description: 'Loan application ID' },
+  { name: 'loanAmount', description: 'Loan amount (INR)' },
+  { name: 'status', description: 'Application or case status' },
+  { name: 'productName', description: 'Loan product name' },
+  { name: 'lenderName', description: 'Lender name' },
+  { name: 'branchName', description: 'Branch name' },
+  { name: 'agentName', description: 'Sales or relationship manager name' },
+  { name: 'agentMobile', description: 'Sales or relationship manager mobile' },
+  { name: 'dueDate', description: 'Due date (DD/MM/YYYY)' },
+  { name: 'paymentAmount', description: 'Payment amount (INR)' },
+  { name: 'documentName', description: 'Document required' },
+  { name: 'companyName', description: 'Company name' },
+  { name: 'supportPhone', description: 'Support phone number' },
+];
+
 export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps) {
   const [code, setCode] = useState('');
   const [channel, setChannel] = useState<MessageChannel>('EMAIL');
@@ -44,20 +76,51 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
     { name: 'applicantName', required: true, description: 'Applicant full name' },
     { name: 'status', required: true, description: 'Application state' },
   ]);
+  // The starting body uses both variables, so both are declared.
   const [newVarName, setNewVarName] = useState('');
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAddVariable = () => {
     const trimmed = newVarName.trim();
-    if (trimmed && !variables.some((v) => v.name === trimmed)) {
-      setVariables([...variables, { name: trimmed, required: true }]);
+    if (/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+      insertVariable(trimmed, '');
       setNewVarName('');
     }
   };
 
-  const handleRemoveVariable = (name: string) => {
-    setVariables(variables.filter((v) => v.name !== name));
+
+  // Working state: the variables are exactly the {{placeholders}} in the body, so nothing is declared that the message
+  // does not use, and nothing used is missed. A variable keeps its description and required flag if it was already there.
+  React.useEffect(() => {
+    const names = Array.from(new Set(Array.from(body.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g), (m) => m[1]!)));
+    setVariables((prev) =>
+      names.map(
+        (name) =>
+          prev.find((v) => v.name === name) ?? {
+            name,
+            required: true,
+            description: COMMON_VARIABLES.find((c) => c.name === name)?.description ?? '',
+          },
+      ),
+    );
+  }, [body]);
+
+  // Puts {{name}} into the body at the cursor and declares the variable.
+  const insertVariable = (name: string, description: string) => {
+    const token = `{{${name}}}`;
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    setBody(body.slice(0, start) + token + body.slice(end));
+    if (!variables.some((v) => v.name === name)) {
+      setVariables((prev) => [...prev, { name, required: true, description }]);
+    }
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + token.length, start + token.length);
+    });
   };
 
   // Extract all variables referenced in body
@@ -105,7 +168,6 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
           language: language.trim() || 'en',
           body: body.trim(),
           variables,
-          status: 'APPROVED',
         },
       });
 
@@ -144,8 +206,9 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Channel</InputLabel>
+                <InputLabel id="template-channel-label">Channel</InputLabel>
                 <Select
+                  labelId="template-channel-label"
                   value={channel}
                   label="Channel"
                   onChange={(e) => setChannel(e.target.value as MessageChannel)}
@@ -161,8 +224,9 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
+                <InputLabel id="template-category-label">Category</InputLabel>
                 <Select
+                  labelId="template-category-label"
                   value={category}
                   label="Category"
                   onChange={(e) => setCategory(e.target.value as TemplateCategory)}
@@ -177,12 +241,22 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <TextField
-                label="Language"
-                value={language}
-                fullWidth
-                onChange={(e) => setLanguage(e.target.value)}
-              />
+              <FormControl fullWidth>
+                <InputLabel id="template-language-label">Language</InputLabel>
+                <Select
+                  labelId="template-language-label"
+                  label="Language"
+                  value={language}
+                  onChange={(e) => setLanguage(String(e.target.value))}
+                  data-testid="template.language"
+                >
+                  {LANGUAGES.map((l) => (
+                    <MenuItem key={l.code} value={l.code}>
+                      {l.label} ({l.code})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12}>
@@ -193,9 +267,34 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
                 fullWidth
                 required
                 value={body}
+                inputRef={bodyRef}
                 onChange={(e) => setBody(e.target.value)}
-                helperText="Declare placeholders using {{variableName}}"
+                helperText="Click a common variable below to insert it at the cursor, or type {{variableName}}. Variables are declared automatically."
               />
+            </Grid>
+
+            {/* Common variables: click to insert */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Common variables (click to insert):
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }} data-testid="template.common-variables">
+                {COMMON_VARIABLES.map((c) => {
+                  const declared = variables.some((v) => v.name === c.name);
+                  return (
+                    <Chip
+                      key={c.name}
+                      size="small"
+                      clickable
+                      color={declared ? 'primary' : 'default'}
+                      variant={declared ? 'filled' : 'outlined'}
+                      label={`{{${c.name}}}`}
+                      title={c.description}
+                      onClick={() => insertVariable(c.name, c.description)}
+                    />
+                  );
+                })}
+              </Box>
             </Grid>
 
             {/* Variable manager */}
@@ -210,7 +309,7 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
                     label={`{{${v.name}}}`}
                     color="primary"
                     variant="outlined"
-                    onDelete={() => handleRemoveVariable(v.name)}
+                    title={v.description || v.name}
                   />
                 ))}
                 {variables.length === 0 && (
@@ -256,7 +355,7 @@ export function TemplateEditor({ open, onClose, onSuccess }: TemplateEditorProps
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? 'Creating...' : 'Save & Approve Template'}
+            {loading ? 'Creating...' : 'Save as draft (needs approval)'}
           </Button>
         </DialogActions>
       </form>
