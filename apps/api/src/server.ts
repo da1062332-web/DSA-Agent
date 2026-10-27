@@ -11,7 +11,7 @@ try {
 import { createPrincipalResolver, createTokenVerifier } from '@dsa/kernel';
 import { pino } from 'pino';
 import { createApp } from './app';
-import { loadConfig, type ApiConfig } from './config';
+import { loadConfig, scrubProvisioningSecrets, type ApiConfig } from './config';
 import { resolveTestAuth } from './test-auth';
 import { redactSecrets, registerDatabaseUrl, registerSecrets } from './http/redact';
 import { supabaseAuth } from './http/supabase-auth';
@@ -25,7 +25,11 @@ import {
 } from './modules/platform-admin/data-correction-executor';
 import { OutboxRelay } from './modules/platform/outbox-relay';
 import { createWebhookDeliveryHandler, WEBHOOK_DELIVERY_JOB } from './modules/partner-api/webhooks';
-import { createUserTransferHandler, USER_TRANSFER_JOB } from './modules/platform/user-lifecycle';
+import {
+  createInvitationAcceptedAudit,
+  createUserTransferHandler,
+  USER_TRANSFER_JOB,
+} from './modules/platform/user-lifecycle';
 import { startBackgroundWorker } from './modules/platform/worker';
 import { createOutboxSubscribers, createProductionDeps } from './wiring';
 import {
@@ -33,6 +37,10 @@ import {
   DOCUMENT_ARCHIVE_JOB,
 } from './modules/origination/applications/documents';
 import { globalJobQueue } from './modules/platform/job-queue';
+
+// The HTTP API never holds the service-role key (ADR-SB-02, Architecture B): only the provisioning worker does. It is removed from this
+// process before anything else reads the environment.
+const scrubbedSecrets = scrubProvisioningSecrets();
 
 let config: ApiConfig;
 try {
@@ -75,6 +83,15 @@ if (!signingSecret) {
     'APP_SIGNING_SECRET is not set: document links work only until this API restarts, and webhook subscriptions are refused. Set it in apps/api/.env.',
   );
 }
+if (scrubbedSecrets.length > 0) {
+  logger.warn(
+    `${scrubbedSecrets.join(', ')} was set in the API environment and has been removed from this process: the API never uses it. Keep it only in the provisioning worker's environment (apps/api/.env.provisioning).`,
+  );
+}
+if (config.IDENTITY_EMAIL_FALLBACK) {
+  logger.info('IDENTITY_EMAIL_FALLBACK is on: a token not bound to any user may still match a user by e-mail (see tools/identity-binding.ts).');
+}
+// Staff invitations are recorded here and sent by the provisioning worker (tools/provisioning-worker.ts), a separate process.
 const deps = createProductionDeps(txRunner, { documentLinkSecret: signingSecret });
 globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
@@ -91,7 +108,13 @@ const app = createApp({
       jwtSecret: config.SUPABASE_JWT_SECRET,
       bypassSecret: testAuth?.secret,
     }),
-    resolver: createPrincipalResolver(txRunner),
+    resolver: createPrincipalResolver(txRunner, {
+      onInvitationAccepted: createInvitationAcceptedAudit(deps),
+      emailFallback: config.IDENTITY_EMAIL_FALLBACK,
+      // Each use of the fallback is an account still to bind. The user id is logged, never the e-mail address.
+      onEmailFallback: (userId) =>
+        logger.warn({ userId }, 'identity resolved by e-mail: bind this account (tools/identity-binding.ts)'),
+    }),
   }),
 });
 

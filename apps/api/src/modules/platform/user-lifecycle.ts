@@ -9,6 +9,7 @@
 import {
   AppError,
   DeactivateUserRequest,
+  EraseUserRequest,
   InviteUserRequest,
   ReplaceRoleAssignmentsRequest,
   SuspendUserRequest,
@@ -17,7 +18,7 @@ import {
   type Tx,
   type UserTransferResponse,
 } from '@dsa/contracts';
-import { withIdempotency } from '@dsa/kernel';
+import { withIdempotency, type PrincipalResolverOptions } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
 import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../http/request';
@@ -25,6 +26,19 @@ import type { ApiDeps } from '../types';
 import { requireActiveBranch, type Row } from './db';
 import { globalJobQueue, type JobHandler } from './job-queue';
 import { assertAdministratorRemains, countActiveAdministrators } from './role-guards';
+import {
+  MAX_RESENDS,
+  RESEND_COOLDOWN_MS,
+  invitationExpiry,
+  ERASED_DISPLAY_NAME,
+  erasedEmail,
+  erasedSubject,
+  invitationState,
+  isErased,
+  isUnboundSubject,
+  resendRefusal,
+  unboundSubject,
+} from './invitations';
 
 export const USER_TRANSFER_JOB = 'USER_TRANSFER';
 
@@ -145,6 +159,65 @@ export function createUserTransferHandler(deps: ApiDeps): JobHandler {
   };
 }
 
+export const ACTIVATION_REFUSED =
+  'An invited user becomes active only by setting a password and signing in. Send a new invitation if they need one.';
+
+/**
+ * D4: an administrator cannot make an invited user ACTIVE. Activation happens only on the invitee's own password sign-in
+ * (resolve-principal.ts). This holds while the user is INVITED, and also after an invited user was suspended or deactivated without
+ * ever accepting: they have invitations and none was accepted. Users with no invitation at all (provisioned another way) are unaffected.
+ */
+export async function assertMayBecomeActive(tx: Tx, userId: string, currentStatus: string): Promise<void> {
+  if (currentStatus === 'ACTIVE') return;
+  if (currentStatus === 'INVITED') throw AppError.of('INVALID_STATE', ACTIVATION_REFUSED);
+  const invitations = (
+    await sql<{ total: number; accepted: number }>`
+      select count(*)::int as total, (count(*) filter (where status = 'ACCEPTED'))::int as accepted
+        from staff_invitation where user_id = ${userId}`.execute(tx)
+  ).rows[0];
+  if (invitations && invitations.total > 0 && invitations.accepted === 0) {
+    throw AppError.of('INVALID_STATE', ACTIVATION_REFUSED);
+  }
+}
+
+/**
+ * Writes the audit records for an invitation that is accepted and the activation it causes (API-USR-001). The sign-in path calls it
+ * inside the transaction that activates the user, so an activation cannot be committed without its records.
+ */
+export function createInvitationAcceptedAudit(
+  deps: ApiDeps,
+): NonNullable<PrincipalResolverOptions['onInvitationAccepted']> {
+  return async (tx, event) => {
+    const ctx: RequestContext = {
+      principal: {
+        kind: 'SERVICE',
+        id: 'SYSTEM:auth',
+        tenantId: event.tenantId,
+        primaryBranchId: null,
+        managedTeamMemberIds: [],
+        queueIds: [],
+        grants: [],
+        authTime: null,
+      },
+      correlationId: event.correlationId,
+      now: event.now,
+    };
+    await deps.audit.record(tx, ctx, {
+      action: 'user.invitation_accepted',
+      entityType: 'USER',
+      entityId: event.userId,
+      after: { invitationId: event.invitationId, invitationStatus: 'ACCEPTED' },
+    });
+    await deps.audit.record(tx, ctx, {
+      action: 'user.activated',
+      entityType: 'USER',
+      entityId: event.userId,
+      before: { status: 'INVITED' },
+      after: { status: 'ACTIVE', availability: 'AVAILABLE', invitationId: event.invitationId },
+    });
+  };
+}
+
 export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void {
   // API-USR-001
   router.post('/users/invitations', async (req, res) => {
@@ -153,6 +226,8 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
     const key = idempotencyKey(req);
     const input = InviteUserRequest.parse(req.body);
     const email = input.email.trim().toLowerCase();
+    // The API never talks to Supabase Auth (Architecture B). It records the user and a QUEUED invitation; the provisioning worker
+    // creates or reuses the sign-in account, writes the tenant claim, binds the user and asks Supabase to send the e-mail.
     const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
       withIdempotency(
         tx,
@@ -169,11 +244,11 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
           }
           await requireActiveBranch(tx, input.primaryBranchId, 'primaryBranchId');
           const userId = deps.ids.next('usr');
-          // The identity-provider subject is bound on first sign-in; until then it is a placeholder nobody can present.
+          // The subject is a placeholder nobody can present until the provisioning worker binds the user to its Auth account.
           await sql`
           insert into app_user (id, tenant_id, idp_subject, email, mobile_e164, display_name, user_type, status,
                                 availability, primary_branch_id, created_by, updated_by)
-          values (${userId}, ${ctx.principal.tenantId}, ${`invite:${userId}`}, ${email}, ${input.mobileE164 ?? null},
+          values (${userId}, ${ctx.principal.tenantId}, ${unboundSubject(userId)}, ${email}, ${input.mobileE164 ?? null},
                   ${input.displayName.trim()}, 'STAFF', 'INVITED', 'OFF_DUTY', ${input.primaryBranchId},
                   ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
           for (const roleId of input.roleIds ?? []) {
@@ -188,6 +263,15 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
             values (${deps.ids.next('ura')}, ${ctx.principal.tenantId}, ${userId}, ${roleId}, 'TENANT', '{}',
                     ${ctx.principal.id})`.execute(tx);
           }
+          // One PENDING invitation per user, QUEUED for the provisioning worker. It cannot activate anyone until the worker marks it SENT.
+          // The worker sets the real expiry when the e-mail goes out.
+          const invitationId = deps.ids.next('inv');
+          await sql`
+          insert into staff_invitation (id, tenant_id, user_id, status, delivery_state, requested_at, next_attempt_at,
+                                        sent_at, expires_at, created_by, updated_by)
+          values (${invitationId}, ${ctx.principal.tenantId}, ${userId}, 'PENDING', 'QUEUED', ${ctx.now}::timestamptz,
+                  ${ctx.now}::timestamptz, ${ctx.now}::timestamptz, ${invitationExpiry(ctx.now)}::timestamptz,
+                  ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
           await deps.audit.record(tx, ctx, {
             action: 'user.invited',
             entityType: 'USER',
@@ -196,6 +280,8 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
               status: 'INVITED',
               primaryBranchId: input.primaryBranchId,
               roleIds: input.roleIds ?? [],
+              invitationId,
+              delivery: 'QUEUED',
             },
             permissionUsed: 'user.manage',
           });
@@ -205,6 +291,145 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
       ),
     );
     sendResource(res, result.status, result.body, result.replayed);
+  });
+
+  // Queues a new set-password e-mail for an invitee who has not yet set a password (API-USR-001); the provisioning worker sends it.
+  // Only an INVITED user can be re-invited. The user row and the invitation row are locked, so the limits and the cooldown cannot be
+  // passed by two requests at once, and a request is refused while an earlier one is still being sent.
+  router.post('/users/:id/invitation/resend', async (req, res) => {
+    const ctx = requireCtx(req);
+    deps.authz.requirePermission(ctx, 'user.manage');
+    const userId = req.params.id;
+    await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const person = (
+        await sql<{ status: string }>`
+        select status from app_user where id = ${userId} for update`.execute(tx)
+      ).rows[0];
+      if (!person) throw AppError.of('NOT_FOUND', 'User not found.');
+      if (person.status !== 'INVITED') {
+        throw AppError.of('INVALID_STATE', 'Only an invited user can be sent a new invitation.');
+      }
+      const current = (
+        await sql<{
+          id: string;
+          status: string;
+          delivery_state: string;
+          requested_at: Date;
+          expires_at: Date;
+          resend_count: number;
+        }>`
+          select id, status, delivery_state, requested_at, expires_at, resend_count from staff_invitation
+           where user_id = ${userId} and status in ('PENDING', 'EXPIRED')
+           order by requested_at desc limit 1 for update`.execute(tx)
+      ).rows[0];
+      if (current && (current.delivery_state === 'QUEUED' || current.delivery_state === 'SENDING')) {
+        throw AppError.of(
+          'INVALID_STATE',
+          'The invitation e-mail is still being sent. Check again in a minute.',
+        );
+      }
+      const refusal = resendRefusal(
+        current
+          ? {
+              status: current.status,
+              sentAt: current.requested_at,
+              expiresAt: current.expires_at,
+              resendCount: current.resend_count,
+            }
+          : undefined,
+        ctx.now,
+      );
+      if (refusal) throw AppError.of('INVALID_STATE', refusal);
+
+      // The worker sets the real expiry when the e-mail goes out; until then the invitation cannot activate anyone.
+      const expiry = invitationExpiry(ctx.now);
+      if (current) {
+        await sql`
+          update staff_invitation
+             set status = 'PENDING', delivery_state = 'QUEUED', requested_at = ${ctx.now}::timestamptz,
+                 next_attempt_at = ${ctx.now}::timestamptz, delivery_attempts = 0, expires_at = ${expiry}::timestamptz,
+                 resend_count = resend_count + 1, last_failure = null, claimed_at = null, claimed_by = null,
+                 updated_by = ${ctx.principal.id}
+           where id = ${current.id}`.execute(tx);
+      } else {
+        await sql`
+          insert into staff_invitation (id, tenant_id, user_id, status, delivery_state, requested_at, next_attempt_at,
+                                        sent_at, expires_at, created_by, updated_by)
+          values (${deps.ids.next('inv')}, ${ctx.principal.tenantId}, ${userId}, 'PENDING', 'QUEUED', ${ctx.now}::timestamptz,
+                  ${ctx.now}::timestamptz, ${ctx.now}::timestamptz, ${expiry}::timestamptz, ${ctx.principal.id},
+                  ${ctx.principal.id})`.execute(tx);
+      }
+      await deps.audit.record(tx, ctx, {
+        action: 'user.invitation_resent',
+        entityType: 'USER',
+        entityId: userId,
+        after: {
+          status: 'INVITED',
+          resent: current ? 'EXISTING_INVITATION' : 'NEW_INVITATION',
+          delivery: 'QUEUED',
+        },
+        permissionUsed: 'user.manage',
+      });
+    });
+    res.status(202).json({ id: userId, invitation: 'QUEUED' });
+  });
+
+  // The state of the latest invitation of a user, for administrators (API-USR-001).
+  router.get('/users/:id/invitation', async (req, res) => {
+    const ctx = requireCtx(req);
+    deps.authz.requirePermission(ctx, 'user.manage');
+    const userId = req.params.id;
+    const view = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const person = (
+        await sql<{ status: string }>`select status from app_user where id = ${userId}`.execute(tx)
+      ).rows[0];
+      if (!person) throw AppError.of('NOT_FOUND', 'User not found.');
+      const latest = (
+        await sql<{
+          status: string;
+          delivery_state: string;
+          last_failure: string | null;
+          requested_at: Date;
+          sent_at: Date;
+          expires_at: Date;
+          resend_count: number;
+          accepted_at: Date | null;
+        }>`
+          select status, delivery_state, last_failure, requested_at, sent_at, expires_at, resend_count, accepted_at
+            from staff_invitation
+           where user_id = ${userId} order by requested_at desc limit 1`.execute(tx)
+      ).rows[0];
+      return { userStatus: person.status, latest };
+    });
+    const record = view.latest;
+    res.json({
+      userStatus: view.userStatus,
+      invitationState: invitationState(
+        record
+          ? {
+              status: record.status,
+              sentAt: record.sent_at,
+              expiresAt: record.expires_at,
+              resendCount: record.resend_count,
+            }
+          : undefined,
+        ctx.now,
+      ),
+      // QUEUED or SENDING: the worker has not sent it yet. FAILED: lastFailure is a short code (never a provider message).
+      deliveryState: record ? record.delivery_state : null,
+      lastFailure: record ? record.last_failure : null,
+      sentAt: record && record.delivery_state === 'SENT' ? record.sent_at.toISOString() : null,
+      expiresAt: record ? record.expires_at.toISOString() : null,
+      resendCount: record ? record.resend_count : 0,
+      acceptedAt: record?.accepted_at ? record.accepted_at.toISOString() : null,
+      // For the resend button's countdown: the earliest time the cooldown allows another request, how many are left, and the server's
+      // clock (so a browser with a wrong clock still counts down correctly).
+      nextResendAt: record
+        ? new Date(record.requested_at.getTime() + RESEND_COOLDOWN_MS).toISOString()
+        : null,
+      resendsLeft: record ? Math.max(0, MAX_RESENDS - record.resend_count) : MAX_RESENDS,
+      serverTime: ctx.now.toISOString(),
+    });
   });
 
   // API-USR-004
@@ -272,6 +497,95 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
     sendResource(res, result.status, result.body, result.replayed);
   });
 
+  // Delete account (API-USR-004E). The person's name, e-mail and mobile are erased for good and they can never sign in again. A nameless
+  // DEACTIVATED record stays, so the leads, tasks and audit entries that point at the user keep their meaning. Open work is handed over
+  // first (as deactivation does), roles end, and pending invitations are revoked. The Supabase sign-in account is deleted afterwards by
+  // the provisioning worker, the only holder of the service-role key; until then the old account matches no user.
+  router.post('/users/:id/erasure', async (req, res) => {
+    const ctx = requireCtx(req);
+    deps.authz.requirePermission(ctx, 'user.manage');
+    const key = idempotencyKey(req);
+    const version = ifMatchVersion(req);
+    const input = EraseUserRequest.parse(req.body);
+    refuseSelf(ctx, req.params.id, 'delete');
+    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
+      withIdempotency(
+        tx,
+        ctx,
+        { key, method: 'POST', path: `/v1/users/${req.params.id}/erasure`, body: input },
+        async () => {
+          const row = await lockUser(tx, req.params.id, version);
+          const userId = String(row.id);
+          if (isErased(String(row.idp_subject), String(row.email))) {
+            throw AppError.of('INVALID_STATE', 'This account has already been deleted.');
+          }
+          let handedOver: Record<string, number> = {};
+          if (input.handoverToUserId) {
+            if (input.handoverToUserId === userId) {
+              throw AppError.of('VALIDATION_ERROR', 'Hand over to another user.', [
+                { field: 'handoverToUserId', issue: 'SAME_USER' },
+              ]);
+            }
+            const to =
+              await sql<Row>`select status from app_user where id = ${input.handoverToUserId}`.execute(tx);
+            if (to.rows[0]?.status !== 'ACTIVE') {
+              throw AppError.of('VALIDATION_ERROR', 'The hand-over user must be active in this tenant.', [
+                { field: 'handoverToUserId', issue: to.rows[0] ? 'NOT_ACTIVE' : 'NOT_FOUND' },
+              ]);
+            }
+            const moved = await sql<{ counts: Record<string, number> }>`
+              select handover_owned_records(${userId}, ${input.handoverToUserId}, ${ctx.principal.id}) as counts`.execute(
+              tx,
+            );
+            handedOver = moved.rows[0]!.counts;
+          } else if (row.status !== 'INVITED') {
+            throw AppError.of('VALIDATION_ERROR', 'Choose who takes over this person’s open work.', [
+              { field: 'handoverToUserId', issue: 'REQUIRED' },
+            ]);
+          }
+          if (row.status !== 'DEACTIVATED') await setStatus(tx, ctx, row, 'DEACTIVATED');
+          await sql`
+            update user_role_assignment
+               set effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)')
+             where user_id = ${userId} and effective_range @> now()`.execute(tx);
+          await sql`
+            update staff_invitation
+               set status = 'REVOKED',
+                   delivery_state = case when delivery_state in ('QUEUED', 'SENDING') then 'CANCELLED' else delivery_state end,
+                   claimed_at = null, claimed_by = null, updated_by = ${ctx.principal.id}
+             where user_id = ${userId} and status = 'PENDING'`.execute(tx);
+          // An invitee who was never bound has no sign-in account to delete, so the subject is retired here; otherwise the worker
+          // deletes the account and then retires it.
+          const subject = String(row.idp_subject);
+          await sql`
+            update app_user
+               set display_name = ${ERASED_DISPLAY_NAME}, email = ${erasedEmail(userId)}, mobile_e164 = null,
+                   availability = 'OFF_DUTY',
+                   idp_subject = ${isUnboundSubject(subject) ? erasedSubject(userId) : subject},
+                   updated_by = ${ctx.principal.id}
+             where id = ${userId}`.execute(tx);
+          await deps.audit.record(tx, ctx, {
+            action: 'user.erased',
+            entityType: 'USER',
+            entityId: userId,
+            before: { status: row.status },
+            after: {
+              status: 'DEACTIVATED',
+              erased: true,
+              handoverToUserId: input.handoverToUserId ?? null,
+              handedOver,
+            },
+            reason: input.reason,
+            permissionUsed: 'user.manage',
+          });
+          await emit(deps, tx, ctx, 'user.erased', userId, { handedOver });
+          return { status: 200, body: { ...(await readUser(tx, userId)), handedOver }, resourceRef: userId };
+        },
+      ),
+    );
+    sendResource(res, result.status, result.body, result.replayed);
+  });
+
   // API-USR-005
   router.post('/users/:id/suspension', async (req, res) => {
     const ctx = requireCtx(req);
@@ -288,6 +602,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
           `Only a ${from} user can be ${input.action === 'SUSPEND' ? 'suspended' : 'reactivated'}.`,
         );
       }
+      if (to === 'ACTIVE') await assertMayBecomeActive(tx, String(row.id), String(row.status));
       await setStatus(tx, ctx, row, to);
       const action = input.action === 'SUSPEND' ? 'user.suspended' : 'user.reactivated';
       await deps.audit.record(tx, ctx, {

@@ -22,8 +22,10 @@ export interface VerifiedToken {
   aal: 'aal1' | 'aal2';
   /** Time of the most recent TOTP verification when aal = aal2, else null. Drives step-up (Contracts §7). */
   mfaVerifiedAt: Date | null;
-  /** The `email` claim, used once to bind an invited user (API-USR-001) to this subject on first sign-in. */
+  /** The `email` claim, matched against app users. */
   email?: string | null;
+  /** How this session was signed in, from the token's `amr` claim, e.g. "password", "otp" or "totp". Empty when unknown. */
+  authMethods?: string[];
 }
 
 export interface TokenVerifier {
@@ -128,7 +130,16 @@ function readClaims(payload: JWTPayload): VerifiedToken {
     aal,
     mfaVerifiedAt: aal === 'aal2' ? latestTotp(payload.amr) : null,
     email: typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : null,
+    authMethods: amrMethods(payload.amr),
   };
+}
+
+/** The methods the session was signed in with, e.g. ['password'] or ['otp']. Anything that is not a method name is ignored. */
+function amrMethods(amr: unknown): string[] {
+  if (!Array.isArray(amr)) return [];
+  return amr
+    .map((e) => (e && typeof e === 'object' ? (e as { method?: unknown }).method : undefined))
+    .filter((m): m is string => typeof m === 'string');
 }
 
 /** Supabase puts `amr: [{ method: 'totp', timestamp: <unix s> }, …]` on the access token. */

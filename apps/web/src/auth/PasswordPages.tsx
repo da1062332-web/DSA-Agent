@@ -5,6 +5,7 @@ import { Alert, Box, Button, CircularProgress, Link, Stack, TextField } from '@m
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
+import { forgetLinkToken, readLink, redeemLink, type LinkState } from './AcceptInvitationPage';
 import { AuthCard } from './AuthCard';
 import { getSupabase } from './supabase';
 
@@ -75,6 +76,20 @@ export function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A scanner-safe link (?token_hash=…&type=recovery) is redeemed only when the person presses Continue (see AcceptInvitationPage).
+  const [link] = useState<LinkState>(() =>
+    typeof window === 'undefined' ? { kind: 'none' } : readLink(window.location),
+  );
+
+  const redeem = async () => {
+    if (link.kind !== 'token') return;
+    setBusy(true);
+    setError(null);
+    forgetLinkToken();
+    const problem = await redeemLink(getSupabase().auth, link.tokenHash, link.type);
+    setBusy(false);
+    if (problem) setError(problem);
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -94,9 +109,28 @@ export function ResetPasswordPage() {
   };
 
   if (session === undefined) return null;
+  if (!session && link.kind === 'token') {
+    return (
+      <AuthCard title="Choose a new password" subtitle="Continue to set the password you will sign in with.">
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Button onClick={() => void redeem()} variant="contained" size="large" fullWidth disabled={busy}>
+          {busy ? <CircularProgress size={22} color="inherit" /> : 'Continue'}
+        </Button>
+      </AuthCard>
+    );
+  }
   if (!session || !recovering) {
     return (
       <AuthCard title="Reset link expired" subtitle="The link was already used or is too old.">
+        {link.kind === 'error' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {`Reason from the sign-in service: ${link.description} (${link.code})`}
+          </Alert>
+        )}
         <Button component={RouterLink} to="/forgot-password" variant="contained" fullWidth>
           Request a new link
         </Button>

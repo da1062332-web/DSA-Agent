@@ -40,7 +40,14 @@ async function errorCode(p: Promise<unknown>): Promise<string> {
 describe('createTokenVerifier', () => {
   it('TEST-KRN-102-01 accepts a valid HS256 token and reads sub, tenant and aal', async () => {
     const t = await verifier.verify(await mint());
-    expect(t).toEqual({ subject: SUB, tenantId: TENANT, aal: 'aal1', mfaVerifiedAt: null, email: null });
+    expect(t).toEqual({
+      subject: SUB,
+      tenantId: TENANT,
+      aal: 'aal1',
+      mfaVerifiedAt: null,
+      email: null,
+      authMethods: ['password'],
+    });
   });
 
   it('TEST-KRN-102-02 reports the TOTP time for an aal2 token', async () => {
@@ -48,6 +55,23 @@ describe('createTokenVerifier', () => {
     const t = await verifier.verify(await mint({ aal: 'aal2', now, ttlSeconds: 10 ** 9 }));
     expect(t.aal).toBe('aal2');
     expect(t.mfaVerifiedAt).toEqual(now);
+  });
+
+  it('TEST-KRN-102-05 reads the sign-in methods from amr, and ignores entries that do not name a method', async () => {
+    const token = await new SignJWT({
+      role: 'authenticated',
+      aal: 'aal1',
+      amr: [{ method: 'otp', timestamp: 1 }, 'password', { method: 7 }, null],
+      app_metadata: { tenant_id: TENANT },
+    })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuer(`${SUPABASE_URL}/auth/v1`)
+      .setAudience('authenticated')
+      .setSubject(SUB)
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(new TextEncoder().encode(SECRET));
+    expect((await verifier.verify(token)).authMethods).toEqual(['otp']);
   });
 
   it('TEST-KRN-102-03 rejects an expired token with TOKEN_EXPIRED', async () => {

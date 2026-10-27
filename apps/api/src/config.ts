@@ -28,6 +28,14 @@ const EnvSchema = z
       ),
     DATABASE_URL: z.string().url(),
     SUPABASE_URL: z.string().url(),
+    /**
+     * Identity binding (D5). true: a token whose subject is bound to no user may still be matched to a user by its e-mail address, as
+     * before. false: a token is matched by its subject only. Set false once tools/identity-binding.ts reports every account bound.
+     */
+    IDENTITY_EMAIL_FALLBACK: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     // Empty means unset: hosted projects sign tokens with asymmetric keys and leave this blank.
     SUPABASE_JWT_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     /**
@@ -132,6 +140,24 @@ const EnvSchema = z
   });
 
 export type ApiConfig = z.infer<typeof EnvSchema>;
+
+/**
+ * Secrets the HTTP API never uses (ADR-SB-02, Architecture B). The service-role key belongs to the provisioning worker only. The local
+ * apps/api/.env may still hold it for the provisioning tools, so the API removes it from its own process environment at start-up.
+ */
+export const PROVISIONING_ONLY_SECRETS = ['SUPABASE_SERVICE_ROLE_KEY'] as const;
+
+/** Deletes the provisioning-only secrets from `env` and returns the names that were present. Never returns values. */
+export function scrubProvisioningSecrets(env: NodeJS.ProcessEnv = process.env): string[] {
+  const removed: string[] = [];
+  for (const name of PROVISIONING_ONLY_SECRETS) {
+    if (env[name] !== undefined) {
+      delete env[name];
+      removed.push(name);
+    }
+  }
+  return removed;
+}
 
 /** Parses the environment. The error lists variable names and reasons only, never values. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
