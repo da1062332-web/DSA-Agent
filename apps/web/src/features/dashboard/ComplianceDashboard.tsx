@@ -223,6 +223,7 @@ export function ComplianceDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Security Incident Lifecycle"
             subtitle="Incident resolution pipeline from reporting to closure"
             stages={incidentStages}

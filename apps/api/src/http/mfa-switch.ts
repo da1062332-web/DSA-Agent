@@ -20,3 +20,16 @@ export function mfaMayBeDisabledHere(env: NodeJS.ProcessEnv = process.env): bool
 export function mfaDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.DISABLE_MFA === 'true' && mfaMayBeDisabledHere(env);
 }
+
+/**
+ * The project's own setting: authenticator sign-in is off in the Supabase dashboard, so no code can be asked for. The operator sets
+ * SUPABASE_MFA_ENABLED=false to match it. Unlike DISABLE_MFA this is not a developer switch, and it is honoured against any project.
+ */
+export function projectMfaOff(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.SUPABASE_MFA_ENABLED === 'false';
+}
+
+/** True when no second factor is required at all: the developer switch, or a project with authenticator sign-in off. */
+export function secondFactorSkipped(env: NodeJS.ProcessEnv = process.env): boolean {
+  return mfaDisabled(env) || projectMfaOff(env);
+}

@@ -1,24 +1,26 @@
 // The one second-factor screen, shown on the sign-in page. It sets up an authenticator (QR code and secret key) when the account has none,
 // and asks for a code when it has one. The fixed test code and the test sign-in exist only in test builds.
 import { Alert, Box, Button, CircularProgress, Dialog, DialogContent, Stack, TextField, Typography } from '@mui/material';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { readConfig } from '../config';
+import { isMfaDisabledError, setMfaProjectState } from './mfa-project';
 import { qrImageSource } from './qr-image';
 import { getSupabase, saveBypassSession } from './supabase';
 import { testAuthEnabled, testOtp } from './test-auth';
 import { setAuthToken } from './token';
-import { enrolmentErrorMessage, isTotpCode, startTotpEnrolment, verifyTotp } from './totp';
+import { isTotpCode, verifyTotp } from './totp';
 
-export type SecondFactorState =
-  | { mode: 'enrol'; resetExisting: boolean }
-  | { mode: 'challenge'; factorId: string }
-  | { mode: 'test' };
-
-interface Enrolment {
+// The set-up is started by the sign-in page, which learns from the auth service whether the project takes authenticator sign-in.
+export interface Enrolment {
   factorId: string;
   qrCode: string;
   secret: string;
 }
+
+export type SecondFactorState =
+  | { mode: 'enrol'; resetExisting: boolean; enrolment: Enrolment }
+  | { mode: 'challenge'; factorId: string }
+  | { mode: 'test' };
 
 interface Props {
   /** Null when the dialog is closed. */
@@ -33,29 +35,10 @@ const INVALID_SESSION = /invalid JWT|signature is invalid/i;
 
 export function SecondFactorDialog({ state, email, from, onVerified, onCancel }: Props) {
   const mode = state?.mode;
+  const enrolment = state?.mode === 'enrol' ? state.enrolment : null;
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
-
-  // Each time the set-up opens it gets a new authenticator and barcode.
-  useEffect(() => {
-    if (mode !== 'enrol') return;
-    let cancelled = false;
-    setEnrolment(null);
-    setError(null);
-    (async () => {
-      try {
-        const next = await startTotpEnrolment(`Authenticator ${new Date().toISOString().slice(0, 10)}`, false);
-        if (!cancelled) setEnrolment(next);
-      } catch (e) {
-        if (!cancelled) setError(enrolmentErrorMessage(e));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -71,9 +54,9 @@ export function SecondFactorDialog({ state, email, from, onVerified, onCancel }:
         await signInWithTestCode(email, code, from);
         return;
       }
-      if (state?.mode === 'enrol' && enrolment) {
-        await verifyTotp(enrolment.factorId, code);
-        if (state.resetExisting) await retireOtherFactors(enrolment.factorId);
+      if (state?.mode === 'enrol') {
+        await verifyTotp(state.enrolment.factorId, code);
+        if (state.resetExisting) await retireOtherFactors(state.enrolment.factorId);
         await onVerified();
         return;
       }
@@ -88,6 +71,12 @@ export function SecondFactorDialog({ state, email, from, onVerified, onCancel }:
           : 'That code did not match. Please try again.',
       );
     } catch (err) {
+      // The project has authenticator sign-in off, so there is no code to check. The sign-in continues without one.
+      if (isMfaDisabledError(err)) {
+        setMfaProjectState('disabled');
+        await onVerified();
+        return;
+      }
       const msg = (err as Error).message || '';
       setError(
         INVALID_SESSION.test(msg)

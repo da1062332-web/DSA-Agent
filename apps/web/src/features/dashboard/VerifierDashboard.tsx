@@ -184,6 +184,7 @@ export function VerifierDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Verification Case Throughput"
             subtitle="Verification status distribution across incoming borrower checks"
             stages={verificationStages}

@@ -59,6 +59,8 @@ const logger = pino({
     : {}),
 });
 if (config.DISABLE_MFA) logger.warn('DISABLE_MFA is on: MFA is skipped. This is for local development only.');
+if (!config.SUPABASE_MFA_ENABLED)
+  logger.warn('SUPABASE_MFA_ENABLED=false: no second factor is required. Set this only while authenticator sign-in is off in the Supabase project.');
 // Test login is on only when every check in test-auth.ts passes. resolveTestAuth throws rather than offer a bypass for an unsafe setup.
 const testAuth = resolveTestAuth(config);
 if (testAuth) {

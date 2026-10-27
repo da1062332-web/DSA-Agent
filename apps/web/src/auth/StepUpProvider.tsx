@@ -21,6 +21,7 @@ import { getSupabase, saveBypassSession } from './supabase';
 import { setAuthToken } from './token';
 import { readConfig } from '../config';
 import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
+import { mfaProjectState } from './mfa-project';
 
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { refreshAal } = useAuth();
@@ -45,6 +46,11 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
         new Promise<boolean>((resolve) => {
           if (mfaSkipRequested()) {
             resolve(true);
+            return;
+          }
+          // The project has authenticator sign-in off, so there is no code to ask for. The request fails as it would without a dialog.
+          if (mfaProjectState() === 'disabled') {
+            resolve(false);
             return;
           }
           pending.current?.(false);

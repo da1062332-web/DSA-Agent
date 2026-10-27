@@ -240,6 +240,7 @@ export function FinanceDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Payout Batch Lifecycle"
             subtitle="Partner commission payout progression from draft to bank clearance"
             stages={payoutStages}

@@ -319,6 +319,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Organisation Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Inbound Leads', count: leads.length, color: '#f59e0b' },

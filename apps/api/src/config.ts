@@ -53,6 +53,11 @@ const EnvSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+    /** Set to false only while authenticator sign-in is off in the Supabase project: then no second factor can be asked for. */
+    SUPABASE_MFA_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     /** Test login only: the fixed one-time code. Has no effect unless TEST_AUTH_ENABLED is true. */
     TEST_BYPASS_OTP: z.string().default('000000'),
     /**

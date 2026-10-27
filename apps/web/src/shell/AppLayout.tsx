@@ -26,6 +26,7 @@ import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
+import { mfaProjectState } from '../auth/mfa-project';
 import { mfaSkipRequested } from '../auth/test-auth';
 
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
@@ -214,8 +215,9 @@ export function AppLayout() {
     );
   }
 
-  // Development builds only: a production build ignores it. The API enforces MFA whatever the screen does.
-  const skipMfa = mfaSkipRequested();
+  // No second step when the project has authenticator sign-in off (learned at sign-in), or in a development build that switches it off.
+  // The API still enforces step-up for sensitive actions whatever the screen does.
+  const skipMfa = mfaSkipRequested() || mfaProjectState() === 'disabled';
   const needsChallenge = !skipMfa && aal.next === 'aal2' && aal.current !== 'aal2';
   const needsEnrolment = !skipMfa && aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)

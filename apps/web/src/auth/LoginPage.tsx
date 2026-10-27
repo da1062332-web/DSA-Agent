@@ -1,7 +1,7 @@
 // Sign-in screen (owner: Dev 1, UI-PLT-001).
 // Clean light theme on pure white background with split-card layout
 // and in-page frosted glass MFA modal with background blur effect.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -31,6 +31,8 @@ import { readConfig } from '../config';
 import { TimeoutError, withTimeout } from './timeout';
 import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
 import { secondFactorPlan } from './secondFactor';
+import { isMfaDisabledError, setMfaProjectState } from './mfa-project';
+import { enrolmentErrorMessage, startTotpEnrolment } from './totp';
 import { SecondFactorDialog, type SecondFactorState } from './SecondFactorDialog';
 import { InteractiveDotGrid } from './InteractiveDotGrid';
 
@@ -63,6 +65,8 @@ export function LoginPage() {
   // In-page MFA Modal State
   // The one second-factor screen. Null when it is closed.
   const [secondFactor, setSecondFactor] = useState<SecondFactorState | null>(null);
+  // Guards the second-factor decision against two starts at once, such as the sign-in and the session effect.
+  const opening = useRef(false);
   const showMfaModal = secondFactor !== null;
   const [pendingEmail, setPendingEmail] = useState('');
 
@@ -152,15 +156,56 @@ export function LoginPage() {
     }
   };
 
-  // Opens the second-factor step: the code prompt when the account has a verified authenticator, otherwise the set-up with its QR code.
+  // The project has authenticator sign-in off: record it and let the sign-in continue without a code.
+  const continueWithoutSecondFactor = () => {
+    setMfaProjectState('disabled');
+    setSecondFactor(null);
+    clearPendingEmail();
+    navigate(from, { replace: true });
+  };
+
+  // Decides the second-factor step. A verified authenticator gets the code prompt. Otherwise the set-up starts, and that is how the
+  // project is asked whether it takes authenticator sign-in at all: when it is off, the auth service refuses the set-up and the
+  // sign-in continues without a code. The set-up's QR code and key are passed to the dialog, so nothing is started twice.
   const openSecondFactor = async (resetExisting: boolean) => {
-    const { data: factorList, error: factorError } = await getSupabase().auth.mfa.listFactors();
-    if (factorError) {
-      setErrorMessage('Could not check your authenticator app. Try again.');
-      return;
+    if (opening.current) return;
+    opening.current = true;
+    try {
+      const { data: factorList, error: factorError } = await getSupabase().auth.mfa.listFactors();
+      if (factorError) {
+        setErrorMessage('Could not check your authenticator app. Try again.');
+        return;
+      }
+      const plan = secondFactorPlan(factorList?.totp, resetExisting);
+      if (plan.mode === 'challenge') {
+        // Starting a code check is the question for an existing authenticator: the service refuses it when code checks are off.
+        const { error: challengeError } = await getSupabase().auth.mfa.challenge({ factorId: plan.factorId });
+        if (challengeError && isMfaDisabledError(challengeError)) {
+          continueWithoutSecondFactor();
+          return;
+        }
+        if (challengeError) {
+          setErrorMessage('Could not start the code check. Try again.');
+          return;
+        }
+        setMfaProjectState('enabled');
+        setSecondFactor({ mode: 'challenge', factorId: plan.factorId });
+        return;
+      }
+      try {
+        const enrolment = await startTotpEnrolment(`Authenticator ${new Date().toISOString().slice(0, 10)}`, false);
+        setMfaProjectState('enabled');
+        setSecondFactor({ mode: 'enrol', resetExisting, enrolment });
+      } catch (err) {
+        if (isMfaDisabledError(err)) {
+          continueWithoutSecondFactor();
+          return;
+        }
+        setErrorMessage(enrolmentErrorMessage(err));
+      }
+    } finally {
+      opening.current = false;
     }
-    const plan = secondFactorPlan(factorList?.totp, resetExisting);
-    setSecondFactor(plan.mode === 'challenge' ? { mode: 'challenge', factorId: plan.factorId } : { mode: 'enrol', resetExisting });
   };
 
   const onSecondFactorVerified = async () => {

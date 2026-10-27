@@ -224,6 +224,7 @@ export function RMDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Origination Stage Progression"
             subtitle="Borrower application files by underwriting status"
             stages={appFunnelStages}

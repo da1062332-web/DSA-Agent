@@ -214,6 +214,7 @@ export function LoanOpsDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Lender Operations Stage Progression"
             subtitle="Application distribution across lender submission pipeline"
             stages={opsStages}
