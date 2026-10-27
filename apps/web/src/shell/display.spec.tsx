@@ -47,7 +47,7 @@ describe('display.tsx — UserName component', () => {
     expect(html).toContain('Unassigned');
   });
 
-  it('falls back to raw id if user is not in users list', () => {
+  it('never shows the raw id if user is not in users list', () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(['/v1/users', undefined], []);
     const html = renderToString(
@@ -55,6 +55,6 @@ describe('display.tsx — UserName component', () => {
         <UserName id="usr_unknown_999" />
       </QueryClientProvider>,
     );
-    expect(html).toContain('usr_unknown_999');
+    expect(html).not.toContain('usr_unknown_999');
   });
 });

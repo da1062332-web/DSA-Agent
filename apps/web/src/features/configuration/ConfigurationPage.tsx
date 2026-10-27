@@ -40,6 +40,7 @@ import type {
   RoutingMode,
   TenantConfigSummary,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 export function ConfigurationPage() {
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -274,14 +275,6 @@ export function ConfigurationPage() {
               <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Tenant ID
-                  </Typography>
-                  <Typography variant="body1" fontFamily="monospace">
-                    {config.tenant.id}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
                     Slug
                   </Typography>
                   <Typography variant="body1" fontWeight={600}>
@@ -472,7 +465,7 @@ export function ConfigurationPage() {
             columns={[
               { id: 'code', header: 'Branch Code', render: (b) => <Box sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{b.code}</Box> },
               { id: 'name', header: 'Branch Name', render: (b) => b.name },
-              { id: 'pincode', header: 'Pincode', render: (b) => b.pincode || '—' },
+              { id: 'pincode', header: 'Pincode', render: (b) => b.pincode || <NotSet /> },
               { id: 'timezone', header: 'Timezone', render: (b) => b.timezone },
               {
                 id: 'status',

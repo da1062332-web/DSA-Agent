@@ -52,6 +52,8 @@ import type {
   LenderType,
   UpdateLenderInput,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function LenderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -319,7 +321,7 @@ export function LenderDetailPage() {
             />
           </Stack>
         }
-        subtitle={`ID: ${lender.id} | Lock Version: ${lender.lockVersion}`}
+        subtitle={`Lock Version: ${lender.lockVersion}`}
         actions={
           canManage && (
             <Button variant="outlined" size="small" onClick={() => setEditProfileOpen(true)}>
@@ -346,7 +348,7 @@ export function LenderDetailPage() {
                 Global Reference
               </Typography>
               <Typography variant="body1" fontWeight={500}>
-                {lender.globalLenderRef || '—'}
+                {lender.globalLenderRef || <NotSet />}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -413,7 +415,7 @@ export function LenderDetailPage() {
                 </Stack>
               ),
             },
-            { id: 'agreement', header: 'Agreement Ref', render: (emp) => emp.agreementDocumentId || '—' },
+            { id: 'agreement', header: 'Agreement Ref', render: (emp) => emp.agreementDocumentId || <NotSet /> },
             {
               id: 'status',
               header: 'Status',
@@ -425,16 +427,16 @@ export function LenderDetailPage() {
               align: 'right',
               render: (emp) => (
                 <>
-                  {canManage && emp.status === 'ACTIVE' && (
+                  <RowAction allowed={canManage && emp.status === 'ACTIVE'}>
                     <Button size="small" color="warning" onClick={() => handleToggleEmpanelmentStatus(emp, 'SUSPENDED')}>
                       Suspend
                     </Button>
-                  )}
-                  {canManage && emp.status === 'SUSPENDED' && (
+                  </RowAction>
+                  <RowAction allowed={canManage && emp.status === 'SUSPENDED'}>
                     <Button size="small" color="success" onClick={() => handleToggleEmpanelmentStatus(emp, 'ACTIVE')}>
                       Reactivate
                     </Button>
-                  )}
+                  </RowAction>
                 </>
               ),
             },

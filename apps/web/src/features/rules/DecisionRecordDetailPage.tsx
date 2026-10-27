@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../ui';
 import { fetchDecisionRecord } from './api';
 import type { DecisionRecordResponse } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 export function DecisionRecordDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -129,7 +130,7 @@ export function DecisionRecordDetailPage() {
                 Execution Duration
               </Typography>
               <Typography variant="body1" fontWeight={600} mt={0.5}>
-                {record.durationUs ? `${record.durationUs} µs` : '—'}
+                {record.durationUs ? `${record.durationUs} µs` : <NotSet />}
               </Typography>
             </CardContent>
           </Card>

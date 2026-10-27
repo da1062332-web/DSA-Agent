@@ -1,5 +1,6 @@
 // apps/api/src/modules/rules/api/router.ts — owner: Developer 6 & 2 (Module 23: Business Rule Engine)
 import { registerReferenceListRoutes } from './reference-lists';
+import { mfaDisabled } from '../../../http/mfa-switch';
 import {
   AppError,
   CreateRuleSetRequestSchema,
@@ -93,7 +94,7 @@ function requireAnyPermission(ctx: RequestContext, codes: PermissionCode[]): voi
 }
 
 function requireStepUp(ctx: RequestContext): void {
-  if (process.env.DISABLE_MFA === 'true') return;
+  if (mfaDisabled()) return;
   if (ctx.principal.kind === 'SERVICE') return;
   if (!ctx.principal.authTime) {
     throw AppError.of('STEP_UP_REQUIRED', 'MFA step-up verification required.');

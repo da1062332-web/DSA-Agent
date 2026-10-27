@@ -27790,6 +27790,66 @@ paths:
                 required:
                   - package
                   - case
+    get:
+      operationId: API-LCS-010
+      summary: "API-LCS-010: Retrieve Submission Package"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: The package the case was built and frozen with
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  tenantId:
+                    type: string
+                  lenderCaseId:
+                    type: string
+                  kind:
+                    type: string
+                    enum: *a136
+                  manifest:
+                    type: object
+                    additionalProperties: {}
+                  manifestSha256:
+                    type: string
+                    minLength: 64
+                    maxLength: 64
+                  consentIds:
+                    type: array
+                    items:
+                      type: string
+                    minItems: 1
+                  builtBy:
+                    type: string
+                  builtAt:
+                    type: string
+                  frozenAt:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - id
+                  - tenantId
+                  - lenderCaseId
+                  - kind
+                  - manifest
+                  - manifestSha256
+                  - consentIds
+                  - builtBy
+                  - builtAt
   /v1/lender-cases/{id}/submission:
     post:
       operationId: API-LCS-004
@@ -28165,6 +28225,84 @@ paths:
                 required:
                   - query
                   - case
+    get:
+      operationId: API-LCS-008
+      summary: "API-LCS-008: List Lender Queries"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Queries raised on this case, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        lenderCaseId:
+                          type: string
+                        text:
+                          type: string
+                        requestedItems:
+                          type: array
+                          items:
+                            type: string
+                        lenderDueDate:
+                          type:
+                            - string
+                            - "null"
+                        taskId:
+                          type:
+                            - string
+                            - "null"
+                        responseManifestId:
+                          type:
+                            - string
+                            - "null"
+                        respondedAt:
+                          type:
+                            - string
+                            - "null"
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        responseText:
+                          type:
+                            - string
+                            - "null"
+                        responseDocumentReferences:
+                          type: array
+                          items:
+                            type: string
+                      required:
+                        - id
+                        - tenantId
+                        - lenderCaseId
+                        - text
+                        - requestedItems
+                        - createdAt
+                        - createdBy
+                        - responseText
+                        - responseDocumentReferences
+                required:
+                  - data
   /v1/lender-queries/{id}/responses:
     post:
       operationId: API-LCS-007
@@ -28334,6 +28472,68 @@ paths:
                 required:
                   - query
                   - case
+  /v1/lender-cases/{id}/history:
+    get:
+      operationId: API-LCS-009
+      summary: "API-LCS-009: List Lender Case Status History"
+      tags:
+        - MOD-LCS Lender Cases
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Status transitions of this case, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        lenderCaseId:
+                          type: string
+                        fromStatus:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a132
+                        toStatus:
+                          type: string
+                          enum: *a132
+                        statusSource:
+                          type: string
+                          enum: *a134
+                        reasonText:
+                          type:
+                            - string
+                            - "null"
+                        actor:
+                          type: string
+                        occurredAt:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - lenderCaseId
+                        - toStatus
+                        - statusSource
+                        - actor
+                        - occurredAt
+                required:
+                  - data
   /v1/lender-cases/{id}/sanctions:
     post:
       operationId: API-SND-001
@@ -61046,6 +61246,34 @@ paths:
       summary: GET /v1/lender-cases
       tags:
         - MOD-LCS Lender Cases
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: lenderId
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: applicationId
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
       responses:
         "200":
           description: Success
@@ -61053,7 +61281,108 @@ paths:
             application/json:
               schema:
                 type: object
-                additionalProperties: {}
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        tenantId:
+                          type: string
+                        applicationId:
+                          type: string
+                        lenderId:
+                          type: string
+                        productVersionId:
+                          type: string
+                        empanelmentId:
+                          type: string
+                        attemptNo:
+                          type: integer
+                          minimum: 1
+                        status:
+                          type: string
+                          enum: *a132
+                        lenderReference:
+                          type:
+                            - string
+                            - "null"
+                        submissionChannel:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a133
+                        submittedAt:
+                          type:
+                            - string
+                            - "null"
+                        packageId:
+                          type:
+                            - string
+                            - "null"
+                        statusSource:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a134
+                        lastStatusAt:
+                          type:
+                            - string
+                            - "null"
+                        declineReasonCode:
+                          type:
+                            - string
+                            - "null"
+                          enum: *a135
+                        stalenessFlag:
+                          type: boolean
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        lockVersion:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - tenantId
+                        - applicationId
+                        - lenderId
+                        - productVersionId
+                        - empanelmentId
+                        - attemptNo
+                        - status
+                        - stalenessFlag
+                        - tags
+                        - lockVersion
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
         "401":
           description: Not authenticated
           content:

@@ -119,6 +119,6 @@ describe('CMP-IMP.01.1 — ImportExportPage Frontend Component', () => {
     expect(html).toContain('Step 1: Upload Source File');
     expect(html).toContain('Target Entity');
     expect(html).toContain('Recent Import Batches');
-    expect(html).toContain('imp_01JTESTBATCH001');
+    expect(html).not.toContain('>imp_01JTESTBATCH001<');
   });
 });

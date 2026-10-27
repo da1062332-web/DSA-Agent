@@ -47,6 +47,7 @@ import type {
   TestCaseResponse,
   VersionStatus,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 function getStatusColor(
   status: VersionStatus,
@@ -230,7 +231,7 @@ export function RuleSetDetailPage() {
                     variant="text"
                     onClick={() => navigate(`/rules/versions/${ruleSet.activeVersionId}`)}
                   >
-                    {ruleSet.activeVersionId}
+                    Open active version
                   </Button>
                 ) : (
                   'No active version'
@@ -255,10 +256,10 @@ export function RuleSetDetailPage() {
           <Card variant="outlined">
             <CardContent>
               <Typography variant="caption" color="text.secondary">
-                Rule Set ID
+                Rule set
               </Typography>
               <Typography variant="body2" fontFamily="monospace" mt={0.5}>
-                {ruleSet.id}
+                {ruleSet.name}
               </Typography>
             </CardContent>
           </Card>
@@ -288,9 +289,6 @@ export function RuleSetDetailPage() {
                   <Typography variant="subtitle2" fontWeight={700}>
                     v{ver.versionNo}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {ver.id}
-                  </Typography>
                 </>
               ),
             },
@@ -315,7 +313,7 @@ export function RuleSetDetailPage() {
               header: 'Change Reason',
               render: (ver) => (
                 <Typography variant="body2" color="text.secondary">
-                  {ver.changeReason || '—'}
+                  {ver.changeReason || <NotSet />}
                 </Typography>
               ),
             },
@@ -326,7 +324,7 @@ export function RuleSetDetailPage() {
                 <Typography variant="caption">
                   {ver.effectiveFrom
                     ? `${ver.effectiveFrom.slice(0, 10)} → ${ver.effectiveTo ? ver.effectiveTo.slice(0, 10) : 'active'}`
-                    : '—'}
+                    : <NotSet />}
                 </Typography>
               ),
             },
@@ -381,9 +379,6 @@ export function RuleSetDetailPage() {
                     <>
                       <Typography variant="subtitle2" fontWeight={600}>
                         {tc.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {tc.id}
                       </Typography>
                     </>
                   ),

@@ -35,6 +35,8 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { createLender, fetchLenders, updateLender } from './api';
 import type { CreateLenderInput, Lender, LenderStatus, LenderType } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function LenderListPage() {
   const me = useMe();
@@ -254,7 +256,7 @@ export function LenderListPage() {
             ),
           },
           { id: 'type', header: 'Type', render: (lender) => <Chip label={lender.lenderType} size="small" variant="outlined" /> },
-          { id: 'regulator', header: 'Regulator Ref', render: (lender) => lender.regulatorRef || '—' },
+          { id: 'regulator', header: 'Regulator Ref', render: (lender) => lender.regulatorRef || <NotSet /> },
           {
             id: 'status',
             header: 'Status',
@@ -270,16 +272,16 @@ export function LenderListPage() {
                 <Button size="small" component={RouterLink} to={`/lenders/${lender.id}`} variant="outlined">
                   Manage
                 </Button>
-                {canManage && lender.status === 'ACTIVE' && (
+                <RowAction allowed={canManage && lender.status === 'ACTIVE'}>
                   <Button size="small" color="warning" onClick={() => handleOpenStatusDialog(lender, 'PAUSED')}>
                     Pause
                   </Button>
-                )}
-                {canManage && lender.status === 'PAUSED' && (
+                </RowAction>
+                <RowAction allowed={canManage && lender.status === 'PAUSED'}>
                   <Button size="small" color="success" onClick={() => handleOpenStatusDialog(lender, 'ACTIVE')}>
                     Activate
                   </Button>
-                )}
+                </RowAction>
               </Stack>
             ),
           },

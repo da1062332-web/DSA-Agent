@@ -210,6 +210,6 @@ describe('ReportingPage (MOD-RPT Suite)', () => {
     expect(html).toContain('Lead Pipeline Register');
     expect(html).toContain('Disbursement Tranche Register');
     expect(html).toContain('Run Report');
-    expect(html).toContain('rpr_test001');
+    expect(html).not.toContain('>rpr_test001<');
   });
 });

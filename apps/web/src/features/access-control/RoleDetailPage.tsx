@@ -9,7 +9,6 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
-  Container,
   Divider,
   FormControlLabel,
   Grid,
@@ -20,7 +19,7 @@ import {
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { deleteRole, fetchPermissions, fetchRoleById, updateRole } from './api';
 import { Can } from '../../shell/Can';
-import { PageHeader } from '../../ui';
+import { PageHeader, PageContainer } from '../../ui';
 import type { Permission, Role } from './types';
 
 export function RoleDetailPage() {
@@ -135,17 +134,17 @@ export function RoleDetailPage() {
 
   if (!role) {
     return (
-      <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+      <PageContainer>
         <Alert severity="error">Role not found.</Alert>
         <Button sx={{ mt: 2 }} variant="outlined" component={RouterLink} to="/roles">
           &larr; Back to Roles
         </Button>
-      </Container>
+      </PageContainer>
     );
   }
 
   return (
-    <Container maxWidth={false} disableGutters>
+    <PageContainer>
       <PageHeader
         title={role.name}
         backTo="/roles"
@@ -319,6 +318,6 @@ export function RoleDetailPage() {
           </Card>
         </Grid>
       </Grid>
-    </Container>
+    </PageContainer>
   );
 }

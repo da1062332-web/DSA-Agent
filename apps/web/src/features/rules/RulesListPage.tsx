@@ -147,9 +147,6 @@ export function RulesListPage() {
           <Typography variant="subtitle2" fontWeight={600} color="primary.main">
             {rs.name}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-            {rs.id}
-          </Typography>
         </Box>
       ),
     },

@@ -226,7 +226,7 @@ export function UserDetailPage() {
         subtitle={
           <>
             <Typography variant="body2" color="text.secondary">
-              {user.email} &bull; ID: <code style={{ fontFamily: 'monospace' }}>{user.id}</code>
+              {user.email}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Primary Branch: <strong>{getBranchName(user.primaryBranchId)}</strong>
@@ -539,22 +539,6 @@ export function UserDetailPage() {
               System Metadata & Audit
             </Typography>
             <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
-                  Internal User ID
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  {user.id}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
-                  Tenant Isolation ID
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  {user.tenantId}
-                </Typography>
-              </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="caption" color="text.secondary">
                   Optimistic Concurrency Lock Version

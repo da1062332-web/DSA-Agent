@@ -23,13 +23,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { DataTable } from '../../ui';
+import { DataTable, FieldGrid } from '../../ui';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, useResource } from './api';
 import { ConfirmDialog, ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 import type { Lender } from './LendersPage';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 interface Empanelment {
   id: string;
@@ -137,7 +139,7 @@ function DetailsCard({ lender, canEdit }: { lender: Lender; canEdit: boolean }) 
           Details
         </Typography>
         <ErrorAlert error={save.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             label="Name"
             value={name}
@@ -187,7 +189,7 @@ function DetailsCard({ lender, canEdit }: { lender: Lender; canEdit: boolean }) 
               </Button>
             </Stack>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -209,7 +211,7 @@ function StatusCard({ lender, canEdit }: { lender: Lender; canEdit: boolean }) {
           Status
         </Typography>
         <ErrorAlert error={save.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             select
             label="Status"
@@ -248,7 +250,7 @@ function StatusCard({ lender, canEdit }: { lender: Lender; canEdit: boolean }) {
               </Button>
             </Stack>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -319,7 +321,7 @@ function EmpanelmentsCard({
                 header: 'Categories',
                 render: (e) => e.permittedCategories.map((c) => <Chip key={c} label={c} size="small" sx={{ mr: 0.5 }} />),
               },
-              { id: 'geos', header: 'Geographies', render: (e) => e.permittedGeos.join(', ') || '—' },
+              { id: 'geos', header: 'Geographies', render: (e) => e.permittedGeos.join(', ') || <NotSet /> },
               { id: 'status', header: 'Status', render: (e) => <StatusChip active={e.status === 'ACTIVE'} label={e.status} /> },
               ...(canEdit
                 ? [
@@ -329,26 +331,26 @@ function EmpanelmentsCard({
                       align: 'right' as const,
                       render: (e: (typeof rows)[number]) => (
                         <Box sx={{ whiteSpace: 'nowrap' }}>
-                          {e.status !== 'EXPIRED' && (
+                          <RowAction allowed={e.status !== 'EXPIRED'}>
                             <Button size="small" onClick={() => setEditing(e)}>
                               Edit
                             </Button>
-                          )}
-                          {e.status === 'ACTIVE' && (
+                          </RowAction>
+                          <RowAction allowed={e.status === 'ACTIVE'}>
                             <Button size="small" color="warning" onClick={() => setActing({ empanelment: e, action: 'deactivate' })}>
                               Deactivate
                             </Button>
-                          )}
-                          {e.status === 'SUSPENDED' && (
+                          </RowAction>
+                          <RowAction allowed={e.status === 'SUSPENDED'}>
                             <Button size="small" onClick={() => setActing({ empanelment: e, action: 'reactivate' })}>
                               Reactivate
                             </Button>
-                          )}
-                          {e.status !== 'EXPIRED' && (
+                          </RowAction>
+                          <RowAction allowed={e.status !== 'EXPIRED'}>
                             <Button size="small" color="error" onClick={() => setActing({ empanelment: e, action: 'terminate' })}>
                               Terminate
                             </Button>
-                          )}
+                          </RowAction>
                         </Box>
                       ),
                     },
@@ -652,10 +654,10 @@ function ContactsCard({
               emptyMessage="No contacts yet."
               columns={[
                 { id: 'name', header: 'Name', render: (c) => c.name },
-                { id: 'role', header: 'Role', render: (c) => c.role ?? '—' },
-                { id: 'email', header: 'Email', render: (c) => c.email ?? '—' },
-                { id: 'phone', header: 'Phone', render: (c) => c.phone ?? '—' },
-                { id: 'channel', header: 'Channel', render: (c) => c.channel ?? '—' },
+                { id: 'role', header: 'Role', render: (c) => c.role ?? <NotSet /> },
+                { id: 'email', header: 'Email', render: (c) => c.email ?? <NotSet /> },
+                { id: 'phone', header: 'Phone', render: (c) => c.phone ?? <NotSet /> },
+                { id: 'channel', header: 'Channel', render: (c) => c.channel ?? <NotSet /> },
                 { id: 'escalation', header: 'Escalation', render: (c) => `Level ${c.escalationLevel}` },
                 ...(canEdit
                   ? [
@@ -732,7 +734,7 @@ function ContactsCard({
                 </Button>
               </Stack>
             ))}
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} justifyContent="space-between">
               <Button
                 onClick={() =>
                   setDraft((d) => [
@@ -743,16 +745,18 @@ function ContactsCard({
               >
                 Add contact
               </Button>
-              <Button
-                variant="contained"
-                disabled={save.isPending || draft.some((c) => !validRow(c))}
-                onClick={() => save.mutate({ contacts: draft }, { onSuccess: () => setEditing(false) })}
-              >
-                Save contacts
-              </Button>
-              <Button onClick={() => setEditing(false)} disabled={save.isPending}>
-                Cancel
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  disabled={save.isPending || draft.some((c) => !validRow(c))}
+                  onClick={() => save.mutate({ contacts: draft }, { onSuccess: () => setEditing(false) })}
+                >
+                  Save contacts
+                </Button>
+                <Button onClick={() => setEditing(false)} disabled={save.isPending}>
+                  Cancel
+                </Button>
+              </Stack>
             </Stack>
             <Typography variant="caption" color="text.secondary">
               Saving replaces the list and keeps the previous contacts as history. To remove one contact on

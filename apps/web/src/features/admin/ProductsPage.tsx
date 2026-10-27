@@ -10,19 +10,18 @@ import {
   FormControl,
   FormControlLabel,
   InputLabel,
-  Link,
   MenuItem,
   Select,
   Stack,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, useLookup } from './api';
 import { ErrorAlert, LoadMore, PageHeader, StatusChip } from './components';
 import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
 import type { Lender } from './LendersPage';
+import { RecordLink } from '../../ui/RecordLink';
 
 export interface Product {
   id: string;
@@ -103,16 +102,16 @@ export function ProductsPage() {
   const lenders = useLookup<Lender>('/v1/lenders');
   const [creating, setCreating] = useState(false);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
-  const lenderName = (id: string) => lenders.data?.find((l) => l.id === id)?.name ?? id;
+  const lenderName = (id: string) => lenders.data?.find((l) => l.id === id)?.name ?? 'Not set';
 
   const productColumns: ColumnDef<Product>[] = [
     {
       id: 'name',
       header: 'Name',
       accessor: (p) => (
-        <Link component={RouterLink} to={`/products/${p.id}`} data-testid="admin.product.open" sx={{ fontWeight: 600 }}>
+        <RecordLink to={`/products/${p.id}`} data-testid="admin.product.open" sx={{ fontWeight: 600 }}>
           {p.name}
-        </Link>
+        </RecordLink>
       ),
     },
     {

@@ -1,6 +1,7 @@
 // apps/api/src/modules/origination/lender-cases/openapi.ts — owner: Dev 4 (MOD-LCS Lender Cases)
 import {
   BuildPackageInputSchema,
+  LenderCaseStatusHistoryResourceSchema,
   CreateLenderCaseInputSchema,
   LenderCaseResourceSchema,
   LenderQueryResourceSchema,
@@ -13,6 +14,12 @@ import {
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z } from 'zod';
+
+/** A lender query with the lender's answer, if one was recorded. */
+const LenderQueryHistorySchema = LenderQueryResourceSchema.extend({
+  responseText: z.string().nullable(),
+  responseDocumentReferences: z.array(z.string()),
+});
 
 export const tags = [
   {
@@ -266,6 +273,75 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
               query: LenderQueryResourceSchema,
               case: LenderCaseResourceSchema,
             }),
+          },
+        },
+      },
+    },
+  });
+
+  // GET /v1/lender-cases/{id}/queries
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/lender-cases/{id}/queries',
+    operationId: 'API-LCS-008',
+    summary: 'API-LCS-008: List Lender Queries',
+    tags: ['MOD-LCS Lender Cases'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Queries raised on this case, oldest first',
+        content: {
+          'application/json': {
+            schema: z.object({ data: z.array(LenderQueryHistorySchema) }),
+          },
+        },
+      },
+    },
+  });
+
+  // GET /v1/lender-cases/{id}/history
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/lender-cases/{id}/history',
+    operationId: 'API-LCS-009',
+    summary: 'API-LCS-009: List Lender Case Status History',
+    tags: ['MOD-LCS Lender Cases'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'Status transitions of this case, oldest first',
+        content: {
+          'application/json': {
+            schema: z.object({ data: z.array(LenderCaseStatusHistoryResourceSchema) }),
+          },
+        },
+      },
+    },
+  });
+
+  // GET /v1/lender-cases/{id}/package
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/lender-cases/{id}/package',
+    operationId: 'API-LCS-010',
+    summary: 'API-LCS-010: Retrieve Submission Package',
+    tags: ['MOD-LCS Lender Cases'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({ id: z.string() }),
+    },
+    responses: {
+      200: {
+        description: 'The package the case was built and frozen with',
+        content: {
+          'application/json': {
+            schema: SubmissionPackageResourceSchema,
           },
         },
       },

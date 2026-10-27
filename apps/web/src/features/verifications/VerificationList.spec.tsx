@@ -85,8 +85,8 @@ describe('Module 19 — VerificationListPage Component Rendering', () => {
   it('renders table columns correctly', () => {
     const html = renderVerificationList();
 
-    expect(html).toContain('Verification ID');
-    expect(html).toContain('Application ID');
+    expect(html).not.toContain('Verification ID');
+    expect(html).toContain('Application');
     expect(html).toContain('Type');
     expect(html).toContain('Priority');
     expect(html).toContain('Status');

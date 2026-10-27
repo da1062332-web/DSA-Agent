@@ -40,7 +40,6 @@ import {
   VisibilityIcon,
 } from '../../shell/icons';
 import { useNavigate } from 'react-router-dom';
-import { Can } from '../../shell/Can';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
 import { DataTable, PageHeader, AppButton, SearchInput } from '../../ui';
 import type {
@@ -59,6 +58,7 @@ import {
   executeAutomation,
   resolveDeadLetter,
 } from './api';
+import { RowAction } from '../../shell/RowAction';
 
 export function AutomationListPage() {
   const navigate = useNavigate();
@@ -418,11 +418,11 @@ export function AutomationListPage() {
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Can action="automation.author">
+                        <RowAction action="automation.author">
                           <AppButton size="small" variant="ghost" onClick={() => navigate(`/automations/${d.id}?edit=1`)} data-testid="automation.row.edit">
                             Edit
                           </AppButton>
-                        </Can>
+                        </RowAction>
                         <Tooltip title="View Details & Versions">
                           <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
                             <VisibilityIcon fontSize="small" />
@@ -446,24 +446,6 @@ export function AutomationListPage() {
               keyExtractor={(e) => e.id}
               emptyMessage="No execution logs recorded yet."
               columns={[
-                {
-                  id: 'id',
-                  header: 'Execution ID',
-                  render: (e) => (
-                    <Typography variant="body2" fontFamily="monospace">
-                      {e.id}
-                    </Typography>
-                  ),
-                },
-                {
-                  id: 'definition',
-                  header: 'Definition ID',
-                  render: (e) => (
-                    <Typography variant="caption" fontFamily="monospace">
-                      {e.definitionId}
-                    </Typography>
-                  ),
-                },
                 {
                   id: 'subject',
                   header: 'Subject',
@@ -532,29 +514,6 @@ export function AutomationListPage() {
                 data={deadLetters}
                 keyExtractor={(dl) => dl.id}
                 columns={[
-                  {
-                    id: 'id',
-                    header: 'Dead Letter ID',
-                    render: (dl) => (
-                      <Typography variant="body2" fontFamily="monospace">
-                        {dl.id}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    id: 'execution',
-                    header: 'Execution ID',
-                    render: (dl) => (
-                      <Typography variant="caption" fontFamily="monospace">
-                        {dl.executionId}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    id: 'step',
-                    header: 'Step Execution ID',
-                    render: (dl) => <Typography variant="body2">{dl.stepExecutionId}</Typography>,
-                  },
                   { id: 'reason', header: 'Reason', render: (dl) => <Chip size="small" color="error" label={dl.reason} /> },
                   { id: 'status', header: 'Status', render: (dl) => <Typography variant="body2">{dl.resolutionStatus}</Typography> },
                   {

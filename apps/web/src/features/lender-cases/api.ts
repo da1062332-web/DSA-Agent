@@ -4,6 +4,10 @@ import type {
   BuildPackagePayload,
   CreateLenderCasePayload,
   LenderCaseResource,
+  ApplicationDocumentOption,
+  LenderCasePage,
+  LenderCaseStatusHistory,
+  LenderQueryHistory,
   LenderQueryResource,
   RecordLenderQueryPayload,
   RecordQueryResponsePayload,
@@ -56,19 +60,37 @@ export async function fetchLenderCases(applicationId: string): Promise<LenderCas
   return res.data.data;
 }
 
+/** One page of lender cases, newest first. Pass the previous page's nextCursor to get the next one. */
 export async function fetchAllLenderCases(params?: {
   status?: string;
   lenderId?: string;
   applicationId?: string;
-}): Promise<LenderCaseResource[]> {
+  cursor?: string;
+  limit?: number;
+}): Promise<LenderCasePage> {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
   if (params?.lenderId) query.set('lenderId', params.lenderId);
   if (params?.applicationId) query.set('applicationId', params.applicationId);
+  if (params?.cursor) query.set('cursor', params.cursor);
+  if (params?.limit) query.set('limit', String(params.limit));
   const qStr = query.toString();
   const url = `/v1/lender-cases${qStr ? `?${qStr}` : ''}`;
-  const res = await request<{ data: LenderCaseResource[] }>(url, { method: 'GET' });
-  return res.data.data;
+  const res = await request<{ data: LenderCaseResource[]; meta: { nextCursor: string | null; limit: number } }>(url, {
+    method: 'GET',
+  });
+  return { data: res.data.data, nextCursor: res.data.meta.nextCursor };
+}
+
+/** The application's documents a query response can cite: the checklist items that have a document. */
+export async function fetchApplicationDocuments(applicationId: string): Promise<ApplicationDocumentOption[]> {
+  const res = await request<{ data: { documentId: string | null; documentTypeCode: string; status: string }[] }>(
+    `/v1/applications/${applicationId}/checklist`,
+    { method: 'GET' },
+  );
+  return res.data.data.flatMap((item) =>
+    item.documentId ? [{ documentId: item.documentId, documentTypeCode: item.documentTypeCode, status: item.status }] : [],
+  );
 }
 
 export async function fetchLenderCase(id: string): Promise<{ case: LenderCaseResource; etag?: string }> {
@@ -76,6 +98,24 @@ export async function fetchLenderCase(id: string): Promise<{ case: LenderCaseRes
     method: 'GET',
   });
   return { case: res.data, etag: res.etag };
+}
+
+/** Queries raised on a case, oldest first. Answered queries carry the lender's answer. */
+export async function fetchLenderCaseQueries(id: string): Promise<LenderQueryHistory[]> {
+  const res = await request<{ data: LenderQueryHistory[] }>(`/v1/lender-cases/${id}/queries`, { method: 'GET' });
+  return res.data.data;
+}
+
+/** Status transitions of a case, oldest first. */
+export async function fetchLenderCaseHistory(id: string): Promise<LenderCaseStatusHistory[]> {
+  const res = await request<{ data: LenderCaseStatusHistory[] }>(`/v1/lender-cases/${id}/history`, { method: 'GET' });
+  return res.data.data;
+}
+
+/** The submission package the case was built and frozen with. */
+export async function fetchSubmissionPackage(id: string): Promise<SubmissionPackageResource> {
+  const res = await request<SubmissionPackageResource>(`/v1/lender-cases/${id}/package`, { method: 'GET' });
+  return res.data;
 }
 
 export async function createLenderCase(

@@ -1,6 +1,7 @@
 // API configuration from the environment (owner: Dev 1). Other lanes add their variables by PR.
 import { z } from 'zod';
 import { mfaMayBeDisabledHere } from './http/mfa-switch';
+import { testAuthProblems } from './test-auth';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 const isLocalHost = (url: string) => {
@@ -52,15 +53,25 @@ const EnvSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
-    /** Hardcoded OTP for test bypass authentication. */
+    /** Test login only: the fixed one-time code. Has no effect unless TEST_AUTH_ENABLED is true. */
     TEST_BYPASS_OTP: z.string().default('000000'),
+    /**
+     * Test login (the fixed one-time code, test users and test tokens). Off unless set to true, and then only against the local Supabase
+     * stack, a local or approved test database, and a unique BYPASS_JWT_SECRET (see test-auth.ts). Never in production.
+     */
+    TEST_AUTH_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    /** Hosts of isolated test databases approved for test login, comma-separated. Local hosts need no entry. */
+    TEST_DATABASE_HOSTS: z.string().optional(),
     /** Simulated messaging provider (email, SMS, WhatsApp). Test environments only: the server refuses to start with it in production. */
     ENABLE_MOCK_PROVIDERS: z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
-    /** Secret for HMAC signing and verifying test bypass tokens. */
-    BYPASS_JWT_SECRET: z.string().default('dsa-crm-test-bypass-jwt-secret-key-2026'),
+    /** Secret for test-login tokens. Required with TEST_AUTH_ENABLED: no default, unique to the machine, never SUPABASE_JWT_SECRET. */
+    BYPASS_JWT_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   })
   .superRefine((env, ctx) => {
     if (FORBIDDEN_DB_USERS.test(decodeURIComponent(new URL(env.DATABASE_URL).username))) {
@@ -72,13 +83,18 @@ const EnvSchema = z
     }
     if (
       env.DISABLE_MFA &&
-      !mfaMayBeDisabledHere({ NODE_ENV: env.NODE_ENV, SUPABASE_URL: env.SUPABASE_URL })
+      !mfaMayBeDisabledHere({
+        NODE_ENV: env.NODE_ENV,
+        SUPABASE_URL: env.SUPABASE_URL,
+        DATABASE_URL: env.DATABASE_URL,
+        TEST_DATABASE_HOSTS: env.TEST_DATABASE_HOSTS,
+      })
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['DISABLE_MFA'],
         message:
-          'MFA can be disabled only against the local Supabase stack and never in production; remove DISABLE_MFA',
+          'MFA can be disabled only against the local Supabase stack and a local or approved test database, and never in production; remove DISABLE_MFA',
       });
     }
     if (env.NODE_ENV === 'production' && !env.APP_SIGNING_SECRET) {
@@ -102,6 +118,11 @@ const EnvSchema = z
         path: ['TEST_TOKENS'],
         message: 'test tokens are allowed only against the local Supabase stack (Contracts §7)',
       });
+    }
+    if (env.TEST_AUTH_ENABLED) {
+      for (const message of testAuthProblems(env)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['TEST_AUTH_ENABLED'], message });
+      }
     }
   });
 

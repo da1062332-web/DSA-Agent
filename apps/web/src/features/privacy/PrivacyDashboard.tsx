@@ -447,19 +447,11 @@ export function PrivacyDashboard(): React.ReactElement {
                 keyExtractor={(r) => r.id}
                 columns={[
                   {
-                    id: 'id',
-                    header: 'Record ID',
-                    render: (r) => <Box sx={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 500 }}>{r.id}</Box>,
-                  },
-                  {
                     id: 'application',
                     header: 'Application',
                     render: (r) => (
                       <Box>
                         <ApplicationName id={r.subjectId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                          {r.subjectId}
-                        </Typography>
                       </Box>
                     ),
                   },
@@ -472,13 +464,13 @@ export function PrivacyDashboard(): React.ReactElement {
                           <LenderName id={r.recipientId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
                         ) : (
                           <Typography variant="body2" fontWeight={600}>
-                            {r.recipientId}
+                            {r.recipientType.replace(/_/g, ' ')}
                           </Typography>
                         )}
                         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.25 }}>
                           <Chip label={r.recipientType} size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
                           <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                            {r.recipientId}
+                            {r.recipientType.replace(/_/g, ' ')}
                           </Typography>
                         </Stack>
                       </Box>
@@ -1141,7 +1133,7 @@ export function PrivacyDashboard(): React.ReactElement {
                         <LenderName id={selectedRecord.recipientId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
                       ) : (
                         <Typography variant="body2" fontWeight={600}>
-                          {selectedRecord.recipientId}
+                          {selectedRecord.recipientType.replace(/_/g, ' ')}
                         </Typography>
                       )}
                       <Chip
@@ -1242,9 +1234,6 @@ export function PrivacyDashboard(): React.ReactElement {
                 {/* Technical / Audit Details Collapsible */}
                 <Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Audit Record ID: <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{selectedRecord.id}</Box>
-                    </Typography>
                     <Button
                       size="small"
                       variant="text"

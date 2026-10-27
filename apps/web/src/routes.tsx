@@ -2,8 +2,7 @@
 // Each feature folder exports `routes` from its own routes.tsx and they are composed here automatically,
 // so feature owners never edit this file.
 import type { RouteObject } from 'react-router-dom';
-import { LoginPage } from './auth/LoginPage';
-import { MfaPage } from './auth/MfaPage';
+import { LoginPage, MfaRedirect } from './auth/LoginPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './auth/PasswordPages';
 import { SecurityPage } from './auth/SecurityPage';
 import { PublicUploadPage } from './features/document-sharing/PublicUploadPage';
@@ -31,7 +30,7 @@ export const featureRoutes: RouteObject[] = Object.entries(featureModules).flatM
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
-  { path: '/mfa', element: <MfaPage /> },
+  { path: '/mfa', element: <MfaRedirect /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/upload/:token', element: <PublicUploadPage /> },

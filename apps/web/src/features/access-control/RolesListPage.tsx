@@ -31,6 +31,7 @@ import {
   type ColumnDef,
 } from '../../ui';
 import type { Permission, Role } from './types';
+import { RowAction } from '../../shell/RowAction';
 
 export function RolesListPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -210,8 +211,7 @@ export function RolesListPage() {
           >
             Configure
           </Button>
-          {!role.isTemplate && (
-            <Can action="role.manage">
+          <RowAction allowed={!role.isTemplate} action="role.manage">
               <Button
                 variant="outlined"
                 size="small"
@@ -220,8 +220,7 @@ export function RolesListPage() {
               >
                 Delete
               </Button>
-            </Can>
-          )}
+          </RowAction>
         </Stack>
       ),
     },

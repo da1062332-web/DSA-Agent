@@ -7,7 +7,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Link,
   MenuItem,
   Stack,
   Table,
@@ -19,11 +18,12 @@ import {
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { DataTable } from '../../ui';
 import { useCommand, useList } from './api';
 import { ErrorAlert, LoadMore, Loading, PageHeader, StatusChip } from './components';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 export interface Lender {
   id: string;
@@ -97,19 +97,19 @@ export function LendersPage() {
               id: 'name',
               header: 'Name',
               render: (l) => (
-                <Link component={RouterLink} to={`/lenders/${l.id}`} data-testid="admin.lender.open">
+                <RecordLink to={`/lenders/${l.id}`} data-testid="admin.lender.open">
                   {l.name}
-                </Link>
+                </RecordLink>
               ),
             },
             { id: 'type', header: 'Type', render: (l) => l.lenderType },
-            { id: 'regulator', header: 'Regulator ref', render: (l) => l.regulatorRef ?? '—' },
+            { id: 'regulator', header: 'Regulator ref', render: (l) => l.regulatorRef ?? <NotSet /> },
             {
               id: 'status',
               header: 'Status',
               render: (l) => <StatusChip active={l.status === 'ACTIVE'} label={l.status} />,
             },
-            { id: 'reason', header: 'Reason', render: (l) => l.statusReason ?? '—' },
+            { id: 'reason', header: 'Reason', render: (l) => l.statusReason ?? <NotSet /> },
           ]}
         />
       )}

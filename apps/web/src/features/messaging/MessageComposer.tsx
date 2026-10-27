@@ -258,7 +258,7 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
               </Grid>
             )}
 
-            <Grid item xs={12}>
+            <Grid item xs={12} display="flex" justifyContent="flex-end">
               <Can action="message.send">
                 <Button
                   type="submit"
@@ -285,7 +285,7 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
                     : 'Message Successfully Sent!'}
                 </AlertTitle>
                 <Typography variant="body2">
-                  ID: <strong>{sendResult.data.id}</strong> &bull; Status:{' '}
+                  Status:{' '}
                   <Chip size="small" label={sendResult.data.status} color="success" />
                 </Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { NotSet } from '../../../ui/NotSet';
 
 export interface KpiMetricCardProps {
   title: string;
@@ -48,8 +49,8 @@ export function formatIndianCurrency(amount: number): string {
 export function formatMetricValue(
   value: number | string | null | undefined,
   format: KpiMetricCardProps['format'] = 'raw',
-): string {
-  if (value === null || value === undefined) return '—';
+): React.ReactNode {
+  if (value === null || value === undefined) return <NotSet />;
   if (typeof value === 'string') return value;
   switch (format) {
     case 'currency':

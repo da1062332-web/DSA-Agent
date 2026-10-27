@@ -38,14 +38,16 @@ import { Can } from '../../shell/Can';
 import { LenderSelect } from '../../shell/selectors';
 import { useLookup } from '../admin/api';
 import type { ConsentResource, RecordConsentPayload } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function CustomerConsents(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
   const customerId = (id || '').replace(/[)\s]+$/, '');
   const queryClient = useQueryClient();
   const branches = useLookup<{ id: string; code: string; name: string }>('/v1/branches');
-  const formatBranch = (branchId?: string | null): string => {
-    if (!branchId) return '—';
+  const formatBranch = (branchId?: string | null): React.ReactNode => {
+    if (!branchId) return <NotSet />;
     const b = (branches.data ?? []).find((x) => x.id === branchId);
     return b ? `${b.name} (${b.code})` : branchId;
   };
@@ -199,28 +201,6 @@ export function CustomerConsents(): React.ReactElement {
 
               {/* Clean structured key-value grid */}
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      bgcolor: 'background.default',
-                      borderRadius: 1.5,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', mb: 0.5, fontWeight: 500 }}
-                    >
-                      Customer ID
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                      {customer.id}
-                    </Typography>
-                  </Box>
-                </Grid>
 
                 <Grid item xs={12} sm={6} md={3}>
                   <Box
@@ -344,13 +324,13 @@ export function CustomerConsents(): React.ReactElement {
                   header: 'Channel',
                   render: (c) => <Chip label={c.channel} size="small" variant="filled" sx={{ fontSize: '0.75rem' }} />,
                 },
-                { id: 'scope', header: 'Target / Scope', render: (c) => c.purposeTarget || '—' },
+                { id: 'scope', header: 'Target / Scope', render: (c) => c.purposeTarget || <NotSet /> },
                 {
                   id: 'captured',
                   header: 'Captured Date',
                   render: (c) => (
                     <Typography variant="body2" color="text.secondary">
-                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
+                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : <NotSet />}
                     </Typography>
                   ),
                 },
@@ -366,8 +346,12 @@ export function CustomerConsents(): React.ReactElement {
                   header: 'Action',
                   align: 'right',
                   render: (c) =>
-                    c.status === 'ACTIVE' ? (
-                      <Can action="consent.record">
+                    c.status === 'WITHDRAWN' ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Revoked
+                      </Typography>
+                    ) : (
+                      <RowAction allowed={c.status === 'ACTIVE'} action="consent.record">
                         <Button
                           size="small"
                           color="error"
@@ -377,12 +361,8 @@ export function CustomerConsents(): React.ReactElement {
                         >
                           Withdraw
                         </Button>
-                      </Can>
-                    ) : c.status === 'WITHDRAWN' ? (
-                      <Typography variant="caption" color="text.secondary">
-                        Revoked
-                      </Typography>
-                    ) : null,
+                      </RowAction>
+                    ),
                 },
               ]}
             />

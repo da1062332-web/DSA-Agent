@@ -213,26 +213,6 @@ export function ApiManagementPage() {
     },
     { id: 'partner', header: 'Partner Organisation', render: (client) => client.partnerName },
     {
-      id: 'clientId',
-      header: 'Client ID',
-      render: (client) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="body2" fontFamily="monospace" fontWeight={600}>
-            {client.clientId}
-          </Typography>
-          <Tooltip title="Copy client ID">
-            <IconButton
-              size="small"
-              aria-label={`Copy client ID ${client.clientId}`}
-              onClick={() => navigator.clipboard?.writeText(client.clientId)}
-            >
-              <ContentCopyIcon fontSize="inherit" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-    {
       id: 'secret',
       header: 'Client Secret',
       render: () => (

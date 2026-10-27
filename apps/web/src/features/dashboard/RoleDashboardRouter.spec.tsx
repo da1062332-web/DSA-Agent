@@ -266,7 +266,7 @@ describe('RoleDashboardRouter & Persona Dashboards', () => {
 
     const html = renderRouter();
     expect(html).toContain('Tenant Admin');
-    expect(html).toContain('Leads &amp; CRM');
+    expect(html).toContain('User Management');
   });
 
   it('renders RuleEngineDashboard for ROLE-RULE-AUTHOR', () => {

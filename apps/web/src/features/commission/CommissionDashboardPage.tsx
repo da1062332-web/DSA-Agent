@@ -65,6 +65,7 @@ import type {
   RecalculationProposal,
   RoundingMode,
 } from './types';
+import { RowAction } from '../../shell/RowAction';
 
 export function CommissionDashboardPage() {
   const me = useMe();
@@ -341,8 +342,8 @@ export function CommissionDashboardPage() {
     },
     {
       id: 'ruleSet',
-      header: 'Rule Set ID',
-      accessor: (p) => p.ruleSetId || 'Default Standard',
+      header: 'Rule Set',
+      accessor: (p) => (p.ruleSetId ? 'Custom' : 'Default Standard'),
     },
     {
       id: 'status',
@@ -354,7 +355,7 @@ export function CommissionDashboardPage() {
       header: 'Actions',
       align: 'right',
       accessor: (p) => (
-        p.status === 'DRAFT' && canApprovePlan ? (
+        <RowAction allowed={p.status === 'DRAFT' && canApprovePlan}>
           <Button
             size="small"
             variant="contained"
@@ -364,14 +365,12 @@ export function CommissionDashboardPage() {
           >
             Approve (SOD-02)
           </Button>
-        ) : null
+        </RowAction>
       ),
     },
   ];
 
   const calcColumns: ColumnDef<CommissionCalculation>[] = [
-    { id: 'id', header: 'Calc ID', accessor: (c) => c.id },
-    { id: 'trancheId', header: 'Tranche ID', accessor: (c) => <strong>{c.trancheId}</strong> },
     {
       id: 'lender',
       header: 'Lender',
@@ -400,10 +399,9 @@ export function CommissionDashboardPage() {
   ];
 
   const payableColumns: ColumnDef<CommissionPayable>[] = [
-    { id: 'id', header: 'Payable ID', accessor: (p) => p.id },
     {
       id: 'connector',
-      header: 'Connector ID',
+      header: 'Connector',
       accessor: (p) => <ConnectorName id={p.connectorId} typographyProps={{ fontWeight: 600 }} />,
     },
     {
@@ -426,17 +424,16 @@ export function CommissionDashboardPage() {
       header: 'Actions',
       align: 'right',
       accessor: (p) => (
-        canCreateClawback && p.state === 'ELIGIBLE' ? (
+        <RowAction allowed={canCreateClawback && p.state === 'ELIGIBLE'}>
           <Button size="small" color="warning" onClick={() => handleOpenClawback(p)}>
             Clawback
           </Button>
-        ) : null
+        </RowAction>
       ),
     },
   ];
 
   const proposalColumns: ColumnDef<RecalculationProposal>[] = [
-    { id: 'id', header: 'Proposal ID', accessor: (pr) => pr.id },
     { id: 'reason', header: 'Reason', accessor: (pr) => <strong>{pr.reason}</strong> },
     {
       id: 'affected',
@@ -453,7 +450,7 @@ export function CommissionDashboardPage() {
       header: 'Actions',
       align: 'right',
       accessor: (pr) => (
-        pr.status === 'PENDING' && canApproveRecalc ? (
+        <RowAction allowed={pr.status === 'PENDING' && canApproveRecalc}>
           <Button
             size="small"
             variant="contained"
@@ -463,7 +460,7 @@ export function CommissionDashboardPage() {
           >
             Approve (SOD-07)
           </Button>
-        ) : null
+        </RowAction>
       ),
     },
   ];

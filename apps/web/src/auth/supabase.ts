@@ -2,13 +2,28 @@
 // (Contracts §14). Holds the publishable key only; supabase-js keeps the session and refreshes the token.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { readConfig } from '../config';
+import { BYPASS_FLAG, BYPASS_REFRESH_TOKEN, testAuthEnabled } from './test-auth';
 
 let client: SupabaseClient | undefined;
 let storageClient: SupabaseClient | undefined;
 
+/** Removes a test sign-in left in this browser. It runs before the client is created, so Supabase never loads that session. */
+function clearTestSignIn(): void {
+  try {
+    sessionStorage.removeItem(BYPASS_FLAG);
+    localStorage.removeItem(BYPASS_FLAG);
+    const key = getStorageKey();
+    const raw = localStorage.getItem(key);
+    if (raw && JSON.parse(raw)?.refresh_token === BYPASS_REFRESH_TOKEN) localStorage.removeItem(key);
+  } catch {
+    // Storage might be blocked or unparseable
+  }
+}
+
 /** App.tsx renders ConfigError instead of the app when the config is invalid, so this never throws in practice. */
 export function getSupabase(): SupabaseClient {
   if (!client) {
+    if (!testAuthEnabled()) clearTestSignIn();
     const config = readConfig();
     if (!config.success) throw new Error('Web configuration is invalid.');
     client = createClient(config.data.VITE_SUPABASE_URL, config.data.VITE_SUPABASE_PUBLISHABLE_KEY, {
@@ -53,12 +68,14 @@ export function getStorageKey(): string {
   }
 }
 
+/** Stores a test sign-in. Refused outside a test build, so no other build can hold one. */
 export function saveBypassSession(session: unknown): void {
+  if (!testAuthEnabled()) throw new Error('Test sign-in is not available in this build.');
   const key = getStorageKey();
   try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('dsa_bypass_active', 'true');
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(BYPASS_FLAG, 'true');
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('dsa_bypass_active', 'true');
+      localStorage.setItem(BYPASS_FLAG, 'true');
       localStorage.setItem(key, JSON.stringify(session));
     }
   } catch {
@@ -66,11 +83,17 @@ export function saveBypassSession(session: unknown): void {
   }
 }
 
+/** True only in a test build with a test sign-in in this browser. Always false in other builds. */
 export function isBypassActive(): boolean {
+  return testAuthEnabled() && hasTestSignIn();
+}
+
+/** True when this browser holds a test sign-in. Reached only through isBypassActive, so a production build drops it. */
+function hasTestSignIn(): boolean {
   try {
     if (
-      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('dsa_bypass_active') === 'true') ||
-      (typeof localStorage !== 'undefined' && localStorage.getItem('dsa_bypass_active') === 'true')
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(BYPASS_FLAG) === 'true') ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem(BYPASS_FLAG) === 'true')
     ) {
       return true;
     }
@@ -79,7 +102,7 @@ export function isBypassActive(): boolean {
       const raw = localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed?.refresh_token === 'bypass-refresh-token') {
+        if (parsed?.refresh_token === BYPASS_REFRESH_TOKEN) {
           return true;
         }
       }

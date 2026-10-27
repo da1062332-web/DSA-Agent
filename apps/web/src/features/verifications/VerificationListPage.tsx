@@ -28,6 +28,7 @@ import {
   StatusBadge,
   type ColumnDef,
 } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 export function VerificationListPage() {
   const navigate = useNavigate();
@@ -72,26 +73,8 @@ export function VerificationListPage() {
 
   const columns: ColumnDef<VerificationRequest>[] = [
     {
-      id: 'id',
-      header: 'Verification ID',
-      accessor: (row) => (
-        <Box>
-          <Box sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
-            <CustomerName
-              id={row.customerId}
-              fallback="Applicant"
-              typographyProps={{ fontWeight: 600, variant: 'body2' }}
-            />
-          </Box>
-          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-            {row.id}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
       id: 'applicationId',
-      header: 'Application ID',
+      header: 'Application',
       accessor: (row) => <ApplicationName id={row.applicationId} linkToApp />,
     },
     {
@@ -132,9 +115,7 @@ export function VerificationListPage() {
             label={row.outcome}
           />
         ) : (
-          <Typography variant="caption" color="text.secondary">
-            —
-          </Typography>
+          <NotSet />
         ),
     },
     {

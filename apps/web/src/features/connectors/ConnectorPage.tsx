@@ -55,6 +55,8 @@ import type {
   CreateConnectorInput,
   ResolveAttributionDisputeInput,
 } from '@dsa/contracts';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 const STATUS_COLORS: Record<
   string,
@@ -441,7 +443,6 @@ export function ConnectorPage() {
           }
           subtitle={
             <Typography variant="body2" color="text.secondary">
-              <strong>ID:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.id}</span> •{' '}
               <strong>Contact:</strong> {selectedConnector.contactPerson} • <strong>Mobile:</strong>{' '}
               {selectedConnector.mobileE164} • <strong>Email:</strong> {selectedConnector.email} •{' '}
               <strong>PAN:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
@@ -664,7 +665,7 @@ export function ConnectorPage() {
                             Until {new Date(acc.coolingUntil).toLocaleTimeString()}
                           </Typography>
                         ) : (
-                          '—'
+                          <NotSet />
                         ),
                     },
                     { id: 'createdBy', header: 'Created By', render: (acc) => <UserName id={acc.createdBy} /> },
@@ -756,7 +757,6 @@ export function ConnectorPage() {
                   data={selectedAgreementsQuery.data}
                   keyExtractor={(agr) => agr.id}
                   columns={[
-                    { id: 'id', header: 'Agreement ID', render: (agr) => <Box sx={{ fontFamily: 'monospace' }}>{agr.id}</Box> },
                     { id: 'version', header: 'Version', render: (agr) => `v${agr.version}` },
                     {
                       id: 'products',
@@ -1134,7 +1134,7 @@ export function ConnectorPage() {
                   setActiveConnectorTab(0);
                 }}
                 columns={[
-                  { id: 'id', header: 'Connector ID', render: (con) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{con.id}</Box> },
+                  { id: 'connector', header: 'Connector', render: (con) => <ConnectorName id={con.id} typographyProps={{ fontWeight: 600 }} /> },
                   {
                     id: 'legal',
                     header: 'Legal Name / Contact',
@@ -1186,8 +1186,7 @@ export function ConnectorPage() {
                         >
                           Manage Details →
                         </Button>
-                        {con.status === 'DRAFT' && (
-                          <Can action="connector.manage">
+                        <RowAction allowed={con.status === 'DRAFT'} action="connector.manage">
                             <Button
                               size="small"
                               color="success"
@@ -1199,10 +1198,8 @@ export function ConnectorPage() {
                             >
                               Activate
                             </Button>
-                          </Can>
-                        )}
-                        {con.status === 'ACTIVE' && (
-                          <Can action="connector.manage">
+                        </RowAction>
+                        <RowAction allowed={con.status === 'ACTIVE'} action="connector.manage">
                             <Button
                               size="small"
                               color="warning"
@@ -1215,10 +1212,8 @@ export function ConnectorPage() {
                             >
                               Suspend
                             </Button>
-                          </Can>
-                        )}
-                        {con.status === 'SUSPENDED' && (
-                          <Can action="connector.manage">
+                        </RowAction>
+                        <RowAction allowed={con.status === 'SUSPENDED'} action="connector.manage">
                             <Button
                               size="small"
                               color="primary"
@@ -1231,8 +1226,7 @@ export function ConnectorPage() {
                             >
                               Reinstate
                             </Button>
-                          </Can>
-                        )}
+                        </RowAction>
                       </Stack>
                     ),
                   },
@@ -1279,8 +1273,7 @@ export function ConnectorPage() {
                 data={attributionRequestsQuery.data}
                 keyExtractor={(req) => req.id}
                 columns={[
-                  { id: 'id', header: 'Request ID', render: (req) => <Box sx={{ fontFamily: 'monospace' }}>{req.id}</Box> },
-                  { id: 'lead', header: 'Lead ID', render: (req) => <LeadName id={req.leadId} linkToLead /> },
+                  { id: 'lead', header: 'Lead', render: (req) => <LeadName id={req.leadId} linkToLead /> },
                   {
                     id: 'previous',
                     header: 'Previous Connector',
@@ -1305,9 +1298,6 @@ export function ConnectorPage() {
                     render: (req) => (
                       <Box>
                         <UserName id={req.requesterId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                          {req.requesterId}
-                        </Typography>
                       </Box>
                     ),
                   },
@@ -1316,7 +1306,7 @@ export function ConnectorPage() {
                     header: 'Actions',
                     align: 'right',
                     render: (req) =>
-                      req.status === 'PENDING' ? (
+                      <RowAction allowed={req.status === 'PENDING'}>
                         <Button
                           size="small"
                           color="success"
@@ -1330,7 +1320,7 @@ export function ConnectorPage() {
                         >
                           Approve (SOD-09)
                         </Button>
-                      ) : null,
+                      </RowAction>,
                   },
                 ]}
               />
@@ -1362,8 +1352,7 @@ export function ConnectorPage() {
                 data={disputesQuery.data}
                 keyExtractor={(disp) => disp.id}
                 columns={[
-                  { id: 'id', header: 'Dispute ID', render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.id}</Box> },
-                  { id: 'lead', header: 'Lead ID', render: (disp) => <LeadName id={disp.leadId} linkToLead /> },
+                  { id: 'lead', header: 'Lead', render: (disp) => <LeadName id={disp.leadId} linkToLead /> },
                   {
                     id: 'claimants',
                     header: 'Claimant Connectors',
@@ -1388,12 +1377,9 @@ export function ConnectorPage() {
                       disp.resolvedConnectorId ? (
                         <Box>
                           <ConnectorName id={disp.resolvedConnectorId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
-                          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                            {disp.resolvedConnectorId}
-                          </Typography>
                         </Box>
                       ) : (
-                        '—'
+                        <NotSet />
                       ),
                   },
                   {
@@ -1408,8 +1394,7 @@ export function ConnectorPage() {
                     header: 'Actions',
                     align: 'right',
                     render: (disp) =>
-                      disp.status !== 'RESOLVED' ? (
-                        <Can action="connector.dispute_resolve">
+                      <RowAction allowed={disp.status !== 'RESOLVED'} action="connector.dispute_resolve">
                           <Button
                             size="small"
                             color="primary"
@@ -1421,8 +1406,7 @@ export function ConnectorPage() {
                           >
                             Adjudicate
                           </Button>
-                        </Can>
-                      ) : null,
+                      </RowAction>,
                   },
                 ]}
               />

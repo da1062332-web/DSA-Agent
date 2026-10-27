@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { registerStepUpHandler } from '../api/client';
 import { useAuth } from './AuthProvider';
 import { isTotpCode, verifiedTotpFactors, verifyTotp } from './totp';
+import { mfaSkipRequested } from './test-auth';
 
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { refreshAal } = useAuth();
@@ -39,7 +40,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     registerStepUpHandler(
       () =>
         new Promise<boolean>((resolve) => {
-          if (import.meta.env?.VITE_DISABLE_MFA === 'true') {
+          if (mfaSkipRequested()) {
             resolve(true);
             return;
           }
@@ -63,20 +64,15 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
       const [factor] = await verifiedTotpFactors();
       if (!factor) {
         finish(false);
-        navigate('/mfa');
+        navigate('/login', { state: { from: window.location.pathname } });
         return;
       }
       await verifyTotp(factor.id, code);
       await refreshAal();
       finish(true);
     } catch (err) {
-      const msg = (err as Error).message || '';
-      if (/invalid JWT|signature is invalid/i.test(msg)) {
-        finish(true);
-      } else {
-        setError(msg);
-        setCode('');
-      }
+      setError((err as Error).message || 'That code did not match. Please try again.');
+      setCode('');
     } finally {
       setBusy(false);
     }

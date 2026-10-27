@@ -32,8 +32,13 @@ import {
   ApiError,
   buildPackage,
   createLenderCase,
+  fetchAllLenderCases,
+  fetchApplicationDocuments,
   fetchLenderCase,
+  fetchLenderCaseHistory,
+  fetchLenderCaseQueries,
   fetchLenderCases,
+  fetchSubmissionPackage,
   recordLenderQuery,
   recordQueryResponse,
   submitLenderCase,
@@ -51,6 +56,80 @@ describe('Module 18 — Lender Cases Frontend API Client', () => {
     setAuthToken(undefined);
     global.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  it('fetchAllLenderCases sends the cursor and limit and returns the page with nextCursor', async () => {
+    const cases = [{ id: 'lcs_01', status: 'DRAFT' }];
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: cases, meta: { nextCursor: 'abc', limit: 50 } }),
+      headers: new Headers(),
+    });
+
+    const res = await fetchAllLenderCases({ status: 'DRAFT', cursor: 'prev', limit: 50 });
+    expect(res).toEqual({ data: cases, nextCursor: 'abc' });
+    const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(url).toContain('/v1/lender-cases?');
+    expect(url).toContain('status=DRAFT');
+    expect(url).toContain('cursor=prev');
+    expect(url).toContain('limit=50');
+  });
+
+  it('fetchApplicationDocuments offers only checklist items that have a document, with their type and status', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { documentId: 'doc_01', documentTypeCode: 'PAN_CARD', status: 'ACCEPTED' },
+          { documentId: null, documentTypeCode: 'BANK_STATEMENT', status: 'PENDING' },
+        ],
+        summary: {},
+      }),
+      headers: new Headers(),
+    });
+
+    const res = await fetchApplicationDocuments('app_01');
+    expect(res).toEqual([{ documentId: 'doc_01', documentTypeCode: 'PAN_CARD', status: 'ACCEPTED' }]);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/applications/app_01/checklist'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('fetchLenderCaseQueries reads the query history of a case and unwraps data', async () => {
+    const queries = [{ id: 'qry_01', text: 'Salary slip?', responseText: 'Uploaded', respondedAt: '2026-10-26T10:00:00Z' }];
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: queries }), headers: new Headers() });
+
+    const res = await fetchLenderCaseQueries('lcs_01');
+    expect(res).toEqual(queries);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/lender-cases/lcs_01/queries'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('fetchLenderCaseHistory reads the status history of a case', async () => {
+    const history = [{ id: 'lcsh_01', fromStatus: null, toStatus: 'DRAFT' }];
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: history }), headers: new Headers() });
+
+    const res = await fetchLenderCaseHistory('lcs_01');
+    expect(res).toEqual(history);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/lender-cases/lcs_01/history'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('fetchSubmissionPackage reads the package of a case', async () => {
+    const pkg = { id: 'pkg_01', kind: 'SUBMISSION', manifestSha256: 'a'.repeat(64) };
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => pkg, headers: new Headers() });
+
+    const res = await fetchSubmissionPackage('lcs_01');
+    expect(res).toEqual(pkg);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/lender-cases/lcs_01/package'),
+      expect.objectContaining({ method: 'GET' }),
+    );
   });
 
   it('fetchLenderCases performs GET request and unwraps data', async () => {

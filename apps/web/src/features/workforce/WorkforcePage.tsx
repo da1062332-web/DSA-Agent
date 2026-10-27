@@ -48,6 +48,8 @@ import type {
   AvailabilityStatus,
   CreateDelegationInput,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 const AVAILABILITY_CONFIG: Record<
   AvailabilityStatus,
@@ -423,7 +425,7 @@ export function WorkforcePage() {
                 header: 'Actions',
                 align: 'right',
                 render: (agent) =>
-                  (canManageUsers || agent.id === me?.id) ? (
+                  <RowAction allowed={(canManageUsers || agent.id === me?.id)}>
                     <Button
                       size="small"
                       variant="outlined"
@@ -435,7 +437,7 @@ export function WorkforcePage() {
                     >
                       Edit Capacity
                     </Button>
-                  ) : null,
+                  </RowAction>,
               },
             ]}
           />
@@ -497,7 +499,7 @@ export function WorkforcePage() {
                 header: 'Reason',
                 render: (dlg) => (
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    {dlg.reason || '—'}
+                    {dlg.reason || <NotSet />}
                   </Typography>
                 ),
               },
@@ -518,7 +520,7 @@ export function WorkforcePage() {
                 header: 'Actions',
                 align: 'right',
                 render: (dlg) =>
-                  dlg.status === 'ACTIVE' && (canManageUsers || dlg.delegatorId === me?.id) ? (
+                  <RowAction allowed={dlg.status === 'ACTIVE' && (canManageUsers || dlg.delegatorId === me?.id)}>
                     <Button
                       size="small"
                       color="error"
@@ -529,7 +531,7 @@ export function WorkforcePage() {
                     >
                       End Coverage
                     </Button>
-                  ) : null,
+                  </RowAction>,
               },
             ]}
           />
@@ -641,12 +643,12 @@ export function WorkforcePage() {
                       {
                         id: 'in',
                         header: 'In',
-                        render: (row) => (row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+                        render: (row) => (row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <NotSet />),
                       },
                       {
                         id: 'out',
                         header: 'Out',
-                        render: (row) => (row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+                        render: (row) => (row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <NotSet />),
                       },
                       {
                         id: 'status',

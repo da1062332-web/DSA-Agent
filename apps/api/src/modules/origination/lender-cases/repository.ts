@@ -13,6 +13,25 @@ import type {
   SubmissionPackageRow,
 } from './types';
 
+/** Order of the lender case list: newest first, ties broken by id, at millisecond precision. */
+function sortKey(row: LenderCaseRow): { ms: number; id: string } {
+  return { ms: new Date(row.created_at).getTime(), id: row.id };
+}
+
+function compareNewestFirst(a: LenderCaseRow, b: LenderCaseRow): number {
+  const ka = sortKey(a);
+  const kb = sortKey(b);
+  if (ka.ms !== kb.ms) return kb.ms - ka.ms;
+  return kb.id < ka.id ? -1 : kb.id > ka.id ? 1 : 0;
+}
+
+/** True when the row comes after the cursor in the list order, i.e. it belongs on a later page. */
+function isBeforeCursor(row: LenderCaseRow, after: { createdAt: string; id: string }): boolean {
+  const k = sortKey(row);
+  const at = new Date(after.createdAt).getTime();
+  return k.ms < at || (k.ms === at && k.id < after.id);
+}
+
 export interface LenderCaseRepository {
   insertCase(tx: Tx, row: LenderCaseRow): Promise<void>;
   findCaseById(tx: Tx, tenantId: string, id: string): Promise<LenderCaseRow | null>;
@@ -28,7 +47,7 @@ export interface LenderCaseRepository {
   listAllCases(
     tx: Tx,
     tenantId: string,
-    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number; after?: { createdAt: string; id: string } },
   ): Promise<LenderCaseRow[]>;
   getNextAttemptNo(tx: Tx, tenantId: string, applicationId: string): Promise<number>;
   updateCase(
@@ -202,12 +221,14 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
   async listAllCases(
     tx: Tx,
     tenantId: string,
-    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number; after?: { createdAt: string; id: string } },
   ): Promise<LenderCaseRow[]> {
-    const limit = Math.min(filter?.limit ?? 100, 200);
+    const limit = Math.min(filter?.limit ?? 100, 201);
     const status = filter?.status ?? null;
     const lenderId = filter?.lenderId ?? null;
     const applicationId = filter?.applicationId ?? null;
+    const afterAt = filter?.after?.createdAt ?? null;
+    const afterId = filter?.after?.id ?? null;
 
     const res = await sql<LenderCaseRow>`
       SELECT * FROM lender_case
@@ -215,7 +236,8 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
         AND (${status}::text IS NULL OR status = ${status})
         AND (${lenderId}::text IS NULL OR lender_id = ${lenderId})
         AND (${applicationId}::text IS NULL OR application_id = ${applicationId})
-      ORDER BY created_at DESC
+        AND (${afterAt}::timestamptz IS NULL OR (date_trunc('milliseconds', created_at), id) < (${afterAt}::timestamptz, ${afterId}::text))
+      ORDER BY date_trunc('milliseconds', created_at) DESC, id DESC
       LIMIT ${limit}
     `.execute(tx);
     return res.rows;
@@ -605,21 +627,20 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
   async listAllCases(
     _tx: Tx,
     tenantId: string,
-    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number; after?: { createdAt: string; id: string } },
   ): Promise<LenderCaseRow[]> {
     if (!tenantId) return [];
-    const limit = Math.min(filter?.limit ?? 100, 200);
+    const limit = Math.min(filter?.limit ?? 100, 201);
     const result: LenderCaseRow[] = [];
     for (const c of this.cases.values()) {
       if (c.tenant_id !== tenantId) continue;
       if (filter?.status && c.status !== filter.status) continue;
       if (filter?.lenderId && c.lender_id !== filter.lenderId) continue;
       if (filter?.applicationId && c.application_id !== filter.applicationId) continue;
+      if (filter?.after && !isBeforeCursor(c, filter.after)) continue;
       result.push({ ...c, tags: [...c.tags] });
     }
-    return result
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, limit);
+    return result.sort(compareNewestFirst).slice(0, limit);
   }
 
   async getNextAttemptNo(_tx: Tx, tenantId: string, applicationId: string): Promise<number> {

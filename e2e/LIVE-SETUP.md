@@ -33,8 +33,8 @@ Run these from the repo root (`DSA-Agent/`).
 
 4. **Local env files.** These are git-ignored (`.env.*`). They point only at 127.0.0.1:
 
-   - `apps/api/.env.e2e`: local `DATABASE_URL`, `SUPABASE_URL`, the local service key and JWT secret, `TEST_BYPASS_OTP=000000`, and `DEMO_USER_PASSWORD` (the password for the demo users).
-   - `apps/web/.env.e2e`: local `VITE_SUPABASE_URL`, the local anon key, `VITE_API_BASE_URL=http://localhost:3100`, `VITE_TEST_BYPASS_OTP=000000`.
+   - `apps/api/.env.e2e`: local `DATABASE_URL`, `SUPABASE_URL`, the local service key and JWT secret, `TEST_AUTH_ENABLED=true`, `TEST_BYPASS_OTP=000000`, a `BYPASS_JWT_SECRET` of at least 32 characters that is not the JWT secret, and `DEMO_USER_PASSWORD` (the password for the demo users).
+   - `apps/web/.env.e2e`: local `VITE_SUPABASE_URL`, the local anon key, `VITE_API_BASE_URL=http://localhost:3100`, `VITE_TEST_AUTH=true`, `VITE_TEST_BYPASS_OTP=000000`.
 
    To recreate them, copy the values from `npm run db:status`. Do not copy them into `.env` or `apps/*/.env.local`.
 
@@ -105,5 +105,5 @@ Each step shows a banner on screen and then pauses (`STEP_PAUSE_MS`, default 2.5
 
 ## Security notes
 
-- The login screen falls back to the test-login endpoint with the test OTP `000000`. That is acceptable on this machine only. `TEST_BYPASS_OTP` must not be set on any hosted environment.
+- Test login (the fixed code `000000`) exists only in a test build (`VITE_TEST_AUTH=true`) against an API started with `TEST_AUTH_ENABLED=true`. The API refuses that setting unless `SUPABASE_URL` is local, `DATABASE_URL` is local or listed in `TEST_DATABASE_HOSTS`, `NODE_ENV` is not production, and `BYPASS_JWT_SECRET` is set and unique. Neither flag may be set on any hosted environment; the shared project is refused in every case.
 - The local files `apps/api/.env.e2e` and `apps/web/.env.e2e` hold local-only secrets. Do not share or commit them.

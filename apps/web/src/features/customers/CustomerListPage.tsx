@@ -24,6 +24,7 @@ import {
   StatusBadge,
   type ColumnDef,
 } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 export function CustomerListPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,13 +75,10 @@ export function CustomerListPage() {
             to={`/customers/${c.id}`}
             variant="body2"
             fontWeight={600}
-            color="info.main"
+            color="primary.main"
             sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
             {c.fullName}
-          </Typography>
-          <Typography variant="caption" display="block" color="text.secondary" fontFamily="monospace">
-            {c.id}
           </Typography>
         </Box>
       ),
@@ -102,9 +100,9 @@ export function CustomerListPage() {
       header: 'Contact Info',
       accessor: (c) => (
         <Box>
-          <Typography variant="body2">{c.primaryMobileMasked || '—'}</Typography>
+          <Typography variant="body2">{c.primaryMobileMasked || <NotSet />}</Typography>
           <Typography variant="caption" color="text.secondary" display="block">
-            {c.primaryEmailMasked || '—'}
+            {c.primaryEmailMasked || <NotSet />}
           </Typography>
         </Box>
       ),
@@ -112,7 +110,7 @@ export function CustomerListPage() {
     {
       id: 'homeBranchId',
       header: 'Home Branch',
-      accessor: (c) => <BranchName id={c.homeBranchId} fallback="—" />,
+      accessor: (c) => <BranchName id={c.homeBranchId} />,
     },
     {
       id: 'status',

@@ -17,6 +17,10 @@ import {
 import { EmptyState } from '../AsyncContainer/EmptyState';
 import { ErrorState } from '../AsyncContainer/ErrorState';
 
+/** A cell with nothing to show: empty, null, or a dash placeholder from a render function. */
+const isBlankCell = (value: React.ReactNode): boolean =>
+  value === null || value === undefined || value === '' || value === '—' || value === '-';
+
 export interface ColumnDef<T> {
   id: string;
   header?: React.ReactNode;
@@ -25,9 +29,31 @@ export interface ColumnDef<T> {
   render?: (row: T) => React.ReactNode;
   width?: string | number;
   align?: 'left' | 'center' | 'right';
+  /**
+   * Clickable data cell: shown in the primary (orange) link colour. In a table with onRowClick the first column
+   * is a link by default; set false to keep a column as plain text.
+   */
+  link?: boolean;
 }
 
 export type Column<T> = ColumnDef<T>;
+
+/** Orange, underlined-on-hover text for a clickable data cell. Buttons keep their own style. */
+export function CellLink({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        color: 'primary.main',
+        fontWeight: 600,
+        cursor: 'pointer',
+        '&:hover': { textDecoration: 'underline' },
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
 
 export interface DataTableProps<T> {
   columns: ColumnDef<T>[];
@@ -163,12 +189,13 @@ export function DataTable<T>({
                       '&:last-child td': { borderBottom: 0 },
                     }}
                   >
-                    {columns.map((col) => {
+                    {columns.map((col, cIdx) => {
                       const content = col.accessor
                         ? col.accessor(row)
                         : col.render
                           ? col.render(row)
                           : (row as any)[col.id];
+                      const isLink = col.link ?? (isClickable && cIdx === 0);
                       return (
                         <TableCell
                           key={col.id}
@@ -179,7 +206,15 @@ export function DataTable<T>({
                             borderColor: 'grey.100',
                           }}
                         >
-                          {content}
+                          {isBlankCell(content) ? (
+                            <Typography component="span" variant="body2" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+                              Not set
+                            </Typography>
+                          ) : isLink ? (
+                            <CellLink>{content}</CellLink>
+                          ) : (
+                            content
+                          )}
                         </TableCell>
                       );
                     })}

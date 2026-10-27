@@ -12,6 +12,8 @@ import { createPrincipalResolver, createTokenVerifier } from '@dsa/kernel';
 import { pino } from 'pino';
 import { createApp } from './app';
 import { loadConfig, type ApiConfig } from './config';
+import { resolveTestAuth } from './test-auth';
+import { redactSecrets, registerDatabaseUrl, registerSecrets } from './http/redact';
 import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { checkDatabase } from './startup-check';
@@ -40,6 +42,10 @@ try {
   process.exit(1);
 }
 
+// Secrets the process must never print. A driver message can carry the connection string, and a stack trace repeats the message.
+registerDatabaseUrl(config.DATABASE_URL);
+registerSecrets([config.SUPABASE_JWT_SECRET, config.APP_SIGNING_SECRET, config.BYPASS_JWT_SECRET]);
+
 // Development prints one readable line per message; other environments keep JSON for the log collector.
 const logger = pino({
   level: config.LOG_LEVEL,
@@ -53,6 +59,11 @@ const logger = pino({
     : {}),
 });
 if (config.DISABLE_MFA) logger.warn('DISABLE_MFA is on: MFA is skipped. This is for local development only.');
+// Test login is on only when every check in test-auth.ts passes. resolveTestAuth throws rather than offer a bypass for an unsafe setup.
+const testAuth = resolveTestAuth(config);
+if (testAuth) {
+  logger.warn('TEST_AUTH_ENABLED is on: test login with a fixed one-time code is available. Local development and automated tests only.');
+}
 const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
 // Signed document links and archive encryption use keys derived from the deployment's JWT secret.
@@ -71,14 +82,12 @@ const app = createApp({
   deps,
   corsAllowedOrigins: config.CORS_ALLOWED_ORIGINS,
   logger,
-  supabaseUrl: config.SUPABASE_URL,
-  bypassSecret: config.BYPASS_JWT_SECRET,
-  bypassOtp: config.TEST_BYPASS_OTP,
+  testAuth,
   auth: supabaseAuth({
     verifier: createTokenVerifier({
       supabaseUrl: config.SUPABASE_URL,
       jwtSecret: config.SUPABASE_JWT_SECRET,
-      bypassSecret: config.BYPASS_JWT_SECRET,
+      bypassSecret: testAuth?.secret,
     }),
     resolver: createPrincipalResolver(txRunner),
   }),
@@ -88,7 +97,7 @@ const server = app.listen(config.PORT, () => {
   logger.info(`API listening on http://localhost:${config.PORT} (${config.NODE_ENV})`);
   void checkDatabase(db, config.DATABASE_URL).then((status) => {
     if (!status.connected) {
-      logger.error(`Database NOT connected (${status.host}, ${status.mode}): ${status.reason}`);
+      logger.error(`Database NOT connected (${status.host}, ${status.mode}): ${redactSecrets(status.reason)}`);
       return;
     }
     logger.info(`Database connected: ${status.database} on ${status.host} (${status.mode})`);
@@ -116,7 +125,7 @@ if (config.DATA_CORRECTION_EXECUTOR) {
         ),
       onError: (err) =>
         logger.error(
-          { error: err instanceof Error ? err.message : 'unknown' },
+          { error: redactSecrets(err instanceof Error ? err.message : 'unknown') },
           'data correction executor tick failed',
         ),
     },
@@ -140,7 +149,7 @@ const worker = startBackgroundWorker({
   onWarning: (message) => logger.warn(`Background worker: ${message}`),
   onError: (stage, err) =>
     logger.error(
-      { stage, error: formatWorkerError(err) },
+      { stage, error: redactSecrets(formatWorkerError(err)) },
       'background worker tick failed',
     ),
 });

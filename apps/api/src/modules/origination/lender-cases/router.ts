@@ -120,18 +120,26 @@ export function createRouter(deps: ApiDeps): Router {
    */
   router.get('/lender-cases', async (req: Request, res: Response) => {
     const ctx = getRequestContext(req);
-    const { status, lenderId, applicationId, limit } = req.query;
+    const { status, lenderId, applicationId, limit, cursor } = req.query;
 
-    const cases = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+    const pageSize = limit === undefined ? undefined : Number(limit);
+    if (pageSize !== undefined && (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200)) {
+      throw AppError.of('VALIDATION_ERROR', 'limit must be a whole number from 1 to 200', [
+        { field: 'limit', issue: 'OUT_OF_RANGE' },
+      ]);
+    }
+
+    const page = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       return service.listAllCases(tx, ctx, {
         status: typeof status === 'string' ? status : undefined,
         lenderId: typeof lenderId === 'string' ? lenderId : undefined,
         applicationId: typeof applicationId === 'string' ? applicationId : undefined,
-        limit: limit ? Number(limit) : undefined,
+        limit: pageSize,
+        cursor: typeof cursor === 'string' ? cursor : undefined,
       });
     });
 
-    res.status(200).json({ data: cases });
+    res.status(200).json(page);
   });
 
   /**
@@ -148,6 +156,51 @@ export function createRouter(deps: ApiDeps): Router {
 
     res.setHeader('ETag', `"${resource.lockVersion}"`);
     res.status(200).json(resource);
+  });
+
+  /**
+   * Query history for a lender case, with the answer to each query where one was recorded
+   * GET /lender-cases/:id/queries
+   */
+  router.get('/lender-cases/:id/queries', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const id = getParamId(req);
+
+    const queries = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      return service.listQueries(tx, ctx, id);
+    });
+
+    res.status(200).json({ data: queries });
+  });
+
+  /**
+   * Status history for a lender case, oldest first
+   * GET /lender-cases/:id/history
+   */
+  router.get('/lender-cases/:id/history', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const id = getParamId(req);
+
+    const history = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      return service.listStatusHistory(tx, ctx, id);
+    });
+
+    res.status(200).json({ data: history });
+  });
+
+  /**
+   * The submission package the case was built and frozen with
+   * GET /lender-cases/:id/package
+   */
+  router.get('/lender-cases/:id/package', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const id = getParamId(req);
+
+    const pkg = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      return service.getPackage(tx, ctx, id);
+    });
+
+    res.status(200).json(pkg);
   });
 
   /**

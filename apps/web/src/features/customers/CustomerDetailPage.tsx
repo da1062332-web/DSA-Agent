@@ -18,7 +18,6 @@ import {
   DialogTitle,
   Divider,
   Grid,
-  Link,
   List,
   ListItem,
   ListItemText,
@@ -35,6 +34,8 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { useLookup } from '../admin/api';
 import { STATUS_LABELS } from '../applications/rules';
 import type { Application } from '../applications/ApplicationsPage';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -146,7 +147,7 @@ export function CustomerDetailPage() {
         }
         subtitle={
           <Typography variant="body2" color="text.secondary">
-            Customer ID: <strong>{customer.id}</strong> · Lock Version: {customer.lockVersion}
+            Lock Version: {customer.lockVersion}
           </Typography>
         }
         actions={
@@ -238,14 +239,14 @@ export function CustomerDetailPage() {
                     Primary Mobile (Masked per DPDP §8)
                   </Typography>
                   <Typography variant="body1" fontWeight={500}>
-                    {customer.primaryMobileMasked || '—'}
+                    {customer.primaryMobileMasked || <NotSet />}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Primary Email (Masked)
                   </Typography>
-                  <Typography variant="body1">{customer.primaryEmailMasked || '—'}</Typography>
+                  <Typography variant="body1">{customer.primaryEmailMasked || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -325,9 +326,9 @@ export function CustomerDetailPage() {
                         >
                           <ListItemText
                             primary={
-                              <Link component={RouterLink} to={`/applications/${a.id}`}>
-                                {a.id}
-                              </Link>
+                              <RecordLink to={`/applications/${a.id}`}>
+                                Open application
+                              </RecordLink>
                             }
                             secondary={`${a.productCategory} · ${a.currency} ${a.requestedAmount} · ${STATUS_LABELS[a.status] ?? a.status}`}
                           />

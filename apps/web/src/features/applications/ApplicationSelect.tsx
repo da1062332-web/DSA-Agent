@@ -41,7 +41,7 @@ export function ApplicationSelect(props: {
       {!known && <MenuItem value={props.value}>{props.value}</MenuItem>}
       {rows.map((a) => (
         <MenuItem key={a.id} value={a.id}>
-          <CustomerName id={a.customerId} fallback={`App #${a.id.slice(-6)}`} typographyProps={{ component: 'span', fontWeight: 600 }} />
+          <CustomerName id={a.customerId} fallback="Application" typographyProps={{ component: 'span', fontWeight: 600 }} />
           {' '}· {a.productCategory} · {a.currency} {a.requestedAmount} ·{' '}
           {STATUS_LABELS[a.status] ?? a.status}
         </MenuItem>

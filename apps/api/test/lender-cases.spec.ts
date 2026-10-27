@@ -601,7 +601,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
         .post(`/v1/lender-queries/${queryId}/responses`)
         .send({
           text: 'Uploaded 3 months bank statements successfully',
-          documentReferences: ['doc_statement_01'],
+          documentReferences: ['doc_01JTESTDOC00000000000001'],
         });
 
       expect(respRes.status).toBe(200);
@@ -691,7 +691,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
         .post(`/v1/lender-cases/${caseId}/queries`)
         .send({ text: 'Latest salary slip please', requestedItems: ['SALARY_SLIP'] });
       const queryId = queryRes.body.query.id;
-      const answer = { text: 'Uploaded', documentReferences: ['doc_01JTESTDOC00000000000002'] };
+      const answer = { text: 'Uploaded', documentReferences: ['doc_01JTESTDOC00000000000001'] };
 
       const first = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
       expect(first.status).toBe(200);
@@ -700,6 +700,185 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
 
       const second = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
       expect(second.status).toBe(409);
+    });
+  });
+
+  describe('API-LCS-008..010: queries, status history and the submission package', () => {
+    async function newCase(app: ReturnType<typeof getApp>) {
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
+      return createRes.body.id as string;
+    }
+
+    it('API-LCS-010 returns 404 before a package is built, then the frozen package', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+
+      const before = await request(app).get(`/v1/lender-cases/${caseId}/package`);
+      expect(before.status).toBe(404);
+      expect(before.body.error.code).toBe('NOT_FOUND');
+
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      const after = await request(app).get(`/v1/lender-cases/${caseId}/package`);
+      expect(after.status).toBe(200);
+      expect(after.body.kind).toBe('SUBMISSION');
+      expect(after.body.frozenAt).not.toBeNull();
+      expect(after.body.manifestSha256).toHaveLength(64);
+      expect(after.body.lenderCaseId).toBe(caseId);
+    });
+
+    it('API-LCS-009 lists every status transition, oldest first', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      await request(app).post(`/v1/lender-cases/${caseId}/submission`).send({ channel: 'PORTAL' });
+      await request(app)
+        .post(`/v1/lender-cases/${caseId}/queries`)
+        .send({ text: 'Latest salary slip please', requestedItems: ['SALARY_SLIP'] });
+
+      const res = await request(app).get(`/v1/lender-cases/${caseId}/history`);
+      expect(res.status).toBe(200);
+      const transitions = res.body.data.map((h: { toStatus: string }) => h.toStatus);
+      expect(transitions).toEqual(['DRAFT', 'PACKAGE_READY', 'SUBMITTED', 'QUERY_RAISED']);
+      expect(res.body.data[0].fromStatus).toBeNull();
+      expect(res.body.data[3].fromStatus).toBe('SUBMITTED');
+      expect(res.body.data[3].reasonText).toContain('Latest salary slip please');
+      for (const h of res.body.data) {
+        expect(h.lenderCaseId).toBe(caseId);
+        expect(h.occurredAt).toMatch(/Z$/);
+      }
+    });
+
+    it('API-LCS-008 lists queries, and shows the lender answer once it is recorded', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      await request(app).post(`/v1/lender-cases/${caseId}/submission`).send({ channel: 'PORTAL' });
+      const queryRes = await request(app)
+        .post(`/v1/lender-cases/${caseId}/queries`)
+        .send({ text: 'Latest salary slip please', requestedItems: ['SALARY_SLIP'] });
+      const queryId = queryRes.body.query.id;
+
+      const open = await request(app).get(`/v1/lender-cases/${caseId}/queries`);
+      expect(open.status).toBe(200);
+      expect(open.body.data).toHaveLength(1);
+      expect(open.body.data[0].id).toBe(queryId);
+      expect(open.body.data[0].text).toBe('Latest salary slip please');
+      expect(open.body.data[0].requestedItems).toEqual(['SALARY_SLIP']);
+      expect(open.body.data[0].respondedAt).toBeNull();
+      expect(open.body.data[0].responseText).toBeNull();
+
+      await request(app)
+        .post(`/v1/lender-queries/${queryId}/responses`)
+        .send({ text: 'Uploaded', documentReferences: ['doc_01JTESTDOC00000000000001'] });
+
+      const answered = await request(app).get(`/v1/lender-cases/${caseId}/queries`);
+      expect(answered.body.data[0].respondedAt).not.toBeNull();
+      expect(answered.body.data[0].responseText).toBe('Uploaded');
+      expect(answered.body.data[0].responseDocumentReferences).toEqual(['doc_01JTESTDOC00000000000001']);
+    });
+
+    it('requires application.read to read queries, history or the package (403 without it)', async () => {
+      const app = getApp();
+      const caseId = await newCase(app);
+      const noRead = testPrincipal({ tenantId: tenantA, grants: [] });
+      const other = getApp(noRead);
+      for (const path of ['queries', 'history', 'package']) {
+        const res = await request(other).get(`/v1/lender-cases/${caseId}/${path}`);
+        expect(res.status).toBe(403);
+      }
+    });
+
+    it('keeps the new reads inside the tenant: tenant B gets 404 for tenant A cases', async () => {
+      const caseId = await newCase(getApp(principalA));
+      const appB = getApp(principalB);
+      for (const path of ['queries', 'history', 'package']) {
+        const res = await request(appB).get(`/v1/lender-cases/${caseId}/${path}`);
+        expect(res.status).toBe(404);
+        expect(res.body.error.code).toBe('NOT_FOUND');
+      }
+    });
+  });
+
+  describe('Lender case query responses cite only documents of the same application', () => {
+    async function answerable(app: ReturnType<typeof getApp>) {
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
+      const caseId = createRes.body.id as string;
+      await request(app).post(`/v1/lender-cases/${caseId}/package`).send({ freeze: true });
+      await request(app).post(`/v1/lender-cases/${caseId}/submission`).send({ channel: 'PORTAL' });
+      const queryRes = await request(app)
+        .post(`/v1/lender-cases/${caseId}/queries`)
+        .send({ text: 'Latest salary slip please', requestedItems: ['SALARY_SLIP'] });
+      return queryRes.body.query.id as string;
+    }
+
+    it('rejects a document that is not on this application with 422 and records no response', async () => {
+      const app = getApp();
+      const queryId = await answerable(app);
+      const before = repository.packages.size;
+
+      const res = await request(app)
+        .post(`/v1/lender-queries/${queryId}/responses`)
+        .send({ text: 'Attaching a stranger', documentReferences: ['doc_01JOTHERTENANT000000000001'] });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(repository.packages.size).toBe(before);
+      expect(repository.queries.get(queryId)?.responded_at).toBeFalsy();
+    });
+
+    it('records the hash of every cited document in the response manifest, and de-duplicates references', async () => {
+      const app = getApp();
+      const queryId = await answerable(app);
+
+      const res = await request(app)
+        .post(`/v1/lender-queries/${queryId}/responses`)
+        .send({ text: 'Uploaded', documentReferences: ['doc_01JTESTDOC00000000000001', 'doc_01JTESTDOC00000000000001'] });
+
+      expect(res.status).toBe(200);
+      const responsePkg = [...repository.packages.values()].find((p) => p.kind === 'QUERY_RESPONSE')!;
+      expect(responsePkg.manifest.documentReferences).toEqual(['doc_01JTESTDOC00000000000001']);
+      expect(responsePkg.manifest.documents).toEqual([
+        { documentId: 'doc_01JTESTDOC00000000000001', documentTypeCode: 'PAN_CARD', sha256: 'a'.repeat(64) },
+      ]);
+    });
+  });
+
+  describe('GET /v1/lender-cases pages newest first with a cursor', () => {
+    it('walks every page, newest first, with no case repeated and the last page without a cursor', async () => {
+      const app = getApp();
+      const createRes = await request(app).post(`/v1/applications/${appId}/lender-cases`).send(validPayload);
+      const template = repository.cases.get(`${tenantA}:${createRes.body.id}`)!;
+      // Seeded in 2030 so they sort newer than the case created just now.
+      for (let i = 0; i < 4; i++) {
+        repository.cases.set(`${tenantA}:lcs_page_${i}`, {
+          ...template,
+          id: `lcs_page_${i}`,
+          created_at: new Date(Date.UTC(2030, 0, 1, 0, 0, i)),
+        });
+      }
+
+      const first = await request(app).get('/v1/lender-cases?limit=2');
+      expect(first.status).toBe(200);
+      expect(first.body.meta.limit).toBe(2);
+      expect(first.body.data.map((c: { id: string }) => c.id)).toEqual(['lcs_page_3', 'lcs_page_2']);
+      expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+
+      const second = await request(app).get(`/v1/lender-cases?limit=2&cursor=${first.body.meta.nextCursor}`);
+      expect(second.body.data.map((c: { id: string }) => c.id)).toEqual(['lcs_page_1', 'lcs_page_0']);
+      expect(second.body.meta.nextCursor).toEqual(expect.any(String));
+
+      const third = await request(app).get(`/v1/lender-cases?limit=2&cursor=${second.body.meta.nextCursor}`);
+      expect(third.body.data.map((c: { id: string }) => c.id)).toEqual([createRes.body.id]);
+      expect(third.body.meta.nextCursor).toBeNull();
+    });
+
+    it('rejects a limit outside 1..200 and a cursor it did not issue, with 422', async () => {
+      const app = getApp();
+      for (const q of ['limit=0', 'limit=201', 'limit=abc', 'cursor=not-a-cursor']) {
+        const res = await request(app).get(`/v1/lender-cases?${q}`);
+        expect(res.status, q).toBe(422);
+        expect(res.body.error.code, q).toBe('VALIDATION_ERROR');
+      }
     });
   });
 

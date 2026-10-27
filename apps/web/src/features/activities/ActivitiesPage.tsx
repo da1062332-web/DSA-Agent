@@ -18,6 +18,7 @@ import { LogActivityForm } from './LogActivityForm';
 import type { Activity } from '@dsa/contracts';
 import { ApplicationName, CustomerName, LeadName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 // Lists the caller's own activities (GET /v1/activities without a subject). A subject's activities are on its timeline.
 export function ActivitiesPage() {
@@ -146,9 +147,6 @@ export function ActivitiesPage() {
                         >
                           {a.subjectType}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                          {a.subjectId}
-                        </Typography>
                       </Box>
                     );
                   },
@@ -160,15 +158,13 @@ export function ActivitiesPage() {
                     a.outcomeCode ? (
                       <Chip size="small" label={a.outcomeCode} variant="outlined" />
                     ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        —
-                      </Typography>
+                      <NotSet />
                     ),
                 },
                 {
                   id: 'duration',
                   header: 'Duration',
-                  render: (a) => (a.durationSeconds ? `${Math.round(a.durationSeconds / 60)} min` : '—'),
+                  render: (a) => (a.durationSeconds ? `${Math.round(a.durationSeconds / 60)} min` : <NotSet />),
                 },
                 {
                   id: 'note',
@@ -177,7 +173,7 @@ export function ActivitiesPage() {
                   width: '28%',
                   render: (a) => (
                     <Box sx={{ minWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                      <Typography variant="body2">{a.note || '—'}</Typography>
+                      <Typography variant="body2">{a.note || <NotSet />}</Typography>
                     </Box>
                   ),
                 },

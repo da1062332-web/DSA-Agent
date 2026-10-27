@@ -12,7 +12,6 @@ import {
   DialogContentText,
   DialogTitle,
   FormControlLabel,
-  Link,
   Radio,
   RadioGroup,
   Stack,
@@ -23,12 +22,12 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { errorText, newIdempotencyKey } from '../../api/client';
 import { useList } from '../admin/api';
 import { ErrorAlert, LoadMore, Loading, PageHeader, formatDate } from '../admin/components';
 import { DataTable } from '../../ui';
 import { fetchLeadById, resolveDuplicateReview, type DuplicateReview } from './api';
+import { RecordLink } from '../../ui/RecordLink';
 
 type Status = DuplicateReview['status'];
 
@@ -37,9 +36,9 @@ function LeadCell({ id }: { id: string }) {
   const lead = q.data?.lead;
   return (
     <Stack spacing={0.25}>
-      <Link component={RouterLink} to={`/leads/${id}`}>
-        {lead?.fullName ?? id}
-      </Link>
+      <RecordLink to={`/leads/${id}`}>
+        {lead?.fullName ?? 'Lead'}
+      </RecordLink>
       {lead && (
         <Typography variant="caption" color="text.secondary">
           {lead.mobileMasked} · {lead.state} · {formatDate(lead.createdAt)}

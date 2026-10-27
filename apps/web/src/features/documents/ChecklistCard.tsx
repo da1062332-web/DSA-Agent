@@ -9,6 +9,7 @@ import { DataTable } from '../../ui';
 import { checkCompleteness, useChecklist } from './api';
 import { ChecklistItemActions } from './ChecklistItemActions';
 import { groupByParty, nextAction, progressText, readable, STATUS_LABELS, statusTone } from './model';
+import { NotSet } from '../../ui/NotSet';
 
 export function ChecklistCard({ applicationId }: { applicationId: string }) {
   const q = useChecklist(applicationId);
@@ -67,7 +68,7 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
                       header: 'Next step',
                       render: (i) => (
                         <Typography variant="caption" color="text.secondary">
-                          {nextAction(i) ?? '-'}
+                          {nextAction(i) ?? <NotSet />}
                         </Typography>
                       ),
                     },

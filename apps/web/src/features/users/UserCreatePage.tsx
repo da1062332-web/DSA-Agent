@@ -7,7 +7,6 @@ import {
   CardContent,
   Checkbox,
   CircularProgress,
-  Container,
   Divider,
   FormControl,
   FormControlLabel,
@@ -21,7 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { PageHeader } from '../../ui';
+import { PageHeader, PageContainer } from '../../ui';
 import { createUser, fetchBranches, fetchRoles } from './api';
 import type { Branch, Role } from './types';
 
@@ -130,7 +129,7 @@ export function UserCreatePage() {
   };
 
   return (
-    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+    <PageContainer>
       {/* Navigation */}
       <Button component={RouterLink} to="/users" variant="text" sx={{ mb: 2, fontWeight: 500 }}>
         &larr; Back to Staff Directory
@@ -322,6 +321,6 @@ export function UserCreatePage() {
           )}
         </CardContent>
       </Card>
-    </Container>
+    </PageContainer>
   );
 }

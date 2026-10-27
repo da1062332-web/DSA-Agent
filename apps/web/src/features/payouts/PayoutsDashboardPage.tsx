@@ -68,6 +68,8 @@ import type {
   RecordPayoutFailureInput,
   RecordPayoutPaymentInput,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function PayoutsDashboardPage() {
   const me = useMe();
@@ -386,11 +388,6 @@ export function PayoutsDashboardPage() {
 
   const requestColumns: ColumnDef<PayoutRequest>[] = [
     {
-      id: 'id',
-      header: 'Payout ID',
-      accessor: (r) => <strong>{r.id}</strong>,
-    },
-    {
       id: 'connector',
       header: 'Connector',
       accessor: (r) => <ConnectorName id={r.connectorId} typographyProps={{ fontWeight: 500 }} />,
@@ -408,7 +405,7 @@ export function PayoutsDashboardPage() {
     {
       id: 'paymentRef',
       header: 'Payment Ref',
-      accessor: (r) => r.paymentRefMasked || '—',
+      accessor: (r) => r.paymentRefMasked || <NotSet />,
     },
     {
       id: 'status',
@@ -421,12 +418,12 @@ export function PayoutsDashboardPage() {
       align: 'right',
       accessor: (r) => (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
-          {r.status === 'SUBMITTED' && canRequestPayout && (
+          <RowAction allowed={r.status === 'SUBMITTED' && canRequestPayout}>
             <Button size="small" color="error" onClick={() => handleCancelRequest(r.id)}>
               Cancel
             </Button>
-          )}
-          {r.status === 'SUBMITTED' && canApprovePayout && (
+          </RowAction>
+          <RowAction allowed={r.status === 'SUBMITTED' && canApprovePayout}>
             <Button
               size="small"
               variant="outlined"
@@ -434,18 +431,13 @@ export function PayoutsDashboardPage() {
             >
               Review
             </Button>
-          )}
+          </RowAction>
         </Stack>
       ),
     },
   ];
 
   const approvalColumns: ColumnDef<PayoutRequest>[] = [
-    {
-      id: 'id',
-      header: 'Payout ID',
-      accessor: (req) => <strong>{req.id}</strong>,
-    },
     {
       id: 'connector',
       header: 'Connector',
@@ -485,11 +477,6 @@ export function PayoutsDashboardPage() {
   ];
 
   const readyPaymentColumns: ColumnDef<PayoutRequest>[] = [
-    {
-      id: 'id',
-      header: 'Payout ID',
-      accessor: (p) => <strong>{p.id}</strong>,
-    },
     {
       id: 'connector',
       header: 'Connector',
@@ -532,11 +519,6 @@ export function PayoutsDashboardPage() {
   ];
 
   const batchColumns: ColumnDef<PayoutBatch>[] = [
-    {
-      id: 'id',
-      header: 'Batch ID',
-      accessor: (b) => <strong>{b.id}</strong>,
-    },
     {
       id: 'count',
       header: 'Payouts Count',
@@ -801,12 +783,6 @@ export function PayoutsDashboardPage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <strong>Payable ID</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>Calculation ID</strong>
-                      </TableCell>
-                      <TableCell>
                         <strong>Share Rate</strong>
                       </TableCell>
                       <TableCell>
@@ -831,8 +807,6 @@ export function PayoutsDashboardPage() {
                               }}
                             />
                           </TableCell>
-                          <TableCell>{p.id}</TableCell>
-                          <TableCell>{p.calculationId}</TableCell>
                           <TableCell>{(Number(p.shareRate) * 100).toFixed(0)}%</TableCell>
                           <TableCell>
                             <strong>₹{Number(p.amount).toLocaleString('en-IN')}</strong>
@@ -868,7 +842,7 @@ export function PayoutsDashboardPage() {
             </Alert>
           )}
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Reviewing Payout Request <strong>{selectedRequest?.id}</strong> for Connector{' '}
+            Reviewing this payout request for connector{' '}
             <strong><ConnectorName id={selectedRequest?.connectorId} /></strong>. Total Amount:{' '}
             <strong>₹{selectedRequest?.total}</strong>.
           </Typography>
@@ -920,7 +894,7 @@ export function PayoutsDashboardPage() {
             )}
             <Typography variant="body2" sx={{ mb: 2 }}>
               Enter the bank Unique Transaction Reference (UTR) for payout{' '}
-              <strong>{selectedRequest?.id}</strong> (₹{selectedRequest?.total}).
+              this payout (₹{selectedRequest?.total}).
             </Typography>
             <TextField
               required
@@ -963,7 +937,7 @@ export function PayoutsDashboardPage() {
               </Alert>
             )}
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Recording a payment failure will mark payout <strong>{selectedRequest?.id}</strong> as{' '}
+              Recording a payment failure will mark this payout as{' '}
               <code>PAYMENT_FAILED</code> and return all constituent payables back to <code>ELIGIBLE</code>.
             </Typography>
             <TextField

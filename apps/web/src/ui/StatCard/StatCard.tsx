@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { TrendingUpIcon, TrendingDownIcon } from '../../shell/icons';
+import { NotSet } from '../NotSet';
 
 export interface StatCardProps {
   title: string;
@@ -31,8 +32,8 @@ export interface StatCardProps {
   dataTestId?: string;
 }
 
-function formatValue(value: string | number | null | undefined, format: StatCardProps['format']): string {
-  if (value === null || value === undefined) return '—';
+function formatValue(value: string | number | null | undefined, format: StatCardProps['format']): React.ReactNode {
+  if (value === null || value === undefined) return <NotSet />;
   if (typeof value === 'string') return value;
   switch (format) {
     case 'currency':

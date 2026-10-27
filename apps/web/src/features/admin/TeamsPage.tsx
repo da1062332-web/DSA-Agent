@@ -7,7 +7,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Link,
   List,
   ListItem,
   ListItemText,
@@ -25,7 +24,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
-import { DataTable } from '../../ui';
+import { DataTable, FieldGrid } from '../../ui';
 import {
   useCommand,
   useList,
@@ -46,6 +45,8 @@ import {
   UserPicker,
   formatDate,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 function useNames() {
   const branches = useLookup<Branch>('/v1/branches');
@@ -53,8 +54,8 @@ function useNames() {
   const branch = new Map((branches.data ?? []).map((b) => [b.id, `${b.code} — ${b.name}`]));
   const user = new Map((users.data ?? []).map((u) => [u.id, u.displayName]));
   return {
-    branch: (id: string | null) => (id ? (branch.get(id) ?? id) : '—'),
-    user: (id: string | null) => (id ? (user.get(id) ?? id) : '—'),
+    branch: (id: string | null) => (id ? (branch.get(id) ?? <NotSet />) : <NotSet />),
+    user: (id: string | null) => (id ? (user.get(id) ?? <NotSet />) : <NotSet />),
   };
 }
 
@@ -116,9 +117,9 @@ export function TeamsPage() {
               id: 'name',
               header: 'Name',
               render: (t) => (
-                <Link component={RouterLink} to={`/admin/teams/${t.id}`}>
+                <RecordLink to={`/admin/teams/${t.id}`}>
                   {t.name}
-                </Link>
+                </RecordLink>
               ),
             },
             { id: 'branch', header: 'Branch', render: (t) => names.branch(t.branchId) },
@@ -241,7 +242,7 @@ export function TeamDetailPage() {
             Details
           </Typography>
           <ErrorAlert error={patch.error} />
-          <Stack spacing={2} sx={{ maxWidth: 520 }}>
+          <FieldGrid minColumnWidth={260} spanNonFields>
             <TextField
               label="Name"
               value={name}
@@ -280,7 +281,7 @@ export function TeamDetailPage() {
                 </Button>
               </Stack>
             )}
-          </Stack>
+          </FieldGrid>
         </CardContent>
       </Card>
 

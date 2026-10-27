@@ -13,7 +13,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  Link,
   MenuItem,
   Stack,
   Table,
@@ -28,7 +27,7 @@ import {
 import { useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
-import { DataTable } from '../../ui';
+import { DataTable, FieldGrid } from '../../ui';
 import { useCommand, useList, useResource } from './api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 import type { Lender } from './LendersPage';
@@ -41,6 +40,8 @@ import {
   type ProductCategory,
   type ProductVersion,
 } from './ProductsPage';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 const MONEY = /^\d{1,16}(\.\d{1,2})?$/;
 
@@ -137,12 +138,12 @@ function DetailsCard({
         </Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>
           <strong>Lender:</strong>{' '}
-          <Link component={RouterLink} to={`/lenders/${product.lenderId}`}>
+          <RecordLink to={`/lenders/${product.lenderId}`}>
             {lenderName}
-          </Link>
+          </RecordLink>
         </Typography>
         <ErrorAlert error={save.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             label="Product name"
             value={name}
@@ -216,7 +217,7 @@ function DetailsCard({
               </Button>
             </Stack>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -344,8 +345,8 @@ function VersionsCard({
               { id: 'effective', header: 'Effective from', render: (v) => formatDate(v.effectiveFrom) },
               { id: 'amount', header: 'Amount', render: (v) => `${v.currency} ${v.amountMin} – ${v.amountMax}` },
               { id: 'tenure', header: 'Tenure', render: (v) => `${v.tenureMinMonths}–${v.tenureMaxMonths} months` },
-              { id: 'rate', header: 'Illustrative rate', render: (v) => v.illustrativeRateText ?? '—' },
-              { id: 'fee', header: 'Fee', render: (v) => v.feeText ?? '—' },
+              { id: 'rate', header: 'Illustrative rate', render: (v) => v.illustrativeRateText ?? <NotSet /> },
+              { id: 'fee', header: 'Fee', render: (v) => v.feeText ?? <NotSet /> },
               {
                 id: 'status',
                 header: 'Status',

@@ -1,12 +1,16 @@
 // apps/web/src/features/lender-cases/LenderCaseListPage.tsx — owner: Dev 4 (MOD-LCS Case Overview)
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
   Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
   Stack,
   TextField,
@@ -21,6 +25,8 @@ import {
 import { fetchAllLenderCases } from './api';
 import type { LenderCaseResource, LenderCaseStatus } from './types';
 import { ApplicationName, LenderName } from '../../shell/display';
+import { ApplicationSelect } from '../../shell/selectors';
+import { Can } from '../../shell/Can';
 import {
   PageHeader,
   StatCard,
@@ -30,6 +36,7 @@ import {
   StatusBadge,
   type ColumnDef,
 } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 const ALL_STATUSES: LenderCaseStatus[] = [
   'DRAFT',
@@ -53,16 +60,20 @@ export function LenderCaseListPage(): React.ReactElement {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [channelFilter, setChannelFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [newOpen, setNewOpen] = useState(false);
+  const [newApplicationId, setNewApplicationId] = useState('');
 
-  const {
-    data: cases = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  // Cases come 50 at a time, newest first. The status filter is applied by the server; the channel and search
+  // filters below apply to the cases loaded so far.
+  const casesQuery = useInfiniteQuery({
     queryKey: ['lender-cases', statusFilter],
-    queryFn: () => fetchAllLenderCases(statusFilter ? { status: statusFilter } : undefined),
+    queryFn: ({ pageParam }) =>
+      fetchAllLenderCases({ status: statusFilter || undefined, cursor: pageParam ?? undefined, limit: 50 }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? null,
   });
+  const cases = useMemo(() => casesQuery.data?.pages.flatMap((page) => page.data) ?? [], [casesQuery.data]);
+  const { isLoading, error, refetch } = casesQuery;
 
   const filteredCases = useMemo(() => {
     return cases.filter((c: LenderCaseResource) => {
@@ -91,7 +102,7 @@ export function LenderCaseListPage(): React.ReactElement {
   const columns: ColumnDef<LenderCaseResource>[] = [
     {
       id: 'caseId',
-      header: 'Case ID',
+      header: 'Lender case',
       accessor: (c) => (
         <Box>
           <Box sx={{ fontWeight: 600, mb: 0.25 }}>
@@ -102,13 +113,13 @@ export function LenderCaseListPage(): React.ReactElement {
             to={`/lender-cases/${c.id}`}
             variant="caption"
             sx={{
-              color: 'info.main',
+              color: 'primary.main',
               textDecoration: 'none',
               fontFamily: 'monospace',
               '&:hover': { textDecoration: 'underline' },
             }}
           >
-            {c.id}
+            Open case
           </Typography>
           {c.lenderReference && (
             <Typography variant="caption" display="block" color="text.secondary">
@@ -143,7 +154,7 @@ export function LenderCaseListPage(): React.ReactElement {
     {
       id: 'submissionChannel',
       header: 'Channel',
-      accessor: (c) => c.submissionChannel || '—',
+      accessor: (c) => c.submissionChannel || <NotSet />,
     },
     {
       id: 'status',
@@ -153,7 +164,7 @@ export function LenderCaseListPage(): React.ReactElement {
     {
       id: 'createdAt',
       header: 'Created Date',
-      accessor: (c) => (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'),
+      accessor: (c) => (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : <NotSet />),
     },
     {
       id: 'actions',
@@ -190,6 +201,18 @@ export function LenderCaseListPage(): React.ReactElement {
         title="Lender Cases"
         subtitle="Track and manage lender submission cases, underwriting progress, and sanction milestones across applications."
         actions={
+          <Stack direction="row" spacing={1}>
+          <Can action="lender_case.submit">
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setNewOpen(true)}
+              data-testid="lender-case.list.new"
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+            >
+              + New Lender Attempt
+            </Button>
+          </Can>
           <Button
             variant="outlined"
             size="small"
@@ -199,15 +222,16 @@ export function LenderCaseListPage(): React.ReactElement {
           >
             Refresh
           </Button>
+          </Stack>
         }
       />
 
       {/* Metric Cards */}
       <StatCardGrid columns={{ xs: 12, sm: 4, md: 4 }}>
         <StatCard
-          title="Total Cases"
+          title="Cases Loaded"
           value={totalCount}
-          subtitle="All lender submissions"
+          subtitle="Loaded so far"
           icon={<AssessmentIcon />}
           status="primary"
         />
@@ -289,6 +313,48 @@ export function LenderCaseListPage(): React.ReactElement {
         emptyTitle="No lender cases found matching the criteria."
         emptyDescription="Try selecting a different status or channel filter."
       />
+      {casesQuery.hasNextPage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => casesQuery.fetchNextPage()}
+            disabled={casesQuery.isFetchingNextPage}
+            data-testid="lender-case.list.more"
+          >
+            {casesQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        </Box>
+      )}
+      <Dialog open={newOpen} onClose={() => setNewOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>New Lender Attempt</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+            Choose the application. Its attempts screen lets you pick the lender and the product.
+          </Typography>
+          <ApplicationSelect
+            size="small"
+            fullWidth
+            label="Application"
+            placeholder="Select application..."
+            value={newApplicationId || null}
+            onChange={(id) => setNewApplicationId(id ?? '')}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!newApplicationId}
+            onClick={() => {
+              setNewOpen(false);
+              navigate(`/applications/${newApplicationId}/lender-cases`);
+            }}
+            data-testid="lender-case.list.new.continue"
+          >
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

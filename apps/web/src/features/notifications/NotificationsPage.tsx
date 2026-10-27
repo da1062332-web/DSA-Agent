@@ -8,7 +8,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Container,
   Paper,
   Stack,
   Tab,
@@ -18,7 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
-import { PageHeader, StatCard, StatCardGrid, AppButton } from '../../ui';
+import { PageHeader, StatCard, StatCardGrid, AppButton, PageContainer } from '../../ui';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 const CATEGORY_COLORS: Record<
@@ -98,7 +97,7 @@ export function NotificationsPage() {
   };
 
   return (
-    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+    <PageContainer>
       <PageHeader
         title="Notification Inbox"
         subtitle="Manage your personal alerts, assignments, and updates"
@@ -195,6 +194,6 @@ export function NotificationsPage() {
       )}
 
       <NotificationPreferencesDialog open={preferencesOpen} onClose={() => setPreferencesOpen(false)} />
-    </Container>
+    </PageContainer>
   );
 }

@@ -47,10 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { data, error } = await getSupabase().auth.mfa.getAuthenticatorAssuranceLevel();
-      if (error && /invalid JWT|signature is invalid/i.test(error.message)) {
-        setAal({ current: 'aal2', next: 'aal2' });
-        return;
-      }
       // On error the guard treats the session as aal1 with no factor; the API still enforces step-up itself.
       setAal(
         error || !data ? { current: null, next: null } : { current: data.currentLevel, next: data.nextLevel },

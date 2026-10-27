@@ -55,10 +55,10 @@ export function SecurityPage() {
       return;
     }
     if (aal?.current !== 'aal2') {
-      navigate('/mfa', { state: { from: '/account/security' } });
+      navigate('/login', { state: { from: '/account/security' } });
       return;
     }
-    if (isBypassActive() || factorId === 'bypass-totp-factor') {
+    if (isBypassActive()) {
       setMessage({ ok: true, text: 'Authenticator removed.' });
       setFactors([]);
       return;
@@ -135,7 +135,9 @@ export function SecurityPage() {
           <Button
             variant="contained"
             sx={{ mt: 2 }}
-            onClick={() => navigate('/mfa?enrol=true', { state: { from: '/account/security' } })}
+            onClick={() =>
+              navigate('/login', { state: { from: '/account/security', addAuthenticator: true } })
+            }
           >
             {factors?.length === 0 ? 'Set up authenticator' : 'Add another authenticator / Scan barcode'}
           </Button>

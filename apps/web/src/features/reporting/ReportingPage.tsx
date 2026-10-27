@@ -57,6 +57,8 @@ import type {
   ReportCatalogueItem,
 } from '@dsa/contracts';
 import { apiDownload, errorText } from '../../api/client';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function ReportingPage() {
   const [activeTab, setActiveTab] = useState(0);
@@ -318,7 +320,6 @@ export function ReportingPage() {
               keyExtractor={(run) => run.id}
               emptyMessage="No report runs generated yet. Select a standard report above to trigger execution."
               columns={[
-                { id: 'id', header: 'Run ID', render: (run) => <code>{run.id}</code> },
                 { id: 'code', header: 'Report Code', render: (run) => run.reportCode },
                 {
                   id: 'status',
@@ -337,7 +338,7 @@ export function ReportingPage() {
                   id: 'action',
                   header: 'Action',
                   render: (run) =>
-                    run.downloadUrl ? (
+                    <RowAction allowed={Boolean(run.downloadUrl)}>
                       <Button
                         size="small"
                         onClick={() => {
@@ -346,11 +347,7 @@ export function ReportingPage() {
                       >
                         Download
                       </Button>
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        Ready in Store
-                      </Typography>
-                    ),
+                    </RowAction>,
                 },
               ]}
             />
@@ -465,7 +462,7 @@ export function ReportingPage() {
                       {
                         id: 'target',
                         header: 'Target',
-                        render: (b) => (b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : '—'),
+                        render: (b) => (b.targetAmount ? `₹${b.targetAmount.toLocaleString('en-IN')}` : <NotSet />),
                       },
                       {
                         id: 'achievement',
@@ -478,7 +475,7 @@ export function ReportingPage() {
                               color={b.achievementRate >= 100 ? 'success' : b.achievementRate >= 80 ? 'warning' : 'default'}
                             />
                           ) : (
-                            '—'
+                            <NotSet />
                           ),
                       },
                     ]}
@@ -498,7 +495,7 @@ export function ReportingPage() {
                   <Card variant="outlined" sx={{ mb: 3 }}>
                     <CardHeader
                       title={`Branch Performance: ${branchData.branchName}`}
-                      subheader={`Branch Code: ${branchData.branchId}`}
+                      subheader="Branch performance"
                     />
                     <CardContent>
                       <Grid container spacing={2}>
@@ -834,7 +831,6 @@ export function ReportingPage() {
               keyExtractor={(job) => job.id}
               emptyMessage='No recent export jobs. Click "New Export" to initiate a data export.'
               columns={[
-                { id: 'id', header: 'ID', render: (job) => <code>{job.id}</code> },
                 { id: 'type', header: 'Export Type', render: (job) => job.exportType },
                 { id: 'format', header: 'Format', render: (job) => <Chip label={job.fileFormat} size="small" /> },
                 {
@@ -860,7 +856,7 @@ export function ReportingPage() {
                         Download
                       </Button>
                     ) : (
-                      '—'
+                      <NotSet />
                     ),
                 },
               ]}
@@ -879,7 +875,6 @@ export function ReportingPage() {
               keyExtractor={(sch) => sch.id}
               emptyMessage='No recurring report schedules configured. Click "New Schedule" to add one.'
               columns={[
-                { id: 'id', header: 'ID', render: (sch) => <code>{sch.id}</code> },
                 { id: 'code', header: 'Report Code', render: (sch) => sch.reportCode },
                 { id: 'frequency', header: 'Frequency', render: (sch) => <Chip label={sch.frequency} size="small" color="primary" /> },
                 { id: 'recipients', header: 'Recipients', render: (sch) => sch.recipientEmails.join(', ') },
@@ -977,7 +972,7 @@ export function ReportingPage() {
                       />
                     </Box>
                   }
-                  subheader={`Tenant ID: ${controlTotalsData.tenantId} • Reconciled As Of: ${new Date(controlTotalsData.asOf).toLocaleString()}`}
+                  subheader={`Reconciled As Of: ${new Date(controlTotalsData.asOf).toLocaleString()}`}
                 />
                 <CardContent>
                   <DataTable<{

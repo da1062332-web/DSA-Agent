@@ -17,6 +17,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList, type Branch } from './api';
 import { ConfirmDialog, ErrorAlert, LoadMore, PageHeader, StatusChip } from './components';
 import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 export function BranchesPage() {
   const me = useMe();
@@ -52,7 +53,7 @@ export function BranchesPage() {
     {
       id: 'pincode',
       header: 'PIN code',
-      accessor: (b) => b.pincode ?? '—',
+      accessor: (b) => b.pincode ?? <NotSet />,
     },
     {
       id: 'timezone',

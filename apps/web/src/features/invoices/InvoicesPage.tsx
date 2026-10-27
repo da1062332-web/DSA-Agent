@@ -35,6 +35,8 @@ import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { ConnectorName, UserName } from '../../shell/display';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function InvoicesPage() {
   const queryClient = useQueryClient();
@@ -322,13 +324,8 @@ export function InvoicesPage() {
       render: (inv) => (
         <Box>
           <Typography variant="body2" fontWeight={600}>
-            {inv.partyName || inv.partyId}
+            {inv.partyName || 'Not named'}
           </Typography>
-          {inv.partyName && (
-            <Typography variant="caption" color="text.secondary" display="block">
-              {inv.partyId}
-            </Typography>
-          )}
         </Box>
       ),
     },
@@ -376,7 +373,7 @@ export function InvoicesPage() {
       align: 'center',
       render: (inv) => (
         <Stack direction="row" spacing={1} justifyContent="center" onClick={(e) => e.stopPropagation()}>
-          {canManage && inv.status === 'DRAFT' && (
+          <RowAction allowed={canManage && inv.status === 'DRAFT'}>
             <Button
               size="small"
               variant="outlined"
@@ -393,9 +390,9 @@ export function InvoicesPage() {
             >
               Issue
             </Button>
-          )}
+          </RowAction>
 
-          {canManage && inv.status === 'ISSUED' && (
+          <RowAction allowed={canManage && inv.status === 'ISSUED'}>
             <Button
               size="small"
               variant="contained"
@@ -412,9 +409,9 @@ export function InvoicesPage() {
             >
               Mark Paid
             </Button>
-          )}
+          </RowAction>
 
-          {canManage && (inv.status === 'DRAFT' || inv.status === 'ISSUED') && (
+          <RowAction allowed={canManage && (inv.status === 'DRAFT' || inv.status === 'ISSUED')}>
             <Button
               size="small"
               variant="text"
@@ -431,7 +428,7 @@ export function InvoicesPage() {
             >
               Void
             </Button>
-          )}
+          </RowAction>
 
           <Button
             size="small"
@@ -716,7 +713,7 @@ export function InvoicesPage() {
                       label: 'Reference',
                       render: (entry: any) => (
                         <Typography variant="caption" color="text.secondary">
-                          {entry.referenceId || '—'}
+                          {entry.referenceId || <NotSet />}
                         </Typography>
                       ),
                     },
@@ -726,7 +723,7 @@ export function InvoicesPage() {
                       align: 'right',
                       render: (entry: any) => (
                         <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 600 }}>
-                          {entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : '—'}
+                          {entry.credit > 0 ? `+${formatCurrency(entry.credit)}` : <NotSet />}
                         </Typography>
                       ),
                     },
@@ -736,7 +733,7 @@ export function InvoicesPage() {
                       align: 'right',
                       render: (entry: any) => (
                         <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 600 }}>
-                          {entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : '—'}
+                          {entry.debit > 0 ? `-${formatCurrency(entry.debit)}` : <NotSet />}
                         </Typography>
                       ),
                     },
@@ -999,7 +996,7 @@ export function InvoicesPage() {
                     <Typography variant="caption" color="text.secondary">
                       HSN/SAC Code
                     </Typography>
-                    <Typography variant="body2">{detailsInvoice.taxFields.hsnSac || '—'}</Typography>
+                    <Typography variant="body2">{detailsInvoice.taxFields.hsnSac || <NotSet />}</Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary">

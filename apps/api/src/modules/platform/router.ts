@@ -1532,12 +1532,25 @@ export function createRouter(deps: ApiDeps): Router {
                   id, tenant_id, user_id, role_id, scope_type, scope_branch_ids, created_by
                 ) VALUES (
                   ${assignmentId}, ${ctx.principal.tenantId}, ${newUserId}, ${roleId},
-                  'TENANT', '{}', ${ctx.principal.id}
+                  'TENANT', ARRAY[]::text[], ${ctx.principal.id}
                 )
               `.execute(tx);
             }
           }
         }
+
+        await deps.audit.record(tx, ctx, {
+          action: 'user.created',
+          entityType: 'USER',
+          entityId: newUserId,
+          after: {
+            email: cleanEmail,
+            displayName: parsed.displayName.trim(),
+            primaryBranchId: parsed.primaryBranchId,
+            roleIds: parsed.roleIds ?? [],
+          },
+          permissionUsed: 'user.manage',
+        });
 
         // Fetch created user with roles
         const result = await sql<RawUserRow>`

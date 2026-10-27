@@ -22,6 +22,7 @@ import {
   StatusBadge,
   type ColumnDef,
 } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 export function LeadList() {
   const [stateFilter, setStateFilter] = useState<string>('');
@@ -110,7 +111,7 @@ export function LeadList() {
       accessor: (lead) =>
         lead.indicativeAmount
           ? `${lead.indicativeAmount.currency} ${lead.indicativeAmount.amount}`
-          : '—',
+          : <NotSet />,
     },
     {
       id: 'state',

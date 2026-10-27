@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LoginPage, HARDCODED_TEST_OTP } from './LoginPage';
+import { LoginPage } from './LoginPage';
+import { testOtp } from './test-auth';
 
 vi.mock('./AuthProvider', () => ({
   useAuth: () => ({
@@ -28,8 +29,8 @@ vi.mock('./supabase', () => ({
 }));
 
 describe('LoginPage Component — Clean Sign In UI', () => {
-  it('defines HARDCODED_TEST_OTP as 000000 by default', () => {
-    expect(HARDCODED_TEST_OTP).toBe('000000');
+  it('the fixed test code is 000000 by default', () => {
+    expect(testOtp()).toBe('000000');
   });
 
   it('renders clean standard sign in screen with email, password, and submit', () => {

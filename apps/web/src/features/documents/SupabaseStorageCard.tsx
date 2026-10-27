@@ -1,3 +1,4 @@
+import React from 'react';
 // apps/web/src/features/documents/SupabaseStorageCard.tsx — Direct Supabase Storage Cloud Explorer
 import {
   Alert,
@@ -33,6 +34,7 @@ import {
   uploadDirectToSupabase,
   type SupabaseStorageFile,
 } from './api';
+import { NotSet } from '../../ui/NotSet';
 
 function formatBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return '0 B';
@@ -42,8 +44,8 @@ function formatBytes(bytes?: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-function formatDate(isoString?: string | null): string {
-  if (!isoString) return '—';
+function formatDate(isoString?: string | null): React.ReactNode {
+  if (!isoString) return <NotSet />;
   try {
     const d = new Date(isoString);
     return d.toLocaleString('en-IN', {

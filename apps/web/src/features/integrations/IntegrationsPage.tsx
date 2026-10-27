@@ -343,14 +343,14 @@ export function IntegrationsPage() {
               columns={[
                 {
                   id: 'provider',
-                  header: 'Provider & Connection ID',
+                  header: 'Provider',
                   render: (conn) => (
                     <>
                       <Typography variant="subtitle2" fontWeight={700}>
                         {conn.provider}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {conn.id} (v{conn.lockVersion})
+                        Version {conn.lockVersion}
                       </Typography>
                     </>
                   ),

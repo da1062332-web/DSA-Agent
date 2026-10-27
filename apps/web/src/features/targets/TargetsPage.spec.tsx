@@ -62,7 +62,7 @@ describe('Module 20 — TargetsPage Frontend Component (MOD-PERF SUB-PERF.01)', 
 
     expect(html).toContain('Period');
     expect(html).toContain('Dimension');
-    expect(html).toContain('Dimension ID');
+    expect(html).toContain('Assigned to');
     expect(html).toContain('Metric');
     expect(html).toContain('Target Value');
     expect(html).toContain('Actuals');

@@ -38,6 +38,7 @@ import { ErrorAlert, LoadMore, Loading, PageHeader } from '../admin/components';
 import { DataTable } from '../../ui';
 import { createIncident, listIncidents, listSecurityEvents, updateIncident } from './api';
 import { label, needsAuthorityNotice, nextStatuses, severityTone } from './model';
+import { RowAction } from '../../shell/RowAction';
 
 const when = (iso: string) => new Date(iso).toLocaleString();
 
@@ -188,18 +189,18 @@ function IncidentsTab() {
               align: 'right',
               render: (i) => (
                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                  <Can action="security.incident">
-                    {i.personalDataInvolved && i.status !== 'CLOSED' && (
-                      <Button size="small" onClick={() => setNoticeFor(i)}>
-                        Record notice
-                      </Button>
-                    )}
-                    {nextStatuses(i.status).map((s) => (
-                      <Button key={s} size="small" disabled={change.isPending} onClick={() => change.mutate({ incident: i, status: s })}>
+                  <RowAction action="security.incident" allowed={i.personalDataInvolved && i.status !== 'CLOSED'}>
+                    <Button size="small" onClick={() => setNoticeFor(i)}>
+                      Record notice
+                    </Button>
+                  </RowAction>
+                  {nextStatuses(i.status).map((s) => (
+                    <RowAction key={s} action="security.incident">
+                      <Button size="small" disabled={change.isPending} onClick={() => change.mutate({ incident: i, status: s })}>
                         {label(s)}
                       </Button>
-                    ))}
-                  </Can>
+                    </RowAction>
+                  ))}
                 </Stack>
               ),
             },

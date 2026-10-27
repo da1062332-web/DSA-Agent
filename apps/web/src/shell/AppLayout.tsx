@@ -26,6 +26,7 @@ import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
+import { mfaSkipRequested } from '../auth/test-auth';
 
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { routeAllowed } from './access';
@@ -214,11 +215,11 @@ export function AppLayout() {
   }
 
   // Development builds only: a production build ignores it. The API enforces MFA whatever the screen does.
-  const skipMfa = import.meta.env?.DEV === true && import.meta.env?.VITE_DISABLE_MFA === 'true';
+  const skipMfa = mfaSkipRequested();
   const needsChallenge = !skipMfa && aal.next === 'aal2' && aal.current !== 'aal2';
   const needsEnrolment = !skipMfa && aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
-    return <Navigate to="/mfa" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
@@ -242,70 +243,34 @@ export function AppLayout() {
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
           }}
         >
-          <Toolbar disableGutters sx={{ gap: 1, minHeight: 64, pr: { xs: 2, md: 3 } }}>
-            {/* Fixed-width 72px column so the hamburger icon NEVER jumps and stays perfectly aligned with the collapsed rail */}
-            <Box
-              sx={{
-                width: 72,
-                minWidth: 72,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              {wide ? (
-                <Tooltip
-                  title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                  placement="right"
-                  arrow
-                >
-                  <IconButton
-                    color="inherit"
-                    onClick={toggleSidebarCollapse}
-                    aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    sx={{
-                      width: 44,
-                      height: 44,
-                      color: '#334155',
-                      bgcolor: 'rgba(15, 23, 42, 0.04)',
-                      '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)', color: '#0f172a' },
-                      borderRadius: 2.5,
-                    }}
-                  >
-                    <MenuIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Button
-                  color="inherit"
-                  onClick={() => setDrawerOpen(true)}
-                  data-testid="shell.menu"
-                  sx={{
-                    textTransform: 'none',
-                    bgcolor: 'rgba(15, 23, 42, 0.04)',
-                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
-                    color: '#0f172a',
-                    borderRadius: 1.5,
-                    px: 1.5,
-                    fontWeight: 600,
-                  }}
-                >
-                  Menu
-                </Button>
-              )}
-            </Box>
+          <Toolbar disableGutters sx={{ minHeight: 64, px: { xs: 2, md: 3 } }}>
+            {/* Mobile menu toggle for narrow screens */}
+            {!wide && (
+              <IconButton
+                color="inherit"
+                onClick={() => setDrawerOpen(true)}
+                data-testid="shell.menu"
+                aria-label="Open menu"
+                sx={{
+                  mr: 1.5,
+                  color: '#334155',
+                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.06)', color: '#0f172a' },
+                }}
+              >
+                <MenuIcon fontSize="small" />
+              </IconButton>
+            )}
 
+            {/* App Logo and Name properly positioned in navbar */}
             <Box
               component={RouterLink}
               to="/"
               sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 1.25,
+                gap: 1.5,
                 textDecoration: 'none',
-                ml: 0.5,
-                mr: 2,
+                userSelect: 'none',
               }}
             >
               <Box
@@ -313,8 +278,8 @@ export function AppLayout() {
                 src="/logo.png"
                 alt="DSA Platform Logo"
                 sx={{
-                  width: 34,
-                  height: 34,
+                  width: 36,
+                  height: 36,
                   borderRadius: 1.5,
                   objectFit: 'contain',
                   flexShrink: 0,
@@ -329,6 +294,7 @@ export function AppLayout() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.75,
+                  fontSize: { xs: '1.1rem', md: '1.25rem' },
                 }}
               >
                 {tenant.data?.legalName ?? 'DSA CRM'}
@@ -485,7 +451,7 @@ export function AppLayout() {
               platformRealm={platformRealm}
               onNavigate={() => setDrawerOpen(false)}
               collapsed={wide && sidebarCollapsed}
-              onToggleCollapse={wide ? toggleSidebarCollapse : undefined}
+              onToggleCollapse={wide ? toggleSidebarCollapse : () => setDrawerOpen(false)}
               onOpenSection={wide ? handleOpenSection : undefined}
               currentWidth={sidebarWidth}
               minWidth={MIN_SIDEBAR_WIDTH}

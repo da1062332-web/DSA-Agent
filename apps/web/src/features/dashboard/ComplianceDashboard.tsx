@@ -29,6 +29,7 @@ import {
   TaskWorkQueue,
   type TaskWorkQueueItem,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
 
 export function ComplianceDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
@@ -293,7 +294,7 @@ export function ComplianceDashboard() {
                     <TableCell>{evt.actorUserId ? `User #${evt.actorUserId.slice(0, 6)}` : 'System Daemon'}</TableCell>
                     <TableCell align="right">
                       <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                        {evt.createdAt || evt.occurredAt ? new Date(evt.createdAt || evt.occurredAt).toLocaleTimeString() : '—'}
+                        {evt.createdAt || evt.occurredAt ? new Date(evt.createdAt || evt.occurredAt).toLocaleTimeString() : <NotSet />}
                       </Typography>
                     </TableCell>
                   </TableRow>

@@ -131,7 +131,6 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
   ];
 
   const messageColumns: ColumnDef<MessageRecord>[] = [
-    { id: 'id', header: 'ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.id}</Box> },
     {
       id: 'channel',
       header: 'Channel',
