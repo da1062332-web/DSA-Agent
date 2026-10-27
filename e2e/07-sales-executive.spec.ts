@@ -315,6 +315,11 @@ test.describe('Persona 07: Sales Executive (ROLE-SALES-EXEC)', () => {
     await leadPage.showBanner('Route Guard: Audit Trail', 'Navigating to /audit (Expect 403 Forbidden)');
     await leadPage.goto('/audit');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    // Screens added to the menu later (manual flow 07 negative tests): Sales Executive holds none of their permissions
+    for (const path of ['/eligibility', '/documents', '/document-sharing', '/connector-portal']) {
+      await leadPage.goto(path);
+      await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    }
     await leadPage.showBanner('Role Boundaries Enforced', 'All operational and route boundaries strictly verified');
     await leadPage.pause(2000);
     await authPage.logout();

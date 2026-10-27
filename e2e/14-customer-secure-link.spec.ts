@@ -180,6 +180,54 @@ test.describe('Persona 14: Customer (Secure Link Portal)', () => {
   });
 
   // =========================================================================
+  // TC-CUST-06: OTP button needs 6 digits and a file over 15 MB is refused on the page (manual flow 14, Screens 1-2)
+  // =========================================================================
+  test('TC-CUST-06: verify button needs 6 digits and a file over 15 MB is refused before upload', async ({ page }) => {
+    const portalPage = new CustomerPortalPage(page);
+    let uploadCalls = 0;
+
+    await page.route(`**/public/v1/upload/${token}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          token,
+          status: 'ACTIVE',
+          otpRequired: true,
+          maskedContact: '+91 ******3210',
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+          requestedItems: [{ checklistItemId: 'chk_pan', documentTypeCode: 'PAN_CARD', ordinal: 1, mandatory: true }],
+        }),
+      });
+    });
+    await page.route(`**/public/v1/upload/${token}/otp-verification`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ uploadSessionToken: 'mock-upload-session-token-abc' }),
+      });
+    });
+    await page.route(`**/public/v1/upload/${token}/files`, async (route) => {
+      uploadCalls += 1;
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+    });
+
+    await portalPage.goto(`/upload/${token}`);
+    await expect(portalPage.identityVerificationHeader).toBeVisible();
+
+    await portalPage.otpInput.fill('12345');
+    await expect(portalPage.verifyOtpBtn).toBeDisabled();
+    await portalPage.otpInput.fill('123456');
+    await expect(portalPage.verifyOtpBtn).toBeEnabled();
+    await portalPage.verifyOtp('123456', 500);
+    await expect(portalPage.uploadPortalHeading).toBeVisible();
+
+    await portalPage.attachFile('too_big.pdf', 'application/pdf', Buffer.alloc(15 * 1024 * 1024 + 1, 0x41));
+    await expect(page.getByText('File size exceeds the 15MB limit.')).toBeVisible();
+    expect(uploadCalls).toBe(0);
+  });
+
+  // =========================================================================
   // TC-CUST-03 QA-CUST-001: expired link access is denied (QA plan Module 14 step 7)
   // The API answers an expired token with 410 LINK_EXPIRED (document-sharing-service resolvePublicLink), not a 200 status.
   // =========================================================================

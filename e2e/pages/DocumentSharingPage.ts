@@ -7,7 +7,7 @@ import { BasePage } from './BasePage';
 export class DocumentSharingPage extends BasePage {
   readonly openLinkFormBtn = this.page.getByTestId('sharing.link.open');
   readonly linkItemChips = this.page.getByTestId('sharing.link.item');
-  readonly generateLinkBtn = this.page.getByTestId('sharing.link.submit');
+  readonly generateLinkBtn = this.page.locator('[data-testid="sharing.link.submit"], button:has-text("Generate Link")');
   readonly revokeBtn = this.page.getByTestId('sharing.link.revoke');
   readonly closeDialogBtn = this.page.getByRole('dialog').getByRole('button', { name: 'Close' });
 

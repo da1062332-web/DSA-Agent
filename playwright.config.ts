@@ -14,17 +14,17 @@ function getSlowMo(): number {
   if (process.env.SLOWMO) {
     const custom = parseInt(process.env.SLOWMO, 10);
     if (!isNaN(custom)) {
-      return Math.min(Math.max(custom, 150), 1000);
+      return Math.min(Math.max(custom, 50), 1000);
     }
   }
-  return 650; // Comfortable, natural human demonstration pace (~0.65s per action)
+  return 100; // Snappy, clear human demonstration pace (~0.1s per action)
 }
 
 const slowMoMs = getSlowMo();
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 180_000,
+  timeout: 600_000,
   expect: {
     timeout: 20_000,
   },

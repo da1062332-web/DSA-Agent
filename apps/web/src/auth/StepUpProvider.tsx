@@ -17,7 +17,10 @@ import { useNavigate } from 'react-router-dom';
 import { registerStepUpHandler } from '../api/client';
 import { useAuth } from './AuthProvider';
 import { isTotpCode, verifiedTotpFactors, verifyTotp } from './totp';
-import { mfaSkipRequested } from './test-auth';
+import { getSupabase, saveBypassSession } from './supabase';
+import { setAuthToken } from './token';
+import { readConfig } from '../config';
+import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
 
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { refreshAal } = useAuth();
@@ -61,6 +64,31 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError(null);
     try {
+      // Test builds only: the fixed code goes to the test sign-in. Every other build verifies with Supabase.
+      if (testAuthEnabled() && code === testOtp()) {
+        const { data } = await getSupabase().auth.getSession();
+        const email = data?.session?.user?.email;
+        if (email) {
+          const config = readConfig();
+          const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+          const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim(), otp: code }),
+          });
+          const json = await res.json().catch(() => null);
+          if (res.ok && (json?.data?.access_token || json?.data?.session)) {
+            const sessionPayload = json.data.session || json.data;
+            saveBypassSession(sessionPayload);
+            setAuthToken(sessionPayload.access_token);
+            await refreshAal();
+            finish(true);
+            return;
+          }
+        }
+      }
+
       const [factor] = await verifiedTotpFactors();
       if (!factor) {
         finish(false);

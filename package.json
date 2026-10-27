@@ -29,11 +29,14 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:verify": "npm run verify:migrations -w @dsa/tools",
+    "db:feed:notion": "tsx --env-file-if-exists=apps/api/.env tools/feed-notion-real-data.ts",
     "test:isolation": "vitest run --config tests/isolation/vitest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:live": "playwright test -c playwright.live.config.ts"
+    "test:e2e:live": "playwright test -c playwright.live.config.ts",
+    "test:e2e:notion": "playwright test e2e/17-notion-golden-path-real-db.spec.ts",
+    "test:e2e:notion:headed": "playwright test e2e/17-notion-golden-path-real-db.spec.ts --headed"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.0",

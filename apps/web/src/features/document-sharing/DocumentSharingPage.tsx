@@ -555,7 +555,12 @@ export function DocumentSharingPage() {
         <DialogActions>
           <Button onClick={() => setIsLinkModalOpen(false)}>Close</Button>
           {!createdLinkResult && (
-            <Button variant="contained" onClick={handleCreateLink} disabled={createLinkMutation.isPending}>
+            <Button
+              variant="contained"
+              onClick={handleCreateLink}
+              disabled={createLinkMutation.isPending}
+              data-testid="sharing.link.submit"
+            >
               {createLinkMutation.isPending ? 'Generating...' : 'Generate Link'}
             </Button>
           )}

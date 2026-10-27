@@ -241,6 +241,11 @@ test.describe('Persona 09: Document Verifier (ROLE-DOC-VERIFIER)', () => {
     await vrfPage.showBanner('Route Guard: Approvals', 'Navigating to /approvals (Expect 403 Forbidden)');
     await vrfPage.goto('/approvals');
     await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    // Manual flow 09 negative tests: no lead or customer screens, no document-sharing (upload link) screen
+    for (const path of ['/leads', '/customers', '/document-sharing']) {
+      await vrfPage.goto(path);
+      await expect(page.getByText('You do not have permission to access this page.')).toBeVisible();
+    }
     await vrfPage.showBanner('Operational Boundaries Enforced', 'Verifier restricted to checklist reviews');
     await vrfPage.pause(2000);
     await authPage.logout();
