@@ -232,12 +232,14 @@ export function AppLayout() {
   return (
     <StepUpProvider>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        {/* Pinned to the top while the page scrolls, and above the sidebar, which sits just below it. */}
+        {/* Permanently fixed to top of viewport while content scrolls underneath */}
         <AppBar
-          position="sticky"
+          position="fixed"
           elevation={0}
           sx={{
             top: 0,
+            left: 0,
+            right: 0,
             zIndex: (t) => t.zIndex.drawer + 1,
             bgcolor: '#ffffff',
             color: '#0f172a',
@@ -368,7 +370,7 @@ export function AppLayout() {
             </Box>
           </Toolbar>
         </AppBar>
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', pt: '64px' }}>
           <Drawer
             variant={wide ? 'permanent' : 'temporary'}
             open={wide || drawerOpen}
