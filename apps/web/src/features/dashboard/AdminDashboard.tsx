@@ -39,20 +39,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   const isOwner = role === 'ROLE-ORG-OWNER' || me.data?.roles?.includes('ROLE-ORG-OWNER');
   const roleTitle = isOwner ? 'Organisation Owner' : 'Tenant Admin';
 
-  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
-  const canAccess = (path: string) =>
-    routeAllowed(path, (code) => hasPermission(me.data, code), platformRealm);
-
-  // Permission access guards
-  const canBranches = canAccess('/admin/branches');
-  const canUsers = canAccess('/users');
-  const canRoles = canAccess('/roles');
-  const canApplications = canAccess('/applications');
-  const canSanctions = canAccess('/sanctions');
-  const canAudit = canAccess('/audit');
-  const canLeads = canAccess('/leads');
-
-  // Active branches - only queried if user has access
+  // Active branches
   const {
     data: branchesData,
     isLoading: branchesLoading,
@@ -60,10 +47,9 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-branches-summary'],
     queryFn: () => fetchBranches(),
-    enabled: canBranches,
   });
 
-  // Staff users - only queried if user has access
+  // Staff users
   const {
     data: usersData,
     isLoading: usersLoading,
@@ -71,17 +57,16 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-users-summary'],
     queryFn: () => fetchUsers({ limit: 100 }),
-    enabled: canUsers,
   });
 
-  // Active Applications - only queried if user has access
+  // Active Applications
   const {
     data: appPages,
     isLoading: appsLoading,
     isError: appsError,
-  } = useList<Application>('/v1/applications', {}, 100, canApplications);
+  } = useList<Application>('/v1/applications', {}, 100);
 
-  // Inbound Leads - only queried if user has access
+  // Inbound Leads
   const {
     data: leadsData,
     isLoading: leadsLoading,
@@ -89,10 +74,9 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-leads-summary', dateScope],
     queryFn: () => fetchLeads({ limit: 100 }),
-    enabled: canLeads,
   });
 
-  // Audit Events - only queried if user has access
+  // Audit Events
   const {
     data: auditData,
     isLoading: auditLoading,
@@ -100,7 +84,6 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-audit-events-summary'],
     queryFn: () => searchAuditEvents({ limit: 20 }),
-    enabled: canAudit,
   });
 
   const branches = branchesData ?? [];
@@ -123,11 +106,35 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
     .filter((a) => a.status === 'DISBURSED' || a.status === 'SANCTIONED' || a.status === 'PARTIALLY_DISBURSED')
     .reduce((sum, a) => sum + (Number(a.requestedAmount) || 0), 0);
 
-  // Core Administration modules (strictly important executive governance cards)
+  // Administration module cards (preserving complete operational access for executives)
   const adminModules = [
     {
+      title: 'Leads & CRM',
+      desc: 'Capture, qualify and assign loan borrower leads.',
+      to: '/leads',
+      badge: 'Leads',
+    },
+    {
+      title: 'Tasks Management',
+      desc: 'Track underwriting checklist items and follow-ups.',
+      to: '/tasks',
+      badge: 'Tasks',
+    },
+    {
+      title: 'Loan Applications',
+      desc: 'Originate, review and submit NBFC loan files.',
+      to: '/applications',
+      badge: 'Origination',
+    },
+    {
+      title: 'Decision Rules',
+      desc: 'Simulate and manage business eligibility rules.',
+      to: '/rules',
+      badge: 'BRE Engine',
+    },
+    {
       title: 'User Management',
-      desc: 'Manage staff accounts, invitations, branch assignments, and roles.',
+      desc: 'Manage staff accounts, branch assignments, and roles.',
       to: '/users',
       badge: 'Users',
     },
@@ -138,10 +145,52 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       badge: 'Access Control',
     },
     {
-      title: 'Organisation & Branches',
-      desc: 'Configure branch hierarchy, operational queues, and tenant settings.',
-      to: '/admin/branches',
-      badge: 'Governance',
+      title: 'Document Sharing',
+      desc: 'Customer upload links, OTP verification portal, and lender share packages.',
+      to: '/document-sharing',
+      badge: 'Sharing',
+    },
+    {
+      title: 'Verification Workbench',
+      desc: 'PAN, GST, ITR, bank statement, bureau, and manual document verification.',
+      to: '/verifications',
+      badge: 'Verification',
+    },
+    {
+      title: 'Connector Management',
+      desc: 'Onboarding, bank dual-control SOD, agreements, and disputes.',
+      to: '/connectors',
+      badge: 'Connectors',
+    },
+    {
+      title: 'Commissions',
+      desc: 'Commission rule tiers, rate slabs, partner splits, and earnings calculation.',
+      to: '/commission',
+      badge: 'Commissions',
+    },
+    {
+      title: 'Payouts & Invoices',
+      desc: 'Partner payout runs, approvals, bank disbursement batches, and reconciliation.',
+      to: '/payouts',
+      badge: 'Payouts',
+    },
+    {
+      title: 'Sanctions & Disbursals',
+      desc: 'Lender sanction letter parsing, condition tracking, and multi-tranche disbursals.',
+      to: '/sanctions',
+      badge: 'Sanctions',
+    },
+    {
+      title: 'Reporting & Analytics',
+      desc: 'Standard report catalogue, operational KPIs, export jobs, and pipeline projections.',
+      to: '/reports',
+      badge: 'Reports',
+    },
+    {
+      title: 'Performance & Targets',
+      desc: 'Agent quota targets, pipeline velocity, team leaderboards, and achievement badges.',
+      to: '/performance',
+      badge: 'Performance',
     },
     {
       title: 'Audit & Governance',
@@ -150,16 +199,10 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       badge: 'Audit',
     },
     {
-      title: 'Commissions & Payouts',
-      desc: 'Commission rule tiers, rate slabs, partner splits, and earnings calculation.',
-      to: '/commission',
-      badge: 'Commissions',
-    },
-    {
-      title: 'Reporting & Analytics',
-      desc: 'Standard report catalogue, operational KPIs, export jobs, and pipeline projections.',
-      to: '/reports',
-      badge: 'Reports',
+      title: 'Organisation & Branches',
+      desc: 'Configure branch hierarchy, operational queues, and tenant settings.',
+      to: '/admin/branches',
+      badge: 'Governance',
     },
   ];
 
@@ -231,23 +274,12 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
-            title="Disbursed Volume"
-            value={disbursedTotal > 0 ? disbursedTotal : null}
-            format={disbursedTotal > 0 ? 'currency' : 'raw'}
-            subtitle={disbursedTotal > 0 ? 'Total portfolio volume' : 'No sanctions recorded'}
-            isLoading={appsLoading}
-            isError={appsError}
-            to="/sanctions"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiMetricCard
-            title="Total Originations"
-            value={applications.length}
-            subtitle="Active files across all branches"
-            isLoading={appsLoading}
-            isError={appsError}
-            to="/applications"
+            title="Operating Branches"
+            value={branches.length}
+            subtitle="Registered branch locations"
+            isLoading={branchesLoading}
+            isError={branchesError}
+            to="/admin/branches"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -262,12 +294,23 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
-            title="Operating Branches"
-            value={branches.length}
-            subtitle="Registered branch locations"
-            isLoading={branchesLoading}
-            isError={branchesError}
-            to="/admin/branches"
+            title="Total Originations"
+            value={applications.length}
+            subtitle="Active files across all branches"
+            isLoading={appsLoading}
+            isError={appsError}
+            to="/applications"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <KpiMetricCard
+            title="Disbursed Volume"
+            value={disbursedTotal > 0 ? disbursedTotal : null}
+            format={disbursedTotal > 0 ? 'currency' : 'raw'}
+            subtitle={disbursedTotal > 0 ? 'Total portfolio volume' : 'No sanctions recorded'}
+            isLoading={appsLoading}
+            isError={appsError}
+            to="/sanctions"
           />
         </Grid>
       </Grid>
@@ -350,19 +393,14 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
         </Grid>
       </Grid>
 
-      {/* Core Administration & Governance Modules */}
+      {/* Full-Width Administration Modules Directory */}
       <Box sx={{ mt: 1 }}>
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" fontWeight={700}>
-            Core Administration &amp; Governance
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Essential executive control portals for workforce oversight, access control, organization hierarchy, and regulatory compliance.
-          </Typography>
-        </Box>
-        <Grid container spacing={2.5}>
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+          Organisation Management Directory
+        </Typography>
+        <Grid container spacing={2}>
           {allowedModules.map((card) => (
-            <Grid item xs={12} sm={6} md={4} key={card.to}>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={card.to}>
               <Card
                 variant="outlined"
                 sx={{
