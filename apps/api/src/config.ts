@@ -85,6 +85,25 @@ const EnvSchema = z
       .transform((v) => v === 'true'),
     /** Secret for test-login tokens. Required with TEST_AUTH_ENABLED: no default, unique to the machine, never SUPABASE_JWT_SECRET. */
     BYPASS_JWT_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    /**
+     * Where document files are kept (MOD-DOC, audit AUD-013; owner Dev 3). local: a folder on this machine, lost on a redeploy, for
+     * development. s3: an S3-compatible bucket (AWS S3, the Supabase Storage S3 endpoint or MinIO) reached with its own access keys,
+     * never the Supabase service-role key. Files are encrypted at rest with a key derived from APP_SIGNING_SECRET either way.
+     */
+    DOCUMENT_STORE: z.enum(['local', 's3']).default('local'),
+    DOCUMENT_S3_ENDPOINT: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+    DOCUMENT_S3_REGION: z.string().default('us-east-1'),
+    DOCUMENT_S3_BUCKET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    DOCUMENT_S3_ACCESS_KEY_ID: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    DOCUMENT_S3_SECRET_ACCESS_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    /** clamd (ClamAV) that scans every document upload, as host or host:port (default port 3310). Unset: the signature check only. */
+    CLAMAV_ADDRESS: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z
+        .string()
+        .regex(/^[A-Za-z0-9.-]+(:\d{1,5})?$/, 'must be host or host:port')
+        .optional(),
+    ),
   })
   .superRefine((env, ctx) => {
     if (FORBIDDEN_DB_USERS.test(decodeURIComponent(new URL(env.DATABASE_URL).username))) {
@@ -131,6 +150,18 @@ const EnvSchema = z
         path: ['TEST_TOKENS'],
         message: 'test tokens are allowed only against the local Supabase stack (Contracts §7)',
       });
+    }
+    if (env.DOCUMENT_STORE === 's3') {
+      for (const name of [
+        'DOCUMENT_S3_ENDPOINT',
+        'DOCUMENT_S3_BUCKET',
+        'DOCUMENT_S3_ACCESS_KEY_ID',
+        'DOCUMENT_S3_SECRET_ACCESS_KEY',
+      ] as const) {
+        if (!env[name]) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [name], message: 'is required when DOCUMENT_STORE is s3' });
+        }
+      }
     }
     if (env.TEST_AUTH_ENABLED) {
       for (const message of testAuthProblems(env)) {

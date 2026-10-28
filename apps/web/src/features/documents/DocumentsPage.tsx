@@ -8,7 +8,16 @@ import { useList } from '../admin/api';
 import { ErrorAlert, LoadMore, Loading } from '../admin/components';
 import { CustomerName } from '../../shell/display';
 import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from '../applications/rules';
-import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
+import {
+  AppButton,
+  DataTable,
+  DetailCard,
+  FilterToolbar,
+  PageHeader,
+  StatCard,
+  StatCardGrid,
+  StatusBadge,
+} from '../../ui';
 import type { ColumnDef } from '../../ui';
 import { ChecklistCard } from './ChecklistCard';
 import { SupabaseStorageCard } from './SupabaseStorageCard';
@@ -147,6 +156,13 @@ export function DocumentsPage() {
       <PageHeader
         title="Documents"
         subtitle="Choose an application to see the documents it needs and where each one stands. Upload, view, review (accept or reject with a reason) and waive from the checklist; customers can also upload through Document sharing."
+        actions={
+          hasPermission(me.data, 'config.manage') ? (
+            <AppButton variant="outlined" to="/documents/types" dataTestId="documents.types-link">
+              Document types
+            </AppButton>
+          ) : undefined
+        }
       />
 
       <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }}>

@@ -193,11 +193,10 @@ export function registerPartyRoutes(router: Router, deps: ApiDeps): void {
                 { field: 'customerId', issue: 'DUPLICATE' },
               ]);
             }
+            // An unknown or other-tenant customer is NOT_FOUND (404), as in API-APP-001, so nothing about it leaks.
             const party = await partyPort(deps).getParty(tx, input.customerId);
             if (!party) {
-              throw AppError.of('VALIDATION_ERROR', 'The customer was not found.', [
-                { field: 'customerId', issue: 'NOT_FOUND' },
-              ]);
+              throw AppError.of('NOT_FOUND', 'Customer not found.', [{ field: 'customerId', issue: 'NOT_FOUND' }]);
             }
             partyId = deps.ids.next('pty');
             await sql`

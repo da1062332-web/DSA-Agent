@@ -5,23 +5,20 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Grid,
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { DataTable, PageHeader } from '../../ui';
@@ -37,6 +34,7 @@ import type {
   RecordTrancheInput,
   Sanction,
   VerifyTrancheInput,
+  VoidTrancheInput,
 } from './types';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
@@ -64,30 +62,40 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dialog states
+  // Dialog visibility states
   const [sanctionDialogOpen, setSanctionDialogOpen] = useState<boolean>(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState<boolean>(false);
   const [trancheDialogOpen, setTrancheDialogOpen] = useState<boolean>(false);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState<boolean>(false);
+  const [exceptionDialogOpen, setExceptionDialogOpen] = useState<boolean>(false);
+  const [voidDialogOpen, setVoidDialogOpen] = useState<boolean>(false);
   const [selectedTranche, setSelectedTranche] = useState<DisbursementTranche | null>(null);
 
   // Sanction form
-  const [sanctionForm, setSanctionForm] = useState<RecordSanctionInput>({
+  const [sanctionForm, setSanctionForm] = useState<RecordSanctionInput & { conditionsText?: string }>({
     amount: 1000000,
     tenureMonths: 120,
     rateValue: 8.75,
     rateType: 'FLOATING' as RateType,
+    benchmarkText: '',
+    feesText: '',
+    conditionsText: '',
     sanctionDate: new Date().toISOString().slice(0, 10),
     validUntil: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-    letterDocumentId: 'doc_sanction_letter_01',
+    letterDocumentId: '',
   });
+
+  // Cancel form
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   // Tranche form
   const [trancheForm, setTrancheForm] = useState<RecordTrancheInput>({
     amount: 500000,
     disbursedOn: new Date().toISOString().slice(0, 10),
-    utr: 'UTR202610130001',
-    loanAccountNumber: 'LA9876543210',
-    evidenceDocumentId: 'doc_disbursal_receipt_01',
+    utr: '',
+    loanAccountNumber: '',
+    evidenceDocumentId: '',
   });
 
   // Form validation errors
@@ -108,6 +116,21 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
     decision: 'VERIFY',
     comment: '',
   });
+
+  // Exception form
+  const [exceptionReason, setExceptionReason] = useState<string>('');
+  const [exceptionError, setExceptionError] = useState<string | null>(null);
+
+  // Void form
+  const [voidReason, setVoidReason] = useState<string>('');
+  const [createReplacement, setCreateReplacement] = useState<boolean>(false);
+  const [replacementAmount, setReplacementAmount] = useState<number | ''>('');
+  const [replacementDisbursedOn, setReplacementDisbursedOn] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [replacementUtr, setReplacementUtr] = useState<string>('');
+  const [replacementLoanAccount, setReplacementLoanAccount] = useState<string>('');
+  const [voidError, setVoidError] = useState<string | null>(null);
 
   const activeSanction = sanctions.find((s) => s.status === 'ACTIVE') ?? sanctions[sanctions.length - 1];
 
@@ -167,12 +190,49 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
     try {
       setError(null);
-      await sanctionsApi.recordSanction(lenderCaseId, sanctionForm);
+      const conditions = sanctionForm.conditionsText
+        ? sanctionForm.conditionsText
+            .split('\n')
+            .map((c) => c.trim())
+            .filter((c) => c.length > 0)
+        : [];
+
+      await sanctionsApi.recordSanction(lenderCaseId, {
+        amount: Number(sanctionForm.amount),
+        tenureMonths: Number(sanctionForm.tenureMonths),
+        rateValue: Number(sanctionForm.rateValue),
+        rateType: sanctionForm.rateType,
+        benchmarkText: sanctionForm.benchmarkText?.trim() || null,
+        feesText: sanctionForm.feesText?.trim() || null,
+        conditions,
+        sanctionDate: sanctionForm.sanctionDate,
+        validUntil: sanctionForm.validUntil,
+        letterDocumentId: sanctionForm.letterDocumentId?.trim() || null,
+      });
+
       setSanctionDialogOpen(false);
       setSanctionErrors({});
       await fetchSanctions();
     } catch (err: any) {
       setError(err.message ?? 'Failed to record sanction');
+    }
+  };
+
+  const handleCancelSanction = async () => {
+    if (!activeSanction) return;
+    if (!cancelReason || cancelReason.trim().length < 3) {
+      setCancelError('Cancellation reason must be at least 3 characters.');
+      return;
+    }
+    try {
+      setError(null);
+      setCancelError(null);
+      await sanctionsApi.cancelSanction(activeSanction.id, cancelReason.trim());
+      setCancelDialogOpen(false);
+      setCancelReason('');
+      await fetchSanctions();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to cancel sanction');
     }
   };
 
@@ -197,7 +257,13 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
     try {
       setError(null);
-      await sanctionsApi.recordTranche(activeSanction.id, trancheForm);
+      await sanctionsApi.recordTranche(activeSanction.id, {
+        amount: Number(trancheForm.amount),
+        disbursedOn: trancheForm.disbursedOn,
+        utr: trancheForm.utr?.trim() || null,
+        loanAccountNumber: trancheForm.loanAccountNumber?.trim() || null,
+        evidenceDocumentId: trancheForm.evidenceDocumentId?.trim() || null,
+      });
       setTrancheDialogOpen(false);
       setTrancheErrors({});
       await fetchSanctions();
@@ -215,6 +281,55 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
       await fetchSanctions();
     } catch (err: any) {
       setError(err.message ?? 'Failed to verify tranche');
+    }
+  };
+
+  const handleApproveException = async () => {
+    if (!selectedTranche) return;
+    if (!exceptionReason || exceptionReason.trim().length < 5) {
+      setExceptionError('Exception reason must be at least 5 characters.');
+      return;
+    }
+    try {
+      setError(null);
+      setExceptionError(null);
+      await sanctionsApi.approveException(selectedTranche.id, { reason: exceptionReason.trim() });
+      setExceptionDialogOpen(false);
+      setExceptionReason('');
+      await fetchSanctions();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to approve exception');
+    }
+  };
+
+  const handleVoidTranche = async () => {
+    if (!selectedTranche) return;
+    if (!voidReason || voidReason.trim().length < 5) {
+      setVoidError('Void reason must be at least 5 characters.');
+      return;
+    }
+    try {
+      setError(null);
+      setVoidError(null);
+      const payload: VoidTrancheInput = {
+        reason: voidReason.trim(),
+        createReplacement,
+        replacement: createReplacement && replacementAmount
+          ? {
+              amount: Number(replacementAmount),
+              disbursedOn: replacementDisbursedOn,
+              utr: replacementUtr.trim() || null,
+              loanAccountNumber: replacementLoanAccount.trim() || null,
+            }
+          : undefined,
+      };
+      await sanctionsApi.voidTranche(selectedTranche.id, payload);
+      setVoidDialogOpen(false);
+      setVoidReason('');
+      setCreateReplacement(false);
+      await fetchSanctions();
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to void tranche');
     }
   };
 
@@ -250,7 +365,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" p={4} data-testid="sanctions-panel-loading">
+      <Box data-testid="sanctions-panel-loading" display="flex" justifyContent="center" p={4}>
         <CircularProgress />
       </Box>
     );
@@ -266,7 +381,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
       <PageHeader
         title="Sanctions & Disbursements"
-        subtitle="Lender case sanctions, tranche disbursements and UTR verification"
+        subtitle="Lender case credit sanctions, multi-tranche disbursals, UTR tracking, and dual-control verification"
       />
 
       {/* Sanction Summary Card */}
@@ -279,11 +394,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
               </Typography>
               {activeSanction && (
                 <Typography variant="body2" color="text.secondary">
-                  Version {activeSanction.version} • Sanctioned on {activeSanction.sanctionDate}
+                  Version {activeSanction.version} • Sanctioned on {activeSanction.sanctionDate} • Source: {activeSanction.source}
                 </Typography>
               )}
             </Box>
-            <Box>
+            <Box display="flex" alignItems="center" gap={1}>
               {activeSanction && (
                 <Chip
                   label={activeSanction.status}
@@ -292,58 +407,147 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                       ? 'success'
                       : activeSanction.status === 'REVISED'
                         ? 'info'
-                        : 'default'
+                        : activeSanction.status === 'CANCELLED'
+                          ? 'error'
+                          : 'default'
                   }
                   size="small"
                   sx={{ mr: 1 }}
                 />
               )}
               <Can action="sanction.record">
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={() => setSanctionDialogOpen(true)}
-                  data-testid="record-sanction-btn"
-                >
-                  {activeSanction ? 'Revise Sanction Terms' : 'Record Sanction'}
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      if (activeSanction) {
+                        setSanctionForm({
+                          amount: activeSanction.amount,
+                          tenureMonths: activeSanction.tenureMonths,
+                          rateValue: activeSanction.rateValue,
+                          rateType: activeSanction.rateType,
+                          benchmarkText: activeSanction.benchmarkText ?? '',
+                          feesText: activeSanction.feesText ?? '',
+                          conditionsText: activeSanction.conditions ? activeSanction.conditions.join('\n') : '',
+                          sanctionDate: activeSanction.sanctionDate,
+                          validUntil: activeSanction.validUntil,
+                          letterDocumentId: activeSanction.letterDocumentId ?? '',
+                        });
+                      }
+                      setSanctionDialogOpen(true);
+                    }}
+                    data-testid="record-sanction-btn"
+                  >
+                    {activeSanction ? 'Revise Sanction Terms' : 'Record Sanction'}
+                  </Button>
+                  {activeSanction && activeSanction.status === 'ACTIVE' && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => setCancelDialogOpen(true)}
+                      data-testid="cancel-sanction-btn"
+                    >
+                      Cancel Sanction
+                    </Button>
+                  )}
+                </Stack>
               </Can>
             </Box>
           </Box>
 
           {activeSanction ? (
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">
-                  Sanction Amount
-                </Typography>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  ₹{activeSanction.amount.toLocaleString('en-IN')}
-                </Typography>
+            <>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <Typography variant="caption" color="text.secondary">
+                    Sanction Amount
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    ₹{activeSanction.amount.toLocaleString('en-IN')}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <Typography variant="caption" color="text.secondary">
+                    Tenure & Rate
+                  </Typography>
+                  <Typography variant="subtitle1">
+                    {activeSanction.tenureMonths} mos @ {activeSanction.rateValue}% ({activeSanction.rateType})
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <Typography variant="caption" color="text.secondary">
+                    Validity Period
+                  </Typography>
+                  <Typography variant="subtitle1">Until {activeSanction.validUntil}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <Typography variant="caption" color="text.secondary">
+                    Remaining Limit
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                    ₹{remainingSanctionLimit.toLocaleString('en-IN')}
+                  </Typography>
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">
-                  Tenure & Rate
-                </Typography>
-                <Typography variant="subtitle1">
-                  {activeSanction.tenureMonths} mos @ {activeSanction.rateValue}% ({activeSanction.rateType})
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">
-                  Validity Period
-                </Typography>
-                <Typography variant="subtitle1">Until {activeSanction.validUntil}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <Typography variant="caption" color="text.secondary">
-                  Remaining Limit
-                </Typography>
-                <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                  ₹{remainingSanctionLimit.toLocaleString('en-IN')}
-                </Typography>
-              </Grid>
-            </Grid>
+
+              {/* Extra Sanction Details: Benchmark, Fees, Letter Doc */}
+              {(activeSanction.benchmarkText || activeSanction.feesText || activeSanction.letterDocumentId || activeSanction.cancelReason) && (
+                <Grid container spacing={2} sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                  {activeSanction.benchmarkText && (
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="text.secondary">
+                        Benchmark Reference
+                      </Typography>
+                      <Typography variant="body2">{activeSanction.benchmarkText}</Typography>
+                    </Grid>
+                  )}
+                  {activeSanction.feesText && (
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="text.secondary">
+                        Fee Structure
+                      </Typography>
+                      <Typography variant="body2">{activeSanction.feesText}</Typography>
+                    </Grid>
+                  )}
+                  {activeSanction.letterDocumentId && (
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="text.secondary">
+                        Sanction Letter Document
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                        {activeSanction.letterDocumentId}
+                      </Typography>
+                    </Grid>
+                  )}
+                  {activeSanction.cancelReason && (
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="error.main">
+                        Cancellation Reason
+                      </Typography>
+                      <Typography variant="body2" color="error.dark">
+                        {activeSanction.cancelReason}
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+
+              {/* Sanction Conditions Precedent */}
+              {activeSanction.conditions && activeSanction.conditions.length > 0 && (
+                <Box sx={{ mt: 2, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                  <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                    Conditions Precedent ({activeSanction.conditions.length})
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {activeSanction.conditions.map((condition, idx) => (
+                      <Chip key={idx} label={condition} size="small" variant="outlined" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary">
               No sanction has been recorded yet for this lender case.
@@ -367,8 +571,11 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   disabled={activeSanction.status !== 'ACTIVE' || remainingSanctionLimit <= 0}
                   onClick={() => {
                     setTrancheForm({
-                      ...trancheForm,
                       amount: Math.min(500000, remainingSanctionLimit),
+                      disbursedOn: new Date().toISOString().slice(0, 10),
+                      utr: '',
+                      loanAccountNumber: '',
+                      evidenceDocumentId: '',
                     });
                     setTrancheDialogOpen(true);
                   }}
@@ -390,29 +597,70 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 keyExtractor={(t) => t.id}
                 columns={[
                   { id: 'no', header: 'Tranche #', render: (t) => `#${t.trancheNo}` },
-                  { id: 'amount', header: 'Amount', render: (t) => <Box sx={{ fontWeight: 'bold' }}>₹{t.amount.toLocaleString('en-IN')}</Box> },
+                  {
+                    id: 'amount',
+                    header: 'Amount',
+                    render: (t) => <Box sx={{ fontWeight: 'bold' }}>₹{t.amount.toLocaleString('en-IN')}</Box>,
+                  },
                   { id: 'on', header: 'Disbursed On', render: (t) => t.disbursedOn },
                   {
                     id: 'status',
                     header: 'Status',
                     render: (t) => (
-                      <Chip
-                        label={t.status}
-                        size="small"
-                        color={
-                          t.status === 'VERIFIED'
-                            ? 'success'
-                            : t.status === 'RECORDED'
-                              ? 'warning'
-                              : t.status === 'RETURNED'
-                                ? 'error'
-                                : 'default'
-                        }
-                      />
+                      <Box>
+                        <Chip
+                          label={t.status}
+                          size="small"
+                          color={
+                            t.status === 'VERIFIED'
+                              ? 'success'
+                              : t.status === 'RECORDED'
+                                ? 'warning'
+                                : t.status === 'RETURNED'
+                                  ? 'error'
+                                  : 'default'
+                          }
+                        />
+                        {t.exceptionApprovalId && (
+                          <Tooltip title={t.verificationComment || 'Evidence exception approved by supervisor'}>
+                            <Chip
+                              label="Exception Approved"
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                              sx={{ ml: 0.5, fontSize: '0.68rem' }}
+                            />
+                          </Tooltip>
+                        )}
+                        {t.voidReason && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Void: {t.voidReason}
+                          </Typography>
+                        )}
+                        {t.replacedByTrancheId && (
+                          <Typography variant="caption" color="primary.main" display="block">
+                            Replaced by {t.replacedByTrancheId}
+                          </Typography>
+                        )}
+                      </Box>
                     ),
                   },
                   { id: 'utr', header: 'UTR (Masked)', render: (t) => t.utrMasked ?? <NotSet /> },
                   { id: 'loan', header: 'Loan Account', render: (t) => t.loanAccountMasked ?? <NotSet /> },
+                  {
+                    id: 'evidence',
+                    header: 'Evidence Doc',
+                    render: (t) =>
+                      t.evidenceDocumentId ? (
+                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                          {t.evidenceDocumentId}
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="warning.main">
+                          None (Exception required)
+                        </Typography>
+                      ),
+                  },
                   {
                     id: 'actions',
                     header: 'Actions',
@@ -420,22 +668,72 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                     render: (t) => {
                       const isRecorder = currentUserId && t.recordedBy === currentUserId;
                       return (
-                        <RowAction allowed={t.status === 'RECORDED'} action="disbursement.verify">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            disabled={Boolean(isRecorder)}
-                            title={isRecorder ? 'Segregation of duties: Creator cannot verify' : 'Verify Tranche'}
-                            onClick={() => {
-                              setSelectedTranche(t);
-                              setVerifyDialogOpen(true);
-                            }}
-                            data-testid={`verify-tranche-btn-${t.id}`}
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          {/* SOD-04 Verification */}
+                          <RowAction allowed={t.status === 'RECORDED'} action="disbursement.verify">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                              disabled={Boolean(isRecorder)}
+                              title={isRecorder ? 'Segregation of duties: Creator cannot verify' : 'Verify Tranche'}
+                              onClick={() => {
+                                setSelectedTranche(t);
+                                setVerifyDialogOpen(true);
+                              }}
+                              data-testid={`verify-tranche-btn-${t.id}`}
+                            >
+                              {isRecorder ? 'SOD Lock' : 'Verify'}
+                            </Button>
+                          </RowAction>
+
+                          {/* Exception Approval (for tranches missing evidence document) */}
+                          <RowAction
+                            allowed={t.status === 'RECORDED' && !t.exceptionApprovalId}
+                            action="disbursement.exception_approve"
                           >
-                            {isRecorder ? 'SOD Lock' : 'Verify'}
-                          </Button>
-                        </RowAction>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="warning"
+                              onClick={() => {
+                                setSelectedTranche(t);
+                                setExceptionReason('');
+                                setExceptionError(null);
+                                setExceptionDialogOpen(true);
+                              }}
+                              data-testid={`exception-tranche-btn-${t.id}`}
+                            >
+                              Exception
+                            </Button>
+                          </RowAction>
+
+                          {/* Void Tranche */}
+                          <RowAction
+                            allowed={t.status === 'RECORDED' || t.status === 'VERIFIED'}
+                            action="disbursement.record"
+                          >
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => {
+                                setSelectedTranche(t);
+                                setVoidReason('');
+                                setVoidError(null);
+                                setCreateReplacement(false);
+                                setReplacementAmount(Number(t.amount));
+                                setReplacementDisbursedOn(new Date().toISOString().slice(0, 10));
+                                setReplacementUtr('');
+                                setReplacementLoanAccount('');
+                                setVoidDialogOpen(true);
+                              }}
+                              data-testid={`void-tranche-btn-${t.id}`}
+                            >
+                              Void
+                            </Button>
+                          </RowAction>
+                        </Stack>
                       );
                     },
                   },
@@ -471,7 +769,9 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   if (sanctionErrors.amount) setSanctionErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
                 inputProps={{ min: 0, 'data-testid': 'sanction.amount' }}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -484,17 +784,19 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 helperText={sanctionErrors.tenureMonths}
                 value={sanctionForm.tenureMonths || ''}
                 onChange={(e) => {
-                  const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                  const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10));
                   setSanctionForm({ ...sanctionForm, tenureMonths: val });
                   if (sanctionErrors.tenureMonths) setSanctionErrors((prev) => ({ ...prev, tenureMonths: undefined }));
                 }}
                 inputProps={{ min: 1, 'data-testid': 'sanction.tenureMonths' }}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Interest Rate (%)"
+                label="Interest Rate (% p.a.)"
                 type="number"
                 fullWidth
                 required
@@ -507,7 +809,9 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   if (sanctionErrors.rateValue) setSanctionErrors((prev) => ({ ...prev, rateValue: undefined }));
                 }}
                 inputProps={{ min: 0, step: 0.01, 'data-testid': 'sanction.rateValue' }}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -548,12 +852,87 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 inputProps={{ 'data-testid': 'sanction.validUntil' }}
               />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Benchmark Reference (e.g. Repo + 2.25%)"
+                fullWidth
+                value={sanctionForm.benchmarkText ?? ''}
+                onChange={(e) => setSanctionForm({ ...sanctionForm, benchmarkText: e.target.value })}
+                inputProps={{ maxLength: 200, 'data-testid': 'sanction.benchmarkText' }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Fee Structure (e.g. 0.5% + GST)"
+                fullWidth
+                value={sanctionForm.feesText ?? ''}
+                onChange={(e) => setSanctionForm({ ...sanctionForm, feesText: e.target.value })}
+                inputProps={{ maxLength: 500, 'data-testid': 'sanction.feesText' }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Sanction Letter Document ID (from Document Hub)"
+                fullWidth
+                placeholder="e.g. doc_01JHDFC_SANCTION_LETTER"
+                value={sanctionForm.letterDocumentId ?? ''}
+                onChange={(e) => setSanctionForm({ ...sanctionForm, letterDocumentId: e.target.value })}
+                inputProps={{ 'data-testid': 'sanction.letterDocumentId' }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Conditions Precedent (one per line)"
+                fullWidth
+                multiline
+                rows={3}
+                placeholder="e.g.&#10;Original title deed verification&#10;CIBIL clear score > 750"
+                value={sanctionForm.conditionsText ?? ''}
+                onChange={(e) => setSanctionForm({ ...sanctionForm, conditionsText: e.target.value })}
+                inputProps={{ 'data-testid': 'sanction.conditionsText' }}
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSanctionDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleRecordSanction} data-testid="sanction.save-btn">
             Save Sanction
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cancel Sanction Dialog */}
+      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Cancel Credit Sanction</DialogTitle>
+        <DialogContent dividers>
+          {cancelError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {cancelError}
+            </Alert>
+          )}
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Cancelling this sanction will transition the lender case to <strong>SANCTION_CANCELLED</strong>. This action cannot be reversed.
+          </Typography>
+          <TextField
+            label="Cancellation Reason"
+            fullWidth
+            required
+            multiline
+            rows={3}
+            placeholder="e.g. Borrower selected competing lender with lower interest rate"
+            value={cancelReason}
+            onChange={(e) => {
+              setCancelReason(e.target.value);
+              if (cancelError) setCancelError(null);
+            }}
+            inputProps={{ 'data-testid': 'cancel-sanction-reason' }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)}>Dismiss</Button>
+          <Button variant="contained" color="error" onClick={handleCancelSanction} data-testid="confirm-cancel-sanction-btn">
+            Confirm Cancellation
           </Button>
         </DialogActions>
       </Dialog>
@@ -588,7 +967,9 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   if (trancheErrors.amount) setTrancheErrors((prev) => ({ ...prev, amount: undefined }));
                 }}
                 inputProps={{ min: 0, 'data-testid': 'tranche.amount' }}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -627,9 +1008,21 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 value={trancheForm.loanAccountNumber}
                 onChange={(e) => {
                   setTrancheForm({ ...trancheForm, loanAccountNumber: e.target.value });
-                  if (trancheErrors.loanAccountNumber) setTrancheErrors((prev) => ({ ...prev, loanAccountNumber: undefined }));
+                  if (trancheErrors.loanAccountNumber)
+                    setTrancheErrors((prev) => ({ ...prev, loanAccountNumber: undefined }));
                 }}
                 inputProps={{ 'data-testid': 'tranche.loanAccount' }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Evidence Document ID (Receipt / Bank Advice)"
+                fullWidth
+                placeholder="e.g. doc_disbursement_receipt_01"
+                helperText="Optional. If omitted, independent verification will require an approved evidence exception."
+                value={trancheForm.evidenceDocumentId ?? ''}
+                onChange={(e) => setTrancheForm({ ...trancheForm, evidenceDocumentId: e.target.value })}
+                inputProps={{ 'data-testid': 'tranche.evidenceDocumentId' }}
               />
             </Grid>
           </Grid>
@@ -667,6 +1060,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                 fullWidth
                 multiline
                 rows={3}
+                required
                 sx={{ mt: 2 }}
                 value={verifyForm.comment}
                 onChange={(e) => setVerifyForm({ ...verifyForm, comment: e.target.value })}
@@ -682,6 +1076,133 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
             onClick={handleVerifyTranche}
           >
             Submit Decision
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Approve Exception Dialog */}
+      <Dialog open={exceptionDialogOpen} onClose={() => setExceptionDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Approve Evidence Exception</DialogTitle>
+        <DialogContent dividers>
+          {exceptionError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {exceptionError}
+            </Alert>
+          )}
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Tranche #{selectedTranche?.trancheNo} does not have an attached evidence document. As an authorized supervisor, please provide justification to allow verification:
+          </Typography>
+          <TextField
+            label="Exception Reason / Justification"
+            fullWidth
+            required
+            multiline
+            rows={3}
+            placeholder="e.g. Bank confirmation verified directly via corporate banking portal"
+            value={exceptionReason}
+            onChange={(e) => {
+              setExceptionReason(e.target.value);
+              if (exceptionError) setExceptionError(null);
+            }}
+            inputProps={{ 'data-testid': 'exception-reason-input' }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExceptionDialogOpen(false)}>Dismiss</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleApproveException}
+            data-testid="confirm-exception-btn"
+          >
+            Approve Exception
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Void Tranche Dialog */}
+      <Dialog open={voidDialogOpen} onClose={() => setVoidDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Void Disbursement Tranche #{selectedTranche?.trancheNo}</DialogTitle>
+        <DialogContent dividers>
+          {voidError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {voidError}
+            </Alert>
+          )}
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Voiding will invalidate this tranche and return its amount back to the remaining sanction limit.
+          </Typography>
+          <TextField
+            label="Void Reason (mandatory)"
+            fullWidth
+            required
+            multiline
+            rows={2}
+            placeholder="e.g. Erroneous bank account number entered by ops"
+            value={voidReason}
+            onChange={(e) => {
+              setVoidReason(e.target.value);
+              if (voidError) setVoidError(null);
+            }}
+            inputProps={{ 'data-testid': 'void-reason-input' }}
+            sx={{ mb: 2 }}
+          />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={createReplacement}
+                onChange={(e) => setCreateReplacement(e.target.checked)}
+                data-testid="create-replacement-checkbox"
+              />
+            }
+            label="Create immediate replacement tranche with corrected details"
+          />
+
+          {createReplacement && (
+            <Grid container spacing={2} sx={{ mt: 1, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Replacement Amount (₹)"
+                  type="number"
+                  fullWidth
+                  value={replacementAmount}
+                  onChange={(e) => setReplacementAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Disbursed Date"
+                  type="date"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={replacementDisbursedOn}
+                  onChange={(e) => setReplacementDisbursedOn(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Corrected UTR Reference"
+                  fullWidth
+                  value={replacementUtr}
+                  onChange={(e) => setReplacementUtr(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Corrected Loan Account"
+                  fullWidth
+                  value={replacementLoanAccount}
+                  onChange={(e) => setReplacementLoanAccount(e.target.value)}
+                />
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVoidDialogOpen(false)}>Dismiss</Button>
+          <Button variant="contained" color="error" onClick={handleVoidTranche} data-testid="confirm-void-btn">
+            Void Tranche
           </Button>
         </DialogActions>
       </Dialog>

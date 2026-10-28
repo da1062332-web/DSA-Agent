@@ -142,7 +142,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a166
+          enum: &a167
             - ACTIVE
             - SUSPENDED
             - OFFBOARDING
@@ -334,7 +334,7 @@ components:
               attributes:
                 type: object
                 additionalProperties: {}
-                default: &a167 {}
+                default: &a168 {}
             required:
               - code
               - label
@@ -608,7 +608,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a169
+          enum: &a170
             - APPROVED
             - DENIED
         comments:
@@ -713,7 +713,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a170
+          enum: &a171
             - APPROVED
             - REJECTED
         comments:
@@ -780,7 +780,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a168
+          enum: &a169
             - CANDIDATE
             - STAGING
             - PUBLISHED
@@ -2297,7 +2297,7 @@ components:
           type: string
         purpose:
           type: string
-          enum: &a155
+          enum: &a156
             - CONTACT
             - LOAN_PROCESSING
             - SHARE_WITH_LENDER
@@ -3210,6 +3210,23 @@ components:
           type: array
           items:
             type: string
+        itemDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              documentTypeCode:
+                type: string
+              ordinal:
+                type: integer
+              mandatory:
+                type: boolean
+            required:
+              - id
+              - documentTypeCode
+              - ordinal
         recipientContactId:
           type: string
         expiresAt:
@@ -11522,7 +11539,7 @@ paths:
                     pattern: ^adj_[0-9A-HJKMNP-TV-Z]{26}$
                   adjustmentType:
                     type: string
-                    enum: &a174
+                    enum: &a175
                       - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
@@ -12462,7 +12479,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-28T03:34:52.350Z
+                  default: 2026-10-28T03:59:25.860Z
               required:
                 - paymentRef
       responses:
@@ -27074,7 +27091,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum:
+                          enum: &a131
                             - PENDING
                             - SUBMITTED
                             - ACCEPTED
@@ -27082,6 +27099,121 @@ paths:
                             - WAIVED
                             - NOT_APPLICABLE
                             - EXPIRED
+                        rejectReason:
+                          type:
+                            - string
+                            - "null"
+                        attestationNote:
+                          type:
+                            - string
+                            - "null"
+                        reviewedBy:
+                          type:
+                            - string
+                            - "null"
+                        reviewedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        documentId:
+                          type:
+                            - string
+                            - "null"
+                        sourceDecisionId:
+                          type: string
+                        version:
+                          type: integer
+                      required:
+                        - id
+                        - applicationId
+                        - partyId
+                        - documentTypeCode
+                        - ordinal
+                        - mandatory
+                        - requiredCount
+                        - periodMonths
+                        - status
+                        - rejectReason
+                        - attestationNote
+                        - reviewedBy
+                        - reviewedAt
+                        - documentId
+                        - sourceDecisionId
+                        - version
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      mandatory:
+                        type: integer
+                      outstandingMandatory:
+                        type: integer
+                      accepted:
+                        type: integer
+                      rejected:
+                        type: integer
+                      expired:
+                        type: integer
+                      complete:
+                        type: boolean
+                    required:
+                      - total
+                      - mandatory
+                      - outstandingMandatory
+                      - accepted
+                      - rejected
+                      - expired
+                      - complete
+                required:
+                  - data
+                  - summary
+        "401":
+          description: UNAUTHENTICATED
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (also when outside the caller scope)
+  /v1/applications/{id}/checklist/generate:
+    post:
+      tags: *a111
+      operationId: API-APP-007-GENERATE
+      summary: Build the document checklist from the rule engine if it is missing, then return it with a completeness summary (application.read)
+      responses:
+        "200":
+          description: Checklist items and summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        applicationId:
+                          type: string
+                        partyId:
+                          type: string
+                        documentTypeCode:
+                          type: string
+                        ordinal:
+                          type: integer
+                        mandatory:
+                          type: boolean
+                        requiredCount:
+                          type: integer
+                        periodMonths:
+                          type:
+                            - integer
+                            - "null"
+                        status:
+                          type: string
+                          enum: *a131
                         rejectReason:
                           type:
                             - string
@@ -27226,7 +27358,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: &a131
+                    enum: &a132
                       - DRAFT
                       - PACKAGE_READY
                       - SUBMITTED
@@ -27249,7 +27381,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a132
+                    enum: &a133
                       - PORTAL
                       - EMAIL
                       - API
@@ -27266,7 +27398,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a133
+                    enum: &a134
                       - MANUAL
                       - LENDER_API
                       - LENDER_FILE
@@ -27280,7 +27412,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a134
+                    enum: &a135
                       - POLICY
                       - INCOME
                       - CREDIT_HISTORY
@@ -27363,7 +27495,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a131
+                          enum: *a132
                         lenderReference:
                           type:
                             - string
@@ -27372,7 +27504,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a132
+                          enum: *a133
                         submittedAt:
                           type:
                             - string
@@ -27385,7 +27517,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a133
+                          enum: *a134
                         lastStatusAt:
                           type:
                             - string
@@ -27394,7 +27526,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a134
+                          enum: *a135
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -27468,7 +27600,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a131
+                    enum: *a132
                   lenderReference:
                     type:
                       - string
@@ -27477,7 +27609,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a132
+                    enum: *a133
                   submittedAt:
                     type:
                       - string
@@ -27490,7 +27622,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a133
+                    enum: *a134
                   lastStatusAt:
                     type:
                       - string
@@ -27499,7 +27631,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a134
+                    enum: *a135
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -27559,7 +27691,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: &a135
+                  enum: &a136
                     - SUBMISSION
                     - QUERY_RESPONSE
                   default: SUBMISSION
@@ -27590,7 +27722,7 @@ paths:
                         type: string
                       kind:
                         type: string
-                        enum: *a135
+                        enum: *a136
                       manifest:
                         type: object
                         additionalProperties: {}
@@ -27641,7 +27773,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a131
+                        enum: *a132
                       lenderReference:
                         type:
                           - string
@@ -27650,7 +27782,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a132
+                        enum: *a133
                       submittedAt:
                         type:
                           - string
@@ -27663,7 +27795,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a133
+                        enum: *a134
                       lastStatusAt:
                         type:
                           - string
@@ -27672,7 +27804,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a134
+                        enum: *a135
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -27737,7 +27869,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a135
+                    enum: *a136
                   manifest:
                     type: object
                     additionalProperties: {}
@@ -27800,7 +27932,7 @@ paths:
               properties:
                 channel:
                   type: string
-                  enum: *a132
+                  enum: *a133
                 lenderReference:
                   type: string
                   maxLength: 100
@@ -27866,14 +27998,14 @@ paths:
               properties:
                 toStatus:
                   type: string
-                  enum: *a131
+                  enum: *a132
                 statusSource:
                   type: string
-                  enum: *a133
+                  enum: *a134
                   default: MANUAL
                 declineReasonCode:
                   type: string
-                  enum: *a134
+                  enum: *a135
                 reasonText:
                   type: string
                   maxLength: 1000
@@ -27907,7 +28039,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a131
+                    enum: *a132
                   lenderReference:
                     type:
                       - string
@@ -27916,7 +28048,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a132
+                    enum: *a133
                   submittedAt:
                     type:
                       - string
@@ -27929,7 +28061,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a133
+                    enum: *a134
                   lastStatusAt:
                     type:
                       - string
@@ -27938,7 +28070,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a134
+                    enum: *a135
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -28076,7 +28208,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a131
+                        enum: *a132
                       lenderReference:
                         type:
                           - string
@@ -28085,7 +28217,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a132
+                        enum: *a133
                       submittedAt:
                         type:
                           - string
@@ -28098,7 +28230,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a133
+                        enum: *a134
                       lastStatusAt:
                         type:
                           - string
@@ -28107,7 +28239,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a134
+                        enum: *a135
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -28323,7 +28455,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a131
+                        enum: *a132
                       lenderReference:
                         type:
                           - string
@@ -28332,7 +28464,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a132
+                        enum: *a133
                       submittedAt:
                         type:
                           - string
@@ -28345,7 +28477,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a133
+                        enum: *a134
                       lastStatusAt:
                         type:
                           - string
@@ -28354,7 +28486,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a134
+                        enum: *a135
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -28427,13 +28559,13 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a131
+                          enum: *a132
                         toStatus:
                           type: string
-                          enum: *a131
+                          enum: *a132
                         statusSource:
                           type: string
-                          enum: *a133
+                          enum: *a134
                         reasonText:
                           type:
                             - string
@@ -29389,7 +29521,7 @@ paths:
                             - "null"
                         verificationType:
                           type: string
-                          enum: &a136
+                          enum: &a137
                             - DOCUMENT_REVIEW
                             - IDENTITY_KYC
                             - RESIDENCE_FI
@@ -29398,7 +29530,7 @@ paths:
                             - BANK_STATEMENT
                         status:
                           type: string
-                          enum: &a138
+                          enum: &a139
                             - INITIATED
                             - ASSIGNED
                             - IN_PROGRESS
@@ -29410,7 +29542,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a139
+                          enum: &a140
                             - POSITIVE
                             - NEGATIVE
                             - REFER_TO_CREDIT
@@ -29427,7 +29559,7 @@ paths:
                           type: string
                         priority:
                           type: string
-                          enum: &a137
+                          enum: &a138
                             - HIGH
                             - MEDIUM
                             - LOW
@@ -29451,7 +29583,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a140
+                          enum: &a141
                             - ADDRESS_NOT_FOUND
                             - APPLICANT_UNKNOWN
                             - DOCUMENT_FORGED
@@ -29534,7 +29666,7 @@ paths:
                     - "null"
                 verificationType:
                   type: string
-                  enum: *a136
+                  enum: *a137
                 assignedToUserId:
                   type:
                     - string
@@ -29548,7 +29680,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a137
+                  enum: *a138
                   default: MEDIUM
                 scheduledAt:
                   type:
@@ -29592,15 +29724,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a136
+                    enum: *a137
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a139
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a139
+                    enum: *a140
                   assignedToUserId:
                     type:
                       - string
@@ -29613,7 +29745,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a137
+                    enum: *a138
                   scheduledAt:
                     type:
                       - string
@@ -29634,7 +29766,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a140
+                    enum: *a141
                   checklistItmIds:
                     type: array
                     items:
@@ -29708,15 +29840,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a136
+                    enum: *a137
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a139
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a139
+                    enum: *a140
                   assignedToUserId:
                     type:
                       - string
@@ -29729,7 +29861,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a137
+                    enum: *a138
                   scheduledAt:
                     type:
                       - string
@@ -29750,7 +29882,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a140
+                    enum: *a141
                   checklistItmIds:
                     type: array
                     items:
@@ -29811,10 +29943,10 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a138
+                  enum: *a139
                 priority:
                   type: string
-                  enum: *a137
+                  enum: *a138
                 assignedToUserId:
                   type:
                     - string
@@ -29860,15 +29992,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a136
+                    enum: *a137
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a139
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a139
+                    enum: *a140
                   assignedToUserId:
                     type:
                       - string
@@ -29881,7 +30013,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a137
+                    enum: *a138
                   scheduledAt:
                     type:
                       - string
@@ -29902,7 +30034,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a140
+                    enum: *a141
                   checklistItmIds:
                     type: array
                     items:
@@ -29963,14 +30095,14 @@ paths:
               properties:
                 outcome:
                   type: string
-                  enum: *a139
+                  enum: *a140
                 findingsSummary:
                   type: string
                   minLength: 5
                   maxLength: 2000
                 rejectionReason:
                   type: string
-                  enum: *a140
+                  enum: *a141
                 markStatus:
                   type: string
                   enum:
@@ -30006,15 +30138,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a136
+                    enum: *a137
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a139
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a139
+                    enum: *a140
                   assignedToUserId:
                     type:
                       - string
@@ -30027,7 +30159,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a137
+                    enum: *a138
                   scheduledAt:
                     type:
                       - string
@@ -30048,7 +30180,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a140
+                    enum: *a141
                   checklistItmIds:
                     type: array
                     items:
@@ -30414,7 +30546,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a141
+                    enum: &a142
                       - RECEIVED
                       - DUPLICATE_SUSPECTED
                       - QUALIFIED
@@ -30487,7 +30619,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a141
+                    enum: *a142
                   requestedAmount:
                     type: object
                     properties:
@@ -30543,7 +30675,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a141
+            enum: *a142
           required: false
           name: status
           in: query
@@ -30588,7 +30720,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         status:
                           type: string
-                          enum: *a141
+                          enum: *a142
                         requestedAmount:
                           type: object
                           properties:
@@ -30681,7 +30813,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a141
+                    enum: *a142
                   requestedAmount:
                     type: object
                     properties:
@@ -30790,7 +30922,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a142
+                    enum: &a143
                       - DRAFT
                       - SUBMITTED
                       - UNDERWRITING
@@ -30863,7 +30995,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a142
+                    enum: *a143
                   appliedAmount:
                     type: object
                     properties:
@@ -31074,7 +31206,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a144
+                    enum: &a145
                       - lead.created
                       - lead.duplicate_flagged
                       - lead.qualified
@@ -31122,7 +31254,7 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: &a143
+                    enum: &a144
                       - ACTIVE
                       - PAUSED
                       - REVOKED
@@ -31184,7 +31316,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: *a143
+                          enum: *a144
                         failureCount:
                           type: integer
                         lockVersion:
@@ -31293,7 +31425,7 @@ paths:
                   pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
                 eventType:
                   type: string
-                  enum: *a144
+                  enum: *a145
                 customData:
                   type: object
                   additionalProperties: {}
@@ -31374,7 +31506,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: &a145
+                          enum: &a146
                             - ACTIVE
                             - SUSPENDED
                             - REVOKED
@@ -31481,7 +31613,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a145
+                    enum: *a146
                   scopes:
                     type: array
                     items:
@@ -31553,7 +31685,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a145
+                    enum: *a146
                   scopes:
                     type: array
                     items:
@@ -31618,7 +31750,7 @@ paths:
                   maxLength: 100
                 status:
                   type: string
-                  enum: *a145
+                  enum: *a146
                 scopes:
                   type: array
                   items:
@@ -31659,7 +31791,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a145
+                    enum: *a146
                   scopes:
                     type: array
                     items:
@@ -31768,7 +31900,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a144
+                    enum: *a145
                   minItems: 1
                 secret:
                   type: string
@@ -31880,7 +32012,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a146
+            enum: &a147
               - USER
               - SERVICE
           required: false
@@ -31965,7 +32097,7 @@ paths:
                           format: date-time
                         actorType:
                           type: string
-                          enum: *a146
+                          enum: *a147
                         actorId:
                           type: string
                         action:
@@ -32277,7 +32409,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a147
+                    enum: &a148
                       - PENDING
                       - PROCESSING
                       - COMPLETED
@@ -32357,7 +32489,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: *a147
+                          enum: *a148
                         filters:
                           type: object
                           additionalProperties: {}
@@ -32450,7 +32582,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a147
+                    enum: *a148
                   filters:
                     type: object
                     additionalProperties: {}
@@ -32551,7 +32683,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a148
+                  enum: &a149
                     - DATA_BREACH
                     - UNAUTHORIZED_ACCESS
                     - MALWARE
@@ -32561,7 +32693,7 @@ paths:
                     - OTHER
                 severity:
                   type: string
-                  enum: &a149
+                  enum: &a150
                     - LOW
                     - MEDIUM
                     - HIGH
@@ -32652,7 +32784,7 @@ paths:
                   default: {}
                 status:
                   type: string
-                  enum: &a150
+                  enum: &a151
                     - OPEN
                     - INVESTIGATING
                     - CONTAINED
@@ -32693,10 +32825,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a148
+                    enum: *a149
                   severity:
                     type: string
-                    enum: *a149
+                    enum: *a150
                   detectedAt:
                     type: string
                     format: date-time
@@ -32780,7 +32912,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a150
+                    enum: *a151
                   postMortemRef:
                     type:
                       - string
@@ -32843,19 +32975,19 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a150
+            enum: *a151
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a149
+            enum: *a150
           required: false
           name: severity
           in: query
         - schema:
             type: string
-            enum: *a148
+            enum: *a149
           required: false
           name: type
           in: query
@@ -32880,10 +33012,10 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         type:
                           type: string
-                          enum: *a148
+                          enum: *a149
                         severity:
                           type: string
-                          enum: *a149
+                          enum: *a150
                         detectedAt:
                           type: string
                           format: date-time
@@ -32967,7 +33099,7 @@ paths:
                                 - notifiedAt
                         status:
                           type: string
-                          enum: *a150
+                          enum: *a151
                         postMortemRef:
                           type:
                             - string
@@ -33045,7 +33177,7 @@ paths:
               properties:
                 severity:
                   type: string
-                  enum: *a149
+                  enum: *a150
                 personalDataInvolved:
                   type: boolean
                 affectedTenants:
@@ -33126,7 +33258,7 @@ paths:
                         - notifiedAt
                 status:
                   type: string
-                  enum: *a150
+                  enum: *a151
                 postMortemRef:
                   type:
                     - string
@@ -33153,10 +33285,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a148
+                    enum: *a149
                   severity:
                     type: string
-                    enum: *a149
+                    enum: *a150
                   detectedAt:
                     type: string
                     format: date-time
@@ -33240,7 +33372,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a150
+                    enum: *a151
                   postMortemRef:
                     type:
                       - string
@@ -33313,10 +33445,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a148
+                    enum: *a149
                   severity:
                     type: string
-                    enum: *a149
+                    enum: *a150
                   detectedAt:
                     type: string
                     format: date-time
@@ -33400,7 +33532,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a150
+                    enum: *a151
                   postMortemRef:
                     type:
                       - string
@@ -33454,7 +33586,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a151
+                  enum: &a152
                     - AUTH_FAILURE
                     - PERMISSION_DENIED
                     - RATE_LIMIT_EXCEEDED
@@ -33472,7 +33604,7 @@ paths:
                   maxLength: 64
                 severity:
                   type: string
-                  enum: &a152
+                  enum: &a153
                     - LOW
                     - MEDIUM
                     - HIGH
@@ -33502,7 +33634,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a151
+                    enum: *a152
                   principal:
                     type: string
                     minLength: 1
@@ -33513,7 +33645,7 @@ paths:
                     maxLength: 64
                   severity:
                     type: string
-                    enum: *a152
+                    enum: *a153
                   details:
                     type: object
                     additionalProperties: {}
@@ -33554,13 +33686,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a151
+            enum: *a152
           required: false
           name: type
           in: query
         - schema:
             type: string
-            enum: *a152
+            enum: *a153
           required: false
           name: severity
           in: query
@@ -33604,7 +33736,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         type:
                           type: string
-                          enum: *a151
+                          enum: *a152
                         principal:
                           type: string
                           minLength: 1
@@ -33615,7 +33747,7 @@ paths:
                           maxLength: 64
                         severity:
                           type: string
-                          enum: *a152
+                          enum: *a153
                         details:
                           type: object
                           additionalProperties: {}
@@ -33908,7 +34040,7 @@ paths:
                     - MANUAL
                 entityType:
                   type: string
-                  enum: &a153
+                  enum: &a154
                     - LEAD
                     - CUSTOMER
                     - LOAN_APPLICATION
@@ -37533,7 +37665,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: &a154
+                  enum: &a155
                     - APPROVE
                     - REJECT
                 reason:
@@ -37786,7 +37918,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a153
+                  enum: *a154
                 subjectId:
                   type: string
                   minLength: 1
@@ -38292,7 +38424,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: *a154
+                  enum: *a155
                 reason:
                   type: string
                   maxLength: 500
@@ -39962,7 +40094,7 @@ paths:
                   type: string
                 purpose:
                   type: string
-                  enum: *a155
+                  enum: *a156
                 purposeTarget:
                   type: string
               required:
@@ -43387,7 +43519,7 @@ paths:
                   maxLength: 64
                 productCategory:
                   type: string
-                  enum: &a156
+                  enum: &a157
                     - PL
                     - BL
                     - MSME
@@ -43670,7 +43802,7 @@ paths:
                   pattern: ^[1-9][0-9]{5}$
                 productCategory:
                   type: string
-                  enum: *a156
+                  enum: *a157
                 indicativeAmount:
                   type: object
                   properties:
@@ -53184,7 +53316,7 @@ paths:
               properties:
                 direction:
                   type: string
-                  enum: &a157
+                  enum: &a158
                     - TO_LENDER
                     - FROM_CONNECTOR
                 number:
@@ -53485,7 +53617,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a157
+            enum: *a158
           required: false
           name: direction
           in: query
@@ -54969,7 +55101,7 @@ paths:
               properties:
                 connectorType:
                   type: string
-                  enum: &a158
+                  enum: &a159
                     - INDIVIDUAL
                     - PROPRIETORSHIP
                     - PARTNERSHIP
@@ -55268,7 +55400,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a158
+            enum: *a159
           required: false
           name: connectorType
           in: query
@@ -61222,7 +61354,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a131
+                          enum: *a132
                         lenderReference:
                           type:
                             - string
@@ -61231,7 +61363,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a132
+                          enum: *a133
                         submittedAt:
                           type:
                             - string
@@ -61244,7 +61376,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a133
+                          enum: *a134
                         lastStatusAt:
                           type:
                             - string
@@ -61253,7 +61385,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a134
+                          enum: *a135
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -62441,7 +62573,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: &a159
+                  enum: &a160
                     - CUSTOMER
                     - LOAN_APPLICATION
                     - LEAD
@@ -62451,7 +62583,7 @@ paths:
                   maxLength: 64
                 checkType:
                   type: string
-                  enum: &a160
+                  enum: &a161
                     - PAN
                     - GST
                     - CIN
@@ -62463,7 +62595,7 @@ paths:
                     - ADDRESS
                 method:
                   type: string
-                  enum: &a162
+                  enum: &a163
                     - MANUAL
                     - PROVIDER_AUTOMATED
                 purpose:
@@ -62479,7 +62611,7 @@ paths:
                   pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
                 result:
                   type: string
-                  enum: &a161
+                  enum: &a162
                     - VERIFIED
                     - REJECTED
                     - FLAGGED
@@ -62773,7 +62905,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a159
+            enum: *a160
           required: false
           name: subjectType
           in: query
@@ -62784,19 +62916,19 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a160
+            enum: *a161
           required: false
           name: checkType
           in: query
         - schema:
             type: string
-            enum: *a161
+            enum: *a162
           required: false
           name: result
           in: query
         - schema:
             type: string
-            enum: *a162
+            enum: *a163
           required: false
           name: method
           in: query
@@ -66692,7 +66824,7 @@ paths:
                 weeklyHours:
                   type: object
                   properties:
-                    MON: &a163
+                    MON: &a164
                       type: array
                       items:
                         type: object
@@ -66708,19 +66840,19 @@ paths:
                           - end
                         additionalProperties: false
                       maxItems: 4
-                    TUE: *a163
-                    WED: *a163
-                    THU: *a163
-                    FRI: *a163
-                    SAT: *a163
-                    SUN: *a163
+                    TUE: *a164
+                    WED: *a164
+                    THU: *a164
+                    FRI: *a164
+                    SAT: *a164
+                    SUN: *a164
                 holidays:
                   type: array
                   items:
                     type: string
                     pattern: ^\d{4}-\d{2}-\d{2}$
                   maxItems: 100
-                  default: &a165 []
+                  default: &a166 []
                 quietHours:
                   type:
                     - object
@@ -67779,7 +67911,7 @@ paths:
                       weeklyHours:
                         type: object
                         properties:
-                          MON: &a164
+                          MON: &a165
                             type: array
                             items:
                               type: object
@@ -67795,19 +67927,19 @@ paths:
                                 - end
                               additionalProperties: false
                             maxItems: 4
-                          TUE: *a164
-                          WED: *a164
-                          THU: *a164
-                          FRI: *a164
-                          SAT: *a164
-                          SUN: *a164
+                          TUE: *a165
+                          WED: *a165
+                          THU: *a165
+                          FRI: *a165
+                          SAT: *a165
+                          SUN: *a165
                       holidays:
                         type: array
                         items:
                           type: string
                           pattern: ^\d{4}-\d{2}-\d{2}$
                         maxItems: 100
-                        default: *a165
+                        default: *a166
                       quietHours:
                         type:
                           - object
@@ -68086,7 +68218,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a166
+            enum: *a167
           required: false
           name: status
           in: query
@@ -70039,7 +70171,7 @@ paths:
                       attributes:
                         type: object
                         additionalProperties: {}
-                        default: *a167
+                        default: *a168
                     required:
                       - code
                       - label
@@ -72386,7 +72518,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a168
+                  enum: *a169
                 gitTag:
                   type:
                     - string
@@ -72870,7 +73002,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a169
+                  enum: *a170
                 comments:
                   type: string
               required:
@@ -73828,7 +73960,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a170
+                  enum: *a171
                 comments:
                   type: string
               required:
@@ -75058,20 +75190,20 @@ paths:
                 modules:
                   type: object
                   properties:
-                    MOD-WFA: &a171
+                    MOD-WFA: &a172
                       type: boolean
-                    MOD-COM: *a171
-                    MOD-PAY: *a171
-                    MOD-REC: *a171
-                    MOD-INV: *a171
-                    MOD-RPT: *a171
-                    MOD-IMP: *a171
-                    MOD-CON: *a171
-                    MOD-CPT: *a171
-                    MOD-PERF: *a171
-                    MOD-VER: *a171
-                    MOD-DSH: *a171
-                    MOD-API: *a171
+                    MOD-COM: *a172
+                    MOD-PAY: *a172
+                    MOD-REC: *a172
+                    MOD-INV: *a172
+                    MOD-RPT: *a172
+                    MOD-IMP: *a172
+                    MOD-CON: *a172
+                    MOD-CPT: *a172
+                    MOD-PERF: *a172
+                    MOD-VER: *a172
+                    MOD-DSH: *a172
+                    MOD-API: *a172
               required:
                 - modules
               additionalProperties: false
@@ -77501,7 +77633,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: &a172
+                  enum: &a173
                     - MT940
                     - CSV
                   default: MT940
@@ -77754,7 +77886,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: *a172
+                  enum: *a173
                   default: MT940
                 rawFeedContent:
                   type: string
@@ -78476,7 +78608,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a173
+            enum: &a174
               - SHORT_REMITTANCE
               - OVER_REMITTANCE
               - MISSING_REMITTANCE
@@ -78731,7 +78863,7 @@ paths:
                     - INVESTIGATING
                 classification:
                   type: string
-                  enum: *a173
+                  enum: *a174
                 resolutionNote:
                   type: string
                   minLength: 5
@@ -78973,7 +79105,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: *a174
+                  enum: *a175
                 amount:
                   type: number
                   exclusiveMinimum: 0

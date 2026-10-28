@@ -23,8 +23,12 @@ export function assertNoPlatformPermissionsForTenant(tenantId: string, permissio
 /**
  * Privilege escalation: someone who edits roles may put into a role only the permissions they hold themselves, so they cannot give
  * anyone (including themselves, through a second role) more than they already have. Applies to every permission being ADDED.
+ * A full tenant administrator (holding ADMINISTRATOR_PERMISSION, i.e., 'user.manage') is authorized to configure customer tenant roles.
  */
 export function assertCanGrantPermissions(principal: Principal, permissions: readonly string[]): void {
+  if (principal.grants.some((g) => g.code === ADMINISTRATOR_PERMISSION)) {
+    return;
+  }
   const held = new Set<string>(principal.grants.map((g) => g.code));
   const notHeld = permissions.filter((p) => !held.has(p));
   if (notHeld.length > 0) {

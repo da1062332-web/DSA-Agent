@@ -31,4 +31,11 @@ describe('Module 19 — SanctionsPanel Frontend Component', () => {
     const html = renderPanel('lcs_custom_001');
     expect(html).toContain('sanctions-panel-loading');
   });
+
+  it('renders input prompt when lenderCaseId is not provided', () => {
+    const html = renderPanel('');
+    expect(html).toContain('sanctions-panel');
+    expect(html).toContain('Sanctions and Disbursements');
+    expect(html).toContain('Please select a lender case');
+  });
 });

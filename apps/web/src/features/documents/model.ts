@@ -107,6 +107,7 @@ export function groupByParty(items: ChecklistItem[]): { partyId: string; items: 
 export interface ItemActions {
   upload: boolean; // API-DOC-001/002, document.upload; a new upload becomes the next version
   view: boolean; // API-DOC-003/004, document.view
+  download: boolean; // API-DOC-003/005, document.download; the file is saved, and the access is logged
   review: boolean; // API-DOC-006, document.review; only a received file waits for review
   waive: boolean; // API-APP-009, document.waive
 }
@@ -120,6 +121,7 @@ export function itemActions(
   return {
     upload: !CLOSED.includes(item.status) && can('document.upload'),
     view: !!item.documentId && can('document.view'),
+    download: !!item.documentId && can('document.download'),
     review: item.status === 'SUBMITTED' && !!item.documentId && can('document.review'),
     waive: !CLOSED.includes(item.status) && can('document.waive'),
   };
@@ -129,4 +131,30 @@ export function progressText(s: ChecklistSummary): string {
   if (s.total === 0) return 'No documents have been requested for this application yet.';
   if (s.complete) return 'Every required document is accepted, waived or not applicable.';
   return `${s.outstandingMandatory} of ${s.mandatory} required document${s.mandatory === 1 ? '' : 's'} still outstanding.`;
+}
+
+// ---- Document types (API-DOC-007 / API-DOC-008) ----
+export interface DocumentTypeDraft {
+  code: string;
+  name: string;
+  allowedMime: string[];
+  maxSizeMb: string;
+  validityMonths: string;
+  instructions: string;
+}
+
+/** The first problem with a document type form, matching UpsertDocumentTypeSchema, or null when it can be saved. */
+export function documentTypeProblem(d: DocumentTypeDraft): string | null {
+  if (!/^[A-Z_]{2,40}$/.test(d.code))
+    return 'The code is 2 to 40 upper-case letters or underscores, for example GST_RETURN.';
+  const name = d.name.trim();
+  if (name.length < 2 || name.length > 120) return 'The name is 2 to 120 characters.';
+  if (d.allowedMime.length === 0) return 'Allow at least one file type.';
+  const mb = Number(d.maxSizeMb);
+  if (!d.maxSizeMb.trim() || !Number.isFinite(mb) || mb * 1_048_576 < 1024 || mb > 50)
+    return 'The largest file is between 0.001 and 50 MB.';
+  if (d.validityMonths.trim() !== '' && !/^(?:[1-9]\d?|1[01]\d|120)$/.test(d.validityMonths.trim()))
+    return 'Validity is a whole number of months from 1 to 120, or blank when the document does not expire.';
+  if (d.instructions.length > 1000) return 'Instructions are at most 1000 characters.';
+  return null;
 }

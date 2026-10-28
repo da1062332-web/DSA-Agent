@@ -884,6 +884,7 @@ export type ActionId =
   | 'sanction.record'
   | 'disbursement.record'
   | 'disbursement.verify'
+  | 'disbursement.exception_approve'
   // Connectors
   | 'connector.manage'
   | 'connector.attribution_change'
@@ -965,6 +966,7 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'sanction.record': ['sanction.record'],
   'disbursement.record': ['disbursement.record'],
   'disbursement.verify': ['disbursement.verify'],
+  'disbursement.exception_approve': ['disbursement.exception_approve'],
 
   // Connectors
   'connector.manage': ['connector.manage'],

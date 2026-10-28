@@ -1,11 +1,16 @@
 // ApplicationPort, real implementation (owner: Dev 3; Contracts §4.3). Lead conversion (MOD-LEAD SUB-LEAD.09) creates the
 // application through createDraftFromConversion, so the leads module never writes loan_application rows itself. Lender
-// cases (MOD-LCS) read the checklist through getSubmissionDocuments. Both run inside the caller's transaction.
+// cases (MOD-LCS) read the checklist through getSubmissionDocuments, read the application through getApplicationSummary, and
+// lender cases and sanctions move it through rollUpStatus (ROLLUP-1..6), so neither writes loan_application itself. All of
+// them run inside the caller's transaction.
 // The checklist generator (MOD-DOC SUB-DOC.02, TASK-304) asks DK-document.requirements for each party and writes one
 // checklist_item per required document; it runs when T-APP-01 moves an application to DOCUMENTS_PENDING.
 import {
   AppError,
   type ApplicationPort,
+  type ApplicationRollUpCommand,
+  type ApplicationStatusCode,
+  type ApplicationSummary,
   type AuditPort,
   type CreateDraftFromConversionCommand,
   type DecisionPort,
@@ -58,8 +63,80 @@ export function createApplicationPort(deps: ApplicationPortDeps): ApplicationPor
       }));
       return { complete: isComplete(documents), documents } satisfies SubmissionDocuments;
     },
+
+    async getApplicationSummary(tx: Tx, ctx: RequestContext, applicationId: string, opts = {}) {
+      const r = opts.forUpdate
+        ? await sql<Row>`
+            select id, branch_id, customer_id, product_category, status, sub_status, lock_version
+              from loan_application where id = ${applicationId} and tenant_id = ${ctx.principal.tenantId}
+               for update`.execute(tx)
+        : await sql<Row>`
+            select id, branch_id, customer_id, product_category, status, sub_status, lock_version
+              from loan_application where id = ${applicationId} and tenant_id = ${ctx.principal.tenantId}`.execute(tx);
+      return r.rows[0] ? toSummary(r.rows[0]) : null;
+    },
+
+    async rollUpStatus(tx: Tx, ctx: RequestContext, cmd: ApplicationRollUpCommand) {
+      const r = await sql<Row>`
+        select id, status, sub_status from loan_application
+         where id = ${cmd.applicationId} and tenant_id = ${ctx.principal.tenantId} for update`.execute(tx);
+      const before = r.rows[0];
+      if (!before) return null;
+      const fromStatus = before.status as ApplicationStatusCode;
+      const fromSubStatus = (before.sub_status as string | null) ?? null;
+      if (fromStatus === cmd.toStatus && fromSubStatus === cmd.toSubStatus) {
+        return { applicationId: cmd.applicationId, fromStatus, toStatus: cmd.toStatus, changed: false };
+      }
+
+      await sql`
+        update loan_application
+           set status = ${cmd.toStatus}, sub_status = ${cmd.toSubStatus},
+               product_version_id = coalesce(product_version_id, ${cmd.productVersionId ?? null}),
+               updated_by = ${ctx.principal.id}
+         where id = ${cmd.applicationId}`.execute(tx);
+      await sql`
+        insert into application_status_history (id, tenant_id, application_id, from_status, to_status, from_sub_status,
+                                                to_sub_status, transition_code, actor, caused_by_lender_case_id, occurred_at)
+        values (${deps.ids.next('ash')}, ${ctx.principal.tenantId}, ${cmd.applicationId}, ${fromStatus}, ${cmd.toStatus},
+                ${fromSubStatus}, ${cmd.toSubStatus}, ${cmd.transitionCode}, ${ctx.principal.id},
+                ${cmd.causedByLenderCaseId}, ${ctx.now})`.execute(tx);
+      if (fromStatus !== cmd.toStatus) {
+        const payload = {
+          applicationId: cmd.applicationId,
+          from: fromStatus,
+          to: cmd.toStatus,
+          transitionCode: cmd.transitionCode,
+          lenderCaseId: cmd.causedByLenderCaseId,
+        };
+        await sql`
+          insert into outbox_event (id, tenant_id, event_type, event_version, subject_type, subject_id, payload,
+                                    correlation_id, chain_depth, created_at)
+          values (${deps.ids.next('evt')}, ${ctx.principal.tenantId}, 'application.state_changed', 1, 'LOAN_APPLICATION',
+                  ${cmd.applicationId}, ${JSON.stringify(payload)}::jsonb, ${ctx.correlationId}, 0, ${ctx.now})`.execute(
+          tx,
+        );
+      }
+      await deps.audit.record(tx, ctx, {
+        action: 'application.state_changed',
+        entityType: 'LOAN_APPLICATION',
+        entityId: cmd.applicationId,
+        before: { status: fromStatus, subStatus: fromSubStatus },
+        after: { status: cmd.toStatus, subStatus: cmd.toSubStatus, transitionCode: cmd.transitionCode },
+      });
+      return { applicationId: cmd.applicationId, fromStatus, toStatus: cmd.toStatus, changed: true };
+    },
   };
 }
+
+const toSummary = (r: Row): ApplicationSummary => ({
+  id: String(r.id),
+  branchId: String(r.branch_id),
+  customerId: String(r.customer_id),
+  productCategory: r.product_category as ApplicationSummary['productCategory'],
+  status: r.status as ApplicationStatusCode,
+  subStatus: (r.sub_status as 'QUERY_PENDING' | null) ?? null,
+  version: Number(r.lock_version),
+});
 
 /**
  * A DRAFT application with its PRIMARY party, history, application.created event and audit, in the caller's transaction.

@@ -1,6 +1,7 @@
-// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 010). Edit the applicant request while the
-// status allows it, and put the file on hold with a reason. Every change sends the version the screen loaded (If-Match),
-// so a stale screen gets the conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
+// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; MODULE 20 API-DOC-009; API-PRV-004).
+// Edit the applicant request while the status allows it, put the file on hold with a reason, manage parties and owners, archive
+// the documents and place a legal hold. Every change sends the version the screen loaded (If-Match), so a stale screen gets the
+// conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
 import {
   Alert,
   Box,
@@ -24,16 +25,19 @@ import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admi
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
+import { ArchiveCard, LegalHoldCard, OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { EligibilityCard } from './EligibilityCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
 import { AppButton, AppCard, FieldGrid } from '../../ui';
 import {
+  CLOSABLE,
   STATUS_LABELS,
   canEditDetails,
   canHold,
   isValidAmount,
   isValidHoldReason,
   isValidTenure,
+  isValidTransitionReason,
 } from './rules';
 
 const PURPOSES = [
@@ -79,13 +83,22 @@ export function ApplicationDetailPage() {
           {a.holdUntil ? ` until ${formatDate(a.holdUntil)}` : ''}.
         </Alert>
       )}
+      {a.reworkReason && a.status === 'DOCUMENTS_PENDING' && (
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="application.rework-reason">
+          Sent back for rework: {a.reworkReason}
+        </Alert>
+      )}
 
       <RelationsCard app={a} />
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
+      <PartiesCard app={a} />
+      <OwnersCard app={a} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
       <EligibilityCard applicationId={a.id} hasProduct={!!a.productVersionId} />
       <ChecklistCard applicationId={a.id} />
+      <ArchiveCard applicationId={a.id} />
+      <LegalHoldCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />
@@ -331,20 +344,25 @@ const CANCEL_REASONS = [
   { value: 'OTHER', label: 'Other' },
 ] as const;
 
-/** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-10
- *  (cancel). Only the steps the caller's permissions and the current status allow are shown. The API re-checks all of it. */
-function TransitionCard({ app }: { app: Application }) {
+/** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-03
+ *  (send back for rework), T-APP-04 (ready), T-APP-05 (send back to review), T-APP-07 (close), T-APP-08 (withdraw), T-APP-09
+ *  (reopen) and T-APP-10 (cancel). Only the steps the caller's permissions and the current status allow are shown. The API
+ *  re-checks all of it. */
+export function TransitionCard({ app }: { app: Application }) {
   const me = useMe();
   const canUpdate = hasPermission(me.data, 'application.update');
   const canReview = hasPermission(me.data, 'application.review');
   const canCancel = hasPermission(me.data, 'application.cancel');
   const canWithdraw = hasPermission(me.data, 'application.withdraw');
   const canReopen = hasPermission(me.data, 'application.reopen');
+  const canClose = hasPermission(me.data, 'application.close');
   const [productId, setProductId] = useState('');
   const [versionId, setVersionId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [withdrawReason, setWithdrawReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+  const [sendBackReason, setSendBackReason] = useState('');
+  const [closeReason, setCloseReason] = useState('');
 
   const showStart = app.status === 'DRAFT' && canUpdate;
   const showReview = app.status === 'DOCUMENTS_PENDING' && canReview;
@@ -356,6 +374,23 @@ function TransitionCard({ app }: { app: Application }) {
     ['DOCUMENTS_PENDING', 'UNDER_REVIEW', 'READY_FOR_SUBMISSION'].includes(app.status) && canWithdraw;
   // T-APP-09: a cancelled or withdrawn file is reopened as a draft. A reason is required.
   const showReopen = ['CANCELLED', 'WITHDRAWN'].includes(app.status) && canReopen;
+  // T-APP-03 (under review) and T-APP-05 (ready): send the file back a step, with a reason.
+  const sendBack =
+    app.status === 'UNDER_REVIEW' && canReview
+      ? ({
+          code: 'T-APP-03',
+          label: 'Send back for rework',
+          hint: 'The file goes back to documents pending.',
+        } as const)
+      : app.status === 'READY_FOR_SUBMISSION' && canReview
+        ? ({
+            code: 'T-APP-05',
+            label: 'Send back to review',
+            hint: 'The file goes back to under review.',
+          } as const)
+        : null;
+  // T-APP-07: a disbursed or terminal file is closed for good.
+  const showClose = CLOSABLE.includes(app.status) && canClose;
 
   // Products of this application's category, then their versions. Only versions in force today can be chosen.
   const products = useLookup<Product>(
@@ -372,7 +407,16 @@ function TransitionCard({ app }: { app: Application }) {
 
   const run = useCommand<
     {
-      transitionCode: 'T-APP-01' | 'T-APP-02' | 'T-APP-04' | 'T-APP-08' | 'T-APP-09' | 'T-APP-10';
+      transitionCode:
+        | 'T-APP-01'
+        | 'T-APP-02'
+        | 'T-APP-03'
+        | 'T-APP-04'
+        | 'T-APP-05'
+        | 'T-APP-07'
+        | 'T-APP-08'
+        | 'T-APP-09'
+        | 'T-APP-10';
       productVersionId?: string;
       cancelReason?: string;
       reason?: string;
@@ -383,7 +427,17 @@ function TransitionCard({ app }: { app: Application }) {
     [[`/v1/applications/${app.id}`], ['/v1/applications']],
   );
 
-  if (!showStart && !showReview && !showCancel && !showReady && !showWithdraw && !showReopen) return null;
+  if (
+    !showStart &&
+    !showReview &&
+    !showCancel &&
+    !showReady &&
+    !showWithdraw &&
+    !showReopen &&
+    !sendBack &&
+    !showClose
+  )
+    return null;
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -465,6 +519,61 @@ function TransitionCard({ app }: { app: Application }) {
                 Mark ready for submission
               </AppButton>
             </Stack>
+          )}
+
+          {sendBack && (
+            <>
+              <TextField
+                label="Reason for sending back"
+                value={sendBackReason}
+                onChange={(e) => setSendBackReason(e.target.value)}
+                helperText={`5 to 200 characters. ${sendBack.hint}`}
+                inputProps={{ 'data-testid': 'application.send-back-reason' }}
+              />
+              <Stack direction="row" justifyContent="flex-end">
+                <AppButton
+                  variant="outlined"
+                  loading={run.isPending}
+                  disabled={!isValidTransitionReason(sendBackReason)}
+                  dataTestId="application.send-back"
+                  onClick={() =>
+                    run.mutate(
+                      { transitionCode: sendBack.code, reason: sendBackReason.trim() },
+                      { onSuccess: () => setSendBackReason('') },
+                    )
+                  }
+                >
+                  {sendBack.label}
+                </AppButton>
+              </Stack>
+            </>
+          )}
+
+          {showClose && (
+            <>
+              <TextField
+                label="Closing note (optional)"
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                helperText="5 to 200 characters when given. A closed file cannot be reopened."
+              />
+              <Stack direction="row" justifyContent="flex-end">
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={closeReason.trim() !== '' && !isValidTransitionReason(closeReason)}
+                  dataTestId="application.close"
+                  onClick={() =>
+                    run.mutate({
+                      transitionCode: 'T-APP-07',
+                      ...(closeReason.trim() ? { reason: closeReason.trim() } : {}),
+                    })
+                  }
+                >
+                  Close application
+                </AppButton>
+              </Stack>
+            </>
           )}
 
           {showWithdraw && (

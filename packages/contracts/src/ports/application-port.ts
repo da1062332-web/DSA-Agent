@@ -1,5 +1,5 @@
 // packages/contracts/src/ports/application-port.ts — owner: Dev 3 — frozen at Gate 1 (Contracts §4.3)
-// Consumers: Dev 5 (lead conversion), Dev 4 (lender cases).
+// Consumers: Dev 5 (lead conversion), Dev 4 (lender cases), sanctions (status roll-up).
 // Fake: fakes/fake-application.ts — TODO(Dev 3, Gate 1) per Contracts §4.5.
 import type { Money } from '../money';
 import type { RequestContext, Tx } from '../kernel';
@@ -57,6 +57,57 @@ export interface SubmissionDocuments {
   documents: SubmissionDocument[];
 }
 
+/** loan_application.status (ENT-045, Doc 02 names). */
+export type ApplicationStatusCode =
+  | 'DRAFT'
+  | 'DOCUMENTS_PENDING'
+  | 'UNDER_REVIEW'
+  | 'READY_FOR_SUBMISSION'
+  | 'SUBMITTED'
+  | 'SANCTIONED'
+  | 'PARTIALLY_DISBURSED'
+  | 'DISBURSED'
+  | 'CLOSED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'CANCELLED';
+
+/** What another module may know about an application (MOD-LCS, MOD-SND). */
+export interface ApplicationSummary {
+  id: string;
+  branchId: string;
+  customerId: string;
+  productCategory: ProductCategory;
+  status: ApplicationStatusCode;
+  subStatus: 'QUERY_PENDING' | null;
+  version: number;
+}
+
+/**
+ * The lender roll-ups (Doc 02): ROLLUP-1 submitted, ROLLUP-2 query pending, ROLLUP-3 query answered, ROLLUP-4 sanctioned,
+ * ROLLUP-5 partly or fully disbursed, ROLLUP-6 every lender case rejected or withdrawn.
+ */
+export type ApplicationRollUpCode = 'ROLLUP-1' | 'ROLLUP-2' | 'ROLLUP-3' | 'ROLLUP-4' | 'ROLLUP-5' | 'ROLLUP-6';
+
+export interface ApplicationRollUpCommand {
+  applicationId: string;
+  transitionCode: ApplicationRollUpCode;
+  /** The status after the roll-up; the current status for ROLLUP-2 and ROLLUP-3, which change only the sub-status. */
+  toStatus: ApplicationStatusCode;
+  toSubStatus: 'QUERY_PENDING' | null;
+  causedByLenderCaseId: string;
+  /** The lender case's product version; recorded on the application only when it has none yet (ROLLUP-1 from a draft). */
+  productVersionId?: string | null;
+}
+
+export interface ApplicationRollUpResult {
+  applicationId: string;
+  fromStatus: ApplicationStatusCode;
+  toStatus: ApplicationStatusCode;
+  /** false when the application was already in the target status and sub-status, so nothing was written. */
+  changed: boolean;
+}
+
 export interface ApplicationPort {
   /** Inside caller tx (FR-LEAD-015 atomic conversion). Creates loan_application DRAFT + PRIMARY application_party
    *  + status history + application.created event + audit. Throws VALIDATION_ERROR on invalid input. */
@@ -69,4 +120,22 @@ export interface ApplicationPort {
   /** Inside caller tx. The application's checklist and stored document hashes, for lender packages (MOD-LCS).
    *  Added 2026-10-19 (additive, Contracts §15). NOT_FOUND when the application is not visible in the tenant. */
   getSubmissionDocuments(tx: Tx, ctx: RequestContext, applicationId: string): Promise<SubmissionDocuments>;
+
+  /** Inside caller tx. The application in the caller's tenant, or null. `forUpdate` locks the row until the caller's
+   *  transaction ends. The caller applies its own permission and scope rules. Added 2026-10-28 (additive, Contracts §15). */
+  getApplicationSummary(
+    tx: Tx,
+    ctx: RequestContext,
+    applicationId: string,
+    opts?: { forUpdate?: boolean },
+  ): Promise<ApplicationSummary | null>;
+
+  /** Inside caller tx. Applies a lender roll-up: status, sub-status, history, application.state_changed event (when the
+   *  status changes) and audit, all in the caller's transaction. null when the application is not in the tenant.
+   *  Added 2026-10-28 (additive, Contracts §15); lender cases and sanctions no longer write loan_application. */
+  rollUpStatus(
+    tx: Tx,
+    ctx: RequestContext,
+    cmd: ApplicationRollUpCommand,
+  ): Promise<ApplicationRollUpResult | null>;
 }

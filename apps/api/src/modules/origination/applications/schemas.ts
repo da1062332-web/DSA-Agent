@@ -80,6 +80,8 @@ export const Application = z.object({
   onHold: z.boolean(),
   holdReason: z.string().nullable(),
   holdUntil: z.string().nullable(),
+  /** Why the file was sent back for rework (T-APP-03); cleared when it goes back to review (T-APP-02). */
+  reworkReason: z.string().nullable(),
   salesOwnerId: z.string(),
   opsOwnerId: z.string().nullable(),
   opsQueueId: z.string().nullable(),
@@ -139,7 +141,9 @@ export const ApplicationHold = z
 
 // ---- Transitions (API-APP-005). T-APP-01, 02, 04 and 10 are named by the spec (MVP). The T-APP table itself is not available:
 // T-APP-08 (withdraw) and T-APP-09 (reopen) are the codes assumed for SUB-APP.06 (audit follow-up 2026-10-19), with the
-// permissions the module page gives them (application.withdraw, application.reopen). ----
+// permissions the module page gives them (application.withdraw, application.reopen). T-APP-03 (send back for rework),
+// T-APP-05 (send back to review) and T-APP-07 (close) were added on 2026-10-28 by owner decision, from the schema: the
+// rework_reason column and the application.close permission. ----
 export const CancelReason = z.enum(['DUPLICATE', 'CREATED_IN_ERROR', 'INELIGIBLE', 'OTHER']);
 export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
   z
@@ -149,7 +153,25 @@ export const ApplicationTransition = z.discriminatedUnion('transitionCode', [
     })
     .strict(),
   z.object({ transitionCode: z.literal('T-APP-02') }).strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-03'),
+      reason: safeText(5, 200),
+    })
+    .strict(),
   z.object({ transitionCode: z.literal('T-APP-04') }).strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-05'),
+      reason: safeText(5, 200),
+    })
+    .strict(),
+  z
+    .object({
+      transitionCode: z.literal('T-APP-07'),
+      reason: safeText(5, 200).optional(),
+    })
+    .strict(),
   z
     .object({
       transitionCode: z.literal('T-APP-08'),

@@ -2,7 +2,6 @@
 import { AppError, type Tx } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type {
-  ApplicationLookupRow,
   DataSharingRecordRow,
   EmpanelmentLookupRow,
   LenderCaseRow,
@@ -75,23 +74,6 @@ export interface LenderCaseRepository {
     updates: Partial<LenderQueryRow>,
   ): Promise<LenderQueryRow | null>;
   listQueriesByCase(tx: Tx, tenantId: string, caseId: string): Promise<LenderQueryRow[]>;
-
-  findApplication(tx: Tx, tenantId: string, applicationId: string): Promise<ApplicationLookupRow | null>;
-  findApplicationForUpdate(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-  ): Promise<ApplicationLookupRow | null>;
-  updateApplicationStatus(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-    status: string,
-    subStatus: string | null,
-    transitionCode: string,
-    actor: string,
-    causedByLenderCaseId: string,
-  ): Promise<void>;
 
   findLender(tx: Tx, tenantId: string, lenderId: string): Promise<LenderLookupRow | null>;
   findEmpanelment(tx: Tx, tenantId: string, empanelmentId: string): Promise<EmpanelmentLookupRow | null>;
@@ -388,71 +370,6 @@ export class SqlLenderCaseRepository implements LenderCaseRepository {
     return res.rows;
   }
 
-  async findApplication(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-  ): Promise<ApplicationLookupRow | null> {
-    const res = await sql<ApplicationLookupRow>`
-      SELECT id, tenant_id, branch_id, customer_id, product_category, status, sub_status, lock_version
-      FROM loan_application
-      WHERE tenant_id = ${tenantId} AND id = ${applicationId}
-    `.execute(tx);
-    return res.rows[0] ?? null;
-  }
-
-  async findApplicationForUpdate(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-  ): Promise<ApplicationLookupRow | null> {
-    const res = await sql<ApplicationLookupRow>`
-      SELECT id, tenant_id, branch_id, customer_id, product_category, status, sub_status, lock_version
-      FROM loan_application
-      WHERE tenant_id = ${tenantId} AND id = ${applicationId}
-      FOR UPDATE
-    `.execute(tx);
-    return res.rows[0] ?? null;
-  }
-
-  async updateApplicationStatus(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-    status: string,
-    subStatus: string | null,
-    transitionCode: string,
-    actor: string,
-    causedByLenderCaseId: string,
-  ): Promise<void> {
-    const appRow = await this.findApplicationForUpdate(tx, tenantId, applicationId);
-    if (!appRow) return;
-
-    await sql`
-      UPDATE loan_application
-      SET
-        status = ${status},
-        sub_status = ${subStatus},
-        product_version_id = COALESCE(product_version_id, (SELECT product_version_id FROM lender_case WHERE id = ${causedByLenderCaseId})),
-        updated_at = now(),
-        updated_by = ${actor},
-        lock_version = lock_version + 1
-      WHERE tenant_id = ${tenantId} AND id = ${applicationId}
-    `.execute(tx);
-
-    const historyId = `ash_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    await sql`
-      INSERT INTO application_status_history (
-        id, tenant_id, application_id, from_status, to_status, from_sub_status,
-        to_sub_status, transition_code, actor, caused_by_lender_case_id, occurred_at
-      ) VALUES (
-        ${historyId}, ${tenantId}, ${applicationId}, ${appRow.status}, ${status},
-        ${appRow.sub_status}, ${subStatus}, ${transitionCode}, ${actor},
-        ${causedByLenderCaseId}, now()
-      )
-    `.execute(tx);
-  }
-
   async findLender(tx: Tx, tenantId: string, lenderId: string): Promise<LenderLookupRow | null> {
     const res = await sql<LenderLookupRow>`
       SELECT id, tenant_id, name, status
@@ -530,7 +447,6 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
   public packages = new Map<string, SubmissionPackageRow>();
   public dataSharingRecords = new Map<string, DataSharingRecordRow>();
   public queries = new Map<string, LenderQueryRow>();
-  public applications = new Map<string, ApplicationLookupRow>();
   public lenders = new Map<string, LenderLookupRow>();
   public empanelments = new Map<string, EmpanelmentLookupRow>();
   public productVersions = new Map<string, ProductVersionLookupRow>();
@@ -734,45 +650,6 @@ export class InMemoryLenderCaseRepository implements LenderCaseRepository {
       }
     }
     return list;
-  }
-
-  async findApplication(
-    _tx: Tx,
-    tenantId: string,
-    applicationId: string,
-  ): Promise<ApplicationLookupRow | null> {
-    const a = this.applications.get(this.key(tenantId, applicationId));
-    return a ? { ...a } : null;
-  }
-
-  async findApplicationForUpdate(
-    tx: Tx,
-    tenantId: string,
-    applicationId: string,
-  ): Promise<ApplicationLookupRow | null> {
-    return this.findApplication(tx, tenantId, applicationId);
-  }
-
-  async updateApplicationStatus(
-    _tx: Tx,
-    tenantId: string,
-    applicationId: string,
-    status: string,
-    subStatus: string | null,
-    _transitionCode: string,
-    _actor: string,
-    _causedByLenderCaseId: string,
-  ): Promise<void> {
-    const k = this.key(tenantId, applicationId);
-    const existing = this.applications.get(k);
-    if (existing) {
-      this.applications.set(k, {
-        ...existing,
-        status,
-        sub_status: subStatus,
-        lock_version: existing.lock_version + 1,
-      });
-    }
   }
 
   async findLender(_tx: Tx, tenantId: string, lenderId: string): Promise<LenderLookupRow | null> {

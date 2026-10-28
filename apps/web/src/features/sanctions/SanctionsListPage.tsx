@@ -75,7 +75,7 @@ export function SanctionsListPage(): React.ReactElement {
     .filter((s) => s.status === 'ACTIVE')
     .reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
   const totalDisbursedAmount = tranches
-    .filter((t) => t.status !== 'VOIDED')
+    .filter((t) => t.status === 'RECORDED' || t.status === 'VERIFIED')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const filteredSanctions = useMemo(() => {
@@ -247,7 +247,21 @@ export function SanctionsListPage(): React.ReactElement {
     {
       id: 'status',
       header: 'Status',
-      accessor: (t) => <StatusBadge status={t.status} />,
+      accessor: (t) => (
+        <Box>
+          <StatusBadge status={t.status} />
+          {t.exceptionApprovalId && (
+            <Typography variant="caption" color="warning.main" display="block">
+              Exception approved
+            </Typography>
+          )}
+          {t.voidReason && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              Void: {t.voidReason}
+            </Typography>
+          )}
+        </Box>
+      ),
     },
     {
       id: 'actions',

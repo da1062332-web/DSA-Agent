@@ -60,6 +60,8 @@ export interface ApiDeps {
   invoiceRepository?: unknown;
   /** Where document bytes are stored (MOD-DOC). Local folder when absent. */
   documentStore?: unknown;
+  /** Malware scanner for document uploads (MOD-DOC SUB-DOC.04). The file-signature check only when absent. */
+  documentScanner?: unknown;
   /** Secret behind signed document links and archive encryption (derived keys). A per-process secret when absent. */
   documentLinkSecret?: string;
   /** Queues background work in the caller's transaction (platform job queue, run per tenant by the worker). */

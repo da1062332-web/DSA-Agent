@@ -204,6 +204,21 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       404: { description: 'NOT_FOUND (also when outside the caller scope)' },
     },
   });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/checklist/generate',
+    tags: tag,
+    operationId: 'API-APP-007-GENERATE',
+    summary:
+      'Build the document checklist from the rule engine if it is missing, then return it with a completeness summary (application.read)',
+    responses: {
+      200: { description: 'Checklist items and summary', content: json(ChecklistResponseSchema) },
+      401: { description: 'UNAUTHENTICATED' },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+    },
+  });
 }
 
 const Party = z.object({

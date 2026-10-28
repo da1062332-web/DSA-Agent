@@ -1,4 +1,4 @@
-// /applications (owner: Dev 3; DSA Notion MODULE 16, API-APP-002). The applications the caller may see: RM sees own,
+// /applications (owner: Dev 3; DSA Notion MODULE 16, API-APP-002; New application, API-APP-001). The applications the caller may see: RM sees own,
 // branch roles see their branch, org owner sees the tenant. The server applies the scope; the screen only lists.
 import {
   Alert,
@@ -14,6 +14,7 @@ import { LoadMore } from '../admin/components';
 import { CustomerName } from '../../shell/display';
 import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from './rules';
 import {
+  AppButton,
   PageHeader,
   FilterToolbar,
   DataTable,
@@ -21,6 +22,7 @@ import {
   type ColumnDef,
 } from '../../ui';
 import { RecordLink } from '../../ui/RecordLink';
+import { NewApplicationDialog } from './NewApplicationDialog';
 
 export interface Application {
   id: string;
@@ -37,6 +39,8 @@ export interface Application {
   onHold: boolean;
   holdReason: string | null;
   holdUntil: string | null;
+  /** Why the file was sent back for rework (T-APP-03); cleared when it goes back to review. */
+  reworkReason: string | null;
   salesOwnerId: string;
   opsOwnerId: string | null;
   opsQueueId: string | null;
@@ -48,12 +52,22 @@ export interface Application {
 export function ApplicationsPage() {
   const me = useMe();
   const canRead = hasPermission(me.data, 'application.read');
+  const canCreate = hasPermission(me.data, 'application.create');
+  const [creating, setCreating] = useState(false);
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <PageHeader
         title="Applications"
         subtitle="Loan files from conversion to closure. You see the applications in your scope."
+        actions={
+          canCreate ? (
+            <AppButton variant="primary" onClick={() => setCreating(true)} dataTestId="applications.new">
+              New application
+            </AppButton>
+          ) : undefined
+        }
       />
+      {canCreate && <NewApplicationDialog open={creating} onClose={() => setCreating(false)} />}
       {!canRead && (
         <Alert severity="warning" data-testid="applications.noAccess" sx={{ borderRadius: 2 }}>
           You don't have permission to view applications. Ask your administrator for the application read

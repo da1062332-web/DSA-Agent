@@ -1,7 +1,7 @@
 # Approvals, Decisions, and Coordination Status (Vaibhav's Modules)
 
-**Status:** ALL RESOLVED & SIGNED OFF  
-**Date Updated:** 2026-10-16
+**Status:** RESOLVED & SIGNED OFF, except the open spec confirmation in §2 (Module 16 transition table)  
+**Date Updated:** 2026-10-28 (§2 corrected to the verified implementation)
 
 ---
 
@@ -16,15 +16,20 @@
 > - Operator permissions stripped from customer tenants.
 > - Zero cross-tenant data leaks; strict fail-closed RLS enforced across all tables.
 
-## 2. Module 16 (Applications): Withdraw and Reopen Transitions (RESOLVED: DEFERRED TO RELEASE 2)
+## 2. Module 16 (Applications): Withdraw and Reopen Transitions (BUILT; SPEC CONFIRMATION OPEN)
 
-> **Status: CONFIRMED DEFERRED TO RELEASE 2 (TASK-433).**
+> **Status: WITHDRAW AND REOPEN BUILT ON 2026-10-19 AND VERIFIED ON 2026-10-28. REOPEN OF A TERMINAL LENDER OUTCOME NOT BUILT.**
+> The earlier "deferred to Release 2" status is superseded: the code in `apps/api/src/modules/origination/applications/transitions.ts` has both.
 >
-> - Core walking skeleton transitions are 100% complete and tested in `transitions.spec.ts`:
->   - `T-APP-01`: DRAFT -> DOCUMENTS_PENDING
->   - `T-APP-02`: DOCUMENTS_PENDING -> UNDER_REVIEW
->   - `T-APP-10`: Cancel with mandatory cancellation reason
-> - Proposed non-blocking lifecycle states (Withdraw, Reopen, Reopen terminal) are formally deferred to post-MVP Release 2 per specification release roadmap (TASK-433).
+> - Transitions built and tested (`transitions.spec.ts` 14, `transitions.int.spec.ts` 16, `application-parties.int.spec.ts`, isolation `applications.spec.ts`):
+>   - `T-APP-01`: DRAFT -> DOCUMENTS_PENDING (application.update; selects the product version, builds the checklist)
+>   - `T-APP-02`: DOCUMENTS_PENDING -> UNDER_REVIEW (application.review)
+>   - `T-APP-04`: UNDER_REVIEW -> READY_FOR_SUBMISSION (application.review; mandatory checklist items complete)
+>   - `T-APP-08`: DOCUMENTS_PENDING, UNDER_REVIEW or READY_FOR_SUBMISSION -> WITHDRAWN (application.withdraw; reason of 5 to 200 characters)
+>   - `T-APP-09`: CANCELLED or WITHDRAWN -> DRAFT (application.reopen; reason required; the cancel reason is cleared)
+>   - `T-APP-10`: DRAFT, DOCUMENTS_PENDING or UNDER_REVIEW -> CANCELLED (application.cancel; one of four cancel reasons)
+> - SUBMITTED and the states after it are set by the lender-case and sanction roll-up, not by this endpoint.
+> - **Open (needs the Notion T-APP table):** the T-APP table was not available when this was built, so the from/to states and permissions above are agreed assumptions, and the codes T-APP-08 and T-APP-09 themselves are assumed. T-APP-03, 05, 06 and 07 are not built. Reopening a terminal lender outcome (`application.reopen_terminal`, REJECTED or CLOSED) is not built: such a reopen is refused (409).
 
 ## 3. Modules 14 & 15 (Lenders & Products): Routing & Management Pages (RESOLVED & ALIGNED)
 

@@ -241,6 +241,34 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
     expect(shared.rows[0].consent_ids).toEqual(['cnst_wfa_int_share']);
     expect(shared.rows[0].items.fields).not.toContain('pan');
     expect(shared.rows[0].items.checklistItemIds).toEqual([checklistItemId]);
+
+    // ROLLUP-1 goes through ApplicationPort: the status, a history row tied to the lender case, the state event and audit.
+    const rolled = await env.admin.query(
+      `select a.status, h.transition_code, h.caused_by_lender_case_id
+         from app.loan_application a
+         join app.application_status_history h on h.application_id = a.id and h.transition_code = 'ROLLUP-1'
+        where a.id = $1`,
+      [applicationId],
+    );
+    expect(rolled.rows).toEqual([
+      { status: 'SUBMITTED', transition_code: 'ROLLUP-1', caused_by_lender_case_id: caseId },
+    ]);
+    const event = await env.admin.query(
+      `select payload from app.outbox_event
+        where subject_id = $1 and event_type = 'application.state_changed' and payload->>'transitionCode' = 'ROLLUP-1'`,
+      [applicationId],
+    );
+    expect(event.rows).toEqual([
+      { payload: expect.objectContaining({ to: 'SUBMITTED', lenderCaseId: caseId }) },
+    ]);
+    const audited = await env.admin.query(
+      `select after from app.audit_event where entity_id = $1 and action = 'application.state_changed'
+          and after->>'transitionCode' = 'ROLLUP-1'`,
+      [applicationId],
+    );
+    expect(audited.rows).toEqual([
+      { after: { status: 'SUBMITTED', subStatus: null, transitionCode: 'ROLLUP-1' } },
+    ]);
   });
 
   it('TEST-WFA-INT-06 a lender query is stored, answered once under the same consent, and a second answer is refused', async () => {
@@ -255,6 +283,14 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
       [queryId],
     );
     expect(stored.rows).toEqual([{ requested_items: ['SALARY_SLIP'], responded_at: null }]);
+    const subStatus = async () =>
+      (
+        await env.admin.query(`select status, sub_status from app.loan_application where id = $1`, [
+          applicationId,
+        ])
+      ).rows[0];
+    // ROLLUP-2: the application waits on the lender query.
+    expect(await subStatus()).toEqual({ status: 'SUBMITTED', sub_status: 'QUERY_PENDING' });
 
     const answer = { text: 'Salary slip uploaded', documentReferences: ['doc_wfa_int_1'] };
     const first = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
@@ -265,6 +301,17 @@ describe('TEST-WFA-INT Workflow A with the production wiring', () => {
       [queryId],
     );
     expect(answered.rows[0]).toMatchObject({ kind: 'QUERY_RESPONSE', consent_ids: ['cnst_wfa_int_share'] });
+    // ROLLUP-3: answering clears the query; a sub-status change writes history but no state event.
+    expect(await subStatus()).toEqual({ status: 'SUBMITTED', sub_status: null });
+    const subHistory = await env.admin.query(
+      `select transition_code, from_sub_status, to_sub_status from app.application_status_history
+        where application_id = $1 and transition_code in ('ROLLUP-2', 'ROLLUP-3') order by occurred_at, transition_code`,
+      [applicationId],
+    );
+    expect(subHistory.rows).toEqual([
+      { transition_code: 'ROLLUP-2', from_sub_status: null, to_sub_status: 'QUERY_PENDING' },
+      { transition_code: 'ROLLUP-3', from_sub_status: 'QUERY_PENDING', to_sub_status: null },
+    ]);
 
     const second = await request(app).post(`/v1/lender-queries/${queryId}/responses`).send(answer);
     expect(second.status).toBe(409);

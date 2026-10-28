@@ -38,7 +38,7 @@ function handleZodError(err: ZodError): never {
 
 export function createRouter(deps: ApiDeps): Router {
   const repo = (deps.sanctionRepository as SanctionRepository) ?? new SqlSanctionRepository();
-  const service = new SanctionService(repo, deps.txRunner);
+  const service = new SanctionService(repo, deps.txRunner, deps.applicationPort);
 
   const router = Router();
 

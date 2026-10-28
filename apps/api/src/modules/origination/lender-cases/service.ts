@@ -4,6 +4,7 @@ import {
   isValidLenderCaseTransition,
   type BuildPackageInput,
   type ApplicationPort,
+  type ApplicationRollUpCommand,
   type ConsentPort,
   type CreateLenderCaseInput,
   type LenderCaseResource,
@@ -24,7 +25,7 @@ import {
 import { createHash } from 'crypto';
 import { monotonicFactory } from 'ulid';
 import type { LenderCaseRepository } from './repository';
-import type { LenderCaseRow, LenderQueryRow, SubmissionPackageRow } from './types';
+import type { ApplicationLookupRow, LenderCaseRow, LenderQueryRow, SubmissionPackageRow } from './types';
 
 const nextUlid = monotonicFactory();
 
@@ -70,6 +71,47 @@ function decodeLenderCaseCursor(cursor: string | undefined): { createdAt: string
 
 export class LenderCaseService {
   constructor(private readonly deps: LenderCaseServiceDeps) {}
+
+  private applications(): ApplicationPort {
+    if (!this.deps.applicationPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The application module is not available.');
+    }
+    return this.deps.applicationPort;
+  }
+
+  /** The application through ApplicationPort (this module never reads loan_application), in the row shape used here. */
+  private async findApplication(
+    tx: Tx,
+    ctx: RequestContext,
+    applicationId: string,
+    forUpdate = false,
+  ): Promise<ApplicationLookupRow | null> {
+    const a = await this.applications().getApplicationSummary(tx, ctx, applicationId, { forUpdate });
+    return a
+      ? {
+          id: a.id,
+          tenant_id: ctx.principal.tenantId,
+          branch_id: a.branchId,
+          customer_id: a.customerId,
+          product_category: a.productCategory,
+          status: a.status,
+          sub_status: a.subStatus,
+          lock_version: a.version,
+        }
+      : null;
+  }
+
+  /** A lender roll-up (ROLLUP-1..6). The application module writes the status, history, event and audit. */
+  private async rollUp(
+    tx: Tx,
+    ctx: RequestContext,
+    cmd: Omit<ApplicationRollUpCommand, 'toStatus'> & { toStatus: string },
+  ): Promise<void> {
+    await this.applications().rollUpStatus(tx, ctx, {
+      ...cmd,
+      toStatus: cmd.toStatus as ApplicationRollUpCommand['toStatus'],
+    });
+  }
 
   /** FR-PRV: data goes to a lender only under an ACTIVE SHARE_WITH_LENDER consent naming that lender. */
   private async requireShareConsent(tx: Tx, customerId: string, lenderId: string): Promise<string> {
@@ -187,7 +229,7 @@ export class LenderCaseService {
     this.requirePermission(ctx, 'lender_case.submit');
 
     // 1. Verify Application exists in tenant
-    const app = await this.deps.repository.findApplicationForUpdate(tx, tenantId, applicationId);
+    const app = await this.findApplication(tx, ctx, applicationId, true);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${applicationId}' not found.`);
     }
@@ -377,7 +419,7 @@ export class LenderCaseService {
       throw AppError.of('NOT_FOUND', `Lender case '${id}' not found.`);
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
       this.checkBranchScope(ctx, 'application.read', app.branch_id);
     }
@@ -392,7 +434,7 @@ export class LenderCaseService {
     const tenantId = ctx.principal.tenantId;
     this.requirePermission(ctx, 'application.read');
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, applicationId);
+    const app = await this.findApplication(tx, ctx, applicationId);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${applicationId}' not found.`);
     }
@@ -438,7 +480,7 @@ export class LenderCaseService {
     if (!row) {
       throw AppError.of('NOT_FOUND', `Lender case '${id}' not found.`);
     }
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
       this.checkBranchScope(ctx, 'application.read', app.branch_id);
     }
@@ -539,7 +581,7 @@ export class LenderCaseService {
       throw AppError.of('INVALID_STATE', `Cannot build package in state '${row.status}'.`);
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${row.application_id}' not found.`);
     }
@@ -674,7 +716,7 @@ export class LenderCaseService {
       throw AppError.of('VALIDATION_ERROR', 'Submission package must be frozen before submission.');
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${row.application_id}' not found.`);
     }
@@ -750,16 +792,14 @@ export class LenderCaseService {
 
     // 4. Roll up application status to SUBMITTED (ROLLUP-1)
     if (app.status !== 'SANCTIONED' && app.status !== 'DISBURSED' && app.status !== 'SUBMITTED') {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        row.application_id,
-        'SUBMITTED',
-        null,
-        'ROLLUP-1',
-        ctx.principal.id,
-        id,
-      );
+      await this.rollUp(tx, ctx, {
+        applicationId: row.application_id,
+        transitionCode: 'ROLLUP-1',
+        toStatus: 'SUBMITTED',
+        toSubStatus: null,
+        causedByLenderCaseId: id,
+        productVersionId: row.product_version_id,
+      });
     }
 
     // 5. Emit Outbox events
@@ -865,7 +905,7 @@ export class LenderCaseService {
       );
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
       this.checkBranchScope(ctx, 'lender_case.update_status', app.branch_id);
     }
@@ -900,7 +940,7 @@ export class LenderCaseService {
 
     // Roll up application status
     if (app) {
-      await this.applyApplicationRollup(tx, tenantId, app.id, input.toStatus, id, ctx.principal.id);
+      await this.applyApplicationRollup(tx, ctx, app.id, input.toStatus, row);
     }
 
     // Outbox event
@@ -945,47 +985,23 @@ export class LenderCaseService {
 
   private async applyApplicationRollup(
     tx: Tx,
-    tenantId: string,
+    ctx: RequestContext,
     applicationId: string,
     caseStatus: LenderCaseStatus,
-    caseId: string,
-    actor: string,
+    lenderCase: LenderCaseRow,
   ): Promise<void> {
+    const base = {
+      applicationId,
+      toSubStatus: null,
+      causedByLenderCaseId: lenderCase.id,
+      productVersionId: lenderCase.product_version_id,
+    };
     if (caseStatus === 'SANCTIONED') {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        applicationId,
-        'SANCTIONED',
-        null,
-        'ROLLUP-4',
-        actor,
-        caseId,
-      );
-    } else if (caseStatus === 'PARTIALLY_DISBURSED') {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        applicationId,
-        'PARTIALLY_DISBURSED',
-        null,
-        'ROLLUP-5',
-        actor,
-        caseId,
-      );
-    } else if (caseStatus === 'DISBURSED') {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        applicationId,
-        'DISBURSED',
-        null,
-        'ROLLUP-5',
-        actor,
-        caseId,
-      );
+      await this.rollUp(tx, ctx, { ...base, transitionCode: 'ROLLUP-4', toStatus: 'SANCTIONED' });
+    } else if (caseStatus === 'PARTIALLY_DISBURSED' || caseStatus === 'DISBURSED') {
+      await this.rollUp(tx, ctx, { ...base, transitionCode: 'ROLLUP-5', toStatus: caseStatus });
     } else if (caseStatus === 'REJECTED' || caseStatus === 'WITHDRAWN') {
-      const allCases = await this.deps.repository.listCasesByApplication(tx, tenantId, applicationId);
+      const allCases = await this.deps.repository.listCasesByApplication(tx, ctx.principal.tenantId, applicationId);
       const allTerminal = allCases.every(
         (c) => c.status === 'REJECTED' || c.status === 'WITHDRAWN' || c.status === 'CLOSED',
       );
@@ -993,16 +1009,7 @@ export class LenderCaseService {
         const anySanctioned = allCases.some((c) => c.status === 'SANCTIONED' || c.status === 'DISBURSED');
         if (!anySanctioned) {
           const finalStatus = caseStatus === 'REJECTED' ? 'REJECTED' : 'WITHDRAWN';
-          await this.deps.repository.updateApplicationStatus(
-            tx,
-            tenantId,
-            applicationId,
-            finalStatus,
-            null,
-            'ROLLUP-6',
-            actor,
-            caseId,
-          );
+          await this.rollUp(tx, ctx, { ...base, transitionCode: 'ROLLUP-6', toStatus: finalStatus });
         }
       }
     }
@@ -1034,7 +1041,7 @@ export class LenderCaseService {
       throw AppError.of('INVALID_STATE', `Cannot raise query in state '${row.status}'.`);
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
       this.checkBranchScope(ctx, 'lender_case.update_status', app.branch_id);
     }
@@ -1102,16 +1109,13 @@ export class LenderCaseService {
 
     // Roll up application sub_status = QUERY_PENDING (ROLLUP-2)
     if (app) {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        app.id,
-        app.status,
-        'QUERY_PENDING',
-        'ROLLUP-2',
-        ctx.principal.id,
-        id,
-      );
+      await this.rollUp(tx, ctx, {
+        applicationId: app.id,
+        transitionCode: 'ROLLUP-2',
+        toStatus: app.status,
+        toSubStatus: 'QUERY_PENDING',
+        causedByLenderCaseId: id,
+      });
     }
 
     await this.deps.repository.insertOutboxEvent(tx, {
@@ -1177,7 +1181,7 @@ export class LenderCaseService {
       throw AppError.of('INVALID_STATE', `Case is not in QUERY_RAISED status (current: ${row.status}).`);
     }
 
-    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    const app = await this.findApplication(tx, ctx, row.application_id);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${row.application_id}' not found.`);
     }
@@ -1262,16 +1266,13 @@ export class LenderCaseService {
 
     // Roll up application: clear QUERY_PENDING (ROLLUP-3)
     if (app) {
-      await this.deps.repository.updateApplicationStatus(
-        tx,
-        tenantId,
-        app.id,
-        app.status,
-        null,
-        'ROLLUP-3',
-        ctx.principal.id,
-        row.id,
-      );
+      await this.rollUp(tx, ctx, {
+        applicationId: app.id,
+        transitionCode: 'ROLLUP-3',
+        toStatus: app.status,
+        toSubStatus: null,
+        causedByLenderCaseId: row.id,
+      });
     }
 
     await this.deps.repository.insertOutboxEvent(tx, {

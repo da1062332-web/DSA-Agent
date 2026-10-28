@@ -34,6 +34,7 @@ export const toApplication = (r: Row): Application => ({
   onHold: Boolean(r.on_hold),
   holdReason: (r.hold_reason as string | null) ?? null,
   holdUntil: r.hold_until ? iso(r.hold_until) : null,
+  reworkReason: (r.rework_reason as string | null) ?? null,
   salesOwnerId: String(r.sales_owner_id),
   opsOwnerId: (r.ops_owner_id as string | null) ?? null,
   opsQueueId: (r.ops_queue_id as string | null) ?? null,
