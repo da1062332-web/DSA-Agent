@@ -101,26 +101,47 @@ function RelationsCard({ app }: { app: Application }) {
   const me = useMe();
   return (
     <AppCard dataTestId="application.relations" padding="dense">
-      <FieldGrid minColumnWidth={170}>
-        <Typography variant="body2" component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-          Customer:{' '}
-          <CustomerName id={app.customerId} linkToProfile />
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
+        <Typography
+          variant="body2"
+          component="span"
+          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+        >
+          Customer: <CustomerName id={app.customerId} linkToProfile />
         </Typography>
-        <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
-        <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
-        <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
+        <Typography variant="body2">
+          Branch: <BranchName id={app.branchId} />
+        </Typography>
+        <Typography variant="body2">
+          Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" />
+        </Typography>
+        <Typography variant="body2">
+          Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" />
+        </Typography>
         <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
         {hasPermission(me.data, 'document.upload') && (
-          <AppButton
-            size="small"
-            variant="outlined"
-            to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
-            dataTestId="application.upload-link"
+          <Grid
+            item
+            xs={12}
+            md={2}
+            sx={{
+              display: 'flex',
+              justifyContent: { xs: 'flex-start', md: 'flex-end' },
+              alignItems: 'center',
+            }}
           >
-            Send customer upload link
-          </AppButton>
+            <AppButton
+              size="small"
+              variant="outlined"
+              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+              dataTestId="application.upload-link"
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Send customer upload link
+            </AppButton>
+          </Grid>
         )}
-      </FieldGrid>
+      </Stack>
     </AppCard>
   );
 }
@@ -169,7 +190,9 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             disabled={!canEdit}
             error={amount !== '' && !isValidAmount(amount)}
             helperText="Decimal, for example 300000.00"
-            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+            onKeyDown={(e) => {
+              if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+            }}
           />
           <TextField
             label="Tenure (months)"
@@ -180,7 +203,9 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             error={tenure !== '' && !isValidTenure(tenure)}
             helperText="1 to 480"
             inputProps={{ min: 1, max: 480 }}
-            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+            onKeyDown={(e) => {
+              if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+            }}
           />
           <TextField
             select
