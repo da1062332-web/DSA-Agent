@@ -1,15 +1,16 @@
+// Test login (owner: Dev 1). Mounted only when createApp is given a testAuth, which test-auth.ts allows only for the local stack and an
+// isolated database. Nothing here logs the one-time code, the email or a token.
 import express, { type Router } from 'express';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { AppError } from '@dsa/contracts';
 import { mintBypassToken } from '@dsa/kernel';
 import type { ApiDeps } from '../modules/types';
+import type { TestAuthConfig } from '../test-auth';
 
 export interface PublicAuthRouterOptions {
   deps: ApiDeps;
-  supabaseUrl: string;
-  bypassSecret: string;
-  bypassOtp: string;
+  testAuth: TestAuthConfig;
 }
 
 const TestLoginSchema = z.object({
@@ -19,6 +20,7 @@ const TestLoginSchema = z.object({
 
 export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
   const router = express.Router();
+  const { testAuth } = opts;
 
   // GET /public/v1/auth/test-users — Lists available active users for testing login
   router.get('/auth/test-users', async (_req, res, next) => {
@@ -62,7 +64,7 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
     }
   });
 
-  // POST /public/v1/auth/test-login — Login with hardcoded OTP for testing
+  // POST /public/v1/auth/test-login — Signs a test user in with the fixed one-time code
   router.post('/auth/test-login', async (req, res, next) => {
     try {
       const parsed = TestLoginSchema.safeParse(req.body);
@@ -71,8 +73,8 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
       }
       const { email, otp } = parsed.data;
 
-      // 1. Verify hardcoded OTP against configured test bypass OTP (defaults to 000000)
-      if (otp !== opts.bypassOtp) {
+      // 1. The fixed one-time code. The request is not logged, so neither the code nor the email reaches the logs.
+      if (otp !== testAuth.otp) {
         throw AppError.of('UNAUTHENTICATED', 'Invalid test OTP.');
       }
 
@@ -113,7 +115,7 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
       );
 
       if (!user) {
-        throw AppError.of('NOT_FOUND', `No active database user found for "${email}".`);
+        throw AppError.of('NOT_FOUND', 'No active database user matches that email.');
       }
       if (user.status !== 'ACTIVE') {
         throw AppError.of('FORBIDDEN', `User account is ${user.status}.`);
@@ -122,10 +124,10 @@ export function createPublicAuthRouter(opts: PublicAuthRouterOptions): Router {
         throw AppError.of('FORBIDDEN', `Tenant is ${user.tenant_status}.`);
       }
 
-      // 3. Mint JWT token with aal2 (satisfies MFA)
+      // 3. Mint a test token with aal2 (satisfies MFA), signed with the test secret and issued by the local stack
       const token = await mintBypassToken({
-        supabaseUrl: opts.supabaseUrl,
-        secret: opts.bypassSecret,
+        supabaseUrl: testAuth.supabaseUrl,
+        secret: testAuth.secret,
         sub: user.idp_subject || user.id,
         tenantId: user.tenant_id,
         email: user.email,

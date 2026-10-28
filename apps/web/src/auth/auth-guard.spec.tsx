@@ -109,7 +109,7 @@ describe('Authentication & MFA Guards (AppLayout)', () => {
     );
   });
 
-  it('TEST-GUARD-02: user with mandatory MFA role not yet enrolled (aal.next != aal2) is redirected to /mfa for enrolment', () => {
+  it('TEST-GUARD-02: user with mandatory MFA role not yet enrolled (aal.next != aal2) is redirected to /login for enrolment', () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: 'usr_admin' } } as any,
       aal: { current: 'aal1', next: 'aal1' },
@@ -135,18 +135,18 @@ describe('Authentication & MFA Guards (AppLayout)', () => {
     const html = renderWithRouter('/config');
 
     expect(html).toContain('data-testid="mock-navigate"');
-    expect(html).toContain('data-to="/mfa"');
+    expect(html).toContain('data-to="/login"');
     expect(html).toContain('&quot;from&quot;:&quot;/config&quot;');
     expect(mockNavigateFn).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: '/mfa',
+        to: '/login',
         replace: true,
         state: { from: '/config' },
       }),
     );
   });
 
-  it('TEST-GUARD-03: user enrolled in MFA but at aal1 this session (needs challenge) is redirected to /mfa', () => {
+  it('TEST-GUARD-03: user enrolled in MFA but at aal1 this session (needs challenge) is redirected to /login', () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: 'usr_fin' } } as any,
       aal: { current: 'aal1', next: 'aal2' },
@@ -172,11 +172,11 @@ describe('Authentication & MFA Guards (AppLayout)', () => {
     const html = renderWithRouter('/payouts');
 
     expect(html).toContain('data-testid="mock-navigate"');
-    expect(html).toContain('data-to="/mfa"');
+    expect(html).toContain('data-to="/login"');
     expect(html).toContain('&quot;from&quot;:&quot;/payouts&quot;');
     expect(mockNavigateFn).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: '/mfa',
+        to: '/login',
         replace: true,
         state: { from: '/payouts' },
       }),

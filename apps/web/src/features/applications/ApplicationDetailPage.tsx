@@ -26,7 +26,7 @@ import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { EligibilityCard } from './EligibilityCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
-import { AppButton, AppCard } from '../../ui';
+import { AppButton, AppCard, FieldGrid } from '../../ui';
 import {
   STATUS_LABELS,
   canEditDetails,
@@ -69,7 +69,7 @@ export function ApplicationDetailPage() {
   return (
     <>
       <PageHeader
-        title={`Application ${a.id}`}
+        title="Application"
         subtitle={`${a.productCategory} · ${a.currency} ${a.requestedAmount} · version ${a.version}`}
         action={<StatusChip active={!a.onHold} label={STATUS_LABELS[a.status]} />}
       />
@@ -100,101 +100,27 @@ export function ApplicationDetailPage() {
 function RelationsCard({ app }: { app: Application }) {
   const me = useMe();
   return (
-    <AppCard dataTestId="application.relations" padding="normal">
-      <Grid container spacing={2.5} alignItems="center">
-        <Grid item xs={12} sm={6} md={2.5}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight={600}
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
-          >
-            Customer
-          </Typography>
-          <Box sx={{ fontWeight: 600, fontSize: '0.9375rem', lineHeight: 1.3 }}>
-            <CustomerName id={app.customerId} linkToProfile />
-          </Box>
-        </Grid>
-
-        <Grid item xs={6} sm={4} md={2}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight={600}
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
-          >
-            Branch
-          </Typography>
-          <Typography variant="body2" fontWeight={500} color="text.primary">
-            <BranchName id={app.branchId} />
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={4} md={2}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight={600}
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
-          >
-            Sales Owner
-          </Typography>
-          <Typography variant="body2" fontWeight={500} color="text.primary">
-            <UserName id={app.salesOwnerId} fallback="Not assigned" />
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={4} md={2}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight={600}
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
-          >
-            Operations Owner
-          </Typography>
-          <Typography variant="body2" fontWeight={500} color="text.primary">
-            <UserName id={app.opsOwnerId} fallback="Not assigned" />
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={4} md={1.5}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight={600}
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
-          >
-            Opened
-          </Typography>
-          <Typography variant="body2" color="text.primary">
-            {formatDate(app.createdAt)}
-          </Typography>
-        </Grid>
-
+    <AppCard dataTestId="application.relations" padding="dense">
+      <FieldGrid minColumnWidth={170}>
+        <Typography variant="body2" component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+          Customer:{' '}
+          <CustomerName id={app.customerId} linkToProfile />
+        </Typography>
+        <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
+        <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
+        <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
+        <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
         {hasPermission(me.data, 'document.upload') && (
-          <Grid
-            item
-            xs={12}
-            md={2}
-            sx={{
-              display: 'flex',
-              justifyContent: { xs: 'flex-start', md: 'flex-end' },
-              alignItems: 'center',
-            }}
+          <AppButton
+            size="small"
+            variant="outlined"
+            to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+            dataTestId="application.upload-link"
           >
-            <AppButton
-              size="small"
-              variant="outlined"
-              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
-              dataTestId="application.upload-link"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Send customer upload link
-            </AppButton>
-          </Grid>
+            Send customer upload link
+          </AppButton>
         )}
-      </Grid>
+      </FieldGrid>
     </AppCard>
   );
 }
@@ -235,7 +161,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             {STATUS_LABELS[app.status]}.
           </Typography>
         )}
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             label="Requested amount (INR)"
             value={amount}
@@ -284,7 +210,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             ))}
           </TextField>
           {canEdit && (
-            <Stack direction="row">
+            <Stack direction="row" justifyContent="flex-end">
               <AppButton
                 variant="primary"
                 loading={save.isPending}
@@ -302,7 +228,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
               </AppButton>
             </Stack>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -337,7 +263,7 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
             </AppButton>
           </Stack>
         ) : (
-          <Stack spacing={2} sx={{ maxWidth: 520 }}>
+          <FieldGrid minColumnWidth={260} spanNonFields>
             <TextField
               label="Reason"
               value={reason}
@@ -352,7 +278,7 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
               InputLabelProps={{ shrink: true }}
               helperText="Optional."
             />
-            <Stack direction="row">
+            <Stack direction="row" justifyContent="flex-end">
               <AppButton
                 variant="danger"
                 loading={hold.isPending}
@@ -368,7 +294,7 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
                 Put on hold
               </AppButton>
             </Stack>
-          </Stack>
+          </FieldGrid>
         )}
       </CardContent>
     </Card>
@@ -389,13 +315,24 @@ function TransitionCard({ app }: { app: Application }) {
   const canUpdate = hasPermission(me.data, 'application.update');
   const canReview = hasPermission(me.data, 'application.review');
   const canCancel = hasPermission(me.data, 'application.cancel');
+  const canWithdraw = hasPermission(me.data, 'application.withdraw');
+  const canReopen = hasPermission(me.data, 'application.reopen');
   const [productId, setProductId] = useState('');
   const [versionId, setVersionId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const [reopenReason, setReopenReason] = useState('');
 
   const showStart = app.status === 'DRAFT' && canUpdate;
   const showReview = app.status === 'DOCUMENTS_PENDING' && canReview;
   const showCancel = ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'].includes(app.status) && canCancel;
+  // T-APP-04: once the checklist is complete, the file is ready to go to a lender.
+  const showReady = app.status === 'UNDER_REVIEW' && canReview;
+  // T-APP-08: the customer withdraws before any lender has the file. A reason is required.
+  const showWithdraw =
+    ['DOCUMENTS_PENDING', 'UNDER_REVIEW', 'READY_FOR_SUBMISSION'].includes(app.status) && canWithdraw;
+  // T-APP-09: a cancelled or withdrawn file is reopened as a draft. A reason is required.
+  const showReopen = ['CANCELLED', 'WITHDRAWN'].includes(app.status) && canReopen;
 
   // Products of this application's category, then their versions. Only versions in force today can be chosen.
   const products = useLookup<Product>(
@@ -412,9 +349,10 @@ function TransitionCard({ app }: { app: Application }) {
 
   const run = useCommand<
     {
-      transitionCode: 'T-APP-01' | 'T-APP-02' | 'T-APP-10';
+      transitionCode: 'T-APP-01' | 'T-APP-02' | 'T-APP-04' | 'T-APP-08' | 'T-APP-09' | 'T-APP-10';
       productVersionId?: string;
       cancelReason?: string;
+      reason?: string;
     },
     Application
   >(
@@ -422,7 +360,7 @@ function TransitionCard({ app }: { app: Application }) {
     [[`/v1/applications/${app.id}`], ['/v1/applications']],
   );
 
-  if (!showStart && !showReview && !showCancel) return null;
+  if (!showStart && !showReview && !showCancel && !showReady && !showWithdraw && !showReopen) return null;
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -431,7 +369,7 @@ function TransitionCard({ app }: { app: Application }) {
           Next step
         </Typography>
         <ErrorAlert error={run.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           {showStart && (
             <>
               <Typography variant="body2" color="text.secondary">
@@ -469,7 +407,7 @@ function TransitionCard({ app }: { app: Application }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction="row">
+              <Stack direction="row" justifyContent="flex-end">
                 <AppButton
                   variant="primary"
                   loading={run.isPending}
@@ -483,7 +421,7 @@ function TransitionCard({ app }: { app: Application }) {
           )}
 
           {showReview && (
-            <Stack direction="row">
+            <Stack direction="row" justifyContent="flex-end">
               <AppButton
                 variant="primary"
                 loading={run.isPending}
@@ -492,6 +430,60 @@ function TransitionCard({ app }: { app: Application }) {
                 Send to review
               </AppButton>
             </Stack>
+          )}
+
+          {showReady && (
+            <Stack direction="row" justifyContent="flex-end">
+              <AppButton
+                variant="primary"
+                loading={run.isPending}
+                onClick={() => run.mutate({ transitionCode: 'T-APP-04' })}
+              >
+                Mark ready for submission
+              </AppButton>
+            </Stack>
+          )}
+
+          {showWithdraw && (
+            <>
+              <TextField
+                label="Withdrawal reason"
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                helperText="At least 5 characters. Recorded in the status history."
+              />
+              <Stack direction="row" justifyContent="flex-end">
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={withdrawReason.trim().length < 5}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-08', reason: withdrawReason.trim() })}
+                >
+                  Withdraw application
+                </AppButton>
+              </Stack>
+            </>
+          )}
+
+          {showReopen && (
+            <>
+              <TextField
+                label="Reopen reason"
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                helperText="At least 5 characters. The file goes back to draft."
+              />
+              <Stack direction="row" justifyContent="flex-end">
+                <AppButton
+                  variant="primary"
+                  loading={run.isPending}
+                  disabled={reopenReason.trim().length < 5}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-09', reason: reopenReason.trim() })}
+                >
+                  Reopen as draft
+                </AppButton>
+              </Stack>
+            </>
           )}
 
           {showCancel && (
@@ -508,7 +500,7 @@ function TransitionCard({ app }: { app: Application }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction="row">
+              <Stack direction="row" justifyContent="flex-end">
                 <AppButton
                   variant="danger"
                   loading={run.isPending}
@@ -520,7 +512,7 @@ function TransitionCard({ app }: { app: Application }) {
               </Stack>
             </>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );

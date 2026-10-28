@@ -31,6 +31,7 @@ import {
   TaskWorkQueue,
   type TaskWorkQueueItem,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
 
 export function ManagerDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
@@ -192,6 +193,7 @@ export function ManagerDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Branch Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Unassigned Leads', count: unassignedLeads.length, color: '#f59e0b' },
@@ -262,7 +264,7 @@ export function ManagerDashboard() {
                   <TableRow key={l.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
                     <TableCell>{l.productCategory || 'LOAN'}</TableCell>
-                    <TableCell>{l.mobileMasked || '—'}</TableCell>
+                    <TableCell>{l.mobileMasked || <NotSet />}</TableCell>
                     <TableCell align="right">
                       <Button
                         size="small"

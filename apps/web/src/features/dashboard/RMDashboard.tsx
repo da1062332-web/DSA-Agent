@@ -30,6 +30,7 @@ import {
   TaskWorkQueue,
   type TaskWorkQueueItem,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
 
 export function RMDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
@@ -223,6 +224,7 @@ export function RMDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Origination Stage Progression"
             subtitle="Borrower application files by underwriting status"
             stages={appFunnelStages}
@@ -292,7 +294,7 @@ export function RMDashboard() {
                   <TableRow key={l.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
                     <TableCell>{l.productCategory || 'LOAN'}</TableCell>
-                    <TableCell>{l.mobileMasked || '—'}</TableCell>
+                    <TableCell>{l.mobileMasked || <NotSet />}</TableCell>
                     <TableCell>
                       <Chip label="QUALIFIED" size="small" color="success" sx={{ height: 22, fontSize: 11, fontWeight: 700 }} />
                     </TableCell>

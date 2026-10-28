@@ -59,6 +59,7 @@ import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
 import { UserName } from '../../shell/display';
 import { PageHeader, StatCard, StatCardGrid } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
 
 // =========================================================================
 // HELPER: Format field values nicely (Currencies, Masked PII, Booleans, etc.)
@@ -768,7 +769,7 @@ export function AuditSearchPage() {
                         {ev.entityType}
                       </Typography>
                       <Typography variant="caption" fontFamily="monospace" color="text.secondary">
-                        {ev.entityId || '—'}
+                        {ev.entityId || <NotSet />}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -914,7 +915,7 @@ export function AuditSearchPage() {
                           fontFamily="monospace"
                           sx={{ wordBreak: 'break-all' }}
                         >
-                          {selectedEvent.actorId}
+                          <UserName id={selectedEvent.actorId} />
                         </Typography>
                       )}
                     </Stack>

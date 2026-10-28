@@ -227,6 +227,7 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Rule Lifecycle Pipeline"
             stages={[
               { key: 'drafts', label: 'Draft Versions', count: draftVersionsTotal, color: '#f59e0b' },

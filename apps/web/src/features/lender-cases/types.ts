@@ -76,6 +76,37 @@ export interface LenderQueryResource {
   createdBy: string;
 }
 
+/** A lender query with the answer recorded for it, if any. */
+export interface LenderQueryHistory extends LenderQueryResource {
+  responseText: string | null;
+  responseDocumentReferences: string[];
+}
+
+export interface LenderCaseStatusHistory {
+  id: string;
+  tenantId: string;
+  lenderCaseId: string;
+  fromStatus: LenderCaseStatus | null;
+  toStatus: LenderCaseStatus;
+  statusSource: StatusSource;
+  reasonText: string | null;
+  actor: string;
+  occurredAt: string;
+}
+
+/** A document of the application that a query response can attach. The id is sent, never shown. */
+export interface ApplicationDocumentOption {
+  documentId: string;
+  documentTypeCode: string;
+  status: string;
+}
+
+/** One page of the lender case list. */
+export interface LenderCasePage {
+  data: LenderCaseResource[];
+  nextCursor: string | null;
+}
+
 export interface CreateLenderCasePayload {
   lenderId: string;
   productVersionId: string;

@@ -14,6 +14,7 @@ import { assertThrowawayDatabase } from '../guard/verify-local-db';
 import { createApp } from '../../apps/api/src/app';
 import { createDb } from '../../apps/api/src/kernel-min/db';
 import { createTxRunner } from '../../apps/api/src/kernel-min/tx-runner';
+import type { ApiDeps } from '../../apps/api/src/modules/types';
 import { createProductionDeps } from '../../apps/api/src/wiring';
 import { fakeAuth, testPrincipal } from '../../apps/api/test/support/fake-auth';
 import { startPostgres } from '../guard/start-postgres';
@@ -40,6 +41,10 @@ export interface IsolationEnv {
   /** Superuser connection for assertions on the raw tables (bypasses RLS). */
   admin: pg.Client;
   db: Kysely<Database>;
+  /** The production dependencies the API runs with. */
+  deps: ApiDeps;
+  /** Connection string for the API's own role (dsa_api, NOBYPASSRLS), for tools that must run under row-level security. */
+  apiDatabaseUrl: string;
   /** The API as a user of `tenant` holding `codes` at TENANT scope. */
   appAs(tenant: TenantFixture, codes?: PermissionCode[], userIndex?: 0 | 1): ReturnType<typeof createApp>;
   /** The API with no authentication (every /v1 call must be 401). */
@@ -97,6 +102,8 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     B,
     admin,
     db,
+    deps,
+    apiDatabaseUrl: url.toString(),
     appAs: (t, codes = [], userIndex = 0) =>
       createApp({ deps, corsAllowedOrigins: [], auth: fakeAuth(principalOf(t, codes, userIndex)) }),
     anonymousApp: () => createApp({ deps, corsAllowedOrigins: [] }),

@@ -30,6 +30,7 @@ import {
   TaskWorkQueue,
   type TaskWorkQueueItem,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
 
 export function SalesExecDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
@@ -214,6 +215,7 @@ export function SalesExecDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Lead Pipeline Funnel"
             subtitle="Conversion progression across lead lifecycle stages"
             stages={funnelStages}
@@ -283,7 +285,7 @@ export function SalesExecDashboard() {
                   <TableRow key={l.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
                     <TableCell>{l.productCategory || 'LOAN'}</TableCell>
-                    <TableCell>{l.mobileMasked || '—'}</TableCell>
+                    <TableCell>{l.mobileMasked || <NotSet />}</TableCell>
                     <TableCell>
                       <Chip
                         label={l.state}

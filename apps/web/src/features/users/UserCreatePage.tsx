@@ -7,7 +7,6 @@ import {
   CardContent,
   Checkbox,
   CircularProgress,
-  Container,
   Divider,
   FormControl,
   FormControlLabel,
@@ -21,8 +20,8 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { PageHeader } from '../../ui';
-import { createUser, fetchBranches, fetchRoles } from './api';
+import { PageHeader, PageContainer } from '../../ui';
+import { createInvitation, fetchBranches, fetchRoles } from './api';
 import type { Branch, Role } from './types';
 
 export function UserCreatePage() {
@@ -37,10 +36,6 @@ export function UserCreatePage() {
   const [email, setEmail] = useState<string>('');
   const [mobileE164, setMobileE164] = useState<string>('');
   const [primaryBranchId, setPrimaryBranchId] = useState<string>('');
-  const [status, setStatus] = useState<'ACTIVE' | 'INVITED'>('ACTIVE');
-  const [availability, setAvailability] = useState<'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE'>(
-    'AVAILABLE',
-  );
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
 
   // Errors & Loading
@@ -111,17 +106,17 @@ export function UserCreatePage() {
 
     setIsSubmitting(true);
     try {
-      const created = await createUser({
+      // New staff are always invited: the server records the invitation and the provisioning worker creates their sign-in account and
+      // sends the e-mail. They become active when they set a password and sign in with it.
+      const created = await createInvitation({
         displayName: displayName.trim(),
         email: email.trim().toLowerCase(),
         mobileE164: mobileE164.trim() || null,
         primaryBranchId,
-        status,
-        availability,
         roleIds: selectedRoleIds,
       });
 
-      navigate(`/users/${created.id}`);
+      navigate(`/users/${created.id}`, { state: { invitationSent: true } });
     } catch (err) {
       setErrorMessage((err as Error).message || 'Failed to create user.');
     } finally {
@@ -130,7 +125,7 @@ export function UserCreatePage() {
   };
 
   return (
-    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+    <PageContainer>
       {/* Navigation */}
       <Button component={RouterLink} to="/users" variant="text" sx={{ mb: 2, fontWeight: 500 }}>
         &larr; Back to Staff Directory
@@ -221,42 +216,6 @@ export function UserCreatePage() {
                   </FormControl>
                 </Grid>
 
-                {/* Initial Status */}
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Account Status</InputLabel>
-                    <Select
-                      value={status}
-                      label="Account Status"
-                      onChange={(e) => setStatus(e.target.value as 'ACTIVE' | 'INVITED')}
-                      data-testid="users.create.status"
-                    >
-                      <MenuItem value="ACTIVE">ACTIVE (Immediate Access)</MenuItem>
-                      <MenuItem value="INVITED">INVITED (Pending Acceptance)</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* Initial Availability */}
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Initial Availability</InputLabel>
-                    <Select
-                      value={availability}
-                      label="Initial Availability"
-                      onChange={(e) =>
-                        setAvailability(e.target.value as 'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE')
-                      }
-                      data-testid="users.create.availability"
-                    >
-                      <MenuItem value="AVAILABLE">AVAILABLE (Receives Tasks/Leads)</MenuItem>
-                      <MenuItem value="BUSY">BUSY (High Workload)</MenuItem>
-                      <MenuItem value="OFF_DUTY">OFF_DUTY</MenuItem>
-                      <MenuItem value="ON_LEAVE">ON_LEAVE</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
                 {/* Role Assignments Section */}
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
@@ -322,6 +281,6 @@ export function UserCreatePage() {
           )}
         </CardContent>
       </Card>
-    </Container>
+    </PageContainer>
   );
 }

@@ -35,6 +35,8 @@ import {
 } from './rules';
 import type { Complaint } from './ComplaintsPage';
 
+import { FieldGrid } from '../../ui';
+
 const STATUS_LABELS = { OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved' } as const;
 
 export function ComplaintDetailPage() {
@@ -129,7 +131,7 @@ function AssignCard({ complaint }: { complaint: Complaint }) {
           Owner and due date
         </Typography>
         <ErrorAlert error={save.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <UserPicker
             multiple={false}
             label="Owner"
@@ -170,7 +172,7 @@ function AssignCard({ complaint }: { complaint: Complaint }) {
               Save
             </Button>
           </Stack>
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -220,7 +222,7 @@ function ReferCard({ complaint }: { complaint: Complaint }) {
           Refer to lender
         </Typography>
         <ErrorAlert error={refer.error ?? clear.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField select label="Lender" value={lenderId} onChange={(e) => setLenderId(e.target.value)}>
             {(lenders.data ?? []).map((l) => (
               <MenuItem key={l.id} value={l.id}>
@@ -253,7 +255,7 @@ function ReferCard({ complaint }: { complaint: Complaint }) {
               </Button>
             )}
           </Stack>
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );
@@ -272,7 +274,7 @@ function ResolveCard({ complaint }: { complaint: Complaint }) {
           Resolve
         </Typography>
         <ErrorAlert error={resolve.error} />
-        <Stack spacing={2} sx={{ maxWidth: 620 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             label="Written resolution"
             value={text}
@@ -291,7 +293,7 @@ function ResolveCard({ complaint }: { complaint: Complaint }) {
               Resolve complaint
             </Button>
           </Stack>
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );

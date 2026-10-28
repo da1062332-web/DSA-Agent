@@ -18,11 +18,60 @@ export async function fetchUserById(id: string): Promise<UserSummary> {
   return apiFetch<UserSummary>(`/v1/users/${encodeURIComponent(id)}`);
 }
 
-export async function createUser(data: CreateUserInput): Promise<UserSummary> {
-  return apiFetch<UserSummary>('/v1/users', { method: 'POST', body: data });
+/** New staff are invited (API-USR-001): the server records the invitation; the provisioning worker creates the account and sends it. */
+export async function createInvitation(
+  data: Omit<CreateUserInput, 'status' | 'availability'>,
+): Promise<UserSummary> {
+  return apiFetch<UserSummary>('/v1/users/invitations', { method: 'POST', body: data });
 }
 
-export async function updateUser(id: string, data: UpdateUserInput, lockVersion?: number): Promise<UserSummary> {
+/** The latest invitation of a user, as GET /v1/users/:id/invitation reports it (API-USR-001). */
+export interface InvitationStatus {
+  userStatus: string;
+  invitationState: 'NONE' | 'PENDING' | 'EXPIRED' | 'ACCEPTED';
+  deliveryState: 'QUEUED' | 'SENDING' | 'SENT' | 'FAILED' | 'CANCELLED' | null;
+  lastFailure: string | null;
+  sentAt: string | null;
+  expiresAt: string | null;
+  resendCount: number;
+  acceptedAt: string | null;
+  nextResendAt: string | null;
+  resendsLeft: number;
+  serverTime: string;
+}
+
+/** Deletes an account for good (POST /v1/users/:id/erasure): details erased, open work handed over, sign-in removed. */
+export async function eraseUser(
+  id: string,
+  body: { handoverToUserId?: string; reason: string },
+  lockVersion: number,
+): Promise<UserSummary> {
+  return apiFetch<UserSummary>(`/v1/users/${encodeURIComponent(id)}/erasure`, {
+    method: 'POST',
+    body,
+    version: lockVersion,
+  });
+}
+
+export async function fetchInvitationStatus(id: string): Promise<InvitationStatus> {
+  return apiFetch<InvitationStatus>(`/v1/users/${encodeURIComponent(id)}/invitation`);
+}
+
+/** Sends a new set-password link to an invited user. Resolves only when the server has accepted the request. */
+export async function resendInvitation(id: string): Promise<{ id: string; invitation: string }> {
+  return apiFetch<{ id: string; invitation: string }>(
+    `/v1/users/${encodeURIComponent(id)}/invitation/resend`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export async function updateUser(
+  id: string,
+  data: UpdateUserInput,
+  lockVersion?: number,
+): Promise<UserSummary> {
   return apiFetch<UserSummary>(`/v1/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: data,

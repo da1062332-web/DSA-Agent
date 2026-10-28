@@ -78,5 +78,8 @@
   "20261001000087_expose_app_in_public.sql": "b239c5850e61069fdae7aa79abe8fe36c67eb9c4899d6a23d6b9f7cc4a342afe",
   "20261001000088_support_tenant_view.sql": "89934a23522483c92f74a23197981dcb8c341d3129eb4ff1a25fcdd405dba4cf",
   "20261001000089_support_tenant_view_config.sql": "bde3f05720d2df51322f5ef8a797b56825b7352788efc806ca3518ce6e9d92d6",
-  "20261001000090_notification_source_event.sql": "7227b9d42b4ace57113600c842ed7766b80603adb2782bbbe2ba0fd03d4b5d1f"
+  "20261001000090_notification_source_event.sql": "7227b9d42b4ace57113600c842ed7766b80603adb2782bbbe2ba0fd03d4b5d1f",
+  "20261001000091_security_hardening.sql": "256ad2283d58949815168db3fd8eececec9e09ea8da8ace3501c0cee7af5376d",
+  "20261001000092_staff_invitations.sql": "741f0c1413ddeb3fb6ee25aaba40934794e35d67d89fe8d99fd80fa98b5a4cdc",
+  "20261001000093_staff_invitation_provisioning.sql": "d4b76049c97bcffbcbae3e43a1b1938df83503ed7152417f8b5f28f3f77478cb"
 }

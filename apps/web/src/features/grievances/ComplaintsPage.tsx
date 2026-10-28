@@ -9,14 +9,12 @@ import {
   DialogTitle,
   FormControl,
   InputLabel,
-  Link,
   MenuItem,
   Select,
   Stack,
   TextField,
 } from '@mui/material';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList } from '../admin/api';
@@ -33,6 +31,8 @@ import {
 } from './rules';
 import { ApplicationSelect, LeadSelect } from '../../shell/selectors';
 import { ApplicationName, LeadName } from '../../shell/display';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 export interface Complaint {
   id: string;
@@ -144,14 +144,13 @@ export function ComplaintsPage() {
                 id: 'reference',
                 header: 'Reference',
                 accessor: (c) => (
-                  <Link
-                    component={RouterLink}
+                  <RecordLink
                     to={`/complaints/${c.id}`}
                     data-testid="complaints.open"
                     sx={{ fontWeight: 600, fontFamily: 'monospace' }}
                   >
                     {c.ackRef}
-                  </Link>
+                  </RecordLink>
                 ),
               },
               {
@@ -177,7 +176,7 @@ export function ComplaintsPage() {
               {
                 id: 'due',
                 header: 'Due',
-                accessor: (c) => (c.dueAt ? formatDate(c.dueAt) : '—'),
+                accessor: (c) => (c.dueAt ? formatDate(c.dueAt) : <NotSet />),
               },
               {
                 id: 'status',

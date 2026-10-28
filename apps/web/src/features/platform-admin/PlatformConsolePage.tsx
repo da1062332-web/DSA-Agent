@@ -159,6 +159,7 @@ import {
   resumeQueue,
   updateFeatureFlag,
 } from './api';
+import { RowAction } from '../../shell/RowAction';
 
 export function PlatformConsolePage() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -365,7 +366,7 @@ export function PlatformConsolePage() {
                   columns={[
                     {
                       id: 'slug',
-                      header: 'Slug / ID',
+                      header: 'Tenant',
                       render: (t) => (
                         <>
                           <Typography
@@ -376,9 +377,6 @@ export function PlatformConsolePage() {
                             sx={{ textDecoration: 'none', color: 'primary.main' }}
                           >
                             {t.slug}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {t.id}
                           </Typography>
                         </>
                       ),
@@ -664,19 +662,15 @@ export function PlatformConsolePage() {
             columns={[
               {
                 id: 'id',
-                header: 'ID / Queue',
+                header: 'Queue',
                 render: (dl) => (
                   <>
-                    <Typography variant="subtitle2">
-                      <code>{dl.id}</code>
-                    </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {dl.queue}
                     </Typography>
                   </>
                 ),
               },
-              { id: 'job', header: 'Original Job ID', render: (dl) => <code>{dl.originalJobId}</code> },
               {
                 id: 'reason',
                 header: 'Failure Reason',
@@ -699,16 +693,18 @@ export function PlatformConsolePage() {
                 header: 'Actions',
                 align: 'right',
                 render: (dl) =>
-                  dl.status === 'UNRESOLVED' ? (
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                      <Button size="small" variant="contained" onClick={() => replayDlMutation.mutate(dl.id)}>
-                        Replay
-                      </Button>
-                      <Button size="small" variant="outlined" color="error" onClick={() => discardDlMutation.mutate(dl.id)}>
-                        Discard
-                      </Button>
-                    </Box>
-                  ) : null,
+                      <RowAction allowed={dl.status === 'UNRESOLVED'}>
+                        <Button size="small" variant="contained" onClick={() => replayDlMutation.mutate(dl.id)}>
+                          Replay
+                        </Button>
+                      </RowAction>
+                      <RowAction allowed={dl.status === 'UNRESOLVED'}>
+                        <Button size="small" variant="outlined" color="error" onClick={() => discardDlMutation.mutate(dl.id)}>
+                          Discard
+                        </Button>
+                      </RowAction>
+                    </Box>,
               },
             ]}
           />
@@ -803,16 +799,12 @@ export function PlatformConsolePage() {
             data={supportQuery.data?.data ?? []}
             keyExtractor={(grant) => grant.id}
             columns={[
-              { id: 'id', header: 'Grant ID', render: (grant) => <code>{grant.id}</code> },
               {
                 id: 'tenant',
                 header: 'Tenant',
                 render: (grant) => (
                   <>
                     <Typography variant="subtitle2">{grant.tenantName}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {grant.tenantId}
-                    </Typography>
                   </>
                 ),
               },

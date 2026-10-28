@@ -43,6 +43,8 @@ import {
   type TargetStatus,
   type TargetUnit,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function TargetsPage() {
   const { data: me } = useMe();
@@ -257,7 +259,7 @@ export function TargetsPage() {
           { id: 'dimension', header: 'Dimension', render: (item) => DIMENSION_LABELS[item.dimensionType] },
           {
             id: 'dimensionId',
-            header: 'Dimension ID',
+            header: 'Assigned to',
             render: (item) => {
               if (item.dimensionType === 'BRANCH') {
                 return <BranchName id={item.dimensionId} />;
@@ -268,7 +270,7 @@ export function TargetsPage() {
               if (item.dimensionType === 'PRODUCT') {
                 return <ProductName id={item.dimensionId} />;
               }
-              return <Box sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{item.dimensionId}</Box>;
+              return <NotSet />;
             },
           },
           { id: 'metric', header: 'Metric', render: (item) => METRIC_LABELS[item.metricCode] },
@@ -305,28 +307,22 @@ export function TargetsPage() {
               const canApprove = item.status === 'PENDING_APPROVAL' && hasManage && !isCreator;
               return (
                 <Stack direction="row" spacing={1} justifyContent="center">
-                  {item.status === 'PENDING_APPROVAL' && (
-                    <>
-                      {isCreator ? (
-                        <Tooltip title="Creator cannot self-approve target (Dual-Control SOD-04)">
-                          <span>
-                            <Button size="small" disabled variant="outlined">
-                              Approve
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      ) : canApprove ? (
-                        <>
-                          <Button size="small" variant="contained" color="success" onClick={() => handleApprove(item)}>
-                            Approve
-                          </Button>
-                          <Button size="small" variant="outlined" color="error" onClick={() => setRejectTarget(item)}>
-                            Reject
-                          </Button>
-                        </>
-                      ) : null}
-                    </>
-                  )}
+                  <RowAction
+                    allowed={item.status === 'PENDING_APPROVAL' && hasManage && !isCreator}
+                    reason={isCreator ? 'Creator cannot self-approve target (Dual-Control SOD-04)' : undefined}
+                  >
+                    <Button size="small" variant="contained" color="success" onClick={() => handleApprove(item)}>
+                      Approve
+                    </Button>
+                  </RowAction>
+                  <RowAction
+                    allowed={item.status === 'PENDING_APPROVAL' && hasManage && !isCreator}
+                    reason={isCreator ? 'Creator cannot self-approve target (Dual-Control SOD-04)' : undefined}
+                  >
+                    <Button size="small" variant="outlined" color="error" onClick={() => setRejectTarget(item)}>
+                      Reject
+                    </Button>
+                  </RowAction>
                   <Button size="small" variant="text" onClick={() => setHistoryTargetId(item.id)}>
                     History
                   </Button>
@@ -520,9 +516,9 @@ export function TargetsPage() {
                 { id: 'version', header: 'Version', render: (h) => <Box sx={{ fontWeight: 600 }}>v{h.version}</Box> },
                 { id: 'target', header: 'Target Value', render: (h) => formatTargetValue(h.targetValue, h.unit) },
                 { id: 'status', header: 'Status', render: (h) => getStatusChip(h.status) },
-                { id: 'approvedBy', header: 'Approved By', render: (h) => (h.approvedBy ? <UserName id={h.approvedBy} /> : '—') },
-                { id: 'approvedAt', header: 'Approved Date', render: (h) => (h.approvedAt ? h.approvedAt.slice(0, 10) : '—') },
-                { id: 'reason', header: 'Rejection Reason', render: (h) => h.rejectionReason ?? '—' },
+                { id: 'approvedBy', header: 'Approved By', render: (h) => (h.approvedBy ? <UserName id={h.approvedBy} /> : <NotSet />) },
+                { id: 'approvedAt', header: 'Approved Date', render: (h) => (h.approvedAt ? h.approvedAt.slice(0, 10) : <NotSet />) },
+                { id: 'reason', header: 'Rejection Reason', render: (h) => h.rejectionReason ?? <NotSet /> },
               ]}
             />
           )}

@@ -21,7 +21,6 @@ import {
   AssignRoleRequest,
   CreateBranchRequest,
   CreateRoleRequest,
-  CreateUserRequest,
   PERMISSION_CODES,
   UpdateBranchRequest,
   UpdateRoleRequest,
@@ -38,7 +37,7 @@ import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
-import { registerUserLifecycleRoutes } from './user-lifecycle';
+import { assertMayBecomeActive, registerUserLifecycleRoutes } from './user-lifecycle';
 import { registerDeadLetterRoutes } from './dead-letters';
 import { registerOrgChartAndReviewRoutes } from './org-chart';
 import { registerConfigurationRoutes } from './configuration';
@@ -1473,110 +1472,6 @@ export function createRouter(deps: ApiDeps): Router {
   });
 
   // POST /v1/users — Create a new staff user
-  router.post('/users', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const ctx = getContext(req);
-      requirePermission(ctx, 'user.manage');
-
-      const parsed = CreateUserRequest.parse(req.body);
-      const cleanEmail = parsed.email.trim().toLowerCase();
-      const newUserId = `usr_${nextUlid()}`;
-      const idpSubject = `idp_${nextUlid()}`;
-
-      const createdUser = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-        // Check for duplicate email in this tenant
-        const existing = await sql<{ id: string }>`
-          SELECT id FROM app.app_user
-          WHERE tenant_id = ${ctx.principal.tenantId} AND email = ${cleanEmail}
-        `.execute(tx);
-
-        if (existing.rows.length > 0) {
-          throw AppError.of(
-            'VALIDATION_ERROR',
-            'A user with this email address already exists in this tenant.',
-            [{ field: 'email', issue: 'DUPLICATE_EMAIL' }],
-          );
-        }
-
-        // Verify primary branch exists in this tenant
-        const branchCheck = await sql<{ id: string }>`
-          SELECT id FROM app.branch
-          WHERE id = ${parsed.primaryBranchId} AND tenant_id = ${ctx.principal.tenantId}
-        `.execute(tx);
-
-        if (branchCheck.rows.length === 0) {
-          throw AppError.of('VALIDATION_ERROR', 'The specified branch does not exist in this tenant.', [
-            { field: 'primaryBranchId', issue: 'INVALID_BRANCH' },
-          ]);
-        }
-
-        // Insert new user record
-        await sql`
-          INSERT INTO app.app_user (
-            id, tenant_id, idp_subject, email, mobile_e164, display_name,
-            user_type, status, availability, primary_branch_id, lock_version,
-            created_by, updated_by
-          ) VALUES (
-            ${newUserId}, ${ctx.principal.tenantId}, ${idpSubject}, ${cleanEmail},
-            ${parsed.mobileE164 ?? null}, ${parsed.displayName.trim()}, 'STAFF',
-            ${parsed.status ?? 'ACTIVE'}, ${parsed.availability ?? 'AVAILABLE'},
-            ${parsed.primaryBranchId}, 0, ${ctx.principal.id}, ${ctx.principal.id}
-          )
-        `.execute(tx);
-
-        // Assign optional initial roles
-        if (parsed.roleIds && parsed.roleIds.length > 0) {
-          for (const roleId of parsed.roleIds) {
-            const roleCheck = await sql<{ id: string }>`
-              SELECT id FROM app.role WHERE id = ${roleId} AND tenant_id = ${ctx.principal.tenantId}
-            `.execute(tx);
-
-            if (roleCheck.rows.length > 0) {
-              const assignmentId = `ura_${nextUlid()}`;
-              await sql`
-                INSERT INTO app.user_role_assignment (
-                  id, tenant_id, user_id, role_id, scope_type, scope_branch_ids, created_by
-                ) VALUES (
-                  ${assignmentId}, ${ctx.principal.tenantId}, ${newUserId}, ${roleId},
-                  'TENANT', '{}', ${ctx.principal.id}
-                )
-              `.execute(tx);
-            }
-          }
-        }
-
-        // Fetch created user with roles
-        const result = await sql<RawUserRow>`
-          SELECT u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
-                 u.user_type, u.status, u.availability, u.primary_branch_id,
-                 u.lock_version, u.created_at, u.updated_at,
-                 COALESCE(
-                   array_agg(r.name) FILTER (WHERE r.name IS NOT NULL),
-                   '{}'
-                 ) as assigned_roles
-          FROM app.app_user u
-          LEFT JOIN app.user_role_assignment ura ON ura.user_id = u.id AND ura.tenant_id = u.tenant_id AND ura.effective_range @> now()
-          LEFT JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = u.tenant_id
-          WHERE u.id = ${newUserId} AND u.tenant_id = ${ctx.principal.tenantId}
-          GROUP BY u.id, u.tenant_id, u.email, u.mobile_e164, u.display_name,
-                   u.user_type, u.status, u.availability, u.primary_branch_id,
-                   u.lock_version, u.created_at, u.updated_at
-        `.execute(tx);
-
-        const firstRow = result.rows[0];
-        if (!firstRow) {
-          throw AppError.of('INTERNAL_ERROR', 'Failed to retrieve newly created user.');
-        }
-        return formatUserRow(firstRow);
-      });
-
-      res.setHeader('ETag', `"${createdUser.lockVersion}"`);
-      res.status(201).json(createdUser);
-    } catch (err) {
-      next(err);
-    }
-  });
-
   // PATCH /v1/users/:id — Update user profile, status, or availability
   router.patch('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -1646,6 +1541,10 @@ export function createRouter(deps: ApiDeps): Router {
             SELECT status FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}`.execute(
             tx,
           );
+          // D4: only the invitee's own password sign-in activates an invited user, never this route.
+          if (parsed.status === 'ACTIVE') {
+            await assertMayBecomeActive(tx, String(targetUserId), previous.rows[0]?.status ?? '');
+          }
           await sql`
             UPDATE app.app_user
             SET status = ${parsed.status}, updated_by = ${ctx.principal.id}

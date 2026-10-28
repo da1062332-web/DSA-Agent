@@ -20,6 +20,8 @@ import { isTotpCode, verifiedTotpFactors, verifyTotp } from './totp';
 import { getSupabase, saveBypassSession } from './supabase';
 import { setAuthToken } from './token';
 import { readConfig } from '../config';
+import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
+import { mfaProjectState } from './mfa-project';
 
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { refreshAal } = useAuth();
@@ -42,8 +44,13 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     registerStepUpHandler(
       () =>
         new Promise<boolean>((resolve) => {
-          if (import.meta.env?.VITE_DISABLE_MFA === 'true') {
+          if (mfaSkipRequested()) {
             resolve(true);
+            return;
+          }
+          // The project has authenticator sign-in off, so there is no code to ask for. The request fails as it would without a dialog.
+          if (mfaProjectState() === 'disabled') {
+            resolve(false);
             return;
           }
           pending.current?.(false);
@@ -63,8 +70,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError(null);
     try {
-      const bypassOtp = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
-      if (code === bypassOtp) {
+      // Test builds only: the fixed code goes to the test sign-in. Every other build verifies with Supabase.
+      if (testAuthEnabled() && code === testOtp()) {
         const { data } = await getSupabase().auth.getSession();
         const email = data?.session?.user?.email;
         if (email) {
@@ -74,7 +81,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email.trim(), otp: bypassOtp }),
+            body: JSON.stringify({ email: email.trim(), otp: code }),
           });
           const json = await res.json().catch(() => null);
           if (res.ok && (json?.data?.access_token || json?.data?.session)) {
@@ -91,20 +98,15 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
       const [factor] = await verifiedTotpFactors();
       if (!factor) {
         finish(false);
-        navigate('/mfa');
+        navigate('/login', { state: { from: window.location.pathname } });
         return;
       }
       await verifyTotp(factor.id, code);
       await refreshAal();
       finish(true);
     } catch (err) {
-      const msg = (err as Error).message || '';
-      if (/invalid JWT|signature is invalid/i.test(msg)) {
-        finish(true);
-      } else {
-        setError(msg);
-        setCode('');
-      }
+      setError((err as Error).message || 'That code did not match. Please try again.');
+      setCode('');
     } finally {
       setBusy(false);
     }

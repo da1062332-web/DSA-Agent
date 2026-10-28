@@ -11,6 +11,8 @@ import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from '../
 import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
 import type { ColumnDef } from '../../ui';
 import { ChecklistCard } from './ChecklistCard';
+import { SupabaseStorageCard } from './SupabaseStorageCard';
+import { NotSet } from '../../ui/NotSet';
 
 interface ApplicationRow {
   id: string;
@@ -107,9 +109,9 @@ export function DocumentsPage() {
     {
       id: 'customer',
       header: 'Customer',
-      render: (a) => <CustomerName id={a.customerId} fallback={`Application ${a.id.slice(-6)}`} />,
+      render: (a) => <CustomerName id={a.customerId} fallback="Application" />,
     },
-    { id: 'product', header: 'Product', render: (a) => a.productCategory || '—' },
+    { id: 'product', header: 'Product', render: (a) => a.productCategory || <NotSet /> },
     {
       id: 'amount',
       header: 'Requested amount',

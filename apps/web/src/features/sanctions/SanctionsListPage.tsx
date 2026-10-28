@@ -28,6 +28,7 @@ import {
 } from '../../ui';
 import { sanctionsApi } from './api';
 import type { DisbursementTranche, Sanction } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -107,11 +108,11 @@ export function SanctionsListPage(): React.ReactElement {
   const sanctionColumns: ColumnDef<Sanction>[] = [
     {
       id: 'id',
-      header: 'Sanction ID',
+      header: 'Sanction',
       accessor: (s) => (
         <Box>
           <Typography variant="body2" fontWeight={600} color="primary.main">
-            {s.id}
+            Sanction
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block">
             v{s.version} • {s.source}
@@ -135,10 +136,7 @@ export function SanctionsListPage(): React.ReactElement {
               '&:hover': { textDecoration: 'underline' },
             }}
           >
-            Case #{s.lenderCaseId.slice(-8)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', display: 'block' }}>
-            {s.lenderCaseId}
+            Open lender case
           </Typography>
         </Box>
       ),
@@ -173,7 +171,7 @@ export function SanctionsListPage(): React.ReactElement {
       accessor: (s) => (
         <Box>
           <Typography variant="body2" color="text.secondary">
-            {s.sanctionDate || '—'}
+            {s.sanctionDate || <NotSet />}
           </Typography>
           {s.validUntil && (
             <Typography variant="caption" color="text.secondary" display="block">
@@ -205,25 +203,13 @@ export function SanctionsListPage(): React.ReactElement {
   const trancheColumns: ColumnDef<DisbursementTranche>[] = [
     {
       id: 'trancheNo',
-      header: 'Tranche ID',
+      header: 'Tranche',
       accessor: (t) => (
         <Box>
           <Typography variant="body2" fontWeight={600}>
             Tranche #{t.trancheNo}
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            {t.id}
-          </Typography>
         </Box>
-      ),
-    },
-    {
-      id: 'sanctionId',
-      header: 'Sanction ID',
-      accessor: (t) => (
-        <Typography variant="body2" color="text.secondary">
-          {t.sanctionId}
-        </Typography>
       ),
     },
     {
@@ -238,14 +224,14 @@ export function SanctionsListPage(): React.ReactElement {
     {
       id: 'disbursedOn',
       header: 'Disbursed On',
-      accessor: (t) => t.disbursedOn || '—',
+      accessor: (t) => t.disbursedOn || <NotSet />,
     },
     {
       id: 'utrMasked',
       header: 'UTR (Masked)',
       accessor: (t) => (
         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-          {t.utrMasked || '—'}
+          {t.utrMasked || <NotSet />}
         </Typography>
       ),
     },
@@ -254,7 +240,7 @@ export function SanctionsListPage(): React.ReactElement {
       header: 'Loan Account',
       accessor: (t) => (
         <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-          {t.loanAccountMasked || '—'}
+          {t.loanAccountMasked || <NotSet />}
         </Typography>
       ),
     },

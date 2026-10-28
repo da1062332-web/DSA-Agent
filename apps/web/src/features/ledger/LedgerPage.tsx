@@ -1,5 +1,6 @@
 // apps/web/src/features/ledger/LedgerPage.tsx — MOD-LED Ledger Management UI (Material UI)
 import React, { useEffect, useState } from 'react';
+import { ConnectorSelect } from '../admin/components';
 import {
   Alert,
   Box,
@@ -55,6 +56,7 @@ import {
   fetchLedgerJournals,
   fetchTrialBalance,
 } from './api';
+import { NotSet } from '../../ui/NotSet';
 
 export function LedgerPage() {
   const [activeTab, setActiveTab] = useState<
@@ -292,7 +294,7 @@ export function LedgerPage() {
       header: 'Counterparty',
       accessor: (acc) => (
         <Typography variant="body2" color="text.secondary">
-          {acc.counterpartyType ? `${acc.counterpartyType} (${acc.counterpartyId ?? 'any'})` : '—'}
+          {acc.counterpartyType ? `${acc.counterpartyType} (${acc.counterpartyId ?? 'any'})` : <NotSet />}
         </Typography>
       ),
     },
@@ -352,7 +354,7 @@ export function LedgerPage() {
       align: 'right',
       accessor: (line) => (
         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'primary.main' }}>
-          {line.debit !== '0.00' ? `₹${line.debit}` : '—'}
+          {line.debit !== '0.00' ? `₹${line.debit}` : <NotSet />}
         </Typography>
       ),
     },
@@ -362,7 +364,7 @@ export function LedgerPage() {
       align: 'right',
       accessor: (line) => (
         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'success.main' }}>
-          {line.credit !== '0.00' ? `₹${line.credit}` : '—'}
+          {line.credit !== '0.00' ? `₹${line.credit}` : <NotSet />}
         </Typography>
       ),
     },
@@ -379,15 +381,6 @@ export function LedgerPage() {
   ];
 
   const exportHistoryColumns: ColumnDef<any>[] = [
-    {
-      id: 'id',
-      header: 'Export ID',
-      accessor: (h) => (
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
-          {h.id}
-        </Typography>
-      ),
-    },
     { id: 'period', header: 'Period', accessor: (h) => h.period },
     {
       id: 'format',
@@ -649,16 +642,16 @@ export function LedgerPage() {
                                   sx={{ fontWeight: 700, fontSize: '0.7rem', height: 20 }}
                                 />
                               </TableCell>
-                              <TableCell sx={{ color: 'text.secondary' }}>{line.narration ?? '—'}</TableCell>
+                              <TableCell sx={{ color: 'text.secondary' }}>{line.narration ?? <NotSet />}</TableCell>
                               <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
                                 {line.entryType === 'DEBIT'
                                   ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                                  : '—'}
+                                  : <NotSet />}
                               </TableCell>
                               <TableCell align="right" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'success.main' }}>
                                 {line.entryType === 'CREDIT'
                                   ? `₹${parseFloat(line.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                                  : '—'}
+                                  : <NotSet />}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -690,17 +683,12 @@ export function LedgerPage() {
           >
             <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'flex-end' }} spacing={2}>
               <Box sx={{ flex: 1 }}>
-                <Typography variant="caption" fontWeight={700} sx={{ color: '#64748b', textTransform: 'uppercase', mb: 0.5, display: 'block' }}>
-                  Connector ID:
-                </Typography>
-                <TextField
-                  id="input-connector-id"
-                  fullWidth
-                  size="small"
-                  placeholder="e.g. con_01J..."
-                  value={connectorIdInput}
-                  onChange={(e) => setConnectorIdInput(e.target.value)}
-                  sx={{ bgcolor: '#ffffff', borderRadius: 2 }}
+                <ConnectorSelect
+                  value={connectorIdInput || null}
+                  onChange={(id) => setConnectorIdInput(id ?? '')}
+                  label="Connector"
+                  placeholder="Select connector..."
+                  testId="ledger.connector"
                 />
               </Box>
               <Button
@@ -808,7 +796,7 @@ export function LedgerPage() {
             </Typography>
 
             <Box component="form" onSubmit={handleClosePeriodSubmit} sx={{ maxWidth: 540 }}>
-              <Stack spacing={2.5}>
+              <Stack spacing={2.5} alignItems="flex-end">
                 <TextField
                   id="input-close-period"
                   label="Period to Close"
@@ -867,7 +855,7 @@ export function LedgerPage() {
             </Typography>
 
             <Box component="form" onSubmit={handleExportSubmit}>
-              <Stack spacing={2.5}>
+              <Stack spacing={2.5} alignItems="flex-end">
                 <FormControl fullWidth size="small">
                   <InputLabel id="select-export-format-label">Export Format</InputLabel>
                   <Select

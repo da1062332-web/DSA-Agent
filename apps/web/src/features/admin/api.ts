@@ -105,9 +105,10 @@ export const RECORD_TYPES: RecordType[] = ['LEAD', 'APPLICATION', 'TASK'];
 type Filters = Record<string, string | undefined>;
 
 /** Cursor-paged list (Contracts §5): pages are fetched on demand with "Load more". */
-export function useList<T>(path: string, filters: Filters = {}, limit = 50, enabled = true) {
+export function useList<T>(path: string, filters: Filters = {}, limit = 50, enabled = true, refetchMs?: number) {
   return useInfiniteQuery({
     enabled,
+    refetchInterval: refetchMs,
     queryKey: [path, filters],
     queryFn: async ({ pageParam }) => {
       const res = await apiFetch<any>(path, { query: { ...filters, limit, cursor: pageParam ?? undefined } });

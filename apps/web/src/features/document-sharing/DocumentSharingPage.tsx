@@ -49,6 +49,7 @@ import { ApplicationSelect } from '../applications/ApplicationSelect';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { useChecklist } from '../documents/api';
 import { readable } from '../documents/model';
+import { RowAction } from '../../shell/RowAction';
 
 /** Checklist items a customer can still send: nothing accepted, waived or not applicable. */
 const OPEN_FOR_UPLOAD = ['PENDING', 'REJECTED', 'EXPIRED', 'SUBMITTED'];
@@ -318,11 +319,6 @@ export function DocumentSharingPage() {
                 data={uploadLinksData.data}
                 keyExtractor={(link) => link.id}
                 columns={[
-                  {
-                    id: 'id',
-                    header: 'Link ID',
-                    render: (link) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</Box>,
-                  },
                   { id: 'application', header: 'Application', render: (link) => <ApplicationName id={link.applicationId} linkToApp /> },
                   {
                     id: 'items',
@@ -410,8 +406,8 @@ export function DocumentSharingPage() {
                       const isRevoked = Boolean(link.revokedAt);
                       const isLocked = Boolean(link.lockedAt);
                       const isExhausted = link.uses >= link.maxUses;
-                      return !isRevoked && !isExpired && !isLocked && !isExhausted ? (
-                        <Can action="document.upload">
+                      return (
+                        <RowAction allowed={!isRevoked && !isExpired && !isLocked && !isExhausted} action="document.upload">
                           <Button
                             size="small"
                             color="error"
@@ -420,8 +416,8 @@ export function DocumentSharingPage() {
                           >
                             Revoke
                           </Button>
-                        </Can>
-                      ) : null;
+                        </RowAction>
+                      );
                     },
                   },
                 ]}
@@ -452,11 +448,6 @@ export function DocumentSharingPage() {
                 data={sharesData.data}
                 keyExtractor={(share) => share.id}
                 columns={[
-                  {
-                    id: 'id',
-                    header: 'Share ID',
-                    render: (share) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</Box>,
-                  },
                   { id: 'application', header: 'Application', render: (share) => <ApplicationName id={share.applicationId} linkToApp /> },
                   {
                     id: 'recipient',
@@ -496,13 +487,13 @@ export function DocumentSharingPage() {
                     render: (share) => {
                       const isExpired = new Date(share.expiresAt) < new Date();
                       const isRevoked = Boolean(share.revokedAt);
-                      return !isRevoked && !isExpired ? (
-                        <Can action="share.create">
+                      return (
+                        <RowAction allowed={!isRevoked && !isExpired} action="share.create">
                           <Button size="small" color="error" onClick={() => revokeShareMutation.mutate(share.id)}>
                             Revoke
                           </Button>
-                        </Can>
-                      ) : null;
+                        </RowAction>
+                      );
                     },
                   },
                 ]}

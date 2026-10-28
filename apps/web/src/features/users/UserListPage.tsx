@@ -27,6 +27,7 @@ import {
   type ColumnDef,
 } from '../../ui';
 import type { Branch, UserListItem } from './types';
+import { RowAction } from '../../shell/RowAction';
 
 export function UserListPage() {
   const navigate = useNavigate();
@@ -142,9 +143,6 @@ export function UserListPage() {
             <Typography variant="body1" fontWeight={600}>
               {user.displayName}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-              {user.id}
-            </Typography>
           </Box>
         </Box>
       ),
@@ -221,7 +219,7 @@ export function UserListPage() {
           >
             View & Edit
           </Button>
-          <Can action="user.manage">
+          <RowAction action="user.manage">
             {user.status === 'ACTIVE' ? (
               <Button
                 size="small"
@@ -247,7 +245,7 @@ export function UserListPage() {
                 Activate
               </Button>
             )}
-          </Can>
+          </RowAction>
         </Stack>
       ),
     },

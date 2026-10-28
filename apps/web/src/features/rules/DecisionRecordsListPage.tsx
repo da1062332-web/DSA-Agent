@@ -26,6 +26,7 @@ import {
   type ColumnDef,
 } from '../../ui';
 import type { DecisionKey, DecisionRecordResponse } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 const MVP_DECISION_KEYS: DecisionKey[] = [
   'DK-lead.duplicate',
@@ -67,22 +68,6 @@ export function DecisionRecordsListPage() {
 
   const recordColumns: ColumnDef<DecisionRecordResponse>[] = [
     {
-      id: 'id',
-      header: 'Record ID',
-      accessor: (r) => (
-        <Box>
-          <Typography variant="subtitle2" fontFamily="monospace" fontWeight={600} color="primary.main">
-            {r.id}
-          </Typography>
-          {r.ruleSetVersionId && (
-            <Typography variant="caption" color="text.secondary">
-              Ver: {r.ruleSetVersionId.slice(0, 14)}...
-            </Typography>
-          )}
-        </Box>
-      ),
-    },
-    {
       id: 'decisionKey',
       header: 'Decision Key',
       accessor: (r) => (
@@ -93,7 +78,7 @@ export function DecisionRecordsListPage() {
       id: 'subject',
       header: 'Subject',
       accessor: (r) => {
-        if (!r.subjectType || !r.subjectId) return '—';
+        if (!r.subjectType || !r.subjectId) return <NotSet />;
         let subjectNode = null;
         if (r.subjectType === 'LEAD') {
           subjectNode = <LeadName id={r.subjectId} linkToLead />;
@@ -138,7 +123,7 @@ export function DecisionRecordsListPage() {
       header: 'Duration',
       accessor: (r) => (
         <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-          {r.durationUs ? `${r.durationUs} µs` : '—'}
+          {r.durationUs ? `${r.durationUs} µs` : <NotSet />}
         </Typography>
       ),
     },

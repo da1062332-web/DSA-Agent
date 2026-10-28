@@ -234,3 +234,4 @@ Each block gives the purpose in one line, the day-to-day flow, and the menu the 
 2. Check the sidebar against section 4.
 3. Open each screen the role should not see by typing its address. It should show "Forbidden".
 4. Run the matching specs: `npm run --workspace @dsa/web test -- src/shell`.
+    

@@ -15,6 +15,7 @@ export const ID_PREFIXES = [
   'tm',
   'role',
   'ura',
+  'inv',
   'wq',
   'wqm',
   'lead',

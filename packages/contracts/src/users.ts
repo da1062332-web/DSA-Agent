@@ -84,6 +84,16 @@ export const DeactivateUserRequest = z
   .strict();
 export type DeactivateUserRequest = z.infer<typeof DeactivateUserRequest>;
 
+/**
+ * Delete account: the person's details are erased for good and they can never sign in again; a nameless record stays so that leads,
+ * tasks and audit history keep pointing at something. Their open work goes to handoverToUserId, which is required unless they never
+ * signed in (INVITED).
+ */
+export const EraseUserRequest = z
+  .object({ handoverToUserId: z.string().min(3).max(64).optional(), reason: Reason })
+  .strict();
+export type EraseUserRequest = z.infer<typeof EraseUserRequest>;
+
 /** API-USR-005: suspend (keeps ownership) or reactivate. */
 export const SuspendUserRequest = z
   .object({ action: z.enum(['SUSPEND', 'REACTIVATE']), reason: Reason })

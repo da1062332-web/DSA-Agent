@@ -7,6 +7,7 @@ import { AppError, type ErrorEnvelope } from '@dsa/contracts';
 import type { ErrorRequestHandler } from 'express';
 import type { Logger } from 'pino';
 import { ZodError } from 'zod';
+import { redactSecrets } from './redact';
 
 function isBodyParserError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false;
@@ -33,7 +34,29 @@ export function toAppError(err: unknown): AppError {
     );
   }
   if (isBodyParserError(err)) return AppError.of('MALFORMED_REQUEST', 'Malformed request body.');
-  return fromPostgres(err) ?? AppError.of('INTERNAL_ERROR', 'An unexpected error occurred.');
+
+  const pgError = fromPostgres(err);
+  if (pgError) return pgError;
+
+  const rawCode = (err as { code?: unknown })?.code;
+  const rawMsg = String((err as { message?: unknown })?.message ?? '');
+
+  if (
+    rawCode === 'ECONNRESET' ||
+    rawCode === 'ENOTFOUND' ||
+    rawCode === 'ECONNREFUSED' ||
+    rawCode === 'ETIMEDOUT' ||
+    rawCode === 'EAI_AGAIN' ||
+    rawMsg.includes('Connection terminated') ||
+    rawMsg.includes('getaddrinfo') ||
+    rawMsg.includes('connection reset')
+  ) {
+    // The code says what kind of failure it was. The driver's text can name hosts and connection details, so it never goes in the response.
+    return AppError.of('DEPENDENCY_UNAVAILABLE', `Database connection unavailable (${rawCode || 'network error'}).`);
+  }
+
+  // Never the driver's text, in any environment: it can carry a connection string. Developers read the detail in the server log.
+  return AppError.of('INTERNAL_ERROR', 'An unexpected error occurred.');
 }
 
 function fromPostgres(err: unknown): AppError | null {
@@ -81,14 +104,20 @@ export function errorHandler(logger?: Logger): ErrorRequestHandler {
   return (err, req, res, _next) => {
     const appError = toAppError(err);
     if (appError.httpStatus >= 500) {
-      // Name, code and stack only: driver errors carry row values in other fields (e.g. pg `detail`).
-      const e = err as { name?: string; code?: string; stack?: string };
+      // Name, code and stack only: driver errors carry row values in other fields (e.g. pg `detail`). The stack's first line repeats
+      // the message, and a driver message can carry a connection string, so the message and stack are redacted too.
+      const e = err as { name?: string; code?: string; stack?: string; message?: unknown };
+      const stack = redactSecrets(e.stack ?? '');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(`[API ERROR ${appError.httpStatus}] ${req.method} ${redactSecrets(req.originalUrl || req.url)}:`, {
+          name: e.name,
+          code: e.code,
+          message: redactSecrets(String(e.message ?? '')),
+          stack,
+        });
+      }
       logger?.error(
-        {
-          correlationId: req.correlationId,
-          errorCode: appError.code,
-          err: { name: e.name, code: e.code, stack: e.stack },
-        },
+        { correlationId: req.correlationId, errorCode: appError.code, err: { name: e.name, code: e.code, stack } },
         'request failed',
       );
     }

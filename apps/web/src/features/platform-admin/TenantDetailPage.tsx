@@ -46,6 +46,7 @@ import {
   updateTenantFeatureFlag,
 } from './api';
 import { confirmMessage, flagState, onOff, updateRequest } from './tenant-flags-model';
+import { NotSet } from '../../ui/NotSet';
 
 const notFound = (error: unknown) => error instanceof ApiError && error.httpStatus === 404;
 
@@ -190,7 +191,7 @@ export function TenantDetailPage() {
             subtitle={
               // component="span": the header already sits inside a paragraph, and a <p> cannot nest inside a <p>.
               <Typography component="span" variant="body2" color="text.secondary">
-                <code>{tenant.id}</code>
+                {tenant.legalName}
               </Typography>
             }
           />
@@ -478,7 +479,7 @@ export function TenantDetailPage() {
                           <TableCell>{new Date(e.occurredAt).toLocaleString()}</TableCell>
                           <TableCell>{e.action === 'platform.support_view_read' ? 'Viewed' : 'Refused'}</TableCell>
                           <TableCell>{e.operatorName ?? e.operatorId}</TableCell>
-                          <TableCell>{e.grantId ?? '—'}</TableCell>
+                          <TableCell>{e.grantId ?? <NotSet />}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -564,7 +565,7 @@ export function TenantDetailPage() {
                       id: 'changed',
                       header: 'Last change',
                       render: (flag) =>
-                        flag.updatedAt ? `${new Date(flag.updatedAt).toLocaleString()} by ${flag.updatedBy}` : '—',
+                        flag.updatedAt ? `${new Date(flag.updatedAt).toLocaleString()} by ${flag.updatedBy}` : <NotSet />,
                     },
                   ]}
                 />

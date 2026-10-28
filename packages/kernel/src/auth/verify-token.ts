@@ -1,6 +1,6 @@
 // Supabase access-token verification — owner: Dev 1 — TASK-102.
 // Asymmetric tokens (ES256/RS256) are checked against <SUPABASE_URL>/auth/v1/.well-known/jwks.json.
-// HS256 tokens are accepted only when the legacy SUPABASE_JWT_SECRET is configured (local stack, test tokens).
+// HS256 tokens are accepted only with the legacy SUPABASE_JWT_SECRET, or with the test bypass secret against the local stack.
 // The tenant comes only from app_metadata.tenant_id; app_metadata is writable by the service role only.
 import { AppError } from '@dsa/contracts';
 import {
@@ -22,8 +22,10 @@ export interface VerifiedToken {
   aal: 'aal1' | 'aal2';
   /** Time of the most recent TOTP verification when aal = aal2, else null. Drives step-up (Contracts §7). */
   mfaVerifiedAt: Date | null;
-  /** The `email` claim, used once to bind an invited user (API-USR-001) to this subject on first sign-in. */
+  /** The `email` claim, matched against app users. */
   email?: string | null;
+  /** How this session was signed in, from the token's `amr` claim, e.g. "password", "otp" or "totp". Empty when unknown. */
+  authMethods?: string[];
 }
 
 export interface TokenVerifier {
@@ -34,27 +36,48 @@ export interface TokenVerifierOptions {
   supabaseUrl: string;
   /** Legacy HS256 secret. Leave unset for hosted projects that sign with asymmetric keys. */
   jwtSecret?: string;
-  /** Shared secret for test bypass tokens. */
+  /** Secret for test bypass tokens. Honoured only when supabaseUrl is the local Supabase stack. */
   bypassSecret?: string;
   /** Override the JWKS source (tests). */
   jwks?: JWTVerifyGetKey;
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/** True for the local Supabase stack (localhost, 127.0.0.1, ::1). Test tokens are minted and accepted only against it. */
+export function isLocalUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return LOCAL_HOSTS.has(host) || host.endsWith('.localhost');
+  } catch {
+    return false;
+  }
+}
+
+const issuerOf = (supabaseUrl: string) => `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
+
+/** The `iss` values accepted for a project. The local stack answers on either spelling of its host, so both are accepted there. */
+function allowedIssuersFor(supabaseUrl: string): string[] {
+  const issuers = [issuerOf(supabaseUrl)];
+  if (isLocalUrl(supabaseUrl)) {
+    const url = new URL(supabaseUrl);
+    for (const hostname of ['127.0.0.1', 'localhost']) {
+      url.hostname = hostname;
+      issuers.push(issuerOf(url.toString()));
+    }
+  }
+  return Array.from(new Set(issuers));
+}
+
 export function createTokenVerifier(opts: TokenVerifierOptions): TokenVerifier {
-  const issuer = `${opts.supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
-  const allowedIssuers = Array.from(
-    new Set([
-      issuer,
-      'https://mlpkwwhnagxzinaohdxg.supabase.co/auth/v1',
-      'http://127.0.0.1:54321/auth/v1',
-      'http://localhost:54321/auth/v1',
-    ]),
-  );
+  const issuer = issuerOf(opts.supabaseUrl);
+  const allowedIssuers = allowedIssuersFor(opts.supabaseUrl);
   const jwks = opts.jwks ?? createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
   const secret = opts.jwtSecret ? new TextEncoder().encode(opts.jwtSecret) : undefined;
-  const bypassSecret = new TextEncoder().encode(
-    opts.bypassSecret || opts.jwtSecret || 'dsa-crm-test-bypass-jwt-secret-key-2026',
-  );
+  // Test tokens are honoured only against the local stack: any other project has no test secret at all.
+  const bypassSecret =
+    opts.bypassSecret && isLocalUrl(opts.supabaseUrl) ? new TextEncoder().encode(opts.bypassSecret) : undefined;
 
   return {
     async verify(token) {
@@ -65,7 +88,7 @@ export function createTokenVerifier(opts: TokenVerifierOptions): TokenVerifier {
         if (alg === 'HS256') {
           const secrets: Uint8Array[] = [];
           if (secret) secrets.push(secret);
-          secrets.push(bypassSecret);
+          if (bypassSecret) secrets.push(bypassSecret);
 
           let verified = false;
           let lastErr: unknown;
@@ -107,7 +130,16 @@ function readClaims(payload: JWTPayload): VerifiedToken {
     aal,
     mfaVerifiedAt: aal === 'aal2' ? latestTotp(payload.amr) : null,
     email: typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : null,
+    authMethods: amrMethods(payload.amr),
   };
+}
+
+/** The methods the session was signed in with, e.g. ['password'] or ['otp']. Anything that is not a method name is ignored. */
+function amrMethods(amr: unknown): string[] {
+  if (!Array.isArray(amr)) return [];
+  return amr
+    .map((e) => (e && typeof e === 'object' ? (e as { method?: unknown }).method : undefined))
+    .filter((m): m is string => typeof m === 'string');
 }
 
 /** Supabase puts `amr: [{ method: 'totp', timestamp: <unix s> }, …]` on the access token. */

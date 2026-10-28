@@ -5,7 +5,8 @@
   "description": "Express 5 API — modular monolith (ADR-001). Owner of app.ts/server.ts: Dev 1; modules: see src/modules/index.ts.",
   "type": "module",
   "exports": {
-    "./openapi": "./src/openapi.ts"
+    "./openapi": "./src/openapi.ts",
+    "./provisioning": "./src/provisioning/index.ts"
   },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",

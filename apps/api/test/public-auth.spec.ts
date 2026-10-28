@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import {
@@ -13,10 +13,12 @@ import {
 import { createPublicAuthRouter } from '../src/http/public-auth-router';
 import { correlation } from '../src/http/correlation';
 import { errorHandler } from '../src/http/error-handler';
+import { resolveTestAuth, type TestAuthConfig } from '../src/test-auth';
+import { createTestApp } from './support/fake-auth';
 import { createTokenVerifier, createPrincipalResolver } from '@dsa/kernel';
 import type { Database, RequestContext, Tx, TxRunner } from '@dsa/contracts';
 
-describe('Public Auth Router — Hardcoded OTP Bypass (000000)', () => {
+describe('Public Auth Router — test login with the fixed one-time code', () => {
   const mockUser = {
     id: 'usr_rm_01',
     tenant_id: 'ten_01M4SXZ9E66W8T6DNJYBVNS3FA',
@@ -107,15 +109,26 @@ describe('Public Auth Router — Hardcoded OTP Bypass (000000)', () => {
     txRunner: mockTxRunner,
   };
 
-  const supabaseUrl = 'https://mlpkwwhnagxzinaohdxg.supabase.co';
-  const bypassSecret = 'test-bypass-secret-12345678901234567890';
-  const bypassOtp = '000000';
+  // Built by the same gate server.ts uses, so these tests exercise the real settings path.
+  const LOCAL = 'http://127.0.0.1:54321';
+  const SECRET = 'test-only-bypass-secret-0123456789abcdef';
+  const testAuth = resolveTestAuth({
+    TEST_AUTH_ENABLED: true,
+    TEST_BYPASS_OTP: '000000',
+    SUPABASE_URL: LOCAL,
+    DATABASE_URL: 'postgresql://dsa_api:localpassword@localhost:5432/postgres',
+    BYPASS_JWT_SECRET: SECRET,
+  }) as TestAuthConfig;
 
   const app = express();
   app.use(correlation());
   app.use(express.json());
-  app.use('/public/v1', createPublicAuthRouter({ deps, supabaseUrl, bypassSecret, bypassOtp }));
+  app.use('/public/v1', createPublicAuthRouter({ deps, testAuth }));
   app.use(errorHandler());
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('rejects login request missing email or otp with VALIDATION_ERROR', async () => {
     const res = await request(app)
@@ -144,7 +157,7 @@ describe('Public Auth Router — Hardcoded OTP Bypass (000000)', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('succeeds with hardcoded OTP 000000 for active DB user and mints aal2 token', async () => {
+  it('accepts the fixed code for an active DB user and mints an aal2 token the local verifier accepts', async () => {
     const res = await request(app)
       .post('/public/v1/auth/test-login')
       .send({ email: 'rm1@alpha.com', otp: '000000' });
@@ -154,10 +167,10 @@ describe('Public Auth Router — Hardcoded OTP Bypass (000000)', () => {
     expect(res.body.data.access_token).toBeDefined();
     expect(res.body.data.user.email).toBe('rm1@alpha.com');
 
-    // Verify token with TokenVerifier
+    // Verify token with TokenVerifier configured with the same test secret
     const verifier = createTokenVerifier({
-      supabaseUrl,
-      bypassSecret,
+      supabaseUrl: LOCAL,
+      bypassSecret: SECRET,
     });
     const verified = await verifier.verify(res.body.data.access_token);
     expect(verified.email).toBe('rm1@alpha.com');
@@ -175,10 +188,48 @@ describe('Public Auth Router — Hardcoded OTP Bypass (000000)', () => {
     expect(principal.grants.map((g) => g.code)).toContain('lead.read');
   });
 
+  it('a verifier without the test secret refuses a test-login token', async () => {
+    const res = await request(app)
+      .post('/public/v1/auth/test-login')
+      .send({ email: 'rm1@alpha.com', otp: '000000' });
+
+    const verifier = createTokenVerifier({ supabaseUrl: LOCAL });
+    await expect(verifier.verify(res.body.data.access_token)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+  });
+
   it('lists active test users on GET /public/v1/auth/test-users', async () => {
     const res = await request(app).get('/public/v1/auth/test-users');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data[0].email).toBe('rm1@alpha.com');
+  });
+
+  it('writes neither the one-time code nor the email to the console', async () => {
+    const spies = [
+      vi.spyOn(console, 'log'),
+      vi.spyOn(console, 'info'),
+      vi.spyOn(console, 'warn'),
+      vi.spyOn(console, 'error'),
+    ];
+    await request(app).post('/public/v1/auth/test-login').send({ email: 'rm1@alpha.com', otp: '111111' });
+    await request(app).post('/public/v1/auth/test-login').send({ email: 'rm1@alpha.com', otp: '000000' });
+
+    const logged = spies.flatMap((spy) => spy.mock.calls).map((args) => JSON.stringify(args)).join('\n');
+    expect(logged).not.toContain('rm1@alpha.com');
+    expect(logged).not.toContain('111111');
+    expect(logged).not.toContain('000000');
+  });
+});
+
+describe('test login is mounted only when the gate allows it', () => {
+  it('answers 404 for test-login and test-users when createApp has no test auth', async () => {
+    const app = createTestApp();
+    const login = await request(app)
+      .post('/public/v1/auth/test-login')
+      .send({ email: 'rm1@alpha.com', otp: '000000' });
+    const users = await request(app).get('/public/v1/auth/test-users');
+
+    expect(login.status).toBe(404);
+    expect(users.status).toBe(404);
   });
 });

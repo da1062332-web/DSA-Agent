@@ -366,7 +366,6 @@ export function VerificationPage() {
               data={listData.data}
               keyExtractor={(row) => row.id}
               columns={[
-                { id: 'id', header: 'Check ID', render: (row) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{row.id}</Box> },
                 {
                   id: 'type',
                   header: 'Check Type',
@@ -381,7 +380,7 @@ export function VerificationPage() {
                 },
                 {
                   id: 'subject',
-                  header: 'Subject & ID',
+                  header: 'Subject',
                   render: (row) => {
                     let subjectName = null;
                     if (row.subjectType === 'CUSTOMER') {
@@ -406,9 +405,6 @@ export function VerificationPage() {
                           sx={{ display: 'block' }}
                         >
                           {row.subjectType.replace(/_/g, ' ')}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                          {row.subjectId}
                         </Typography>
                       </Box>
                     );

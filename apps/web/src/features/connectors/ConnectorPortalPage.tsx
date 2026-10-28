@@ -176,7 +176,6 @@ export function ConnectorPortalPage() {
     .reduce((sum, s) => sum + (s.amount || 0), 0);
 
   const referralColumns: ColumnDef<Referral>[] = [
-    { id: 'id', header: 'Referral ID', render: (ref) => <span style={{ fontFamily: 'monospace' }}>{ref.id.slice(0, 12)}...</span> },
     { id: 'name', header: 'Applicant Name', render: (ref) => <strong>{ref.fullName}</strong> },
     { id: 'mobile', header: 'Mobile (Masked)', render: (ref) => ref.mobileMasked || 'XXXXXX' },
     { id: 'product', header: 'Product', render: (ref) => <Chip label={ref.productCategory} size="small" variant="outlined" /> },
@@ -200,8 +199,6 @@ export function ConnectorPortalPage() {
   ];
 
   const statementColumns: ColumnDef<Statement>[] = [
-    { id: 'id', header: 'Statement Reference', render: (s) => <span style={{ fontFamily: 'monospace' }}>{s.id}</span> },
-    { id: 'calc', header: 'Calculation ID', render: (s) => <span style={{ fontFamily: 'monospace' }}>{s.calculationId}</span> },
     { id: 'rate', header: 'Share Rate', align: 'right', render: (s) => `${(s.shareRate * 100).toFixed(1)}%` },
     {
       id: 'payable',

@@ -264,7 +264,7 @@ describe('Enterprise UI Component Suite (apps/web/src/ui/)', () => {
       expect(html).toContain('Full Name');
       expect(html).toContain('Aarav Sharma');
       expect(html).toContain('Alternate Phone');
-      expect(html).toContain('—');
+      expect(html).toContain('Not set');
     });
   });
 

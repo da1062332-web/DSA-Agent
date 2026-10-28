@@ -3,13 +3,11 @@
 import {
   Alert,
   Box,
-  Link,
   MenuItem,
   TextField,
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
 import { LoadMore } from '../admin/components';
@@ -22,6 +20,7 @@ import {
   StatusBadge,
   type ColumnDef,
 } from '../../ui';
+import { RecordLink } from '../../ui/RecordLink';
 
 export interface Application {
   id: string;
@@ -67,6 +66,15 @@ export function ApplicationsPage() {
 }
 
 /** Mounted only when the caller holds application.read, so the list is never requested without it. */
+/** A faded note for a value that has not been entered yet. Muted and italic, so it is clearly a placeholder. */
+function NotSet({ children }: { children: React.ReactNode }) {
+  return (
+    <Typography component="span" variant="body2" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+      {children}
+    </Typography>
+  );
+}
+
 function ApplicationsList() {
   const [status, setStatus] = useState('');
   const [onHold, setOnHold] = useState('');
@@ -74,6 +82,8 @@ function ApplicationsList() {
     '/v1/applications',
     { status: status || undefined, onHold: onHold || undefined },
     50,
+    true,
+    15_000, // refresh every 15 seconds, so changes made elsewhere appear without a reload
   );
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
 
@@ -83,17 +93,13 @@ function ApplicationsList() {
       header: 'Application',
       accessor: (a) => (
         <Box>
-          <Link
-            component={RouterLink}
+          <RecordLink
             to={`/applications/${a.id}`}
             data-testid="applications.open"
-            sx={{ fontWeight: 600, display: 'block', color: 'info.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            sx={{ fontWeight: 600, display: 'block', color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
-            <CustomerName id={a.customerId} fallback={`App #${a.id.slice(-6)}`} />
-          </Link>
-          <Typography variant="caption" color="text.secondary" fontFamily="monospace">
-            {a.id}
-          </Typography>
+            <CustomerName id={a.customerId} fallback="Application" />
+          </RecordLink>
         </Box>
       ),
     },
@@ -110,7 +116,7 @@ function ApplicationsList() {
     {
       id: 'tenureMonths',
       header: 'Tenure',
-      accessor: (a) => (a.tenureMonths ? `${a.tenureMonths} months` : '—'),
+      accessor: (a) => (a.tenureMonths ? `${a.tenureMonths} months` : <NotSet>Not set</NotSet>),
     },
     {
       id: 'status',
@@ -120,7 +126,7 @@ function ApplicationsList() {
     {
       id: 'onHold',
       header: 'Hold',
-      accessor: (a) => (a.onHold ? <StatusBadge status="warning" label="On hold" /> : '—'),
+      accessor: (a) => (a.onHold ? <StatusBadge status="warning" label="On hold" /> : <NotSet>Not on hold</NotSet>),
     },
   ];
 

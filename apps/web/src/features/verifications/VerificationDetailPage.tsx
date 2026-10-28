@@ -234,16 +234,8 @@ export function VerificationDetailPage() {
         subtitle={
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Typography variant="body2" color="text.secondary">
-              Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} /> • Ref:
+              Application: <ApplicationName id={data.applicationId} linkToApp /> • Branch: <BranchName id={data.branchId} />
             </Typography>
-            <Tooltip title={`Full Verification ID: ${data.id}`} arrow>
-              <Chip
-                label={`#${data.id.slice(-8)}`}
-                size="small"
-                variant="outlined"
-                sx={{ fontFamily: 'monospace', fontSize: 11, height: 20 }}
-              />
-            </Tooltip>
           </Stack>
         }
         actions={

@@ -2,7 +2,6 @@
 // tools/gen-openapi.ts writes openapi/openapi.yaml (never hand-edited; CI fails on a diff).
 import {
   listResponse,
-  CreateUserRequest,
   UpdateUserRequest,
   AssignRoleRequest,
   UserRoleAssignmentSummary,
@@ -94,16 +93,6 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       summary: 'Users of the tenant with role aggregation and search',
       response: UserList,
       query: UserListQuery,
-      tags: ['MOD-USR Users'],
-    },
-    {
-      method: 'post',
-      path: '/v1/users',
-      id: 'API-USR-CREATE',
-      summary: 'Create a new staff user',
-      body: CreateUserRequest,
-      response: FullUserSummary,
-      status: 201,
       tags: ['MOD-USR Users'],
     },
     {

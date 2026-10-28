@@ -1,14 +1,15 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { NotSet } from '../NotSet';
 
 export interface DetailFieldProps {
   label: string;
   value: React.ReactNode;
-  fallback?: string;
+  fallback?: React.ReactNode;
   copyable?: boolean;
 }
 
-export function DetailField({ label, value, fallback = '—' }: DetailFieldProps) {
+export function DetailField({ label, value, fallback = <NotSet /> }: DetailFieldProps) {
   const displayValue = value === null || value === undefined || value === '' ? fallback : value;
 
   return (

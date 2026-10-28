@@ -100,7 +100,7 @@ describe('tenant page: what it shows', () => {
       qc.setQueryData(['platform-tenant', 'ten_alpha'], tenant('ten_alpha', 'alpha')),
     );
     expect(html).toContain('alpha Pvt Ltd');
-    expect(html).toContain('ten_alpha');
+    expect(html).not.toContain('>ten_alpha<');
     expect(html).toContain('Overview');
     expect(html).toContain('Feature Flags');
     expect(html).toContain('Zero Business Data Projection');

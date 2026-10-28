@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Container,
   Divider,
   Grid,
   MenuItem,
@@ -19,6 +18,7 @@ import {
 } from '@mui/material';
 import { useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
+import { PageContainer } from '../../ui';
 import { BranchSelect, ConnectorSelect } from '../admin/components';
 import { createLead, ApiError } from './api';
 import {
@@ -146,7 +146,7 @@ export function LeadCreate() {
   };
 
   return (
-    <Container maxWidth="md" disableGutters sx={{ mx: 0 }}>
+    <PageContainer>
       <Box mb={3}>
         <Stack direction="row" spacing={1} alignItems="center" mb={1}>
           <Button component={RouterLink} to="/leads" size="small" variant="text">
@@ -434,6 +434,6 @@ export function LeadCreate() {
           </Box>
         </CardContent>
       </Card>
-    </Container>
+    </PageContainer>
   );
 }

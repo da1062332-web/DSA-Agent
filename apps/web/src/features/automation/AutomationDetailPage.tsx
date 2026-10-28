@@ -498,7 +498,7 @@ export function AutomationDetailPage() {
                       </Box>
                       <Box sx={{ mt: 1, pl: 4 }}>
                         <Typography variant="caption" color="text.secondary">
-                          Step ID: <code>{step.id}</code> | Config: {JSON.stringify(step.config)}
+                          Config: {JSON.stringify(step.config)}
                         </Typography>
                       </Box>
                     </Card>

@@ -1,26 +1,35 @@
 // The only place that decides whether the DISABLE_MFA development switch is honoured (owner: Dev 1; SUB-AUTH.02).
 // MFA is mandatory for admin, owner, branch manager, loan ops, verifier, compliance, finance, rule roles, auditors and the platform
-// realm. The switch exists so a developer can work against a LOCAL Supabase stack without an authenticator app. It is honoured only when
-// BOTH hold: the process is not in production, and SUPABASE_URL points at the local machine. Anywhere else the variable is ignored
-// (MFA stays on), and loadConfig refuses to start the API with the variable set there, so it cannot be left on by accident.
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+// realm. The switch exists so a developer can work against a LOCAL Supabase stack and a local or approved test database without an
+// authenticator app. It is honoured only when ALL of these hold: the process is not in production, SUPABASE_URL points at the local
+// machine, and DATABASE_URL is local or listed in TEST_DATABASE_HOSTS. Anywhere else the variable is ignored (MFA stays on), and
+// loadConfig refuses to start the API with the variable set there, so it cannot be left on by accident.
+import { isLocalUrl } from '@dsa/kernel';
+import { isApprovedTestDatabase } from '../test-auth';
 
-export function isLocalSupabaseUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  try {
-    const host = new URL(url).hostname;
-    return LOCAL_HOSTS.has(host) || host.endsWith('.localhost');
-  } catch {
-    return false;
-  }
-}
-
-/** Where skipping MFA is acceptable at all: not production, and a local Supabase stack. */
+/** Where skipping MFA is acceptable at all: not production, a local Supabase stack, and a local or approved test database. */
 export function mfaMayBeDisabledHere(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV !== 'production' && isLocalSupabaseUrl(env.SUPABASE_URL);
+  return (
+    env.NODE_ENV !== 'production' &&
+    isLocalUrl(env.SUPABASE_URL) &&
+    isApprovedTestDatabase(env.DATABASE_URL, env.TEST_DATABASE_HOSTS)
+  );
 }
 
 /** True only when a developer asked for it AND this is a place where that is allowed. Never true in production or against hosted. */
 export function mfaDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.DISABLE_MFA === 'true' && mfaMayBeDisabledHere(env);
+}
+
+/**
+ * The project's own setting: authenticator sign-in is off in the Supabase dashboard, so no code can be asked for. The operator sets
+ * SUPABASE_MFA_ENABLED=false to match it. Unlike DISABLE_MFA this is not a developer switch, and it is honoured against any project.
+ */
+export function projectMfaOff(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.SUPABASE_MFA_ENABLED === 'false';
+}
+
+/** True when no second factor is required at all: the developer switch, or a project with authenticator sign-in off. */
+export function secondFactorSkipped(env: NodeJS.ProcessEnv = process.env): boolean {
+  return mfaDisabled(env) || projectMfaOff(env);
 }

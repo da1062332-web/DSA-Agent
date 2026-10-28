@@ -1,9 +1,7 @@
 // Test tokens — owner: Dev 1 — TASK-102. Supabase-shaped HS256 access tokens signed with the LOCAL
 // SUPABASE_JWT_SECRET, for tests and the E2E harness only. Refuses any non-local SUPABASE_URL (Contracts §7).
 import { SignJWT } from 'jose';
-import { ACCESS_TOKEN_AUDIENCE } from '../auth/verify-token';
-
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+import { ACCESS_TOKEN_AUDIENCE, isLocalUrl } from '../auth/verify-token';
 
 export interface TestTokenOptions {
   supabaseUrl: string;
@@ -18,8 +16,7 @@ export interface TestTokenOptions {
 }
 
 export async function mintTestToken(opts: TestTokenOptions): Promise<string> {
-  const host = new URL(opts.supabaseUrl).hostname;
-  if (!LOCAL_HOSTS.has(host) && !host.endsWith('.localhost')) {
+  if (!isLocalUrl(opts.supabaseUrl)) {
     throw new Error('test tokens are allowed only against the local Supabase stack (Contracts §7)');
   }
   const iat = Math.floor((opts.now ?? new Date()).getTime() / 1000);
@@ -50,9 +47,12 @@ export interface BypassTokenOptions {
 
 /**
  * Mint a test bypass access token signed with the provided HMAC secret.
- * Suitable for testing/QA login bypass with aal2 MFA pre-satisfied.
+ * Suitable for testing/QA login bypass with aal2 MFA pre-satisfied. Refuses any SUPABASE_URL that is not the local stack.
  */
 export async function mintBypassToken(opts: BypassTokenOptions): Promise<string> {
+  if (!isLocalUrl(opts.supabaseUrl)) {
+    throw new Error('test bypass tokens are allowed only against the local Supabase stack (Contracts §7)');
+  }
   const iat = Math.floor((opts.now ?? new Date()).getTime() / 1000);
   const aal = opts.aal ?? 'aal2';
   const amr = [{ method: 'password', timestamp: iat }];

@@ -44,6 +44,7 @@ import {
   useImportBatches,
   useRollbackImport,
 } from './api';
+import { RowAction } from '../../shell/RowAction';
 
 export function ImportExportPage() {
   const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
@@ -269,7 +270,6 @@ export function ImportExportPage() {
                     <Typography variant="h6" sx={{ fontSize: 16 }}>
                       Step 2: Configure Column Mapping
                     </Typography>
-                    <Chip label={`Batch: ${selectedBatch.id}`} size="small" />
                   </Box>
 
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -420,7 +420,6 @@ export function ImportExportPage() {
                     keyExtractor={(b) => b.id}
                     onRowClick={(b) => setSelectedBatch(b)}
                     columns={[
-                      { id: 'id', header: 'Batch ID', render: (b) => <Box sx={{ fontSize: 12 }}>{b.id}</Box> },
                       { id: 'entity', header: 'Entity', render: (b) => <Box sx={{ fontSize: 12 }}>{b.targetEntity}</Box> },
                       {
                         id: 'status',
@@ -532,7 +531,6 @@ export function ImportExportPage() {
                     data={exportJobs ?? []}
                     keyExtractor={(job) => job.id}
                     columns={[
-                      { id: 'id', header: 'Job ID', render: (job) => <Box sx={{ fontSize: 12 }}>{job.id}</Box> },
                       { id: 'dataset', header: 'Dataset', render: (job) => <Box sx={{ fontSize: 12 }}>{job.exportType}</Box> },
                       { id: 'scope', header: 'Scope', render: (job) => <Box sx={{ fontSize: 12 }}>{job.scopeType}</Box> },
                       { id: 'rows', header: 'Rows', align: 'right', render: (job) => <Box sx={{ fontSize: 12 }}>{job.rowCount}</Box> },
@@ -553,7 +551,7 @@ export function ImportExportPage() {
                         header: 'Action',
                         align: 'right',
                         render: (job) =>
-                          job.status === 'COMPLETED' ? (
+                          <RowAction allowed={job.status === 'COMPLETED'}>
                             <Button
                               size="small"
                               variant="outlined"
@@ -567,7 +565,7 @@ export function ImportExportPage() {
                             >
                               Download
                             </Button>
-                          ) : null,
+                          </RowAction>,
                       },
                     ]}
                   />

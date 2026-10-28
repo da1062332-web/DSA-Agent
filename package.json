@@ -24,6 +24,7 @@
     "test:int": "npm run test:int --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "gen:openapi": "npm run gen:openapi -w @dsa/tools",
+    "worker": "npm run provisioning:worker:local -w @dsa/tools",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",

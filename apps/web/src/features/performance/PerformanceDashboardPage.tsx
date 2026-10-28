@@ -19,6 +19,8 @@ import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGri
 import type { ColumnDef } from '../../ui';
 import { useTeamPerformanceDashboard } from './api';
 import type { DashboardFilterState } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 function formatCurrency(amount: number): string {
   if (amount >= 10000000) {
@@ -98,7 +100,7 @@ export function PerformanceDashboardPage() {
       align: 'right',
       render: (row) => (
         <Typography color="text.secondary">
-          {row.disbursementTarget !== null ? formatCurrency(row.disbursementTarget) : '—'}
+          {row.disbursementTarget !== null ? formatCurrency(row.disbursementTarget) : <NotSet />}
         </Typography>
       ),
     },
@@ -115,9 +117,7 @@ export function PerformanceDashboardPage() {
           />
         ) : (
           <Tooltip title="No approved target exists for this slice">
-            <Typography variant="caption" color="text.secondary">
-              —
-            </Typography>
+            <NotSet />
           </Tooltip>
         ),
     },
@@ -126,15 +126,11 @@ export function PerformanceDashboardPage() {
       header: 'Action',
       align: 'center',
       render: (row) =>
-        row.dimensionType === 'BRANCH' ? (
+        <RowAction allowed={row.dimensionType === 'BRANCH'}>
           <Button size="small" variant="text" onClick={() => handleBranchFilter(row.dimensionId)}>
             Drill Down
           </Button>
-        ) : (
-          <Typography variant="caption" color="text.secondary">
-            User
-          </Typography>
-        ),
+        </RowAction>,
     },
   ];
 

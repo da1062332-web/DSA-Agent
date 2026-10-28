@@ -20,6 +20,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { CustomerName } from '../../shell/display';
 import { CancelIcon, VisibilityIcon } from '../../shell/icons';
 import {
   DataTable,
@@ -41,6 +42,7 @@ interface ApplicationSummary {
   tenureMonths: number;
   productVersionId?: string;
   status: string;
+  customerId?: string;
   createdAt: string;
 }
 
@@ -88,15 +90,9 @@ export function EligibilityPage() {
 
   const columns: ColumnDef<ApplicationSummary>[] = [
     {
-      id: 'id',
-      header: 'Application ID',
-      render: (app) => (
-        <Tooltip title={`Full ID: ${app.id}`} arrow placement="top">
-          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-            {app.referenceNumber || (app.id.length > 16 ? `${app.id.slice(0, 16)}...` : app.id)}
-          </span>
-        </Tooltip>
-      ),
+      id: 'customer',
+      header: 'Customer',
+      render: (app) => <CustomerName id={app.customerId} linkToProfile />,
     },
     {
       id: 'applicant',

@@ -32,6 +32,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { createProductVersion, fetchProductById } from './api';
 import type { CreateProductVersionInput, LoanProduct } from './types';
+import { NotSet } from '../../ui/NotSet';
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -187,7 +188,7 @@ export function ProductDetailPage() {
               <Typography variant="body1" fontWeight={600}>
                 {product.activeVersion
                   ? `₹${Number(product.activeVersion.amountMin).toLocaleString('en-IN')} – ₹${Number(product.activeVersion.amountMax).toLocaleString('en-IN')}`
-                  : '—'}
+                  : <NotSet />}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={3}>
@@ -197,7 +198,7 @@ export function ProductDetailPage() {
               <Typography variant="body1" fontWeight={600}>
                 {product.activeVersion
                   ? `${product.activeVersion.tenureMin} – ${product.activeVersion.tenureMax} Months`
-                  : '—'}
+                  : <NotSet />}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={3}>
@@ -269,8 +270,8 @@ export function ProductDetailPage() {
                 `₹${Number(ver.amountMin).toLocaleString('en-IN')} – ₹${Number(ver.amountMax).toLocaleString('en-IN')}`,
             },
             { id: 'tenure', header: 'Tenure Range', render: (ver) => `${ver.tenureMin} – ${ver.tenureMax} mos` },
-            { id: 'rate', header: 'Rate Terms', render: (ver) => ver.illustrativeRateText || '—' },
-            { id: 'fee', header: 'Fee Terms', render: (ver) => ver.feeText || '—' },
+            { id: 'rate', header: 'Rate Terms', render: (ver) => ver.illustrativeRateText || <NotSet /> },
+            { id: 'fee', header: 'Fee Terms', render: (ver) => ver.feeText || <NotSet /> },
             { id: 'doc', header: 'Document Profile', render: (ver) => ver.documentProfileId || 'Default Master' },
             {
               id: 'status',

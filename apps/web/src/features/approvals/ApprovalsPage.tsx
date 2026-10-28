@@ -185,9 +185,6 @@ function FinanceApprovalsTab({
                         <Typography variant="body2" fontWeight={600}>
                           <LenderName id={p.lenderId} /> Plan
                         </Typography>
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                          {p.id}
-                        </Typography>
                         <Box sx={{ mt: 0.5 }}>
                           <Typography variant="caption" color="text.secondary">
                             Created by <UserName id={p.createdBy} fallback={p.createdBy} />
@@ -238,8 +235,6 @@ function FinanceApprovalsTab({
                   {(payouts.data?.data ?? []).map((r) => (
                     <TableRow key={r.id} data-testid="approvals.finance.payout">
                       <TableCell>
-                        {r.id}
-                        <br />
                         {own(r.submittedBy)}
                       </TableCell>
                       <TableCell>

@@ -2,7 +2,7 @@
 // Tests:
 // - TEST-USR-001: List users with search, filtering, and cursor pagination
 // - TEST-USR-002: View user details with ETag and 404 handling
-// - TEST-USR-003: Create user with validation, unique email, branch check, initial roles
+// - TEST-USR-003: The direct create (POST /v1/users) is retired; invitations are the only way to add a staff user
 // - TEST-USR-004: Update user with field validation, optimistic concurrency (If-Match), and ETag
 // - TEST-USR-005: Account status change (Active, Deactivated, Suspended) with self-lockout guard
 // - TEST-USR-006: Role assignment and removal with SOD-05 enforcement
@@ -138,46 +138,24 @@ describe('Module 4: Users (User Management API)', () => {
     expect(notFoundRes.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('TEST-USR-003 creates a new staff user with validation and role assignment', async () => {
+  it('TEST-USR-003 the retired direct create is not routed, so it cannot write an active user', async () => {
     const store = createMockPlatformStore();
     const app = createTestApp({
       auth: fakeAuth(adminPrincipal),
       deps: { txRunner: store.runner },
     });
 
-    const createPayload = {
+    const res = await request(app).post('/v1/users').send({
       email: 'rohit.verma@dsa.com',
       displayName: 'Rohit Verma',
-      mobileE164: '+919876543299',
       primaryBranchId: 'br_mumbai',
       status: 'ACTIVE',
       availability: 'AVAILABLE',
-      roleIds: ['rol_loan_officer'],
-    };
+    });
+    expect(res.status).toBe(404);
 
-    const res = await request(app).post('/v1/users').send(createPayload);
-    expect(res.status).toBe(201);
-    expect(res.body.id).toMatch(/^usr_/);
-    expect(res.body.email).toBe('rohit.verma@dsa.com');
-    expect(res.body.displayName).toBe('Rohit Verma');
-    expect(res.headers.etag).toBeDefined();
-
-    // Verify duplicate email is rejected
-    const dupRes = await request(app).post('/v1/users').send(createPayload);
-    expect(dupRes.status).toBe(422);
-    expect(dupRes.body.error.code).toBe('VALIDATION_ERROR');
-    expect(dupRes.body.error.details[0].issue).toBe('DUPLICATE_EMAIL');
-
-    // Verify invalid branch is rejected
-    const badBranchRes = await request(app)
-      .post('/v1/users')
-      .send({
-        ...createPayload,
-        email: 'another@dsa.com',
-        primaryBranchId: 'br_invalid',
-      });
-    expect(badBranchRes.status).toBe(422);
-    expect(badBranchRes.body.error.details[0].issue).toBe('INVALID_BRANCH');
+    const list = await request(app).get('/v1/users');
+    expect(list.body.data.length).toBe(2);
   });
 
   it('TEST-USR-004 updates user profile and verifies optimistic concurrency (If-Match)', async () => {

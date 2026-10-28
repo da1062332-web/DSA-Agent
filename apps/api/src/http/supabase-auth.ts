@@ -5,7 +5,7 @@
 import { AppError } from '@dsa/contracts';
 import { requiresMfa, type PrincipalResolver, type TokenVerifier } from '@dsa/kernel';
 import type { RequestHandler } from 'express';
-import { mfaDisabled } from './mfa-switch';
+import { secondFactorSkipped } from './mfa-switch';
 
 const BEARER = /^Bearer ([A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+)$/;
 
@@ -24,8 +24,8 @@ export function supabaseAuth(deps: { verifier: TokenVerifier; resolver: Principa
       const token = await deps.verifier.verify(raw);
       const principal = await deps.resolver.resolve(token, { correlationId: req.correlationId, now });
       const profileOnly = req.method === 'GET' && (req.path === '/me' || req.path === '/v1/me');
-      // Honoured only against a local Supabase stack outside production (see mfa-switch.ts); ignored everywhere else.
-      const skipMfa = mfaDisabled();
+      // The developer switch is honoured only against a local stack; the project setting applies to any project (see mfa-switch.ts).
+      const skipMfa = secondFactorSkipped();
       if (!skipMfa && requiresMfa(principal) && token.aal !== 'aal2' && !profileOnly) {
         throw AppError.of(
           'STEP_UP_REQUIRED',

@@ -12,7 +12,6 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
-  Link,
   MenuItem,
   Stack,
   Switch,
@@ -52,7 +51,9 @@ import {
   UserPicker,
   formatDate,
 } from './components';
-import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
+import { DataTable, FilterToolbar, type ColumnDef, FieldGrid } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 function RecordTypePicker({
   value,
@@ -105,9 +106,9 @@ export function QueuesPage() {
       id: 'code',
       header: 'Code',
       accessor: (q) => (
-        <Link component={RouterLink} to={`/admin/queues/${q.id}`} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+        <RecordLink to={`/admin/queues/${q.id}`} sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
           {q.code}
-        </Link>
+        </RecordLink>
       ),
     },
     {
@@ -123,7 +124,7 @@ export function QueuesPage() {
     {
       id: 'branch',
       header: 'Branch',
-      accessor: (q) => (q.branchId ? (branchName.get(q.branchId) ?? q.branchId) : '—'),
+      accessor: (q) => (q.branchId ? (branchName.get(q.branchId) ?? q.branchId) : <NotSet />),
     },
     {
       id: 'recordTypes',
@@ -338,7 +339,7 @@ export function QueueDetailPage() {
             Details
           </Typography>
           <ErrorAlert error={patch.error} />
-          <Stack spacing={2} sx={{ maxWidth: 560 }}>
+          <FieldGrid minColumnWidth={260} spanNonFields>
             <TextField
               label="Name"
               value={name}
@@ -364,7 +365,7 @@ export function QueueDetailPage() {
                 </Button>
               </Stack>
             )}
-          </Stack>
+          </FieldGrid>
         </CardContent>
       </Card>
 

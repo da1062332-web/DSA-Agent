@@ -5,6 +5,8 @@ import { hasPermission, useMe, useTenant } from '../../api/useMe';
 import { CONSTITUTIONS, useCommand, useLookup, type Organisation } from './api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 
+import { FieldGrid } from '../../ui';
+
 export function OrganisationPage() {
   const me = useMe();
   const tenant = useTenant();
@@ -78,7 +80,7 @@ function OrganisationForm({ org, canEdit }: { org: Organisation; canEdit: boolea
           <StatusChip active={org.status === 'ACTIVE'} label={org.status} />
         </Stack>
         <ErrorAlert error={save.error} />
-        <Stack spacing={2} sx={{ maxWidth: 520 }}>
+        <FieldGrid minColumnWidth={260} spanNonFields>
           <TextField
             label="Legal name"
             value={legalName}
@@ -128,7 +130,7 @@ function OrganisationForm({ org, canEdit }: { org: Organisation; canEdit: boolea
               </Button>
             </Stack>
           )}
-        </Stack>
+        </FieldGrid>
       </CardContent>
     </Card>
   );

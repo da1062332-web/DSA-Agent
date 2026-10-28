@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { NotSet } from '../../../ui/NotSet';
 
 export interface TaskWorkQueueItem {
   id: string;
@@ -231,7 +232,7 @@ export function TaskWorkQueue({
                           sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
                         />
                       ) : (
-                        <Typography variant="caption" color="text.disabled">—</Typography>
+                        <NotSet />
                       )}
                     </TableCell>
                     <TableCell sx={{ py: 1, px: 1 }}>{renderSlaBadge(item)}</TableCell>

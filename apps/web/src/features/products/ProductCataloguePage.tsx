@@ -39,6 +39,8 @@ import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import { createProduct, fetchProducts, updateProductStatus } from './api';
 import type { CreateProductInput, LoanProduct, ProductCategory, ProductStatus } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 export function ProductCataloguePage() {
   const me = useMe();
@@ -271,7 +273,7 @@ export function ProductCataloguePage() {
               </Typography>
             ),
           },
-          { id: 'lender', header: 'Lender', render: (p) => <LenderName id={p.lenderId} fallback={p.lenderName || p.lenderId} /> },
+          { id: 'lender', header: 'Lender', render: (p) => <LenderName id={p.lenderId} fallback={p.lenderName || undefined} /> },
           { id: 'category', header: 'Category', render: (p) => <Chip label={p.category} size="small" variant="outlined" /> },
           {
             id: 'security',
@@ -284,12 +286,12 @@ export function ProductCataloguePage() {
             render: (p) =>
               p.activeVersion
                 ? `₹${Number(p.activeVersion.amountMin).toLocaleString('en-IN')} – ₹${Number(p.activeVersion.amountMax).toLocaleString('en-IN')}`
-                : '—',
+                : <NotSet />,
           },
           {
             id: 'tenure',
             header: 'Tenure (Months)',
-            render: (p) => (p.activeVersion ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}` : '—'),
+            render: (p) => (p.activeVersion ? `${p.activeVersion.tenureMin} – ${p.activeVersion.tenureMax}` : <NotSet />),
           },
           { id: 'version', header: 'Active Ver', render: (p) => <Chip label={`v${p.activeVersionNo ?? 1}`} size="small" /> },
           {
@@ -306,11 +308,11 @@ export function ProductCataloguePage() {
                 <Button size="small" component={RouterLink} to={`/products/${p.id}`} variant="outlined">
                   Versions
                 </Button>
-                {canManage && (
+                <RowAction allowed={canManage}>
                   <Button size="small" color={p.status === 'ACTIVE' ? 'warning' : 'success'} onClick={() => handleToggleStatus(p)}>
                     {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
                   </Button>
-                )}
+                </RowAction>
               </Stack>
             ),
           },

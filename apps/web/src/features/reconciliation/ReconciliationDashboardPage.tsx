@@ -56,6 +56,7 @@ import type {
   ReconciliationException,
   ReconciliationMatch,
 } from './types';
+import { RowAction } from '../../shell/RowAction';
 
 export function ReconciliationDashboardPage() {
   const { data: me, isLoading: meLoading } = useMe();
@@ -550,16 +551,12 @@ export function ReconciliationDashboardPage() {
               keyExtractor={(stmt) => stmt.id}
               emptyMessage='No lender commission statements imported yet. Click "+ Ingest Lender Statement" to import.'
               columns={[
-                { id: 'id', header: 'Statement ID', render: (stmt) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{stmt.id}</Box> },
                 {
                   id: 'lender',
                   header: 'Lender',
                   render: (stmt) => (
                     <Box>
                       <LenderName id={stmt.lenderId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                        {stmt.lenderId}
-                      </Typography>
                     </Box>
                   ),
                 },
@@ -591,7 +588,7 @@ export function ReconciliationDashboardPage() {
                   header: 'Actions',
                   render: (stmt) => (
                     <Stack direction="row" spacing={1}>
-                      <Can action="finance.reconcile">
+                      <RowAction action="finance.reconcile">
                         <Button
                           size="small"
                           variant="contained"
@@ -602,7 +599,7 @@ export function ReconciliationDashboardPage() {
                         >
                           Run Match
                         </Button>
-                      </Can>
+                      </RowAction>
                       <Button
                         size="small"
                         variant="outlined"
@@ -637,20 +634,12 @@ export function ReconciliationDashboardPage() {
               data={matches}
               emptyMessage='No matches generated in current session. Select a statement and click "Run Match" to trigger.'
               columns={[
-                { id: 'id', header: 'Match ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.id}</Box> },
-                { id: 'line', header: 'Statement Line ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.statementLineId}</Box> },
-                { id: 'calc', header: 'Calculation ID', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.calculationId}</Box> },
                 {
                   id: 'type',
                   header: 'Match Type',
                   render: (m) => <Chip label={m.matchType} size="small" color={m.matchType === 'EXACT' ? 'success' : 'warning'} />,
                 },
                 { id: 'amount', header: 'Matched Amount (₹)', render: (m) => <Box sx={{ fontWeight: 600 }}>₹{m.matchedAmount?.toLocaleString()}</Box> },
-                {
-                  id: 'decision',
-                  header: 'Decision Record ID',
-                  render: (m) => <Box sx={{ fontFamily: 'monospace', fontSize: 12 }}>{m.decisionRecordId || 'N/A'}</Box>,
-                },
                 { id: 'status', header: 'Status', render: (m) => <Chip label={m.status} size="small" color="success" /> },
               ]}
             />
@@ -668,7 +657,6 @@ export function ReconciliationDashboardPage() {
               data={exceptions}
               emptyMessage="No reconciliation exceptions found. All processed lines match within 0 variance."
               columns={[
-                { id: 'id', header: 'Exception ID', render: (exc) => <Box sx={{ fontFamily: 'monospace' }}>{exc.id}</Box> },
                 {
                   id: 'classification',
                   header: 'Classification',
@@ -712,8 +700,7 @@ export function ReconciliationDashboardPage() {
                   id: 'action',
                   header: 'Action',
                   render: (exc) =>
-                    exc.status !== 'RESOLVED' && exc.status !== 'WRITTEN_OFF' ? (
-                      <Can action="finance.reconcile">
+                    <RowAction allowed={exc.status !== 'RESOLVED' && exc.status !== 'WRITTEN_OFF'} action="finance.reconcile">
                         <Button
                           size="small"
                           variant="outlined"
@@ -726,8 +713,7 @@ export function ReconciliationDashboardPage() {
                         >
                           Resolve
                         </Button>
-                      </Can>
-                    ) : null,
+                    </RowAction>,
                 },
               ]}
             />
@@ -750,7 +736,6 @@ export function ReconciliationDashboardPage() {
               data={adjustments}
               emptyMessage='No financial adjustments recorded. Click "Propose Adjustment" above.'
               columns={[
-                { id: 'id', header: 'Adjustment ID', render: (adj) => <Box sx={{ fontFamily: 'monospace' }}>{adj.id}</Box> },
                 {
                   id: 'type',
                   header: 'Type',
@@ -847,7 +832,6 @@ export function ReconciliationDashboardPage() {
               data={disputes}
               emptyMessage='No disputes raised. Click "Raise Dispute" to initiate.'
               columns={[
-                { id: 'id', header: 'Dispute ID', render: (disp) => <Box sx={{ fontFamily: 'monospace' }}>{disp.id}</Box> },
                 {
                   id: 'partyType',
                   header: 'Party Type',
@@ -866,12 +850,9 @@ export function ReconciliationDashboardPage() {
                         <ConnectorName id={disp.partyId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
                       ) : (
                         <Typography variant="body2" fontWeight={600}>
-                          {disp.partyId}
+                          Other party
                         </Typography>
                       )}
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                        {disp.partyId}
-                      </Typography>
                     </Box>
                   ),
                 },
@@ -882,9 +863,6 @@ export function ReconciliationDashboardPage() {
                     <Box>
                       <Typography variant="body2" fontWeight={600}>
                         {disp.subjectType.replace(/_/g, ' ')}
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
-                        {disp.subjectId}
                       </Typography>
                     </Box>
                   ),
@@ -906,7 +884,7 @@ export function ReconciliationDashboardPage() {
                   id: 'action',
                   header: 'Action',
                   render: (disp) =>
-                    disp.status !== 'RESOLVED' ? (
+                    <RowAction allowed={disp.status !== 'RESOLVED'}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -918,7 +896,7 @@ export function ReconciliationDashboardPage() {
                       >
                         Resolve Dispute
                       </Button>
-                    ) : null,
+                    </RowAction>,
                 },
               ]}
             />
@@ -1127,7 +1105,7 @@ export function ReconciliationDashboardPage() {
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Typography variant="body2" color="text.secondary">
-              Exception ID: <strong>{selectedException?.id}</strong> | Variance: ₹
+              Variance: ₹
               {selectedException?.varianceAmount?.toLocaleString()}
             </Typography>
             <FormControl fullWidth>
@@ -1368,7 +1346,7 @@ export function ReconciliationDashboardPage() {
         <DialogContent dividers>
           <Stack spacing={2.5}>
             <Typography variant="body2" color="text.secondary">
-              Dispute: <strong>{selectedDispute?.id}</strong> | Concurrency Lock Version:{' '}
+              Concurrency Lock Version:{' '}
               {selectedDispute?.lockVersion}
             </Typography>
             <FormControl fullWidth>

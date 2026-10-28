@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Paper,
@@ -36,6 +38,8 @@ import {
   buildPackage,
   createLenderCase,
   fetchLenderCases,
+  fetchApplicationDocuments,
+  fetchLenderCaseQueries,
   recordLenderQuery,
   recordQueryResponse,
   submitLenderCase,
@@ -43,6 +47,9 @@ import {
 } from './api';
 import type { DeclineReasonCode, LenderCaseResource, LenderCaseStatus, SubmissionChannel } from './types';
 import { LenderAttemptFields, type LenderAttemptValue } from './LenderAttemptFields';
+import { oldestOpenLenderQuery } from './lender-query';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 interface LenderCasePanelProps {
   applicationId?: string;
@@ -77,6 +84,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
   const applicationId = propAppId || paramAppId || queryAppId || inputAppId;
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -114,6 +122,39 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
     enabled: !!applicationId,
   });
 
+  /** Refreshes the attempt list and every case screen that shows a case's queries, history or package. */
+  const refreshCaseViews = () => {
+    queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+    queryClient.invalidateQueries({ queryKey: ['lender-case'] });
+    queryClient.invalidateQueries({ queryKey: ['lender-case-queries'] });
+    queryClient.invalidateQueries({ queryKey: ['lender-case-history'] });
+    queryClient.invalidateQueries({ queryKey: ['lender-case-package'] });
+  };
+
+  /** Opens the status dialog with the target status already chosen (used by the row actions). */
+  const openStatusDialog = (caseItem: LenderCaseResource, status: LenderCaseStatus) => {
+    setActiveCase(caseItem);
+    setNewStatus(status);
+    setReasonText('');
+    setStatusDialogOpen(true);
+  };
+
+  // The lender's queries on the case being answered. The response goes to the oldest unanswered one.
+  const openQueriesQuery = useQuery({
+    queryKey: ['lender-case-queries', activeCase?.id],
+    queryFn: () => fetchLenderCaseQueries(activeCase!.id),
+    enabled: responseDialogOpen && !!activeCase,
+  });
+  const openQuery = openQueriesQuery.data ? oldestOpenLenderQuery(openQueriesQuery.data) : null;
+
+  // The documents of this application a response may attach. The dialog shows their types, never their ids.
+  const [responseDocumentIds, setResponseDocumentIds] = useState<string[]>([]);
+  const applicationDocumentsQuery = useQuery({
+    queryKey: ['lender-case-documents', applicationId],
+    queryFn: () => fetchApplicationDocuments(applicationId!),
+    enabled: responseDialogOpen && !!applicationId,
+  });
+
   const createMutation = useMutation({
     meta: { successMessage: 'Lender case created.' },
     mutationFn: () => {
@@ -121,7 +162,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
       return createLenderCase(applicationId, attempt);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setCreateDialogOpen(false);
       setAttempt({ lenderId: '', empanelmentId: '', productVersionId: '' });
       setSuccessMessage('New lender attempt created successfully.');
@@ -136,7 +177,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
     meta: { successMessage: 'Submission package built.' },
     mutationFn: (caseItem: LenderCaseResource) => buildPackage(caseItem.id, {}, `"${caseItem.lockVersion}"`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setSuccessMessage('Submission package built and frozen.');
       setErrorMessage(null);
     },
@@ -156,7 +197,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setSubmitDialogOpen(false);
       setActiveCase(null);
       setSuccessMessage('Lender case successfully submitted.');
@@ -182,7 +223,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setStatusDialogOpen(false);
       setActiveCase(null);
       setSuccessMessage('Status updated successfully.');
@@ -200,7 +241,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
       return recordLenderQuery(activeCase.id, { text: queryText }, `"${activeCase.lockVersion}"`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setQueryDialogOpen(false);
       setActiveCase(null);
       setQueryText('');
@@ -216,13 +257,15 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
     meta: { successMessage: 'Response recorded.' },
     mutationFn: () => {
       if (!activeCase) throw new Error('No active case');
-      return recordQueryResponse(activeCase.id, { text: responseText });
+      if (!openQuery) throw new Error('There is no open lender query to answer.');
+      return recordQueryResponse(openQuery.id, { text: responseText, documentReferences: responseDocumentIds });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lender-cases', applicationId] });
+      refreshCaseViews();
       setResponseDialogOpen(false);
       setActiveCase(null);
       setResponseText('');
+      setResponseDocumentIds([]);
       setSuccessMessage('Query response recorded.');
       setErrorMessage(null);
     },
@@ -241,7 +284,6 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Sequential and parallel lender submissions, frozen package manifests, and status roll-up.
-              {applicationId ? ` · Application: ${applicationId}` : ''}
             </Typography>
           </Box>
           <Can action="lender_case.submit">
@@ -274,8 +316,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               No Application Selected
             </Typography>
             <Typography color="text.secondary" mb={2}>
-              Please provide an Application ID in the route URL (e.g.
-              /applications/:applicationId/lender-cases) or enter one below:
+              Choose the application whose lender attempts you want to see:
             </Typography>
             <Stack direction="row" spacing={2} justifyContent="center" maxWidth={400} mx="auto">
               <ApplicationSelect
@@ -322,12 +363,12 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                   </>
                 ),
               },
-              { id: 'channel', header: 'Channel', render: (c) => c.submissionChannel || '—' },
-              { id: 'reference', header: 'Reference', render: (c) => c.lenderReference || '—' },
+              { id: 'channel', header: 'Channel', render: (c) => c.submissionChannel || <NotSet /> },
+              { id: 'reference', header: 'Reference', render: (c) => c.lenderReference || <NotSet /> },
               {
                 id: 'submitted',
                 header: 'Submitted At',
-                render: (c) => (c.submittedAt ? new Date(c.submittedAt).toLocaleDateString() : '—'),
+                render: (c) => (c.submittedAt ? new Date(c.submittedAt).toLocaleDateString() : <NotSet />),
               },
               {
                 id: 'actions',
@@ -335,15 +376,12 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                 align: 'right',
                 render: (c) => (
                   <Stack direction="row" spacing={1} justifyContent="flex-end">
-                    {c.status === 'DRAFT' && (
-                      <Can action="lender_case.submit">
+                    <RowAction allowed={c.status === 'DRAFT'} action="lender_case.submit">
                         <Button size="small" variant="outlined" onClick={() => packageMutation.mutate(c)} disabled={packageMutation.isPending}>
                           Build Package
                         </Button>
-                      </Can>
-                    )}
-                    {c.status === 'PACKAGE_READY' && (
-                      <Can action="lender_case.submit">
+                    </RowAction>
+                    <RowAction allowed={c.status === 'PACKAGE_READY'} action="lender_case.submit">
                         <Button
                           size="small"
                           variant="contained"
@@ -355,10 +393,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         >
                           Submit
                         </Button>
-                      </Can>
-                    )}
-                    {['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status) && (
-                      <Can action="lender_case.update_status">
+                    </RowAction>
+                    <RowAction allowed={['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status)} action="lender_case.update_status">
                         <Button
                           size="small"
                           variant="outlined"
@@ -370,6 +406,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         >
                           Update Status
                         </Button>
+                    </RowAction>
+                    <RowAction allowed={['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED'].includes(c.status)} action="lender_case.update_status">
                         <Button
                           size="small"
                           variant="outlined"
@@ -381,10 +419,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         >
                           Query
                         </Button>
-                      </Can>
-                    )}
-                    {c.status === 'QUERY_RAISED' && (
-                      <Can action="lender_case.update_status">
+                    </RowAction>
+                    <RowAction allowed={c.status === 'QUERY_RAISED'} action="lender_case.update_status">
                         <Button
                           size="small"
                           variant="contained"
@@ -396,10 +432,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         >
                           Respond to Query
                         </Button>
-                      </Can>
-                    )}
-                    {c.status === 'SANCTIONED' && (
-                      <Can action="disbursement.record">
+                    </RowAction>
+                    <RowAction allowed={c.status === 'SANCTIONED'} action="disbursement.record">
                         <Button
                           size="small"
                           variant="outlined"
@@ -412,8 +446,31 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         >
                           Disbursement
                         </Button>
-                      </Can>
-                    )}
+                    </RowAction>
+                    <RowAction
+                      allowed={['DRAFT', 'PACKAGE_READY', 'SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RAISED', 'QUERY_RESPONDED', 'SANCTIONED'].includes(c.status)}
+                      action="lender_case.update_status"
+                    >
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="error"
+                        onClick={() => openStatusDialog(c, 'WITHDRAWN')}
+                        data-testid="lender-case.withdraw"
+                      >
+                        Withdraw
+                      </Button>
+                    </RowAction>
+                    <RowAction allowed={c.status === 'SANCTIONED'}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/sanctions/${c.id}`)}
+                        data-testid="lender-case.open-sanction"
+                      >
+                        Sanction
+                      </Button>
+                    </RowAction>
                   </Stack>
                 ),
               },
@@ -593,6 +650,27 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
           <DialogTitle>Respond to Lender Query</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
+              {openQueriesQuery.isLoading ? (
+                <CircularProgress size={24} />
+              ) : openQuery ? (
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    The lender asks ({openQueriesQuery.data?.filter((q) => !q.respondedAt).length ?? 0} open)
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap' }}>
+                    {openQuery.text}
+                  </Typography>
+                  {openQuery.requestedItems.length > 0 && (
+                    <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                      {openQuery.requestedItems.map((item) => (
+                        <Chip key={item} label={item.replace(/_/g, ' ').toLowerCase()} size="small" variant="outlined" />
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              ) : (
+                <Alert severity="info">There is no open lender query on this case.</Alert>
+              )}
               <TextField
                 label="Response Details"
                 value={responseText}
@@ -602,6 +680,30 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                 fullWidth
                 required
               />
+              <FormControl fullWidth>
+                <InputLabel id="lc-response-documents">Attach documents</InputLabel>
+                <Select
+                  labelId="lc-response-documents"
+                  multiple
+                  label="Attach documents"
+                  value={responseDocumentIds}
+                  onChange={(e) => setResponseDocumentIds(e.target.value as string[])}
+                  renderValue={(ids) => `${ids.length} selected`}
+                  data-testid="lender-case.response.documents"
+                >
+                  {(applicationDocumentsQuery.data ?? []).map((d) => (
+                    <MenuItem key={d.documentId} value={d.documentId}>
+                      <Checkbox checked={responseDocumentIds.includes(d.documentId)} />
+                      {d.documentTypeCode.replace(/_/g, ' ').toLowerCase()} · {d.status.replace(/_/g, ' ').toLowerCase()}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {applicationDocumentsQuery.data?.length
+                    ? 'Only documents uploaded for this application are offered.'
+                    : 'No documents are uploaded for this application yet.'}
+                </FormHelperText>
+              </FormControl>
             </Stack>
           </DialogContent>
           <DialogActions>
@@ -610,7 +712,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
               variant="contained"
               color="primary"
               onClick={() => responseMutation.mutate()}
-              disabled={responseMutation.isPending || !responseText.trim()}
+              disabled={responseMutation.isPending || !openQuery || !responseText.trim()}
+              data-testid="lender-case.response.submit"
             >
               Submit Response
             </Button>

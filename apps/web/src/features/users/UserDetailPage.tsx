@@ -26,14 +26,25 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { assignUserRole, fetchBranches, fetchRoles, fetchUserById, removeUserRole, updateUser } from './api';
+import { DeleteAccountDialog } from './DeleteAccountDialog';
+import { InvitationPanel } from './InvitationPanel';
 import { Can } from '../../shell/Can';
 import { PageHeader } from '../../ui';
 import type { Branch, Role, UserSummary } from './types';
 
+/** Whether the "Activate Account" button is offered: never for an active user, and never for an invited one (D4). */
+export function canShowActivate(status: string): boolean {
+  return status !== 'ACTIVE' && status !== 'INVITED';
+}
+
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
+  // Set only when the user was just created by the invitation form, and the server recorded the invitation for sending.
+  const invitationSent = Boolean(
+    (useLocation().state as { invitationSent?: boolean } | null)?.invitationSent,
+  );
 
   const [user, setUser] = useState<UserSummary | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -53,6 +64,8 @@ export function UserDetailPage() {
 
   // Status Dialog
   const [statusConfirmOpen, setStatusConfirmOpen] = useState<boolean>(false);
+  const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
+  const navigate = useNavigate();
   const [pendingStatus, setPendingStatus] = useState<'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'>('ACTIVE');
 
   // Role Assignment Dialog
@@ -214,10 +227,18 @@ export function UserDetailPage() {
         &larr; Back to Staff Directory
       </Button>
 
+      {invitationSent && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {`${user.displayName} was invited. The invitation e-mail to ${user.email} is on its way and usually arrives within a few minutes. They become active when they set their password and sign in. If it does not arrive, use Resend invitation.`}
+        </Alert>
+      )}
+
       <PageHeader
         title={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}>
+            <Avatar
+              sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}
+            >
               {user.displayName.charAt(0).toUpperCase()}
             </Avatar>
             {user.displayName}
@@ -226,7 +247,7 @@ export function UserDetailPage() {
         subtitle={
           <>
             <Typography variant="body2" color="text.secondary">
-              {user.email} &bull; ID: <code style={{ fontFamily: 'monospace' }}>{user.id}</code>
+              {user.email}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Primary Branch: <strong>{getBranchName(user.primaryBranchId)}</strong>
@@ -237,7 +258,9 @@ export function UserDetailPage() {
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
               label={user.status}
-              color={user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'}
+              color={
+                user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
+              }
               sx={{ fontWeight: 600 }}
             />
             <Chip label={`Availability: ${user.availability}`} variant="outlined" />
@@ -398,16 +421,26 @@ export function UserDetailPage() {
               <Typography variant="body2" color="text.secondary">
                 {user.status === 'ACTIVE' &&
                   'User is active and possesses full operational access based on assigned roles.'}
-                {user.status === 'INVITED' && 'Invitation pending. User has not finalized initial setup.'}
+                {user.status === 'INVITED' &&
+                  'Invitation pending. The user becomes active after setting a password and signing in.'}
                 {user.status === 'SUSPENDED' &&
                   'User is temporarily suspended. Inbound requests are rejected.'}
                 {user.status === 'DEACTIVATED' && 'User is permanently deactivated. Access is blocked.'}
               </Typography>
             </Paper>
 
+            {user.status === 'INVITED' && (
+              <Can action="user.manage">
+                <Box sx={{ mb: 3 }}>
+                  <InvitationPanel userId={user.id} canResend />
+                </Box>
+              </Can>
+            )}
+
             <Stack direction="row" spacing={2} flexWrap="wrap">
               <Can action="user.manage">
-                {user.status !== 'ACTIVE' && (
+                {/* An invited user becomes active only by signing in with their own password (D4); the API refuses it too. */}
+                {canShowActivate(user.status) && (
                   <Button
                     variant="contained"
                     color="success"
@@ -433,17 +466,15 @@ export function UserDetailPage() {
                     Suspend Account
                   </Button>
                 )}
-                {user.status !== 'DEACTIVATED' && (
+                {/* Delete replaces Deactivate: the details are erased for good (DeleteAccountDialog). */}
+                {!user.email.toLowerCase().endsWith('@erased.invalid') && (
                   <Button
                     variant="outlined"
                     color="error"
-                    onClick={() => {
-                      setPendingStatus('DEACTIVATED');
-                      setStatusConfirmOpen(true);
-                    }}
+                    onClick={() => setDeleteOpen(true)}
                     disabled={isSelf}
                   >
-                    Deactivate Account
+                    Delete Account
                   </Button>
                 )}
               </Can>
@@ -541,22 +572,6 @@ export function UserDetailPage() {
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
                 <Typography variant="caption" color="text.secondary">
-                  Internal User ID
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  {user.id}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
-                  Tenant Isolation ID
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                  {user.tenantId}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="caption" color="text.secondary">
                   Optimistic Concurrency Lock Version
                 </Typography>
                 <Typography variant="body2" fontWeight={600}>
@@ -589,6 +604,13 @@ export function UserDetailPage() {
       )}
 
       {/* Status Confirm Dialog */}
+      <DeleteAccountDialog
+        open={deleteOpen}
+        user={user}
+        onClose={() => setDeleteOpen(false)}
+        onDeleted={() => navigate('/users', { replace: true })}
+      />
+
       <Dialog open={statusConfirmOpen} onClose={() => setStatusConfirmOpen(false)}>
         <DialogTitle>Confirm Account Status Change</DialogTitle>
         <DialogContent>

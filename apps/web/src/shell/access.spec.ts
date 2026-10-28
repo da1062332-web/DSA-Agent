@@ -7,7 +7,16 @@ import { matchPath } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { featureRoutes } from '../routes';
 import { leadActions } from '../features/leads/lead-actions';
-import { EXTRA_ROUTE_RULES, NAV_GROUPS, routeAllowed, ruleFor, visibleGroups } from './access';
+import {
+  EXTRA_ROUTE_RULES,
+  getSearchableItems,
+  NAV_GROUPS,
+  routeAllowed,
+  ruleFor,
+  searchSuggestions,
+  visibleGroups,
+  visibleSettings,
+} from './access';
 import { QLOAX_ROLE_GRANTS } from './role-grants.fixture';
 
 const ROLES = Object.keys(QLOAX_ROLE_GRANTS);
@@ -232,5 +241,180 @@ describe('F-12 lead action buttons follow the permission the API requires', () =
       expect(Object.values(act('ROLE-ORG-OWNER', state)).some(Boolean), state).toBe(false);
     for (const state of ['NEW', 'CONTACT_ATTEMPTED', 'IN_PROGRESS', 'QUALIFIED'])
       expect(Object.values(leadActions(state, NONE)).some(Boolean), state).toBe(false);
+  });
+});
+
+describe('search suggestions RBAC and submodule coverage', () => {
+  it('TEST-SEARCH-01 every searchable item offered to any role is permitted by routeAllowed', () => {
+    for (const role of ROLES) {
+      const can = canOf(role);
+      const items = getSearchableItems(isAdminOf(can), can, false);
+      for (const item of items) {
+        expect(routeAllowed(item.to, can, false), `${role} ${item.label} ${item.to}`).toBe(true);
+      }
+    }
+  });
+
+  it('TEST-SEARCH-02 submodules and action routes (New Lead, Permissions, Templates) obey permissions', () => {
+    const noGrants = () => false;
+    const itemsNoGrants = getSearchableItems(false, noGrants, false);
+    const toList = itemsNoGrants.map((i) => i.to);
+    expect(toList).not.toContain('/leads/new');
+    expect(toList).not.toContain('/leads/duplicates');
+    expect(toList).not.toContain('/permissions');
+    expect(toList).not.toContain('/admin/branches');
+    expect(toList).not.toContain('/message-templates');
+    expect(toList).not.toContain('/platform-admin');
+
+    const leadCreator = (c: string) => c === 'lead.create' || c === 'lead.read';
+    const itemsCreator = getSearchableItems(false, leadCreator, false);
+    expect(itemsCreator.map((i) => i.to)).toContain('/leads/new');
+    expect(itemsCreator.map((i) => i.to)).not.toContain('/leads/duplicates');
+
+    const admin = (c: string) => c === 'config.manage' || c === 'user.manage' || c === 'role.manage';
+    const itemsAdmin = getSearchableItems(true, admin, false);
+    expect(itemsAdmin.map((i) => i.to)).toContain('/admin/branches');
+    expect(itemsAdmin.map((i) => i.to)).toContain('/admin/teams');
+    expect(itemsAdmin.map((i) => i.to)).toContain('/permissions');
+  });
+
+  it('TEST-SEARCH-03 suggestions rank exact matches and submodules correctly', () => {
+    const all = getSearchableItems(true, () => true, false);
+    const leadMatches = searchSuggestions(all, 'lead');
+    expect(leadMatches.map((m) => m.label)).toContain('Leads');
+    expect(leadMatches.map((m) => m.label)).toContain('New Lead');
+    expect(leadMatches.map((m) => m.label)).toContain('Duplicate Review');
+
+    const branchMatches = searchSuggestions(all, 'branch');
+    expect(branchMatches.map((m) => m.label)).toContain('Branches');
+  });
+
+  it('TEST-SEARCH-04 platform operator only receives platform console and platform screens', () => {
+    const platformCan = (c: string) => c === 'platform.console';
+    const items = getSearchableItems(false, platformCan, true);
+    expect(items.map((i) => i.to).sort()).toEqual(['/', '/account/security', '/platform-admin'].sort());
+  });
+});
+
+describe('Settings Hub RBAC filtering (visibleSettings)', () => {
+  it('TEST-SETTING-01 tenant administrator sees administrative modules but never Platform Console', () => {
+    const adminCan = (c: string) => true;
+    const categories = visibleSettings(true, adminCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).toContain('/admin/organisation');
+    expect(itemPaths).toContain('/admin/branches');
+    expect(itemPaths).toContain('/users');
+    expect(itemPaths).toContain('/roles');
+    expect(itemPaths).toContain('/config');
+    expect(itemPaths).toContain('/audit');
+    expect(itemPaths).toContain('/account/security');
+    expect(itemPaths).not.toContain('/platform-admin');
+  });
+
+  it('TEST-SETTING-02 platform operator sees only Platform Console and Personal Security', () => {
+    const platformCan = (c: string) => c === 'platform.console';
+    const categories = visibleSettings(false, platformCan, true);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths.sort()).toEqual(['/account/security', '/platform-admin'].sort());
+  });
+
+  it('TEST-SETTING-03 regular staff with no admin grants sees only Personal Account Security', () => {
+    const noAdminCan = (c: string) => c === 'lead.read' || c === 'task.read';
+    const categories = visibleSettings(false, noAdminCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).toEqual(['/account/security']);
+  });
+
+  it('TEST-SETTING-04 compliance auditor sees Audit, Privacy & Consent, and Personal Security', () => {
+    const auditorCan = (c: string) => c === 'audit.read' || c === 'customer.read';
+    const categories = visibleSettings(false, auditorCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).toContain('/audit');
+    expect(itemPaths).toContain('/privacy');
+    expect(itemPaths).toContain('/account/security');
+    expect(itemPaths).not.toContain('/users');
+    expect(itemPaths).not.toContain('/admin/organisation');
+    expect(itemPaths).not.toContain('/config');
+  });
+
+  it('TEST-SETTING-05 for all 14 roles, every setting link offered to a role is permitted by routeAllowed (zero 403 links)', () => {
+    for (const role of ROLES) {
+      const can = canOf(role);
+      const isAdmin = isAdminOf(can);
+      const categories = visibleSettings(isAdmin, can, false);
+      for (const cat of categories) {
+        for (const item of cat.items) {
+          expect(routeAllowed(item.to, can, false), `${role} -> ${item.label} (${item.to})`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('TEST-SETTING-06 ROLE-RM only sees Privacy & Account Security in Settings and is blocked from admin URLs', () => {
+    const rmCan = canOf('ROLE-RM');
+    const categories = visibleSettings(isAdminOf(rmCan), rmCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths.sort()).toEqual(['/account/security', '/privacy'].sort());
+
+    for (const adminPath of [
+      '/admin/organisation',
+      '/admin/branches',
+      '/admin/teams',
+      '/admin/queues',
+      '/users',
+      '/roles',
+      '/permissions',
+      '/config',
+      '/integrations',
+      '/api-management',
+      '/audit',
+      '/security',
+      '/platform-admin',
+    ]) {
+      expect(routeAllowed(adminPath, rmCan, false), `ROLE-RM cannot access ${adminPath}`).toBe(false);
+    }
+  });
+
+  it('TEST-SETTING-07 ROLE-COMPLIANCE only sees compliance & security in Settings', () => {
+    const compCan = canOf('ROLE-COMPLIANCE');
+    const categories = visibleSettings(isAdminOf(compCan), compCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).toContain('/audit');
+    expect(itemPaths).toContain('/privacy');
+    expect(itemPaths).toContain('/security');
+    expect(itemPaths).toContain('/account/security');
+    expect(itemPaths).not.toContain('/users');
+    expect(itemPaths).not.toContain('/admin/organisation');
+    expect(itemPaths).not.toContain('/admin/branches');
+    expect(itemPaths).not.toContain('/config');
+    expect(itemPaths).not.toContain('/platform-admin');
+  });
+
+  it('TEST-SETTING-08 ROLE-FINANCE-EXEC only sees Account Security in Settings', () => {
+    const finCan = canOf('ROLE-FINANCE-EXEC');
+    const categories = visibleSettings(isAdminOf(finCan), finCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).toEqual(['/account/security']);
+    expect(routeAllowed('/admin/organisation', finCan, false)).toBe(false);
+    expect(routeAllowed('/users', finCan, false)).toBe(false);
+  });
+
+  it('TEST-SETTING-09 ROLE-TENANT-ADMIN in customer realm never sees Platform Console in Settings', () => {
+    const adminCan = canOf('ROLE-TENANT-ADMIN');
+    const categories = visibleSettings(true, adminCan, false);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths).not.toContain('/platform-admin');
+    expect(routeAllowed('/platform-admin', adminCan, false)).toBe(false);
+  });
+
+  it('TEST-SETTING-10 platform operator in platform realm only receives Platform Console and Account Security', () => {
+    const platCan = (c: string) => c === 'platform.console';
+    const categories = visibleSettings(false, platCan, true);
+    const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
+    expect(itemPaths.sort()).toEqual(['/account/security', '/platform-admin'].sort());
+    expect(routeAllowed('/platform-admin', platCan, true)).toBe(true);
+    expect(routeAllowed('/account/security', platCan, true)).toBe(true);
+    expect(routeAllowed('/admin/organisation', platCan, true)).toBe(false);
+    expect(routeAllowed('/users', platCan, true)).toBe(false);
   });
 });

@@ -25,7 +25,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Link,
   Stack,
   TextField,
   Typography,
@@ -50,6 +49,8 @@ import { UserSelect } from '../../shell/selectors';
 import { CustomerName, ConnectorName, UserName } from '../../shell/display';
 import { PageHeader, AppButton } from '../../ui';
 import type { ConversionResponse } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RecordLink } from '../../ui/RecordLink';
 
 export function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -288,7 +289,7 @@ export function LeadDetail() {
         subtitle={
           <>
             <Typography component="span" display="block" variant="body2" color="text.secondary">
-              Lead ID: <code>{lead.id}</code> · Version: {lead.lockVersion}
+              Version: {lead.lockVersion}
             </Typography>
             {lead.duplicateFlag !== 'NONE' && (
               <Typography component="span" display="block" variant="body2" color="warning.main" data-testid="lead.duplicate-candidates">
@@ -298,17 +299,17 @@ export function LeadDetail() {
                   : (lead.duplicateCandidateIds ?? []).map((c, i) => (
                       <span key={c}>
                         {i > 0 && ', '}
-                        <Link component={RouterLink} to={`/leads/${c}`}>
-                          {c}
-                        </Link>
+                        <RecordLink to={`/leads/${c}`}>
+                          Possible match {i + 1}
+                        </RecordLink>
                       </span>
                     ))}
                 {canMerge && (
                   <>
                     {' · '}
-                    <Link component={RouterLink} to="/leads/duplicates">
+                    <RecordLink to="/leads/duplicates">
                       Review duplicates
-                    </Link>
+                    </RecordLink>
                   </>
                 )}
               </Typography>
@@ -573,9 +574,9 @@ export function LeadDetail() {
                   Customer Created / Linked:
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  <Link component={RouterLink} to={`/customers/${conversionResult.customerId}`}>
-                    {conversionResult.customerNumber || conversionResult.customerId}
-                  </Link>
+                  <RecordLink to={`/customers/${conversionResult.customerId}`}>
+                    {conversionResult.customerNumber || 'Open customer'}
+                  </RecordLink>
                 </Typography>
                 <Button
                   component={RouterLink}
@@ -593,9 +594,9 @@ export function LeadDetail() {
                   Loan Application Created:
                 </Typography>
                 <Typography variant="body1" fontWeight="medium">
-                  <Link component={RouterLink} to={`/applications/${conversionResult.applicationId}`}>
-                    {conversionResult.applicationNumber || conversionResult.applicationId}
-                  </Link>
+                  <RecordLink to={`/applications/${conversionResult.applicationId}`}>
+                    {conversionResult.applicationNumber || 'Open application'}
+                  </RecordLink>
                 </Typography>
               </Grid>
             </Grid>
@@ -666,13 +667,13 @@ export function LeadDetail() {
                   <Typography variant="caption" color="text.secondary">
                     Masked Email
                   </Typography>
-                  <Typography variant="body1">{lead.emailMasked || '—'}</Typography>
+                  <Typography variant="body1">{lead.emailMasked || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Pincode
                   </Typography>
-                  <Typography variant="body1">{lead.pincode || '—'}</Typography>
+                  <Typography variant="body1">{lead.pincode || <NotSet />}</Typography>
                 </Box>
               </Stack>
             </CardContent>
@@ -701,7 +702,7 @@ export function LeadDetail() {
                   <Typography variant="body1">
                     {lead.indicativeAmount
                       ? `${lead.indicativeAmount.currency} ${lead.indicativeAmount.amount}`
-                      : '—'}
+                      : <NotSet />}
                   </Typography>
                 </Box>
                 <Box>
@@ -770,7 +771,7 @@ export function LeadDetail() {
                   <Typography variant="caption" color="text.secondary">
                     Campaign
                   </Typography>
-                  <Typography variant="body1">{lead.campaign || '—'}</Typography>
+                  <Typography variant="body1">{lead.campaign || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -785,7 +786,7 @@ export function LeadDetail() {
                     Referred At
                   </Typography>
                   <Typography variant="body1">
-                    {lead.referredAt ? new Date(lead.referredAt).toLocaleString() : '—'}
+                    {lead.referredAt ? new Date(lead.referredAt).toLocaleString() : <NotSet />}
                   </Typography>
                 </Box>
               </Stack>
@@ -844,7 +845,7 @@ export function LeadDetail() {
                   <Typography variant="caption" color="text.secondary">
                     Owner Queue ID
                   </Typography>
-                  <Typography variant="body1">{lead.ownerQueueId || '—'}</Typography>
+                  <Typography variant="body1">{lead.ownerQueueId || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">

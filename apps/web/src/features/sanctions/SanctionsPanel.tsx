@@ -38,6 +38,8 @@ import type {
   Sanction,
   VerifyTrancheInput,
 } from './types';
+import { NotSet } from '../../ui/NotSet';
+import { RowAction } from '../../shell/RowAction';
 
 interface SanctionsPanelProps {
   lenderCaseId?: string;
@@ -409,16 +411,16 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                       />
                     ),
                   },
-                  { id: 'utr', header: 'UTR (Masked)', render: (t) => t.utrMasked ?? '—' },
-                  { id: 'loan', header: 'Loan Account', render: (t) => t.loanAccountMasked ?? '—' },
+                  { id: 'utr', header: 'UTR (Masked)', render: (t) => t.utrMasked ?? <NotSet /> },
+                  { id: 'loan', header: 'Loan Account', render: (t) => t.loanAccountMasked ?? <NotSet /> },
                   {
                     id: 'actions',
                     header: 'Actions',
                     align: 'right',
                     render: (t) => {
                       const isRecorder = currentUserId && t.recordedBy === currentUserId;
-                      return t.status === 'RECORDED' ? (
-                        <Can action="disbursement.verify">
+                      return (
+                        <RowAction allowed={t.status === 'RECORDED'} action="disbursement.verify">
                           <Button
                             size="small"
                             variant="outlined"
@@ -433,8 +435,8 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                           >
                             {isRecorder ? 'SOD Lock' : 'Verify'}
                           </Button>
-                        </Can>
-                      ) : null;
+                        </RowAction>
+                      );
                     },
                   },
                 ]}

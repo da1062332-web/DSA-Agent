@@ -1,6 +1,6 @@
 // TEST-SEC-001 cases for users, roles, permissions and API clients (owner: Dev 1 / Platform, Modules 2, 3 and 29).
 // Tenant B holds every administration permission and still must not see or change tenant A's users, roles or API clients.
-// Named operationIds: API-USR-CREATE, API-USR-GET, API-USR-UPDATE, API-USR-PERMS-GET, API-USR-ROLES-ASSIGN,
+// Named operationIds: API-USR-GET, API-USR-UPDATE, API-USR-PERMS-GET, API-USR-ROLES-ASSIGN,
 // API-USR-ROLES-LIST, API-USR-ROLES-REMOVE, API-ACL-ROLES-LIST, API-ACL-ROLES-GET, API-ACL-ROLES-CREATE,
 // API-ACL-ROLES-UPDATE, API-ACL-ROLES-DELETE, API-ACL-PERMS-LIST, and the API client operations:
 //   get /v1/api-clients, post /v1/api-clients, get /v1/api-clients/{id}, patch /v1/api-clients/{id},
@@ -106,21 +106,18 @@ describe('TEST-SEC-001 users: tenants never cross', () => {
     expect(open.rows[0].open).toBe(true);
   });
 
-  it('API-USR-CREATE: a user created by tenant B belongs to tenant B, and tenant A cannot see it', async () => {
+  it('API-USR-CREATE retired: a user row that belongs to tenant B is readable by tenant B only', async () => {
+    // POST /v1/users is retired (platform-users.spec TEST-USR-003); staff now arrive through invitations. This checks the row itself.
+    const id = `usr_iso_b_${Date.now()}`;
+    await env.admin.query(
+      `insert into app.app_user (id, tenant_id, idp_subject, email, display_name, primary_branch_id, created_by, updated_by)
+             values ($1, $2, $3, $4, 'Iso B user', $5, 'iso', 'iso')`,
+      [id, env.B.tenantId, `sub-${id}`, `${id}@iso-b.example.com`, env.B.branchId],
+    );
     const b = env.appAs(env.B, ADMIN);
-    const created = await request(b)
-      .post('/v1/users')
-      .set('Idempotency-Key', key())
-      .send({
-        email: `iso.b.${Date.now()}@example.test`,
-        displayName: 'Iso B user',
-        mobileE164: null,
-        primaryBranchId: env.B.branchId,
-      });
-    expect(created.status, JSON.stringify(created.body)).toBe(201);
-    expect(created.body.tenantId).toBe(env.B.tenantId);
+    expect((await request(b).get(`/v1/users/${id}`)).status).toBe(200);
     const a = env.appAs(env.A, ADMIN);
-    expect((await request(a).get(`/v1/users/${created.body.id}`)).status).toBe(404);
+    expect((await request(a).get(`/v1/users/${id}`)).status).toBe(404);
   });
 });
 

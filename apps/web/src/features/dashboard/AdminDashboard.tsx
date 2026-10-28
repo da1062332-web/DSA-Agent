@@ -26,6 +26,7 @@ import {
   KpiMetricCard,
   PipelineFunnelChart,
 } from './components';
+import { NotSet } from '../../ui/NotSet';
 
 interface AdminDashboardProps {
   role?: 'ROLE-TENANT-ADMIN' | 'ROLE-ORG-OWNER';
@@ -327,6 +328,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
+            variant="funnel"
             title="Organisation Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Inbound Leads', count: leads.length, color: '#f59e0b' },
@@ -386,7 +388,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
                           {evt.action || 'EVENT'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {evt.occurredAt ? new Date(evt.occurredAt).toLocaleTimeString() : '—'}
+                          {evt.occurredAt ? new Date(evt.occurredAt).toLocaleTimeString() : <NotSet />}
                         </Typography>
                       </Box>
                       <Typography variant="caption" color="text.secondary" display="block">

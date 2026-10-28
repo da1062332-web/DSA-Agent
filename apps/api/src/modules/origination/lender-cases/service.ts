@@ -8,6 +8,7 @@ import {
   type CreateLenderCaseInput,
   type LenderCaseResource,
   type LenderCaseStatus,
+  type LenderCaseStatusHistoryResource,
   type LenderQueryResource,
   type PermissionCode,
   type RecordLenderQueryInput,
@@ -42,6 +43,30 @@ export interface LenderCaseServiceDeps {
 
 /** Fields that leave the DSA in a lender package. No S3 data (PAN, Aadhaar, DOB, bank details) in the MVP. */
 const SHARED_FIELDS = ['applicant_name', 'requested_amount', 'product_category'];
+
+/** A lender query with the answer recorded for it, if any. */
+export interface LenderQueryHistoryResource extends LenderQueryResource {
+  responseText: string | null;
+  responseDocumentReferences: string[];
+}
+
+/** Cursor for the lender case list: the sort key of the last case on a page, base64url-encoded. */
+function encodeLenderCaseCursor(row: LenderCaseRow): string {
+  return Buffer.from(JSON.stringify({ k: row.created_at.toISOString(), id: row.id })).toString('base64url');
+}
+
+function decodeLenderCaseCursor(cursor: string | undefined): { createdAt: string; id: string } | null {
+  if (!cursor) return null;
+  try {
+    const v = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { k?: unknown; id?: unknown };
+    if (typeof v.k === 'string' && typeof v.id === 'string' && !Number.isNaN(Date.parse(v.k))) {
+      return { createdAt: v.k, id: v.id };
+    }
+  } catch {
+    // reported below
+  }
+  throw AppError.of('VALIDATION_ERROR', 'cursor is not a valid page cursor', [{ field: 'cursor', issue: 'INVALID' }]);
+}
 
 export class LenderCaseService {
   constructor(private readonly deps: LenderCaseServiceDeps) {}
@@ -378,17 +403,114 @@ export class LenderCaseService {
   }
 
   /**
-   * List All Lender Cases (Tenant Scope)
+   * List All Lender Cases (Tenant Scope), newest first, one page at a time.
+   * A page holds up to `limit` cases (default 50, at most 200); `meta.nextCursor` is set when more follow.
    */
   async listAllCases(
     tx: Tx,
     ctx: RequestContext,
-    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number },
-  ): Promise<LenderCaseResource[]> {
+    filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number; cursor?: string },
+  ): Promise<{ data: LenderCaseResource[]; meta: { nextCursor: string | null; limit: number } }> {
     const tenantId = ctx.principal.tenantId;
     this.requirePermission(ctx, 'application.read');
-    const rows = await this.deps.repository.listAllCases(tx, tenantId, filter);
-    return rows.map((r) => this.toResource(r));
+    const limit = Math.min(filter?.limit ?? 50, 200);
+    const after = decodeLenderCaseCursor(filter?.cursor);
+    // One row beyond the page tells us whether another page exists.
+    const rows = await this.deps.repository.listAllCases(tx, tenantId, {
+      status: filter?.status,
+      lenderId: filter?.lenderId,
+      applicationId: filter?.applicationId,
+      after: after ?? undefined,
+      limit: limit + 1,
+    });
+    const page = rows.slice(0, limit);
+    const last = page[page.length - 1];
+    return {
+      data: page.map((r) => this.toResource(r)),
+      meta: { nextCursor: rows.length > limit && last ? encodeLenderCaseCursor(last) : null, limit },
+    };
+  }
+
+  /** Loads a case and checks that the caller's branch scope covers its application. */
+  private async loadCaseInScope(tx: Tx, ctx: RequestContext, id: string): Promise<LenderCaseRow> {
+    const tenantId = ctx.principal.tenantId;
+    const row = await this.deps.repository.findCaseById(tx, tenantId, id);
+    if (!row) {
+      throw AppError.of('NOT_FOUND', `Lender case '${id}' not found.`);
+    }
+    const app = await this.deps.repository.findApplication(tx, tenantId, row.application_id);
+    if (app) {
+      this.checkBranchScope(ctx, 'application.read', app.branch_id);
+    }
+    return row;
+  }
+
+  /**
+   * Query history for one case, oldest first. A query that has been answered carries the lender's answer text
+   * and the document references the answer was sent with.
+   */
+  async listQueries(tx: Tx, ctx: RequestContext, id: string): Promise<LenderQueryHistoryResource[]> {
+    const tenantId = ctx.principal.tenantId;
+    this.requirePermission(ctx, 'application.read');
+    await this.loadCaseInScope(tx, ctx, id);
+
+    const rows = await this.deps.repository.listQueriesByCase(tx, tenantId, id);
+    const result: LenderQueryHistoryResource[] = [];
+    for (const row of rows) {
+      let responseText: string | null = null;
+      let responseDocumentReferences: string[] = [];
+      if (row.response_manifest_id) {
+        const pkg = await this.deps.repository.findPackageById(tx, tenantId, row.response_manifest_id);
+        if (pkg) {
+          const manifest = pkg.manifest as { response?: unknown; documentReferences?: unknown };
+          responseText = typeof manifest.response === 'string' ? manifest.response : null;
+          responseDocumentReferences = Array.isArray(manifest.documentReferences)
+            ? manifest.documentReferences.map(String)
+            : [];
+        }
+      }
+      result.push({ ...this.toQueryResource(row), responseText, responseDocumentReferences });
+    }
+    return result;
+  }
+
+  /** Status history for one case, oldest first. */
+  async listStatusHistory(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+  ): Promise<LenderCaseStatusHistoryResource[]> {
+    const tenantId = ctx.principal.tenantId;
+    this.requirePermission(ctx, 'application.read');
+    await this.loadCaseInScope(tx, ctx, id);
+
+    const rows = await this.deps.repository.listStatusHistory(tx, tenantId, id);
+    return rows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenant_id,
+      lenderCaseId: r.lender_case_id,
+      fromStatus: r.from_status,
+      toStatus: r.to_status,
+      statusSource: r.status_source,
+      reasonText: r.reason_text,
+      actor: r.actor,
+      occurredAt: r.occurred_at.toISOString(),
+    }));
+  }
+
+  /** The submission package the case was built and frozen with. */
+  async getPackage(tx: Tx, ctx: RequestContext, id: string): Promise<SubmissionPackageResource> {
+    const tenantId = ctx.principal.tenantId;
+    this.requirePermission(ctx, 'application.read');
+    const row = await this.loadCaseInScope(tx, ctx, id);
+    if (!row.package_id) {
+      throw AppError.of('NOT_FOUND', 'No submission package has been built for this lender case yet.');
+    }
+    const pkg = await this.deps.repository.findPackageById(tx, tenantId, row.package_id);
+    if (!pkg) {
+      throw AppError.of('NOT_FOUND', 'The submission package for this lender case was not found.');
+    }
+    return this.toPackageResource(pkg);
   }
 
   /**
@@ -1065,12 +1187,33 @@ export class LenderCaseService {
 
     const now = ctx.now ?? new Date();
 
+    if (!this.deps.applicationPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The document checklist is not available to answer the query.');
+    }
+    // The documents cited must be this application's own checklist documents. The manifest records each one's hash.
+    const checklist = await this.deps.applicationPort.getSubmissionDocuments(tx, ctx, row.application_id);
+    const references = [...new Set(input.documentReferences)];
+    const known = new Map(checklist.documents.flatMap((d) => (d.documentId ? [[d.documentId, d] as const] : [])));
+    const unknown = references.filter((ref) => !known.has(ref));
+    if (unknown.length > 0) {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'A referenced document does not belong to this application.',
+        unknown.map(() => ({ field: 'documentReferences', issue: 'NOT_IN_APPLICATION' })),
+      );
+    }
+    const documents = references.map((ref) => {
+      const d = known.get(ref)!;
+      return { documentId: ref, documentTypeCode: d.documentTypeCode, sha256: d.sha256 };
+    });
+
     // Create QUERY_RESPONSE package
     const packageId = newId('pkg');
     const manifest = {
       queryId: targetQueryId,
       response: input.text,
-      documentReferences: [...input.documentReferences],
+      documentReferences: references,
+      documents,
       respondedAt: now.toISOString(),
     };
     const manifestSha256 = createHash('sha256').update(JSON.stringify(manifest)).digest('hex');

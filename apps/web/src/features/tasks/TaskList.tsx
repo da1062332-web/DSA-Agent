@@ -1,7 +1,6 @@
 // apps/web/src/features/tasks/TaskList.tsx — owner: Dev 6 — UI-TASK-001 Task Management (DSA Notion MODULE 9).
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -11,7 +10,6 @@ import {
   Container,
   FormControl,
   InputLabel,
-  Link,
   MenuItem,
   Select,
   Stack,
@@ -33,6 +31,8 @@ import {
   type ColumnDef,
 } from '../../ui';
 import type { TaskResource } from './types';
+import { RecordLink } from '../../ui/RecordLink';
+import { RowAction } from '../../shell/RowAction';
 
 export function TaskList(): React.ReactElement {
   const [view, setView] = useState<'MINE' | 'QUEUES' | 'ALL'>('MINE');
@@ -88,9 +88,9 @@ export function TaskList(): React.ReactElement {
         ) : task.linkedType === 'LOAN_APPLICATION' ? (
           <ApplicationName id={task.linkedId} linkToApp />
         ) : (
-          <Link component={RouterLink} to={linkedPath(task.linkedType, task.linkedId)}>
-            Case #{task.linkedId.slice(-8)}
-          </Link>
+          <RecordLink to={linkedPath(task.linkedType, task.linkedId)}>
+            Open {task.linkedType.replace(/_/g, ' ').toLowerCase()}
+          </RecordLink>
         ),
     },
     {
@@ -112,8 +112,7 @@ export function TaskList(): React.ReactElement {
       header: 'Actions',
       align: 'right',
       accessor: (task) =>
-        task.status !== 'COMPLETED' && task.status !== 'CANCELLED' ? (
-          <Can action="task.update">
+        <RowAction allowed={task.status !== 'COMPLETED' && task.status !== 'CANCELLED'} action="task.update">
             <Button
               size="small"
               variant="outlined"
@@ -123,8 +122,7 @@ export function TaskList(): React.ReactElement {
             >
               Complete
             </Button>
-          </Can>
-        ) : null,
+        </RowAction>,
     },
   ];
 
