@@ -5,7 +5,7 @@ import { Outlet } from 'react-router-dom';
 
 export function SettingsLayout() {
   return (
-    <Box sx={{ width: '100%', minHeight: '100%', bgcolor: '#f8fafc' }}>
+    <Box sx={{ width: '100%', minHeight: '100%', bgcolor: '#ffffff' }}>
       <Container maxWidth={false} disableGutters>
         <Outlet />
       </Container>

@@ -71,12 +71,12 @@ export function RMDashboard() {
   ).length;
 
   const appFunnelStages = [
-    { key: 'draft', label: 'Draft Files', count: draftCount, color: '#1d5fd1', to: '/applications?status=DRAFT' },
+    { key: 'draft', label: 'Draft Files', count: draftCount, color: '#215988', to: '/applications?status=DRAFT' },
     {
       key: 'review',
       label: 'Under Review',
       count: underReviewCount,
-      color: '#0288d1',
+      color: '#3876BE',
       to: '/applications?status=UNDER_REVIEW',
     },
     {
@@ -90,7 +90,7 @@ export function RMDashboard() {
       key: 'sanctioned',
       label: 'Sanctioned / Approved',
       count: sanctionedCount,
-      color: '#10b981',
+      color: '#16A34A',
       to: '/applications?status=SANCTIONED',
     },
   ];
@@ -130,7 +130,7 @@ export function RMDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Relationship Manager Portal
             </Typography>
             <Chip
@@ -224,7 +224,7 @@ export function RMDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Origination Stage Progression"
             subtitle="Borrower application files by underwriting status"
             stages={appFunnelStages}

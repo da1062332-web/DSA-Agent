@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { NotificationCategory, NotificationRecord } from '@dsa/contracts';
-import { apiFetch, apiStream, errorText } from '../../api/client';
+import { ApiError, apiFetch, apiStream, errorText } from '../../api/client';
 import { NotificationPreferencesDialog } from './NotificationPreferencesDialog';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -104,6 +104,7 @@ export function NotificationCenter(_props: NotificationCenterProps) {
   // SSE Live Stream Connection
   useEffect(() => {
     let isSubscribed = true;
+    let failures = 0;
 
     const connectSse = async () => {
       try {
@@ -113,6 +114,7 @@ export function NotificationCenter(_props: NotificationCenterProps) {
 
         const res = await apiStream('/v1/notifications/stream', controller.signal);
 
+        failures = 0;
         setStreamStatus('connected');
 
         if (!res.body) return;
@@ -157,13 +159,28 @@ export function NotificationCenter(_props: NotificationCenterProps) {
         if (!isSubscribed) return;
         if (err instanceof Error && err.name === 'AbortError') return;
 
+        // A refusal (401 sign-in or step-up needed, 403 no access, 404) will not clear by retrying every few seconds, and each
+        // retry is another failed request in the console. Stop; the bell still loads its list through the normal requests.
+        if (
+          err instanceof ApiError &&
+          err.httpStatus >= 400 &&
+          err.httpStatus < 500 &&
+          err.httpStatus !== 408 &&
+          err.httpStatus !== 429
+        ) {
+          setStreamStatus('disconnected');
+          return;
+        }
+
         setStreamStatus('reconnecting');
-        // Exponential/staggered reconnect attempt
+        // Back off 5 s, 10 s, 20 s ... up to 60 s while the API or network is down.
+        failures += 1;
+        const delay = Math.min(60_000, 5_000 * 2 ** (failures - 1));
         reconnectTimeoutRef.current = setTimeout(() => {
           if (isSubscribed) {
             connectSse();
           }
-        }, 5000);
+        }, delay);
       }
     };
 

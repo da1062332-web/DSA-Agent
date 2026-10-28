@@ -4,6 +4,7 @@
 import {
   Alert,
   AppBar,
+  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -21,7 +22,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { errorText } from '../api/client';
+import { errorText, registerStepUpRefusedHandler } from '../api/client';
 import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
@@ -29,11 +30,25 @@ import { StepUpProvider } from '../auth/StepUpProvider';
 import { mfaProjectState } from '../auth/mfa-project';
 import { mfaSkipRequested } from '../auth/test-auth';
 
+import { ROLE_LABELS, resolveUserRoles } from '../features/dashboard/role-routing';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
 import { routeAllowed } from './access';
 import { Forbidden } from './Forbidden';
 import { MenuIcon } from './icons';
 import { SidebarContent } from './Sidebar';
+
+const TOPBAR_HEIGHT = 56;
+// Top bar palette (Brand Swatch Guide): deep navy (BG/700) with white text and a tangerine accent line.
+const TOPBAR_BG = '#215988';
+const TOPBAR_ACCENT = '#F89344';
+
+const initials = (name?: string) =>
+  (name ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('') || '?';
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
   <Box
@@ -66,6 +81,13 @@ export function AppLayout() {
   const tenant = useTenant(mfaPassed);
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // While the project has authenticator sign-in off and the API has not been told (SUPABASE_MFA_ENABLED=false), the API refuses every
+  // call with STEP_UP_REQUIRED and the pages just look empty. Say what is wrong once a request has failed that way.
+  const [stepUpBlocked, setStepUpBlocked] = useState(false);
+  useEffect(() => {
+    registerStepUpRefusedHandler(() => setStepUpBlocked(true));
+    return () => registerStepUpRefusedHandler(null);
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem('dsa_sidebar_collapsed') === 'true';
@@ -74,7 +96,7 @@ export function AppLayout() {
     }
   });
 
-  const DEFAULT_SIDEBAR_WIDTH = 290;
+  const DEFAULT_SIDEBAR_WIDTH = 272;
   const MIN_SIDEBAR_WIDTH = 240;
   const MAX_SIDEBAR_WIDTH = 420;
   const STEP_SIDEBAR_WIDTH = 35;
@@ -188,7 +210,7 @@ export function AppLayout() {
   if (session === undefined)
     return (
       <Centered>
-        <CircularProgress sx={{ color: '#F89344' }} />
+        <CircularProgress />
       </Centered>
     );
   if (!session) {
@@ -203,7 +225,7 @@ export function AppLayout() {
   if (!aal || me.isPending)
     return (
       <Centered>
-        <CircularProgress sx={{ color: '#F89344' }} />
+        <CircularProgress />
       </Centered>
     );
   if (me.isError) {
@@ -231,6 +253,7 @@ export function AppLayout() {
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
+  const roleLabel = resolveUserRoles(me.data).map((role) => ROLE_LABELS[role])[0];
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   // Route guard (audit F-08): by this point the profile and its grants are loaded (the spinner above covers the wait), and a missing
@@ -249,13 +272,22 @@ export function AppLayout() {
             left: 0,
             right: 0,
             zIndex: (t) => t.zIndex.drawer + 1,
-            bgcolor: '#ffffff',
-            color: '#0f172a',
-            borderBottom: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+            bgcolor: TOPBAR_BG,
+            color: '#ffffff',
+            boxShadow: 'none',
+            // Brand accent line along the bottom edge; drawn inside the bar so the bar keeps its height.
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 3,
+              bgcolor: TOPBAR_ACCENT,
+            },
           }}
         >
-          <Toolbar disableGutters sx={{ minHeight: 64, px: { xs: 2, md: 3 } }}>
+          <Toolbar disableGutters sx={{ minHeight: TOPBAR_HEIGHT, px: { xs: 2, md: 2.5 } }}>
             {/* Mobile menu toggle for narrow screens */}
             {!wide && (
               <IconButton
@@ -265,8 +297,8 @@ export function AppLayout() {
                 aria-label="Open menu"
                 sx={{
                   mr: 1.5,
-                  color: '#334155',
-                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.06)', color: '#0f172a' },
+                  color: '#ffffff',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
                 }}
               >
                 <MenuIcon fontSize="small" />
@@ -290,41 +322,29 @@ export function AppLayout() {
                 src="/logo.png"
                 alt="DSA Platform Logo"
                 sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
+                  width: 32,
+                  height: 32,
                   objectFit: 'contain',
                   flexShrink: 0,
+                  // The logo is blue on transparent; show it as a white mark on the navy bar.
+                  filter: 'brightness(0) invert(1)',
                 }}
               />
               <Typography
                 variant="h6"
                 sx={{
-                  color: '#0f172a',
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  fontSize: { xs: '1.1rem', md: '1.25rem' },
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  letterSpacing: '-0.01em',
+                  fontSize: { xs: '1rem', md: '1.0625rem' },
                 }}
               >
                 {tenant.data?.legalName ?? 'DSA CRM'}
-                <Box
-                  component="span"
-                  sx={{
-                    display: 'inline-block',
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: '#F89344',
-                  }}
-                />
               </Typography>
             </Box>
 
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ color: '#334155' }}>
+              <Box sx={{ color: '#ffffff' }}>
                 <NotificationCenter />
               </Box>
               <Button
@@ -332,19 +352,32 @@ export function AppLayout() {
                 onClick={(e) => setMenu(e.currentTarget)}
                 data-testid="shell.account"
                 sx={{
+                  height: 'auto',
                   textTransform: 'none',
-                  bgcolor: 'rgba(15, 23, 42, 0.04)',
-                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.08)' },
-                  border: '1px solid #e2e8f0',
                   borderRadius: 2,
-                  px: 1.5,
+                  gap: 1,
+                  pl: 0.75,
+                  pr: { xs: 0.75, sm: 1.5 },
                   py: 0.5,
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: '#0f172a',
+                  color: '#ffffff',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
                 }}
               >
-                {me.data?.displayName}
+                <Avatar
+                  sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 600, bgcolor: 'rgba(255, 255, 255, 0.18)', color: '#ffffff' }}
+                >
+                  {initials(me.data?.displayName)}
+                </Avatar>
+                <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'left', minWidth: 0 }}>
+                  <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.25 }}>
+                    {me.data?.displayName}
+                  </Typography>
+                  {roleLabel && (
+                    <Typography sx={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.78)', lineHeight: 1.25 }}>
+                      {roleLabel}
+                    </Typography>
+                  )}
+                </Box>
               </Button>
               <Menu
                 anchorEl={menu}
@@ -353,8 +386,13 @@ export function AppLayout() {
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               >
-                <MenuItem disabled>
-                  <ListItemText primary={me.data?.displayName} secondary={me.data?.email} />
+                <MenuItem disabled sx={{ opacity: '1 !important' }}>
+                  <ListItemText
+                    primary={me.data?.displayName}
+                    secondary={me.data?.email}
+                    primaryTypographyProps={{ fontWeight: 600, fontSize: '0.875rem' }}
+                    secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                  />
                 </MenuItem>
                 <Divider />
                 <MenuItem
@@ -378,7 +416,7 @@ export function AppLayout() {
             </Box>
           </Toolbar>
         </AppBar>
-        <Box sx={{ display: 'flex', pt: '64px' }}>
+        <Box sx={{ display: 'flex', pt: `${TOPBAR_HEIGHT}px` }}>
           <Drawer
             variant={wide ? 'permanent' : 'temporary'}
             open={wide || drawerOpen}
@@ -397,8 +435,8 @@ export function AppLayout() {
               '& .MuiDrawer-paper': {
                 width: effectiveSidebarWidth,
                 boxSizing: 'border-box',
-                top: { md: 64 },
-                height: { md: 'calc(100vh - 64px)', xs: '100%' },
+                top: { md: TOPBAR_HEIGHT },
+                height: { md: `calc(100vh - ${TOPBAR_HEIGHT}px)`, xs: '100%' },
                 overflowX: 'hidden',
                 overflowY: 'auto',
                 overscrollBehavior: 'contain',
@@ -447,10 +485,10 @@ export function AppLayout() {
                   zIndex: 20,
                   transition: 'background-color 0.15s ease',
                   '&:hover': {
-                    bgcolor: 'rgba(248, 147, 68, 0.4)',
+                    bgcolor: 'rgba(33, 89, 136, 0.3)',
                   },
                   ...(isResizing && {
-                    bgcolor: '#F89344 !important',
+                    bgcolor: '#215988 !important',
                     width: 4,
                   }),
                 }}
@@ -473,7 +511,15 @@ export function AppLayout() {
               onResetWidth={wide && !sidebarCollapsed ? handleResetWidth : undefined}
             />
           </Drawer>
-          <Box component="main" sx={{ flex: 1, minWidth: 0, p: { xs: 2, md: 3 } }}>
+          <Box component="main" sx={{ flex: 1, minWidth: 0, bgcolor: '#ffffff', p: { xs: 2, md: 3 } }}>
+            {stepUpBlocked && mfaProjectState() === 'disabled' && (
+              <Alert severity="warning" sx={{ mb: 2 }} data-testid="shell.mfa-blocked">
+                <strong>Two-step verification is required for your role, but it is switched off for this project.</strong> The API is
+                refusing your requests until that is resolved. Ask an administrator to turn on authenticator (TOTP) sign-in in
+                Supabase. For local development, set <code>SUPABASE_MFA_ENABLED=false</code> in <code>apps/api/.env</code> and
+                restart the API.
+              </Alert>
+            )}
             {pageAllowed ? <Outlet /> : <Forbidden />}
           </Box>
         </Box>

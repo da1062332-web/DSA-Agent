@@ -49,7 +49,7 @@ export function ApplicationsPage() {
   const me = useMe();
   const canRead = hasPermission(me.data, 'application.read');
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box>
       <PageHeader
         title="Applications"
         subtitle="Loan files from conversion to closure. You see the applications in your scope."

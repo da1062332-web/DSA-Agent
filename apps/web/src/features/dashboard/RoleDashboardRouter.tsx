@@ -3,6 +3,7 @@ import { Box, CircularProgress, Container } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
 import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { useMe } from '../../api/useMe';
+import { ACTIVE_ROLE_KEY } from '../../auth/session-prefs';
 import { HomePage } from '../../shell/HomePage';
 import { AdminDashboard } from './AdminDashboard';
 import { ComplianceDashboard } from './ComplianceDashboard';
@@ -26,7 +27,7 @@ export function RoleDashboardRouter() {
 
   // Read initial role preference from URL param or localStorage
   const urlRole = searchParams.get('role') as DashboardRole | null;
-  const storedRole = (typeof window !== 'undefined' ? localStorage.getItem('qloax_active_dashboard_role') : null) as DashboardRole | null;
+  const storedRole = (typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_ROLE_KEY) : null) as DashboardRole | null;
 
   const [activeRole, setActiveRole] = useState<DashboardRole>(() => {
     if (urlRole && availableRoles.includes(urlRole)) return urlRole;
@@ -44,7 +45,7 @@ export function RoleDashboardRouter() {
   const handleRoleChange = (role: DashboardRole) => {
     setActiveRole(role);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('qloax_active_dashboard_role', role);
+      localStorage.setItem(ACTIVE_ROLE_KEY, role);
     }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);

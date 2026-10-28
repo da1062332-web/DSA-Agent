@@ -17,7 +17,7 @@ import {
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import { CHECKLIST_DONE_STATUSES } from './checklist-schemas';
-import type { Row } from './db';
+import { updateVersioned, type Row } from './db';
 
 export interface ApplicationPortDeps {
   ids: IdGenerator;
@@ -58,7 +58,72 @@ export function createApplicationPort(deps: ApplicationPortDeps): ApplicationPor
       }));
       return { complete: isComplete(documents), documents } satisfies SubmissionDocuments;
     },
+
+    async onChecklistItemChanged(tx: Tx, ctx: RequestContext, checklistItemId: string) {
+      return advanceForChecklistItem(tx, ctx, deps, checklistItemId);
+    },
   };
+}
+
+/**
+ * Documents complete: DOCUMENTS_PENDING -> UNDER_REVIEW (T-APP-02) without anyone clicking "Send to review". Runs in the caller's
+ * transaction right after a checklist item reached ACCEPTED, WAIVED or NOT_APPLICABLE, and does nothing unless the application is
+ * DOCUMENTS_PENDING, is not on hold, and every mandatory item is done (the rule T-APP-04 and isComplete share). A file on hold stays
+ * where it is until the hold is cleared. Writes what a manual T-APP-02 writes (status history, outbox event, audit event), marked
+ * automatic; the actor is the person whose action completed the checklist. UNDER_REVIEW -> READY_FOR_SUBMISSION stays a person's step.
+ */
+export async function advanceWhenDocumentsComplete(
+  tx: Tx,
+  ctx: RequestContext,
+  deps: ApplicationPortDeps,
+  applicationId: string,
+): Promise<{ advanced: boolean }> {
+  // Lock the row: two reviews that finish the checklist together must not both move the file.
+  const current = (await sql<Row>`select * from loan_application where id = ${applicationId} for update`.execute(tx)).rows[0];
+  if (!current || current.status !== 'DOCUMENTS_PENDING' || current.on_hold) return { advanced: false };
+
+  const items = await sql<{ mandatory: boolean; status: string }>`
+    select mandatory, status from checklist_item where application_id = ${applicationId}`.execute(tx);
+  if (!isComplete(items.rows.map((i) => ({ mandatory: Boolean(i.mandatory), status: i.status as never })))) {
+    return { advanced: false };
+  }
+
+  await updateVersioned(tx, ctx.principal.id, 'loan_application', current, Number(current.lock_version), {
+    status: 'UNDER_REVIEW',
+  });
+  const tenantId = ctx.principal.tenantId;
+  await sql`
+    insert into application_status_history (id, tenant_id, application_id, from_status, to_status,
+                                            transition_code, reason_code, actor, occurred_at)
+    values (${deps.ids.next('ash')}, ${tenantId}, ${applicationId}, 'DOCUMENTS_PENDING', 'UNDER_REVIEW',
+            'T-APP-02', 'DOCUMENTS_COMPLETE', ${ctx.principal.id}, ${ctx.now})`.execute(tx);
+  await sql`
+    insert into outbox_event (id, tenant_id, event_type, event_version, subject_type, subject_id, payload,
+                              correlation_id, chain_depth, created_at)
+    values (${deps.ids.next('evt')}, ${tenantId}, 'application.state_changed', 1, 'LOAN_APPLICATION', ${applicationId},
+            ${JSON.stringify({ applicationId, from: 'DOCUMENTS_PENDING', to: 'UNDER_REVIEW', transitionCode: 'T-APP-02', automatic: true })}::jsonb,
+            ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
+  await deps.audit.record(tx, ctx, {
+    action: 'application.state_changed',
+    entityType: 'LOAN_APPLICATION',
+    entityId: applicationId,
+    before: { status: 'DOCUMENTS_PENDING' },
+    after: { status: 'UNDER_REVIEW', automatic: true },
+    reason: 'All mandatory documents are verified.',
+  });
+  return { advanced: true };
+}
+
+/** The same, starting from a checklist item (what the Verification module knows). */
+export async function advanceForChecklistItem(
+  tx: Tx,
+  ctx: RequestContext,
+  deps: ApplicationPortDeps,
+  checklistItemId: string,
+): Promise<{ advanced: boolean }> {
+  const r = await sql<Row>`select application_id from checklist_item where id = ${checklistItemId}`.execute(tx);
+  const applicationId = r.rows[0]?.application_id;
+  return applicationId ? advanceWhenDocumentsComplete(tx, ctx, deps, String(applicationId)) : { advanced: false };
 }
 
 /**

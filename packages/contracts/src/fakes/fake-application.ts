@@ -10,6 +10,8 @@ export class FakeApplicationPort implements ApplicationPort {
   readonly commands: CreateDraftFromConversionCommand[] = [];
   /** Keyed by applicationId; tests seed it. An application without an entry has a complete, empty checklist. */
   readonly submissionDocuments = new Map<string, SubmissionDocuments>();
+  /** The checklist items reported through onChecklistItemChanged, in order. */
+  readonly checklistChanges: string[] = [];
 
   async createDraftFromConversion(
     _tx: Tx,
@@ -25,5 +27,10 @@ export class FakeApplicationPort implements ApplicationPort {
 
   async getSubmissionDocuments(_tx: Tx, _ctx: RequestContext, applicationId: string): Promise<SubmissionDocuments> {
     return this.submissionDocuments.get(applicationId) ?? { complete: true, documents: [] };
+  }
+
+  async onChecklistItemChanged(_tx: Tx, _ctx: RequestContext, checklistItemId: string): Promise<{ advanced: boolean }> {
+    this.checklistChanges.push(checklistItemId);
+    return { advanced: false };
   }
 }

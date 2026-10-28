@@ -11,7 +11,7 @@ import type { Router } from 'express';
 import { sql } from 'kysely';
 import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
-import { generateChecklist, insertDraftApplication } from './application-port';
+import { advanceWhenDocumentsComplete, generateChecklist, insertDraftApplication } from './application-port';
 import { applicationScope, loadScopedForUpdate, toApplication } from './applications';
 import { assertVersion, iso, updateVersioned, type Row } from './db';
 import {
@@ -225,6 +225,8 @@ export function registerPartyRoutes(router: Router, deps: ApiDeps): void {
               update checklist_item set status = 'NOT_APPLICABLE', updated_by = ${ctx.principal.id}
                where application_id = ${String(current.id)} and party_id = ${partyId}
                  and status in ('PENDING', 'SUBMITTED', 'REJECTED', 'EXPIRED')`.execute(tx);
+            // Removing the only party with open documents can leave the checklist complete.
+            await advanceWhenDocumentsComplete(tx, ctx, deps, String(current.id));
           }
 
           const changes: Record<string, unknown> = {};

@@ -74,7 +74,7 @@ export function SalesExecDashboard() {
   }));
 
   const funnelStages = [
-    { key: 'new', label: 'New Leads', count: newLeadsCount, to: '/leads?filter[state]=NEW', color: '#1d5fd1' },
+    { key: 'new', label: 'New Leads', count: newLeadsCount, to: '/leads?filter[state]=NEW', color: '#215988' },
     {
       key: 'in_progress',
       label: 'In Follow-up',
@@ -87,7 +87,7 @@ export function SalesExecDashboard() {
       label: 'Qualified',
       count: qualifiedCount,
       to: '/leads?filter[state]=QUALIFIED',
-      color: '#10b981',
+      color: '#16A34A',
     },
   ];
 
@@ -112,7 +112,7 @@ export function SalesExecDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Sales Executive Workspace
             </Typography>
             <Chip
@@ -215,7 +215,7 @@ export function SalesExecDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Lead Pipeline Funnel"
             subtitle="Conversion progression across lead lifecycle stages"
             stages={funnelStages}

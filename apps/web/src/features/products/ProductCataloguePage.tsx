@@ -38,6 +38,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
 import { createProduct, fetchProducts, updateProductStatus } from './api';
+import { PRODUCT_CATEGORY_OPTIONS, categoryLabel } from './types';
 import type { CreateProductInput, LoanProduct, ProductCategory, ProductStatus } from './types';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
@@ -62,7 +63,7 @@ export function ProductCataloguePage() {
   const [createDialogOpen, setCreateDialogOpen] = useState<boolean>(false);
   const [formLenderId, setFormLenderId] = useState<string>('');
   const [formName, setFormName] = useState<string>('');
-  const [formCategory, setFormCategory] = useState<ProductCategory>('HOME_LOAN');
+  const [formCategory, setFormCategory] = useState<ProductCategory>('HL');
   const [formApplicantTypes] = useState<string[]>(['SALARIED', 'SELF_EMPLOYED']);
   const [formSecured, setFormSecured] = useState<boolean>(true);
   const [formAmountMin, setFormAmountMin] = useState<number>(500000);
@@ -218,10 +219,11 @@ export function ProductCataloguePage() {
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
                   <MenuItem value="">All Categories</MenuItem>
-                  <MenuItem value="HOME_LOAN">Home Loan</MenuItem>
-                  <MenuItem value="LAP">Loan Against Property</MenuItem>
-                  <MenuItem value="BUSINESS_LOAN">Business Loan</MenuItem>
-                  <MenuItem value="PERSONAL_LOAN">Personal Loan</MenuItem>
+                  {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -274,7 +276,7 @@ export function ProductCataloguePage() {
             ),
           },
           { id: 'lender', header: 'Lender', render: (p) => <LenderName id={p.lenderId} fallback={p.lenderName || undefined} /> },
-          { id: 'category', header: 'Category', render: (p) => <Chip label={p.category} size="small" variant="outlined" /> },
+          { id: 'category', header: 'Category', render: (p) => <Chip label={categoryLabel(p.category)} size="small" variant="outlined" /> },
           {
             id: 'security',
             header: 'Security',
@@ -372,10 +374,11 @@ export function ProductCataloguePage() {
                     label="Product Category"
                     onChange={(e) => setFormCategory(e.target.value as ProductCategory)}
                   >
-                    <MenuItem value="HOME_LOAN">Home Loan</MenuItem>
-                    <MenuItem value="LAP">Loan Against Property (LAP)</MenuItem>
-                    <MenuItem value="BUSINESS_LOAN">Business Loan</MenuItem>
-                    <MenuItem value="PERSONAL_LOAN">Personal Loan</MenuItem>
+                    {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

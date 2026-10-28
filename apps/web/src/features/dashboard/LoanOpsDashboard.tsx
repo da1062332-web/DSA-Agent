@@ -55,14 +55,14 @@ export function LoanOpsDashboard() {
       key: 'in_review',
       label: 'Under Review',
       count: applications.filter((a) => a.status === 'UNDER_REVIEW').length,
-      color: '#0288d1',
+      color: '#3876BE',
       to: '/applications?status=UNDER_REVIEW',
     },
     {
       key: 'ready_submission',
       label: 'Ready for Lender',
       count: applications.filter((a) => a.status === 'READY_FOR_SUBMISSION').length,
-      color: '#1d5fd1',
+      color: '#215988',
       to: '/applications?status=READY_FOR_SUBMISSION',
     },
     {
@@ -76,7 +76,7 @@ export function LoanOpsDashboard() {
       key: 'sanctioned',
       label: 'Sanctioned / Disbursed',
       count: sanctionedCount,
-      color: '#10b981',
+      color: '#16A34A',
       to: '/sanctions',
     },
   ];
@@ -119,7 +119,7 @@ export function LoanOpsDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Loan Operations Workbench
             </Typography>
             <Chip
@@ -214,7 +214,7 @@ export function LoanOpsDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Lender Operations Stage Progression"
             subtitle="Application distribution across lender submission pipeline"
             stages={opsStages}

@@ -69,4 +69,10 @@ export interface ApplicationPort {
   /** Inside caller tx. The application's checklist and stored document hashes, for lender packages (MOD-LCS).
    *  Added 2026-10-19 (additive, Contracts §15). NOT_FOUND when the application is not visible in the tenant. */
   getSubmissionDocuments(tx: Tx, ctx: RequestContext, applicationId: string): Promise<SubmissionDocuments>;
+
+  /** Inside caller tx. Call after a checklist item's status changed (a document accepted, a waiver, an attestation). When that leaves
+   *  every mandatory item ACCEPTED, WAIVED or NOT_APPLICABLE on an application that is DOCUMENTS_PENDING and not on hold, the
+   *  application moves to UNDER_REVIEW as T-APP-02, with status history, outbox event and audit event; otherwise nothing happens.
+   *  Added 2026-10-28 (additive, Contracts §15). */
+  onChecklistItemChanged(tx: Tx, ctx: RequestContext, checklistItemId: string): Promise<{ advanced: boolean }>;
 }

@@ -84,7 +84,14 @@ export function ApplicationDetailPage() {
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
-      <EligibilityCard applicationId={a.id} hasProduct={!!a.productVersionId} />
+      <EligibilityCard
+        applicationId={a.id}
+        hasProduct={!!a.productVersionId}
+        autoRun
+        productVersionId={a.productVersionId}
+        updatedAt={a.updatedAt}
+        status={a.status}
+      />
       <ChecklistCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">

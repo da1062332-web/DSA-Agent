@@ -1,55 +1,33 @@
 // App theme (owner: Dev 1). One type scale and one set of component defaults for every screen, so pages built by
-// different developers read the same: Inter for all text, one page-title size, flat bordered cards, quiet table headers.
+// different developers read the same: Inter for all text, one page-title size, flat bordered cards on a white canvas,
+// quiet table headers, compact inputs.
+//
+// Colour system
+//   Brand      navy #215988 is the one action colour (buttons, links, focus, active navigation). #3876BE is its lighter step.
+//   Neutrals   slate scale for text, borders and surfaces; the canvas is plain white and structure comes from 1px borders.
+//   Status     green / amber / red / blue only ever mean success / attention / failure / information.
+//   Top bar    deep navy with white text; the tangerine #F89344 of the brand swatch is its accent line (see shell/AppLayout.tsx).
+//              Tangerine is not an action colour and carries no UI state.
 import { createTheme } from '@mui/material';
 
 const FONT = '"Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
 
-// Exact Palette Tokens from Brand Swatch Guide:
-// Primary: #F89344 (Tangerine / Warm Orange)
-// Secondary: #FF642F (Vibrant Coral / Red-Orange)
-// BG/700: #215988 (Deep Navy / Enterprise Slate Blue)
-// BG/500: #3876BE (Vibrant Ocean / Mid Blue)
-// BG/300: #B8D5E7 (Soft Light Ice Blue)
+const NAVY = '#215988';
+const NAVY_DARK = '#174368';
+const OCEAN = '#3876BE';
+const NAVY_TINT = '#EEF4FA'; // selected / hover surface behind navy text
+const BORDER = '#E2E8F0';
+const INPUT_BORDER = '#CBD5E1';
 
 export const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: {
-      main: '#F89344', // Swatch Primary: Tangerine Orange
-      light: '#FFAA66',
-      dark: '#D97324',
-      contrastText: '#ffffff',
-    },
-    secondary: {
-      main: '#FF642F', // Swatch Secondary: Coral / Red-Orange
-      light: '#FF885E',
-      dark: '#DB4512',
-      contrastText: '#ffffff',
-    },
-    info: {
-      main: '#215988', // Swatch BG/700: Deep Navy / Slate Blue
-      light: '#3876BE', // Swatch BG/500: Vibrant Ocean Blue
-      dark: '#174368',
-      contrastText: '#ffffff',
-    },
-    success: {
-      main: '#059669', // Emerald 600
-      light: '#10b981',
-      dark: '#047857',
-      contrastText: '#ffffff',
-    },
-    warning: {
-      main: '#F89344', // Tangerine
-      light: '#FFB87D',
-      dark: '#D97324',
-      contrastText: '#ffffff',
-    },
-    error: {
-      main: '#FF642F', // Coral Accent
-      light: '#FF885E',
-      dark: '#D32F2F',
-      contrastText: '#ffffff',
-    },
+    primary: { main: NAVY, light: OCEAN, dark: NAVY_DARK, contrastText: '#ffffff' },
+    secondary: { main: '#475569', light: '#64748B', dark: '#334155', contrastText: '#ffffff' },
+    info: { main: OCEAN, light: '#6B9BD2', dark: NAVY, contrastText: '#ffffff' },
+    success: { main: '#15803D', light: '#16A34A', dark: '#166534', contrastText: '#ffffff' },
+    warning: { main: '#D97706', light: '#F59E0B', dark: '#B45309', contrastText: '#ffffff' },
+    error: { main: '#DC2626', light: '#EF4444', dark: '#B91C1C', contrastText: '#ffffff' },
     grey: {
       50: '#F8FAFC',
       100: '#F1F5F9',
@@ -63,34 +41,36 @@ export const theme = createTheme({
       900: '#0F172A',
     },
     text: {
-      primary: '#0F172A', // Slate 900
-      secondary: '#64748B', // Slate 500
-      disabled: '#94A3B8', // Slate 400
+      primary: '#0F172A',
+      secondary: '#475569',
+      disabled: '#94A3B8',
     },
-    background: {
-      default: '#F8FAFC', // Crisp clean slate-50 canvas
-      paper: '#FFFFFF',
-    },
-    divider: '#E2E8F0', // Slate 200 hairline border
+    background: { default: '#FFFFFF', paper: '#FFFFFF' },
+    divider: BORDER,
     action: {
-      active: '#215988',
-      hover: 'rgba(33, 89, 136, 0.04)',
-      selected: 'rgba(56, 118, 190, 0.08)',
+      active: '#475569',
+      hover: 'rgba(15, 23, 42, 0.04)',
+      selected: 'rgba(33, 89, 136, 0.08)',
       disabled: 'rgba(15, 23, 42, 0.26)',
       disabledBackground: 'rgba(15, 23, 42, 0.06)',
     },
   },
-  shape: { borderRadius: 8 },
+  // sx borderRadius numbers multiply this: 1 = 4px, 2 = 8px, 3 = 12px. Components that need an exact radius set it in px.
+  shape: { borderRadius: 4 },
   typography: {
     fontFamily: FONT,
-    h4: { fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em' },
-    h5: { fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em' },
+    h1: { fontSize: '2rem', fontWeight: 600, lineHeight: 1.25, letterSpacing: '-0.02em' },
+    h2: { fontSize: '1.75rem', fontWeight: 600, lineHeight: 1.25, letterSpacing: '-0.02em' },
+    h3: { fontSize: '1.5rem', fontWeight: 600, lineHeight: 1.3, letterSpacing: '-0.015em' },
+    h4: { fontSize: '1.5rem', fontWeight: 600, lineHeight: 1.3, letterSpacing: '-0.015em' },
+    h5: { fontSize: '1.25rem', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.01em' },
     h6: { fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 },
     subtitle1: { fontSize: '0.9375rem', fontWeight: 600 },
-    subtitle2: { fontSize: '0.875rem', fontWeight: 600 },
-    body1: { fontSize: '0.9375rem', lineHeight: 1.6 },
-    body2: { fontSize: '0.875rem', lineHeight: 1.55 },
-    caption: { fontSize: '0.75rem' },
+    subtitle2: { fontSize: '0.8125rem', fontWeight: 600 },
+    body1: { fontSize: '0.875rem', lineHeight: 1.6 },
+    body2: { fontSize: '0.8125rem', lineHeight: 1.55 },
+    caption: { fontSize: '0.75rem', lineHeight: 1.5 },
+    overline: { fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.08em', lineHeight: 1.5 },
     button: { textTransform: 'none', fontWeight: 600, letterSpacing: 0 },
   },
   components: {
@@ -99,28 +79,21 @@ export const theme = createTheme({
         body: {
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#FFFFFF',
           color: '#0F172A',
         },
+        // Plain anchors (outside MUI Link / Button) take the brand colour instead of the browser default blue.
+        a: { color: NAVY },
       },
     },
     MuiAppBar: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
-        root: {
-          backgroundColor: '#656565',
-          color: '#0f172a',
-          borderBottom: '1px solid #e2e8f0',
-        },
+        root: { backgroundColor: NAVY, color: '#FFFFFF' },
       },
     },
     MuiDrawer: {
-      styleOverrides: {
-        paper: {
-          backgroundColor: '#ffffff',
-          borderRight: '1px solid #E2E8F0',
-        },
-      },
+      styleOverrides: { paper: { backgroundColor: '#FFFFFF', borderRight: `1px solid ${BORDER}` } },
     },
     MuiButton: {
       defaultProps: { disableElevation: true, color: 'primary' },
@@ -131,188 +104,148 @@ export const theme = createTheme({
           textTransform: 'none',
           letterSpacing: 0,
           whiteSpace: 'nowrap',
-          transition: 'all 0.15s ease-in-out',
+          transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
         },
-        sizeSmall: {
-          height: 32,
-          padding: '4px 12px',
-          fontSize: '0.8125rem',
-          borderRadius: 6,
-        },
-        sizeMedium: {
-          height: 38,
-          padding: '6px 16px',
-          fontSize: '0.875rem',
-          borderRadius: 8,
-        },
-        sizeLarge: {
-          height: 44,
-          padding: '10px 22px',
-          fontSize: '0.9375rem',
-          borderRadius: 8,
-        },
-        contained: {
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        },
-        containedPrimary: {
-          backgroundColor: '#F89344', // Swatch Primary Tangerine Orange
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#D97324',
-            boxShadow: '0 2px 4px 0 rgba(217, 115, 36, 0.25)',
-          },
-        },
-        containedSecondary: {
-          backgroundColor: '#215988', // Swatch BG/700 Deep Blue
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#174368',
-            boxShadow: '0 2px 4px 0 rgba(23, 67, 104, 0.25)',
-          },
-        },
-        containedError: {
-          backgroundColor: '#FF642F', // Swatch Secondary Coral
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#DB4512',
-          },
-        },
-        containedSuccess: {
-          backgroundColor: '#059669',
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#047857',
-          },
-        },
-        containedInfo: {
-          backgroundColor: '#215988',
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#174368',
-          },
-        },
+        sizeSmall: { height: 30, padding: '4px 12px', fontSize: '0.8125rem', borderRadius: 6 },
+        sizeMedium: { height: 36, padding: '6px 16px', fontSize: '0.875rem' },
+        sizeLarge: { height: 42, padding: '8px 20px', fontSize: '0.9375rem' },
+        contained: { boxShadow: 'none', '&:hover': { boxShadow: 'none' } },
+        containedPrimary: { backgroundColor: NAVY, '&:hover': { backgroundColor: NAVY_DARK } },
+        // `secondary` buttons are the same brand action; the secondary palette step is for neutral chips.
+        containedSecondary: { backgroundColor: NAVY, color: '#ffffff', '&:hover': { backgroundColor: NAVY_DARK } },
+        containedInfo: { backgroundColor: NAVY, color: '#ffffff', '&:hover': { backgroundColor: NAVY_DARK } },
+        containedError: { '&:hover': { backgroundColor: '#B91C1C' } },
+        containedSuccess: { '&:hover': { backgroundColor: '#166534' } },
         outlined: {
-          borderColor: '#CBD5E1',
+          borderColor: INPUT_BORDER,
           color: '#0F172A',
           backgroundColor: '#FFFFFF',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
-          '&:hover': {
-            borderColor: '#94A3B8',
-            backgroundColor: '#F8FAFC',
-          },
+          '&:hover': { borderColor: '#94A3B8', backgroundColor: '#F8FAFC' },
         },
         outlinedPrimary: {
-          borderColor: '#F89344',
-          color: '#D97324',
-          backgroundColor: '#FFFFFF',
-          '&:hover': {
-            borderColor: '#D97324',
-            backgroundColor: 'rgba(248, 147, 68, 0.06)',
-          },
+          borderColor: INPUT_BORDER,
+          color: NAVY,
+          '&:hover': { borderColor: NAVY, backgroundColor: NAVY_TINT },
         },
         outlinedSecondary: {
-          borderColor: '#215988',
-          color: '#215988',
+          borderColor: INPUT_BORDER,
+          color: NAVY,
+          '&:hover': { borderColor: NAVY, backgroundColor: NAVY_TINT },
+        },
+        outlinedInfo: {
+          borderColor: INPUT_BORDER,
+          color: NAVY,
+          '&:hover': { borderColor: NAVY, backgroundColor: NAVY_TINT },
+        },
+        text: { color: '#475569', '&:hover': { backgroundColor: '#F1F5F9', color: '#0F172A' } },
+        textPrimary: { color: NAVY, '&:hover': { backgroundColor: NAVY_TINT, color: NAVY_DARK } },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: { root: { borderRadius: 8 } },
+    },
+    MuiTextField: { defaultProps: { size: 'small' } },
+    MuiFormControl: { defaultProps: { size: 'small' } },
+    MuiInputLabel: {
+      styleOverrides: { root: { fontSize: '0.875rem' } },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
           backgroundColor: '#FFFFFF',
-          '&:hover': {
-            borderColor: '#174368',
-            backgroundColor: 'rgba(33, 89, 136, 0.06)',
-          },
+          borderRadius: 8,
+          fontSize: '0.875rem',
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: INPUT_BORDER },
+          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#94A3B8' },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: NAVY, borderWidth: 1 },
+          '&.Mui-focused': { boxShadow: '0 0 0 3px rgba(56, 118, 190, 0.18)' },
+          '&.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#DC2626' },
+          '&.Mui-disabled': { backgroundColor: '#F8FAFC' },
         },
-        text: {
-          color: '#475569',
-          '&:hover': {
-            backgroundColor: '#F1F5F9',
-            color: '#0F172A',
-          },
+        input: { '&::placeholder': { color: '#94A3B8', opacity: 1 } },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.875rem',
+          '&.Mui-selected': { backgroundColor: 'rgba(33, 89, 136, 0.08)' },
+          '&.Mui-selected:hover': { backgroundColor: 'rgba(33, 89, 136, 0.12)' },
         },
+      },
+    },
+    MuiPopover: {
+      styleOverrides: {
+        paper: {
+          border: `1px solid ${BORDER}`,
+          borderRadius: 8,
+          boxShadow: '0 8px 24px -6px rgba(15, 23, 42, 0.14), 0 2px 6px -2px rgba(15, 23, 42, 0.06)',
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: { backgroundColor: '#1E293B', fontSize: '0.75rem', fontWeight: 500, borderRadius: 6, padding: '6px 10px' },
+        arrow: { color: '#1E293B' },
       },
     },
     MuiCard: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
-        root: {
-          border: '1px solid #E2E8F0',
-          borderRadius: 12,
-          backgroundColor: '#ffffff',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02)',
-        },
+        root: { border: `1px solid ${BORDER}`, borderRadius: 10, backgroundColor: '#ffffff', boxShadow: 'none' },
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-        },
-        rounded: {
-          borderRadius: 12,
-        },
+        root: { backgroundImage: 'none' },
+        rounded: { borderRadius: 8 },
       },
     },
     MuiCardContent: {
+      styleOverrides: { root: { padding: 20, '&:last-child': { paddingBottom: 20 } } },
+    },
+    MuiDialog: {
       styleOverrides: {
-        root: {
-          padding: 20,
-          '&:last-child': { paddingBottom: 20 },
-        },
+        paper: { borderRadius: 12, boxShadow: '0 24px 48px -12px rgba(15, 23, 42, 0.25)' },
       },
+    },
+    MuiDialogTitle: {
+      styleOverrides: { root: { fontSize: '1.125rem', fontWeight: 600, color: '#0F172A', padding: '20px 24px 12px' } },
+    },
+    MuiDialogActions: {
+      styleOverrides: { root: { padding: '12px 24px 20px' } },
     },
     MuiTableCell: {
       styleOverrides: {
         head: {
-          fontWeight: 700,
+          fontWeight: 600,
           fontSize: '0.75rem',
           textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          color: '#215988', // Swatch BG/700 Deep Blue for headers
+          letterSpacing: '0.05em',
+          color: '#64748B',
           backgroundColor: '#F8FAFC',
-          borderBottom: '1px solid #E2E8F0',
+          borderBottom: `1px solid ${BORDER}`,
         },
-        root: {
-          borderColor: '#F1F5F9',
-          color: '#0F172A',
-        },
+        root: { borderColor: '#EEF2F6', color: '#0F172A', padding: '10px 16px' },
       },
     },
     MuiTableRow: {
-      styleOverrides: {
-        hover: {
-          '&:hover': {
-            backgroundColor: '#F8FAFC',
-          },
-        },
-      },
+      styleOverrides: { hover: { '&:hover': { backgroundColor: '#F8FAFC' } } },
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          fontWeight: 600,
-          borderRadius: 6,
-        },
-        outlined: {
-          borderColor: '#CBD5E1',
-        },
-        colorPrimary: {
-          backgroundColor: '#F89344',
-          color: '#ffffff',
-        },
-        colorSecondary: {
-          backgroundColor: '#FF642F',
-          color: '#ffffff',
-        },
-        colorInfo: {
-          backgroundColor: '#3876BE',
-          color: '#ffffff',
-        },
+        root: { fontWeight: 500, fontSize: '0.75rem', borderRadius: 6 },
+        outlined: { borderColor: INPUT_BORDER },
+        colorDefault: { backgroundColor: '#F1F5F9', color: '#334155' },
+        colorPrimary: { backgroundColor: NAVY, color: '#ffffff' },
+        colorSecondary: { backgroundColor: '#EEF2F7', color: '#334155' },
+        colorInfo: { backgroundColor: OCEAN, color: '#ffffff' },
       },
     },
     MuiTabs: {
       styleOverrides: {
-        indicator: {
-          backgroundColor: '#F89344',
-          height: 3,
-          borderRadius: '3px 3px 0 0',
-        },
+        root: { minHeight: 44, borderBottom: `1px solid ${BORDER}` },
+        indicator: { backgroundColor: NAVY, height: 2 },
       },
     },
     MuiTab: {
@@ -320,20 +253,39 @@ export const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
+          fontSize: '0.875rem',
+          minHeight: 44,
           color: '#64748B',
-          '&.Mui-selected': {
-            color: '#215988',
-            fontWeight: 700,
-          },
+          '&.Mui-selected': { color: NAVY },
         },
       },
     },
-    MuiAlert: {
+    MuiToggleButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
-          border: '1px solid',
+          textTransform: 'none',
+          fontWeight: 600,
+          color: '#475569',
+          borderColor: INPUT_BORDER,
+          '&.Mui-selected': { color: NAVY, backgroundColor: NAVY_TINT },
+          '&.Mui-selected:hover': { backgroundColor: '#E2ECF6' },
         },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: { '&.Mui-selected': { backgroundColor: NAVY_TINT }, '&.Mui-selected:hover': { backgroundColor: '#E2ECF6' } },
+      },
+    },
+    MuiLinearProgress: {
+      styleOverrides: { root: { height: 6, borderRadius: 4, backgroundColor: '#E2E8F0' } },
+    },
+    MuiLink: {
+      defaultProps: { underline: 'hover' },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: { borderRadius: 8, border: '1px solid', fontSize: '0.8125rem' },
         standardSuccess: {
           backgroundColor: '#F0FDF4',
           color: '#166534',
@@ -341,27 +293,24 @@ export const theme = createTheme({
           '& .MuiAlert-icon': { color: '#16A34A' },
         },
         standardInfo: {
-          backgroundColor: '#F0F7FB', // BG/300 tint
-          color: '#174368',
-          borderColor: '#B8D5E7', // BG/300 border
-          '& .MuiAlert-icon': { color: '#215988' },
+          backgroundColor: '#EFF6FF',
+          color: '#1E40AF',
+          borderColor: '#BFDBFE',
+          '& .MuiAlert-icon': { color: '#2563EB' },
         },
         standardWarning: {
-          backgroundColor: '#FFF7ED', // Tangerine tint
-          color: '#9A3412',
-          borderColor: '#FED7AA',
-          '& .MuiAlert-icon': { color: '#F89344' },
+          backgroundColor: '#FFFBEB',
+          color: '#92400E',
+          borderColor: '#FDE68A',
+          '& .MuiAlert-icon': { color: '#D97706' },
         },
         standardError: {
-          backgroundColor: '#FFF1EC', // Coral tint
+          backgroundColor: '#FEF2F2',
           color: '#991B1B',
-          borderColor: '#FECDD3',
-          '& .MuiAlert-icon': { color: '#FF642F' },
+          borderColor: '#FECACA',
+          '& .MuiAlert-icon': { color: '#DC2626' },
         },
       },
-    },
-    MuiDialogTitle: {
-      styleOverrides: { root: { fontSize: '1.125rem', fontWeight: 600, color: '#215988' } },
     },
   },
 });

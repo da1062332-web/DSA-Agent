@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList } from '../admin/api';
 import { ErrorAlert, Loading, StatusChip, formatDate } from '../admin/components';
@@ -25,6 +25,7 @@ import {
   canOverride,
   isValidOverrideReason,
   latestAssessment,
+  needsAutoCheck,
   type EligibilityAssessment,
   type ProductResult,
 } from './eligibility';
@@ -33,10 +34,20 @@ export function EligibilityCard({
   applicationId,
   hasProduct,
   variant = 'card',
+  autoRun = false,
+  productVersionId,
+  updatedAt,
+  status,
 }: {
   applicationId: string;
   hasProduct: boolean;
   variant?: 'card' | 'dialog';
+  /** Run a check without a click when the latest one is missing or out of date (see needsAutoCheck). */
+  autoRun?: boolean;
+  /** What the automatic run compares the latest check with. */
+  productVersionId?: string | null;
+  updatedAt?: string | null;
+  status?: string;
 }) {
   const me = useMe();
   const canRun = hasPermission(me.data, 'application.read');
@@ -52,9 +63,22 @@ export function EligibilityCard({
     null,
   );
 
-  if (!canRun) return null;
   const rows = history.data?.pages.flatMap((p) => p.data) ?? [];
   const latest = latestAssessment(rows);
+
+  // One automatic attempt per state of the application (success or not), so a failed run is not repeated in a loop.
+  const attempted = useRef<string | null>(null);
+  const due = autoRun && needsAutoCheck({ hasProduct, status, productVersionId, updatedAt, latest });
+  const { mutate: runCheck, isPending: running } = run;
+  useEffect(() => {
+    if (!canRun || !due || history.isPending || history.isError || running) return;
+    const state = [applicationId, productVersionId ?? '', updatedAt ?? ''].join('|');
+    if (attempted.current === state) return;
+    attempted.current = state;
+    runCheck({});
+  }, [canRun, due, history.isPending, history.isError, running, runCheck, applicationId, productVersionId, updatedAt]);
+
+  if (!canRun) return null;
 
   const content = (
     <>
@@ -67,15 +91,20 @@ export function EligibilityCard({
           Choose a product for this application before checking eligibility.
         </Alert>
       )}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
         <Button
           variant="contained"
           disabled={!hasProduct || run.isPending}
           onClick={() => run.mutate({})}
           data-testid="eligibility.run"
         >
-          {latest ? 'Check again' : 'Check eligibility'}
+          {run.isPending ? 'Checking…' : latest ? 'Check again' : 'Check eligibility'}
         </Button>
+        {autoRun && (
+          <Typography variant="caption" color="text.secondary">
+            Runs by itself when the application has no current result or its product changes.
+          </Typography>
+        )}
       </Stack>
 
       {history.isPending ? (

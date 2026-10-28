@@ -44,7 +44,7 @@ import {
 } from '../../shell/icons';
 
 function getSettingIcon(iconName: string, size = 22): ReactNode {
-  const sx = { fontSize: size, color: '#ea580c' };
+  const sx = { fontSize: size, color: '#215988' };
   switch (iconName) {
     case 'BusinessIcon':
       return <BusinessIcon sx={sx} />;
@@ -120,7 +120,7 @@ export function SettingsOverviewPage() {
   }, [categories, query]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3.5, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="xl" disableGutters>
       {/* Top Header Banner */}
       <Box
         sx={{
@@ -145,7 +145,7 @@ export function SettingsOverviewPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#ea580c',
+                color: '#215988',
               }}
             >
               <SettingsIcon sx={{ fontSize: 24 }} />
@@ -184,7 +184,7 @@ export function SettingsOverviewPage() {
             bgcolor: '#ffffff',
             transition: 'all 0.15s ease',
             '&:focus-within': {
-              borderColor: '#F89344',
+              borderColor: '#215988',
               boxShadow: '0 0 0 3px rgba(248, 147, 68, 0.15)',
             },
           }}
@@ -269,7 +269,7 @@ export function SettingsOverviewPage() {
                         bgcolor: '#ffffff',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         '&:hover': {
-                          borderColor: '#F89344',
+                          borderColor: '#215988',
                           boxShadow: '0 8px 20px -4px rgba(248, 147, 68, 0.12)',
                           transform: 'translateY(-2px)',
                         },
@@ -396,7 +396,7 @@ export function SettingsOverviewPage() {
                             variant="caption"
                             sx={{
                               fontWeight: 700,
-                              color: '#ea580c',
+                              color: '#215988',
                               display: 'flex',
                               alignItems: 'center',
                               gap: 0.5,

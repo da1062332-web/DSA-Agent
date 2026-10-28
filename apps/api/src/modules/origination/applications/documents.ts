@@ -40,7 +40,7 @@ import crypto from 'node:crypto';
 import { idempotencyKey, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { MagicByteFileScanner } from '../document-sharing/storage-port';
-import { isComplete } from './application-port';
+import { advanceForChecklistItem, advanceWhenDocumentsComplete, isComplete } from './application-port';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
 import {
@@ -537,6 +537,10 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
             versionId: v.id,
             decision: input.decision,
           });
+          // The last mandatory document being accepted moves a DOCUMENTS_PENDING file to UNDER_REVIEW (see application-port.ts).
+          if (accepted && v.checklist_item_id) {
+            await advanceForChecklistItem(tx, ctx, deps, String(v.checklist_item_id));
+          }
           const updated = (
             await sql<Row>`select * from document_version where id = ${String(v.id)}`.execute(tx)
           ).rows[0]!;
@@ -688,6 +692,8 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
             applicationId: req.params.id,
             waived: input.checklistItemId,
           });
+          // A waiver can complete the checklist too.
+          await advanceWhenDocumentsComplete(tx, ctx, deps, String(req.params.id));
           return {
             status: 200,
             body: {

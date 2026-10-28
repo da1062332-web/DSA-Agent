@@ -259,6 +259,9 @@ export function EligibilityPage() {
               applicationId={selectedApp.id}
               hasProduct={Boolean(selectedApp.productVersionId)}
               variant="dialog"
+              autoRun
+              productVersionId={selectedApp.productVersionId}
+              status={selectedApp.status}
             />
           )}
         </DialogContent>

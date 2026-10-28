@@ -27,126 +27,74 @@ export interface AppButtonProps extends Omit<MuiButtonProps, 'variant' | 'color'
 
 const VARIANT_STYLES: Record<AppButtonVariant, any> = {
   primary: {
-    backgroundColor: '#F89344',
-    color: '#ffffff',
-    border: '1px solid transparent',
-    boxShadow: '0 1px 2px rgba(248, 147, 68, 0.2)',
-    '&:hover': {
-      backgroundColor: '#D97324',
-      boxShadow: '0 2px 4px rgba(217, 115, 36, 0.25)',
-    },
-    '&:active': {
-      backgroundColor: '#C5641B',
-    },
-    '&.Mui-disabled': {
-      backgroundColor: 'rgba(248, 147, 68, 0.45)',
-      color: '#ffffff',
-    },
-  },
-  secondary: {
     backgroundColor: '#215988',
     color: '#ffffff',
     border: '1px solid transparent',
-    boxShadow: '0 1px 2px rgba(33, 89, 136, 0.2)',
-    '&:hover': {
-      backgroundColor: '#174368',
-      boxShadow: '0 2px 4px rgba(23, 67, 104, 0.25)',
-    },
-    '&:active': {
-      backgroundColor: '#103250',
-    },
-    '&.Mui-disabled': {
-      backgroundColor: 'rgba(33, 89, 136, 0.45)',
-      color: '#ffffff',
-    },
+    '&:hover': { backgroundColor: '#174368' },
+    '&:active': { backgroundColor: '#103250' },
+    '&.Mui-disabled': { backgroundColor: 'rgba(33, 89, 136, 0.4)', color: '#ffffff' },
+  },
+  // Tonal: a quieter action beside a primary one.
+  secondary: {
+    backgroundColor: '#EEF4FA',
+    color: '#215988',
+    border: '1px solid transparent',
+    '&:hover': { backgroundColor: '#E2ECF6' },
+    '&:active': { backgroundColor: '#D5E4F2' },
+    '&.Mui-disabled': { backgroundColor: '#F1F5F9', color: '#94A3B8' },
   },
   outlined: {
     backgroundColor: '#ffffff',
     color: '#0F172A',
     border: '1px solid #CBD5E1',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-    '&:hover': {
-      backgroundColor: '#F8FAFC',
-      borderColor: '#94A3B8',
-      color: '#0F172A',
-    },
-    '&:active': {
-      backgroundColor: '#F1F5F9',
-    },
-    '&.Mui-disabled': {
-      borderColor: '#E2E8F0',
-      color: '#94A3B8',
-    },
+    '&:hover': { backgroundColor: '#F8FAFC', borderColor: '#94A3B8', color: '#0F172A' },
+    '&:active': { backgroundColor: '#F1F5F9' },
+    '&.Mui-disabled': { borderColor: '#E2E8F0', color: '#94A3B8' },
   },
   ghost: {
     backgroundColor: 'transparent',
     color: '#475569',
     border: '1px solid transparent',
-    '&:hover': {
-      backgroundColor: '#F1F5F9',
-      color: '#0F172A',
-    },
-    '&:active': {
-      backgroundColor: '#E2E8F0',
-    },
-    '&.Mui-disabled': {
-      color: '#94A3B8',
-    },
+    '&:hover': { backgroundColor: '#F1F5F9', color: '#0F172A' },
+    '&:active': { backgroundColor: '#E2E8F0' },
+    '&.Mui-disabled': { color: '#94A3B8' },
   },
   danger: {
     backgroundColor: '#DC2626',
     color: '#ffffff',
     border: '1px solid transparent',
-    boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)',
-    '&:hover': {
-      backgroundColor: '#B91C1C',
-      boxShadow: '0 2px 4px rgba(185, 28, 28, 0.25)',
-    },
-    '&:active': {
-      backgroundColor: '#991B1B',
-    },
-    '&.Mui-disabled': {
-      backgroundColor: 'rgba(220, 38, 38, 0.45)',
-      color: '#ffffff',
-    },
+    '&:hover': { backgroundColor: '#B91C1C' },
+    '&:active': { backgroundColor: '#991B1B' },
+    '&.Mui-disabled': { backgroundColor: 'rgba(220, 38, 38, 0.4)', color: '#ffffff' },
   },
   success: {
-    backgroundColor: '#059669',
+    backgroundColor: '#15803D',
     color: '#ffffff',
     border: '1px solid transparent',
-    boxShadow: '0 1px 2px rgba(5, 150, 105, 0.2)',
-    '&:hover': {
-      backgroundColor: '#047857',
-      boxShadow: '0 2px 4px rgba(4, 120, 87, 0.25)',
-    },
-    '&:active': {
-      backgroundColor: '#065F46',
-    },
-    '&.Mui-disabled': {
-      backgroundColor: 'rgba(5, 150, 105, 0.45)',
-      color: '#ffffff',
-    },
+    '&:hover': { backgroundColor: '#166534' },
+    '&:active': { backgroundColor: '#14532D' },
+    '&.Mui-disabled': { backgroundColor: 'rgba(21, 128, 61, 0.4)', color: '#ffffff' },
   },
 };
 
 const SIZE_STYLES: Record<'small' | 'medium' | 'large', any> = {
   small: {
-    height: 32,
+    height: 30,
     padding: '4px 12px',
     fontSize: '0.8125rem',
     borderRadius: '6px',
     gap: '6px',
   },
   medium: {
-    height: 38,
+    height: 36,
     padding: '6px 16px',
     fontSize: '0.875rem',
     borderRadius: '8px',
     gap: '8px',
   },
   large: {
-    height: 44,
-    padding: '10px 22px',
+    height: 42,
+    padding: '8px 20px',
     fontSize: '0.9375rem',
     borderRadius: '8px',
     gap: '10px',

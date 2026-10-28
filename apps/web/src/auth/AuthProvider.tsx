@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useQueryClient } from '@tanstack/react-query';
 import { getStorageKey, getSupabase, isBypassActive } from './supabase';
 import { isUserSwitch, shouldClearCache } from './cache-rule';
+import { clearSessionPreferences } from './session-prefs';
 import { setAuthToken } from './token';
 import { registerSessionExpiredHandler } from '../api/client';
 
@@ -78,7 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastUserId.current = nextUser;
       setAuthToken(next?.access_token);
       // A different user (or sign-out, or sign-in after sign-out) must not see cached data from the previous session.
-      if (shouldClearCache(previousUser, nextUser)) queryClient.clear();
+      // The same moments also end the previous sign-in's dashboard choice, so every sign-in starts on the person's own home.
+      if (shouldClearCache(previousUser, nextUser)) {
+        queryClient.clear();
+        clearSessionPreferences();
+      }
       if (isUserSwitch(previousUser, nextUser)) {
         window.location.reload();
         return;

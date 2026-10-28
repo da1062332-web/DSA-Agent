@@ -24,11 +24,11 @@ export function DetailCard({
     <Card
       data-testid={dataTestId}
       sx={{
-        borderRadius: 2.5,
+        borderRadius: '10px',
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+        boxShadow: 'none',
         mb: 3,
         overflow: 'hidden',
       }}
@@ -39,7 +39,7 @@ export function DetailCard({
             <Box>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 {typeof title === 'string' ? (
-                  <Typography variant="h6" fontWeight={700} sx={{ letterSpacing: '-0.01em' }}>
+                  <Typography variant="h6" fontWeight={600} sx={{ letterSpacing: '-0.01em' }}>
                     {title}
                   </Typography>
                 ) : (

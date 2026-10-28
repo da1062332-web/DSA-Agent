@@ -46,13 +46,13 @@ export function FilterToolbar({
     <Card
       data-testid={dataTestId}
       sx={{
-        p: 2,
-        mb: 3,
+        p: 1.5,
+        mb: 2.5,
         border: '1px solid',
         borderColor: 'divider',
-        borderRadius: 2.5,
+        borderRadius: '10px',
         bgcolor: 'background.paper',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+        boxShadow: 'none',
       }}
     >
       <Stack
@@ -85,8 +85,7 @@ export function FilterToolbar({
               sx={{
                 minWidth: { xs: '100%', sm: 220, md: 260 },
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  bgcolor: 'grey.50',
+                  bgcolor: '#ffffff',
                 },
               }}
             />
@@ -104,13 +103,7 @@ export function FilterToolbar({
                   size="medium"
                   onClick={onApply}
                   data-testid={applyTestId}
-                  sx={{
-                    px: 2.5,
-                    borderRadius: 2,
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    height: 40,
-                  }}
+                  sx={{ px: 2.5, fontWeight: 600, textTransform: 'none' }}
                 >
                   Apply
                 </Button>
@@ -122,14 +115,7 @@ export function FilterToolbar({
                   size="medium"
                   onClick={onReset}
                   data-testid={resetTestId}
-                  sx={{
-                    px: 2,
-                    borderRadius: 2,
-                    color: 'text.secondary',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    height: 40,
-                  }}
+                  sx={{ px: 2, color: 'text.secondary', textTransform: 'none', fontWeight: 600 }}
                 >
                   Reset
                 </Button>
@@ -139,13 +125,7 @@ export function FilterToolbar({
                   variant="outlined"
                   size="medium"
                   onClick={onRefresh}
-                  sx={{
-                    px: 2,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    height: 40,
-                  }}
+                  sx={{ px: 2, textTransform: 'none', fontWeight: 600 }}
                 >
                   Refresh
                 </Button>
@@ -158,13 +138,7 @@ export function FilterToolbar({
               variant="outlined"
               size="medium"
               onClick={onRefresh}
-              sx={{
-                px: 2,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                height: 40,
-              }}
+              sx={{ px: 2, textTransform: 'none', fontWeight: 600 }}
             >
               Refresh
             </Button>

@@ -20,7 +20,7 @@ export function AuthCard({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)',
+        bgcolor: '#ffffff',
         p: { xs: 2, sm: 3 },
       }}
     >
@@ -28,20 +28,12 @@ export function AuthCard({
         sx={{
           width: '100%',
           maxWidth: 440,
-          boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05)',
-          borderRadius: 4,
           overflow: 'hidden',
           bgcolor: '#ffffff',
           position: 'relative',
         }}
       >
-        <Box
-          sx={{
-            height: 4,
-            background: 'linear-gradient(90deg, #215988 0%, #3876BE 50%, #F89344 100%)',
-          }}
-        />
-        <CardContent sx={{ p: { xs: 3.5, sm: 4.5 } }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 }, '&:last-child': { pb: { xs: 3, sm: 4 } } }}>
           <Box
             sx={{
               display: 'flex',
@@ -52,35 +44,15 @@ export function AuthCard({
             {icon ? (
               icon
             ) : (
-              <Box
-                sx={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '16px',
-                  bgcolor: '#ffffff',
-                  border: '1px solid rgba(33, 89, 136, 0.12)',
-                  boxShadow: '0 4px 14px rgba(33, 89, 136, 0.1)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 0.8,
-                }}
-              >
-                <Box
-                  component="img"
-                  src="/logo.png"
-                  alt="DSA Platform"
-                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
-              </Box>
+              <Box component="img" src="/logo.png" alt="DSA Platform" sx={{ height: 56, width: 'auto' }} />
             )}
           </Box>
           <Typography
             variant="h5"
             component="h1"
-            fontWeight={700}
+            fontWeight={600}
             textAlign="center"
-            sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}
+            sx={{ color: '#0f172a', letterSpacing: '-0.015em' }}
           >
             {title}
           </Typography>

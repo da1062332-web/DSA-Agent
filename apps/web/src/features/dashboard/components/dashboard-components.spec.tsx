@@ -125,6 +125,31 @@ describe('Phase 2A: Shared Dashboard Components', () => {
 
       expect(html).toContain('Zero pipeline entries');
     });
+
+    it('TEST-DASH-COLUMNS-001 draws the columns variant with a whole-number count axis, a count above each stage and conversion under it', () => {
+      const html = renderToString(
+        <MemoryRouter>
+          <PipelineFunnelChart
+            variant="columns"
+            stages={[
+              { key: 'leads', label: 'Inbound Leads', count: 3 },
+              { key: 'files', label: 'New Files', count: 0 },
+              { key: 'disbursed', label: 'Disbursed', count: 1 },
+            ]}
+          />
+        </MemoryRouter>,
+      );
+
+      // React's server render splits "33% of inbound leads" into pieces with comment markers; match the joined text.
+      const text = html.replace(/<!-- -->/g, '');
+      expect(text).toContain('data-testid="pipeline-funnel"');
+      // Peak 3 -> axis 0..4 in steps of 1; no fractional ticks on a count axis.
+      for (const tick of ['>0<', '>1<', '>2<', '>3<', '>4<']) expect(text).toContain(tick);
+      expect(text).not.toContain('>0.5<');
+      expect(text).toContain('Inbound Leads');
+      expect(text).toContain('33% of inbound leads');
+      expect(text).toContain('Overall conversion:');
+    });
   });
 
   describe('TaskWorkQueue', () => {

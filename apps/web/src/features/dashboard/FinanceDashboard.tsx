@@ -75,7 +75,7 @@ export function FinanceDashboard() {
       key: 'draft',
       label: 'Draft Requests',
       count: payouts.filter((p) => p.status === 'DRAFT').length,
-      color: '#1d5fd1',
+      color: '#215988',
       to: '/payouts',
     },
     {
@@ -91,7 +91,7 @@ export function FinanceDashboard() {
       label: 'Approved (Bank Ready)',
       count: approvedPayoutsCount,
       amount: totalApprovedAmount,
-      color: '#10b981',
+      color: '#16A34A',
       to: '/payouts',
     },
   ];
@@ -141,7 +141,7 @@ export function FinanceDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Finance &amp; Commission Management
             </Typography>
             <Chip
@@ -240,7 +240,7 @@ export function FinanceDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Payout Batch Lifecycle"
             subtitle="Partner commission payout progression from draft to bank clearance"
             stages={payoutStages}
