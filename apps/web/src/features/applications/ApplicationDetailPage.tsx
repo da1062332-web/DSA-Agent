@@ -120,14 +120,12 @@ function RelationsCard({ app }: { app: Application }) {
         </Typography>
         <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
         {hasPermission(me.data, 'document.upload') && (
-          <Grid
-            item
-            xs={12}
-            md={2}
+          <Box
             sx={{
               display: 'flex',
               justifyContent: { xs: 'flex-start', md: 'flex-end' },
               alignItems: 'center',
+              ml: { md: 'auto' },
             }}
           >
             <AppButton
@@ -139,7 +137,7 @@ function RelationsCard({ app }: { app: Application }) {
             >
               Send customer upload link
             </AppButton>
-          </Grid>
+          </Box>
         )}
       </Stack>
     </AppCard>
