@@ -2,7 +2,7 @@
 // Document sharing: customer upload links and case share packages; QA plan Module 14.
 // The forms pick a real application, its open checklist items and a lender from the API: nothing is typed or prefilled from
 // fixtures. Opening /document-sharing?applicationId=…&action=upload-link (from a customer or application page) starts a link.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -41,6 +41,7 @@ import { DataTable, PageHeader } from '../../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
+import { useMe, hasPermission } from '../../api/useMe';
 import { ApplicationName } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 import { useLookup } from '../admin/api';
@@ -78,6 +79,26 @@ export function DocumentSharingPage() {
     );
   const checklist = useChecklist(linkAppId || null);
   const uploadable = (checklist.data?.data ?? []).filter((i) => OPEN_FOR_UPLOAD.includes(i.status));
+  const uploadableCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of uploadable) {
+      map.set(item.documentTypeCode, (map.get(item.documentTypeCode) || 0) + 1);
+    }
+    return map;
+  }, [uploadable]);
+
+  const getChipLabel = (item: (typeof uploadable)[number]) => {
+    const base = readable(item.documentTypeCode);
+    const total = uploadableCounts.get(item.documentTypeCode) || 1;
+    let label = base;
+    if (item.documentTypeCode === 'SALARY_SLIP' && (total > 1 || item.requiredCount > 1)) {
+      label = `${base} (Month ${item.ordinal} of ${item.requiredCount || total})`;
+    } else if (item.documentTypeCode === 'BANK_STATEMENT' && item.periodMonths) {
+      label = `${base} (Last ${item.periodMonths} Months)`;
+    }
+    return `${label}${item.mandatory ? '' : ' (optional)'}`;
+  };
+
   const [linkKey, setLinkKey] = useState(newIdempotencyKey);
 
   // Share form state
@@ -112,9 +133,13 @@ export function DocumentSharingPage() {
     queryFn: () => apiFetch<{ data: UploadLinkRecord[] }>('/v1/upload-links'),
   });
 
+  const me = useMe().data;
+  const canShare = hasPermission(me, 'share.create') || hasPermission(me, 'customer.read');
+
   const { data: sharesData, isLoading: isLoadingShares } = useQuery({
     queryKey: ['shares'],
     queryFn: () => apiFetch<{ data: ExternalShareRecord[] }>('/v1/shares'),
+    enabled: Boolean(canShare && tabIndex === 1),
   });
 
   // Mutations
@@ -298,8 +323,67 @@ export function DocumentSharingPage() {
                     header: 'Link ID',
                     render: (link) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{link.id}</Box>,
                   },
-                  { id: 'application', header: 'Application ID', render: (link) => <ApplicationName id={link.applicationId} linkToApp /> },
-                  { id: 'items', header: 'Items Requested', render: (link) => `${link.items.length} items` },
+                  { id: 'application', header: 'Application', render: (link) => <ApplicationName id={link.applicationId} linkToApp /> },
+                  {
+                    id: 'items',
+                    header: 'Items Requested',
+                    render: (link) => {
+                      if (link.itemDetails && link.itemDetails.length > 0) {
+                        const counts = new Map<string, number>();
+                        for (const d of link.itemDetails) {
+                          counts.set(d.documentTypeCode, (counts.get(d.documentTypeCode) || 0) + 1);
+                        }
+                        const tags = Array.from(counts.entries()).map(([code, count]) => ({
+                          code,
+                          label: count > 1 ? `${readable(code)} (${count})` : readable(code),
+                          count,
+                        }));
+                        return (
+                          <Tooltip
+                            title={
+                              <Box sx={{ p: 0.5 }}>
+                                <Typography variant="caption" fontWeight={700} display="block" sx={{ mb: 0.5 }}>
+                                  Requested Documents ({link.items.length}):
+                                </Typography>
+                                {link.itemDetails.map((item, idx) => (
+                                  <Typography key={idx} variant="caption" display="block">
+                                    • {readable(item.documentTypeCode)}
+                                    {counts.get(item.documentTypeCode)! > 1
+                                      ? item.documentTypeCode === 'SALARY_SLIP'
+                                        ? ` (Month ${item.ordinal} of ${counts.get(item.documentTypeCode)})`
+                                        : ` (#${item.ordinal})`
+                                      : ''}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            }
+                            arrow
+                          >
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ maxWidth: 300 }}>
+                              {tags.map((t) => (
+                                <Chip
+                                  key={t.code}
+                                  label={t.label}
+                                  size="small"
+                                  variant="outlined"
+                                  color="primary"
+                                  sx={{ fontSize: '0.75rem', height: 24 }}
+                                />
+                              ))}
+                            </Stack>
+                          </Tooltip>
+                        );
+                      }
+                      return (
+                        <Chip
+                          label={`${link.items.length} items`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: '0.75rem', height: 24 }}
+                        />
+                      );
+                    },
+                  },
                   { id: 'uses', header: 'Uses / Max', render: (link) => `${link.uses} / ${link.maxUses}` },
                   { id: 'expires', header: 'Expires At', render: (link) => new Date(link.expiresAt).toLocaleString() },
                   {
@@ -309,9 +393,11 @@ export function DocumentSharingPage() {
                       const isExpired = new Date(link.expiresAt) < new Date();
                       const isRevoked = Boolean(link.revokedAt);
                       const isLocked = Boolean(link.lockedAt);
+                      const isExhausted = link.uses >= link.maxUses;
                       if (isRevoked) return <Chip label="REVOKED" color="error" size="small" />;
                       if (isLocked) return <Chip label="LOCKED" color="error" size="small" />;
                       if (isExpired) return <Chip label="EXPIRED" color="default" size="small" />;
+                      if (isExhausted) return <Chip label="COMPLETED" color="info" size="small" />;
                       return <Chip label="ACTIVE" color="success" size="small" />;
                     },
                   },
@@ -323,7 +409,8 @@ export function DocumentSharingPage() {
                       const isExpired = new Date(link.expiresAt) < new Date();
                       const isRevoked = Boolean(link.revokedAt);
                       const isLocked = Boolean(link.lockedAt);
-                      return !isRevoked && !isExpired && !isLocked ? (
+                      const isExhausted = link.uses >= link.maxUses;
+                      return !isRevoked && !isExpired && !isLocked && !isExhausted ? (
                         <Can action="document.upload">
                           <Button
                             size="small"
@@ -370,7 +457,7 @@ export function DocumentSharingPage() {
                     header: 'Share ID',
                     render: (share) => <Box sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{share.id}</Box>,
                   },
-                  { id: 'application', header: 'Application ID', render: (share) => <ApplicationName id={share.applicationId} linkToApp /> },
+                  { id: 'application', header: 'Application', render: (share) => <ApplicationName id={share.applicationId} linkToApp /> },
                   {
                     id: 'recipient',
                     header: 'Recipient',
@@ -484,13 +571,31 @@ export function DocumentSharingPage() {
                 />
 
                 <Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', mb: 1, fontWeight: 600 }}
-                  >
-                    Documents to request (click to select):
-                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Documents to request (click to select):
+                    </Typography>
+                    {uploadable.length > 0 && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        sx={{ textTransform: 'none', py: 0, minHeight: 0, fontSize: '0.75rem' }}
+                        onClick={() => {
+                          if (linkItems.length === uploadable.length) {
+                            setLinkItems([]);
+                          } else {
+                            setLinkItems(uploadable.map((i) => i.id));
+                          }
+                        }}
+                      >
+                        {linkItems.length === uploadable.length ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    )}
+                  </Stack>
                   {!linkAppId ? (
                     <Typography variant="body2" color="text.secondary">
                       Choose an application first.
@@ -510,7 +615,7 @@ export function DocumentSharingPage() {
                         return (
                           <Chip
                             key={item.id}
-                            label={`${readable(item.documentTypeCode)}${item.mandatory ? '' : ' (optional)'}`}
+                            label={getChipLabel(item)}
                             size="small"
                             color={selected ? 'primary' : 'default'}
                             variant={selected ? 'filled' : 'outlined'}

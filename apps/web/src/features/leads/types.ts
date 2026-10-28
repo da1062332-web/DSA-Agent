@@ -76,6 +76,18 @@ export interface CreateLeadPayload {
   };
 }
 
+export interface LeadAssignment {
+  id: string;
+  leadId: string;
+  fromUserId: string | null;
+  fromQueueId: string | null;
+  toUserId: string | null;
+  toQueueId: string | null;
+  reasonCode: string | null;
+  actor: string;
+  assignedAt: string;
+}
+
 export interface ConversionResponse {
   leadId: string;
   customerId: string;

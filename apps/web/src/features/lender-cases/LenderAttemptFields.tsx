@@ -86,7 +86,7 @@ export function LenderAttemptFields({
         fullWidth
         required
         label="Empanelment"
-        value={value.empanelmentId}
+        value={usableEmpanelments.some((e) => e.id === value.empanelmentId) ? value.empanelmentId : ''}
         onChange={(e) => onChange({ ...value, empanelmentId: e.target.value })}
         disabled={!value.lenderId || empanelments.isPending}
         helperText={
@@ -107,7 +107,7 @@ export function LenderAttemptFields({
         fullWidth
         required
         label="Product"
-        value={productId}
+        value={(products.data ?? []).some((p) => p.id === productId) ? productId : ''}
         onChange={(e) => {
           setProductId(e.target.value);
           onChange({ ...value, productVersionId: '' });
@@ -131,7 +131,7 @@ export function LenderAttemptFields({
         fullWidth
         required
         label="Product version"
-        value={value.productVersionId}
+        value={inForce.some((v) => v.id === value.productVersionId) ? value.productVersionId : ''}
         onChange={(e) => onChange({ ...value, productVersionId: e.target.value })}
         disabled={!productId || versions.isPending}
         helperText={

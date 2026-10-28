@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box, CircularProgress, Container } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
+import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { useMe } from '../../api/useMe';
 import { HomePage } from '../../shell/HomePage';
 import { AdminDashboard } from './AdminDashboard';
@@ -14,6 +15,7 @@ import { type DashboardRole, resolveUserRoles } from './role-routing';
 import { RoleSwitcher } from './RoleSwitcher';
 import { SalesExecDashboard } from './SalesExecDashboard';
 import { VerifierDashboard } from './VerifierDashboard';
+import { PlatformSuperAdminDashboard } from './PlatformSuperAdminDashboard';
 
 export function RoleDashboardRouter() {
   const me = useMe();
@@ -59,7 +61,7 @@ export function RoleDashboardRouter() {
     );
   }
 
-  if (me.isError || !me.data) {
+  if (me.isError || !me.data || availableRoles.length === 0) {
     return <HomePage />;
   }
 
@@ -78,6 +80,8 @@ export function RoleDashboardRouter() {
 
       {(() => {
         switch (activeRole) {
+          case 'ROLE-PLATFORM-SUPER-ADMIN':
+            return <PlatformSuperAdminDashboard />;
           case 'ROLE-SALES-EXEC':
             return <SalesExecDashboard />;
           case 'ROLE-LOAN-OPS':

@@ -1028,9 +1028,19 @@ export class LenderCaseService {
     const tenantId = ctx.principal.tenantId;
     this.requirePermission(ctx, 'lender_case.update_status');
 
-    const query = await this.deps.repository.findQueryById(tx, tenantId, queryId);
+    let targetQueryId = queryId;
+    if (queryId.startsWith('lcs_')) {
+      const queries = await this.deps.repository.listQueriesByCase(tx, tenantId, queryId);
+      const openQuery = queries.slice().reverse().find((q) => !q.responded_at);
+      if (!openQuery) {
+        throw AppError.of('NOT_FOUND', `No pending lender query found for lender case '${queryId}'.`);
+      }
+      targetQueryId = openQuery.id;
+    }
+
+    const query = await this.deps.repository.findQueryById(tx, tenantId, targetQueryId);
     if (!query) {
-      throw AppError.of('NOT_FOUND', `Lender query '${queryId}' not found.`);
+      throw AppError.of('NOT_FOUND', `Lender query '${targetQueryId}' not found.`);
     }
     if (query.responded_at) {
       throw AppError.of('INVALID_STATE', 'This lender query has already been answered.');
@@ -1058,7 +1068,7 @@ export class LenderCaseService {
     // Create QUERY_RESPONSE package
     const packageId = newId('pkg');
     const manifest = {
-      queryId,
+      queryId: targetQueryId,
       response: input.text,
       documentReferences: [...input.documentReferences],
       respondedAt: now.toISOString(),
@@ -1079,7 +1089,7 @@ export class LenderCaseService {
     });
 
     // Update query
-    const updatedQuery = await this.deps.repository.updateQuery(tx, tenantId, queryId, {
+    const updatedQuery = await this.deps.repository.updateQuery(tx, tenantId, targetQueryId, {
       response_manifest_id: packageId,
       responded_at: now,
     });
@@ -1134,7 +1144,7 @@ export class LenderCaseService {
         lenderCaseId: row.id,
         fromStatus: 'QUERY_RAISED',
         toStatus: 'QUERY_RESPONDED',
-        queryId,
+        queryId: targetQueryId,
       },
       occurred_at: now,
     });

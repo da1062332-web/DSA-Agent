@@ -62,7 +62,7 @@ export class SanctionService {
         throw AppError.of('NOT_FOUND', `Lender case ${lenderCaseId} not found`);
       }
 
-      const eligibleStatuses = ['UNDER_PROCESSING', 'SUBMITTED', 'QUERY_RESPONDED', 'SANCTIONED'];
+      const eligibleStatuses = ['UNDER_PROCESSING', 'SUBMITTED', 'QUERY_RAISED', 'QUERY_RESPONDED', 'SANCTIONED'];
       if (!eligibleStatuses.includes(lenderCase.status)) {
         throw AppError.of(
           'INVALID_CASE_STATUS',

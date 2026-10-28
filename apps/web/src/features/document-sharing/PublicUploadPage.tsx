@@ -29,6 +29,24 @@ import { PageHeader } from '../../ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import type { PublicUploadLinkStatus, VerifyUploadOtpResponse, UploadFileResponse } from '@dsa/contracts';
+import { readable } from '../documents/model';
+
+function formatRequestedItemLabel(
+  item: { documentTypeCode: string; ordinal?: number },
+  totalForType?: number,
+): string {
+  const base = readable(item.documentTypeCode);
+  if (item.documentTypeCode === 'SALARY_SLIP') {
+    if (totalForType && totalForType > 1) {
+      return `${base} (Month ${item.ordinal ?? 1} of ${totalForType})`;
+    }
+    return `${base} (Month ${item.ordinal ?? 1})`;
+  }
+  if (item.documentTypeCode === 'BANK_STATEMENT') {
+    return `${base} (Last 3 Months)`;
+  }
+  return base;
+}
 
 export function PublicUploadPage() {
   const { token } = useParams<{ token: string }>();
@@ -62,6 +80,14 @@ export function PublicUploadPage() {
     () => linkStatus?.requestedItems ?? [],
     [linkStatus?.requestedItems],
   );
+
+  const typeCounts = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of effectiveRequestedItems) {
+      map.set(item.documentTypeCode, (map.get(item.documentTypeCode) || 0) + 1);
+    }
+    return map;
+  }, [effectiveRequestedItems]);
 
   // Set default selected checklist item when link status loads
   React.useEffect(() => {
@@ -471,7 +497,7 @@ export function PublicUploadPage() {
                             fontWeight={isSelected ? 700 : 600}
                             color={isSelected ? '#1d4ed8' : 'text.primary'}
                           >
-                            {item.documentTypeCode.replace(/_/g, ' ')}
+                            {formatRequestedItemLabel(item, typeCounts.get(item.documentTypeCode))}
                           </Typography>
                           {item.mandatory ? (
                             <Chip
@@ -507,7 +533,7 @@ export function PublicUploadPage() {
                           )}
                         </Stack>
                       }
-                      secondary={`Item ID: ${item.checklistItemId} • Click to select this document category`}
+                      secondary="Click to select this item • Supported formats: PDF, PNG, JPG"
                     />
                   </ListItem>
                 );
@@ -544,7 +570,7 @@ export function PublicUploadPage() {
                   >
                     {effectiveRequestedItems.map((item, idx) => (
                       <MenuItem key={idx} value={item.checklistItemId}>
-                        {item.documentTypeCode.replace(/_/g, ' ')}{' '}
+                        {formatRequestedItemLabel(item, typeCounts.get(item.documentTypeCode))}{' '}
                         {item.mandatory ? '(Required)' : '(Optional)'}
                       </MenuItem>
                     ))}
@@ -618,15 +644,23 @@ export function PublicUploadPage() {
               </Typography>
               <Paper variant="outlined" sx={{ borderRadius: 2 }}>
                 <List dense>
-                  {uploadedFiles.map((file, idx) => (
-                    <ListItem key={idx} divider={idx < uploadedFiles.length - 1}>
-                      <ListItemText
-                        primary={file.filename}
-                        secondary={`Item: ${file.checklistItemId} • Size: ${formatFileSize(file.fileSizeBytes)}`}
-                      />
-                      <Chip label={file.status} size="small" color="success" variant="outlined" />
-                    </ListItem>
-                  ))}
+                  {uploadedFiles.map((file, idx) => {
+                    const matchedItem = effectiveRequestedItems.find(
+                      (i) => i.checklistItemId === file.checklistItemId,
+                    );
+                    const categoryLabel = matchedItem
+                      ? formatRequestedItemLabel(matchedItem, typeCounts.get(matchedItem.documentTypeCode))
+                      : file.checklistItemId;
+                    return (
+                      <ListItem key={idx} divider={idx < uploadedFiles.length - 1}>
+                        <ListItemText
+                          primary={file.filename}
+                          secondary={`Document: ${categoryLabel} • Size: ${formatFileSize(file.fileSizeBytes)}`}
+                        />
+                        <Chip label={file.status} size="small" color="success" variant="outlined" />
+                      </ListItem>
+                    );
+                  })}
                 </List>
               </Paper>
             </Box>

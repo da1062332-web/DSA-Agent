@@ -203,6 +203,7 @@ export interface LeadRepository {
   ): Promise<ConsentRecordRow[]>;
   insertLeadStatusHistory(tx: Tx, history: LeadStatusHistoryRow): Promise<void>;
   insertLeadAssignment(tx: Tx, assignment: LeadAssignmentRow): Promise<void>;
+  listAssignmentsByLeadId(tx: Tx, tenantId: string, leadId: string): Promise<LeadAssignmentRow[]>;
   insertCustomer(tx: Tx, customer: CustomerRow): Promise<void>;
   findCustomerById(tx: Tx, tenantId: string, id: string): Promise<CustomerRow | null>;
   insertCustomerContactPoint(tx: Tx, cp: CustomerContactPointRow): Promise<void>;
@@ -460,6 +461,15 @@ export class SqlLeadRepository implements LeadRepository {
     `.execute(tx);
   }
 
+  async listAssignmentsByLeadId(tx: Tx, tenantId: string, leadId: string): Promise<LeadAssignmentRow[]> {
+    const result = await sql<LeadAssignmentRow>`
+      SELECT * FROM lead_assignment
+      WHERE tenant_id = ${tenantId} AND lead_id = ${leadId}
+      ORDER BY assigned_at DESC
+    `.execute(tx);
+    return result.rows;
+  }
+
   async insertCustomer(tx: Tx, customer: CustomerRow): Promise<void> {
     await sql`
       INSERT INTO customer (
@@ -695,6 +705,12 @@ export class InMemoryLeadRepository implements LeadRepository {
 
   async insertLeadAssignment(_tx: Tx, assignment: LeadAssignmentRow): Promise<void> {
     this.assignments.push({ ...assignment });
+  }
+
+  async listAssignmentsByLeadId(_tx: Tx, tenantId: string, leadId: string): Promise<LeadAssignmentRow[]> {
+    return this.assignments
+      .filter((a) => a.tenant_id === tenantId && a.lead_id === leadId)
+      .sort((a, b) => new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime());
   }
 
   async insertCustomer(_tx: Tx, customer: CustomerRow): Promise<void> {

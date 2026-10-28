@@ -168,13 +168,22 @@ export function UserPicker<M extends boolean>(props: {
   freeSolo?: boolean;
   testId?: string;
   fullWidth?: boolean;
+  showId?: boolean;
+  showRoles?: boolean;
+  filter?: (u: UserSummary) => boolean;
 }) {
   const users = useLookup<UserSummary>('/v1/users', { status: 'ACTIVE' });
-  const options = (users.data ?? []).filter((u) => !props.exclude?.includes(u.id));
+  const options = (users.data ?? [])
+    .filter((u) => !props.exclude?.includes(u.id))
+    .filter((u) => (props.filter ? props.filter(u) : true));
   const byId = new Map((users.data ?? []).map((u) => [u.id, u]));
   const label = (id: string) => {
     const u = byId.get(id);
-    return u ? `${u.displayName} (${u.id})` : id;
+    if (!u) return id;
+    const name = u.displayName || id;
+    const roles = u.assignedRoles?.length ? ` (${u.assignedRoles.join(', ')})` : '';
+    const idTag = props.showId ? ` [${u.id}]` : '';
+    return props.showRoles !== false && roles ? `${name}${roles}${idTag}` : `${name}${idTag}`;
   };
 
   if (props.multiple) {

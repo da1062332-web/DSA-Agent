@@ -201,6 +201,15 @@ export function createRouter(
     res.json(resource);
   });
 
+  router.get('/leads/:id/assignments', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    const id = extractParamId(req);
+    const data = await deps.txRunner.withTenantTx(ctx, async (tx) =>
+      service.listAssignments(tx, ctx, id),
+    );
+    res.json({ data });
+  });
+
   // API-LEAD-007: POST /v1/leads/:id/conversion — Atomic Conversion (TASK-110)
   router.post(['/leads/:id/conversion', '/leads/:id/conversions'], async (req: Request, res: Response) => {
     const ctx = getRequestContext(req);

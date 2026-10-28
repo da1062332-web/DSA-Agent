@@ -26,6 +26,7 @@ import { readConfig } from '../config';
 import { TimeoutError, withTimeout } from './timeout';
 import { setAuthToken } from './token';
 import { verifyTotp } from './totp';
+import { resolveSafeRedirect } from './redirect';
 
 export const HARDCODED_TEST_OTP = (import.meta.env as any)?.VITE_TEST_BYPASS_OTP || '000000';
 
@@ -182,7 +183,7 @@ export function LoginPage() {
         } catch {
           // storage unavailable (private mode or blocked); safe to ignore
         }
-        window.location.replace(from);
+        window.location.replace(resolveSafeRedirect(from, sessionPayload));
         return;
       }
 
@@ -200,7 +201,7 @@ export function LoginPage() {
             } catch {
               // storage unavailable (private mode or blocked); safe to ignore
             }
-            navigate(from, { replace: true });
+            navigate(resolveSafeRedirect(from, session), { replace: true });
             return;
           }
         } catch (err: any) {
@@ -230,7 +231,7 @@ export function LoginPage() {
         } catch {
           // storage unavailable (private mode or blocked); safe to ignore
         }
-        window.location.replace(from);
+        window.location.replace(resolveSafeRedirect(from, sessionPayload));
         return;
       }
 
@@ -245,7 +246,7 @@ export function LoginPage() {
 
   // If already authenticated: navigate directly to destination if AAL2
   if (session && aal?.current === 'aal2') {
-    return <Navigate to={from} replace />;
+    return <Navigate to={resolveSafeRedirect(from, session)} replace />;
   }
 
   return (

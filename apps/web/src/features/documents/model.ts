@@ -74,7 +74,15 @@ export function nextAction(item: Pick<ChecklistItem, 'status'>): string | null {
   }
 }
 
+const DOCUMENT_LABELS: Record<string, string> = {
+  AADHAAR_MASKED: 'Aadhaar card',
+  PAN_CARD: 'PAN card',
+  SALARY_SLIP: 'Salary slip',
+  BANK_STATEMENT: 'Bank statement',
+};
+
 export const readable = (code: string) =>
+  DOCUMENT_LABELS[code] ??
   code
     .toLowerCase()
     .replace(/_/g, ' ')

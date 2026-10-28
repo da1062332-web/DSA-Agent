@@ -11,7 +11,6 @@ import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from '../
 import { DataTable, DetailCard, FilterToolbar, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
 import type { ColumnDef } from '../../ui';
 import { ChecklistCard } from './ChecklistCard';
-import { SupabaseStorageCard } from './SupabaseStorageCard';
 
 interface ApplicationRow {
   id: string;
@@ -216,8 +215,6 @@ export function DocumentsPage() {
           </>
         )}
       </DetailCard>
-
-      <SupabaseStorageCard />
 
       <Box sx={{ mt: 3, scrollMarginTop: '80px' }} ref={checklistRef}>
         {selected ? (

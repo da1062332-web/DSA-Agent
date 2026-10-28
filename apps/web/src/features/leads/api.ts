@@ -1,5 +1,5 @@
 import { ApiError as SharedApiError, apiRequest, newIdempotencyKey, type ApiRequest } from '../../api/client';
-import type { ConversionResponse, CreateLeadPayload, LeadListResponse, LeadResource } from './types';
+import type { ConversionResponse, CreateLeadPayload, LeadAssignment, LeadListResponse, LeadResource } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -139,6 +139,13 @@ export async function assignLead(
     idempotencyKey,
   });
   return { lead: res.data, etag: res.etag || `"${res.data.lockVersion}"` };
+}
+
+export async function fetchLeadAssignments(leadId: string): Promise<LeadAssignment[]> {
+  const res = await request<{ data: LeadAssignment[] }>(`/v1/leads/${leadId}/assignments`, {
+    method: 'GET',
+  });
+  return res.data.data;
 }
 
 export async function convertLead(

@@ -9,6 +9,7 @@ import { isTotpCode, startTotpEnrolment, verifyTotp } from './totp';
 import { getSupabase, saveBypassSession } from './supabase';
 import { setAuthToken } from './token';
 import { readConfig } from '../config';
+import { resolveSafeRedirect } from './redirect';
 
 const PLACEHOLDER_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" fill="#f8fafc"/><rect x="12" y="12" width="28" height="28" rx="4" fill="#0f172a"/><rect x="60" y="12" width="28" height="28" rx="4" fill="#0f172a"/><rect x="12" y="60" width="28" height="28" rx="4" fill="#0f172a"/><rect x="18" y="18" width="16" height="16" rx="2" fill="#ffffff"/><rect x="66" y="18" width="16" height="16" rx="2" fill="#ffffff"/><rect x="18" y="66" width="16" height="16" rx="2" fill="#ffffff"/><rect x="23" y="23" width="6" height="6" fill="#0f172a"/><rect x="71" y="23" width="6" height="6" fill="#0f172a"/><rect x="23" y="71" width="6" height="6" fill="#0f172a"/><circle cx="50" cy="50" r="14" fill="#2563eb"/><path d="M46 50l3 3 6-6" stroke="#ffffff" stroke-width="2.5" fill="none"/></svg>`;
 
@@ -137,7 +138,7 @@ export function MfaPage() {
         } catch {
           // storage unavailable (private mode or blocked); safe to ignore
         }
-        window.location.replace(from);
+        window.location.replace(resolveSafeRedirect(from, sessionPayload));
         return;
       }
 
@@ -154,7 +155,7 @@ export function MfaPage() {
       } catch {
         // storage unavailable (private mode or blocked); safe to ignore
       }
-      navigate(from, { replace: true });
+      navigate(resolveSafeRedirect(from, session), { replace: true });
     } catch (err) {
       const msg = (err as Error).message;
       if (/invalid JWT|signature is invalid/i.test(msg)) {

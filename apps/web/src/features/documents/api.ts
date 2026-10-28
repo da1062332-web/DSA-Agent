@@ -32,6 +32,11 @@ export interface SupabaseStorageFile {
 export const getChecklist = (applicationId: string) =>
   apiFetch<ChecklistResponse>(`/v1/applications/${encodeURIComponent(applicationId)}/checklist`);
 
+export const generateChecklist = (applicationId: string) =>
+  apiFetch<ChecklistResponse>(`/v1/applications/${encodeURIComponent(applicationId)}/checklist/generate`, {
+    method: 'POST',
+  });
+
 export function useChecklist(applicationId: string | null) {
   return useQuery({
     queryKey: ['application-checklist', applicationId],

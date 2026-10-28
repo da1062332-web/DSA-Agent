@@ -2,17 +2,26 @@
 // document actions this user may take (upload, view, review, waive: ChecklistItemActions); customers can also upload through
 // Document sharing. "Check completeness" asks the API whether every mandatory item is accepted, waived or not applicable.
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
+import { hasPermission, useMe } from '../../api/useMe';
 import { ErrorAlert, Loading } from '../admin/components';
 import { DataTable } from '../../ui';
-import { checkCompleteness, useChecklist } from './api';
+import { checkCompleteness, generateChecklist, useChecklist } from './api';
 import { ChecklistItemActions } from './ChecklistItemActions';
 import { groupByParty, nextAction, progressText, readable, STATUS_LABELS, statusTone } from './model';
 
 export function ChecklistCard({ applicationId }: { applicationId: string }) {
+  const qc = useQueryClient();
+  const me = useMe();
   const q = useChecklist(applicationId);
   const check = useMutation({ meta: { silent: true }, mutationFn: () => checkCompleteness(applicationId) });
+  const generate = useMutation({
+    mutationFn: () => generateChecklist(applicationId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['application-checklist', applicationId] });
+    },
+  });
   return (
     <Card sx={{ mt: 3 }} data-testid="checklist-card">
       <CardContent>
@@ -30,10 +39,23 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
             >
               {progressText(q.data.summary)}
             </Alert>
+            {q.data.summary.total === 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={generate.isPending}
+                  onClick={() => generate.mutate()}
+                  data-testid="documents.generate-checklist"
+                >
+                  {generate.isPending ? 'Generating checklist...' : 'Generate checklist requirements'}
+                </Button>
+              </Box>
+            )}
             {groupByParty(q.data.data).map((g) => (
               <Box key={g.partyId} sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-                  Applicant {g.partyId}
+                  {g.partyId.startsWith('pty_') ? 'Primary Applicant' : `Applicant ${g.partyId}`}
                 </Typography>
                 <DataTable<(typeof g.items)[number]>
                   dataTestId={`documents.checklist.${g.partyId}`}
@@ -43,13 +65,21 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
                     {
                       id: 'document',
                       header: 'Document',
-                      render: (i) => (
-                        <>
-                          {readable(i.documentTypeCode)}
-                          {i.requiredCount > 1 ? ` (${i.requiredCount})` : ''}
-                          {i.periodMonths ? `, last ${i.periodMonths} months` : ''}
-                        </>
-                      ),
+                      render: (i) => {
+                        const ordinalLabel =
+                          i.requiredCount > 1
+                            ? i.periodMonths
+                              ? ` (Month ${i.ordinal} of ${i.requiredCount})`
+                              : ` (#${i.ordinal} of ${i.requiredCount})`
+                            : '';
+                        return (
+                          <>
+                            {readable(i.documentTypeCode)}
+                            {ordinalLabel}
+                            {i.periodMonths ? `, last ${i.periodMonths} months` : ''}
+                          </>
+                        );
+                      },
                     },
                     { id: 'required', header: 'Required', render: (i) => (i.mandatory ? 'Yes' : 'Optional') },
                     {
@@ -98,8 +128,12 @@ export function ChecklistCard({ applicationId }: { applicationId: string }) {
               >
                 Check completeness
               </Button>
-              <RouterLink to="/document-sharing">Document sharing</RouterLink>
-              <RouterLink to="/verifications">Verification</RouterLink>
+              {(hasPermission(me.data, 'document.upload') || hasPermission(me.data, 'share.create')) && (
+                <RouterLink to="/document-sharing">Document sharing</RouterLink>
+              )}
+              {(hasPermission(me.data, 'verification.read') || hasPermission(me.data, 'verification.perform')) && (
+                <RouterLink to="/verifications">Verification</RouterLink>
+              )}
             </Stack>
           </>
         ) : null}

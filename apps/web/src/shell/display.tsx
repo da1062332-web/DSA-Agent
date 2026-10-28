@@ -4,6 +4,8 @@ import { Box, Link, Skeleton, Tooltip, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
+import { useOptionalAuth } from '../auth/AuthProvider';
+import { useMe, hasPermission } from '../api/useMe';
 import type {
   BranchItem,
   UserItem,
@@ -16,7 +18,11 @@ import type {
 } from './selectors';
 
 /** Resilient lookup hook caching entity collections for name resolution */
-function useDisplayLookup<T>(path: string, query?: Record<string, string | number | undefined>) {
+function useDisplayLookup<T>(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+  enabled = true,
+) {
   return useQuery({
     queryKey: [path, query],
     queryFn: async () => {
@@ -31,6 +37,8 @@ function useDisplayLookup<T>(path: string, query?: Record<string, string | numbe
       }
     },
     staleTime: 5 * 60_000, // 5 min cache
+    enabled,
+    retry: false,
   });
 }
 
@@ -80,7 +88,7 @@ export function useBranchName(id: string | null | undefined): string | null {
 }
 
 export function useUserName(id: string | null | undefined): string | null {
-  const { data: users = [] } = useDisplayLookup<UserItem>('/v1/users');
+  const { data: users = [], isLoading } = useDisplayLookup<UserItem>('/v1/users');
   const match = id ? users.find((u) => u.id === id) : null;
 
   const { data: singleUser } = useQuery({
@@ -93,8 +101,9 @@ export function useUserName(id: string | null | undefined): string | null {
         return null;
       }
     },
-    enabled: Boolean(id && !match),
+    enabled: Boolean(id && !match && !isLoading),
     staleTime: 5 * 60_000,
+    retry: false,
   });
 
   if (!id) return null;
@@ -106,7 +115,11 @@ export function useUserName(id: string | null | undefined): string | null {
 }
 
 export function useConnectorName(id: string | null | undefined): string | null {
-  const { data: connectors = [] } = useDisplayLookup<ConnectorItem>('/v1/connectors');
+  const { data: connectors = [] } = useDisplayLookup<ConnectorItem>(
+    '/v1/connectors',
+    undefined,
+    Boolean(id),
+  );
   if (!id) return null;
   const match = connectors.find((c) => c.id === id);
   if (!match) return formatFriendlyId(id);
@@ -116,15 +129,27 @@ export function useConnectorName(id: string | null | undefined): string | null {
 }
 
 export function useLenderName(id: string | null | undefined): string | null {
-  const { data: lenders = [] } = useDisplayLookup<LenderItem>('/v1/lenders');
+  const { data: lenders = [] } = useDisplayLookup<LenderItem>(
+    '/v1/lenders',
+    undefined,
+    Boolean(id),
+  );
   if (!id) return null;
   const match = lenders.find((l) => l.id === id);
   return match ? match.name : formatFriendlyId(id);
 }
 
 export function useCustomerName(id: string | null | undefined): string | null {
-  const { data: customers = [] } = useDisplayLookup<CustomerItem>('/v1/customers');
-  const match = id ? customers.find((c) => c.id === id) : null;
+  const session = useOptionalAuth()?.session;
+  const me = useMe().data;
+  const canReadCustomer = session ? hasPermission(me, 'customer.read') : true;
+
+  const { data: customers = [], isLoading } = useDisplayLookup<CustomerItem>(
+    '/v1/customers',
+    undefined,
+    canReadCustomer,
+  );
+  const match = id && canReadCustomer ? customers.find((c) => c.id === id) : null;
 
   const { data: singleCustomer } = useQuery({
     queryKey: ['/v1/customers', id],
@@ -136,8 +161,9 @@ export function useCustomerName(id: string | null | undefined): string | null {
         return null;
       }
     },
-    enabled: Boolean(id && !match),
+    enabled: Boolean(canReadCustomer && id && !match && !isLoading),
     staleTime: 5 * 60_000,
+    retry: false,
   });
 
   if (!id) return null;
@@ -255,8 +281,9 @@ export function UserName({
         return null;
       }
     },
-    enabled: Boolean(id && !match),
+    enabled: Boolean(id && !match && !isLoading),
     staleTime: 5 * 60_000,
+    retry: false,
   });
 
   if (!id) return <>{fallback}</>;
@@ -291,7 +318,11 @@ export function ConnectorName({
   typographyProps,
   sx,
 }: DisplayProps & { showFirm?: boolean }) {
-  const { data: connectors = [], isLoading } = useDisplayLookup<ConnectorItem>('/v1/connectors');
+  const { data: connectors = [], isLoading } = useDisplayLookup<ConnectorItem>(
+    '/v1/connectors',
+    undefined,
+    Boolean(id),
+  );
   if (!id) return <>{fallback}</>;
   if (isLoading && connectors.length === 0) return <Skeleton width={110} height={20} sx={{ display: 'inline-block' }} />;
 
@@ -325,7 +356,11 @@ export function LenderName({
   typographyProps,
   sx,
 }: DisplayProps) {
-  const { data: lenders = [], isLoading } = useDisplayLookup<LenderItem>('/v1/lenders');
+  const { data: lenders = [], isLoading } = useDisplayLookup<LenderItem>(
+    '/v1/lenders',
+    undefined,
+    Boolean(id),
+  );
   if (!id) return <>{fallback}</>;
   if (isLoading && lenders.length === 0) return <Skeleton width={90} height={20} sx={{ display: 'inline-block' }} />;
 
@@ -355,8 +390,16 @@ export function CustomerName({
   typographyProps,
   sx,
 }: DisplayProps & { linkToProfile?: boolean }) {
-  const { data: customers = [], isLoading } = useDisplayLookup<CustomerItem>('/v1/customers');
-  const match = id ? customers.find((c) => c.id === id) : null;
+  const session = useOptionalAuth()?.session;
+  const me = useMe().data;
+  const canReadCustomer = session ? hasPermission(me, 'customer.read') : true;
+
+  const { data: customers = [], isLoading } = useDisplayLookup<CustomerItem>(
+    '/v1/customers',
+    undefined,
+    canReadCustomer,
+  );
+  const match = id && canReadCustomer ? customers.find((c) => c.id === id) : null;
 
   const { data: singleCustomer, isLoading: isSingleLoading } = useQuery({
     queryKey: ['/v1/customers', id],
@@ -368,19 +411,20 @@ export function CustomerName({
         return null;
       }
     },
-    enabled: Boolean(id && !match),
+    enabled: Boolean(canReadCustomer && id && !match && !isLoading),
     staleTime: 5 * 60_000,
+    retry: false,
   });
 
   if (!id) return <>{fallback}</>;
-  if ((isLoading || (isSingleLoading && !match)) && !singleCustomer && (!fallback || fallback === id || fallback === '—')) {
+  if (canReadCustomer && (isLoading || (isSingleLoading && !match)) && !singleCustomer && (!fallback || fallback === id || fallback === '—')) {
     return <Skeleton width={100} height={20} sx={{ display: 'inline-block' }} />;
   }
 
   const validFallback = typeof fallback === 'string' && fallback !== id && fallback !== '—' ? fallback : null;
   const name = match ? match.fullName : singleCustomer || validFallback;
 
-  if (linkToProfile) {
+  if (linkToProfile && canReadCustomer) {
     return (
       <Tooltip title={`Full ID: ${id}`} arrow placement="top">
         <Link
@@ -463,22 +507,93 @@ export function LeadName({
 // ---------------------------------------------------------------------------
 // 7. ApplicationName / ApplicationBadge
 // ---------------------------------------------------------------------------
+function formatAppAmount(val: unknown): string | null {
+  if (!val) return null;
+  if (typeof val === 'number') return val.toLocaleString('en-IN');
+  if (typeof val === 'string') {
+    const num = Number(val);
+    return isNaN(num) ? val : num.toLocaleString('en-IN');
+  }
+  if (typeof val === 'object' && val !== null && 'amount' in val) {
+    const num = Number((val as any).amount);
+    return isNaN(num) ? String((val as any).amount) : num.toLocaleString('en-IN');
+  }
+  return null;
+}
+
 export function ApplicationName({
   id,
   fallback = '—',
   linkToApp = false,
   showIdTooltip = true,
+  compact = false,
   typographyProps,
   sx,
-}: DisplayProps & { linkToApp?: boolean }) {
+}: DisplayProps & { linkToApp?: boolean; compact?: boolean }) {
   const { data: apps = [], isLoading } = useDisplayLookup<ApplicationItem>('/v1/applications');
   if (!id) return <>{fallback}</>;
   if (isLoading && apps.length === 0) return <Skeleton width={120} height={20} sx={{ display: 'inline-block' }} />;
 
   const match = apps.find((a) => a.id === id);
-  const text = match
-    ? `${match.productCategory} • ₹${Number(match.requestedAmount).toLocaleString('en-IN')}`
-    : `App #${id.slice(-6)}`;
+  const appIdDisplay = `App #${id.slice(-6)}`;
+  const amt = match ? formatAppAmount(match.requestedAmount) : null;
+  const subtitle = match
+    ? [match.productCategory, amt ? `₹${amt}` : null].filter(Boolean).join(' • ')
+    : null;
+
+  if (compact) {
+    const text = subtitle ? `${appIdDisplay} (${subtitle})` : appIdDisplay;
+    if (linkToApp) {
+      return (
+        <Tooltip title={`Application ID: ${id}`} arrow placement="top">
+          <Link
+            component={RouterLink}
+            to={`/applications/${id}`}
+            underline="hover"
+            color="primary.main"
+            fontWeight="medium"
+            sx={sx}
+          >
+            {text}
+          </Link>
+        </Tooltip>
+      );
+    }
+    return (
+      <BaseDisplay
+        id={id}
+        name={text}
+        fallback={fallback}
+        showIdTooltip={showIdTooltip}
+        typographyProps={typographyProps}
+        sx={sx}
+      />
+    );
+  }
+
+  const content = (
+    <Box sx={{ display: 'inline-flex', flexDirection: 'column', verticalAlign: 'middle', textAlign: 'inherit', ...sx }}>
+      <Typography
+        component="span"
+        variant="body2"
+        fontWeight={600}
+        color={linkToApp ? 'primary.main' : 'text.primary'}
+        {...typographyProps}
+      >
+        {appIdDisplay}
+      </Typography>
+      {subtitle && (
+        <Typography
+          component="span"
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontWeight: 500, fontSize: '0.75rem', lineHeight: 1.25 }}
+        >
+          {subtitle}
+        </Typography>
+      )}
+    </Box>
+  );
 
   if (linkToApp) {
     return (
@@ -487,25 +602,18 @@ export function ApplicationName({
           component={RouterLink}
           to={`/applications/${id}`}
           underline="hover"
-          color="primary.main"
-          fontWeight="medium"
-          sx={sx}
+          sx={{ display: 'inline-block', textDecoration: 'none' }}
         >
-          {text}
+          {content}
         </Link>
       </Tooltip>
     );
   }
 
   return (
-    <BaseDisplay
-      id={id}
-      name={text}
-      fallback={fallback}
-      showIdTooltip={showIdTooltip}
-      typographyProps={typographyProps}
-      sx={sx}
-    />
+    <Tooltip title={`Application ID: ${id}`} arrow placement="top">
+      {content}
+    </Tooltip>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Grid,
   Link,
   MenuItem,
   Stack,
@@ -99,27 +100,101 @@ export function ApplicationDetailPage() {
 function RelationsCard({ app }: { app: Application }) {
   const me = useMe();
   return (
-    <AppCard dataTestId="application.relations" padding="dense">
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
-        <Typography variant="body2" component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-          Customer:{' '}
-          <CustomerName id={app.customerId} linkToProfile />
-        </Typography>
-        <Typography variant="body2">Branch: <BranchName id={app.branchId} /></Typography>
-        <Typography variant="body2">Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" /></Typography>
-        <Typography variant="body2">Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" /></Typography>
-        <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
-        {hasPermission(me.data, 'document.upload') && (
-          <AppButton
-            size="small"
-            variant="outlined"
-            to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
-            dataTestId="application.upload-link"
+    <AppCard dataTestId="application.relations" padding="normal">
+      <Grid container spacing={2.5} alignItems="center">
+        <Grid item xs={12} sm={6} md={2.5}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
           >
-            Send customer upload link
-          </AppButton>
+            Customer
+          </Typography>
+          <Box sx={{ fontWeight: 600, fontSize: '0.9375rem', lineHeight: 1.3 }}>
+            <CustomerName id={app.customerId} linkToProfile />
+          </Box>
+        </Grid>
+
+        <Grid item xs={6} sm={4} md={2}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
+          >
+            Branch
+          </Typography>
+          <Typography variant="body2" fontWeight={500} color="text.primary">
+            <BranchName id={app.branchId} />
+          </Typography>
+        </Grid>
+
+        <Grid item xs={6} sm={4} md={2}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
+          >
+            Sales Owner
+          </Typography>
+          <Typography variant="body2" fontWeight={500} color="text.primary">
+            <UserName id={app.salesOwnerId} fallback="Not assigned" />
+          </Typography>
+        </Grid>
+
+        <Grid item xs={6} sm={4} md={2}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
+          >
+            Operations Owner
+          </Typography>
+          <Typography variant="body2" fontWeight={500} color="text.primary">
+            <UserName id={app.opsOwnerId} fallback="Not assigned" />
+          </Typography>
+        </Grid>
+
+        <Grid item xs={6} sm={4} md={1.5}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', mb: 0.5 }}
+          >
+            Opened
+          </Typography>
+          <Typography variant="body2" color="text.primary">
+            {formatDate(app.createdAt)}
+          </Typography>
+        </Grid>
+
+        {hasPermission(me.data, 'document.upload') && (
+          <Grid
+            item
+            xs={12}
+            md={2}
+            sx={{
+              display: 'flex',
+              justifyContent: { xs: 'flex-start', md: 'flex-end' },
+              alignItems: 'center',
+            }}
+          >
+            <AppButton
+              size="small"
+              variant="outlined"
+              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
+              dataTestId="application.upload-link"
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Send customer upload link
+            </AppButton>
+          </Grid>
         )}
-      </Stack>
+      </Grid>
     </AppCard>
   );
 }

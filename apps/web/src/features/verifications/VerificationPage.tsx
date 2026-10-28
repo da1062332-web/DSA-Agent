@@ -478,11 +478,11 @@ export function VerificationPage() {
 
       {/* Dialog: Create Verification Check */}
       <Dialog open={isCreateOpen} onClose={() => setIsCreateOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" fontWeight={700}>
+        <DialogTitle sx={{ pb: 1 }} component="div">
+          <Typography variant="h6" fontWeight={700} component="h2">
             Perform Verification Check (API-VER-001)
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" component="div">
             Records an immutable audit verification check (ENT-064) under S3 Classification.
           </Typography>
         </DialogTitle>

@@ -87,6 +87,7 @@ export interface UserSummary {
   primaryBranchId: string;
   status: string;
   availability: string;
+  assignedRoles?: string[];
 }
 
 export const CONSTITUTIONS = [

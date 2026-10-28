@@ -1429,10 +1429,8 @@ export function createRouter(deps: ApiDeps): Router {
       const ctx = getContext(req);
       const targetUserId = req.params.id;
 
-      // Self-view is permitted; otherwise require user.manage
-      if (ctx.principal.id !== targetUserId) {
-        requirePermission(ctx, 'user.manage');
-      }
+      const isAdmin = ctx.principal.grants.some((g) => g.code === 'user.manage');
+      const isSelf = ctx.principal.id === targetUserId;
 
       const user = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<RawUserRow>`
@@ -1456,7 +1454,15 @@ export function createRouter(deps: ApiDeps): Router {
         if (!row) {
           throw AppError.of('NOT_FOUND', `User ${targetUserId} not found.`);
         }
-        return formatUserRow(row);
+        const formatted = formatUserRow(row);
+        if (!isAdmin && !isSelf) {
+          return {
+            ...formatted,
+            email: maskEmail(formatted.email),
+            mobileE164: formatted.mobileE164 ? maskMobile(formatted.mobileE164) : null,
+          };
+        }
+        return formatted;
       });
 
       res.setHeader('ETag', `"${user.lockVersion}"`);

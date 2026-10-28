@@ -1,6 +1,8 @@
+import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import type { Me } from '../../api/useMe';
 
 export type DashboardRole =
+  | 'ROLE-PLATFORM-SUPER-ADMIN'
   | 'ROLE-SALES-EXEC'
   | 'ROLE-LOAN-OPS'
   | 'ROLE-DOC-VERIFIER'
@@ -16,6 +18,7 @@ export type DashboardRole =
   | 'ROLE-TENANT-ADMIN';
 
 export const ROLE_LABELS: Record<DashboardRole, string> = {
+  'ROLE-PLATFORM-SUPER-ADMIN': 'Platform Super Admin',
   'ROLE-SALES-EXEC': 'Sales Executive',
   'ROLE-LOAN-OPS': 'Loan Operations',
   'ROLE-DOC-VERIFIER': 'Document Verifier',
@@ -32,6 +35,7 @@ export const ROLE_LABELS: Record<DashboardRole, string> = {
 };
 
 export const ROLE_PRIORITY: DashboardRole[] = [
+  'ROLE-PLATFORM-SUPER-ADMIN',
   'ROLE-SALES-EXEC',
   'ROLE-LOAN-OPS',
   'ROLE-DOC-VERIFIER',
@@ -54,6 +58,14 @@ export const ROLE_PRIORITY: DashboardRole[] = [
  */
 export function resolveUserRoles(me: Me | undefined): DashboardRole[] {
   if (!me) return [];
+
+  if (
+    me.tenantId === PLATFORM_TENANT_ID ||
+    me.roles?.includes('ROLE-PLATFORM-SUPER-ADMIN') ||
+    me.roles?.includes('ROLE-PLATFORM-SUPERADMIN')
+  ) {
+    return ['ROLE-PLATFORM-SUPER-ADMIN'];
+  }
 
   const assigned = new Set<string>(me.roles ?? []);
   const matched = ROLE_PRIORITY.filter((r) => assigned.has(r));

@@ -37,6 +37,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
 
   const isOwner = role === 'ROLE-ORG-OWNER' || me.data?.roles?.includes('ROLE-ORG-OWNER');
   const roleTitle = isOwner ? 'Organisation Owner' : 'Tenant Admin';
+  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
 
   // Active branches
   const {
@@ -46,6 +47,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-branches-summary'],
     queryFn: () => fetchBranches(),
+    enabled: !platformRealm,
   });
 
   // Staff users
@@ -56,6 +58,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-users-summary'],
     queryFn: () => fetchUsers({ limit: 100 }),
+    enabled: !platformRealm && hasPermission(me.data, 'user.read'),
   });
 
   // Active Applications
@@ -63,7 +66,12 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
     data: appPages,
     isLoading: appsLoading,
     isError: appsError,
-  } = useList<Application>('/v1/applications', {}, 100);
+  } = useList<Application>(
+    '/v1/applications',
+    {},
+    100,
+    !platformRealm && hasPermission(me.data, 'application.read'),
+  );
 
   // Inbound Leads
   const {
@@ -73,6 +81,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-leads-summary', dateScope],
     queryFn: () => fetchLeads({ limit: 100 }),
+    enabled: !platformRealm && hasPermission(me.data, 'lead.read'),
   });
 
   // Audit Events
@@ -83,6 +92,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   } = useQuery({
     queryKey: ['admin-audit-events-summary'],
     queryFn: () => searchAuditEvents({ limit: 20 }),
+    enabled: !platformRealm && hasPermission(me.data, 'audit.read'),
   });
 
   const branches = branchesData ?? [];
@@ -205,7 +215,6 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
     },
   ];
 
-  const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   const allowedModules = adminModules.filter((m) =>
     routeAllowed(m.to, (code) => hasPermission(me.data, code), platformRealm),
   );

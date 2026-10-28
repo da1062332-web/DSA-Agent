@@ -24,7 +24,7 @@ import {
   normalizeMobile,
   validatePincode,
 } from './normalizer';
-import type { LeadRepository, LeadRow } from './repository';
+import type { LeadAssignmentRow, LeadRepository, LeadRow } from './repository';
 import { validateLeadTransition } from './state-machine';
 
 function parseLockVersion(ifMatch: string): number {
@@ -945,6 +945,27 @@ export class LeadService {
     });
 
     return { resource, etag: `"${updated.lock_version}"`, isReplayed: false };
+  }
+
+  async listAssignments(tx: Tx, ctx: RequestContext, leadId: string) {
+    const tenantId = ctx.principal.tenantId;
+    if (!tenantId) throw AppError.of('TENANT_CONTEXT_MISSING', 'Missing tenant context.');
+    requirePermission(ctx, 'lead.read');
+    const lead = await this.deps.repository.findLeadById(tx, tenantId, leadId);
+    if (!lead) throw AppError.of('NOT_FOUND', `Lead ${leadId} not found.`);
+    requireLeadAccess(ctx, 'lead.read', lead);
+    const rows = await this.deps.repository.listAssignmentsByLeadId(tx, tenantId, leadId);
+    return rows.map((r: LeadAssignmentRow) => ({
+      id: r.id,
+      leadId: r.lead_id,
+      fromUserId: r.from_user_id,
+      fromQueueId: r.from_queue_id,
+      toUserId: r.to_user_id,
+      toQueueId: r.to_queue_id,
+      reasonCode: r.reason_code,
+      actor: r.actor,
+      assignedAt: r.assigned_at instanceof Date ? r.assigned_at.toISOString() : String(r.assigned_at),
+    }));
   }
 
   /**

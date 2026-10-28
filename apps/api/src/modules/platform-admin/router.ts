@@ -114,6 +114,16 @@ function buildRouter(
     }
   };
 
+  /** Any one of the permissions, held by a user of a customer tenant. */
+  const requireTenantAny = async (ctx: RequestContext, codes: PermissionCode[]): Promise<void> => {
+    if (!codes.some((c) => ctx.principal.grants.some((g) => g.code === c))) {
+      await refuse(ctx, codes[0] ?? 'permission', 'tenant', `Permission denied: one of [${codes.join(', ')}] required.`);
+    }
+    if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
+      await refuse(ctx, codes[0] ?? 'permission', 'tenant', 'This action belongs to a customer tenant.');
+    }
+  };
+
   /** Only the data-correction executor, a service identity, marks a correction executed (Module 40, SUB-ADM.07). */
   const requireExecutor = (ctx: RequestContext): void => {
     if (ctx.principal.kind !== 'SERVICE' || ctx.principal.id !== 'SYSTEM:data-correction-executor') {
@@ -436,7 +446,7 @@ function buildRouter(
   on('tenant').get(
     '/data-corrections',
     handle(async (ctx, _req, res) => {
-      await requireTenant(ctx, 'data_correction.request');
+      await requireTenantAny(ctx, ['data_correction.request', 'data_correction.approve', 'config.manage']);
       res.json(await service.listDataCorrections(ctx));
     }),
   );

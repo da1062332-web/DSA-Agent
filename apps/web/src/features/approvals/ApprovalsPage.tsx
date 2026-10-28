@@ -29,7 +29,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { DataCorrectionRequest, SupportAccessGrant } from '@dsa/contracts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ConnectorName, LenderName, UserName } from '../../shell/display';
@@ -62,13 +62,29 @@ export function ApprovalsPage() {
   const canSupport = hasPermission(me.data, 'config.manage');
   const canRequest = hasPermission(me.data, 'data_correction.request');
   const canApprove = hasPermission(me.data, 'data_correction.approve');
-  const showCorrections = canRequest || canApprove;
+  const showCorrections = canRequest || canApprove || canSupport;
   const canPlans = hasPermission(me.data, 'commission.plan.approve');
   const canPayouts = hasPermission(me.data, 'payout.approve');
   const showFinance = canPlans || canPayouts;
-  const [tab, setTab] = useState<'support' | 'corrections' | 'finance'>(
-    canSupport ? 'support' : showCorrections ? 'corrections' : 'finance',
-  );
+
+  const allowedTabs = [
+    canSupport && 'support',
+    showCorrections && 'corrections',
+    showFinance && 'finance',
+  ].filter(Boolean) as ('support' | 'corrections' | 'finance')[];
+
+  const defaultTab = canSupport ? 'support' : showCorrections ? 'corrections' : 'finance';
+  const [tab, setTab] = useState<'support' | 'corrections' | 'finance'>(defaultTab);
+
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) {
+      setTab(allowedTabs[0]!);
+    }
+  }, [allowedTabs, tab]);
+
+  if (me.isPending) {
+    return <Loading />;
+  }
 
   return (
     <>
@@ -90,9 +106,14 @@ export function ApprovalsPage() {
           {showFinance && <Tab value="finance" label="Finance" data-testid="approvals.tab.finance" />}
         </Tabs>
       )}
-      {canSupport && tab === 'support' && <SupportAccessTab />}
+      {canSupport && tab === 'support' && <SupportAccessTab canSupport={canSupport} />}
       {showCorrections && tab === 'corrections' && (
-        <CorrectionsTab meId={me.data?.id} canRequest={canRequest} canApprove={canApprove} />
+        <CorrectionsTab
+          meId={me.data?.id}
+          canRequest={canRequest}
+          canApprove={canApprove || canSupport}
+          canList={showCorrections}
+        />
       )}
       {showFinance && tab === 'finance' && (
         <FinanceApprovalsTab meId={me.data?.id} canPlans={canPlans} canPayouts={canPayouts} />
@@ -240,8 +261,8 @@ function FinanceApprovalsTab({
   );
 }
 
-function SupportAccessTab() {
-  const list = useList<SupportAccessGrant>(GRANTS, {}, 100);
+function SupportAccessTab({ canSupport = true }: { canSupport?: boolean }) {
+  const list = useList<SupportAccessGrant>(GRANTS, {}, 100, canSupport);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   return (
     <>
@@ -391,12 +412,14 @@ function CorrectionsTab({
   meId,
   canRequest,
   canApprove,
+  canList = true,
 }: {
   meId: string | undefined;
   canRequest: boolean;
   canApprove: boolean;
+  canList?: boolean;
 }) {
-  const list = useList<DataCorrectionRequest>(CORRECTIONS, {}, 100);
+  const list = useList<DataCorrectionRequest>(CORRECTIONS, {}, 100, canList);
   const [creating, setCreating] = useState(false);
   const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
   return (

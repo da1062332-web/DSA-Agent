@@ -35,6 +35,16 @@ export const UploadLinkRecordSchema = z.object({
   tenantId: z.string(),
   applicationId: z.string(),
   items: z.array(z.string()),
+  itemDetails: z
+    .array(
+      z.object({
+        id: z.string(),
+        documentTypeCode: z.string(),
+        ordinal: z.number().int(),
+        mandatory: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   recipientContactId: z.string(),
   expiresAt: z.string(),
   otpRequired: z.boolean(),

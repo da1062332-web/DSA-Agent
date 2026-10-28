@@ -38,7 +38,6 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/approvals',
         anyOf: [
           'config.manage',
-          'data_correction.request',
           'data_correction.approve',
           'commission.plan.approve',
           'payout.approve',

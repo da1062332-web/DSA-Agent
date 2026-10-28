@@ -50,6 +50,13 @@ vi.mock('../users/api', () => ({
   fetchBranches: vi.fn().mockResolvedValue([]),
   fetchUsers: vi.fn().mockResolvedValue({ data: [], meta: { limit: 100, nextCursor: null } }),
 }));
+vi.mock('../platform-admin/api', () => ({
+  fetchFeatureFlags: vi.fn().mockResolvedValue([]),
+  fetchJobsAndQueues: vi.fn().mockResolvedValue({ jobs: [], queues: [] }),
+  fetchPlatformTenants: vi.fn().mockResolvedValue([]),
+  fetchSupportAccessRequests: vi.fn().mockResolvedValue([]),
+  fetchSystemHealth: vi.fn().mockResolvedValue({ status: 'HEALTHY', uptimeSeconds: 3600, checks: {} }),
+}));
 
 const mockUseMe = vi.mocked(useMeModule.useMe);
 
@@ -360,5 +367,31 @@ describe('RoleDashboardRouter & Persona Dashboards', () => {
     // Default to highest priority role: Sales Executive
     expect(html).toContain('data-testid="sales-exec-dashboard"');
     expect(html).toContain('data-testid="role-switcher-select"');
+  });
+
+  it('renders PlatformSuperAdminDashboard for ROLE-PLATFORM-SUPER-ADMIN', () => {
+    mockUseMe.mockReturnValue({
+      data: {
+        id: 'usr_superadmin',
+        tenantId: 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG',
+        email: 'superadmin@qloax.com',
+        displayName: 'Platform Super Admin',
+        primaryBranchId: 'br_01',
+        queueIds: [],
+        mfaVerifiedAt: null,
+        roles: ['ROLE-PLATFORM-SUPER-ADMIN'],
+        grants: [
+          { code: 'tenant.manage', scope: 'PLATFORM', branchIds: [] },
+          { code: 'flag.manage', scope: 'PLATFORM', branchIds: [] },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const html = renderRouter();
+    expect(html).toContain('data-testid="platform-superadmin-dashboard"');
+    expect(html).toContain('Platform Super Admin Command Center');
+    expect(html).toContain('Customer Tenants Directory');
   });
 });

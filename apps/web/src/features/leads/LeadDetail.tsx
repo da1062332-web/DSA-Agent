@@ -33,8 +33,10 @@ import {
 import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { UserPicker } from '../admin/components';
+import type { UserSummary } from '../admin/api';
 import {
   fetchLeadById,
+  fetchLeadAssignments,
   transitionLead,
   assignLead,
   convertLead,
@@ -78,6 +80,31 @@ export function LeadDetail() {
   const [assignReason, setAssignReason] = useState('MANUAL');
   const [transferOpenTasks, setTransferOpenTasks] = useState(true);
 
+  const isLeadEligible = (u: UserSummary) => {
+    const isTenantWide = u.assignedRoles?.some((r: string) => {
+      const lr = r.toLowerCase();
+      return lr.includes('owner') || lr.includes('tenant administrator') || lr.includes('tenant admin');
+    });
+    if (lead?.branchId && u.primaryBranchId && u.primaryBranchId !== lead.branchId && !isTenantWide) {
+      return false;
+    }
+    if (!u.assignedRoles || u.assignedRoles.length === 0) return true;
+    return u.assignedRoles.some((r: string) => {
+      const lr = r.toLowerCase();
+      return (
+        lr.includes('sales') ||
+        lr.includes('relationship') ||
+        lr.includes('rm') ||
+        lr.includes('team manager') ||
+        lr.includes('team mgr') ||
+        lr.includes('branch manager') ||
+        lr.includes('branch mgr') ||
+        lr.includes('owner') ||
+        lr.includes('admin')
+      );
+    });
+  };
+
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restoreReason, setRestoreReason] = useState('');
@@ -93,6 +120,12 @@ export function LeadDetail() {
       if (status && [400, 401, 403, 404, 422].includes(status)) return false;
       return failureCount < 2;
     },
+  });
+
+  const assignmentsQuery = useQuery({
+    queryKey: ['lead-assignments', id],
+    queryFn: () => (id ? fetchLeadAssignments(id) : Promise.resolve([])),
+    enabled: !!id,
   });
 
   const lead = data?.lead;
@@ -134,6 +167,7 @@ export function LeadDetail() {
       setErrorMessage(null);
       setAssignOpen(false);
       queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['lead-assignments', id] });
     },
     onError: (err) => {
       if (err instanceof ApiError) {
@@ -228,6 +262,7 @@ export function LeadDetail() {
   const applicationId = conversionResult?.applicationId ?? lead.applicationId ?? null;
   // The state decides which actions apply; the user's permissions decide which of those are offered (audit F-12).
   const actions = leadActions(lead.state, (code) => hasPermission(me.data, code));
+  const latestAssignment = assignmentsQuery.data && assignmentsQuery.data.length > 0 ? assignmentsQuery.data[0] : null;
 
   return (
     <Container maxWidth={false} disableGutters>
@@ -384,7 +419,7 @@ export function LeadDetail() {
                   onClick={() => setAssignOpen(true)}
                   data-testid="lead.action.assign"
                 >
-                  Assign
+                  {lead.ownerUserId ? 'Reassign' : 'Assign'}
                 </AppButton>
               </Can>
             )}
@@ -447,6 +482,83 @@ export function LeadDetail() {
           {errorMessage}
         </Alert>
       )}
+
+      {/* Lead Ownership & Assignment Banner */}
+      <Card
+        variant="outlined"
+        sx={{
+          mb: 3,
+          p: 2,
+          bgcolor: 'background.paper',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+        }}
+        data-testid="lead.assignment-banner"
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={3.5}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ letterSpacing: '0.04em', textTransform: 'uppercase' }} display="block">
+              Assigned To
+            </Typography>
+            <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                size="small"
+                label={lead.ownerUserId ? 'Assigned' : 'Unassigned'}
+                color={lead.ownerUserId ? 'success' : 'default'}
+                variant={lead.ownerUserId ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 600, height: 22 }}
+              />
+              <Typography variant="body1" fontWeight={700}>
+                <UserName id={lead.ownerUserId} fallback="Unassigned" />
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ letterSpacing: '0.04em', textTransform: 'uppercase' }} display="block">
+              Assigned By
+            </Typography>
+            <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
+              {latestAssignment ? (
+                <UserName id={latestAssignment.actor} fallback="System" />
+              ) : (
+                '—'
+              )}
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3.5}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ letterSpacing: '0.04em', textTransform: 'uppercase' }} display="block">
+              Assigned Time & Reason
+            </Typography>
+            <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="text.primary">
+                {latestAssignment ? new Date(latestAssignment.assignedAt).toLocaleString() : '—'}
+              </Typography>
+              {latestAssignment?.reasonCode && (
+                <Chip size="small" label={latestAssignment.reasonCode} sx={{ height: 20, fontSize: '0.7rem' }} />
+              )}
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+            {actions.assign && (
+              <Can permission="lead.assign">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setAssignOpen(true)}
+                  disabled={isTransitionPending}
+                  data-testid="lead.action.assign-banner"
+                >
+                  {lead.ownerUserId ? 'Reassign' : 'Assign'}
+                </Button>
+              </Can>
+            )}
+          </Grid>
+        </Grid>
+      </Card>
 
       {/* Conversion Result Box */}
       {conversionResult && (
@@ -686,18 +798,48 @@ export function LeadDetail() {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom fontWeight="semibold">
-                Ownership & Metadata
+                Ownership & Assignment
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Stack spacing={1.5}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Owner User
+                    Current Assignee
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
-                    <UserName id={lead.ownerUserId} fallback="Unassigned" typographyProps={{ variant: 'body1' }} />
+                    <UserName id={lead.ownerUserId} fallback="Unassigned" typographyProps={{ variant: 'body1', fontWeight: 600 }} />
                   </Box>
                 </Box>
+                {latestAssignment && (
+                  <>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Assigned By (Actor)
+                      </Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        <UserName id={latestAssignment.actor} fallback="System" typographyProps={{ variant: 'body1' }} />
+                      </Box>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Last Assigned At
+                      </Typography>
+                      <Typography variant="body1">
+                        {new Date(latestAssignment.assignedAt).toLocaleString()}
+                      </Typography>
+                    </Box>
+                    {latestAssignment.reasonCode && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Assignment Reason
+                        </Typography>
+                        <Typography variant="body1">
+                          {latestAssignment.reasonCode}
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
+                )}
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Owner Queue ID
@@ -720,6 +862,55 @@ export function LeadDetail() {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Assignment History */}
+        {assignmentsQuery.data && assignmentsQuery.data.length > 0 && (
+          <Grid item xs={12}>
+            <Card data-testid="lead.assignment-history">
+              <CardContent>
+                <Typography variant="h6" gutterBottom fontWeight="semibold">
+                  Assignment History
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Record of who assigned the lead, previous owners, and timestamps.
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Stack spacing={2} divider={<Divider flexItem />}>
+                  {assignmentsQuery.data.map((asg) => (
+                    <Box
+                      key={asg.id}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: { sm: 'center' },
+                        gap: 1,
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="body1" fontWeight="medium">
+                          Assigned To: <UserName id={asg.toUserId} fallback={asg.toQueueId ? `Queue (${asg.toQueueId})` : 'Unassigned'} />
+                          {asg.fromUserId && (
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {' '}(reassigned from <UserName id={asg.fromUserId} fallback="Unassigned" />)
+                            </Typography>
+                          )}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Assigned by: <strong><UserName id={asg.actor} fallback="System" /></strong>
+                          {asg.reasonCode ? ` · Reason: ${asg.reasonCode}` : ''}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(asg.assignedAt).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
 
         {/* Activity and follow-up tasks (QA Modules 06, 07) */}
         <Grid item xs={12}>
@@ -992,20 +1183,27 @@ export function LeadDetail() {
 
       {/* Assign Dialog (CMP-LEAD.05.2, API-LEAD-006) */}
       <Dialog open={assignOpen} onClose={() => setAssignOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Lead</DialogTitle>
+        <DialogTitle>{lead.ownerUserId ? 'Reassign Lead' : 'Assign Lead'}</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Choose the new owner. The API refuses an owner who cannot hold leads in this branch
-            (INVALID_ASSIGNEE).
+            {lead.ownerUserId ? (
+              <>
+                Current owner: <UserName id={lead.ownerUserId} />. Choose a new owner for this lead.
+              </>
+            ) : (
+              'Choose the new owner. The API refuses an owner who cannot hold leads in this branch (INVALID_ASSIGNEE).'
+            )}
           </DialogContentText>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Box data-testid="assign.userId">
               <UserPicker
                 multiple={false}
-                label="New owner"
+                label={lead.ownerUserId ? 'Reassign to' : 'New owner'}
                 value={assignUserId}
                 onChange={setAssignUserId}
                 exclude={lead.ownerUserId ? [lead.ownerUserId] : []}
+                showRoles={true}
+                filter={isLeadEligible}
               />
             </Box>
             <FormControl fullWidth>
@@ -1046,7 +1244,7 @@ export function LeadDetail() {
             disabled={assignMutation.isPending || !assignUserId}
             data-testid="assign.submit"
           >
-            Assign Lead
+            {lead.ownerUserId ? 'Reassign Lead' : 'Assign Lead'}
           </Button>
         </DialogActions>
       </Dialog>

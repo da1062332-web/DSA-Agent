@@ -362,7 +362,7 @@ export class DocumentSharingService {
     };
 
     const requestedItems = await this.deps.txRunner.withTenantTx(tenantCtx, async (tx) => {
-      const itemsRes = await sql<{
+      let itemsRes = await sql<{
         id: string;
         document_type_code: string;
         ordinal: number;
@@ -373,7 +373,26 @@ export class DocumentSharingService {
         WHERE tenant_id = ${link.tenant_id}
           AND application_id = ${link.application_id}
           AND id = ANY(${link.items}::text[])
+        ORDER BY document_type_code, ordinal
       `.execute(tx);
+
+      if (itemsRes.rows.length === 0 || itemsRes.rows.length < (link.items?.length || 0)) {
+        const appItems = await sql<{
+          id: string;
+          document_type_code: string;
+          ordinal: number;
+          mandatory: boolean;
+        }>`
+          SELECT id, document_type_code, ordinal, mandatory
+          FROM app.checklist_item
+          WHERE tenant_id = ${link.tenant_id}
+            AND application_id = ${link.application_id}
+          ORDER BY document_type_code, ordinal
+        `.execute(tx);
+        if (appItems.rows.length > 0) {
+          itemsRes = appItems;
+        }
+      }
 
       if (itemsRes.rows.length > 0) {
         return itemsRes.rows.map((r) => ({
@@ -395,14 +414,10 @@ export class DocumentSharingService {
       }
 
       return [
-        { checklistItemId: 'chk_pan_card', documentTypeCode: 'PAN_CARD', ordinal: 1, mandatory: true },
-        {
-          checklistItemId: 'chk_bank_statement',
-          documentTypeCode: 'BANK_STATEMENT',
-          ordinal: 2,
-          mandatory: true,
-        },
-        { checklistItemId: 'chk_salary_slip', documentTypeCode: 'SALARY_SLIP', ordinal: 3, mandatory: false },
+        { checklistItemId: 'chk_aadhaar_card', documentTypeCode: 'AADHAAR_MASKED', ordinal: 1, mandatory: true },
+        { checklistItemId: 'chk_pan_card', documentTypeCode: 'PAN_CARD', ordinal: 2, mandatory: true },
+        { checklistItemId: 'chk_salary_slip', documentTypeCode: 'SALARY_SLIP', ordinal: 3, mandatory: true },
+        { checklistItemId: 'chk_bank_statement', documentTypeCode: 'BANK_STATEMENT', ordinal: 4, mandatory: true },
       ];
     });
 
@@ -612,9 +627,14 @@ export class DocumentSharingService {
       const isValidItem =
         link.items.length === 0 ||
         link.items.includes(checklistItemId) ||
-        ['chk_pan_card', 'chk_bank_statement', 'chk_salary_slip', 'chk_address_proof'].includes(
-          checklistItemId,
-        );
+        [
+          'chk_pan_card',
+          'chk_bank_statement',
+          'chk_salary_slip',
+          'chk_address_proof',
+          'chk_aadhaar_card',
+          'chk_aadhaar',
+        ].includes(checklistItemId);
 
       if (!isValidItem) {
         throw AppError.of(
@@ -909,7 +929,12 @@ export class DocumentSharingService {
     ctx: RequestContext,
     query: ListSharesQuery,
   ): Promise<{ data: ExternalShareRecord[]; meta: { nextCursor: string | null; limit: number } }> {
-    this.deps.authz.requirePermission(ctx, 'customer.read');
+    const hasPerm = ctx.principal.grants.some(
+      (g) => g.code === 'share.create' || g.code === 'customer.read',
+    );
+    if (!hasPerm) {
+      this.deps.authz.requirePermission(ctx, 'share.create');
+    }
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const limit = query.limit;
@@ -1017,24 +1042,86 @@ export class DocumentSharingService {
       const lastRow = dataRows[dataRows.length - 1];
       const nextCursor = hasMore && lastRow ? lastRow.id : null;
 
-      const data: UploadLinkRecord[] = dataRows.map((r) => ({
-        id: r.id as any,
-        tenantId: r.tenant_id,
-        applicationId: r.application_id,
-        items: r.items,
-        recipientContactId: r.recipient_contact_id ?? '',
-        expiresAt: new Date(r.expires_at).toISOString(),
-        otpRequired: r.otp_required,
-        maxUses: r.max_uses,
-        uses: r.uses,
-        revokedAt: r.revoked_at ? new Date(r.revoked_at).toISOString() : null,
-        lockedAt: r.locked_at ? new Date(r.locked_at).toISOString() : null,
-        lockVersion: r.lock_version,
-        createdAt: new Date(r.created_at).toISOString(),
-        createdBy: r.created_by,
-        updatedAt: new Date(r.updated_at).toISOString(),
-        updatedBy: r.updated_by,
-      }));
+      const allItemIds = Array.from(new Set(dataRows.flatMap((r) => r.items || [])));
+      const itemsMap = new Map<string, { id: string; documentTypeCode: string; ordinal: number; mandatory: boolean }>();
+      if (allItemIds.length > 0) {
+        const itemRows = await sql<{
+          id: string;
+          document_type_code: string;
+          ordinal: number;
+          mandatory: boolean;
+        }>`
+          SELECT id, document_type_code, ordinal, mandatory
+          FROM app.checklist_item
+          WHERE tenant_id = ${ctx.principal.tenantId}
+            AND id = ANY(${allItemIds}::text[])
+        `.execute(tx);
+        for (const item of itemRows.rows) {
+          itemsMap.set(item.id, {
+            id: item.id,
+            documentTypeCode: item.document_type_code,
+            ordinal: item.ordinal,
+            mandatory: item.mandatory,
+          });
+        }
+      }
+
+      const appIds = Array.from(new Set(dataRows.map((r) => r.application_id)));
+      const appItemsMap = new Map<string, { id: string; documentTypeCode: string; ordinal: number; mandatory: boolean }[]>();
+      if (appIds.length > 0) {
+        const appRows = await sql<{
+          id: string;
+          application_id: string;
+          document_type_code: string;
+          ordinal: number;
+          mandatory: boolean;
+        }>`
+          SELECT id, application_id, document_type_code, ordinal, mandatory
+          FROM app.checklist_item
+          WHERE tenant_id = ${ctx.principal.tenantId}
+            AND application_id = ANY(${appIds}::text[])
+          ORDER BY document_type_code, ordinal
+        `.execute(tx);
+        for (const row of appRows.rows) {
+          const list = appItemsMap.get(row.application_id) || [];
+          list.push({
+            id: row.id,
+            documentTypeCode: row.document_type_code,
+            ordinal: row.ordinal,
+            mandatory: row.mandatory,
+          });
+          appItemsMap.set(row.application_id, list);
+        }
+      }
+
+      const data: UploadLinkRecord[] = dataRows.map((r) => {
+        let details = (r.items || [])
+          .map((id) => itemsMap.get(id))
+          .filter(Boolean) as { id: string; documentTypeCode: string; ordinal: number; mandatory: boolean }[];
+        if (details.length === 0 && appItemsMap.has(r.application_id)) {
+          details = appItemsMap.get(r.application_id) || [];
+        }
+
+        return {
+          id: r.id as any,
+          tenantId: r.tenant_id,
+          applicationId: r.application_id,
+          items: r.items,
+          itemDetails: details,
+          recipientContactId: r.recipient_contact_id ?? '',
+          expiresAt: new Date(r.expires_at).toISOString(),
+          otpRequired: r.otp_required,
+          maxUses: r.max_uses,
+          uses: r.uses,
+          revokedAt: r.revoked_at ? new Date(r.revoked_at).toISOString() : null,
+          lockedAt: r.locked_at ? new Date(r.locked_at).toISOString() : null,
+          lockVersion: r.lock_version,
+          createdAt: new Date(r.created_at).toISOString(),
+          createdBy: r.created_by,
+          updatedAt: new Date(r.updated_at).toISOString(),
+          updatedBy: r.updated_by,
+        };
+      });
 
       return { data, meta: { nextCursor, limit } };
     });

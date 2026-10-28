@@ -251,10 +251,11 @@ export function createRouter(deps: ApiDeps): Router {
   /**
    * API-LCS-007: Record Query Response
    * POST /lender-queries/:id/responses
+   * Also accepts POST /lender-cases/:id/responses and /lender-cases/:id/queries/responses
    */
-  router.post('/lender-queries/:id/responses', async (req: Request, res: Response) => {
+  const handleQueryResponse = async (req: Request, res: Response) => {
     const ctx = getRequestContext(req);
-    const queryId = getParamId(req);
+    const id = getParamId(req);
 
     const parseResult = RecordQueryResponseInputSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -262,12 +263,16 @@ export function createRouter(deps: ApiDeps): Router {
     }
 
     const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      return service.recordQueryResponse(tx, ctx, queryId, parseResult.data);
+      return service.recordQueryResponse(tx, ctx, id, parseResult.data);
     });
 
     res.setHeader('ETag', `"${result.case.lockVersion}"`);
     res.status(200).json(result);
-  });
+  };
+
+  router.post('/lender-queries/:id/responses', handleQueryResponse);
+  router.post('/lender-cases/:id/responses', handleQueryResponse);
+  router.post('/lender-cases/:id/queries/responses', handleQueryResponse);
 
   return router;
 }

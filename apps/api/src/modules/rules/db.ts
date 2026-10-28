@@ -326,8 +326,10 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
         hitPolicy: 'COLLECT',
         defaultOutput: {
           documents: [
-            { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
             { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+            { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
+            { typeCode: 'SALARY_SLIP', mandatory: true, count: 3, periodMonths: 3 },
+            { typeCode: 'BANK_STATEMENT', mandatory: true, count: 1, periodMonths: 3 },
           ],
         },
         rules: [
@@ -339,10 +341,10 @@ export function getApprovedDefaultRuleSet(decisionKey: string): RuleSetDefinitio
             conditions: [{ field: 'party.applicant_type', operator: '==', value: 'SALARIED' }],
             output: {
               documents: [
-                { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
                 { typeCode: 'AADHAAR_MASKED', mandatory: true, count: 1, periodMonths: 0 },
+                { typeCode: 'PAN_CARD', mandatory: true, count: 1, periodMonths: 0 },
                 { typeCode: 'SALARY_SLIP', mandatory: true, count: 3, periodMonths: 3 },
-                { typeCode: 'BANK_STATEMENT', mandatory: true, count: 1, periodMonths: 6 },
+                { typeCode: 'BANK_STATEMENT', mandatory: true, count: 1, periodMonths: 3 },
               ],
             },
           },

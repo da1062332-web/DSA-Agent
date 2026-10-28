@@ -180,6 +180,7 @@ export const ROLES: RoleSeed[] = [
     code: 'ROLE-DOC-VERIFIER',
     name: 'Document verifier',
     permissions: [
+      'customer.read',
       'application.read',
       'document.review',
       'document.view',

@@ -189,7 +189,15 @@ export function AppLayout() {
         <CircularProgress sx={{ color: '#F89344' }} />
       </Centered>
     );
-  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!session) {
+    const isPlatformOnly =
+      location.pathname === '/platform-admin' ||
+      location.pathname.startsWith('/platform-admin/') ||
+      location.pathname === '/platform-console' ||
+      location.pathname.startsWith('/platform-console/');
+    const safeFrom = isPlatformOnly ? '/' : location.pathname;
+    return <Navigate to="/login" replace state={{ from: safeFrom }} />;
+  }
   if (!aal || me.isPending)
     return (
       <Centered>

@@ -131,9 +131,21 @@ export async function generateChecklist(
     );
   }
   const applicationId = String(application.id);
-  const parties = await sql<Row>`
+  let parties = await sql<Row>`
     select id, role, party_type from application_party
      where application_id = ${applicationId} and removed_at is null order by created_at, id`.execute(tx);
+  if (parties.rows.length === 0 && application.customer_id) {
+    const cust = await sql<Row>`select party_type from customer where id = ${String(application.customer_id)}`.execute(tx);
+    const partyType = (cust.rows[0]?.party_type as string) ?? 'INDIVIDUAL';
+    const newPartyId = deps.ids.next('pty');
+    await sql`
+      insert into application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
+      values (${newPartyId}, ${ctx.principal.tenantId}, ${applicationId}, ${String(application.customer_id)}, 'PRIMARY', ${partyType}, ${ctx.principal.id})
+      on conflict do nothing`.execute(tx);
+    parties = await sql<Row>`
+      select id, role, party_type from application_party
+       where application_id = ${applicationId} and removed_at is null order by created_at, id`.execute(tx);
+  }
   let written = 0;
   const decisionIds: string[] = [];
   for (const party of parties.rows) {

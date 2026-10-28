@@ -10,6 +10,7 @@ import { requireCtx } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
+import { generateChecklist } from './application-port';
 import { CHECKLIST_DONE_STATUSES, type ChecklistItem, type ChecklistResponse } from './checklist-schemas';
 
 export function toChecklistItem(r: Row): ChecklistItem {
@@ -61,7 +62,41 @@ export function registerChecklistRoutes(router: Router, deps: ApiDeps): void {
     const ctx = requireCtx(req);
     deps.authz.requirePermission(ctx, 'application.read');
     const items = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      await loadApplication(tx, ctx, 'application.read', req.params.id);
+      const app = await loadApplication(tx, ctx, 'application.read', req.params.id);
+      let rows = await sql<Row>`
+        select * from checklist_item
+         where application_id = ${req.params.id}
+         order by party_id, document_type_code, ordinal`.execute(tx);
+
+      // Auto-generate if application is in active lifecycle state and checklist items are missing
+      if (rows.rows.length === 0 && app.status !== 'DRAFT' && app.status !== 'CANCELLED' && app.status !== 'WITHDRAWN') {
+        if (deps.decisionPort) {
+          try {
+            await generateChecklist(tx, ctx, deps as any, app);
+            rows = await sql<Row>`
+              select * from checklist_item
+               where application_id = ${req.params.id}
+               order by party_id, document_type_code, ordinal`.execute(tx);
+          } catch {
+            // Keep empty if decision engine fails closed
+          }
+        }
+      }
+
+      return rows.rows.map(toChecklistItem);
+    });
+    const body: ChecklistResponse = { data: items, summary: summarise(items) };
+    res.json(body);
+  });
+
+  router.post('/applications/:id/checklist/generate', async (req, res) => {
+    const ctx = requireCtx(req);
+    deps.authz.requirePermission(ctx, 'application.read');
+    const items = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const app = await loadApplication(tx, ctx, 'application.read', req.params.id);
+      if (deps.decisionPort) {
+        await generateChecklist(tx, ctx, deps as any, app);
+      }
       const rows = await sql<Row>`
         select * from checklist_item
          where application_id = ${req.params.id}
