@@ -2475,7 +2475,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-27
+          default: 2026-10-28
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -4057,6 +4057,15 @@ paths:
           required: false
           name: q
           in: query
+        - schema:
+            type: string
+            enum:
+              - include
+              - exclude
+              - only
+          required: false
+          name: deleted
+          in: query
       responses:
         "200":
           description: OK
@@ -4080,6 +4089,8 @@ paths:
                           type: string
                         availability:
                           type: string
+                        deleted:
+                          type: boolean
                       required:
                         - id
                         - displayName
@@ -4161,6 +4172,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -4247,6 +4260,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -4348,6 +4363,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -4437,6 +4454,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -4528,6 +4547,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -4633,6 +4654,8 @@ paths:
                     type: string
                   updatedAt:
                     type: string
+                  deleted:
+                    type: boolean
                 required:
                   - id
                   - tenantId
@@ -12439,7 +12462,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-27T08:48:03.388Z
+                  default: 2026-10-28T03:34:52.350Z
               required:
                 - paymentRef
       responses:
@@ -47976,7 +47999,7 @@ paths:
                     - "null"
                 eventDate:
                   type: string
-                  default: 2026-10-27
+                  default: 2026-10-28
                 basisAmount:
                   type: string
                   pattern: ^\d+(\.\d{1,2})?$

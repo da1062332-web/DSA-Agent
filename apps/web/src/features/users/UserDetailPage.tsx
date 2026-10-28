@@ -30,14 +30,10 @@ import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-r
 import { assignUserRole, fetchBranches, fetchRoles, fetchUserById, removeUserRole, updateUser } from './api';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { InvitationPanel } from './InvitationPanel';
+import { displayStatus, userActions } from './user-actions';
 import { Can } from '../../shell/Can';
 import { PageHeader } from '../../ui';
 import type { Branch, Role, UserSummary } from './types';
-
-/** Whether the "Activate Account" button is offered: never for an active user, and never for an invited one (D4). */
-export function canShowActivate(status: string): boolean {
-  return status !== 'ACTIVE' && status !== 'INVITED';
-}
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -220,6 +216,9 @@ export function UserDetailPage() {
     );
   }
 
+  // Which actions this account allows (user-actions.ts, the same rules the API enforces). A deleted account allows none.
+  const actions = userActions(user);
+
   return (
     <Container maxWidth={false} disableGutters>
       {/* Back button */}
@@ -257,7 +256,7 @@ export function UserDetailPage() {
         badge={
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
-              label={user.status}
+              label={displayStatus(user)}
               color={
                 user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
               }
@@ -268,6 +267,14 @@ export function UserDetailPage() {
           </Stack>
         }
       />
+
+      {user.deleted && (
+        <Alert severity="info" sx={{ mb: 3 }} data-testid="users.detail.deleted">
+          This account was deleted. Its name, e-mail address and mobile number were erased and it can never
+          sign in again. It is kept only so that the leads, tasks and history it worked on stay readable, and
+          it cannot be changed.
+        </Alert>
+      )}
 
       {/* Feedback Alerts */}
       {error && (
@@ -315,6 +322,7 @@ export function UserDetailPage() {
                     label="Display Name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    disabled={!actions.edit}
                     data-testid="users.detail.displayName"
                   />
                 </Grid>
@@ -333,6 +341,7 @@ export function UserDetailPage() {
                     label="Mobile Number (E.164 format)"
                     value={mobileE164}
                     onChange={(e) => setMobileE164(e.target.value)}
+                    disabled={!actions.edit}
                     helperText="e.g. +919876543210"
                     data-testid="users.detail.mobile"
                   />
@@ -344,6 +353,7 @@ export function UserDetailPage() {
                       value={primaryBranchId}
                       label="Primary Branch"
                       onChange={(e) => setPrimaryBranchId(e.target.value)}
+                      disabled={!actions.edit}
                     >
                       {branches.map((b) => (
                         <MenuItem key={b.id} value={b.id}>
@@ -360,6 +370,7 @@ export function UserDetailPage() {
                       value={availability}
                       label="Operational Availability"
                       onChange={(e) => setAvailability(e.target.value)}
+                      disabled={!actions.edit}
                     >
                       <MenuItem value="AVAILABLE">AVAILABLE</MenuItem>
                       <MenuItem value="BUSY">BUSY</MenuItem>
@@ -372,15 +383,17 @@ export function UserDetailPage() {
 
               <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
                 <Can action="user.manage">
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size="large"
-                    disabled={isUpdating}
-                    data-testid="users.detail.saveProfile"
-                  >
-                    {isUpdating ? <CircularProgress size={24} /> : 'Save Profile Changes'}
-                  </Button>
+                  {actions.edit && (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="large"
+                      disabled={isUpdating}
+                      data-testid="users.detail.saveProfile"
+                    >
+                      {isUpdating ? <CircularProgress size={24} /> : 'Save Profile Changes'}
+                    </Button>
+                  )}
                 </Can>
               </Box>
             </Box>
@@ -411,7 +424,7 @@ export function UserDetailPage() {
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                 Current Status:{' '}
                 <Chip
-                  label={user.status}
+                  label={displayStatus(user)}
                   color={
                     user.status === 'ACTIVE' ? 'success' : user.status === 'SUSPENDED' ? 'warning' : 'default'
                   }
@@ -425,7 +438,10 @@ export function UserDetailPage() {
                   'Invitation pending. The user becomes active after setting a password and signing in.'}
                 {user.status === 'SUSPENDED' &&
                   'User is temporarily suspended. Inbound requests are rejected.'}
-                {user.status === 'DEACTIVATED' && 'User is permanently deactivated. Access is blocked.'}
+                {user.status === 'DEACTIVATED' &&
+                  !user.deleted &&
+                  'User is deactivated. Access is blocked until the account is activated again.'}
+                {user.deleted && 'This account was deleted. Nothing about it can be changed.'}
               </Typography>
             </Paper>
 
@@ -440,7 +456,7 @@ export function UserDetailPage() {
             <Stack direction="row" spacing={2} flexWrap="wrap">
               <Can action="user.manage">
                 {/* An invited user becomes active only by signing in with their own password (D4); the API refuses it too. */}
-                {canShowActivate(user.status) && (
+                {actions.activate && (
                   <Button
                     variant="contained"
                     color="success"
@@ -453,7 +469,7 @@ export function UserDetailPage() {
                     Activate Account
                   </Button>
                 )}
-                {user.status !== 'SUSPENDED' && (
+                {actions.suspend && (
                   <Button
                     variant="contained"
                     color="warning"
@@ -467,7 +483,7 @@ export function UserDetailPage() {
                   </Button>
                 )}
                 {/* Delete replaces Deactivate: the details are erased for good (DeleteAccountDialog). */}
-                {!user.email.toLowerCase().endsWith('@erased.invalid') && (
+                {actions.delete && (
                   <Button
                     variant="outlined"
                     color="error"
@@ -496,16 +512,18 @@ export function UserDetailPage() {
                   Roles define what operations this staff member is authorized to perform.
                 </Typography>
               </Box>
-              <Can action="role.manage">
-                <Button
-                  variant="contained"
-                  onClick={() => setRoleDialogOpen(true)}
-                  disabled={isSelf}
-                  data-testid="users.detail.addRole"
-                >
-                  + Assign Role
-                </Button>
-              </Can>
+              {actions.edit && (
+                <Can action="role.manage">
+                  <Button
+                    variant="contained"
+                    onClick={() => setRoleDialogOpen(true)}
+                    disabled={isSelf}
+                    data-testid="users.detail.addRole"
+                  >
+                    + Assign Role
+                  </Button>
+                </Can>
+              )}
             </Box>
 
             {isSelf && (
@@ -548,7 +566,7 @@ export function UserDetailPage() {
                           size="small"
                           color="error"
                           onClick={() => handleRemoveRole(roleName)}
-                          disabled={isSelf}
+                          disabled={isSelf || !actions.edit}
                         >
                           Remove
                         </Button>

@@ -52,8 +52,28 @@ describe('Delete account', () => {
   it('TEST-ERASE-02 an active user is erased: no name, e-mail or mobile, deactivated, roles ended, audited without personal data', async () => {
     const target = env.A.userIds[1];
     await env.admin.query(`update app.app_user set mobile_e164 = '+919812345678' where id = $1`, [target]);
+    // The seed already makes the target a team member; make them the team's manager and a work-queue member too.
+    await env.admin.query(`update app.team set manager_user_id = $1 where id = $2`, [target, env.A.teamId]);
+    await env.admin.query(
+      `insert into app.work_queue_member (id, tenant_id, queue_id, user_id, can_pick, can_assign, created_by)
+       values ('wqm_iso_erase_a', $1, $2, $3, true, false, 'iso')`,
+      [env.A.tenantId, env.A.queueId, target],
+    );
     const res = await erase(target, { handoverToUserId: env.A.userIds[0], reason: 'Left the company' });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ deleted: true, teamsLeft: 1, queuesLeft: 1, teamsWithoutManager: 1 });
+    const open = async (table: string) =>
+      (
+        await one(
+          `select count(*)::int as n from app.${table} where user_id = $1 and effective_range @> now()`,
+          [target],
+        )
+      ).n;
+    expect(await open('team_membership')).toBe(0);
+    expect(await open('work_queue_member')).toBe(0);
+    expect(
+      (await one(`select manager_user_id from app.team where id = $1`, [env.A.teamId])).manager_user_id,
+    ).toBeNull();
     expect(
       await one(
         `select status, display_name, email::text as email, mobile_e164, idp_subject from app.app_user where id = $1`,
@@ -185,5 +205,71 @@ describe('Delete account', () => {
         workerId: 'w',
       }),
     ).toEqual([]);
+  });
+
+  it('TEST-ERASE-06 a deleted account cannot be changed by any route: profile, status, roles, suspension or deactivation', async () => {
+    const target = env.A.userIds[1]; // deleted in TEST-ERASE-02
+    const admin = env.appAs(env.A, ALL_ADMIN);
+    const deletedMessage = /has been deleted/;
+    const before = await one(`select display_name, status, lock_version from app.app_user where id = $1`, [
+      target,
+    ]);
+
+    for (const body of [{ displayName: 'Back again' }, { status: 'SUSPENDED' }, { status: 'ACTIVE' }]) {
+      const res = await request(admin).patch(`/v1/users/${target}`).send(body);
+      expect(res.status, JSON.stringify(body)).toBe(409);
+      expect(res.body.error.message).toMatch(deletedMessage);
+    }
+    const role = await request(admin)
+      .post(`/v1/users/${target}/roles`)
+      .send({ roleId: 'role_any', scopeType: 'TENANT' });
+    expect(role.status).toBe(409);
+    expect(role.body.error.message).toMatch(deletedMessage);
+    const version = `"${before.lock_version}"`;
+    const reactivate = await request(admin)
+      .post(`/v1/users/${target}/suspension`)
+      .set('If-Match', version)
+      .send({ action: 'REACTIVATE', reason: 'Try to bring it back' });
+    expect(reactivate.status).toBe(409);
+    expect(reactivate.body.error.message).toMatch(deletedMessage);
+    const deactivate = await request(admin)
+      .post(`/v1/users/${target}/deactivation`)
+      .set('Idempotency-Key', key())
+      .set('If-Match', version)
+      .send({ handoverToUserId: env.A.userIds[0], reason: 'Again' });
+    expect(deactivate.status).toBe(409);
+    expect(deactivate.body.error.message).toMatch(deletedMessage);
+
+    expect(
+      await one(`select display_name, status, lock_version from app.app_user where id = $1`, [target]),
+    ).toEqual(before);
+  });
+
+  it('TEST-ERASE-07 the staff list can leave deleted accounts out or show only them; names on old records still resolve', async () => {
+    const target = env.A.userIds[1]; // deleted
+    const admin = env.appAs(env.A, ALL_ADMIN);
+    const ids = (res: request.Response) => (res.body.data as { id: string }[]).map((u) => u.id);
+
+    const all = await request(admin).get('/v1/users');
+    expect(all.status).toBe(200);
+    expect(all.body.data.find((u: { id: string }) => u.id === target)).toMatchObject({
+      displayName: 'Deleted user',
+      deleted: true,
+    });
+    const directory = await request(admin).get('/v1/users?deleted=exclude');
+    expect(ids(directory)).not.toContain(target);
+    expect(ids(directory)).toContain(env.A.userIds[0]);
+    const onlyDeleted = await request(admin).get('/v1/users?deleted=only');
+    expect(ids(onlyDeleted)).toContain(target);
+    expect(onlyDeleted.body.data.every((u: { deleted: boolean }) => u.deleted)).toBe(true);
+    expect((await request(admin).get('/v1/users?deleted=maybe')).status).toBe(422);
+
+    // The single record and the picker list (people without user.manage) still name it, so old leads and tasks stay readable.
+    expect((await request(admin).get(`/v1/users/${target}`)).body).toMatchObject({
+      deleted: true,
+      displayName: 'Deleted user',
+    });
+    const picker = await request(env.appAs(env.A, [])).get('/v1/users');
+    expect(picker.body.data.find((u: { id: string }) => u.id === target)).toMatchObject({ deleted: true });
   });
 });

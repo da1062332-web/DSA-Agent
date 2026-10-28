@@ -26,6 +26,7 @@ import type { ApiDeps } from '../types';
 import { requireActiveBranch, type Row } from './db';
 import { globalJobQueue, type JobHandler } from './job-queue';
 import { assertAdministratorRemains, countActiveAdministrators } from './role-guards';
+import { ACTIVATION_REFUSED, DELETED_REFUSED } from './user-status';
 import {
   MAX_RESENDS,
   RESEND_COOLDOWN_MS,
@@ -57,6 +58,8 @@ const toUser = (r: Row) => ({
   lockVersion: Number(r.lock_version),
   createdAt: new Date(String(r.created_at)).toISOString(),
   updatedAt: new Date(String(r.updated_at)).toISOString(),
+  // A deleted account (POST /v1/users/:id/erasure): kept for history, never changed again.
+  deleted: isErased(String(r.idp_subject), String(r.email)),
 });
 
 async function readUser(tx: Tx, id: string) {
@@ -159,8 +162,18 @@ export function createUserTransferHandler(deps: ApiDeps): JobHandler {
   };
 }
 
-export const ACTIVATION_REFUSED =
-  'An invited user becomes active only by setting a password and signing in. Send a new invitation if they need one.';
+/** A deleted account is kept only for history: every change to it is refused with the same message. */
+function refuseDeleted(row: Row): void {
+  if (isErased(String(row.idp_subject), String(row.email)))
+    throw AppError.of('INVALID_STATE', DELETED_REFUSED);
+}
+
+/** For routes outside this file (router.ts): refuses when the user in the caller's tenant is a deleted account. */
+export async function assertNotDeleted(tx: Tx, userId: string): Promise<void> {
+  const row = (await sql<Row>`select idp_subject, email from app_user where id = ${userId}`.execute(tx))
+    .rows[0];
+  if (row) refuseDeleted(row);
+}
 
 /**
  * D4: an administrator cannot make an invited user ACTIVE. Activation happens only on the invitee's own password sign-in
@@ -447,6 +460,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
         { key, method: 'POST', path: `/v1/users/${req.params.id}/deactivation`, body: input },
         async () => {
           const row = await lockUser(tx, req.params.id, version);
+          refuseDeleted(row);
           if (row.status === 'DEACTIVATED')
             throw AppError.of('INVALID_STATE', 'The user is already deactivated.');
           if (input.handoverToUserId === row.id) {
@@ -516,9 +530,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
         async () => {
           const row = await lockUser(tx, req.params.id, version);
           const userId = String(row.id);
-          if (isErased(String(row.idp_subject), String(row.email))) {
-            throw AppError.of('INVALID_STATE', 'This account has already been deleted.');
-          }
+          refuseDeleted(row);
           let handedOver: Record<string, number> = {};
           if (input.handoverToUserId) {
             if (input.handoverToUserId === userId) {
@@ -554,6 +566,24 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
                    delivery_state = case when delivery_state in ('QUEUED', 'SENDING') then 'CANCELLED' else delivery_state end,
                    claimed_at = null, claimed_by = null, updated_by = ${ctx.principal.id}
              where user_id = ${userId} and status = 'PENDING'`.execute(tx);
+          // A deleted account belongs to no team or work queue and leads no team; the memberships end (and stay as history), and a team
+          // it led is left without a manager for an administrator to name one.
+          const teamsLeft = await sql`
+            update team_membership
+               set effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)')
+             where user_id = ${userId} and effective_range @> now()`.execute(tx);
+          const queuesLeft = await sql`
+            update work_queue_member
+               set effective_range = tstzrange(lower(effective_range), greatest(now(), lower(effective_range)), '[)')
+             where user_id = ${userId} and effective_range @> now()`.execute(tx);
+          const teamsUnmanaged = await sql`
+            update team set manager_user_id = null, updated_by = ${ctx.principal.id}
+             where manager_user_id = ${userId}`.execute(tx);
+          const memberships = {
+            teamsLeft: Number(teamsLeft.numAffectedRows ?? 0),
+            queuesLeft: Number(queuesLeft.numAffectedRows ?? 0),
+            teamsWithoutManager: Number(teamsUnmanaged.numAffectedRows ?? 0),
+          };
           // An invitee who was never bound has no sign-in account to delete, so the subject is retired here; otherwise the worker
           // deletes the account and then retires it.
           const subject = String(row.idp_subject);
@@ -574,12 +604,17 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
               erased: true,
               handoverToUserId: input.handoverToUserId ?? null,
               handedOver,
+              ...memberships,
             },
             reason: input.reason,
             permissionUsed: 'user.manage',
           });
-          await emit(deps, tx, ctx, 'user.erased', userId, { handedOver });
-          return { status: 200, body: { ...(await readUser(tx, userId)), handedOver }, resourceRef: userId };
+          await emit(deps, tx, ctx, 'user.erased', userId, { handedOver, ...memberships });
+          return {
+            status: 200,
+            body: { ...(await readUser(tx, userId)), handedOver, ...memberships },
+            resourceRef: userId,
+          };
         },
       ),
     );
@@ -595,6 +630,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
     refuseSelf(ctx, req.params.id, 'suspend or reactivate');
     const body = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const row = await lockUser(tx, req.params.id, version);
+      refuseDeleted(row);
       const [from, to] = input.action === 'SUSPEND' ? ['ACTIVE', 'SUSPENDED'] : ['SUSPENDED', 'ACTIVE'];
       if (row.status !== from) {
         throw AppError.of(
@@ -630,6 +666,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
     refuseSelf(ctx, req.params.id, 'change the roles of');
     const body = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const row = await lockUser(tx, req.params.id, version);
+      refuseDeleted(row);
       if (row.status === 'DEACTIVATED')
         throw AppError.of('INVALID_STATE', 'A deactivated user cannot hold roles.');
       const adminsBefore = await countActiveAdministrators(tx, ctx.principal.tenantId);
@@ -708,6 +745,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
         { key, method: 'POST', path: `/v1/users/${req.params.id}/transfers`, body: input },
         async () => {
           const row = await lockUser(tx, req.params.id, null);
+          refuseDeleted(row);
           if (row.status === 'DEACTIVATED')
             throw AppError.of('INVALID_STATE', 'A deactivated user cannot be transferred.');
           if (row.primary_branch_id === input.toBranchId) {

@@ -56,7 +56,7 @@ describe('Module 4: Users (User Management API)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeGreaterThan(0);
     for (const u of res.body.data) {
-      expect(Object.keys(u).sort()).toEqual(['availability', 'displayName', 'id', 'primaryBranchId', 'status']);
+      expect(Object.keys(u).sort()).toEqual(['availability', 'deleted', 'displayName', 'id', 'primaryBranchId', 'status']);
     }
   });
 

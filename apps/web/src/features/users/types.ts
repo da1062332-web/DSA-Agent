@@ -12,6 +12,8 @@ export interface UserSummary {
   lockVersion: number;
   createdAt: string;
   updatedAt: string;
+  /** A deleted account (Delete Account): kept only so that history stays readable, never changed again. */
+  deleted?: boolean;
 }
 
 /** A row of GET /v1/users for a user.manage holder: contact data is masked in lists (Contracts §12). */

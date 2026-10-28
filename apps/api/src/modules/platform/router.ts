@@ -37,7 +37,9 @@ import type { ApiDeps } from '../types';
 import { registerOrganisationRoutes } from './organisation';
 import { registerQueueRoutes } from './queues';
 import { registerTeamRoutes } from './teams';
-import { assertMayBecomeActive, registerUserLifecycleRoutes } from './user-lifecycle';
+import { ERASED_EMAIL_DOMAIN, isErased } from './invitations';
+import { assertMayBecomeActive, assertNotDeleted, registerUserLifecycleRoutes } from './user-lifecycle';
+import { DELETED_REFUSED, statusChangeRefusal } from './user-status';
 import { registerDeadLetterRoutes } from './dead-letters';
 import { registerOrgChartAndReviewRoutes } from './org-chart';
 import { registerConfigurationRoutes } from './configuration';
@@ -118,6 +120,8 @@ function formatUserRow(row: RawUserRow) {
     lockVersion: Number(row.lock_version ?? 0),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
+    // A deleted account (POST /v1/users/:id/erasure): kept for history, never changed again.
+    deleted: isErased('', row.email),
   };
 }
 
@@ -1363,6 +1367,14 @@ export function createRouter(deps: ApiDeps): Router {
       const branchFilter = str(req.query.branchId);
       const search = (str(req.query.search) ?? str(req.query.q))?.toLowerCase();
       const after = decodeCursor(str(req.query.cursor));
+      // Deleted accounts: "include" (the default, so names on old records still resolve), "exclude" (the staff directory) or "only".
+      const deletedFilter = str(req.query.deleted) ?? 'include';
+      if (!['include', 'exclude', 'only'].includes(deletedFilter)) {
+        throw AppError.of('VALIDATION_ERROR', 'deleted must be include, exclude or only.', [
+          { field: 'deleted', issue: 'INVALID' },
+        ]);
+      }
+      const deletedPattern = `%${ERASED_EMAIL_DOMAIN}`;
 
       const { users, nextCursor } = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         // LIKE wildcards in the search text are matched literally.
@@ -1382,6 +1394,8 @@ export function createRouter(deps: ApiDeps): Router {
           WHERE u.tenant_id = ${ctx.principal.tenantId}
             ${statusFilter ? sql`AND u.status = ${statusFilter}` : sql``}
             ${branchFilter ? sql`AND u.primary_branch_id = ${branchFilter}` : sql``}
+            ${deletedFilter === 'exclude' ? sql`AND u.email::text NOT LIKE ${deletedPattern}` : sql``}
+            ${deletedFilter === 'only' ? sql`AND u.email::text LIKE ${deletedPattern}` : sql``}
             ${
               like && admin
                 ? sql`AND (lower(u.display_name) LIKE ${like} OR lower(u.email::text) LIKE ${like} OR u.mobile_e164 LIKE ${like})`
@@ -1408,6 +1422,7 @@ export function createRouter(deps: ApiDeps): Router {
                 primaryBranchId: u.primaryBranchId,
                 status: u.status,
                 availability: u.availability,
+                deleted: u.deleted,
               })),
           nextCursor: result.rows.length > limit && last ? encodeCursor(last.createdAt, last.id) : null,
         };
@@ -1471,7 +1486,6 @@ export function createRouter(deps: ApiDeps): Router {
     }
   });
 
-  // POST /v1/users — Create a new staff user
   // PATCH /v1/users/:id — Update user profile, status, or availability
   router.patch('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -1496,14 +1510,29 @@ export function createRouter(deps: ApiDeps): Router {
 
       const updatedUser = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         // Verify user exists in tenant
-        const userCheck = await sql<RawUserRow>`
-          SELECT id, lock_version FROM app.app_user
+        const userCheck = await sql<{
+          id: string;
+          lock_version: number;
+          status: string;
+          email: string;
+          idp_subject: string;
+        }>`
+          SELECT id, lock_version, status, email, idp_subject FROM app.app_user
           WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}
         `.execute(tx);
 
         const targetRow = userCheck.rows[0];
         if (!targetRow) {
           throw AppError.of('NOT_FOUND', `User ${targetUserId} not found.`);
+        }
+        // A deleted account is kept only for history: no field of it changes again.
+        if (isErased(String(targetRow.idp_subject ?? ''), String(targetRow.email ?? ''))) {
+          throw AppError.of('INVALID_STATE', DELETED_REFUSED);
+        }
+        // Status changes follow the same rules as the buttons the app offers (user-status.ts).
+        if (parsed.status !== undefined) {
+          const refusal = statusChangeRefusal(String(targetRow.status), parsed.status);
+          if (refusal) throw AppError.of('INVALID_STATE', refusal);
         }
 
         const currentLockVersion = Number(targetRow.lock_version ?? 0);
@@ -1649,6 +1678,7 @@ export function createRouter(deps: ApiDeps): Router {
         if (userCheck.rows.length === 0) {
           throw AppError.of('NOT_FOUND', `User ${targetUserId} not found.`);
         }
+        await assertNotDeleted(tx, String(targetUserId));
 
         // Verify role exists in tenant
         const roleCheck = await sql<{ id: string }>`

@@ -8,6 +8,8 @@ export async function fetchUsers(params?: {
   search?: string;
   limit?: number;
   cursor?: string;
+  /** Deleted accounts: include (API default), exclude (the staff directory) or only. */
+  deleted?: 'include' | 'exclude' | 'only';
 }): Promise<{ data: UserListItem[]; meta: { limit: number; nextCursor: string | null } }> {
   return apiFetch<{ data: UserListItem[]; meta: { limit: number; nextCursor: string | null } }>('/v1/users', {
     query: { ...params },

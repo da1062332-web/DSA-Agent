@@ -778,7 +778,19 @@ export function createMockPlatformStore() {
       const uId = params[0] as string;
       const tid = params[1] as string;
       const found = users.find((u) => u.id === uId && u.tenant_id === tid);
-      return { rows: found ? [{ id: found.id, lock_version: found.lock_version }] : [] };
+      return {
+        rows: found
+          ? [
+              {
+                id: found.id,
+                lock_version: found.lock_version,
+                status: found.status,
+                email: found.email,
+                idp_subject: found.idp_subject,
+              },
+            ]
+          : [],
+      };
     }
 
     // 10. INSERT app_user
@@ -891,7 +903,6 @@ export function createMockPlatformStore() {
         ],
       };
     }
-
 
     return { rows: [] };
   };

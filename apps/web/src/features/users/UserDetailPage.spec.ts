@@ -1,13 +1,32 @@
-// The "Activate Account" button (D4): an invited user becomes active only by signing in with their own password, so the button is never
-// offered for one. Other statuses keep it.
+// The account actions the staff screens offer. They must match what the API accepts (user-status.ts): an invited user is never
+// activated or suspended by an administrator, and a deleted account offers nothing at all.
 import { describe, expect, it } from 'vitest';
-import { canShowActivate } from './UserDetailPage';
+import { displayStatus, userActions } from './user-actions';
 
-describe('the Activate Account button', () => {
-  it('TEST-USRD-01 is hidden for invited and active users, and shown for suspended and deactivated ones', () => {
-    expect(canShowActivate('INVITED')).toBe(false);
-    expect(canShowActivate('ACTIVE')).toBe(false);
-    expect(canShowActivate('SUSPENDED')).toBe(true);
-    expect(canShowActivate('DEACTIVATED')).toBe(true);
+describe('account actions', () => {
+  it('TEST-USRD-01 Activate is offered only for suspended and deactivated users, never for invited or active ones', () => {
+    expect(userActions({ status: 'INVITED' }).activate).toBe(false);
+    expect(userActions({ status: 'ACTIVE' }).activate).toBe(false);
+    expect(userActions({ status: 'SUSPENDED' }).activate).toBe(true);
+    expect(userActions({ status: 'DEACTIVATED' }).activate).toBe(true);
+  });
+
+  it('TEST-USRD-02 Suspend is offered only for active users', () => {
+    expect(userActions({ status: 'ACTIVE' }).suspend).toBe(true);
+    for (const status of ['INVITED', 'SUSPENDED', 'DEACTIVATED'])
+      expect(userActions({ status }).suspend).toBe(false);
+  });
+
+  it('TEST-USRD-03 a deleted account offers no action and no editing, and reads DELETED', () => {
+    const deleted = { status: 'DEACTIVATED', deleted: true };
+    expect(userActions(deleted)).toEqual({ activate: false, suspend: false, delete: false, edit: false });
+    expect(displayStatus(deleted)).toBe('DELETED');
+    expect(displayStatus({ status: 'ACTIVE' })).toBe('ACTIVE');
+  });
+
+  it('TEST-USRD-04 every account that is not deleted can be deleted and edited', () => {
+    for (const status of ['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']) {
+      expect(userActions({ status })).toMatchObject({ delete: true, edit: true });
+    }
   });
 });

@@ -28,6 +28,7 @@ import {
 } from '../../ui';
 import type { Branch, UserListItem } from './types';
 import { RowAction } from '../../shell/RowAction';
+import { displayStatus, userActions } from './user-actions';
 
 export function UserListPage() {
   const navigate = useNavigate();
@@ -53,10 +54,12 @@ export function UserListPage() {
     setError(null);
     try {
       const [usersResponse, branchesList] = await Promise.all([
-        fetchUsers({
-          status: statusFilter || undefined,
-          search: search.trim() || undefined,
-        }),
+        // Deleted accounts are left out of the directory unless the "Deleted" filter asks for them.
+        fetchUsers(
+          statusFilter === 'DELETED'
+            ? { deleted: 'only', search: search.trim() || undefined }
+            : { status: statusFilter || undefined, search: search.trim() || undefined, deleted: 'exclude' },
+        ),
         fetchBranches().catch(() => []),
       ]);
       setUsers(usersResponse.data);
@@ -164,9 +167,7 @@ export function UserListPage() {
     {
       id: 'branch',
       header: 'Primary Branch',
-      accessor: (user) => (
-        <Typography variant="body2">{getBranchName(user.primaryBranchId)}</Typography>
-      ),
+      accessor: (user) => <Typography variant="body2">{getBranchName(user.primaryBranchId)}</Typography>,
     },
     {
       id: 'roles',
@@ -188,9 +189,7 @@ export function UserListPage() {
     {
       id: 'status',
       header: 'Status',
-      accessor: (user) => (
-        <StatusBadge status={user.status} dataTestId={`users.status.${user.id}`} />
-      ),
+      accessor: (user) => <StatusBadge status={displayStatus(user)} dataTestId={`users.status.${user.id}`} />,
     },
     {
       id: 'availability',
@@ -219,8 +218,9 @@ export function UserListPage() {
           >
             View & Edit
           </Button>
-          <RowAction action="user.manage">
-            {user.status === 'ACTIVE' ? (
+          {/* Only the actions the API accepts (user-actions.ts): no Activate for invited users, nothing for deleted ones. */}
+          {userActions(user).suspend && (
+            <RowAction action="user.manage">
               <Button
                 size="small"
                 color="warning"
@@ -229,10 +229,14 @@ export function UserListPage() {
                   setTargetStatus('SUSPENDED');
                 }}
                 sx={{ textTransform: 'none' }}
+                data-testid={`users.suspend.${user.id}`}
               >
                 Suspend
               </Button>
-            ) : (
+            </RowAction>
+          )}
+          {userActions(user).activate && (
+            <RowAction action="user.manage">
               <Button
                 size="small"
                 color="success"
@@ -241,11 +245,12 @@ export function UserListPage() {
                   setTargetStatus('ACTIVE');
                 }}
                 sx={{ textTransform: 'none' }}
+                data-testid={`users.activate.${user.id}`}
               >
                 Activate
               </Button>
-            )}
-          </RowAction>
+            </RowAction>
+          )}
         </Stack>
       ),
     },
@@ -275,11 +280,7 @@ export function UserListPage() {
 
       {/* Metrics Row */}
       <StatCardGrid columns={{ xs: 1, sm: 3, md: 3 }} sx={{ mb: 3 }}>
-        <StatCard
-          title="Total Users"
-          value={users.length}
-          subtext="Total directory headcount"
-        />
+        <StatCard title="Total Users" value={users.length} subtext="Total directory headcount" />
         <StatCard
           title="Active Users"
           value={users.filter((u) => u.status === 'ACTIVE').length}
@@ -334,6 +335,7 @@ export function UserListPage() {
                 <MenuItem value="INVITED">Invited</MenuItem>
                 <MenuItem value="SUSPENDED">Suspended</MenuItem>
                 <MenuItem value="DEACTIVATED">Deactivated</MenuItem>
+                <MenuItem value="DELETED">Deleted</MenuItem>
               </Select>
             </FormControl>
             {branches.length > 0 && (

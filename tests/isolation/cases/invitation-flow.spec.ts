@@ -82,7 +82,9 @@ describe('staff invitation requests (API side)', () => {
       sentAt: null,
     });
     // The countdown the UI shows: one minute after the request, on the server's clock, with all resends left.
-    const requested = (await one(`select requested_at from app.staff_invitation where user_id = $1`, [userId])).requested_at;
+    const requested = (
+      await one(`select requested_at from app.staff_invitation where user_id = $1`, [userId])
+    ).requested_at;
     expect(Date.parse(mine.body.nextResendAt) - requested.getTime()).toBe(60_000);
     expect(Date.parse(mine.body.serverTime)).toBeGreaterThanOrEqual(requested.getTime());
     expect(mine.body.resendsLeft).toBe(5);
@@ -152,10 +154,13 @@ describe('staff invitation requests (API side)', () => {
     expect(direct.body.error.message).toMatch(/only by setting a password and signing in/);
     expect((await one(`select status from app.app_user where id = $1`, [userId])).status).toBe('INVITED');
 
-    // Suspend the invitee (allowed), then try both ways back to ACTIVE: refused, because no invitation was ever accepted.
-    expect((await request(admin).patch(`/v1/users/${userId}`).send({ status: 'SUSPENDED' })).status).toBe(
-      200,
-    );
+    // An invited user cannot be suspended either: only an active user can (user-status.ts).
+    const suspend = await request(admin).patch(`/v1/users/${userId}`).send({ status: 'SUSPENDED' });
+    expect(suspend.status).toBe(409);
+    expect(suspend.body.error.message).toMatch(/Only an active user can be suspended/);
+
+    // An invitee suspended before that rule existed: both ways back to ACTIVE are refused, because no invitation was ever accepted.
+    await env.admin.query(`update app.app_user set status = 'SUSPENDED' where id = $1`, [userId]);
     expect((await request(admin).patch(`/v1/users/${userId}`).send({ status: 'ACTIVE' })).status).toBe(409);
     const version = (await one(`select lock_version from app.app_user where id = $1`, [userId])).lock_version;
     const reactivate = await request(admin)

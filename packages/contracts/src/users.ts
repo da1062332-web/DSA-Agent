@@ -26,6 +26,8 @@ export const UserSummary = z.object({
   lockVersion: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** A deleted account (POST /v1/users/:id/erasure), kept only so that history stays readable. */
+  deleted: z.boolean().optional(),
 });
 export type UserSummary = z.infer<typeof UserSummary>;
 

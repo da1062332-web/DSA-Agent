@@ -221,6 +221,8 @@ export const UserSummary = z.object({
   primaryBranchId: z.string(),
   status: z.string(),
   availability: z.string(),
+  /** A deleted account, kept only so that history stays readable. */
+  deleted: z.boolean().optional(),
 });
 export type UserSummary = z.infer<typeof UserSummary>;
 
@@ -232,4 +234,6 @@ export const UserListQuery = CursorQuery.extend({
   status: z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional(),
   branchId: z.string().optional(),
   q: z.string().trim().max(100).optional(),
+  /** Deleted accounts: include (default), exclude (the staff directory) or only. */
+  deleted: z.enum(['include', 'exclude', 'only']).optional(),
 });
