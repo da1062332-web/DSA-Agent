@@ -17,7 +17,7 @@ function getSlowMo(): number {
       return Math.min(Math.max(custom, 50), 1000);
     }
   }
-  return 100; // Snappy, clear human demonstration pace (~0.1s per action)
+  return 350; // Clear, comfortable human demonstration pace (~0.35s per action)
 }
 
 const slowMoMs = getSlowMo();

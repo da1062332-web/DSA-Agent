@@ -35,11 +35,15 @@ export interface ProductVersion {
   amountMax: string;
   tenureMin: number;
   tenureMax: number;
+  tenureMinMonths?: number;
+  tenureMaxMonths?: number;
   illustrativeRateText: string | null;
   feeText: string | null;
   geoRules?: Record<string, unknown> | null;
   workflowProfile?: Record<string, unknown> | null;
   documentProfileId?: string | null;
+  isCurrent?: boolean;
+  status?: string;
   createdAt: string;
 }
 

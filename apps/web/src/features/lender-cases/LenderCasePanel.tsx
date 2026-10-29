@@ -463,7 +463,10 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         Withdraw
                       </Button>
                     </RowAction>
-                    <RowAction allowed={c.status === 'SANCTIONED'} action="sanction.record">
+                    <RowAction
+                      allowed={['SUBMITTED', 'UNDER_PROCESSING', 'QUERY_RESPONDED', 'SANCTIONED'].includes(c.status)}
+                      action="sanction.record"
+                    >
                       <Button
                         size="small"
                         variant="outlined"
