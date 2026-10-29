@@ -787,6 +787,7 @@ export function createMockPlatformStore() {
                 status: found.status,
                 email: found.email,
                 idp_subject: found.idp_subject,
+                user_type: found.user_type,
               },
             ]
           : [],

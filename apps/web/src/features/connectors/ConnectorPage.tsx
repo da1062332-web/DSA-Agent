@@ -36,9 +36,9 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
-import { useMe } from '../../api/useMe';
+import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
-import { ConnectorSelect, LeadSelect } from '../../shell/selectors';
+import { ConnectorSelect, LeadSelect, UserSelect } from '../../shell/selectors';
 import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
 import type {
@@ -155,6 +155,12 @@ export function ConnectorPage() {
     },
   });
 
+  // Bank details and agreement terms are read only by the roles that manage or approve them (the API refuses the others), so the
+  // page does not ask for them otherwise. A relationship manager sees the connector itself, not these.
+  const canSeeBankAccounts =
+    hasPermission(me.data, 'connector.manage') || hasPermission(me.data, 'connector.bank_change_approve');
+  const canSeeAgreements = hasPermission(me.data, 'connector.manage');
+
   const selectedBankAccountsQuery = useQuery({
     queryKey: ['connector-bank-accounts', selectedConnector?.id],
     queryFn: async () => {
@@ -164,7 +170,7 @@ export function ConnectorPage() {
       );
       return res.items;
     },
-    enabled: !!selectedConnector,
+    enabled: !!selectedConnector && canSeeBankAccounts,
   });
 
   const selectedAgreementsQuery = useQuery({
@@ -176,7 +182,7 @@ export function ConnectorPage() {
       );
       return res.items;
     },
-    enabled: !!selectedConnector,
+    enabled: !!selectedConnector && canSeeAgreements,
   });
 
   const attributionRequestsQuery = useQuery({
@@ -571,7 +577,7 @@ export function ConnectorPage() {
                 <Grid item xs={12} sm={6} md={4}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
                     <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      RELATIONSHIP MANAGER
+                      RELATIONSHIP MANAGER (INTERNAL STAFF)
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
                       <UserName id={selectedConnector.relationshipOwnerUserId} fallback="Unassigned" typographyProps={{ fontWeight: 600, variant: 'body1' }} />
@@ -616,6 +622,12 @@ export function ConnectorPage() {
                     Requires Dual-Control Separation of Duties (SOD). The account creator cannot approve the bank
                     details. A 24-hr cooling period applies after activation.
                   </Typography>
+                  {!canSeeBankAccounts && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Bank details are shown only to connector managers and bank-change approvers. An empty list here does not
+                      mean there are no accounts.
+                    </Alert>
+                  )}
                 </Box>
                 <Can action="connector.manage">
                   <Button
@@ -734,6 +746,12 @@ export function ConnectorPage() {
                   <Typography variant="caption" color="text.secondary">
                     Governs permitted product eligibility and rate cards without duplicating commission engine calculations.
                   </Typography>
+                  {!canSeeAgreements && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Agreement terms are shown only to connector managers. An empty list here does not mean there are no
+                      agreements.
+                    </Alert>
+                  )}
                 </Box>
                 <Can action="connector.manage">
                   <Button
@@ -1485,18 +1503,27 @@ export function ConnectorPage() {
               onChange={(e) => setNewConnector({ ...newConnector, pan: e.target.value.toUpperCase() })}
               helperText="Encrypted via AES-256-GCM. Never logged or stored plaintext."
             />
+            <UserSelect
+              value={newConnector.relationshipOwnerUserId ?? null}
+              onChange={(id) => setNewConnector({ ...newConnector, relationshipOwnerUserId: id ?? undefined })}
+              label="Relationship manager (internal staff)"
+              helperText="The internal person who answers for this partner. A partner portal login cannot be chosen."
+              staffOnly
+              required
+              data-testid="connector-form.owner"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateModalOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            disabled={!newConnector.legalName || !newConnector.pan || !newConnector.email}
+            disabled={!newConnector.legalName || !newConnector.pan || !newConnector.email || !newConnector.relationshipOwnerUserId}
             onClick={() => {
+              // The relationship manager is chosen, never defaulted to whoever opens the form: the server requires an active staff owner.
               createConnectorMutation.mutate({
                 ...newConnector,
                 primaryBranchId: newConnector.primaryBranchId || me.data?.primaryBranchId,
-                relationshipOwnerUserId: newConnector.relationshipOwnerUserId || me.data?.id,
               } as CreateConnectorInput);
             }}
           >

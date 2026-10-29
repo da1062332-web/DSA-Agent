@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import { authPlaceholder } from './http/auth-placeholder';
+import { connectorIdentityGate } from './http/connector-identity-gate';
 import { CORRELATION_HEADER, correlation } from './http/correlation';
 import { errorHandler } from './http/error-handler';
 import { notFound } from './http/not-found';
@@ -143,6 +144,7 @@ export function createApp(opts: CreateAppOptions): Express {
   const platformRouter = express.Router();
   platformRouter.use(noStore);
   platformRouter.use(opts.auth ?? authPlaceholder);
+  platformRouter.use(connectorIdentityGate);
   platformRouter.use(rateLimit());
   platformRouter.use(express.json({ limit: '10mb' }));
   platformRouter.use(createPlatformRouter(opts.deps));
@@ -165,6 +167,7 @@ export function createApp(opts: CreateAppOptions): Express {
   // If-Match (optimistic concurrency) is unaffected.
   v1.use(noStore);
   v1.use(opts.auth ?? authPlaceholder);
+  v1.use(connectorIdentityGate);
   v1.use(rateLimit());
   v1.use(express.json({ limit: '1mb' }));
   // MOD-TEN entitlements: a module the tenant is not entitled to answers 403 MODULE_NOT_ENABLED.

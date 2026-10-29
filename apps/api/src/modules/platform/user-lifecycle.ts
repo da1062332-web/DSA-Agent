@@ -25,7 +25,11 @@ import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../
 import type { ApiDeps } from '../types';
 import { requireActiveBranch, type Row } from './db';
 import { globalJobQueue, type JobHandler } from './job-queue';
-import { assertAdministratorRemains, countActiveAdministrators } from './role-guards';
+import {
+  assertAdministratorRemains,
+  assertRoleAllowedForUserType,
+  countActiveAdministrators,
+} from './role-guards';
 import { ACTIVATION_REFUSED, DELETED_REFUSED } from './user-status';
 import {
   MAX_RESENDS,
@@ -265,12 +269,14 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
                   ${input.displayName.trim()}, 'STAFF', 'INVITED', 'OFF_DUTY', ${input.primaryBranchId},
                   ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
           for (const roleId of input.roleIds ?? []) {
-            const role = await sql`select 1 from role where id = ${roleId}`.execute(tx);
+            const role = await sql<{ code: string }>`select code from role where id = ${roleId} and tenant_id = ${ctx.principal.tenantId}`.execute(tx);
             if (!role.rows.length) {
               throw AppError.of('VALIDATION_ERROR', 'The role was not found.', [
                 { field: 'roleIds', issue: 'NOT_FOUND' },
               ]);
             }
+            // The invited user is an internal staff account, so a connector portal role is refused here.
+            assertRoleAllowedForUserType('STAFF', String(role.rows[0]!.code));
             await sql`
             insert into user_role_assignment (id, tenant_id, user_id, role_id, scope_type, scope_branch_ids, created_by)
             values (${deps.ids.next('ura')}, ${ctx.principal.tenantId}, ${userId}, ${roleId}, 'TENANT', '{}',
@@ -695,13 +701,17 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
       }
       const added: string[] = [];
       for (const [k, a] of wanted) {
-        if (held.has(k)) continue;
-        const role = await sql`select 1 from role where id = ${a.roleId}`.execute(tx);
+        // Every wanted role is checked, held or new: an assignment that is already in place but no longer allowed is refused here,
+        // not carried over. Only the insert is skipped for a held one.
+        const role = await sql<{ code: string }>`select code from role where id = ${a.roleId} and tenant_id = ${ctx.principal.tenantId}`.execute(tx);
         if (!role.rows.length) {
           throw AppError.of('VALIDATION_ERROR', 'The role was not found.', [
             { field: 'assignments', issue: 'ROLE_NOT_FOUND' },
           ]);
         }
+        // Checked against the user's own kind, read from the database: a connector portal login holds no role, and staff hold no reserved role.
+        assertRoleAllowedForUserType(String(row.user_type), String(role.rows[0]!.code));
+        if (held.has(k)) continue;
         if (a.scopeType === 'BRANCH' && a.scopeBranchIds.length === 0) {
           throw AppError.of('VALIDATION_ERROR', 'A BRANCH assignment names at least one branch.', [
             { field: 'assignments', issue: 'BRANCHES_REQUIRED' },

@@ -118,8 +118,26 @@ export const UpdateConnectorSchema = z.object({
     .nullable(),
   primaryBranchId: IdSchema('br').optional(),
   relationshipOwnerUserId: IdSchema('usr').optional(),
+  // Required when relationshipOwnerUserId changes (checked in the service). Recorded in the audit event.
+  ownerChangeReason: z.string().trim().min(5).max(500).optional(),
 });
 export type UpdateConnectorInput = z.infer<typeof UpdateConnectorSchema>;
+
+// ==========================================
+// GET /v1/connectors/lookup (picker data; no API-CON id). Minimal fields only: no PAN, mobile, e-mail, bank or agreement data.
+// ==========================================
+export const ConnectorLookupQuerySchema = z.object({
+  status: z.enum(CONNECTOR_STATUSES).optional(),
+  q: z.string().trim().max(100).optional(),
+});
+export type ConnectorLookupQuery = z.infer<typeof ConnectorLookupQuerySchema>;
+
+export interface ConnectorLookupItem {
+  id: string;
+  legalName: string;
+  status: string;
+  primaryBranchId: string;
+}
 
 // ==========================================
 // API-CON-005: POST /v1/connectors/{id}/activation

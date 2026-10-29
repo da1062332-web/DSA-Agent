@@ -47,6 +47,8 @@ import {
   assertAdministratorRemains,
   assertCanGrantPermissions,
   assertNoPlatformPermissionsForTenant,
+  assertRoleAllowedForUserType,
+  assertRoleCodeNotReserved,
   countActiveAdministrators,
 } from './role-guards';
 
@@ -1039,6 +1041,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       const parsed = CreateRoleRequest.parse(req.body);
       assertNoPlatformPermissionsForTenant(ctx.principal.tenantId, parsed.permissions);
+      // The connector portal's namespace is reserved: a tenant role can never be named like a portal role.
+      assertRoleCodeNotReserved(parsed.code);
 
       // Validate permission codes against known catalog
       const validCodes = new Set<string>(PERMISSION_CODES);
@@ -1672,8 +1676,8 @@ export function createRouter(deps: ApiDeps): Router {
 
       const assignment = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         // Verify user exists in tenant
-        const userCheck = await sql<{ id: string }>`
-          SELECT id FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}
+        const userCheck = await sql<{ id: string; user_type: string }>`
+          SELECT id, user_type FROM app.app_user WHERE id = ${targetUserId} AND tenant_id = ${ctx.principal.tenantId}
         `.execute(tx);
         if (userCheck.rows.length === 0) {
           throw AppError.of('NOT_FOUND', `User ${targetUserId} not found.`);
@@ -1681,12 +1685,14 @@ export function createRouter(deps: ApiDeps): Router {
         await assertNotDeleted(tx, String(targetUserId));
 
         // Verify role exists in tenant
-        const roleCheck = await sql<{ id: string }>`
-          SELECT id FROM app.role WHERE id = ${parsed.roleId} AND tenant_id = ${ctx.principal.tenantId}
+        const roleCheck = await sql<{ id: string; code: string }>`
+          SELECT id, code FROM app.role WHERE id = ${parsed.roleId} AND tenant_id = ${ctx.principal.tenantId}
         `.execute(tx);
         if (roleCheck.rows.length === 0) {
           throw AppError.of('NOT_FOUND', `Role ${parsed.roleId} not found in this tenant.`);
         }
+        // A connector portal account and a staff account never share a role, whatever the request says.
+        assertRoleAllowedForUserType(String(userCheck.rows[0]!.user_type), String(roleCheck.rows[0]!.code));
 
         // Check if role is already assigned
         const existingAssign = await sql<{ id: string }>`

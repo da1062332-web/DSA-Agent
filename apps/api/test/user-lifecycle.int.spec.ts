@@ -213,11 +213,28 @@ describe('TEST-USR-LC-INT user lifecycle', () => {
   it('TEST-USR-LC-INT-07 the invited user is bound on first sign-in with the invited email, only in its own tenant', async () => {
     const resolver = createPrincipalResolver(createTxRunner(env.db));
     const at = { correlationId: 'corr_ulc_bind', now: new Date() };
-    const token = (tenantId: string, email: string) =>
-      ({ subject: 'sub-ulc-new-joiner', tenantId, aal: 'aal1', mfaVerifiedAt: null, email }) as const;
+    // The two writes the provisioning worker makes once the invitation e-mail has gone out and the account is bound
+    // (apps/api/src/provisioning/invitation-delivery.ts): the subject is bound, and the invitation is SENT and unexpired.
+    await env.admin.query(
+      `UPDATE app.app_user SET idp_subject = 'sub-ulc-new-joiner' WHERE email = 'new.joiner@ulc.example.com'`,
+    );
+    await env.admin.query(
+      `UPDATE app.staff_invitation SET delivery_state = 'SENT', sent_at = now(), expires_at = now() + interval '14 days'
+        WHERE user_id = (SELECT id FROM app.app_user WHERE email = 'new.joiner@ulc.example.com')`,
+    );
+    // An invitation is accepted only on a password sign-in (a link alone signs the invitee in once to set a password): authMethods says so.
+    const token = (tenantId: string, email: string, subject = 'sub-ulc-new-joiner') => ({
+      subject,
+      tenantId,
+      aal: 'aal1' as const,
+      mfaVerifiedAt: null,
+      email,
+      authMethods: ['password'],
+    });
     await expect(resolver.resolve(token(env.B.tenantId, 'new.joiner@ulc.example.com'), at)).rejects.toThrow();
     await expect(
-      resolver.resolve(token(env.A.tenantId, 'someone.else@ulc.example.com'), at),
+      // Another person: a different sign-in account (subject) and a different e-mail address. Nothing is bound to it.
+      resolver.resolve(token(env.A.tenantId, 'someone.else@ulc.example.com', 'sub-ulc-someone-else'), at),
     ).rejects.toThrow();
     const p = await resolver.resolve(token(env.A.tenantId, 'new.joiner@ulc.example.com'), at);
     const row = await env.admin.query(

@@ -9,6 +9,7 @@ import {
   CreateAttributionChangeRequestSchema,
   CreateConnectorAgreementSchema,
   CreateConnectorBankAccountSchema,
+  ConnectorLookupQuerySchema,
   CreateConnectorSchema,
   InviteConnectorUserSchema,
   ListConnectorsQuerySchema,
@@ -73,6 +74,20 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const ctx = requireContext(req);
       const query = ListConnectorsQuerySchema.parse(req.query);
       const result = await service.listConnectors(ctx, query);
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // GET /v1/connectors/lookup: picker data (id, legal name, status, branch). Declared before /connectors/:id, which would match it.
+  // ==========================================
+  router.get('/connectors/lookup', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const query = ConnectorLookupQuerySchema.parse(req.query);
+      const result = await service.lookupConnectors(ctx, query);
       res.status(200).json(result);
     } catch (err) {
       next(err);

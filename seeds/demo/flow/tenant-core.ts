@@ -51,10 +51,13 @@ const ORG_SUFFIXES = [
   { suffix: 'Advisory Pvt Ltd', constitution: 'PVT_LTD' },
 ] as const;
 
-/** Extra staff beyond platform.ts: two connector portal logins (user_type CONNECTOR). */
+/**
+ * Partner portal logins (user_type CONNECTOR), one per seeded connector. They are not staff: they hold no internal role, so they reach
+ * only their own connector through the portal. The label says so, to tell them apart from internal relationship managers.
+ */
 const CONNECTOR_USERS = [
-  { handle: 'conuser1', displayName: 'Connector Portal One', branch: 'MUM01' },
-  { handle: 'conuser2', displayName: 'Connector Portal Two', branch: 'PUN01' },
+  { handle: 'conuser1', displayName: 'Partner login: Connector Portal One', branch: 'MUM01' },
+  { handle: 'conuser2', displayName: 'Partner login: Connector Portal Two', branch: 'PUN01' },
 ];
 
 /** Local-only teams for the branches platform.ts does not cover. Manager and members are platform handles. */

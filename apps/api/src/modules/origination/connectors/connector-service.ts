@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {
   AppError,
   maskAccountNumber,
+  maskMobile,
   maskPan,
   type ActivateConnectorInput,
   type ApproveAttributionChangeRequestInput,
@@ -12,6 +13,8 @@ import {
   type AttributionDisputeResource,
   type ConnectorAgreementResource,
   type ConnectorBankAccountResource,
+  type ConnectorLookupItem,
+  type ConnectorLookupQuery,
   type ConnectorResource,
   type CreateAttributionChangeRequestInput,
   type CreateConnectorAgreementInput,
@@ -21,15 +24,88 @@ import {
   type ListConnectorsQuery,
   type RequestContext,
   type ResolveAttributionDisputeInput,
+  type Tx,
   type UpdateConnectorInput,
   type UpdateConnectorStatusInput,
 } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
-import { sql } from 'kysely';
+import { sql, type RawBuilder } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../../types';
 
 const nextUlid = monotonicFactory();
+
+/** Holds connector.manage at any scope. Such a reader sees contact details in full; the connectors it may see are set by `visibility`. */
+const managesConnectors = (ctx: RequestContext): boolean =>
+  ctx.principal.grants.some((g) => g.code === 'connector.manage');
+
+/**
+ * The connectors this principal may see and change, as a SQL condition on app.connector (empty when it sees the whole tenant).
+ *   - Tenant-wide: connector.manage at TENANT scope (tenant administration) and bank_change_approve at TENANT scope (the approvers).
+ *   - Otherwise, the connectors it is the relationship owner of, plus the connectors of each branch it manages (connector.manage at
+ *     BRANCH scope). A relationship manager (connector.read only) therefore sees only its own connectors.
+ * Permission and scope decide it, not the name of the role. The owner clause is what a relationship manager is left with.
+ */
+function visibility(ctx: RequestContext): RawBuilder<unknown> {
+  const grants = ctx.principal.grants;
+  const tenantWide = grants.some(
+    (g) =>
+      (g.code === 'connector.manage' || g.code === 'connector.bank_change_approve') && g.scope === 'TENANT',
+  );
+  if (tenantWide) return sql``;
+  const branchIds = [
+    ...new Set(
+      grants.filter((g) => g.code === 'connector.manage' && g.scope === 'BRANCH').flatMap((g) => g.branchIds),
+    ),
+  ];
+  const conditions = [sql`relationship_owner_user_id = ${ctx.principal.id}`];
+  if (branchIds.length > 0) conditions.push(sql`primary_branch_id = any(${branchIds}::text[])`);
+  return sql`AND (${sql.join(conditions, sql` OR `)})`;
+}
+
+/** Another connector, outside what the principal may see, is reported as not found, as an invisible record is everywhere else. */
+async function assertVisible(tx: Tx, ctx: RequestContext, id: string): Promise<void> {
+  const found = await sql<{ id: string }>`
+    SELECT id FROM app.connector
+     WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} ${visibility(ctx)}`.execute(tx);
+  if (found.rows.length === 0) throw AppError.of('NOT_FOUND', `Connector ${id} not found.`);
+}
+
+/** The permissions that may read the picker list (id, legal name, status, branch). Not the directory: no PAN, mobile, e-mail or bank data. */
+const LOOKUP_PERMISSIONS = [
+  'connector.read',
+  'connector.manage',
+  'lead.create',
+  'finance.view',
+  'share.create',
+];
+
+/**
+ * Contact details (mobile, e-mail) are shown in full only to whoever manages connectors. A relationship manager reads its own connectors'
+ * contact details masked: it needs to recognise the partner, not to hold the partner's private contact data.
+ */
+const contactValue = (ctx: RequestContext, value: string, mask: (v: string) => string): string =>
+  managesConnectors(ctx) ? value : mask(value);
+const maskEmailAddress = (email: string): string => email.replace(/^(.).*(@.*)$/, '$1***$2');
+
+/**
+ * The write was made against a version the connector no longer has (someone else changed it since it was read). Refused, so no change
+ * is lost; the caller reads it again and retries. The check is in the UPDATE itself, so two writers cannot both pass it.
+ */
+const versionConflict = (): AppError =>
+  AppError.of(
+    'VERSION_CONFLICT',
+    'Precondition failed: the connector changed since it was read. Reload it and try again.',
+    [{ field: 'If-Match', issue: 'VERSION_MISMATCH' }],
+  );
+
+/** Passes when the principal holds at least one of these codes, at any scope. */
+function requireAnyGrant(ctx: RequestContext, codes: readonly string[]): void {
+  if (ctx.principal.grants.some((g) => codes.includes(g.code))) return;
+  throw AppError.of('FORBIDDEN', 'You do not have permission for this action.', [
+    { issue: 'PERMISSION_MISSING', meta: { permission: codes.join(' or ') } },
+  ]);
+}
 
 const HMAC_SECRET = process.env.HMAC_SECRET || 'dev_dsa_hmac_secret_key_32_bytes_long!!';
 const ENCRYPTION_KEY = crypto
@@ -47,6 +123,33 @@ function encryptData(plaintext: string): Buffer {
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, encrypted]);
+}
+
+/**
+ * The relationship owner answers for a connector, so it must be an active internal staff account in the same tenant. A connector
+ * portal login is never an owner (it would be on both sides of the relationship), and an invited, suspended or missing account is
+ * refused. Existing connectors are not checked here: changing an owner is a business decision, not a side effect of saving.
+ */
+export function assertInternalRelationshipOwner(
+  owner: { user_type: string; status: string } | undefined,
+): void {
+  if (!owner) {
+    throw AppError.of('VALIDATION_ERROR', 'The relationship owner was not found in this organization.', [
+      { field: 'relationshipOwnerUserId', issue: 'NOT_FOUND' },
+    ]);
+  }
+  if (owner.user_type !== 'STAFF') {
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'The relationship owner must be an internal staff member, not a connector login.',
+      [{ field: 'relationshipOwnerUserId', issue: 'NOT_INTERNAL_STAFF' }],
+    );
+  }
+  if (owner.status !== 'ACTIVE') {
+    throw AppError.of('VALIDATION_ERROR', 'The relationship owner must be an active staff member.', [
+      { field: 'relationshipOwnerUserId', issue: 'OWNER_NOT_ACTIVE' },
+    ]);
+  }
 }
 
 export class ConnectorService {
@@ -113,6 +216,12 @@ export class ConnectorService {
               { field: 'primaryBranchId', issue: 'INVALID_BRANCH' },
             ]);
           }
+
+          const ownerRes = await sql<{ user_type: string; status: string }>`
+            SELECT user_type, status FROM app.app_user
+            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${input.relationshipOwnerUserId}
+          `.execute(tx);
+          assertInternalRelationshipOwner(ownerRes.rows[0]);
 
           const connectorId = `con_${nextUlid()}`;
           const now = new Date();
@@ -215,6 +324,7 @@ export class ConnectorService {
         WHERE tenant_id = ${ctx.principal.tenantId}
       `;
 
+      qb = sql`${qb} ${visibility(ctx)}`;
       if (query.status) {
         qb = sql`${qb} AND status = ${query.status}`;
       }
@@ -259,8 +369,8 @@ export class ConnectorService {
         connectorType: r.connector_type as any,
         legalName: r.legal_name,
         contactPerson: r.contact_person,
-        mobileE164: r.mobile_e164,
-        email: r.email,
+        mobileE164: contactValue(ctx, r.mobile_e164, (v) => maskMobile(v) ?? ''),
+        email: contactValue(ctx, r.email, maskEmailAddress),
         panMasked: r.pan_masked,
         gstin: r.gstin,
         primaryBranchId: r.primary_branch_id,
@@ -278,31 +388,74 @@ export class ConnectorService {
   }
 
   /**
+   * GET /v1/connectors/lookup: id, legal name, status and branch only, for pickers. Anyone with a permission in LOOKUP_PERMISSIONS
+   * may use it. It answers for the whole tenant on purpose: a lead can name any partner of the tenant. Nothing sensitive is returned.
+   */
+  async lookupConnectors(
+    ctx: RequestContext,
+    query: ConnectorLookupQuery,
+  ): Promise<{ items: ConnectorLookupItem[] }> {
+    requireAnyGrant(ctx, LOOKUP_PERMISSIONS);
+
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const search = query.q ? `%${query.q}%` : null;
+      const res = await sql<{ id: string; legal_name: string; status: string; primary_branch_id: string }>`
+        SELECT id, legal_name, status, primary_branch_id
+          FROM app.connector
+         WHERE tenant_id = ${ctx.principal.tenantId}
+           AND (${query.status ?? null}::text IS NULL OR status = ${query.status ?? null})
+           AND (${search}::text IS NULL OR legal_name ILIKE ${search})
+         ORDER BY legal_name, id
+         LIMIT 200`.execute(tx);
+      return {
+        items: res.rows.map((r) => ({
+          id: r.id,
+          legalName: r.legal_name,
+          status: r.status,
+          primaryBranchId: r.primary_branch_id,
+        })),
+      };
+    });
+  }
+
+  /**
    * GET /v1/connectors/{id}
    */
   async getConnector(ctx: RequestContext, id: string): Promise<ConnectorResource> {
     this.deps.authz.requirePermission(ctx, 'connector.read');
 
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const res = await sql<{
-        id: string;
-        tenant_id: string;
-        connector_type: string;
-        legal_name: string;
-        contact_person: string;
-        mobile_e164: string;
-        email: string;
-        pan_masked: string;
-        gstin: string | null;
-        primary_branch_id: string;
-        relationship_owner_user_id: string;
-        status: string;
-        lock_version: number;
-        created_at: Date;
-        created_by: string;
-        updated_at: Date;
-        updated_by: string;
-      }>`
+    return this.deps.txRunner.withTenantTx(ctx, (tx) => this.readConnector(tx, ctx, id));
+  }
+
+  /**
+   * The connector as this transaction sees it. A write answers with this, read inside its own transaction: a read through a second
+   * transaction would not see the write, and would answer with the state from before it.
+   */
+  private async readConnector(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+    scoped = true,
+  ): Promise<ConnectorResource> {
+    const res = await sql<{
+      id: string;
+      tenant_id: string;
+      connector_type: string;
+      legal_name: string;
+      contact_person: string;
+      mobile_e164: string;
+      email: string;
+      pan_masked: string;
+      gstin: string | null;
+      primary_branch_id: string;
+      relationship_owner_user_id: string;
+      status: string;
+      lock_version: number;
+      created_at: Date;
+      created_by: string;
+      updated_at: Date;
+      updated_by: string;
+    }>`
         SELECT 
           id, tenant_id, connector_type, legal_name, contact_person,
           mobile_e164, email, pan_masked, gstin,
@@ -310,33 +463,34 @@ export class ConnectorService {
           lock_version, created_at, created_by, updated_at, updated_by
         FROM app.connector
         WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id}
+          ${scoped ? visibility(ctx) : sql``}
       `.execute(tx);
 
-      if (res.rows.length === 0) {
-        throw AppError.of('NOT_FOUND', `Connector ${id} not found.`);
-      }
+    // A connector outside what the principal may see is reported as not found, as an invisible record is everywhere else.
+    if (res.rows.length === 0) {
+      throw AppError.of('NOT_FOUND', `Connector ${id} not found.`);
+    }
 
-      const r = res.rows[0]!;
-      return {
-        id: r.id,
-        tenantId: r.tenant_id,
-        connectorType: r.connector_type as any,
-        legalName: r.legal_name,
-        contactPerson: r.contact_person,
-        mobileE164: r.mobile_e164,
-        email: r.email,
-        panMasked: r.pan_masked,
-        gstin: r.gstin,
-        primaryBranchId: r.primary_branch_id,
-        relationshipOwnerUserId: r.relationship_owner_user_id,
-        status: r.status as any,
-        lockVersion: r.lock_version,
-        createdAt: r.created_at.toISOString(),
-        createdBy: r.created_by,
-        updatedAt: r.updated_at.toISOString(),
-        updatedBy: r.updated_by,
-      };
-    });
+    const r = res.rows[0]!;
+    return {
+      id: r.id,
+      tenantId: r.tenant_id,
+      connectorType: r.connector_type as any,
+      legalName: r.legal_name,
+      contactPerson: r.contact_person,
+      mobileE164: contactValue(ctx, r.mobile_e164, (v) => maskMobile(v) ?? ''),
+      email: contactValue(ctx, r.email, maskEmailAddress),
+      panMasked: r.pan_masked,
+      gstin: r.gstin,
+      primaryBranchId: r.primary_branch_id,
+      relationshipOwnerUserId: r.relationship_owner_user_id,
+      status: r.status as any,
+      lockVersion: r.lock_version,
+      createdAt: r.created_at.toISOString(),
+      createdBy: r.created_by,
+      updatedAt: r.updated_at.toISOString(),
+      updatedBy: r.updated_by,
+    };
   }
 
   /**
@@ -350,8 +504,8 @@ export class ConnectorService {
   ): Promise<ConnectorResource> {
     this.deps.authz.requirePermission(ctx, 'connector.manage');
 
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const current = await this.getConnector(ctx, id);
+    await this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const current = await this.readConnector(tx, ctx, id);
 
       if (current.lockVersion !== ifMatchVersion) {
         throw AppError.of(
@@ -361,8 +515,26 @@ export class ConnectorService {
         );
       }
 
+      // Changing the relationship manager is a business decision: it needs a reason, and it is audited on its own below.
+      const ownerChanged =
+        input.relationshipOwnerUserId !== undefined &&
+        input.relationshipOwnerUserId !== current.relationshipOwnerUserId;
+      if (ownerChanged && !input.ownerChangeReason) {
+        throw AppError.of('VALIDATION_ERROR', 'Give the reason for changing the relationship manager.', [
+          { field: 'ownerChangeReason', issue: 'REASON_REQUIRED' },
+        ]);
+      }
+
+      if (input.relationshipOwnerUserId) {
+        const ownerRes = await sql<{ user_type: string; status: string }>`
+          SELECT user_type, status FROM app.app_user
+          WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${input.relationshipOwnerUserId}
+        `.execute(tx);
+        assertInternalRelationshipOwner(ownerRes.rows[0]);
+      }
+
       const now = new Date();
-      await sql`
+      const written = await sql`
         UPDATE app.connector
         SET
           legal_name = COALESCE(${input.legalName ?? null}, legal_name),
@@ -374,8 +546,10 @@ export class ConnectorService {
           relationship_owner_user_id = COALESCE(${input.relationshipOwnerUserId ?? null}, relationship_owner_user_id),
           updated_at = ${now},
           updated_by = ${ctx.principal.id}
-        WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id}
+        WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} AND lock_version = ${ifMatchVersion}
+        RETURNING id
       `.execute(tx);
+      if (written.rows.length === 0) throw versionConflict();
 
       await this.deps.audit.record(tx, ctx, {
         action: 'connector.updated',
@@ -383,9 +557,20 @@ export class ConnectorService {
         entityId: id,
         after: input,
       });
-
-      return this.getConnector(ctx, id);
+      if (ownerChanged) {
+        await this.deps.audit.record(tx, ctx, {
+          action: 'connector.owner_changed',
+          entityType: 'connector',
+          entityId: id,
+          before: { relationshipOwnerUserId: current.relationshipOwnerUserId },
+          after: { relationshipOwnerUserId: input.relationshipOwnerUserId, reason: input.ownerChangeReason },
+        });
+      }
     });
+
+    // Read after the commit: a read inside the transaction does not see the change it just made, so it would return the old owner. The
+    // write was authorised before it was made, so the answer is not narrowed to what the principal could see before the change.
+    return this.deps.txRunner.withTenantTx(ctx, (tx) => this.readConnector(tx, ctx, id, false));
   }
 
   /**
@@ -411,7 +596,7 @@ export class ConnectorService {
           body: input,
         },
         async () => {
-          const current = await this.getConnector(ctx, id);
+          const current = await this.readConnector(tx, ctx, id);
 
           if (current.lockVersion !== ifMatchVersion) {
             throw AppError.of('VERSION_CONFLICT', 'Precondition failed: ETag does not match lock version.', [
@@ -449,11 +634,13 @@ export class ConnectorService {
           }
 
           const now = new Date();
-          await sql`
+          const activated = await sql`
             UPDATE app.connector
             SET status = 'ACTIVE', updated_at = ${now}, updated_by = ${ctx.principal.id}
-            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id}
+            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} AND lock_version = ${ifMatchVersion}
+            RETURNING id
           `.execute(tx);
+          if (activated.rows.length === 0) throw versionConflict();
 
           await this.deps.audit.record(tx, ctx, {
             action: 'connector.activated',
@@ -462,7 +649,7 @@ export class ConnectorService {
             after: { verificationId: input.verificationId, remarks: input.remarks },
           });
 
-          const updated = await this.getConnector(ctx, id);
+          const updated = await this.readConnector(tx, ctx, id, false);
           return { status: 200, body: updated };
         },
       );
@@ -497,7 +684,7 @@ export class ConnectorService {
           body: input,
         },
         async () => {
-          const current = await this.getConnector(ctx, id);
+          const current = await this.readConnector(tx, ctx, id);
 
           if (current.lockVersion !== ifMatchVersion) {
             throw AppError.of('VERSION_CONFLICT', 'Precondition failed: ETag does not match lock version.', [
@@ -513,11 +700,13 @@ export class ConnectorService {
           }
 
           const now = new Date();
-          await sql`
+          const changed = await sql`
             UPDATE app.connector
             SET status = ${input.targetStatus}, updated_at = ${now}, updated_by = ${ctx.principal.id}
-            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id}
+            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} AND lock_version = ${ifMatchVersion}
+            RETURNING id
           `.execute(tx);
+          if (changed.rows.length === 0) throw versionConflict();
 
           // If transitioning to SUSPENDED or TERMINATED, revoke portal access for linked users
           if (input.targetStatus === 'SUSPENDED' || input.targetStatus === 'TERMINATED') {
@@ -539,7 +728,7 @@ export class ConnectorService {
             },
           });
 
-          const updated = await this.getConnector(ctx, id);
+          const updated = await this.readConnector(tx, ctx, id, false);
           return { status: 200, body: updated };
         },
       );
@@ -750,9 +939,11 @@ export class ConnectorService {
    * List bank accounts for connector
    */
   async listBankAccounts(ctx: RequestContext, connectorId: string): Promise<ConnectorBankAccountResource[]> {
-    this.deps.authz.requirePermission(ctx, 'connector.read');
+    // Bank details are read by the people who manage or approve them, not by everyone who can read the directory.
+    requireAnyGrant(ctx, ['connector.manage', 'connector.bank_change_approve']);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await assertVisible(tx, ctx, connectorId);
       const res = await sql<{
         id: string;
         tenant_id: string;
@@ -917,9 +1108,11 @@ export class ConnectorService {
    * List agreements for connector
    */
   async listAgreements(ctx: RequestContext, connectorId: string): Promise<ConnectorAgreementResource[]> {
-    this.deps.authz.requirePermission(ctx, 'connector.read');
+    // Agreement terms (commission share, evidence references) are managed by tenant administration only.
+    this.deps.authz.requirePermission(ctx, 'connector.manage');
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await assertVisible(tx, ctx, connectorId);
       const res = await sql<{
         id: string;
         tenant_id: string;

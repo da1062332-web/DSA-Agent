@@ -205,6 +205,35 @@ describe('Module 4: Users (User Management API)', () => {
     expect(selfDeactRes.body.error.code).toBe('SOD_VIOLATION');
   });
 
+  it('TEST-CONROLE-API-001 the assignment API refuses an internal role to a connector portal login, whatever the request says', async () => {
+    const store = createMockPlatformStore();
+    const staff = store.users.find((u) => u.id === 'usr_staff_02')!;
+    store.users.push({
+      ...staff,
+      id: 'usr_connector_01',
+      email: 'partner-login@example.test',
+      display_name: 'Partner login (test)',
+      user_type: 'CONNECTOR',
+    });
+    const app = createTestApp({
+      auth: fakeAuth(adminPrincipal),
+      deps: { txRunner: store.runner },
+    });
+
+    const refused = await request(app)
+      .post('/v1/users/usr_connector_01/roles')
+      .send({ roleId: 'rol_admin', scopeType: 'TENANT' });
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.details[0].issue).toBe('ROLE_NOT_ALLOWED_FOR_CONNECTOR');
+    expect(store.assignments.some((a) => a.user_id === 'usr_connector_01')).toBe(false);
+
+    // The same request for a staff account is accepted, so the refusal is about the user's kind and not the role.
+    const accepted = await request(app)
+      .post('/v1/users/usr_staff_02/roles')
+      .send({ roleId: 'rol_admin', scopeType: 'TENANT' });
+    expect(accepted.status).toBe(201);
+  });
+
   it('TEST-USR-006 assigns and removes user roles and enforces SOD-05', async () => {
     const store = createMockPlatformStore();
     const app = createTestApp({

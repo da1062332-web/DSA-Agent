@@ -45,6 +45,8 @@ export interface IsolationEnv {
   deps: ApiDeps;
   /** Connection string for the API's own role (dsa_api, NOBYPASSRLS), for tools that must run under row-level security. */
   apiDatabaseUrl: string;
+  /** Connection string of the superuser behind `admin`, for a second session in a concurrency case (same server and database). */
+  adminDatabaseUrl: string;
   /** The API as a user of `tenant` holding `codes` at TENANT scope. */
   appAs(tenant: TenantFixture, codes?: PermissionCode[], userIndex?: 0 | 1): ReturnType<typeof createApp>;
   /** The API with no authentication (every /v1 call must be 401). */
@@ -104,6 +106,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
     db,
     deps,
     apiDatabaseUrl: url.toString(),
+    adminDatabaseUrl: container.getConnectionUri(),
     appAs: (t, codes = [], userIndex = 0) =>
       createApp({ deps, corsAllowedOrigins: [], auth: fakeAuth(principalOf(t, codes, userIndex)) }),
     anonymousApp: () => createApp({ deps, corsAllowedOrigins: [] }),
