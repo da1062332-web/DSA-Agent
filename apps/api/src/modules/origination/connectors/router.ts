@@ -10,6 +10,8 @@ import {
   CreateConnectorAgreementSchema,
   CreateConnectorBankAccountSchema,
   ConnectorLookupQuerySchema,
+  ConnectorPortalAccessSchema,
+  ConnectorPortalRevocationSchema,
   CreateConnectorSchema,
   InviteConnectorUserSchema,
   ListConnectorsQuerySchema,
@@ -265,9 +267,77 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
     try {
       const ctx = requireContext(req);
       const id = String(req.params.id);
+      const idemKey = requireIdempotencyKey(req);
       const input = InviteConnectorUserSchema.parse(req.body);
-      const result = await service.inviteConnectorUser(ctx, id, input);
-      res.status(201).json(result);
+      const { user, isReplayed } = await service.inviteConnectorUser(ctx, id, input, idemKey);
+      if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');
+      res.status(isReplayed ? 200 : 201).json(user);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /v1/connectors/:id/users: the connector's portal logins with their invitation state
+  router.get('/connectors/:id/users', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const items = await service.listPortalUsers(ctx, String(req.params.id));
+      res.status(200).json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/connectors/:id/users/:userId/invitation/resend: queue a new set-password e-mail
+  router.post(
+    '/connectors/:id/users/:userId/invitation/resend',
+    async (req: Request, res: Response, next) => {
+      try {
+        const ctx = requireContext(req);
+        const user = await service.resendPortalInvitation(
+          ctx,
+          String(req.params.id),
+          String(req.params.userId),
+        );
+        res.status(202).json(user);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /v1/connectors/:id/users/:userId/invitation/revocation: withdraw an invitation that has not been accepted
+  router.post(
+    '/connectors/:id/users/:userId/invitation/revocation',
+    async (req: Request, res: Response, next) => {
+      try {
+        const ctx = requireContext(req);
+        const input = ConnectorPortalRevocationSchema.parse(req.body);
+        const user = await service.revokePortalInvitation(
+          ctx,
+          String(req.params.id),
+          String(req.params.userId),
+          input,
+        );
+        res.status(200).json(user);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /v1/connectors/:id/users/:userId/access: suspend or reactivate a portal login
+  router.post('/connectors/:id/users/:userId/access', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const input = ConnectorPortalAccessSchema.parse(req.body);
+      const user = await service.setPortalUserAccess(
+        ctx,
+        String(req.params.id),
+        String(req.params.userId),
+        input,
+      );
+      res.status(200).json(user);
     } catch (err) {
       next(err);
     }

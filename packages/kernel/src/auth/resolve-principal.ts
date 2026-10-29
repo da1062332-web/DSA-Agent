@@ -183,7 +183,7 @@ async function acceptInvitation(
     update app_user u set status = 'ACTIVE', availability = 'AVAILABLE', updated_by = 'SYSTEM:auth'
       from tenant t
      where u.id = ${row.id} and t.id = u.tenant_id and u.status = 'INVITED'
-    returning u.id, u.primary_branch_id, u.status, u.idp_subject, t.status as tenant_status`.execute(tx);
+    returning u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status`.execute(tx);
   const user = activated.rows[0];
   if (!user) throw AppError.of('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
 

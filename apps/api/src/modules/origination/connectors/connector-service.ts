@@ -15,6 +15,9 @@ import {
   type ConnectorBankAccountResource,
   type ConnectorLookupItem,
   type ConnectorLookupQuery,
+  type ConnectorPortalAccessInput,
+  type ConnectorPortalRevocationInput,
+  type ConnectorPortalUser,
   type ConnectorResource,
   type CreateAttributionChangeRequestInput,
   type CreateConnectorAgreementInput,
@@ -32,6 +35,8 @@ import { withIdempotency } from '@dsa/kernel';
 import { sql, type RawBuilder } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../../types';
+import { invitationExpiry, invitationState, resendRefusal, unboundSubject } from '../../platform/invitations';
+import { assertMayBecomeActive } from '../../platform/user-lifecycle';
 
 const nextUlid = monotonicFactory();
 
@@ -69,6 +74,26 @@ async function assertVisible(tx: Tx, ctx: RequestContext, id: string): Promise<v
     SELECT id FROM app.connector
      WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} ${visibility(ctx)}`.execute(tx);
   if (found.rows.length === 0) throw AppError.of('NOT_FOUND', `Connector ${id} not found.`);
+}
+
+/**
+ * Locks a portal login of this connector for a change. The user id comes from the path, so it must be a CONNECTOR login linked to this
+ * connector in this tenant; anything else (a staff account, another connector's login) is not found.
+ */
+async function lockPortalUser(
+  tx: Tx,
+  ctx: RequestContext,
+  connectorId: string,
+  userId: string,
+): Promise<{ id: string; status: string }> {
+  const row = (
+    await sql<{ id: string; status: string }>`
+      SELECT id, status FROM app.app_user
+       WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${userId} AND connector_id = ${connectorId} AND user_type = 'CONNECTOR'
+       FOR UPDATE`.execute(tx)
+  ).rows[0];
+  if (!row) throw AppError.of('NOT_FOUND', 'Portal user not found.');
+  return row;
 }
 
 /** The permissions that may read the picker list (id, legal name, status, branch). Not the directory: no PAN, mobile, e-mail or bank data. */
@@ -1163,65 +1188,333 @@ export class ConnectorService {
   // =========================================================================
 
   /**
-   * API-CON-011: POST /v1/connectors/{id}/users
+   * API-CON-011: POST /v1/connectors/{id}/users. Invites a portal login for the connector through the same pipeline as a staff invitation:
+   * the login is created INVITED with the placeholder subject no token can carry, and one PENDING invitation is QUEUED for the
+   * provisioning worker. The worker creates or finds the Supabase Auth account, binds its real subject and sends the e-mail; the login
+   * becomes ACTIVE only on the invitee's first password sign-in (principal resolver). No role is assigned: portal access comes from the
+   * login's identity and its connector. Idempotent on the Idempotency-Key, so a retried request never creates a second login.
    */
   async inviteConnectorUser(
     ctx: RequestContext,
     connectorId: string,
     input: InviteConnectorUserInput,
-  ): Promise<{ userId: string; email: string }> {
+    idempotencyKey: string,
+  ): Promise<{ user: ConnectorPortalUser; isReplayed?: boolean }> {
     this.deps.authz.requirePermission(ctx, 'connector.manage');
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const connector = await this.getConnector(ctx, connectorId);
+      const result = await withIdempotency(
+        tx,
+        ctx,
+        { key: idempotencyKey, method: 'POST', path: `/v1/connectors/${connectorId}/users`, body: input },
+        async () => {
+          const connector = await this.readConnector(tx, ctx, connectorId);
+          // A login can be prepared while the connector is being onboarded; the portal itself opens only once the connector is ACTIVE.
+          if (connector.status === 'SUSPENDED' || connector.status === 'TERMINATED') {
+            throw AppError.of(
+              'INVALID_STATE',
+              `Portal users cannot be invited for a ${connector.status.toLowerCase()} connector.`,
+            );
+          }
 
-      if (connector.status !== 'ACTIVE') {
-        throw AppError.of(
-          'VALIDATION_ERROR',
-          `Cannot invite portal users for non-active connector (status: ${connector.status}).`,
-        );
-      }
+          const email = input.email.trim().toLowerCase();
+          const taken = await sql<{ id: string }>`
+            SELECT id FROM app.app_user WHERE tenant_id = ${ctx.principal.tenantId} AND lower(email::text) = ${email}`.execute(
+            tx,
+          );
+          if (taken.rows.length > 0) {
+            throw AppError.of(
+              'VALIDATION_ERROR',
+              'A user with this email address already exists in this organization.',
+              [{ field: 'email', issue: 'DUPLICATE_EMAIL' }],
+            );
+          }
 
-      const cleanEmail = input.email.trim().toLowerCase();
-      const existing = await sql<{ id: string }>`
-        SELECT id FROM app.app_user
-        WHERE tenant_id = ${ctx.principal.tenantId} AND email = ${cleanEmail}
-      `.execute(tx);
-
-      if (existing.rows.length > 0) {
-        throw AppError.of(
-          'VALIDATION_ERROR',
-          'A user with this email address already exists in this tenant.',
-          [{ field: 'email', issue: 'DUPLICATE_EMAIL' }],
-        );
-      }
-
-      const newUserId = `usr_${nextUlid()}`;
-      const idpSubject = `idp_${nextUlid()}`;
-      const now = new Date();
-
-      await sql`
-        INSERT INTO app.app_user (
-          id, tenant_id, idp_subject, email, mobile_e164, display_name,
-          user_type, status, availability, primary_branch_id, connector_id,
-          lock_version, created_at, created_by, updated_at, updated_by
-        ) VALUES (
-          ${newUserId}, ${ctx.principal.tenantId}, ${idpSubject}, ${cleanEmail},
-          ${input.mobileE164 ?? null}, ${input.displayName.trim()}, 'CONNECTOR',
-          'ACTIVE', 'AVAILABLE', ${connector.primaryBranchId}, ${connectorId},
-          0, ${now}, ${ctx.principal.id}, ${now}, ${ctx.principal.id}
-        )
-      `.execute(tx);
-
-      await this.deps.audit.record(tx, ctx, {
-        action: 'connector.portal_user_invited',
-        entityType: 'app_user',
-        entityId: newUserId,
-        after: { connectorId, email: cleanEmail, displayName: input.displayName },
-      });
-
-      return { userId: newUserId, email: cleanEmail };
+          const userId = this.deps.ids.next('usr');
+          await sql`
+            INSERT INTO app.app_user (id, tenant_id, idp_subject, email, mobile_e164, display_name, user_type, status, availability,
+                                      primary_branch_id, connector_id, created_by, updated_by)
+            VALUES (${userId}, ${ctx.principal.tenantId}, ${unboundSubject(userId)}, ${email}, ${input.mobileE164 ?? null},
+                    ${input.displayName.trim()}, 'CONNECTOR', 'INVITED', 'OFF_DUTY', ${connector.primaryBranchId}, ${connectorId},
+                    ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
+          // One PENDING invitation, QUEUED for the provisioning worker; it cannot activate anyone until the worker marks it SENT.
+          const invitationId = this.deps.ids.next('inv');
+          await sql`
+            INSERT INTO app.staff_invitation (id, tenant_id, user_id, status, delivery_state, requested_at, next_attempt_at, sent_at,
+                                              expires_at, created_by, updated_by)
+            VALUES (${invitationId}, ${ctx.principal.tenantId}, ${userId}, 'PENDING', 'QUEUED', ${ctx.now}::timestamptz,
+                    ${ctx.now}::timestamptz, ${ctx.now}::timestamptz, ${invitationExpiry(ctx.now)}::timestamptz,
+                    ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
+          await this.deps.audit.record(tx, ctx, {
+            action: 'connector.portal_user_invited',
+            entityType: 'USER',
+            entityId: userId,
+            after: { connectorId, status: 'INVITED', invitationId, delivery: 'QUEUED' },
+            permissionUsed: 'connector.manage',
+          });
+          return {
+            status: 201,
+            body: await this.readPortalUser(tx, ctx, connectorId, userId),
+            resourceRef: userId,
+          };
+        },
+      );
+      return { user: result.body as ConnectorPortalUser, isReplayed: result.replayed };
     });
+  }
+
+  /** GET /v1/connectors/{id}/users: the connector's portal logins and the state of each one's latest invitation. */
+  async listPortalUsers(ctx: RequestContext, connectorId: string): Promise<ConnectorPortalUser[]> {
+    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await assertVisible(tx, ctx, connectorId);
+      return this.portalUsers(tx, ctx, connectorId);
+    });
+  }
+
+  /**
+   * POST /v1/connectors/{id}/users/{userId}/invitation/resend. Queues a new set-password e-mail for a login that has not set a password,
+   * with the same limits as a staff invitation (cooldown, maximum resends, refused while the last one is still being sent).
+   */
+  async resendPortalInvitation(
+    ctx: RequestContext,
+    connectorId: string,
+    userId: string,
+  ): Promise<ConnectorPortalUser> {
+    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await assertVisible(tx, ctx, connectorId);
+      const login = await lockPortalUser(tx, ctx, connectorId, userId);
+      if (login.status !== 'INVITED') {
+        throw AppError.of(
+          'INVALID_STATE',
+          'Only a portal user who has not yet set a password can be sent a new invitation.',
+        );
+      }
+      const current = (
+        await sql<{
+          id: string;
+          status: string;
+          delivery_state: string;
+          requested_at: Date;
+          expires_at: Date;
+          resend_count: number;
+        }>`
+          SELECT id, status, delivery_state, requested_at, expires_at, resend_count FROM app.staff_invitation
+           WHERE user_id = ${userId} AND status IN ('PENDING', 'EXPIRED')
+           ORDER BY requested_at DESC LIMIT 1 FOR UPDATE`.execute(tx)
+      ).rows[0];
+      if (current && (current.delivery_state === 'QUEUED' || current.delivery_state === 'SENDING')) {
+        throw AppError.of(
+          'INVALID_STATE',
+          'The invitation e-mail is still being sent. Check again in a minute.',
+        );
+      }
+      const refusal = resendRefusal(
+        current
+          ? {
+              status: current.status,
+              sentAt: current.requested_at,
+              expiresAt: current.expires_at,
+              resendCount: current.resend_count,
+            }
+          : undefined,
+        ctx.now,
+      );
+      if (refusal) throw AppError.of('INVALID_STATE', refusal);
+      const expiry = invitationExpiry(ctx.now);
+      if (current) {
+        await sql`
+          UPDATE app.staff_invitation
+             SET status = 'PENDING', delivery_state = 'QUEUED', requested_at = ${ctx.now}::timestamptz,
+                 next_attempt_at = ${ctx.now}::timestamptz, delivery_attempts = 0, expires_at = ${expiry}::timestamptz,
+                 resend_count = resend_count + 1, last_failure = null, claimed_at = null, claimed_by = null,
+                 updated_by = ${ctx.principal.id}
+           WHERE id = ${current.id}`.execute(tx);
+      } else {
+        await sql`
+          INSERT INTO app.staff_invitation (id, tenant_id, user_id, status, delivery_state, requested_at, next_attempt_at, sent_at,
+                                            expires_at, created_by, updated_by)
+          VALUES (${this.deps.ids.next('inv')}, ${ctx.principal.tenantId}, ${userId}, 'PENDING', 'QUEUED', ${ctx.now}::timestamptz,
+                  ${ctx.now}::timestamptz, ${ctx.now}::timestamptz, ${expiry}::timestamptz, ${ctx.principal.id}, ${ctx.principal.id})`.execute(
+          tx,
+        );
+      }
+      await this.deps.audit.record(tx, ctx, {
+        action: 'connector.portal_invitation_resent',
+        entityType: 'USER',
+        entityId: userId,
+        after: {
+          connectorId,
+          resent: current ? 'EXISTING_INVITATION' : 'NEW_INVITATION',
+          delivery: 'QUEUED',
+        },
+        permissionUsed: 'connector.manage',
+      });
+      return this.readPortalUser(tx, ctx, connectorId, userId);
+    });
+  }
+
+  /**
+   * POST /v1/connectors/{id}/users/{userId}/access. SUSPEND an ACTIVE portal login, or REACTIVATE a SUSPENDED one. Reactivation needs an
+   * ACTIVE connector and an accepted invitation. The principal resolver reads the status on every request, so a suspended login is refused
+   * on its next request; its Supabase sessions are not revoked by this call.
+   */
+  async setPortalUserAccess(
+    ctx: RequestContext,
+    connectorId: string,
+    userId: string,
+    input: ConnectorPortalAccessInput,
+  ): Promise<ConnectorPortalUser> {
+    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const connector = await this.readConnector(tx, ctx, connectorId);
+      const login = await lockPortalUser(tx, ctx, connectorId, userId);
+      const [from, to] = input.action === 'SUSPEND' ? ['ACTIVE', 'SUSPENDED'] : ['SUSPENDED', 'ACTIVE'];
+      if (login.status !== from) {
+        throw AppError.of(
+          'INVALID_STATE',
+          `Only a ${from.toLowerCase()} portal user can be ${input.action === 'SUSPEND' ? 'suspended' : 'reactivated'}.`,
+        );
+      }
+      if (to === 'ACTIVE') {
+        if (connector.status !== 'ACTIVE') {
+          throw AppError.of(
+            'INVALID_STATE',
+            'A portal user can be reactivated only while the connector is active.',
+          );
+        }
+        await assertMayBecomeActive(tx, userId, login.status);
+      }
+      await sql`
+        UPDATE app.app_user SET status = ${to}, updated_by = ${ctx.principal.id}
+         WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${userId}`.execute(tx);
+      await this.deps.audit.record(tx, ctx, {
+        action:
+          input.action === 'SUSPEND'
+            ? 'connector.portal_user_suspended'
+            : 'connector.portal_user_reactivated',
+        entityType: 'USER',
+        entityId: userId,
+        before: { status: from },
+        after: { connectorId, status: to },
+        reason: input.reason,
+        permissionUsed: 'connector.manage',
+      });
+      return this.readPortalUser(tx, ctx, connectorId, userId);
+    });
+  }
+
+  /**
+   * POST /v1/connectors/{id}/users/{userId}/invitation/revocation. Withdraws the invitation of a login that has not set a password: the
+   * invitation is REVOKED (its delivery CANCELLED if not yet sent) and the login DEACTIVATED, so it can never be activated.
+   */
+  async revokePortalInvitation(
+    ctx: RequestContext,
+    connectorId: string,
+    userId: string,
+    input: ConnectorPortalRevocationInput,
+  ): Promise<ConnectorPortalUser> {
+    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
+      await assertVisible(tx, ctx, connectorId);
+      const login = await lockPortalUser(tx, ctx, connectorId, userId);
+      if (login.status !== 'INVITED') {
+        throw AppError.of('INVALID_STATE', 'Only an invitation that has not been accepted can be withdrawn.');
+      }
+      await sql`
+        UPDATE app.staff_invitation
+           SET status = 'REVOKED',
+               delivery_state = CASE WHEN delivery_state IN ('QUEUED', 'SENDING') THEN 'CANCELLED' ELSE delivery_state END,
+               claimed_at = null, claimed_by = null, updated_by = ${ctx.principal.id}
+         WHERE user_id = ${userId} AND status IN ('PENDING', 'EXPIRED')`.execute(tx);
+      await sql`
+        UPDATE app.app_user SET status = 'DEACTIVATED', updated_by = ${ctx.principal.id}
+         WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${userId}`.execute(tx);
+      await this.deps.audit.record(tx, ctx, {
+        action: 'connector.portal_invitation_revoked',
+        entityType: 'USER',
+        entityId: userId,
+        before: { status: 'INVITED' },
+        after: { connectorId, status: 'DEACTIVATED' },
+        reason: input.reason,
+        permissionUsed: 'connector.manage',
+      });
+      return this.readPortalUser(tx, ctx, connectorId, userId);
+    });
+  }
+
+  private async readPortalUser(
+    tx: Tx,
+    ctx: RequestContext,
+    connectorId: string,
+    userId: string,
+  ): Promise<ConnectorPortalUser> {
+    const [user] = await this.portalUsers(tx, ctx, connectorId, userId);
+    if (!user) throw AppError.of('NOT_FOUND', 'Portal user not found.');
+    return user;
+  }
+
+  /** The connector's portal logins (or one of them), each with its latest invitation. Only CONNECTOR logins linked to this connector. */
+  private async portalUsers(
+    tx: Tx,
+    ctx: RequestContext,
+    connectorId: string,
+    userId?: string,
+  ): Promise<ConnectorPortalUser[]> {
+    const rows = await sql<{
+      id: string;
+      connector_id: string;
+      display_name: string;
+      email: string;
+      status: string;
+      created_at: Date;
+      inv_status: string | null;
+      delivery_state: string | null;
+      last_failure: string | null;
+      sent_at: Date | null;
+      expires_at: Date | null;
+      resend_count: number | null;
+      accepted_at: Date | null;
+    }>`
+      SELECT u.id, u.connector_id, u.display_name, u.email::text AS email, u.status, u.created_at,
+             i.status AS inv_status, i.delivery_state, i.last_failure, i.sent_at, i.expires_at, i.resend_count, i.accepted_at
+        FROM app.app_user u
+        LEFT JOIN LATERAL (
+          SELECT si.status, si.delivery_state, si.last_failure, si.sent_at, si.expires_at, si.resend_count, si.accepted_at
+            FROM app.staff_invitation si WHERE si.user_id = u.id ORDER BY si.requested_at DESC LIMIT 1
+        ) i ON true
+       WHERE u.tenant_id = ${ctx.principal.tenantId} AND u.connector_id = ${connectorId} AND u.user_type = 'CONNECTOR'
+         ${userId ? sql`AND u.id = ${userId}` : sql``}
+       ORDER BY u.created_at, u.id`.execute(tx);
+    return rows.rows.map((r) => ({
+      id: r.id,
+      connectorId: r.connector_id,
+      displayName: r.display_name,
+      email: r.email,
+      status: r.status,
+      invitation: {
+        state: invitationState(
+          r.inv_status && r.sent_at && r.expires_at
+            ? {
+                status: r.inv_status,
+                sentAt: r.sent_at,
+                expiresAt: r.expires_at,
+                resendCount: r.resend_count ?? 0,
+              }
+            : undefined,
+          ctx.now,
+        ),
+        deliveryState: r.delivery_state,
+        lastFailure: r.last_failure,
+        // The send time is shown only once the e-mail has actually gone out.
+        sentAt: r.delivery_state === 'SENT' && r.sent_at ? r.sent_at.toISOString() : null,
+        expiresAt: r.expires_at ? r.expires_at.toISOString() : null,
+        resendCount: r.resend_count ?? 0,
+        acceptedAt: r.accepted_at ? r.accepted_at.toISOString() : null,
+      },
+      createdAt: r.created_at.toISOString(),
+    }));
   }
 
   // =========================================================================

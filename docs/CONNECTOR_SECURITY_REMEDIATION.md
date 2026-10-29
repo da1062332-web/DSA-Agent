@@ -41,6 +41,13 @@ Recorded 2026-10-29. Covers the partner-login incident (a connector portal login
 - Their responses are read inside the same transaction. Before this, activation and status returned the connector as it was before the write, and stored that in the idempotency record.
 - `touch_row` already bumps `lock_version` on every update. This was not the defect.
 
+**Portal users and invitations** (`docs/CONNECTOR_PORTAL_USERS.md`)
+- `POST /v1/connectors/{id}/users` no longer writes a synthetic subject or an ACTIVE login. It creates an INVITED connector login with the standard placeholder subject and queues a `staff_invitation`. The provisioning worker binds the real Supabase Auth subject; activation happens only on the first password sign-in. It is idempotent on `Idempotency-Key`.
+- New routes: list, resend, withdraw, and suspend or reactivate portal users. All need `connector.manage` and the connector's visibility, and all are audited.
+- The resolver now carries the user type on the activating sign-in too. Before, the first sign-in of an invitee returned no user type, so the internal-API gate could not recognise a connector on that one request.
+- The web app sends a connector login to `/connector-portal` and allows that page without a permission. Before, the page required `connector.read`, so a role-less portal user could never open it.
+- The Connector page has a Portal Access & Users tab, and the Add Connector dialog can invite a portal user after saving, with a retry that reuses the same key.
+
 **Portal reconciliation**
 - `MOD_CON_IMPLEMENTATION_READINESS.md` has a dated reconciliation note. The `ROLE-CONNECTOR-PORTAL` statements are marked superseded, and the scope rule is updated to what is built.
 

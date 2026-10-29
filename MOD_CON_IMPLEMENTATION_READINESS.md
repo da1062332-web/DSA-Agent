@@ -219,11 +219,13 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
      WHERE status = 'ACTIVE';
      ```
    - Imposes a mandatory **cooling period** (e.g., 24 hours) after activation before payouts can be routed to the new account.
-6. **Portal User Invitation (`POST /v1/connectors/{id}/users` — API-CON-011):**
-   - Permission: `connector.manage`.
-   - Validates that the connector has status `ACTIVE`.
-   - Creates an `app.app_user` with `user_type = 'CONNECTOR'`, linking `connector_id`.
+6. **Portal User Invitation (`POST /v1/connectors/{id}/users` — API-CON-011):** (as built 2026-10-29)
+   - Permission: `connector.manage`; the connector must be visible to the caller. Requires an `Idempotency-Key`: a retried request returns the same login.
+   - Refused for a `SUSPENDED` or `TERMINATED` connector. A login can be invited while the connector is `DRAFT` or `PENDING_VERIFICATION`; the portal opens for it only once the connector is `ACTIVE`.
+   - Creates an `app.app_user` with `user_type = 'CONNECTOR'`, status `INVITED`, linked by `connector_id`, with the placeholder subject `invite:<user id>` that no token can carry. A connector may have no portal login, or several.
+   - Queues one `PENDING` invitation in `app.staff_invitation` (delivery `QUEUED`). The provisioning worker, the only holder of the service-role key, creates or finds the Supabase Auth account, binds its real subject and sends the e-mail. The login becomes `ACTIVE` only on the invitee's first password sign-in.
    - ~~Assigns role `ROLE-CONNECTOR-PORTAL`.~~ Superseded 2026-10-29: the login is created with no role (see the reconciliation note at the top).
+   - Portal user management, all with `connector.manage`: `GET /v1/connectors/{id}/users` (logins and latest invitation state), `POST .../users/{userId}/invitation/resend` (same cooldown and limits as staff invitations), `POST .../users/{userId}/invitation/revocation` (withdraws an unaccepted invitation; the login is deactivated), `POST .../users/{userId}/access` (`SUSPEND` an active login, `REACTIVATE` a suspended one while the connector is active). Each writes an audit event with the reason. Suspension takes effect on the next request; it does not revoke Supabase sessions.
 
 ---
 

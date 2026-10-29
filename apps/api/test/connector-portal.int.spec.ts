@@ -172,4 +172,49 @@ describe('TEST-CPT-INT connector portal', () => {
     const rate = await request(portal()).get('/portal/v1/rate-card');
     expect(rate.body).toEqual({ connectorId: CONNECTOR, agreement: null });
   });
+
+  it('TEST-CPT-INT-04 a consent code cannot be replayed, used after expiry, or guessed past its attempt limit', async () => {
+    const app = portal();
+    // Replay: the code that created the referral in TEST-CPT-INT-02 is spent.
+    const used = await env.admin.query(
+      `select id from app.referral_consent_otp where used_by_lead is not null limit 1`,
+      [],
+    );
+    const replay = await request(app)
+      .post('/portal/v1/referrals')
+      .set('Idempotency-Key', 'cpt_ref_000004')
+      .send({
+        fullName: 'Referred Again',
+        mobile: '+919876500502',
+        productCategory: 'PL',
+        consentOtpId: used.rows[0].id,
+      });
+    expect(replay.status).toBe(422);
+    expect(replay.body.error.code).toBe('CONSENT_REQUIRED');
+
+    // Expiry: a code past its ten minutes cannot be verified.
+    const expired = await request(app)
+      .post('/portal/v1/referrals/consent-otp')
+      .send({ action: 'SEND', mobile: '+919876500503' });
+    await env.admin.query(
+      `update app.referral_consent_otp set expires_at = now() - interval '1 minute' where id = $1`,
+      [expired.body.otpId],
+    );
+    const late = await request(app)
+      .post('/portal/v1/referrals/consent-otp')
+      .send({ action: 'VERIFY', otpId: expired.body.otpId, code: '123456' });
+    expect(late.status).toBe(409);
+
+    // Attempt limit: after five tries the code is dead, even if the next guess were right.
+    const limited = await request(app)
+      .post('/portal/v1/referrals/consent-otp')
+      .send({ action: 'SEND', mobile: '+919876500504' });
+    await env.admin.query(`update app.referral_consent_otp set attempts = 5 where id = $1`, [
+      limited.body.otpId,
+    ]);
+    const capped = await request(app)
+      .post('/portal/v1/referrals/consent-otp')
+      .send({ action: 'VERIFY', otpId: limited.body.otpId, code: '123456' });
+    expect(capped.status).toBe(409);
+  });
 });

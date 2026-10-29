@@ -5,6 +5,8 @@ import {
   ActivateConnectorSchema,
   ApproveAttributionChangeRequestSchema,
   ApproveConnectorBankAccountSchema,
+  ConnectorPortalAccessSchema,
+  ConnectorPortalRevocationSchema,
   CreateAttributionChangeRequestSchema,
   CreateConnectorAgreementSchema,
   CreateConnectorBankAccountSchema,
@@ -117,10 +119,50 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     method: 'post',
     path: '/v1/connectors/:id/users',
     operationId: 'API-CON-011',
-    summary: 'POST /v1/connectors/:id/users',
+    summary:
+      'POST /v1/connectors/:id/users (invite a portal user; INVITED until the invitee sets a password)',
     tag,
     body: InviteConnectorUserSchema,
     status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/connectors/lookup',
+    operationId: 'CON-GET-CONNECTORS-LOOKUP',
+    summary: 'GET /v1/connectors/lookup (picker data: id, legal name, status, branch only)',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/connectors/:id/users',
+    operationId: 'CON-GET-CONNECTORS-BY-ID-USERS',
+    summary: 'GET /v1/connectors/:id/users (portal users and invitation state)',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/connectors/:id/users/:userId/invitation/resend',
+    operationId: 'CON-POST-CONNECTOR-USER-INVITATION-RESEND',
+    summary: 'POST /v1/connectors/:id/users/:userId/invitation/resend',
+    tag,
+    status: 202,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/connectors/:id/users/:userId/invitation/revocation',
+    operationId: 'CON-POST-CONNECTOR-USER-INVITATION-REVOCATION',
+    summary: 'POST /v1/connectors/:id/users/:userId/invitation/revocation',
+    tag,
+    body: ConnectorPortalRevocationSchema,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/connectors/:id/users/:userId/access',
+    operationId: 'CON-POST-CONNECTOR-USER-ACCESS',
+    summary: 'POST /v1/connectors/:id/users/:userId/access (suspend or reactivate a portal user)',
+    tag,
+    body: ConnectorPortalAccessSchema,
   });
   registerOperation(registry, {
     method: 'get',
