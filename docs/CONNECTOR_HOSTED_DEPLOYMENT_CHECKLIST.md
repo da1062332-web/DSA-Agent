@@ -1,6 +1,11 @@
 # Connector: hosted deployment and containment checklist
 
-**Nothing here has been run.** Each step needs explicit written approval before it starts. Stop at any failed check.
+**Status 2026-10-29 (owner-approved):** steps 1, 3 and 4 are done. Step 2 (application deployment) is not done here.
+
+- **Containment (step 1):** the evidence was exported read-only to `~/dsa-backups/containment-20261029/evidence.json` (SHA-256 `9a3e5c70…beac`). The RM assignment `ura_01M613R78QEHGBZZKF8RZPYAV3` was ended in one checked transaction (`end-rm-assignment.sql` in the same folder): the history row is kept, and `role.assignment_ended` is audited as `SYSTEM:containment` with approval reference `owner-approval-2026-10-29`. By the owner's decision, the login was **not** suspended and keeps portal access. Post-check: 0 open connector-login roles.
+- **Migration 0097 (steps 3 and 4):** applied through `~/dsa-backups/97/apply-run.sql`, whose body equals the migration (source hash `927c9b2a…0718`). `97.verify.sql`: 6 PASS, INFO 0 reserved roles.
+
+Each step needs explicit written approval before it starts. Stop at any failed check.
 
 ## 1. Account containment (partner login) — approvals C1, C2, C5 (C3 and C4 as decided)
 
