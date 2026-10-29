@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
@@ -95,7 +95,7 @@ export function ApplicationDetailPage() {
       <PartiesCard app={a} />
       <OwnersCard app={a} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
-      <EligibilityCard applicationId={a.id} hasProduct={!!a.productVersionId} />
+      <EligibilityCard applicationId={a.id} applicationStatus={a.status} hasProduct={!!a.productVersionId} />
       <ChecklistCard applicationId={a.id} />
       <ArchiveCard applicationId={a.id} />
       <LegalHoldCard applicationId={a.id} />
@@ -299,22 +299,8 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
             </AppButton>
           </Stack>
         ) : (
-          <FieldGrid minColumnWidth={260} spanNonFields>
-            <TextField
-              label="Reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              helperText="3 to 200 characters. Shown to the team while the hold is on."
-            />
-            <TextField
-              label="Hold until"
-              type="date"
-              value={until}
-              onChange={(e) => setUntil(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              helperText="Optional."
-            />
-            <Stack direction="row" justifyContent="flex-end">
+          <StepRow
+            action={
               <AppButton
                 variant="danger"
                 loading={hold.isPending}
@@ -329,8 +315,27 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
               >
                 Put on hold
               </AppButton>
+            }
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                helperText="3 to 200 characters. Shown to the team while the hold is on."
+                sx={{ flex: { sm: 2 }, minWidth: 0 }}
+              />
+              <TextField
+                label="Hold until"
+                type="date"
+                value={until}
+                onChange={(e) => setUntil(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional."
+                sx={{ flex: { sm: 1 }, minWidth: 0 }}
+              />
             </Stack>
-          </FieldGrid>
+          </StepRow>
         )}
       </CardContent>
     </Card>
@@ -343,6 +348,18 @@ const CANCEL_REASONS = [
   { value: 'INELIGIBLE', label: 'Ineligible' },
   { value: 'OTHER', label: 'Other' },
 ] as const;
+
+/** One step on the page: its fields on the left, the action button on the right, side by side. Stacks on a phone. */
+function StepRow({ children, action }: { children: ReactNode; action: ReactNode }) {
+  return (
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
+      <Stack spacing={2} sx={{ flex: 1, minWidth: 0, maxWidth: { sm: 640 } }}>
+        {children}
+      </Stack>
+      <Box sx={{ flexShrink: 0 }}>{action}</Box>
+    </Stack>
+  );
+}
 
 /** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-03
  *  (send back for rework), T-APP-04 (ready), T-APP-05 (send back to review), T-APP-07 (close), T-APP-08 (withdraw), T-APP-09
@@ -446,45 +463,10 @@ export function TransitionCard({ app }: { app: Application }) {
           Next step
         </Typography>
         <ErrorAlert error={run.error} />
-        <FieldGrid minColumnWidth={260} spanNonFields>
+        <Stack spacing={3}>
           {showStart && (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Choose the product and the version in force today, then start the documents.
-              </Typography>
-              <TextField
-                select
-                label="Product"
-                value={productId}
-                onChange={(e) => {
-                  setProductId(e.target.value);
-                  setVersionId('');
-                }}
-                helperText={
-                  products.data?.length === 0 ? `No active ${app.productCategory} products.` : undefined
-                }
-              >
-                {(products.data ?? []).map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Product version"
-                value={versionId}
-                onChange={(e) => setVersionId(e.target.value)}
-                disabled={!productId}
-                helperText={productId && inForce.length === 0 ? 'No version is in force today.' : undefined}
-              >
-                {inForce.map((v) => (
-                  <MenuItem key={v.id} value={v.id}>
-                    Version {v.versionNo} (from {formatDate(v.effectiveFrom)})
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="primary"
                   loading={run.isPending}
@@ -493,8 +475,48 @@ export function TransitionCard({ app }: { app: Application }) {
                 >
                   Start documents
                 </AppButton>
+              }
+            >
+              <Typography variant="body2" color="text.secondary">
+                Choose the product and the version in force today, then start the documents.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Product"
+                  value={productId}
+                  onChange={(e) => {
+                    setProductId(e.target.value);
+                    setVersionId('');
+                  }}
+                  helperText={
+                    products.data?.length === 0 ? `No active ${app.productCategory} products.` : undefined
+                  }
+                  sx={{ flex: { sm: 1 }, minWidth: 0 }}
+                >
+                  {(products.data ?? []).map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Product version"
+                  value={versionId}
+                  onChange={(e) => setVersionId(e.target.value)}
+                  disabled={!productId}
+                  helperText={productId && inForce.length === 0 ? 'No version is in force today.' : undefined}
+                  sx={{ flex: { sm: 1 }, minWidth: 0 }}
+                >
+                  {inForce.map((v) => (
+                    <MenuItem key={v.id} value={v.id}>
+                      Version {v.versionNo} (from {formatDate(v.effectiveFrom)})
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Stack>
-            </>
+            </StepRow>
           )}
 
           {showReview && (
@@ -522,15 +544,8 @@ export function TransitionCard({ app }: { app: Application }) {
           )}
 
           {sendBack && (
-            <>
-              <TextField
-                label="Reason for sending back"
-                value={sendBackReason}
-                onChange={(e) => setSendBackReason(e.target.value)}
-                helperText={`5 to 200 characters. ${sendBack.hint}`}
-                inputProps={{ 'data-testid': 'application.send-back-reason' }}
-              />
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="outlined"
                   loading={run.isPending}
@@ -545,19 +560,22 @@ export function TransitionCard({ app }: { app: Application }) {
                 >
                   {sendBack.label}
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Reason for sending back"
+                value={sendBackReason}
+                onChange={(e) => setSendBackReason(e.target.value)}
+                helperText={`5 to 200 characters. ${sendBack.hint}`}
+                inputProps={{ 'data-testid': 'application.send-back-reason' }}
+              />
+            </StepRow>
           )}
 
           {showClose && (
-            <>
-              <TextField
-                label="Closing note (optional)"
-                value={closeReason}
-                onChange={(e) => setCloseReason(e.target.value)}
-                helperText="5 to 200 characters when given. A closed file cannot be reopened."
-              />
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="danger"
                   loading={run.isPending}
@@ -572,19 +590,21 @@ export function TransitionCard({ app }: { app: Application }) {
                 >
                   Close application
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Closing note (optional)"
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                helperText="5 to 200 characters when given. A closed file cannot be reopened."
+              />
+            </StepRow>
           )}
 
           {showWithdraw && (
-            <>
-              <TextField
-                label="Withdrawal reason"
-                value={withdrawReason}
-                onChange={(e) => setWithdrawReason(e.target.value)}
-                helperText="At least 5 characters. Recorded in the status history."
-              />
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="danger"
                   loading={run.isPending}
@@ -593,19 +613,21 @@ export function TransitionCard({ app }: { app: Application }) {
                 >
                   Withdraw application
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Withdrawal reason"
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                helperText="At least 5 characters. Recorded in the status history."
+              />
+            </StepRow>
           )}
 
           {showReopen && (
-            <>
-              <TextField
-                label="Reopen reason"
-                value={reopenReason}
-                onChange={(e) => setReopenReason(e.target.value)}
-                helperText="At least 5 characters. The file goes back to draft."
-              />
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="primary"
                   loading={run.isPending}
@@ -614,13 +636,33 @@ export function TransitionCard({ app }: { app: Application }) {
                 >
                   Reopen as draft
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Reopen reason"
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                helperText="At least 5 characters. The file goes back to draft."
+              />
+            </StepRow>
           )}
 
           {showCancel && (
-            <>
+            <StepRow
+              action={
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={!cancelReason}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
+                >
+                  Cancel application
+                </AppButton>
+              }
+            >
               <TextField
+                fullWidth
                 select
                 label="Cancel reason"
                 value={cancelReason}
@@ -632,19 +674,9 @@ export function TransitionCard({ app }: { app: Application }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction="row" justifyContent="flex-end">
-                <AppButton
-                  variant="danger"
-                  loading={run.isPending}
-                  disabled={!cancelReason}
-                  onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
-                >
-                  Cancel application
-                </AppButton>
-              </Stack>
-            </>
+            </StepRow>
           )}
-        </FieldGrid>
+        </Stack>
       </CardContent>
     </Card>
   );

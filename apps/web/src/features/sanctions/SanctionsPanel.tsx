@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import { DataTable, PageHeader } from '../../ui';
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom';
 import { useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { sanctionsApi } from './api';
@@ -381,7 +381,26 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
 
       <PageHeader
         title="Sanctions & Disbursements"
-        subtitle="Lender case credit sanctions, multi-tranche disbursals, UTR tracking, and dual-control verification"
+        subtitle={
+          <Box component="span">
+            Lender Case:{' '}
+            <Typography
+              component={RouterLink}
+              to={`/lender-cases/${lenderCaseId}`}
+              variant="body2"
+              sx={{
+                color: 'primary.main',
+                textDecoration: 'none',
+                fontWeight: 600,
+                display: 'inline',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              {lenderCaseId}
+            </Typography>
+            {' · '}Credit sanctions, multi-tranche disbursals, UTR tracking, and dual-control verification
+          </Box>
+        }
       />
 
       {/* Sanction Summary Card */}

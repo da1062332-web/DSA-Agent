@@ -19,6 +19,7 @@ import {
   type RuleSetDefinition,
 } from '@dsa/bre-core';
 import { getDecisionDefinition, recordDecisionRecord } from '../db';
+import { snapshotForRecord } from './snapshot';
 import { sql } from 'kysely';
 
 export class LiveDecisionEngine implements DecisionPort {
@@ -150,7 +151,7 @@ export class LiveDecisionEngine implements DecisionPort {
         evaluationTime: req.evaluationTime,
         idempotencyKey: req.idempotencyKey,
         inputHash,
-        inputSnapshot: (req.facts as Record<string, unknown>) ?? {},
+        inputSnapshot: snapshotForRecord(req.decisionKey, (req.facts as Record<string, unknown>) ?? {}),
         outputs: (outputs as Record<string, unknown>) ?? null,
         matchedRuleUids: [],
         missingFields: [],
@@ -204,7 +205,7 @@ export class LiveDecisionEngine implements DecisionPort {
       evaluationTime: req.evaluationTime,
       idempotencyKey: req.idempotencyKey,
       inputHash,
-      inputSnapshot: (req.facts as Record<string, unknown>) ?? {},
+      inputSnapshot: snapshotForRecord(req.decisionKey, (req.facts as Record<string, unknown>) ?? {}),
       outputs: evalResult.outputs,
       matchedRuleUids: evalResult.matchedRuleUids,
       missingFields: evalResult.missingFields,

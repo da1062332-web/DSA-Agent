@@ -130,6 +130,39 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
     const history = await request(a).get(`/v1/applications/${appId}/eligibility-assessments`);
     expect(history.body.data[0].overrides).toEqual([]);
   });
+
+  it('API-ELG-004 API-ELG-005 API-ELG-006: tenant B cannot read or change tenant A applicant figures, or see its latest assessment', async () => {
+    const a = env.appAs(env.A, APP_CODES);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES]);
+    await env.admin.query(`update app.loan_application set status = 'DOCUMENTS_PENDING' where id = $1`, [
+      appId,
+    ]);
+    const stored = await request(a)
+      .put(`/v1/applications/${appId}/eligibility-inputs`)
+      .set('If-Match', '"0"')
+      .send({
+        declaredMonthlyIncome: { amount: '45000.00', currency: 'INR' },
+        declaredIncomeSource: 'APPLICANT_STATED',
+      });
+    expect(stored.status).toBe(200);
+    expect((await request(b).get(`/v1/applications/${appId}/eligibility-inputs`)).status).toBe(404);
+    expect(
+      (
+        await request(b)
+          .put(`/v1/applications/${appId}/eligibility-inputs`)
+          .set('If-Match', '"1"')
+          .send({ declaredMonthlyIncome: null, declaredIncomeSource: null })
+      ).status,
+    ).toBe(404);
+    expect((await request(b).get(`/v1/applications/${appId}/eligibility-assessments/latest`)).status).toBe(
+      404,
+    );
+    const kept = await env.admin.query(
+      `select declared_monthly_income_amount from app.applicant_financial_input where application_id = $1`,
+      [appId],
+    );
+    expect(kept.rows[0].declared_monthly_income_amount).toBe('45000.00');
+  });
 });
 
 describe('TEST-SEC-001 origination/applications: create, parties, owners, checklist and lifecycle never cross', () => {

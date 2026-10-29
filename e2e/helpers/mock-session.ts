@@ -959,12 +959,21 @@ export async function setupPersonaSession(
     });
   });
 
-  // Mock Supabase Auth routes
+  // Mock Supabase Auth routes. The persona has one verified authenticator. supabase-js reads the factors from the user (GET /user),
+  // so the mocked user carries them; the code check is then a challenge followed by a verify that returns the aal2 session.
+  const verifiedFactor = {
+    id: 'factor_totp_1',
+    factor_type: 'totp',
+    friendly_name: 'Authenticator',
+    status: 'verified',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
   await page.route('**/auth/v1/user', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(sessionData.user),
+      body: JSON.stringify({ ...sessionData.user, factors: [verifiedFactor] }),
     });
   });
 
@@ -973,9 +982,29 @@ export async function setupPersonaSession(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        all: [{ id: 'factor_totp_1', factor_type: 'totp', status: 'verified' }],
+        all: [verifiedFactor],
         totp: [{ id: 'factor_totp_1', status: 'verified' }],
       }),
+    });
+  });
+
+  await page.route('**/auth/v1/factors/*/challenge', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'challenge_1',
+        type: 'totp',
+        expires_at: Math.floor(Date.now() / 1000) + 300,
+      }),
+    });
+  });
+
+  await page.route('**/auth/v1/factors/*/verify', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(aal2SessionData),
     });
   });
 
@@ -1199,7 +1228,8 @@ export async function performRoleLogin(
 
   // 3. Handle MFA OTP step if presented
   const mfaInput = page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
-  const isMfaPage = await mfaInput.isVisible({ timeout: 4000 }).catch(() => false);
+  // The code step appears after the authenticator check, which can take a few seconds after the password step.
+  const isMfaPage = await mfaInput.isVisible({ timeout: 15000 }).catch(() => false);
 
   if (isMfaPage) {
     await showDemoBanner(page, '2FA Step-Up', 'Verifying MFA TOTP Code: 000000');

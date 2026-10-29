@@ -57,7 +57,7 @@ const LINK_TTL_SECONDS = 300;
 const UPLOAD_TTL_MINUTES = 15;
 
 /** Platform defaults for the fixed type codes (PA-10); a tenant row with the same code overrides one. */
-const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
+export const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
   [
     ['PAN_CARD', 'PAN card', 'IDENTITY', 'S3'],
     ['AADHAAR_MASKED', 'Aadhaar (masked)', 'IDENTITY', 'S3'],

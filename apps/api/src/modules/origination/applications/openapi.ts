@@ -18,7 +18,13 @@ import {
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z, type ZodTypeAny } from 'zod';
 import { ChecklistResponseSchema } from './checklist-schemas';
-import { EligibilityAssessment, EligibilityListQuery, OverrideRequest } from './eligibility-schemas';
+import {
+  ApplicantInputs,
+  ApplicantInputsUpdate,
+  EligibilityAssessment,
+  EligibilityListQuery,
+  OverrideRequest,
+} from './eligibility-schemas';
 import {
   Application,
   ApplicationHold,
@@ -44,7 +50,7 @@ export const tags = [
   {
     name: 'MOD-ELG Eligibility',
     description:
-      'Preliminary eligibility assessment of an application (MOD-ELG). Run and history need application.read; an override needs eligibility.override and a reason. Until an eligibility rule set is published every criterion is UNKNOWN. It never promises approval.',
+      'Preliminary eligibility assessment of an application (MOD-ELG), checked against the approved rule set through the decision engine. Running one needs application.update; reading needs application.read; an override needs eligibility.override and a reason. Missing or unusable information never gives a pass. It never promises approval.',
   },
 ];
 
@@ -150,13 +156,16 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     path: '/v1/applications/{id}/eligibility-assessments',
     tags: elg,
     operationId: 'API-ELG-001',
-    summary: 'Run an eligibility assessment for the application (application.read)',
+    summary: 'Run an eligibility assessment against the approved rule set (application.update)',
     parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
     responses: {
       201: { description: 'Assessment recorded', content: json(EligibilityAssessment) },
       403: { description: 'FORBIDDEN' },
       404: { description: 'NOT_FOUND (also when outside the caller scope)' },
-      409: { description: 'INVALID_STATE (no product chosen yet)' },
+      409: {
+        description:
+          'INVALID_STATE (no product chosen, or the application is closed, withdrawn, rejected or cancelled); CONTENT_HASH_MISMATCH (the rule set failed its integrity check, nothing was recorded)',
+      },
     },
   });
 
@@ -186,8 +195,62 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       201: { description: 'Override recorded', content: json(EligibilityAssessment) },
       403: { description: 'FORBIDDEN' },
       404: { description: 'NOT_FOUND (also when outside the caller scope)' },
-      409: { description: 'INVALID_STATE (only a FAIL result can be overridden)' },
+      409: {
+        description:
+          'INVALID_STATE (only a FAIL result; only the latest assessment; not twice for the same inputs; not on a closed, withdrawn, rejected or cancelled application)',
+      },
       422: { description: 'VALIDATION_ERROR (unknown product version, or reason too short)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/eligibility-assessments/latest',
+    tags: elg,
+    operationId: 'API-ELG-004',
+    summary: 'The newest eligibility assessment of the application (application.read)',
+    responses: {
+      200: { description: 'The newest assessment', content: json(EligibilityAssessment) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (no assessment has been run yet, or outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/eligibility-inputs',
+    tags: elg,
+    operationId: 'API-ELG-005',
+    summary: 'Declared and verified income and the credit score of the application (application.update)',
+    responses: {
+      200: { description: 'Applicant figures; ETag is the version', content: json(ApplicantInputs) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/v1/applications/{id}/eligibility-inputs',
+    tags: elg,
+    operationId: 'API-ELG-006',
+    summary:
+      'Record or clear declared income, verified income and manual credit data (application.update, If-Match)',
+    parameters: [{ $ref: '#/components/parameters/IfMatch' }],
+    request: { body: { required: true, content: json(ApplicantInputsUpdate) } },
+    responses: {
+      200: { description: 'Updated figures; ETag is the new version', content: json(ApplicantInputs) },
+      400: { description: 'MALFORMED_REQUEST (If-Match missing)' },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also when outside the caller scope)' },
+      409: {
+        description:
+          'VERSION_CONFLICT (If-Match is stale) or INVALID_STATE (application closed or past review, or manual credit entry not enabled for the tenant)',
+      },
+      422: {
+        description:
+          'VALIDATION_ERROR (a credit date in the future, or income evidence that is not an accepted income document)',
+      },
     },
   });
 

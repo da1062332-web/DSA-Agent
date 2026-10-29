@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
 const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
-const safeText = (min: number, max: number) =>
+export const safeText = (min: number, max: number) =>
   z
     .string()
     .trim()

@@ -1,6 +1,8 @@
-// Eligibility on the application page (owner: Dev 3; DSA Notion MODULE 17, API-ELG-001 to 003). Anyone who can read the
-// application can run a check and see the history. An override needs eligibility.override and a reason, and applies only
-// to a failed result. Until an eligibility rule set is published every result is "cannot be assessed yet".
+// Eligibility on the application page and in the eligibility screen (owner: Dev 3; DSA Notion MODULE 17, API-ELG-001 to 006).
+// Anyone who can read the application sees the latest check and the history. Running a check needs application.update, and the
+// applicant figures it reads are shown to the same people. An override needs eligibility.override and a reason, and applies only
+// to a failed result on the latest check.
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -16,110 +18,158 @@ import {
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import { ApiError, apiFetch } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useList } from '../admin/api';
-import { ErrorAlert, Loading, StatusChip, formatDate } from '../admin/components';
+import { ErrorAlert, LoadMore, Loading, StatusChip, formatDate } from '../admin/components';
+import { EligibilityInputsPanel } from './EligibilityInputsPanel';
 import {
+  MISSING_DATA_TEXT,
   NO_PROMISE,
   RESULT_LABELS,
   canOverride,
+  figuresChangedSince,
   isValidOverrideReason,
-  latestAssessment,
+  type ApplicantInputs,
+  outcomeOf,
   type EligibilityAssessment,
   type ProductResult,
 } from './eligibility';
+import { STATUS_LABELS, TERMINAL, type ApplicationStatus } from './rules';
 
 export function EligibilityCard({
   applicationId,
+  applicationStatus,
   hasProduct,
   variant = 'card',
 }: {
   applicationId: string;
+  applicationStatus: string;
   hasProduct: boolean;
   variant?: 'card' | 'dialog';
 }) {
   const me = useMe();
-  const canRun = hasPermission(me.data, 'application.read');
+  const canRead = hasPermission(me.data, 'application.read');
+  const canCheck = hasPermission(me.data, 'application.update');
   const canOverrideNow = hasPermission(me.data, 'eligibility.override');
+  const closed = (TERMINAL as string[]).includes(applicationStatus);
   const path = `/v1/applications/${applicationId}/eligibility-assessments`;
-  const history = useList<EligibilityAssessment>(path, {}, 50, canRun);
+  const latestPath = `${path}/latest`;
+  const figuresPath = `/v1/applications/${applicationId}/eligibility-inputs`;
+  // "No check yet" is a 404 from the latest endpoint, not a failure, so it is not retried.
+  const latest = useQuery<EligibilityAssessment, ApiError>({
+    queryKey: [latestPath],
+    queryFn: () => apiFetch<EligibilityAssessment>(latestPath),
+    enabled: canRead,
+    retry: (count, err) => !(err instanceof ApiError && err.httpStatus === 404) && count < 2,
+  });
+  const history = useList<EligibilityAssessment>(path, {}, 50, canRead);
+  // The same figures the panel shows (one cache entry), read only to say whether this check still reflects them.
+  const figures = useQuery<ApplicantInputs, ApiError>({
+    queryKey: [figuresPath],
+    queryFn: () => apiFetch<ApplicantInputs>(figuresPath),
+    enabled: canCheck,
+  });
   const run = useCommand<Record<string, never>, EligibilityAssessment>(
     () => ({ path, method: 'POST' }),
-    [[path]],
+    [[path], [latestPath]],
     'Eligibility checked.',
   );
   const [target, setTarget] = useState<{ assessment: EligibilityAssessment; result: ProductResult } | null>(
     null,
   );
 
-  if (!canRun) return null;
+  if (!canRead) return null;
+  const noCheckYet = latest.error?.httpStatus === 404;
+  const current = noCheckYet ? null : (latest.data ?? null);
   const rows = history.data?.pages.flatMap((p) => p.data) ?? [];
-  const latest = latestAssessment(rows);
+  const latestError = noCheckYet ? null : latest.error;
+  const changed = current ? figuresChangedSince(figures.data, current.assessedAt) : false;
 
   const content = (
-    <>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        {NO_PROMISE}
-      </Alert>
-      <ErrorAlert error={history.error ?? run.error} />
+    <Stack spacing={2}>
+      <Alert severity="info">{NO_PROMISE}</Alert>
+      <ErrorAlert error={latestError ?? history.error ?? run.error} />
       {!hasProduct && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Choose a product for this application before checking eligibility.
+        <Alert severity="warning">Choose a product for this application before checking eligibility.</Alert>
+      )}
+      {closed && (
+        <Alert severity="info">
+          This application is {STATUS_LABELS[applicationStatus as ApplicationStatus] ?? applicationStatus}.
+          Its checks are kept for the record and cannot be run again.
         </Alert>
       )}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          disabled={!hasProduct || run.isPending}
-          onClick={() => run.mutate({})}
-          data-testid="eligibility.run"
-        >
-          {latest ? 'Check again' : 'Check eligibility'}
-        </Button>
-      </Stack>
+      {canCheck ? (
+        <Stack direction="row">
+          <Button
+            variant="contained"
+            disabled={!hasProduct || closed || run.isPending}
+            onClick={() => run.mutate({})}
+            data-testid="eligibility.run"
+          >
+            {current ? 'Check again' : 'Check eligibility'}
+          </Button>
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          Only people who can update this application can run a check.
+        </Typography>
+      )}
 
-      {history.isPending ? (
+      {changed && (
+        <Alert severity="info">
+          The applicant figures changed after this check. Check again to see the result for the current
+          figures.
+        </Alert>
+      )}
+      {latest.isPending ? (
         <Loading />
-      ) : !latest ? (
+      ) : !current ? (
         <Typography variant="body2" color="text.secondary">
           No eligibility check has been run for this application.
         </Typography>
       ) : (
-        <>
-          <Typography variant="subtitle2" gutterBottom>
-            Latest check, {formatDate(latest.assessedAt)}
-          </Typography>
-          {latest.results.map((r) => (
-            <Stack key={r.productVersionId} spacing={1} sx={{ mb: 2 }}>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Typography variant="body2">Product version {r.productVersionId}</Typography>
-                <StatusChip active={r.result === 'PASS'} label={RESULT_LABELS[r.result]} />
-                {canOverrideNow && canOverride(latest, r) && (
-                  <Button size="small" onClick={() => setTarget({ assessment: latest, result: r })}>
-                    Override
-                  </Button>
-                )}
-              </Stack>
-              {r.criteria.map((c) => (
-                <Typography key={c.code} variant="caption" color="text.secondary">
-                  {c.code}: {RESULT_LABELS[c.result]}. {c.reason}
-                </Typography>
-              ))}
+        <LatestResult
+          assessment={current}
+          closed={closed}
+          canOverrideNow={canOverrideNow}
+          onOverride={(t) => setTarget(t)}
+        />
+      )}
+
+      {rows.length > 0 && (
+        <Stack spacing={1} data-testid="eligibility.history">
+          <Typography variant="subtitle2">Checks on record, oldest first</Typography>
+          {rows.map((a) => (
+            <Stack key={a.id} direction="row" spacing={2} data-testid={`eligibility.history.${a.id}`}>
+              <Typography variant="body2" sx={{ minWidth: 120 }}>
+                {formatDate(a.assessedAt)}
+              </Typography>
+              <Typography variant="body2">
+                {a.results.map((r) => RESULT_LABELS[r.result]).join('; ') || 'No result'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {a.ruleSetVersionNo ? `rule set version ${a.ruleSetVersionNo}` : 'no rule set used'}
+              </Typography>
             </Stack>
           ))}
-          {latest.overrides.map((o) => (
-            <Alert key={`${o.productVersionId}-${o.overriddenAt}`} severity="warning" sx={{ mb: 1 }}>
-              Overridden on {formatDate(o.overriddenAt)}: {o.reason}
-            </Alert>
-          ))}
-          {rows.length > 1 && (
-            <Typography variant="caption" color="text.secondary">
-              {rows.length - 1} earlier check{rows.length - 1 === 1 ? '' : 's'} on record.
-            </Typography>
-          )}
-        </>
+          <LoadMore
+            hasNext={!!history.hasNextPage}
+            loading={history.isFetchingNextPage}
+            onClick={() => void history.fetchNextPage()}
+          />
+        </Stack>
       )}
-    </>
+
+      {canCheck && (
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Applicant figures used by the rules
+          </Typography>
+          <EligibilityInputsPanel applicationId={applicationId} status={applicationStatus} />
+        </Box>
+      )}
+    </Stack>
   );
 
   return (
@@ -141,7 +191,7 @@ export function EligibilityCard({
         <OverrideDialog
           assessment={target.assessment}
           result={target.result}
-          applicationPath={path}
+          invalidate={[[path], [latestPath]]}
           onClose={() => setTarget(null)}
         />
       )}
@@ -149,27 +199,98 @@ export function EligibilityCard({
   );
 }
 
+function LatestResult({
+  assessment,
+  closed,
+  canOverrideNow,
+  onOverride,
+}: {
+  assessment: EligibilityAssessment;
+  closed: boolean;
+  canOverrideNow: boolean;
+  onOverride: (t: { assessment: EligibilityAssessment; result: ProductResult }) => void;
+}) {
+  return (
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        Checked {formatDate(assessment.assessedAt)}
+        {assessment.ruleSetVersionNo
+          ? `, against the approved rule set, version ${assessment.ruleSetVersionNo}`
+          : ', with no rule set in use'}
+        .
+      </Typography>
+      {assessment.results.map((r) => {
+        const outcome = outcomeOf(r);
+        // The rule's indicative ceiling is not shown: whether users may see it is an open decision (PENDING_APPROVALS section 7, F).
+        return (
+          <Stack
+            key={r.productVersionId}
+            spacing={1}
+            data-testid={`eligibility.result.${r.productVersionId}`}
+          >
+            <Alert severity={outcome.tone}>
+              <strong>{outcome.title}</strong> {outcome.detail}
+            </Alert>
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+              <StatusChip active={r.result === 'PASS'} label={RESULT_LABELS[r.result]} />
+              {canOverrideNow && !closed && canOverride(assessment, r) && (
+                <Button size="small" onClick={() => onOverride({ assessment, result: r })}>
+                  Override
+                </Button>
+              )}
+            </Stack>
+            {r.criteria.map((c) => (
+              <Typography key={`${c.code}-${c.reason}`} variant="caption" color="text.secondary">
+                {c.reason}
+              </Typography>
+            ))}
+            {r.missingData.map((code) => (
+              <Typography key={code} variant="body2">
+                • {MISSING_DATA_TEXT[code] ?? MISSING_DATA_TEXT.FACT_MISSING}
+              </Typography>
+            ))}
+          </Stack>
+        );
+      })}
+      {assessment.overrides.map((o) => (
+        <Alert key={`${o.productVersionId}-${o.overriddenAt}`} severity="warning">
+          Overridden on {formatDate(o.overriddenAt)}: {o.reason}
+        </Alert>
+      ))}
+      {assessment.decisionRecordIds.length > 0 && (
+        <Typography variant="caption" color="text.secondary">
+          Decision record {assessment.decisionRecordIds[0]}
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
 function OverrideDialog({
   assessment,
   result,
-  applicationPath,
+  invalidate,
   onClose,
 }: {
   assessment: EligibilityAssessment;
   result: ProductResult;
-  applicationPath: string;
+  invalidate: string[][];
   onClose: () => void;
 }) {
   const [reason, setReason] = useState('');
   const override = useCommand<{ productVersionId: string; reason: string }, EligibilityAssessment>(
     () => ({ path: `/v1/eligibility-assessments/${assessment.id}/overrides`, method: 'POST' }),
-    [[applicationPath]],
+    invalidate,
     'Override recorded.',
   );
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Override this result</DialogTitle>
       <DialogContent>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          The override applies to this result for these applicant figures only. If the figures change and the
+          result still fails, a new check can be overridden with a new reason.
+        </Alert>
         <ErrorAlert error={override.error} />
         <TextField
           autoFocus
@@ -180,7 +301,7 @@ function OverrideDialog({
           label="Reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          helperText="10 to 500 characters. Recorded in the audit trail."
+          helperText="10 to 500 characters. Do not enter PAN, Aadhaar or account numbers. Recorded in the audit trail."
         />
       </DialogContent>
       <DialogActions>
