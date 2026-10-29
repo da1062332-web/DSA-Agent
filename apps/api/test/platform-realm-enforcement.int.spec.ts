@@ -228,7 +228,13 @@ describe('TEST-VERIFY the two verification scripts', () => {
   });
 
   it('TEST-VERIFY-06 enforcement-check.mjs refuses to run as a privileged role, because the result would prove nothing', async () => {
-    await admin.query(`CREATE ROLE service_role LOGIN PASSWORD 'svc'`);
+    // start-postgres already creates service_role (NOLOGIN); give it a login for this case, so the tool sees a real privileged login.
+    await admin.query(
+      `DO $$ BEGIN
+         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN ALTER ROLE service_role LOGIN PASSWORD 'svc';
+         ELSE CREATE ROLE service_role LOGIN PASSWORD 'svc'; END IF;
+       END $$;`,
+    );
     const cases: [string, string, RegExp][] = [
       ['verifier', 'verifier', /superuser or bypasses RLS/], // can bypass row-level security
       [container.getUsername(), container.getPassword(), /superuser or bypasses RLS/], // a superuser

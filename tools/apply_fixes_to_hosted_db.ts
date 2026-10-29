@@ -87,16 +87,19 @@ async function main() {
       SELECT u.id, u.tenant_id, u.email
       FROM app.app_user u
       LEFT JOIN app.user_role_assignment ura ON u.id = ura.user_id AND u.tenant_id = ura.tenant_id
-      WHERE ura.role_id IS NULL;
+      WHERE ura.role_id IS NULL
+        AND u.user_type = 'STAFF';
     `);
-    console.log(`Found ${noRoleUsers.rows.length} users with no roles.`);
+    console.log(
+      `Found ${noRoleUsers.rows.length} staff users with no roles (connector portal logins are never given one).`,
+    );
 
     for (const user of noRoleUsers.rows) {
       console.log(`Processing test account ${user.email} (${user.id}) in tenant ${user.tenant_id}...`);
       // Assign test role and mark SUSPENDED
       const roleRes = await client.query(
         `
-        SELECT id FROM app.role WHERE tenant_id = $1 ORDER BY id LIMIT 1;
+        SELECT id FROM app.role WHERE tenant_id = $1 AND code NOT LIKE 'ROLE-CONNECTOR%' ORDER BY id LIMIT 1;
       `,
         [user.tenant_id],
       );

@@ -12,6 +12,9 @@ BEGIN
     IF n > 0 THEN
       RAISE EXCEPTION 'rollback 0068 refused: % tenant flag override(s) exist; export them first', n;
     END IF;
+    -- Migration 0087 exposed every app table as a public view over it (public.tenant_feature_flag). The table cannot be dropped while
+    -- that view exists, and the view has no other purpose, so it goes first, in the same transaction.
+    DROP VIEW IF EXISTS public.tenant_feature_flag;
     DROP TABLE app.tenant_feature_flag;
   END IF;
 END $$;
