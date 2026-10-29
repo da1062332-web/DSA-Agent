@@ -81,24 +81,23 @@ export function StatCard({
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
       sx={{
-        borderRadius: 2.5,
+        borderRadius: '10px',
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+        boxShadow: 'none',
         textDecoration: 'none',
         color: 'inherit',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
         ...(isClickable && {
           cursor: 'pointer',
           '&:hover': {
             borderColor: '#B8D5E7',
-            boxShadow: '0 4px 14px -2px rgba(33, 89, 136, 0.08)',
-            transform: 'translateY(-1px)',
+            boxShadow: '0 2px 8px -2px rgba(33, 89, 136, 0.12)',
           },
         }),
       }}
@@ -108,36 +107,34 @@ export function StatCard({
           <Typography
             variant="caption"
             color="text.secondary"
-            fontWeight={700}
+            fontWeight={600}
             textTransform="uppercase"
-            letterSpacing={0.5}
+            letterSpacing={0.6}
           >
             {title}
           </Typography>
           {icon && (
             <Box
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: 2,
+                width: 36,
+                height: 36,
+                borderRadius: 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: () => {
-                  if (effectiveStatus === 'success') return '#ECFDF5';
-                  if (effectiveStatus === 'warning') return '#FFF7ED';
-                  if (effectiveStatus === 'error') return '#FFF1EC';
-                  if (effectiveStatus === 'info') return '#EBF4F9';
-                  if (effectiveStatus === 'secondary') return '#FFF1EC';
-                  return '#FFF7ED';
+                  if (effectiveStatus === 'success') return '#F0FDF4';
+                  if (effectiveStatus === 'warning') return '#FFFBEB';
+                  if (effectiveStatus === 'error') return '#FEF2F2';
+                  if (effectiveStatus === 'default' || effectiveStatus === 'secondary') return '#F1F5F9';
+                  return '#EEF4FA'; // primary / info
                 },
                 color: () => {
-                  if (effectiveStatus === 'success') return '#059669';
-                  if (effectiveStatus === 'warning') return '#F89344';
-                  if (effectiveStatus === 'error') return '#FF642F';
-                  if (effectiveStatus === 'info') return '#215988';
-                  if (effectiveStatus === 'secondary') return '#FF642F';
-                  return '#F89344';
+                  if (effectiveStatus === 'success') return '#15803D';
+                  if (effectiveStatus === 'warning') return '#D97706';
+                  if (effectiveStatus === 'error') return '#DC2626';
+                  if (effectiveStatus === 'default' || effectiveStatus === 'secondary') return '#475569';
+                  return '#215988'; // primary / info
                 },
                 '& svg': { fontSize: 20 },
               }}
@@ -159,7 +156,7 @@ export function StatCard({
         ) : (
           <Typography
             variant="h4"
-            fontWeight={800}
+            fontWeight={600}
             color="text.primary"
             sx={{ letterSpacing: '-0.02em', my: 0.5, lineHeight: 1.2 }}
           >
@@ -173,9 +170,9 @@ export function StatCard({
               <Chip
                 icon={
                   trend.value >= 0 ? (
-                    <TrendingUpIcon sx={{ fontSize: '14px !important', color: '#059669 !important' }} />
+                    <TrendingUpIcon sx={{ fontSize: '14px !important', color: '#15803D !important' }} />
                   ) : (
-                    <TrendingDownIcon sx={{ fontSize: '14px !important', color: '#FF642F !important' }} />
+                    <TrendingDownIcon sx={{ fontSize: '14px !important', color: '#DC2626 !important' }} />
                   )
                 }
                 label={`${trend.value >= 0 ? '+' : ''}${trend.value}%${trend.label ? ` ${trend.label}` : ''}`}
@@ -184,10 +181,10 @@ export function StatCard({
                   height: 20,
                   fontSize: 11,
                   fontWeight: 700,
-                  bgcolor: trend.value >= 0 ? '#ECFDF5' : '#FFF1EC',
-                  color: trend.value >= 0 ? '#059669' : '#FF642F',
+                  bgcolor: trend.value >= 0 ? '#F0FDF4' : '#FEF2F2',
+                  color: trend.value >= 0 ? '#15803D' : '#DC2626',
                   border: '1px solid',
-                  borderColor: trend.value >= 0 ? '#A7F3D0' : '#FECDD3',
+                  borderColor: trend.value >= 0 ? '#BBF7D0' : '#FECACA',
                 }}
               />
             )}

@@ -22,6 +22,9 @@ export class FakeApplicationPort implements ApplicationPort {
     this.applications.set(`${tenantId}:${application.id}`, { ...application });
   }
 
+  /** The checklist items reported through onChecklistItemChanged, in order. */
+  readonly checklistChanges: string[] = [];
+
   async createDraftFromConversion(
     _tx: Tx,
     _ctx: RequestContext,
@@ -62,5 +65,10 @@ export class FakeApplicationPort implements ApplicationPort {
       this.applications.set(key, { ...a, status: cmd.toStatus, subStatus: cmd.toSubStatus, version: a.version + 1 });
     }
     return { applicationId: a.id, fromStatus, toStatus: cmd.toStatus, changed };
+  }
+
+  async onChecklistItemChanged(_tx: Tx, _ctx: RequestContext, checklistItemId: string): Promise<{ advanced: boolean }> {
+    this.checklistChanges.push(checklistItemId);
+    return { advanced: false };
   }
 }

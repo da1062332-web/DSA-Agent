@@ -276,7 +276,7 @@ export function PublicUploadPage() {
   if (linkStatus.status === 'LOCKED') {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Card sx={{ p: 2, borderRadius: 3, boxShadow: 3, border: '1px solid #fed7aa' }}>
+        <Card sx={{ p: 2, borderRadius: 3, boxShadow: 3, border: '1px solid #E2E8F0' }}>
           <CardContent sx={{ textAlign: 'center', py: 4 }}>
             <Box sx={{ fontSize: 48, mb: 1 }}>🚫</Box>
             <Typography variant="h5" color="warning.main" fontWeight={700} gutterBottom>

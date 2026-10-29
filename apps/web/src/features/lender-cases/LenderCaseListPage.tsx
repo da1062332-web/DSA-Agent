@@ -180,16 +180,18 @@ export function LenderCaseListPage(): React.ReactElement {
           >
             View Details
           </Button>
-          <Button
-            size="small"
-            variant="text"
-            color="primary"
-            onClick={() => navigate(`/sanctions/${c.id}`)}
-            endIcon={<OpenInNewIcon fontSize="small" />}
-            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600, fontSize: 12 }}
-          >
-            Sanctions
-          </Button>
+          <Can action="sanction.record">
+            <Button
+              size="small"
+              variant="text"
+              color="primary"
+              onClick={() => navigate(`/sanctions/${c.id}`)}
+              endIcon={<OpenInNewIcon fontSize="small" />}
+              sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600, fontSize: 12 }}
+            >
+              Sanctions
+            </Button>
+          </Can>
         </Stack>
       ),
     },

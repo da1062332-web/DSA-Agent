@@ -241,7 +241,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               {roleTitle} Command Center
             </Typography>
             <Chip
@@ -328,14 +328,14 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Organisation Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Inbound Leads', count: leads.length, color: '#f59e0b' },
-              { key: 'files', label: 'New Files', count: newAppsCount, color: '#1d5fd1' },
-              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#0288d1' },
-              { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#10b981' },
-              { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#059669' },
+              { key: 'files', label: 'New Files', count: newAppsCount, color: '#215988' },
+              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#3876BE' },
+              { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#16A34A' },
+              { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#15803D' },
             ]}
           />
         </Grid>

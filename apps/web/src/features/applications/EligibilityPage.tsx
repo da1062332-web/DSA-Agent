@@ -37,6 +37,7 @@ interface ApplicationRow {
   tenureMonths: number | null;
   productVersionId: string | null;
   createdAt: string;
+  updatedAt?: string | null;
 }
 
 const STATUS_TONE: Record<ApplicationStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
@@ -251,6 +252,10 @@ export function EligibilityPage() {
               applicationStatus={selected.status}
               hasProduct={Boolean(selected.productVersionId)}
               variant="dialog"
+              autoRun
+              productVersionId={selected.productVersionId}
+              updatedAt={selected.updatedAt}
+              status={selected.status}
             />
           )}
         </DialogContent>

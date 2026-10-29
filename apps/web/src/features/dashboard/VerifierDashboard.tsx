@@ -51,8 +51,8 @@ export function VerifierDashboard() {
   // Funnel breakdown of verification pipeline
   const verificationStages = [
     { key: 'pending', label: 'Pending Review', count: pendingCount, color: '#f59e0b', to: '/verifications' },
-    { key: 'verified', label: 'Verified & Attested', count: verifiedCount, color: '#10b981', to: '/verifications' },
-    { key: 'rejected', label: 'Rejected / Discrepancy', count: rejectedCount, color: '#ef4444', to: '/verifications' },
+    { key: 'verified', label: 'Verified & Attested', count: verifiedCount, color: '#16A34A', to: '/verifications' },
+    { key: 'rejected', label: 'Rejected / Discrepancy', count: rejectedCount, color: '#DC2626', to: '/verifications' },
   ];
 
   // Map verification requests to TaskWorkQueueItem contract
@@ -93,7 +93,7 @@ export function VerifierDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Document Verification Workbench
             </Typography>
             <Chip
@@ -184,7 +184,7 @@ export function VerifierDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Verification Case Throughput"
             subtitle="Verification status distribution across incoming borrower checks"
             stages={verificationStages}

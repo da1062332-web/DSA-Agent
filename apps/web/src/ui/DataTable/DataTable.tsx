@@ -30,7 +30,7 @@ export interface ColumnDef<T> {
   width?: string | number;
   align?: 'left' | 'center' | 'right';
   /**
-   * Clickable data cell: shown in the primary (orange) link colour. In a table with onRowClick the first column
+   * Clickable data cell: shown in the primary (navy) link colour. In a table with onRowClick the first column
    * is a link by default; set false to keep a column as plain text.
    */
   link?: boolean;
@@ -38,7 +38,7 @@ export interface ColumnDef<T> {
 
 export type Column<T> = ColumnDef<T>;
 
-/** Orange, underlined-on-hover text for a clickable data cell. Buttons keep their own style. */
+/** Navy, underlined-on-hover text for a clickable data cell. Buttons keep their own style. */
 export function CellLink({ children }: { children: React.ReactNode }) {
   return (
     <Box
@@ -118,7 +118,7 @@ export function DataTable<T>({
       sx={{
         border: '1px solid',
         borderColor: 'divider',
-        borderRadius: 2.5,
+        borderRadius: '10px',
         overflow: 'hidden',
         bgcolor: 'background.paper',
       }}
@@ -133,12 +133,12 @@ export function DataTable<T>({
                   align={col.align ?? 'left'}
                   sx={{
                     width: col.width,
-                    color: 'info.main', // BG/700 Deep Blue
-                    fontWeight: 700,
+                    color: 'grey.500',
+                    fontWeight: 600,
                     fontSize: '0.75rem',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    py: 1.5,
+                    letterSpacing: '0.05em',
+                    py: 1.25,
                     borderBottom: '1px solid',
                     borderColor: 'divider',
                     whiteSpace: 'nowrap',
@@ -201,7 +201,7 @@ export function DataTable<T>({
                           key={col.id}
                           align={col.align ?? 'left'}
                           sx={{
-                            py: 1.5,
+                            py: 1.25,
                             fontSize: '0.875rem',
                             borderColor: 'grey.100',
                           }}

@@ -214,7 +214,10 @@ export function createRouter(deps: ApiDeps): Router {
         const body = ChecklistAttestationRequestSchema.parse(req.body);
 
         const reviewed = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-          return reviewChecklistItem(tx, ctx, id, body);
+          const item = await reviewChecklistItem(tx, ctx, id, body);
+          // A verified document can complete the checklist; the applications module decides whether that moves the file on.
+          await deps.applicationPort?.onChecklistItemChanged(tx, ctx, item.checklistItemId);
+          return item;
         });
 
         res.status(200).json(reviewed);

@@ -49,6 +49,14 @@ export function registerSessionExpiredHandler(handler: SessionExpiredHandler | n
   sessionExpiredHandler = handler;
 }
 
+type StepUpRefusedHandler = () => void;
+let stepUpRefusedHandler: StepUpRefusedHandler | null = null;
+
+/** The app shell registers here to learn that a step-up was asked for and could not be given (see StepUpProvider). */
+export function registerStepUpRefusedHandler(handler: StepUpRefusedHandler | null): void {
+  stepUpRefusedHandler = handler;
+}
+
 export const newIdempotencyKey = () => crypto.randomUUID();
 
 export async function apiFetch<T>(path: string, req: ApiRequest = {}): Promise<T> {
@@ -66,13 +74,9 @@ export async function apiRequest<T>(path: string, req: ApiRequest = {}): Promise
     if (err instanceof ApiError && err.httpStatus === 401 && err.code !== 'STEP_UP_REQUIRED' && sessionExpiredHandler) {
       sessionExpiredHandler();
     }
-    if (
-      err instanceof ApiError &&
-      err.code === 'STEP_UP_REQUIRED' &&
-      stepUpHandler &&
-      (await stepUpHandler())
-    ) {
-      return send<T>(path, { ...req, method, idempotencyKey: key });
+    if (err instanceof ApiError && err.code === 'STEP_UP_REQUIRED' && stepUpHandler) {
+      if (await stepUpHandler()) return send<T>(path, { ...req, method, idempotencyKey: key });
+      stepUpRefusedHandler?.();
     }
     throw err;
   }
@@ -186,7 +190,15 @@ export async function apiStream(path: string, signal: AbortSignal): Promise<Resp
     cache: 'no-store',
     signal,
   });
-  if (!res.ok) throw new ApiError('INTERNAL_ERROR', res.status, `Stream failed (${res.status}).`);
+  if (!res.ok) {
+    // Keep the API's own code (UNAUTHENTICATED, STEP_UP_REQUIRED, FORBIDDEN) so the caller can tell a refusal from an outage.
+    const env = ErrorEnvelope.safeParse(await res.json().catch(() => undefined));
+    if (env.success) {
+      const e = env.data.error;
+      throw new ApiError(e.code, e.httpStatus, e.message, e.correlationId, e.details ?? []);
+    }
+    throw new ApiError('INTERNAL_ERROR', res.status, `Stream failed (${res.status}).`);
+  }
   return res;
 }
 

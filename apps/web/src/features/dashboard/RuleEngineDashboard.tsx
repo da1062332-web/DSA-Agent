@@ -136,7 +136,7 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               {isApprover ? 'Rule Engine Approver Portal' : 'Business Rule Authoring Studio'}
             </Typography>
             <Chip
@@ -227,13 +227,13 @@ export function RuleEngineDashboard({ mode }: RuleEngineDashboardProps) {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Rule Lifecycle Pipeline"
             stages={[
               { key: 'drafts', label: 'Draft Versions', count: draftVersionsTotal, color: '#f59e0b' },
-              { key: 'active', label: 'Active Rule Sets', count: activeCount, color: '#10b981' },
+              { key: 'active', label: 'Active Rule Sets', count: activeCount, color: '#16A34A' },
               { key: 'archived', label: 'Archived Rules', count: archivedCount, color: '#6b7280' },
-              { key: 'records', label: 'Evaluated Records', count: decisionRecords.length, color: '#1d5fd1' },
+              { key: 'records', label: 'Evaluated Records', count: decisionRecords.length, color: '#215988' },
             ]}
           />
         </Grid>

@@ -238,7 +238,7 @@ export function PlatformSuperAdminDashboard() {
               />
             </Stack>
 
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em', color: 'text.primary' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em', color: 'text.primary' }}>
               Platform Super Admin Command Center
             </Typography>
 

@@ -116,7 +116,7 @@ export function ManagerDashboard() {
         }}
       >
         <Box>
-          <Typography variant="h5" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
+          <Typography variant="h5" fontWeight={700} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
             Branch &amp; Team Management Hub
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -193,14 +193,14 @@ export function ManagerDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Branch Origination Pipeline"
             stages={[
               { key: 'leads', label: 'Unassigned Leads', count: unassignedLeads.length, color: '#f59e0b' },
-              { key: 'new', label: 'New Applications', count: newAppsCount, color: '#1d5fd1' },
-              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#0288d1' },
-              { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#10b981' },
-              { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#059669' },
+              { key: 'new', label: 'New Applications', count: newAppsCount, color: '#215988' },
+              { key: 'review', label: 'Under Review', count: underReviewCount, color: '#3876BE' },
+              { key: 'sanctioned', label: 'Sanctioned', count: sanctionedCount, color: '#16A34A' },
+              { key: 'disbursed', label: 'Disbursed', count: disbursedCount, color: '#15803D' },
             ]}
           />
         </Grid>

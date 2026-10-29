@@ -1,4 +1,28 @@
-export type ProductCategory = 'HOME_LOAN' | 'LAP' | 'BUSINESS_LOAN' | 'PERSONAL_LOAN';
+import { LOAN_CATEGORIES, type LoanCategory } from '@dsa/contracts';
+
+/** The category codes the API accepts (PL, BL, MSME, LAP, HL, VL, GL, EL, OTHER). Never invent codes here: the API answers 422. */
+export type ProductCategory = LoanCategory;
+
+const CATEGORY_LABELS: Record<LoanCategory, string> = {
+  PL: 'Personal loan',
+  BL: 'Business loan',
+  MSME: 'MSME loan',
+  LAP: 'Loan against property',
+  HL: 'Home loan',
+  VL: 'Vehicle loan',
+  GL: 'Gold loan',
+  EL: 'Education loan',
+  OTHER: 'Other',
+};
+
+/** Every category the API accepts, in the contract's order, for filters and forms. */
+export const PRODUCT_CATEGORY_OPTIONS: { value: LoanCategory; label: string }[] = LOAN_CATEGORIES.map((value) => ({
+  value,
+  label: CATEGORY_LABELS[value],
+}));
+
+/** The readable name of a category code; an unknown code is shown as it is. */
+export const categoryLabel = (code: string): string => CATEGORY_LABELS[code as LoanCategory] ?? code;
 
 export type ProductStatus = 'ACTIVE' | 'INACTIVE';
 

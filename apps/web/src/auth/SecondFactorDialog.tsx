@@ -257,7 +257,7 @@ export function SecondFactorDialog({ state, email, from, onVerified, onCancel }:
                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04)',
                     '& fieldset': { borderColor: 'rgba(33, 89, 136, 0.28)', borderWidth: 1.5 },
                     '&:hover fieldset': { borderColor: '#215988' },
-                    '&.Mui-focused fieldset': { borderColor: '#F89344', borderWidth: 2 },
+                    '&.Mui-focused fieldset': { borderColor: '#215988', borderWidth: 2 },
                   },
                   '& .MuiOutlinedInput-input': { py: 1.5 },
                 }}

@@ -444,7 +444,7 @@ export function InvoicesPage() {
   ];
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box>
       {/* Top Header */}
       <PageHeader
         title="Invoices & Statements"

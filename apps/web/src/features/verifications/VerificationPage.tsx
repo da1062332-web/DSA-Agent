@@ -243,7 +243,7 @@ export function VerificationPage() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Card elevation={0} sx={{ border: '1px solid #fed7aa', bgcolor: '#fff7ed', borderRadius: 2 }}>
+          <Card elevation={0} sx={{ border: '1px solid #FDE68A', bgcolor: '#FFFBEB', borderRadius: 2 }}>
             <CardContent>
               <Typography variant="body2" color="warning.main" fontWeight={600}>
                 Flagged / Rejected (Exceptions)

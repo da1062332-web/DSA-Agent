@@ -55,7 +55,7 @@ export function ApplicationsPage() {
   const canCreate = hasPermission(me.data, 'application.create');
   const [creating, setCreating] = useState(false);
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+    <Box>
       <PageHeader
         title="Applications"
         subtitle="Loan files from conversion to closure. You see the applications in your scope."

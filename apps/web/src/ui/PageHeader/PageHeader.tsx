@@ -28,7 +28,7 @@ export function PageHeader({
   dataTestId,
 }: PageHeaderProps) {
   return (
-    <Box sx={{ mb: 3 }} data-testid={dataTestId}>
+    <Box sx={{ mb: 2.5 }} data-testid={dataTestId}>
       {breadcrumbs && breadcrumbs.length > 0 && (
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1.5, fontSize: '0.8125rem' }}>
           {breadcrumbs.map((crumb, idx) => {
@@ -85,8 +85,8 @@ export function PageHeader({
               <Typography
                 variant="h4"
                 component="h1"
-                fontWeight={700}
-                sx={{ letterSpacing: '-0.02em', color: 'text.primary', lineHeight: 1.25 }}
+                fontWeight={600}
+                sx={{ letterSpacing: '-0.015em', color: 'text.primary', lineHeight: 1.25 }}
               >
                 {title}
               </Typography>

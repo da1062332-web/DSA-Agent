@@ -9,6 +9,8 @@ import {
   formatRequested,
   formatTenure,
   isValidOverrideReason,
+  latestAssessment,
+  needsAutoCheck,
   normaliseAmount,
   outcomeOf,
   type EligibilityAssessment,
@@ -164,5 +166,38 @@ describe('eligibility overrides and input rules (TEST-ELG-WEB-003)', () => {
     expect(Object.keys(RESULT_LABELS).sort()).toEqual(['FAIL', 'PASS', 'UNKNOWN']);
     expect(RESULT_LABELS.UNKNOWN).toBe('Cannot be decided yet');
     expect(NO_PROMISE).toMatch(/does not approve/);
+  });
+});
+
+describe('needsAutoCheck', () => {
+  const latest = { ...assessment([result('PASS', {}, 'prv_a_1')]), id: 'elg_1' }; // assessed 2026-10-15T00:00:00Z
+  const base = { hasProduct: true, productVersionId: 'prv_a_1', updatedAt: '2026-10-14T12:00:00.000Z', latest };
+
+  it('TEST-ELG-AUTO-001 runs when there is a product and no check yet', () => {
+    expect(needsAutoCheck({ ...base, latest: undefined })).toBe(true);
+  });
+
+  it('TEST-ELG-AUTO-002 does nothing without a product, because the API refuses a check then', () => {
+    expect(needsAutoCheck({ ...base, hasProduct: false, latest: undefined })).toBe(false);
+  });
+
+  it('TEST-ELG-AUTO-003 does not run again for an application that was only viewed', () => {
+    expect(needsAutoCheck(base)).toBe(false);
+  });
+
+  it('TEST-ELG-AUTO-004 runs again when the product version changed since the latest check', () => {
+    expect(needsAutoCheck({ ...base, productVersionId: 'prv_b_2' })).toBe(true);
+  });
+
+  it('TEST-ELG-AUTO-005 runs again when the application changed after the latest check, but not for a change within the clock tolerance', () => {
+    expect(needsAutoCheck({ ...base, updatedAt: '2026-10-15T00:05:00.000Z' })).toBe(true);
+    expect(needsAutoCheck({ ...base, updatedAt: '2026-10-15T00:00:01.000Z' })).toBe(false);
+  });
+
+  it('TEST-ELG-AUTO-006 never assesses a closed file again', () => {
+    for (const status of ['CLOSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED']) {
+      expect(needsAutoCheck({ ...base, status, latest: undefined })).toBe(false);
+    }
+    expect(needsAutoCheck({ ...base, status: 'UNDER_REVIEW', latest: undefined })).toBe(true);
   });
 });

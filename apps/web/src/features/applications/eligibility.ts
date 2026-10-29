@@ -1,6 +1,6 @@
 // Eligibility rules and wording the screen shares with the API (owner: Dev 3; DSA Notion MODULE 17). The API enforces every rule
 // again; this file only decides what to show and what the user may try. Nothing here approves a loan.
-import { hasRestrictedNumber } from './rules';
+import { hasRestrictedNumber, TERMINAL, type ApplicationStatus } from './rules';
 
 export type CriterionResult = 'PASS' | 'FAIL' | 'UNKNOWN';
 export type DecisionOutcome = 'ELIGIBLE' | 'INELIGIBLE' | 'REFER';
@@ -162,6 +162,10 @@ export function outcomeOf(result: ProductResult): Outcome {
   };
 }
 
+/** The newest assessment. The API lists oldest first, so it is the last one. */
+export const latestAssessment = (list: EligibilityAssessment[]): EligibilityAssessment | undefined =>
+  list[list.length - 1];
+
 /** Whether a result may be overridden from the screen: a failed result, not yet overridden on this assessment. */
 export const canOverride = (assessment: EligibilityAssessment, result: ProductResult): boolean =>
   result.result === 'FAIL' &&
@@ -260,4 +264,29 @@ export function creditProblem(input: {
   if (!isCalendarDate(input.reportDate)) return 'Enter the report date as a real day.';
   if (input.reportDate > input.today) return 'The report date cannot be in the future.';
   return null;
+}
+
+/** The API and the database clocks can differ by a moment; a change this close to a check does not count as after it. */
+const CHANGE_TOLERANCE_MS = 2_000;
+
+/**
+ * Whether the screen should run a check by itself. Every check is a saved record with an audit event, so it runs only when the latest
+ * one no longer describes the application: there is none, it did not cover the application's current product version (a check
+ * assesses exactly that one version), or the application changed after it. Viewing an unchanged application never adds a record,
+ * and a closed file is not assessed again.
+ */
+export function needsAutoCheck(input: {
+  hasProduct: boolean;
+  status?: string;
+  productVersionId?: string | null;
+  updatedAt?: string | null;
+  latest?: EligibilityAssessment;
+}): boolean {
+  const { hasProduct, status, productVersionId, updatedAt, latest } = input;
+  if (!hasProduct) return false;
+  if (status && TERMINAL.includes(status as ApplicationStatus)) return false;
+  if (!latest) return true;
+  if (productVersionId && !latest.results.some((r) => r.productVersionId === productVersionId)) return true;
+  if (updatedAt && Date.parse(updatedAt) - Date.parse(latest.assessedAt) > CHANGE_TOLERANCE_MS) return true;
+  return false;
 }

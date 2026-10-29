@@ -48,6 +48,7 @@ import {
 import type { DeclineReasonCode, LenderCaseResource, LenderCaseStatus, SubmissionChannel } from './types';
 import { LenderAttemptFields, type LenderAttemptValue } from './LenderAttemptFields';
 import { oldestOpenLenderQuery } from './lender-query';
+import { packageErrorText } from './package-error';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
 
@@ -182,7 +183,8 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
       setErrorMessage(null);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to build package.');
+      // 422 here is a business rule (no lender-sharing consent, or documents still open): say which, and what to do.
+      setErrorMessage(packageErrorText(err));
     },
   });
 
@@ -461,7 +463,7 @@ export function LenderCasePanel({ applicationId: propAppId }: LenderCasePanelPro
                         Withdraw
                       </Button>
                     </RowAction>
-                    <RowAction allowed={c.status === 'SANCTIONED'}>
+                    <RowAction allowed={c.status === 'SANCTIONED'} action="sanction.record">
                       <Button
                         size="small"
                         variant="outlined"

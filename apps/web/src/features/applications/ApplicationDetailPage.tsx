@@ -95,7 +95,15 @@ export function ApplicationDetailPage() {
       <PartiesCard app={a} />
       <OwnersCard app={a} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
-      <EligibilityCard applicationId={a.id} applicationStatus={a.status} hasProduct={!!a.productVersionId} />
+      <EligibilityCard
+        applicationId={a.id}
+        applicationStatus={a.status}
+        hasProduct={!!a.productVersionId}
+        autoRun
+        productVersionId={a.productVersionId}
+        updatedAt={a.updatedAt}
+        status={a.status}
+      />
       <ChecklistCard applicationId={a.id} />
       <ArchiveCard applicationId={a.id} />
       <LegalHoldCard applicationId={a.id} />

@@ -66,20 +66,7 @@ export function SearchInput({
             </IconButton>
           </InputAdornment>
         ) : null,
-        sx: {
-          borderRadius: 2,
-          backgroundColor: '#FFFFFF',
-          fontSize: '0.875rem',
-          '& fieldset': {
-            borderColor: '#CBD5E1',
-          },
-          '&:hover fieldset': {
-            borderColor: '#94A3B8',
-          },
-          '&.Mui-focused fieldset': {
-            borderColor: '#F89344',
-          },
-        },
+        sx: { backgroundColor: '#FFFFFF', fontSize: '0.875rem' },
       }}
       sx={{
         minWidth: { xs: '100%', sm: 260 },

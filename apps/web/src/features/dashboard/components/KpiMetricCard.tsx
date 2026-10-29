@@ -93,25 +93,23 @@ export function KpiMetricCard({
           {icon && (
             <Box
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: 2,
+                width: 36,
+                height: 36,
+                borderRadius: 1.5,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: () => {
-                  if (status === 'success') return '#ecfdf5';
-                  if (status === 'warning') return '#fff7ed';
-                  if (status === 'error') return '#fff1ec';
-                  if (status === 'info') return '#ebf4f9';
-                  return '#fff7ed';
+                  if (status === 'success') return '#F0FDF4';
+                  if (status === 'warning') return '#FFFBEB';
+                  if (status === 'error') return '#FEF2F2';
+                  return '#EEF4FA'; // info / primary
                 },
                 color: () => {
-                  if (status === 'success') return '#059669';
-                  if (status === 'warning') return '#F89344';
-                  if (status === 'error') return '#FF642F';
-                  if (status === 'info') return '#215988';
-                  return '#F89344';
+                  if (status === 'success') return '#15803D';
+                  if (status === 'warning') return '#D97706';
+                  if (status === 'error') return '#DC2626';
+                  return '#215988'; // info / primary
                 },
                 '& svg': { fontSize: 20 },
               }}
@@ -143,7 +141,7 @@ export function KpiMetricCard({
         ) : (
           <Typography
             variant="h4"
-            fontWeight={800}
+            fontWeight={700}
             color="text.primary"
             sx={{
               my: 0.5,

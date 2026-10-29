@@ -1,7 +1,7 @@
 // Sidebar navigation (owner: Dev 1). Refactored into 7 Operational Workspaces.
 // In expanded mode: clean workspace navigation matching original design (no sub-item icons).
-// In collapsed mode: compact rail displaying main orange workspace category icons in line with the top toggle.
-// Clicking an orange category icon opens the sidebar and expands that section's dropdown.
+// In collapsed mode: compact rail displaying the workspace category icons in line with the top toggle.
+// Clicking a category icon opens the sidebar and expands that section's dropdown.
 import {
   Box,
   Chip,
@@ -51,7 +51,7 @@ export type { NavGroup, NavItem } from './access';
 const STORAGE_KEY = 'qloax_sidebar_sections_v2';
 
 function getMainCategoryIcon(title: string, size: number = 24): ReactNode {
-  const sx = { color: '#F89344', fontSize: size };
+  const sx = { color: 'inherit', fontSize: size };
   switch (title) {
     case 'Workspace':
       return <DashboardIcon sx={sx} />;
@@ -102,7 +102,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
             component="span"
             sx={{
               color: '#000000',
-              fontWeight: 800,
+              fontWeight: 700,
               bgcolor: 'rgba(15, 23, 42, 0.1)',
               px: '3px',
               py: '0.5px',
@@ -395,15 +395,15 @@ export function SidebarContent({
               border: '1px solid #e2e8f0',
               transition: 'all 0.15s ease',
               '&:focus-within': {
-                borderColor: '#F89344',
+                borderColor: '#215988',
                 bgcolor: '#ffffff',
-                boxShadow: '0 0 0 2px rgba(248, 147, 68, 0.15)',
+                boxShadow: '0 0 0 3px rgba(56, 118, 190, 0.18)',
               },
             }}
           >
             <SearchIcon sx={{ color: '#94a3b8', fontSize: 18, mr: 0.75, flexShrink: 0 }} />
             <InputBase
-              placeholder="Search modules & submodules..."
+              placeholder="Search menu…"
               value={searchQuery}
               onClick={() => setIsFocused(true)}
               onFocus={() => setIsFocused(true)}
@@ -548,14 +548,14 @@ export function SidebarContent({
                             display: 'flex',
                             alignItems: 'flex-start',
                             gap: 1.25,
-                            bgcolor: isHighlighted ? 'rgba(248, 147, 68, 0.08)' : 'transparent',
+                            bgcolor: isHighlighted ? '#F1F5F9' : 'transparent',
                             transition: 'all 0.1s ease',
                             '&:hover': {
-                              bgcolor: 'rgba(248, 147, 68, 0.12)',
+                              bgcolor: '#F1F5F9',
                             },
                           }}
                         >
-                          <ListItemIcon sx={{ minWidth: 26, mt: 0.3, color: '#F89344' }}>
+                          <ListItemIcon sx={{ minWidth: 26, mt: 0.3, color: '#64748B' }}>
                             {getMainCategoryIcon(item.category, 18)}
                           </ListItemIcon>
                           <ListItemText
@@ -588,8 +588,8 @@ export function SidebarContent({
                                       height: 18,
                                       fontSize: 10,
                                       fontWeight: 600,
-                                      bgcolor: 'rgba(248, 147, 68, 0.1)',
-                                      color: '#ea580c',
+                                      bgcolor: '#F1F5F9',
+                                      color: '#475569',
                                       borderRadius: 1,
                                     }}
                                   />
@@ -674,7 +674,7 @@ export function SidebarContent({
         }}
       >
         {collapsed ? (
-          // Collapsed rail mode: Perfectly centered orange icons aligned with the top hamburger menu
+          // Collapsed rail mode: centered category icons aligned with the top hamburger menu
           <Box sx={{ py: 0.5, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {displayGroups.map((group, i) => {
               const isGroupActive = group.items.some(
@@ -695,7 +695,7 @@ export function SidebarContent({
                       <Box sx={{ p: 0.5, maxWidth: 220 }}>
                         <Typography
                           variant="caption"
-                          sx={{ fontWeight: 700, color: '#F89344', display: 'block', mb: 0.5 }}
+                          sx={{ fontWeight: 700, color: '#FFFFFF', display: 'block', mb: 0.5 }}
                         >
                           {group.title}
                         </Typography>
@@ -705,7 +705,7 @@ export function SidebarContent({
                             variant="caption"
                             sx={{
                               display: 'block',
-                              color: 'text.secondary',
+                              color: '#CBD5E1',
                               fontSize: 11,
                               lineHeight: 1.4,
                             }}
@@ -716,7 +716,7 @@ export function SidebarContent({
                         {group.items.length > 5 && (
                           <Typography
                             variant="caption"
-                            sx={{ color: 'text.disabled', fontSize: 10, display: 'block', mt: 0.25 }}
+                            sx={{ color: '#94A3B8', fontSize: 10, display: 'block', mt: 0.25 }}
                           >
                             +{group.items.length - 5} more items
                           </Typography>
@@ -737,12 +737,12 @@ export function SidebarContent({
                         p: 0,
                         justifyContent: 'center',
                         alignItems: 'center',
-                        borderRadius: '16px',
-                        bgcolor: isGroupActive ? 'rgba(248, 147, 68, 0.12)' : 'transparent',
+                        borderRadius: '12px',
+                        bgcolor: isGroupActive ? '#EEF4FA' : 'transparent',
                         position: 'relative',
                         transition: 'all 0.15s ease',
                         '&:hover': {
-                          bgcolor: isGroupActive ? 'rgba(248, 147, 68, 0.18)' : 'rgba(248, 147, 68, 0.08)',
+                          bgcolor: isGroupActive ? '#E2ECF6' : '#F1F5F9',
                         },
                         ...(isGroupActive && {
                           '&::before': {
@@ -753,7 +753,7 @@ export function SidebarContent({
                             bottom: '20%',
                             width: 3.5,
                             borderRadius: 2,
-                            bgcolor: '#F89344',
+                            bgcolor: '#215988',
                           },
                         }),
                       }}
@@ -762,7 +762,7 @@ export function SidebarContent({
                         sx={{
                           minWidth: 0,
                           justifyContent: 'center',
-                          color: '#F89344',
+                          color: isGroupActive ? '#215988' : '#64748B',
                         }}
                       >
                         {getMainCategoryIcon(group.title, 24)}
@@ -783,7 +783,7 @@ export function SidebarContent({
             </Typography>
           </Box>
         ) : (
-          // Expanded mode: Clean, professional workspace navigation with orange category icons and no outline glitches
+          // Expanded mode: workspace navigation; the active item carries the single brand-navy accent
           filteredGroups.map((group, i) => {
             const isOpen = query ? true : expanded[group.title] !== false;
             return (
@@ -813,7 +813,7 @@ export function SidebarContent({
                         position: 'relative',
                         bgcolor: 'transparent',
                         lineHeight: '32px',
-                        color: '#334155',
+                        color: '#64748B',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -830,7 +830,7 @@ export function SidebarContent({
                           bgcolor: 'rgba(0, 0, 0, 0.04)',
                         },
                         '&:focus-visible': {
-                          bgcolor: 'rgba(248, 147, 68, 0.08)',
+                          bgcolor: 'rgba(33, 89, 136, 0.08)',
                         },
                       }}
                     >
@@ -875,11 +875,11 @@ export function SidebarContent({
                             color: '#475569',
                             transition: 'all 0.15s ease',
                             '&:hover': {
-                              bgcolor: 'rgba(33, 89, 136, 0.05)',
+                              bgcolor: '#F1F5F9',
                               color: '#0f172a',
                             },
                             '&.active': {
-                              bgcolor: 'rgba(248, 147, 68, 0.1)',
+                              bgcolor: '#EEF4FA',
                               fontWeight: 600,
                               color: '#215988',
                               position: 'relative',
@@ -891,7 +891,7 @@ export function SidebarContent({
                                 bottom: '20%',
                                 width: 3.5,
                                 borderRadius: 2,
-                                bgcolor: '#F89344',
+                                bgcolor: '#215988',
                               },
                             },
                           }}
@@ -966,13 +966,13 @@ export function SidebarContent({
               <Box sx={{ p: 0.5, maxWidth: 220 }}>
                 <Typography
                   variant="caption"
-                  sx={{ fontWeight: 700, color: '#F89344', display: 'block', mb: 0.25 }}
+                  sx={{ fontWeight: 700, color: '#FFFFFF', display: 'block', mb: 0.25 }}
                 >
                   Settings Hub
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ display: 'block', color: 'text.secondary', fontSize: 11, lineHeight: 1.4 }}
+                  sx={{ display: 'block', color: '#CBD5E1', fontSize: 11, lineHeight: 1.4 }}
                 >
                   Organization, users, access control, system config & security
                 </Typography>
@@ -994,12 +994,12 @@ export function SidebarContent({
                 p: 0,
                 justifyContent: 'center',
                 alignItems: 'center',
-                borderRadius: '16px',
-                bgcolor: isSettingsActive ? 'rgba(248, 147, 68, 0.12)' : 'transparent',
+                borderRadius: '12px',
+                bgcolor: isSettingsActive ? '#EEF4FA' : 'transparent',
                 position: 'relative',
                 transition: 'all 0.15s ease',
                 '&:hover': {
-                  bgcolor: isSettingsActive ? 'rgba(248, 147, 68, 0.18)' : 'rgba(248, 147, 68, 0.08)',
+                  bgcolor: isSettingsActive ? '#E2ECF6' : '#F1F5F9',
                 },
                 ...(isSettingsActive && {
                   '&::before': {
@@ -1010,7 +1010,7 @@ export function SidebarContent({
                     bottom: '20%',
                     width: 3.5,
                     borderRadius: 2,
-                    bgcolor: '#F89344',
+                    bgcolor: '#215988',
                   },
                 }),
               }}
@@ -1019,7 +1019,7 @@ export function SidebarContent({
                 sx={{
                   minWidth: 0,
                   justifyContent: 'center',
-                  color: isSettingsActive ? '#F89344' : '#64748b',
+                  color: isSettingsActive ? '#215988' : '#64748b',
                 }}
               >
                 <SettingsIcon sx={{ fontSize: 24 }} />
@@ -1037,16 +1037,16 @@ export function SidebarContent({
               borderRadius: 2,
               py: 0.75,
               px: 1.25,
-              bgcolor: isSettingsActive ? 'rgba(248, 147, 68, 0.12)' : 'rgba(15, 23, 42, 0.02)',
-              border: isSettingsActive ? '1px solid rgba(248, 147, 68, 0.35)' : '1px solid #e2e8f0',
+              bgcolor: isSettingsActive ? '#EEF4FA' : '#ffffff',
+              border: isSettingsActive ? '1px solid #B8D5E7' : '1px solid #e2e8f0',
               transition: 'all 0.15s ease',
               display: 'flex',
               alignItems: 'center',
               gap: 1.25,
               position: 'relative',
               '&:hover': {
-                bgcolor: isSettingsActive ? 'rgba(248, 147, 68, 0.18)' : 'rgba(248, 147, 68, 0.06)',
-                borderColor: '#F89344',
+                bgcolor: isSettingsActive ? '#E2ECF6' : '#F8FAFC',
+                borderColor: isSettingsActive ? '#B8D5E7' : '#CBD5E1',
               },
               ...(isSettingsActive && {
                 '&::before': {
@@ -1057,12 +1057,12 @@ export function SidebarContent({
                   bottom: '18%',
                   width: 3.5,
                   borderRadius: 2,
-                  bgcolor: '#F89344',
+                  bgcolor: '#215988',
                 },
               }),
             }}
           >
-            <ListItemIcon sx={{ minWidth: 26, color: isSettingsActive ? '#F89344' : '#64748b' }}>
+            <ListItemIcon sx={{ minWidth: 26, color: isSettingsActive ? '#215988' : '#64748b' }}>
               <SettingsIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
             <ListItemText
@@ -1071,7 +1071,7 @@ export function SidebarContent({
               primaryTypographyProps={{
                 fontWeight: isSettingsActive ? 700 : 600,
                 fontSize: 13,
-                color: isSettingsActive ? '#ea580c' : '#1e293b',
+                color: isSettingsActive ? '#215988' : '#1e293b',
               }}
               secondaryTypographyProps={{
                 fontSize: 10.5,

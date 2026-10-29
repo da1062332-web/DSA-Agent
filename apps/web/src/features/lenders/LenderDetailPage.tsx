@@ -53,6 +53,7 @@ import type {
   UpdateLenderInput,
 } from './types';
 import { NotSet } from '../../ui/NotSet';
+import { PRODUCT_CATEGORY_OPTIONS, categoryLabel } from '../products/types';
 import { RowAction } from '../../shell/RowAction';
 
 export function LenderDetailPage() {
@@ -80,7 +81,7 @@ export function LenderDetailPage() {
   const [empDsaCode, setEmpDsaCode] = useState<string>('');
   const [empValidFrom, setEmpValidFrom] = useState<string>('');
   const [empValidTo, setEmpValidTo] = useState<string>('');
-  const [empCategories, setEmpCategories] = useState<string[]>(['HOME_LOAN']);
+  const [empCategories, setEmpCategories] = useState<string[]>(['HL']);
   const [empAgreementDocId, setEmpAgreementDocId] = useState<string>('');
   const [savingEmpanelment, setSavingEmpanelment] = useState<boolean>(false);
   const [empError, setEmpError] = useState<string | null>(null);
@@ -596,12 +597,13 @@ export function LenderDetailPage() {
                   onChange={(e) =>
                     setEmpCategories(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)
                   }
-                  renderValue={(selected) => selected.join(', ')}
+                  renderValue={(selected) => selected.map(categoryLabel).join(', ')}
                 >
-                  <MenuItem value="HOME_LOAN">Home Loan</MenuItem>
-                  <MenuItem value="LAP">Loan Against Property (LAP)</MenuItem>
-                  <MenuItem value="BUSINESS_LOAN">Business Loan</MenuItem>
-                  <MenuItem value="PERSONAL_LOAN">Personal Loan</MenuItem>
+                  {PRODUCT_CATEGORY_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               <TextField

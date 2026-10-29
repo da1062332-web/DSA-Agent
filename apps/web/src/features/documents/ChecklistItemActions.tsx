@@ -37,7 +37,12 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [waiveOpen, setWaiveOpen] = useState(false);
-  const refresh = () => qc.invalidateQueries({ queryKey: ['application-checklist', item.applicationId] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['application-checklist', item.applicationId] });
+    // A review or waiver can complete the checklist, and the API then moves the application to Under review by itself: reload it too.
+    qc.invalidateQueries({ queryKey: [`/v1/applications/${item.applicationId}`] });
+    qc.invalidateQueries({ queryKey: ['/v1/applications'] });
+  };
 
   const upload = useMutation({
     meta: { successMessage: 'Document uploaded. It now waits for review.' },

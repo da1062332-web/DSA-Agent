@@ -67,7 +67,7 @@ export function ComplianceDashboard() {
       key: 'open',
       label: 'Open / Triage',
       count: incidents.filter((i) => i.status === 'OPEN').length,
-      color: '#ef4444',
+      color: '#DC2626',
       to: '/security',
     },
     {
@@ -81,14 +81,14 @@ export function ComplianceDashboard() {
       key: 'contained',
       label: 'Contained',
       count: incidents.filter((i) => i.status === 'CONTAINED').length,
-      color: '#0288d1',
+      color: '#3876BE',
       to: '/security',
     },
     {
       key: 'resolved',
       label: 'Resolved & Closed',
       count: resolvedCount,
-      color: '#10b981',
+      color: '#16A34A',
       to: '/security',
     },
   ];
@@ -129,7 +129,7 @@ export function ComplianceDashboard() {
       >
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
               Compliance &amp; Security Command Center
             </Typography>
             <Chip
@@ -223,7 +223,7 @@ export function ComplianceDashboard() {
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12} lg={7}>
           <PipelineFunnelChart
-            variant="funnel"
+            variant="columns"
             title="Security Incident Lifecycle"
             subtitle="Incident resolution pipeline from reporting to closure"
             stages={incidentStages}
