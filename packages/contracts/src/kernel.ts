@@ -26,6 +26,8 @@ export interface Principal {
   queueIds: string[]; // queues where principal is an active member
   grants: PermissionGrant[];
   authTime: Iso8601 | null; // token auth_time; drives step-up
+  // Set for USER principals by the resolver. A connector portal login ('CONNECTOR') is refused on the internal API, except GET /me.
+  userType?: 'STAFF' | 'CONNECTOR';
 }
 
 export interface RequestContext {

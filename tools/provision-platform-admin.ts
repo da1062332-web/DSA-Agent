@@ -121,7 +121,9 @@ export async function provisionPlatformAdmin(
       PLATFORM_TENANT_ID,
       roleCode,
     ]);
-    const user = await db.query(`select id, idp_subject, status from app_user where email = $1`, [email]);
+    const user = await db.query(`select id, idp_subject, status, user_type from app_user where email = $1`, [
+      email,
+    ]);
     return {
       tenant: tenant.rows[0],
       branchId: branch.rows[0]?.id as string | undefined,
@@ -138,6 +140,11 @@ export async function provisionPlatformAdmin(
       'The platform tenant is missing or not ACTIVE. Apply migration 0050 first (supabase/migrations/20261001000050_platform_realm.sql).',
     );
   }
+  // An e-mail that already belongs to a connector portal login is refused before anything is written: such a login holds no role.
+  if (prerequisites.user && prerequisites.user.user_type !== 'STAFF')
+    throw new ProvisionError(
+      'This e-mail belongs to a connector portal login, which cannot hold a platform role.',
+    );
   if (!prerequisites.branchId)
     throw new ProvisionError('The platform branch is missing. Apply migration 0050 first.');
   if (!prerequisites.roleId)

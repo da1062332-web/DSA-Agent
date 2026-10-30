@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
   Link,
@@ -35,10 +37,17 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, ApiError } from '../../api/client';
-import { useMe } from '../../api/useMe';
+import { apiFetch, ApiError, errorText } from '../../api/client';
+import {
+  ConnectorPortalUsers,
+  invitationErrors,
+  invitePortalUser,
+  newIdempotencyKey,
+  type PortalInviteInput,
+} from './ConnectorPortalUsers';
+import { hasPermission, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
-import { ConnectorSelect, LeadSelect } from '../../shell/selectors';
+import { ConnectorSelect, LeadSelect, UserSelect } from '../../shell/selectors';
 import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
 import type {
@@ -87,6 +96,25 @@ export function ConnectorPage() {
 
   // Dialog states
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  // Create-then-invite: the connector is saved first; the optional portal invitation follows with its own key, so a retry after a
+  // failed invitation neither duplicates the connector nor creates a second login.
+  const [createKey, setCreateKey] = useState('');
+  const [inviteAfterSave, setInviteAfterSave] = useState(false);
+  const [initialInvite, setInitialInvite] = useState<PortalInviteInput>({ displayName: '', email: '', mobileE164: '' });
+  const [initialInviteKey, setInitialInviteKey] = useState('');
+  const [failedInvite, setFailedInvite] = useState<{
+    connectorId: string;
+    input: PortalInviteInput;
+    idempotencyKey: string;
+    message: string;
+  } | null>(null);
+  const openCreate = () => {
+    setCreateKey(newIdempotencyKey('con'));
+    setInviteAfterSave(false);
+    setInitialInvite({ displayName: '', email: '', mobileE164: '' });
+    setInitialInviteKey(newIdempotencyKey('cpu'));
+    setCreateModalOpen(true);
+  };
   const [activateModalOpen, setActivateModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [bankModalOpen, setBankModalOpen] = useState(false);
@@ -155,6 +183,12 @@ export function ConnectorPage() {
     },
   });
 
+  // Bank details and agreement terms are read only by the roles that manage or approve them (the API refuses the others), so the
+  // page does not ask for them otherwise. A relationship manager sees the connector itself, not these.
+  const canSeeBankAccounts =
+    hasPermission(me.data, 'connector.manage') || hasPermission(me.data, 'connector.bank_change_approve');
+  const canSeeAgreements = hasPermission(me.data, 'connector.manage');
+
   const selectedBankAccountsQuery = useQuery({
     queryKey: ['connector-bank-accounts', selectedConnector?.id],
     queryFn: async () => {
@@ -164,7 +198,7 @@ export function ConnectorPage() {
       );
       return res.items;
     },
-    enabled: !!selectedConnector,
+    enabled: !!selectedConnector && canSeeBankAccounts,
   });
 
   const selectedAgreementsQuery = useQuery({
@@ -176,7 +210,7 @@ export function ConnectorPage() {
       );
       return res.items;
     },
-    enabled: !!selectedConnector,
+    enabled: !!selectedConnector && canSeeAgreements,
   });
 
   const attributionRequestsQuery = useQuery({
@@ -204,16 +238,29 @@ export function ConnectorPage() {
       return apiFetch<ConnectorResource>('/v1/connectors', {
         method: 'POST',
         headers: {
-          'Idempotency-Key': `con_idem_${Date.now()}`,
+          // One key per opened dialog: a repeated click or a retry returns the same connector instead of creating another.
+          'Idempotency-Key': createKey || newIdempotencyKey('con'),
         },
         body: JSON.stringify(data),
       });
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
       queryClient.invalidateQueries({ queryKey: ['connectors'] });
       setCreateModalOpen(false);
       setSelectedConnector(created);
-      setActiveConnectorTab(0);
+      if (!inviteAfterSave) {
+        setActiveConnectorTab(0);
+        return;
+      }
+      setActiveConnectorTab(4);
+      try {
+        await invitePortalUser(created.id, initialInvite, initialInviteKey);
+        setFailedInvite(null);
+      } catch (err) {
+        // The connector stays saved; the Portal Access tab offers a retry with the same invitation key.
+        setFailedInvite({ connectorId: created.id, input: initialInvite, idempotencyKey: initialInviteKey, message: errorText(err) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['connector-portal-users', created.id] });
     },
   });
 
@@ -503,6 +550,7 @@ export function ConnectorPage() {
             <Tab label={`Bank Accounts & SOD (${selectedBankAccountsQuery.data?.length || 0})`} />
             <Tab label={`Agreements & Rate Cards (${selectedAgreementsQuery.data?.length || 0})`} />
             <Tab label="Attributions & Disputes" />
+            <Tab label="Portal Access & Users" data-testid="con.tab.portal-users" />
           </Tabs>
         </Paper>
 
@@ -571,7 +619,7 @@ export function ConnectorPage() {
                 <Grid item xs={12} sm={6} md={4}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
                     <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      RELATIONSHIP MANAGER
+                      RELATIONSHIP MANAGER (INTERNAL STAFF)
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
                       <UserName id={selectedConnector.relationshipOwnerUserId} fallback="Unassigned" typographyProps={{ fontWeight: 600, variant: 'body1' }} />
@@ -616,6 +664,12 @@ export function ConnectorPage() {
                     Requires Dual-Control Separation of Duties (SOD). The account creator cannot approve the bank
                     details. A 24-hr cooling period applies after activation.
                   </Typography>
+                  {!canSeeBankAccounts && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Bank details are shown only to connector managers and bank-change approvers. An empty list here does not
+                      mean there are no accounts.
+                    </Alert>
+                  )}
                 </Box>
                 <Can action="connector.manage">
                   <Button
@@ -734,6 +788,12 @@ export function ConnectorPage() {
                   <Typography variant="caption" color="text.secondary">
                     Governs permitted product eligibility and rate cards without duplicating commission engine calculations.
                   </Typography>
+                  {!canSeeAgreements && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Agreement terms are shown only to connector managers. An empty list here does not mean there are no
+                      agreements.
+                    </Alert>
+                  )}
                 </Box>
                 <Can action="connector.manage">
                   <Button
@@ -795,6 +855,15 @@ export function ConnectorPage() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* CONNECTOR TAB 4: Portal Access & Users */}
+        {activeConnectorTab === 4 && (
+          <ConnectorPortalUsers
+            connector={selectedConnector}
+            failedInvite={failedInvite && failedInvite.connectorId === selectedConnector.id ? failedInvite : null}
+            onFailedInviteResolved={() => setFailedInvite(null)}
+          />
         )}
 
         {/* CONNECTOR TAB 3: Attributions & Disputes */}
@@ -1073,7 +1142,7 @@ export function ConnectorPage() {
             <Button
               variant="contained"
               color="primary"
-              onClick={() => setCreateModalOpen(true)}
+              onClick={openCreate}
               sx={{ fontWeight: 600, px: 3 }}
             >
               + Onboard Connector
@@ -1485,18 +1554,76 @@ export function ConnectorPage() {
               onChange={(e) => setNewConnector({ ...newConnector, pan: e.target.value.toUpperCase() })}
               helperText="Encrypted via AES-256-GCM. Never logged or stored plaintext."
             />
+            <UserSelect
+              value={newConnector.relationshipOwnerUserId ?? null}
+              onChange={(id) => setNewConnector({ ...newConnector, relationshipOwnerUserId: id ?? undefined })}
+              label="Relationship manager (internal staff)"
+              helperText="The internal person who answers for this partner. A partner portal login cannot be chosen."
+              staffOnly
+              required
+              data-testid="connector-form.owner"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={inviteAfterSave}
+                  onChange={(e) => setInviteAfterSave(e.target.checked)}
+                  data-testid="connector-form.invite-after-save"
+                />
+              }
+              label="Invite a portal user after saving"
+            />
+            {inviteAfterSave && (
+              <>
+                <Typography variant="caption" color="text.secondary">
+                  The portal user is an external person at the connector, not the relationship manager. They receive an e-mail to set a
+                  password; no password is entered here.
+                </Typography>
+                <TextField
+                  size="small"
+                  label="Portal user's full name"
+                  required
+                  value={initialInvite.displayName}
+                  onChange={(e) => setInitialInvite({ ...initialInvite, displayName: e.target.value })}
+                  error={!!initialInvite.displayName && !!invitationErrors(initialInvite).displayName}
+                />
+                <TextField
+                  size="small"
+                  label="Portal user's email"
+                  type="email"
+                  required
+                  value={initialInvite.email}
+                  onChange={(e) => setInitialInvite({ ...initialInvite, email: e.target.value })}
+                  error={!!initialInvite.email && !!invitationErrors(initialInvite).email}
+                />
+                <TextField
+                  size="small"
+                  label="Portal user's mobile (optional)"
+                  value={initialInvite.mobileE164 ?? ''}
+                  onChange={(e) => setInitialInvite({ ...initialInvite, mobileE164: e.target.value })}
+                  error={!!invitationErrors(initialInvite).mobileE164}
+                />
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateModalOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            disabled={!newConnector.legalName || !newConnector.pan || !newConnector.email}
+            disabled={
+              createConnectorMutation.isPending ||
+              !newConnector.legalName ||
+              !newConnector.pan ||
+              !newConnector.email ||
+              !newConnector.relationshipOwnerUserId ||
+              (inviteAfterSave && Object.keys(invitationErrors(initialInvite)).length > 0)
+            }
             onClick={() => {
+              // The relationship manager is chosen, never defaulted to whoever opens the form: the server requires an active staff owner.
               createConnectorMutation.mutate({
                 ...newConnector,
                 primaryBranchId: newConnector.primaryBranchId || me.data?.primaryBranchId,
-                relationshipOwnerUserId: newConnector.relationshipOwnerUserId || me.data?.id,
               } as CreateConnectorInput);
             }}
           >

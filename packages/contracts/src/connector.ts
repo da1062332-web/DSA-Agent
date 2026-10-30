@@ -118,8 +118,26 @@ export const UpdateConnectorSchema = z.object({
     .nullable(),
   primaryBranchId: IdSchema('br').optional(),
   relationshipOwnerUserId: IdSchema('usr').optional(),
+  // Required when relationshipOwnerUserId changes (checked in the service). Recorded in the audit event.
+  ownerChangeReason: z.string().trim().min(5).max(500).optional(),
 });
 export type UpdateConnectorInput = z.infer<typeof UpdateConnectorSchema>;
+
+// ==========================================
+// GET /v1/connectors/lookup (picker data; no API-CON id). Minimal fields only: no PAN, mobile, e-mail, bank or agreement data.
+// ==========================================
+export const ConnectorLookupQuerySchema = z.object({
+  status: z.enum(CONNECTOR_STATUSES).optional(),
+  q: z.string().trim().max(100).optional(),
+});
+export type ConnectorLookupQuery = z.infer<typeof ConnectorLookupQuerySchema>;
+
+export interface ConnectorLookupItem {
+  id: string;
+  legalName: string;
+  status: string;
+  primaryBranchId: string;
+}
 
 // ==========================================
 // API-CON-005: POST /v1/connectors/{id}/activation
@@ -186,6 +204,47 @@ export const InviteConnectorUserSchema = z.object({
     .nullable(),
 });
 export type InviteConnectorUserInput = z.infer<typeof InviteConnectorUserSchema>;
+
+// ==========================================
+// Portal users of a connector: POST /v1/connectors/{id}/users/{userId}/access and .../invitation/revocation
+// ==========================================
+/** SUSPEND an active portal login, or REACTIVATE a suspended one. The reason goes into the audit trail. */
+export const ConnectorPortalAccessSchema = z
+  .object({ action: z.enum(['SUSPEND', 'REACTIVATE']), reason: z.string().trim().min(5).max(500) })
+  .strict();
+export type ConnectorPortalAccessInput = z.infer<typeof ConnectorPortalAccessSchema>;
+
+/** Withdraws an invitation that has not been accepted. The login is deactivated and can never be activated. */
+export const ConnectorPortalRevocationSchema = z
+  .object({ reason: z.string().trim().min(5).max(500) })
+  .strict();
+export type ConnectorPortalRevocationInput = z.infer<typeof ConnectorPortalRevocationSchema>;
+
+/**
+ * A portal login of a connector, as internal staff see it. The login is a separate record from the connector (a connector may have none,
+ * or several). It holds no role: portal access comes from its identity and its link to the connector.
+ */
+export interface ConnectorPortalUser {
+  id: string;
+  connectorId: string;
+  displayName: string;
+  email: string;
+  /** INVITED until the invitee sets a password; then ACTIVE. SUSPENDED or DEACTIVATED when access is withdrawn. */
+  status: string;
+  invitation: {
+    /** NONE, PENDING, EXPIRED or ACCEPTED, from the latest invitation. */
+    state: string;
+    /** QUEUED or SENDING: not sent yet. SENT, FAILED or CANCELLED. Null when there is no invitation. */
+    deliveryState: string | null;
+    /** A short failure code from the delivery worker, never a provider message. */
+    lastFailure: string | null;
+    sentAt: string | null;
+    expiresAt: string | null;
+    resendCount: number;
+    acceptedAt: string | null;
+  };
+  createdAt: string;
+}
 
 // ==========================================
 // API-CON-009: POST /v1/attribution-change-requests

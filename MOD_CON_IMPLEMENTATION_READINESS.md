@@ -8,6 +8,16 @@
 
 ---
 
+## Reconciliation note (2026-10-29): connector portal logins hold no role
+
+This document was written when a connector portal login was to hold `ROLE-CONNECTOR-PORTAL`. The implementation does not do that. This note records the decision that replaces it, and the sections that still describe the role are marked superseded.
+
+- **Portal logins hold no role.** A connector login (`user_type = CONNECTOR`) has no role assignment. Its access comes from its identity and its linked connector on `/portal/v1`, and every portal query is scoped to that connector. Migration 0097 and `apps/api/src/modules/platform/role-guards.ts` refuse any role for it. The internal API refuses it except `GET /me` (`apps/api/src/http/connector-identity-gate.ts`).
+- **The `ROLE-CONNECTOR` namespace is reserved.** No tenant role can be created in it, and no staff account can hold one. Nothing in the implementation depends on the name: the connector refusal does not.
+- **Connector scope as built.** A visible connector is one the principal may read and change. `connector.manage` at TENANT scope (tenant administration on hosted) sees and changes every connector. `connector.manage` at BRANCH scope sees the connectors of its branches. `connector.read` alone (relationship managers) sees only the connectors it owns. Every reader also sees the connectors it owns. Contact details are shown in full only to `connector.manage` holders, and masked for everyone else. Bank accounts need `connector.manage` or `connector.bank_change_approve`, and a bank-change approver at TENANT scope sees all of them. Agreements need `connector.manage`. A connector outside the visible set is reported as not found. The picker reads `GET /v1/connectors/lookup`, which returns no contact or bank data.
+
+---
+
 ## Executive Summary
 
 Module 27 (**Connector Management — MOD-CON**) defines the third-party loan agent, direct selling agent (DSA), broker, and connector management subsystem for the DSA CRM platform. It governs the end-to-end lifecycle of connectors: their legal entity onboarding, PAN/GSTIN deduplication, document verification, bank account management with strict Separation of Duties (SOD), commission agreement linkages, lead attribution and reattribution approval workflows, duplicate referral disputes via the Business Rules Engine (BRE), and lifecycle state transitions impacting portal access and payout eligibility.
@@ -209,11 +219,13 @@ SUB-CON.05   Lifecycle & Status Engine   POST /v1/connectors/{id}/status       E
      WHERE status = 'ACTIVE';
      ```
    - Imposes a mandatory **cooling period** (e.g., 24 hours) after activation before payouts can be routed to the new account.
-6. **Portal User Invitation (`POST /v1/connectors/{id}/users` — API-CON-011):**
-   - Permission: `connector.manage`.
-   - Validates that the connector has status `ACTIVE`.
-   - Creates an `app.app_user` with `user_type = 'CONNECTOR'`, linking `connector_id`.
-   - Assigns role `ROLE-CONNECTOR-PORTAL`.
+6. **Portal User Invitation (`POST /v1/connectors/{id}/users` — API-CON-011):** (as built 2026-10-29)
+   - Permission: `connector.manage`; the connector must be visible to the caller. Requires an `Idempotency-Key`: a retried request returns the same login.
+   - Refused for a `SUSPENDED` or `TERMINATED` connector. A login can be invited while the connector is `DRAFT` or `PENDING_VERIFICATION`; the portal opens for it only once the connector is `ACTIVE`.
+   - Creates an `app.app_user` with `user_type = 'CONNECTOR'`, status `INVITED`, linked by `connector_id`, with the placeholder subject `invite:<user id>` that no token can carry. A connector may have no portal login, or several.
+   - Queues one `PENDING` invitation in `app.staff_invitation` (delivery `QUEUED`). The provisioning worker, the only holder of the service-role key, creates or finds the Supabase Auth account, binds its real subject and sends the e-mail. The login becomes `ACTIVE` only on the invitee's first password sign-in.
+   - ~~Assigns role `ROLE-CONNECTOR-PORTAL`.~~ Superseded 2026-10-29: the login is created with no role (see the reconciliation note at the top).
+   - Portal user management, all with `connector.manage`: `GET /v1/connectors/{id}/users` (logins and latest invitation state), `POST .../users/{userId}/invitation/resend` (same cooldown and limits as staff invitations), `POST .../users/{userId}/invitation/revocation` (withdraws an unaccepted invitation; the login is deactivated), `POST .../users/{userId}/access` (`SUSPEND` an active login, `REACTIVATE` a suspended one while the connector is active). Each writes an audit event with the reason. Suspension takes effect on the next request; it does not revoke Supabase sessions.
 
 ---
 
@@ -539,7 +551,7 @@ export type ResolveAttributionDisputeInput = z.infer<typeof ResolveAttributionDi
 | `ROLE-CONNECTOR-OPS`    | Connector Operations    |    Yes (All)     |     Yes (All)      |               No                |       Yes (Request only)       |             Yes             |
 | `ROLE-FINANCE-APPROVER` | Finance Operations      |    Yes (All)     |         No         |             **Yes**             |               No               |             No              |
 | `ROLE-DISPUTE-HEAD`     | Dispute Adjudicator     |    Yes (All)     |         No         |               No                |         Yes (Approve)          |           **Yes**           |
-| `ROLE-CONNECTOR-PORTAL` | Connector External User |    Yes (Own)     |         No         |               No                |               No               |             No              |
+| `ROLE-CONNECTOR-PORTAL` (superseded: not assigned) | Connector External User |    Yes (Own)     |         No         |               No                |               No               |             No              |
 
 ### 5.2 Row Level Security (RLS) Policy Design
 
@@ -560,9 +572,9 @@ CREATE POLICY tenant_isolation ON app.connector
 
 When querying connectors via `GET /v1/connectors`, the service layer utilizes `deps.authz.scopeFilter(ctx, 'connector.read', qb, { branchCol: 'primary_branch_id' })`:
 
-- Users with `ALL` scope view all tenant connectors.
+- Users with `ALL` scope view all tenant connectors. (As built: TENANT-scope `connector.manage` sees all; BRANCH-scope `connector.manage` sees its branches; every reader sees the connectors it owns. See the reconciliation note.)
 - Users with `BRANCH` scope view only connectors whose `primary_branch_id` matches the user's assigned branch.
-- External portal users (`ROLE-CONNECTOR-PORTAL`) are restricted strictly to records matching `id = ctx.principal.connectorId`.
+- External portal users (a connector login, `user_type = CONNECTOR`, which holds no role; `ROLE-CONNECTOR-PORTAL` is superseded) are restricted strictly to records of the connector they are linked to (`/portal/v1`).
 
 ---
 

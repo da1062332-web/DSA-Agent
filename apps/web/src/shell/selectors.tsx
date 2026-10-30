@@ -122,10 +122,20 @@ export function BranchSelect({
 // ---------------------------------------------------------------------------
 export interface UserItem {
   id: string;
+  /** STAFF, or CONNECTOR for a partner portal login. */
+  userType?: string;
   displayName?: string;
   email?: string;
   fullName?: string;
   status?: string;
+}
+
+/**
+ * Internal staff, as opposed to a partner portal login (user_type CONNECTOR). Only internal staff can own a connector or be assigned
+ * work. A user whose kind the API did not send is not treated as staff.
+ */
+export function isInternalStaff(user: Pick<UserItem, 'userType'>): boolean {
+  return user.userType === 'STAFF';
 }
 
 export function UserSelect({
@@ -141,15 +151,18 @@ export function UserSelect({
   error = false,
   helperText,
   sx,
+  staffOnly = false,
   'data-testid': testId,
-}: BaseSelectorProps) {
-  const { data: users = [], isLoading } = useLookupItems<UserItem>('/v1/users', { status: 'ACTIVE' });
+}: BaseSelectorProps & { staffOnly?: boolean }) {
+  const { data: loaded = [], isLoading } = useLookupItems<UserItem>('/v1/users', { status: 'ACTIVE' });
+  // A relationship owner must be internal staff: a partner portal login is offered only where staffOnly is off.
+  const users = staffOnly ? loaded.filter(isInternalStaff) : loaded;
 
   const filter = createFilterOptions<UserItem>({
     stringify: (u) => `${u.displayName ?? u.fullName ?? ''} ${u.email ?? ''} ${u.id}`,
   });
 
-  const selectedOption = users.find((u) => u.id === value) || (value ? ({ id: value, displayName: value } as UserItem) : null);
+  const selectedOption = loaded.find((u) => u.id === value) || (value ? ({ id: value, displayName: value } as UserItem) : null);
 
   return (
     <Autocomplete<UserItem, false, false, false>
@@ -170,6 +183,11 @@ export function UserSelect({
             <Typography variant="body2" fontWeight={600}>
               {opt.displayName || opt.fullName || opt.email || opt.id}
             </Typography>
+            {opt.userType === 'CONNECTOR' && (
+              <Typography variant="caption" color="warning.main" fontWeight={600}>
+                Partner portal login, not internal staff
+              </Typography>
+            )}
             {opt.email && (
               <Typography variant="caption" color="text.secondary">
                 {opt.email} • {opt.id}

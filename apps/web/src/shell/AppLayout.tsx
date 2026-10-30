@@ -38,6 +38,8 @@ import { MenuIcon } from './icons';
 import { SidebarContent } from './Sidebar';
 
 const TOPBAR_HEIGHT = 56;
+/** The only page a connector portal login uses (features/connectors/routes.tsx). */
+const CONNECTOR_PORTAL_PATH = '/connector-portal';
 // Top bar palette (Brand Swatch Guide): deep navy (BG/700) with white text and a tangerine accent line.
 const TOPBAR_BG = '#215988';
 const TOPBAR_ACCENT = '#F89344';
@@ -253,12 +255,19 @@ export function AppLayout() {
   if (needsChallenge || needsEnrolment)
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
+  // A connector portal login holds no role, so no permission opens a page for it. It uses the connector portal page only, where the
+  // portal API decides what it sees from its identity and linked connector; every internal page would answer 403.
+  const isConnectorLogin = me.data?.userType === 'CONNECTOR';
+  if (isConnectorLogin && location.pathname !== CONNECTOR_PORTAL_PATH)
+    return <Navigate to={CONNECTOR_PORTAL_PATH} replace />;
+
   const roleLabel = resolveUserRoles(me.data).map((role) => ROLE_LABELS[role])[0];
   const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   // Route guard (audit F-08): by this point the profile and its grants are loaded (the spinner above covers the wait), and a missing
   // profile has no grants, so the check fails closed. The same rules drive the sidebar and the Home cards.
-  const pageAllowed = routeAllowed(location.pathname, (code) => hasPermission(me.data, code), platformRealm);
+  const pageAllowed =
+    isConnectorLogin || routeAllowed(location.pathname, (code) => hasPermission(me.data, code), platformRealm);
 
   return (
     <StepUpProvider>

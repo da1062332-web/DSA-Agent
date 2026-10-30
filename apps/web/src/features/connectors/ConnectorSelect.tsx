@@ -1,13 +1,24 @@
 // apps/web/src/features/connectors/ConnectorSelect.tsx
-// Picker over active connectors (MOD-CON; API-CON-002), so forms never ask for a typed raw connector ID.
-// Provides a searchable Autocomplete by partner name, contact person, mobile, and PAN, with freeSolo fallback.
+// Picker over connectors (MOD-CON), so forms never ask for a typed raw connector ID.
+// It reads GET /v1/connectors/lookup, which returns only id, legal name, status and branch. The directory (PAN, mobile, e-mail, bank
+// and agreement data) is not needed to pick a partner, so this picker never asks for it.
 
 import React from 'react';
 import { Autocomplete, Box, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
 import { useMe, hasPermission } from '../../api/useMe';
-import type { ConnectorResource } from '@dsa/contracts';
+import type { ConnectorLookupItem } from '@dsa/contracts';
+
+// The permissions the API accepts for the lookup (ConnectorService.lookupConnectors). The API decides; this list only decides
+// whether to show the picker or a plain text field.
+const LOOKUP_PERMISSIONS = [
+  'connector.read',
+  'connector.manage',
+  'lead.create',
+  'finance.view',
+  'share.create',
+];
 
 export interface ConnectorSelectProps {
   value: string | null;
@@ -29,7 +40,7 @@ export function ConnectorSelect({
   value,
   onChange,
   label = 'Sourcing Connector / DSA',
-  placeholder = 'Select or search partner by name/PAN...',
+  placeholder = 'Select or search partner by name...',
   required = false,
   disabled = false,
   error = false,
@@ -41,23 +52,19 @@ export function ConnectorSelect({
   allowFreeText = true,
 }: ConnectorSelectProps) {
   const me = useMe();
-  const canRead = hasPermission(me.data, 'connector.read');
+  const canLookup = LOOKUP_PERMISSIONS.some((code) => hasPermission(me.data, code));
 
   const query = useQuery({
-    queryKey: ['connectors', 'select', status],
+    queryKey: ['connectors', 'lookup', status],
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (status) params.set('status', status);
-        const res = await apiFetch<{ items?: ConnectorResource[]; data?: ConnectorResource[] }>(
-          `/v1/connectors?${params.toString()}`
-        );
-        return res?.items ?? res?.data ?? (Array.isArray(res) ? res : []);
-      } catch {
-        return [];
-      }
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      const res = await apiFetch<{ items: ConnectorLookupItem[] }>(
+        `/v1/connectors/lookup?${params.toString()}`,
+      );
+      return res.items;
     },
-    enabled: canRead,
+    enabled: canLookup,
     retry: false,
     staleTime: 60_000,
   });
@@ -65,7 +72,7 @@ export function ConnectorSelect({
   const connectors = query.data ?? [];
   const selectedConnector = connectors.find((c) => c.id === value) ?? null;
 
-  if (!canRead) {
+  if (!canLookup) {
     return (
       <TextField
         fullWidth={fullWidth}
@@ -94,9 +101,9 @@ export function ConnectorSelect({
       getOptionLabel={(option) => {
         if (typeof option === 'string') {
           const match = connectors.find((c) => c.id === option);
-          return match ? (match.tradeName || match.legalName || match.id) : option;
+          return match ? match.legalName || match.id : option;
         }
-        return option.tradeName || option.legalName || option.id;
+        return option.legalName || option.id;
       }}
       isOptionEqualToValue={(option, val) => {
         const valId = typeof val === 'string' ? val : val.id;
@@ -122,14 +129,10 @@ export function ConnectorSelect({
         <li {...props} key={option.id}>
           <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5, width: '100%' }}>
             <Typography variant="body2" fontWeight={600} color="text.primary">
-              {option.tradeName || option.legalName}
-              {option.tradeName && option.legalName && option.tradeName !== option.legalName ? ` (${option.legalName})` : ''}
+              {option.legalName}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              ID: {option.id}
-              {option.contactPerson ? ` · Contact: ${option.contactPerson}` : ''}
-              {option.panMasked ? ` · PAN: ${option.panMasked}` : ''}
-              {option.mobileE164 ? ` · Mobile: ${option.mobileE164}` : ''}
+              ID: {option.id} · {option.status}
             </Typography>
           </Box>
         </li>
@@ -142,10 +145,7 @@ export function ConnectorSelect({
           placeholder={placeholder}
           required={required}
           error={error || query.isError}
-          helperText={
-            helperText ??
-            (query.isError ? errorText(query.error) : undefined)
-          }
+          helperText={helperText ?? (query.isError ? errorText(query.error) : undefined)}
           inputProps={{
             ...params.inputProps,
             'data-testid': testId,

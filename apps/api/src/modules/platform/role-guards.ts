@@ -69,3 +69,48 @@ export async function assertAdministratorRemains(
     );
   }
 }
+
+/**
+ * The role-code namespace reserved for the connector portal. No tenant role may be created in it, and no staff account may hold one.
+ * The connector refusal below does not depend on this name: a connector login holds no role at all.
+ */
+export const RESERVED_ROLE_CODE_PREFIX = 'ROLE-CONNECTOR';
+
+export function isReservedRoleCode(roleCode: string): boolean {
+  return roleCode.startsWith(RESERVED_ROLE_CODE_PREFIX);
+}
+
+/** Creating a role: a tenant administrator cannot name an internal role like a portal role (the check is by code, not by content). */
+export function assertRoleCodeNotReserved(roleCode: string): void {
+  if (isReservedRoleCode(roleCode)) {
+    throw AppError.of('VALIDATION_ERROR', 'This role code is reserved for the connector portal.', [
+      { field: 'code', issue: 'RESERVED_ROLE_CODE' },
+    ]);
+  }
+}
+
+/**
+ * Who may hold a role. A connector portal login holds none: portal access is decided by the login's identity and its linked connector
+ * (/portal/v1), so no permission can reach it through a role, whatever the role contains or is later edited to contain. An internal
+ * staff account holds no reserved role. Every assignment path calls this with the user type and the role code read from the database,
+ * never from the request, and migration 0097 enforces the same rule in the database for every writer.
+ */
+export function assertRoleAllowedForUserType(userType: string, roleCode: string): void {
+  if (userType === 'CONNECTOR') {
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'A connector portal login cannot hold a role. Portal access does not come from a role.',
+      [{ field: 'roleId', issue: 'ROLE_NOT_ALLOWED_FOR_CONNECTOR' }],
+    );
+  }
+  if (userType !== 'STAFF') {
+    throw AppError.of('VALIDATION_ERROR', 'This kind of user cannot hold roles.', [
+      { field: 'userId', issue: 'USER_TYPE_NOT_ALLOWED' },
+    ]);
+  }
+  if (isReservedRoleCode(roleCode)) {
+    throw AppError.of('VALIDATION_ERROR', 'A staff account cannot hold a connector portal role.', [
+      { field: 'roleId', issue: 'CONNECTOR_ROLE_NOT_ALLOWED_FOR_STAFF' },
+    ]);
+  }
+}

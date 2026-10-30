@@ -4,7 +4,7 @@
 // notices; rollbacks refuse to lose data. Never touches hosted.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -13,6 +13,9 @@ import { startPostgres } from '../../../tests/guard/start-postgres';
 const ROOT = path.resolve(__dirname, '../../..');
 const DIR = path.join(ROOT, 'supabase/migrations');
 const SQL = path.join(ROOT, 'tools/sql/audit-batch');
+// Loaded through Node's require, not Vitest's module graph: that graph cannot load a file URL that contains a space (the repository
+// path does: "Qloax Intern"). Node 22 loads an ES module through require.
+const requireFromTest = createRequire(__filename);
 const ORDER = [
   '66',
   '69',
@@ -106,7 +109,7 @@ afterAll(async () => {
 
 describe('audit batch: preflight, verify and rollback scripts', () => {
   it('TEST-ABATCH-00 preflight is read-only, every prerequisite passes, everything is pending; after the batch nothing is', async () => {
-    const { pendingFrom } = (await import(pathToFileURL(path.join(SQL, 'pending.mjs')).href)) as {
+    const { pendingFrom } = requireFromTest(path.join(SQL, 'pending.mjs')) as {
       pendingFrom: (rows: { item: string; result: string }[]) => string[];
     };
     const db = await fresh();

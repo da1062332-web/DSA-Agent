@@ -55,6 +55,7 @@ interface UserRow {
   primary_branch_id: string;
   status: string;
   idp_subject: string;
+  user_type: string;
   tenant_status: string;
 }
 
@@ -81,11 +82,11 @@ export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalRe
         const found =
           options.emailFallback === false
             ? await sql<UserRow>`
-          select u.id, u.primary_branch_id, u.status, u.idp_subject, t.status as tenant_status
+          select u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status
             from app_user u join tenant t on t.id = u.tenant_id
            where u.idp_subject = ${token.subject}`.execute(tx)
             : await sql<UserRow>`
-          select u.id, u.primary_branch_id, u.status, u.idp_subject, t.status as tenant_status
+          select u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status
             from app_user u join tenant t on t.id = u.tenant_id
            where (u.idp_subject = ${token.subject} or u.id = ${token.subject} or (u.email is not null and lower(u.email::text) = ${token.email?.toLowerCase() ?? ''}))
            order by (u.idp_subject = ${token.subject}) desc
@@ -139,6 +140,7 @@ export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalRe
               branchIds: g.scope_type === 'BRANCH' ? g.scope_branch_ids : [],
             })),
           authTime: token.mfaVerifiedAt?.toISOString().replace(/\.\d{3}Z$/, 'Z') ?? null,
+          userType: row.user_type as 'STAFF' | 'CONNECTOR',
         } satisfies Principal;
       });
 
@@ -181,7 +183,7 @@ async function acceptInvitation(
     update app_user u set status = 'ACTIVE', availability = 'AVAILABLE', updated_by = 'SYSTEM:auth'
       from tenant t
      where u.id = ${row.id} and t.id = u.tenant_id and u.status = 'INVITED'
-    returning u.id, u.primary_branch_id, u.status, u.idp_subject, t.status as tenant_status`.execute(tx);
+    returning u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status`.execute(tx);
   const user = activated.rows[0];
   if (!user) throw AppError.of('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
 

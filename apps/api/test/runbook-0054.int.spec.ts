@@ -51,7 +51,15 @@ describe('0054 runbook files', () => {
     const apply = strip(sqlFile('apply.sql'));
     expect(apply.startsWith('BEGIN;')).toBe(true);
     expect(apply.endsWith('COMMIT;')).toBe(true);
-    expect(apply.slice('BEGIN;'.length, apply.length - 'COMMIT;'.length).trim()).toBe(migration);
+    // The runbook copy has one deliberate difference: its role backfill is limited to staff accounts, so a connector portal login is never
+    // given an internal role on a re-run (connector role fix; the database refuses it too, in migration 0097). Any other difference fails.
+    const STAFF_ONLY = "  AND u.user_type = 'STAFF'";
+    const lines = apply.split('\n');
+    expect(lines.filter((l) => l === STAFF_ONLY)).toHaveLength(1);
+    const withoutStaffOnly = lines.filter((l) => l !== STAFF_ONLY).join('\n');
+    expect(withoutStaffOnly.slice('BEGIN;'.length, withoutStaffOnly.length - 'COMMIT;'.length).trim()).toBe(
+      migration,
+    );
   });
 });
 

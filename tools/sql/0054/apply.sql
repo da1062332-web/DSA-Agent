@@ -32,6 +32,8 @@ SELECT
   'SYSTEM:platform'
 FROM app.app_user u
 WHERE u.status = 'ACTIVE'
+  -- Staff only: a connector portal login never takes an internal role (migration 0097 refuses it in the database as well).
+  AND u.user_type = 'STAFF'
   AND NOT EXISTS (
     SELECT 1 FROM app.user_role_assignment ura 
     WHERE ura.user_id = u.id AND ura.tenant_id = u.tenant_id
