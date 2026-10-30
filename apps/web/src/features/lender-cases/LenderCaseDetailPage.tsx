@@ -1,8 +1,8 @@
 // apps/web/src/features/lender-cases/LenderCaseDetailPage.tsx — owner: Dev 4 (MOD-LCS Case Detail)
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Box, Chip, CircularProgress, Container, Grid, Stack, Tab, Tabs, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, CircularProgress, Container, Grid, Stack, Tab, Tabs, Typography } from '@mui/material';
 import {
   fetchLenderCase,
   fetchLenderCaseHistory,
@@ -39,6 +39,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function LenderCaseDetailPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('overview');
 
   const caseQuery = useQuery({
@@ -169,6 +170,18 @@ export function LenderCaseDetailPage(): React.ReactElement {
       <PageHeader
         title={`Lender attempt #${c.attemptNo}`}
         badge={<Chip label={readable(c.status)} color="primary" />}
+        actions={
+          ['SANCTIONED', 'PARTIALLY_DISBURSED', 'DISBURSED'].includes(c.status) ? (
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => navigate(`/sanctions/${c.id}`)}
+              data-testid="lender-case.manage-sanction"
+            >
+              Sanctions & Disbursals
+            </Button>
+          ) : undefined
+        }
         subtitle={
           <Typography variant="body2" color="text.secondary" component="span">
             Lender: <LenderName id={c.lenderId} /> · Application: <ApplicationName id={c.applicationId} linkToApp />

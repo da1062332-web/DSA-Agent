@@ -22,6 +22,7 @@ import { hasPermission, useMe } from '../../api/useMe';
 import {
   currentVersion,
   getDocument,
+  downloadDocumentVersion,
   openDocumentVersion,
   reviewDocumentVersion,
   uploadChecklistDocument,
@@ -79,7 +80,17 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
     },
   });
 
-  if (!actions.upload && !actions.view && !actions.review && !actions.waive) return null;
+  const download = useMutation({
+    meta: { handled: true },
+    mutationFn: async () => {
+      if (!item.documentId) throw new Error('No document has been linked to this checklist item.');
+      const v = currentVersion(await getDocument(item.documentId));
+      if (!v) throw new Error('This document has no version to download.');
+      await downloadDocumentVersion(v.id);
+    },
+  });
+
+  if (!actions.upload && !actions.view && !actions.download && !actions.review && !actions.waive) return null;
 
   return (
     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
@@ -116,6 +127,16 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
           data-testid={`documents.view.${item.id}`}
         >
           View
+        </Button>
+      )}
+      {actions.download && (
+        <Button
+          size="small"
+          disabled={download.isPending}
+          onClick={() => download.mutate()}
+          data-testid={`documents.download.${item.id}`}
+        >
+          Download
         </Button>
       )}
       {actions.review && (

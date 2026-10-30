@@ -969,12 +969,21 @@ export async function setupPersonaSession(
     });
   });
 
-  // Mock Supabase Auth routes
+  // Mock Supabase Auth routes. The persona has one verified authenticator. supabase-js reads the factors from the user (GET /user),
+  // so the mocked user carries them; the code check is then a challenge followed by a verify that returns the aal2 session.
+  const verifiedFactor = {
+    id: 'factor_totp_1',
+    factor_type: 'totp',
+    friendly_name: 'Authenticator',
+    status: 'verified',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
   await page.route('**/auth/v1/user', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(sessionData.user),
+      body: JSON.stringify({ ...sessionData.user, factors: [verifiedFactor] }),
     });
   });
 
@@ -983,32 +992,29 @@ export async function setupPersonaSession(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        all: [{ id: 'factor_totp_1', factor_type: 'totp', status: 'verified' }],
+        all: [verifiedFactor],
         totp: [{ id: 'factor_totp_1', status: 'verified' }],
       }),
     });
   });
 
-  // Mock MFA challenge/verify so the client immediately detects MFA as disabled and signs in without 2-step verification
   await page.route('**/auth/v1/factors/**/challenge*', async (route) => {
     await route.fulfill({
-      status: 400,
+      status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        code: 'mfa_totp_verify_not_enabled',
-        message: 'Two-step verification is not enabled for this project',
+        id: 'challenge_1',
+        type: 'totp',
+        expires_at: Math.floor(Date.now() / 1000) + 300,
       }),
     });
   });
 
-  await page.route('**/auth/v1/factors/*/verify*', async (route) => {
+  await page.route('**/auth/v1/factors/**/verify*', async (route) => {
     await route.fulfill({
-      status: 400,
+      status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        code: 'mfa_totp_verify_not_enabled',
-        message: 'Two-step verification is not enabled for this project',
-      }),
+      body: JSON.stringify(aal2SessionData),
     });
   });
 
@@ -1239,22 +1245,32 @@ export async function performRoleLogin(
     await pauseForDemo(page, 500);
     await humanClick(submitBtn, 800);
 
-    // Wait until login completes and navigates away from /login
-    const navigatedAway = await page
-      .waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 8000 })
-      .then(() => true)
-      .catch(() => false);
+  }
 
-    // Safety fallback: if dialog is still displayed, auto-verify silently
-    if (!navigatedAway) {
-      const mfaInput = page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
-      if (await mfaInput.isVisible({ timeout: 1500 }).catch(() => false)) {
-        const mfaSubmit = page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
-        await mfaInput.fill('000000');
-        await mfaSubmit.click();
-        await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 8000 }).catch(() => {});
+  // 3. Handle MFA OTP step if presented
+  const mfaInput = page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
+  // The code step appears after the authenticator check, which can take a few seconds after the password step.
+  const isMfaPage = await mfaInput.isVisible({ timeout: 15000 }).catch(() => false);
+
+  if (isMfaPage) {
+    await showDemoBanner(page, '2FA Step-Up', 'Verifying MFA TOTP Code: 000000');
+    const mfaSubmit = page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
+    await humanType(mfaInput, '000000');
+    await pauseForDemo(page, 400);
+    // The app skips the real TOTP check for the bypass code, so it never upgrades the session itself. Swap in the aal2 token
+    // the real verify call would return, otherwise MFA-required roles are sent to the authenticator enrolment page.
+    const aal2Token = createMockJwt(persona, 'aal2');
+    await page.evaluate((token) => {
+      localStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_bypass_active', 'true');
+      for (const key of Object.keys(localStorage)) {
+        if (!/^sb-.*-auth-token$/.test(key)) continue;
+        const stored = JSON.parse(localStorage.getItem(key) || '{}');
+        stored.access_token = token;
+        localStorage.setItem(key, JSON.stringify(stored));
       }
-    }
+    }, aal2Token);
+    await humanClick(mfaSubmit, 800);
   }
 
   await page.waitForLoadState('domcontentloaded').catch(() => {});

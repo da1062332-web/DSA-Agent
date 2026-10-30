@@ -130,4 +130,256 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
     const history = await request(a).get(`/v1/applications/${appId}/eligibility-assessments`);
     expect(history.body.data[0].overrides).toEqual([]);
   });
+
+  it('API-ELG-004 API-ELG-005 API-ELG-006: tenant B cannot read or change tenant A applicant figures, or see its latest assessment', async () => {
+    const a = env.appAs(env.A, APP_CODES);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES]);
+    await env.admin.query(`update app.loan_application set status = 'DOCUMENTS_PENDING' where id = $1`, [
+      appId,
+    ]);
+    const stored = await request(a)
+      .put(`/v1/applications/${appId}/eligibility-inputs`)
+      .set('If-Match', '"0"')
+      .send({
+        declaredMonthlyIncome: { amount: '45000.00', currency: 'INR' },
+        declaredIncomeSource: 'APPLICANT_STATED',
+      });
+    expect(stored.status).toBe(200);
+    expect((await request(b).get(`/v1/applications/${appId}/eligibility-inputs`)).status).toBe(404);
+    expect(
+      (
+        await request(b)
+          .put(`/v1/applications/${appId}/eligibility-inputs`)
+          .set('If-Match', '"1"')
+          .send({ declaredMonthlyIncome: null, declaredIncomeSource: null })
+      ).status,
+    ).toBe(404);
+    expect((await request(b).get(`/v1/applications/${appId}/eligibility-assessments/latest`)).status).toBe(
+      404,
+    );
+    const kept = await env.admin.query(
+      `select declared_monthly_income_amount from app.applicant_financial_input where application_id = $1`,
+      [appId],
+    );
+    expect(kept.rows[0].declared_monthly_income_amount).toBe('45000.00');
+  });
+});
+
+describe('TEST-SEC-001 origination/applications: create, parties, owners, checklist and lifecycle never cross', () => {
+  const A_PARTY = 'pty_iso_mod16_a1';
+  const A_ITEM = 'chk_iso_mod16_a1';
+  const A_WITHDRAWN = 'app_iso_mod16_a2';
+  const B_CUST = 'cust_iso_mod16_b1';
+  const B_APP = 'app_iso_mod16_b1';
+  const EVERY: PermissionCode[] = [
+    'application.create',
+    'application.read',
+    'application.update',
+    'application.review',
+    'application.cancel',
+    'application.withdraw',
+    'application.reopen',
+    'application.assign',
+    'document.waive',
+  ];
+  let seq = 0;
+  const key = (label: string) => `iso-mod16-${label}-${seq++}`;
+  const etagOf = async (id: string) =>
+    `"${(await env.admin.query(`select lock_version from app.loan_application where id = $1`, [id])).rows[0].lock_version}"`;
+  const appRow = async (id: string) =>
+    (
+      await env.admin.query(
+        `select status, sales_owner_id, ops_owner_id, lock_version from app.loan_application where id = $1`,
+        [id],
+      )
+    ).rows[0];
+  const hostile = () => env.appAs(env.B, [...ALL_ADMIN, ...EVERY]);
+
+  beforeAll(async () => {
+    const a = env.A;
+    const b = env.B;
+    const q = (text: string, values: unknown[]) => env.admin.query(text, values);
+    await q(
+      `insert into app.application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
+       values ($1, $2, $3, 'cust_iso_mod16_a1', 'PRIMARY', 'INDIVIDUAL', $4)`,
+      [A_PARTY, a.tenantId, appId, a.userIds[0]],
+    );
+    await q(
+      `insert into app.checklist_item (id, tenant_id, application_id, party_id, document_type_code, mandatory,
+                                       source_decision_id, created_by, updated_by)
+       values ($1, $2, $3, $4, 'BANK_STATEMENT', true, 'dr_iso_mod16', $5, $5)`,
+      [A_ITEM, a.tenantId, appId, A_PARTY, a.userIds[0]],
+    );
+    // A withdrawn tenant A application (with the product version the eligibility case created), for the reopen attempt.
+    await q(
+      `insert into app.loan_application (id, tenant_id, branch_id, customer_id, product_category, product_version_id,
+          requested_amount, applicant_type, status, sales_owner_id, created_by, updated_by)
+       values ($1, $2, $3, 'cust_iso_mod16_a1', 'PL', 'prv_iso_elg_a1', 200000.00, 'SALARIED', 'WITHDRAWN', $4, $4, $4)`,
+      [A_WITHDRAWN, a.tenantId, a.branchId, a.userIds[0]],
+    );
+    // Tenant B's own customer and draft, which it might try to fill with tenant A's records.
+    await q(
+      `insert into app.customer (id, tenant_id, party_type, full_name, home_branch_id, created_by, updated_by)
+       values ($1, $2, 'INDIVIDUAL', 'Isolation Customer B', $3, $4, $4)`,
+      [B_CUST, b.tenantId, b.branchId, b.userIds[0]],
+    );
+    await q(
+      `insert into app.loan_application (id, tenant_id, branch_id, customer_id, product_category, requested_amount,
+          applicant_type, status, sales_owner_id, created_by, updated_by)
+       values ($1, $2, $3, $4, 'PL', 150000.00, 'SALARIED', 'DRAFT', $5, $5, $5)`,
+      [B_APP, b.tenantId, b.branchId, B_CUST, b.userIds[0]],
+    );
+    await q(
+      `insert into app.application_party (id, tenant_id, application_id, customer_id, role, party_type, created_by)
+       values ('pty_iso_mod16_b1', $1, $2, $3, 'PRIMARY', 'INDIVIDUAL', $4)`,
+      [b.tenantId, B_APP, B_CUST, b.userIds[0]],
+    );
+  });
+
+  it('API-APP-001: tenant B cannot open an application for a tenant A customer or in a tenant A branch', async () => {
+    const b = hostile();
+    const base = {
+      productCategory: 'PL',
+      requestedAmount: { amount: '250000.00', currency: 'INR' },
+      applicantType: 'SALARIED',
+    };
+    const foreignCustomer = await request(b)
+      .post('/v1/applications')
+      .set('Idempotency-Key', key('create-cust'))
+      .send({ ...base, customerId: 'cust_iso_mod16_a1', branchId: env.B.branchId });
+    expect(foreignCustomer.status, JSON.stringify(foreignCustomer.body)).toBe(404);
+    const foreignBranch = await request(b)
+      .post('/v1/applications')
+      .set('Idempotency-Key', key('create-branch'))
+      .send({ ...base, customerId: B_CUST, branchId: env.A.branchId });
+    expect(foreignBranch.status, JSON.stringify(foreignBranch.body)).toBe(422);
+    const leaked = await env.admin.query(
+      `select count(*)::int as n from app.loan_application
+        where tenant_id = $1 and (customer_id = 'cust_iso_mod16_a1' or branch_id = $2)`,
+      [env.B.tenantId, env.A.branchId],
+    );
+    expect(leaked.rows[0].n).toBe(0);
+  });
+
+  it('API-APP-006 API-APP-006-LIST: tenant B cannot read or change tenant A parties, nor add a tenant A customer to its own draft', async () => {
+    const b = hostile();
+    expect((await request(b).get(`/v1/applications/${appId}/parties`)).status).toBe(404);
+    const onA = await request(b)
+      .post(`/v1/applications/${appId}/parties`)
+      .set('If-Match', await etagOf(appId))
+      .set('Idempotency-Key', key('party-a'))
+      .send({ action: 'ADD', customerId: B_CUST, role: 'CO_APPLICANT' });
+    expect(onA.status).toBe(404);
+    const removeA = await request(b)
+      .post(`/v1/applications/${appId}/parties`)
+      .set('If-Match', await etagOf(appId))
+      .set('Idempotency-Key', key('party-a-rm'))
+      .send({ action: 'REMOVE', partyId: A_PARTY });
+    expect(removeA.status).toBe(404);
+    const pullIn = await request(b)
+      .post(`/v1/applications/${B_APP}/parties`)
+      .set('If-Match', await etagOf(B_APP))
+      .set('Idempotency-Key', key('party-b'))
+      .send({ action: 'ADD', customerId: 'cust_iso_mod16_a1', role: 'GUARANTOR' });
+    // A customer of another tenant is answered exactly like a customer that does not exist, so nothing leaks.
+    const missing = await request(b)
+      .post(`/v1/applications/${B_APP}/parties`)
+      .set('If-Match', await etagOf(B_APP))
+      .set('Idempotency-Key', key('party-b-missing'))
+      .send({ action: 'ADD', customerId: 'cust_iso_mod16_absent', role: 'GUARANTOR' });
+    expect(pullIn.status, JSON.stringify(pullIn.body)).toBe(missing.status);
+    expect(pullIn.body.error.code).toBe(missing.body.error.code);
+    expect(pullIn.body.error.details).toEqual(missing.body.error.details);
+    expect(pullIn.status).toBe(404);
+    expect(pullIn.body.error.code).toBe('NOT_FOUND');
+    const parties = await env.admin.query(
+      `select application_id, removed_at from app.application_party where id = $1 or customer_id = $2`,
+      [A_PARTY, 'cust_iso_mod16_a1'],
+    );
+    // Tenant A's customer is a party only on tenant A's applications, and nothing was removed.
+    expect(parties.rows.every((r) => r.application_id !== B_APP && r.removed_at === null)).toBe(true);
+  });
+
+  it('API-APP-007-GENERATE API-APP-008: tenant B cannot build or check the tenant A checklist', async () => {
+    const b = hostile();
+    const count = async () =>
+      (
+        await env.admin.query(`select count(*)::int as n from app.checklist_item where application_id = $1`, [
+          appId,
+        ])
+      ).rows[0].n;
+    const before = await count();
+    expect((await request(b).post(`/v1/applications/${appId}/checklist/generate`).send({})).status).toBe(404);
+    expect((await request(b).post(`/v1/applications/${appId}/completeness-checks`).send({})).status).toBe(
+      404,
+    );
+    expect(await count()).toBe(before);
+    const app = await env.admin.query(
+      `select last_completeness_result from app.loan_application where id = $1`,
+      [appId],
+    );
+    expect(app.rows[0].last_completeness_result).toBeNull();
+  });
+
+  it('API-APP-009: tenant B cannot waive a tenant A checklist item, through the tenant A application or its own', async () => {
+    const b = hostile();
+    const body = { checklistItemId: A_ITEM, status: 'WAIVED', reason: 'Hostile waiver attempt' };
+    const viaA = await request(b)
+      .post(`/v1/applications/${appId}/waivers`)
+      .set('Idempotency-Key', key('waive-a'))
+      .send(body);
+    expect(viaA.status).toBe(404);
+    const viaOwn = await request(b)
+      .post(`/v1/applications/${B_APP}/waivers`)
+      .set('Idempotency-Key', key('waive-b'))
+      .send(body);
+    expect(viaOwn.status, JSON.stringify(viaOwn.body)).toBe(404);
+    const item = await env.admin.query(`select status from app.checklist_item where id = $1`, [A_ITEM]);
+    expect(item.rows[0].status).toBe('PENDING');
+  });
+
+  it('API-APP-011: tenant B cannot reassign the owners of a tenant A application', async () => {
+    const b = hostile();
+    const before = await appRow(appId);
+    const res = await request(b)
+      .post(`/v1/applications/${appId}/assignments`)
+      .set('If-Match', await etagOf(appId))
+      .set('Idempotency-Key', key('assign'))
+      .send({
+        salesOwnerUserId: env.B.userIds[0],
+        opsOwnerUserId: env.B.userIds[1],
+        reason: 'Hostile reassignment',
+      });
+    expect(res.status).toBe(404);
+    expect(await appRow(appId)).toEqual(before);
+  });
+
+  it('API-APP-005 T-APP-08 T-APP-09: tenant B cannot withdraw or reopen tenant A applications; tenant A can', async () => {
+    const b = hostile();
+    const open = await appRow(appId);
+    const withdraw = await request(b)
+      .post(`/v1/applications/${appId}/transitions`)
+      .set('If-Match', await etagOf(appId))
+      .set('Idempotency-Key', key('withdraw'))
+      .send({ transitionCode: 'T-APP-08', reason: 'Hostile withdraw attempt' });
+    expect(withdraw.status).toBe(404);
+    expect(await appRow(appId)).toEqual(open);
+
+    const reopen = await request(b)
+      .post(`/v1/applications/${A_WITHDRAWN}/transitions`)
+      .set('If-Match', await etagOf(A_WITHDRAWN))
+      .set('Idempotency-Key', key('reopen'))
+      .send({ transitionCode: 'T-APP-09', reason: 'Hostile reopen attempt' });
+    expect(reopen.status).toBe(404);
+    expect((await appRow(A_WITHDRAWN)).status).toBe('WITHDRAWN');
+
+    // The same request from tenant A works, so the 404 above is the tenant boundary and not a broken route.
+    const own = await request(env.appAs(env.A, EVERY))
+      .post(`/v1/applications/${A_WITHDRAWN}/transitions`)
+      .set('If-Match', await etagOf(A_WITHDRAWN))
+      .set('Idempotency-Key', key('reopen-own'))
+      .send({ transitionCode: 'T-APP-09', reason: 'Customer came back' });
+    expect(own.status, JSON.stringify(own.body)).toBe(200);
+    expect(own.body.status).toBe('DRAFT');
+  });
 });

@@ -545,18 +545,26 @@ export function buildOrigination(
     });
   });
 
-  // Application status history: CREATE then the main transitions (codes are the DB-allowed set).
+  // Application status history: CREATE, then the manual transitions the API builds (T-APP-01/02/03/04/10) and the
+  // lender roll-ups (ROLLUP-1 submitted, ROLLUP-4 sanctioned, ROLLUP-5 disbursed, ROLLUP-6 lender rejection), as in
+  // apps/api/src/modules/origination/applications/transitions.ts and docs/PENDING_APPROVALS.md §2.
   const appHistory: [number, string | null, string, string][] = [
     [0, null, 'CREATE', 'DRAFT'],
     [0, 'DRAFT', 'T-APP-01', 'DOCUMENTS_PENDING'],
-    [0, 'DOCUMENTS_PENDING', 'T-APP-05', 'READY_FOR_SUBMISSION'],
-    [0, 'READY_FOR_SUBMISSION', 'T-APP-06', 'SUBMITTED'],
-    [0, 'SUBMITTED', 'T-APP-08', 'SANCTIONED'],
-    [0, 'SANCTIONED', 'ROLLUP-3', 'DISBURSED'],
+    [0, 'DOCUMENTS_PENDING', 'T-APP-02', 'UNDER_REVIEW'],
+    [0, 'UNDER_REVIEW', 'T-APP-04', 'READY_FOR_SUBMISSION'],
+    [0, 'READY_FOR_SUBMISSION', 'ROLLUP-1', 'SUBMITTED'],
+    [0, 'SUBMITTED', 'ROLLUP-4', 'SANCTIONED'],
+    [0, 'SANCTIONED', 'ROLLUP-5', 'DISBURSED'],
     [4, null, 'CREATE', 'DRAFT'],
-    [4, 'DRAFT', 'T-APP-06', 'SUBMITTED'],
-    [5, 'SUBMITTED', 'T-APP-09', 'UNDER_REVIEW'],
-    [8, 'UNDER_REVIEW', 'T-APP-11', 'REJECTED'],
+    [4, 'DRAFT', 'T-APP-01', 'DOCUMENTS_PENDING'],
+    [4, 'DOCUMENTS_PENDING', 'T-APP-02', 'UNDER_REVIEW'],
+    [4, 'UNDER_REVIEW', 'T-APP-04', 'READY_FOR_SUBMISSION'],
+    [4, 'READY_FOR_SUBMISSION', 'ROLLUP-1', 'SUBMITTED'],
+    [5, 'DRAFT', 'T-APP-01', 'DOCUMENTS_PENDING'],
+    [5, 'DOCUMENTS_PENDING', 'T-APP-02', 'UNDER_REVIEW'],
+    [6, 'UNDER_REVIEW', 'T-APP-03', 'DOCUMENTS_PENDING'],
+    [8, 'SUBMITTED', 'ROLLUP-6', 'REJECTED'],
     [9, 'DRAFT', 'T-APP-10', 'CANCELLED'],
   ];
   appHistory.forEach(([appIdx, from, code, to], i) =>
@@ -567,7 +575,14 @@ export function buildOrigination(
       from_status: from,
       to_status: to,
       transition_code: code,
-      reason_code: to === 'REJECTED' ? 'INCOME' : to === 'CANCELLED' ? 'DUPLICATE' : null,
+      reason_code:
+        to === 'REJECTED'
+          ? 'INCOME'
+          : to === 'CANCELLED'
+            ? 'DUPLICATE'
+            : code === 'T-APP-03'
+              ? 'Bank statement unreadable (synthetic)'
+              : null,
       actor: ix(rm, appIdx % 2),
       occurred_at: at(d, 3 + i),
     }),

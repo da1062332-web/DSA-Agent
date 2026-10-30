@@ -109,16 +109,15 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       ],
     });
 
-    // Seed application
-    repository.applications.set(`${tenantA}:${appId}`, {
+    // Seed application (owned by the applications module, read through ApplicationPort)
+    applicationPort.seedApplication(tenantA, {
       id: appId,
-      tenant_id: tenantA,
-      branch_id: branchA,
-      customer_id: customerId,
-      product_category: 'HL',
+      branchId: branchA,
+      customerId,
+      productCategory: 'HL',
       status: 'READY_FOR_SUBMISSION',
-      sub_status: null,
-      lock_version: 0,
+      subStatus: null,
+      version: 0,
     });
 
     // Seed lenders
@@ -417,7 +416,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       expect(repository.dataSharingRecords.size).toBe(1);
 
       // Verify application status roll-up
-      const updatedApp = await repository.findApplication({} as Tx, tenantA, appId);
+      const updatedApp = applicationPort.applications.get(`${tenantA}:${appId}`);
       expect(updatedApp?.status).toBe('SUBMITTED');
     });
 
@@ -567,7 +566,7 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
         .set('If-Match', `"${lockVersion}"`)
         .send({ toStatus: 'SANCTIONED' });
 
-      const updatedApp = await repository.findApplication({} as Tx, tenantA, appId);
+      const updatedApp = applicationPort.applications.get(`${tenantA}:${appId}`);
       expect(updatedApp?.status).toBe('SANCTIONED');
     });
   });
@@ -592,8 +591,8 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       expect(queryRes.body.query.text).toBe('Please provide latest 3 months bank statements');
       expect(queryRes.body.case.status).toBe('QUERY_RAISED');
 
-      const appAfterQuery = await repository.findApplication({} as Tx, tenantA, appId);
-      expect(appAfterQuery?.sub_status).toBe('QUERY_PENDING');
+      const appAfterQuery = applicationPort.applications.get(`${tenantA}:${appId}`);
+      expect(appAfterQuery?.subStatus).toBe('QUERY_PENDING');
 
       // Respond to Query
       const queryId = queryRes.body.query.id;
@@ -608,8 +607,8 @@ describe('Module 18 — Lender Cases (MOD-LCS)', () => {
       expect(respRes.body.case.status).toBe('QUERY_RESPONDED');
       expect(respRes.body.query.respondedAt).not.toBeNull();
 
-      const appAfterResp = await repository.findApplication({} as Tx, tenantA, appId);
-      expect(appAfterResp?.sub_status).toBeNull();
+      const appAfterResp = applicationPort.applications.get(`${tenantA}:${appId}`);
+      expect(appAfterResp?.subStatus).toBeNull();
     });
   });
 

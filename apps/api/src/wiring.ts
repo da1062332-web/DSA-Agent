@@ -29,7 +29,7 @@ import type { ApiDeps } from './modules/types';
 
 export function createProductionDeps(
   txRunner: TxRunner,
-  options: { documentLinkSecret?: string } = {},
+  options: { documentLinkSecret?: string; documentStore?: unknown; documentScanner?: unknown } = {},
 ): ApiDeps {
   const ids = createIdGenerator();
   const audit = createAuditPort(ids);
@@ -69,6 +69,9 @@ export function createProductionDeps(
     dataSharingPort: new PostgresDataSharingPort(),
     apiClientRepository: new PgApiClientRepository(txRunner, audit),
     documentLinkSecret: options.documentLinkSecret,
+    // Document files: an S3-compatible bucket and clamd when configured (config.ts), else local disk and the signature check.
+    documentStore: options.documentStore,
+    documentScanner: options.documentScanner,
     enqueueJob: (tx, tenantId, jobType, payload, runAt) =>
       globalJobQueue.enqueue(tx, ids.next('job'), tenantId, jobType, payload, runAt),
   };

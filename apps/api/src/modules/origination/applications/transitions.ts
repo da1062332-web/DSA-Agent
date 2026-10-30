@@ -1,11 +1,18 @@
 // MOD-APP transitions (owner: Dev 3; DSA Notion MODULE 16, API-APP-005). Built here: T-APP-01 (draft to documents pending,
-// selecting a product version), T-APP-02 (documents pending to under review), T-APP-04 (ready for submission), T-APP-08
-// (withdraw), T-APP-09 (reopen) and T-APP-10 (cancel with a reason).
-// The T-APP table in the spec was not available, so the from/to states and permissions below are the agreed assumptions:
+// selecting a product version), T-APP-02 (documents pending to under review), T-APP-03 (send back for rework), T-APP-04
+// (ready for submission), T-APP-05 (send back to review), T-APP-07 (close), T-APP-08 (withdraw), T-APP-09 (reopen) and
+// T-APP-10 (cancel with a reason). T-APP-06 is not a manual step: SUBMITTED is set by the lender-case roll-up (ROLLUP-1).
+// The T-APP table in the spec was not available, so the from/to states and permissions below are owner decisions
+// (docs/PENDING_APPROVALS.md §2):
 //   T-APP-01  DRAFT -> DOCUMENTS_PENDING   needs application.update; the product version must be active and in force
-//   T-APP-02  DOCUMENTS_PENDING -> UNDER_REVIEW   needs application.review
+//   T-APP-02  DOCUMENTS_PENDING -> UNDER_REVIEW   needs application.review; clears the rework reason
+//   T-APP-03  UNDER_REVIEW -> DOCUMENTS_PENDING   needs application.review; a reason is required and kept as the rework
+//             reason until the file goes back to review
 //   T-APP-04  UNDER_REVIEW -> READY_FOR_SUBMISSION   needs application.review; every mandatory checklist item must be
 //             ACCEPTED, WAIVED or NOT_APPLICABLE, else 422 COMPLETENESS_FAILED
+//   T-APP-05  READY_FOR_SUBMISSION -> UNDER_REVIEW   needs application.review; a reason is required
+//   T-APP-07  DISBURSED, REJECTED, WITHDRAWN or CANCELLED -> CLOSED   needs application.close ("close a disbursed or
+//             terminal application"); a reason is optional. A closed file cannot be reopened.
 //   T-APP-08  DOCUMENTS_PENDING, UNDER_REVIEW or READY_FOR_SUBMISSION -> WITHDRAWN   needs application.withdraw; a reason
 //             is required. A lender has the application only once the lender-case roll-up has moved it to SUBMITTED, so
 //             no lender case is active here. A draft is cancelled (T-APP-10), not withdrawn.
@@ -33,8 +40,15 @@ interface Rule {
 export const TRANSITION_RULES: Record<ApplicationTransition['transitionCode'], Rule> = {
   'T-APP-01': { permission: 'application.update', from: ['DRAFT'], to: 'DOCUMENTS_PENDING' },
   'T-APP-02': { permission: 'application.review', from: ['DOCUMENTS_PENDING'], to: 'UNDER_REVIEW' },
+  'T-APP-03': { permission: 'application.review', from: ['UNDER_REVIEW'], to: 'DOCUMENTS_PENDING' },
   // Spec MVP: ready for submission once the checklist is complete (SUB-APP.05).
   'T-APP-04': { permission: 'application.review', from: ['UNDER_REVIEW'], to: 'READY_FOR_SUBMISSION' },
+  'T-APP-05': { permission: 'application.review', from: ['READY_FOR_SUBMISSION'], to: 'UNDER_REVIEW' },
+  'T-APP-07': {
+    permission: 'application.close',
+    from: ['DISBURSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED'],
+    to: 'CLOSED',
+  },
   // SUB-APP.06 (assumed codes): withdraw before any lender has it; reopen a cancelled or withdrawn application as a draft.
   'T-APP-08': {
     permission: 'application.withdraw',
@@ -91,6 +105,8 @@ export function registerTransitionRoutes(router: Router, deps: ApiDeps): void {
           }
           if (input.transitionCode === 'T-APP-10') changes.cancel_reason = input.cancelReason;
           if (input.transitionCode === 'T-APP-09') changes.cancel_reason = null;
+          if (input.transitionCode === 'T-APP-03') changes.rework_reason = input.reason;
+          if (input.transitionCode === 'T-APP-02') changes.rework_reason = null;
           if (input.transitionCode === 'T-APP-04') {
             const items = await sql<{ mandatory: boolean; status: string }>`
               select mandatory, status from checklist_item where application_id = ${current.id}`.execute(tx);
@@ -168,8 +184,8 @@ async function writeTransition(
   const reason =
     input.transitionCode === 'T-APP-10'
       ? input.cancelReason
-      : input.transitionCode === 'T-APP-08' || input.transitionCode === 'T-APP-09'
-        ? input.reason
+      : 'reason' in input
+        ? (input.reason ?? null)
         : null;
 
   await sql`

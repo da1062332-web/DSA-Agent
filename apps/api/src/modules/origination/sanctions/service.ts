@@ -2,6 +2,7 @@
 import {
   AppError,
   maskFinancialIdentifier,
+  type ApplicationPort,
   type CancelSanctionRequest,
   type DisbursementTrancheDto,
   type ExceptionApprovalRequest,
@@ -22,7 +23,30 @@ export class SanctionService {
   constructor(
     private readonly repo: SanctionRepository,
     private readonly txRunner: TxRunner,
+    private readonly applicationPort?: ApplicationPort,
   ) {}
+
+  /** A lender roll-up on the application (ROLLUP-4, ROLLUP-5). The application module writes the status, history, event
+   *  and audit; this module never writes loan_application. */
+  private async rollUpApplication(
+    tx: Tx,
+    ctx: RequestContext,
+    lenderCase: { id: string; application_id: string; product_version_id: string | null },
+    transitionCode: 'ROLLUP-4' | 'ROLLUP-5',
+    toStatus: 'SANCTIONED' | 'PARTIALLY_DISBURSED' | 'DISBURSED',
+  ): Promise<void> {
+    if (!this.applicationPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The application module is not available.');
+    }
+    await this.applicationPort.rollUpStatus(tx, ctx, {
+      applicationId: lenderCase.application_id,
+      transitionCode,
+      toStatus,
+      toSubStatus: null,
+      causedByLenderCaseId: lenderCase.id,
+      productVersionId: lenderCase.product_version_id,
+    });
+  }
 
   private checkPermission(ctx: RequestContext, requiredPermission: string): void {
     const hasGrant = ctx.principal.grants.some((g) => g.code === requiredPermission);
@@ -127,16 +151,7 @@ export class SanctionService {
         );
 
         // Application status roll-up ROLLUP-4
-        await this.repo.updateApplicationStatus(
-          tx,
-          tenantId,
-          lenderCase.application_id,
-          'SANCTIONED',
-          null,
-          'ROLLUP-4',
-          ctx.principal.id,
-          lenderCaseId,
-        );
+        await this.rollUpApplication(tx, ctx, lenderCase, 'ROLLUP-4', 'SANCTIONED');
       }
 
       // Outbox event
@@ -374,16 +389,7 @@ export class SanctionService {
         );
 
         // Application status roll-up ROLLUP-5
-        await this.repo.updateApplicationStatus(
-          tx,
-          tenantId,
-          lenderCase.application_id,
-          targetCaseStatus,
-          null,
-          'ROLLUP-5',
-          ctx.principal.id,
-          sanction.lender_case_id,
-        );
+        await this.rollUpApplication(tx, ctx, lenderCase, 'ROLLUP-5', targetCaseStatus);
       }
 
       // Outbox event

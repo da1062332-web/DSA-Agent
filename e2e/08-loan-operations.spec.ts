@@ -363,8 +363,46 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
         }),
       });
     });
-    await page.route(`**/v1/applications/${APP_ID}/eligibility**`, async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+    // Eligibility: no check has been run, the figures are empty, and the history is empty.
+    await page.route(`**/v1/applications/${APP_ID}/eligibility-assessments**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], meta: { nextCursor: null, limit: 50 } }),
+      });
+    });
+    await page.route(`**/v1/applications/${APP_ID}/eligibility-assessments/latest`, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'No eligibility assessment has been run for this application.',
+            httpStatus: 404,
+            correlationId: 'e2e',
+            details: [],
+            retryable: false,
+          },
+        }),
+      });
+    });
+    await page.route(`**/v1/applications/${APP_ID}/eligibility-inputs**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          applicationId: APP_ID,
+          declaredMonthlyIncome: null,
+          declaredIncomeSource: null,
+          declaredAt: null,
+          verifiedMonthlyIncome: null,
+          verifiedAt: null,
+          credit: null,
+          creditEntryEnabled: false,
+          version: 0,
+        }),
+      });
     });
     await page.route(`**/v1/applications/${APP_ID}/lender-cases**`, async (route) => {
       await route.fulfill({

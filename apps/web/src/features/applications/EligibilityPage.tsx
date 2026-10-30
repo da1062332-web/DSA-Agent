@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+// /eligibility (owner: Dev 3; DSA Notion MODULE 17). The applications in the user's scope, with their preliminary eligibility checks.
+// Pages load on demand from the server and the status filter is applied by the server. The search narrows the rows already loaded.
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -8,87 +10,75 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Grid,
-  IconButton,
   MenuItem,
   Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { CustomerName } from '../../shell/display';
 import { CancelIcon, VisibilityIcon } from '../../shell/icons';
-import {
-  DataTable,
-  DetailCard,
-  FilterToolbar,
-  PageHeader,
-  StatCard,
-  StatCardGrid,
-  StatusBadge,
-} from '../../ui';
+import { DataTable, DetailCard, FilterToolbar, PageHeader, StatusBadge } from '../../ui';
 import type { ColumnDef } from '../../ui';
+import { NotSet } from '../../ui/NotSet';
+import { useList } from '../admin/api';
+import { ErrorAlert, LoadMore } from '../admin/components';
 import { EligibilityCard } from './EligibilityCard';
+import { formatRequested, formatTenure } from './eligibility';
+import { APPLICATION_STATUSES, STATUS_LABELS, type ApplicationStatus } from './rules';
 
-interface ApplicationSummary {
+interface ApplicationRow {
   id: string;
-  referenceNumber?: string;
+  customerId: string;
   applicantType: string;
-  requestedAmount: { amount: string; currency: string };
-  tenureMonths: number;
-  productVersionId?: string;
-  status: string;
-  customerId?: string;
+  status: ApplicationStatus;
+  requestedAmount: string;
+  currency: string;
+  tenureMonths: number | null;
+  productVersionId: string | null;
   createdAt: string;
+  updatedAt?: string | null;
 }
 
-const STATUS_OPTIONS = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SANCTIONED'] as const;
-
-const STATUS_TONE: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+const STATUS_TONE: Record<ApplicationStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
   DRAFT: 'neutral',
+  DOCUMENTS_PENDING: 'warning',
+  UNDER_REVIEW: 'info',
+  READY_FOR_SUBMISSION: 'success',
   SUBMITTED: 'info',
-  UNDER_REVIEW: 'warning',
   SANCTIONED: 'success',
+  PARTIALLY_DISBURSED: 'success',
+  DISBURSED: 'success',
+  CLOSED: 'neutral',
+  REJECTED: 'error',
+  WITHDRAWN: 'neutral',
+  CANCELLED: 'neutral',
 };
+
+const readable = (code: string) => code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' ');
 
 export function EligibilityPage() {
   const me = useMe();
   const canRead = hasPermission(me.data, 'application.read');
   const canOverride = hasPermission(me.data, 'eligibility.override');
-
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [status, setStatus] = useState<'ALL' | ApplicationStatus>('ALL');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<ApplicationRow | null>(null);
 
-  const { data: appsData, isLoading } = useQuery<{ data: ApplicationSummary[] }>({
-    queryKey: ['/v1/applications', { limit: 50 }],
-    queryFn: () => apiFetch<{ data: ApplicationSummary[] }>('/v1/applications?limit=50'),
-    enabled: canRead,
-  });
-
-  const applications = useMemo(() => appsData?.data ?? [], [appsData]);
-  const filteredApps = useMemo(() => {
+  const list = useList<ApplicationRow>('/v1/applications', status === 'ALL' ? {} : { status }, 50, canRead);
+  const rows = useMemo(() => list.data?.pages.flatMap((p) => p.data) ?? [], [list.data]);
+  const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return applications.filter((app) => {
-      if (filterStatus !== 'ALL' && app.status !== filterStatus) return false;
-      if (!q) return true;
-      return (
-        app.id.toLowerCase().includes(q) ||
-        (app.referenceNumber ?? '').toLowerCase().includes(q) ||
-        (app.applicantType ?? '').toLowerCase().includes(q)
-      );
-    });
-  }, [applications, filterStatus, search]);
+    if (!q) return rows;
+    return rows.filter(
+      (a) =>
+        a.id.toLowerCase().includes(q) ||
+        readable(a.applicantType).toLowerCase().includes(q) ||
+        STATUS_LABELS[a.status]?.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
 
-  const selectedApp = applications.find((a) => a.id === selectedAppId);
-  const sanctioned = applications.filter((a) => a.status === 'SANCTIONED').length;
-  const underReview = applications.filter((a) => a.status === 'UNDER_REVIEW').length;
-
-  const columns: ColumnDef<ApplicationSummary>[] = [
+  const columns: ColumnDef<ApplicationRow>[] = [
     {
       id: 'customer',
       header: 'Customer',
@@ -96,30 +86,34 @@ export function EligibilityPage() {
     },
     {
       id: 'applicant',
-      header: 'Applicant Type',
-      render: (app) => <Chip label={app.applicantType || 'INDIVIDUAL'} size="small" variant="outlined" />,
+      header: 'Applicant type',
+      render: (app) => <Chip label={readable(app.applicantType)} size="small" variant="outlined" />,
     },
     {
       id: 'status',
       header: 'Status',
-      render: (app) => <StatusBadge status={STATUS_TONE[app.status] ?? 'neutral'} label={app.status} />,
+      render: (app) => <StatusBadge status={STATUS_TONE[app.status]} label={STATUS_LABELS[app.status]} />,
     },
     {
       id: 'amount',
-      header: 'Requested Amount',
+      header: 'Requested amount',
       align: 'right',
-      render: (app) => `₹${Number(app.requestedAmount?.amount || 0).toLocaleString('en-IN')}`,
+      render: (app) => formatRequested(app.requestedAmount, app.currency) ?? <NotSet>Not recorded</NotSet>,
     },
-    { id: 'tenure', header: 'Tenure', render: (app) => `${app.tenureMonths || 36}m` },
+    {
+      id: 'tenure',
+      header: 'Tenure',
+      render: (app) => formatTenure(app.tenureMonths) ?? <NotSet>Not recorded</NotSet>,
+    },
     {
       id: 'product',
-      header: 'Product Assigned',
+      header: 'Product',
       align: 'center',
       render: (app) =>
         app.productVersionId ? (
-          <Chip label="Configured" size="small" color="success" variant="outlined" />
+          <Chip label="Chosen" size="small" color="success" variant="outlined" />
         ) : (
-          <Chip label="Not Assigned" size="small" color="warning" variant="outlined" />
+          <Chip label="Not chosen" size="small" color="warning" variant="outlined" />
         ),
     },
     {
@@ -134,25 +128,33 @@ export function EligibilityPage() {
           startIcon={<VisibilityIcon fontSize="small" />}
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedAppId(app.id);
+            setSelected(app);
           }}
           data-testid={`eligibility.view.${app.id}`}
           sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
         >
-          View Eligibility
+          View eligibility
         </Button>
       ),
     },
   ];
 
+  if (!canRead) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">You need the application read permission to see eligibility checks.</Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
       <PageHeader
-        title="Credit & Eligibility Engine"
-        subtitle="Evaluate applicant financial criteria, credit matrices, and policy constraints across loan products."
+        title="Eligibility"
+        subtitle="Preliminary checks of applications against the approved eligibility rules."
         badge={
           <Chip
-            label={canOverride ? 'Supervisor Override Active' : 'Read & Assessment Mode'}
+            label={canOverride ? 'Can record overrides' : 'Read only'}
             color={canOverride ? 'secondary' : 'default'}
             variant="outlined"
           />
@@ -160,147 +162,109 @@ export function EligibilityPage() {
       />
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Eligibility assessments evaluate application data against active policy tables and credit matrices. All
-        assessment runs are deterministic, auditable, and recorded in compliance with credit policy governance.
+        A check runs the approved rules on the figures recorded for the application. Missing, out-of-date or
+        unverified figures are shown as pending, and a pending check is never a pass. A check does not approve
+        a loan.
       </Alert>
 
-      <StatCardGrid columns={{ xs: 12, sm: 6, md: 3 }}>
-        <StatCard title="Applications" value={applications.length} format="number" status="default" />
-        <StatCard title="Under review" value={underReview} format="number" status="warning" />
-        <StatCard title="Sanctioned" value={sanctioned} format="number" status="success" />
-        <StatCard
-          title="Configured products"
-          value={applications.filter((a) => Boolean(a.productVersionId)).length}
-          format="number"
-          status="primary"
+      <DetailCard title="Applications" subtitle="Open an application to see or run its eligibility check.">
+        <FilterToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search the loaded applications by id, applicant type or status"
+          searchTestId="eligibility.search"
+          filters={
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'ALL' | ApplicationStatus)}
+              sx={{ minWidth: 200 }}
+              inputProps={{ 'data-testid': 'eligibility.status' }}
+            >
+              <MenuItem value="ALL">All statuses</MenuItem>
+              {APPLICATION_STATUSES.map((s) => (
+                <MenuItem key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                </MenuItem>
+              ))}
+            </TextField>
+          }
         />
-      </StatCardGrid>
+        <ErrorAlert error={list.error} />
+        <DataTable<ApplicationRow>
+          dataTestId="eligibility.table"
+          data={visible}
+          columns={columns}
+          keyExtractor={(app) => app.id}
+          onRowClick={(app) => setSelected(app)}
+          emptyMessage={list.isPending ? 'Loading applications…' : 'No applications match this filter.'}
+        />
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" data-testid="eligibility.loaded">
+            {`${rows.length} application${rows.length === 1 ? '' : 's'} loaded${list.hasNextPage ? ', more available' : ''}.`}
+          </Typography>
+          <LoadMore
+            hasNext={!!list.hasNextPage}
+            loading={list.isFetchingNextPage}
+            onClick={() => void list.fetchNextPage()}
+          />
+        </Stack>
+      </DetailCard>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <DetailCard
-            title="Loan Applications"
-            subtitle="Select an application or click 'View Eligibility' to inspect or run an assessment in a popup."
-          >
-            <FilterToolbar
-              searchValue={search}
-              onSearchChange={setSearch}
-              searchPlaceholder="Search by reference, ID or applicant type"
-              searchTestId="eligibility.search"
-              filters={
-                <TextFieldStatus
-                  value={filterStatus}
-                  onChange={setFilterStatus}
-                />
-              }
-            />
-            <DataTable<ApplicationSummary>
-              dataTestId="eligibility.table"
-              data={filteredApps}
-              columns={columns}
-              keyExtractor={(app) => app.id}
-              onRowClick={(app) => setSelectedAppId(app.id)}
-              emptyMessage={
-                isLoading ? 'Loading applications...' : 'No applications found matching filter.'
-              }
-            />
-          </DetailCard>
-        </Grid>
-      </Grid>
-
-      {/* Eligibility Assessment Popup Modal */}
       <Dialog
-        open={Boolean(selectedApp)}
-        onClose={() => setSelectedAppId(null)}
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
         maxWidth="md"
         fullWidth
         data-testid="eligibility.dialog"
       >
         <DialogTitle
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            pb: 1.5,
-          }}
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pb: 1.5 }}
         >
           <Box>
             <Typography variant="h6" fontWeight={700}>
-              Eligibility Assessment
+              Eligibility
             </Typography>
-            {selectedApp && (
+            {selected && (
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }} flexWrap="wrap">
                 <Typography variant="body2" color="text.secondary">
-                  Application:{' '}
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                    {selectedApp.referenceNumber || selectedApp.id}
-                  </span>
+                  Application <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{selected.id}</span>
                 </Typography>
-                <Chip label={selectedApp.applicantType || 'INDIVIDUAL'} size="small" variant="outlined" />
-                <StatusBadge status={STATUS_TONE[selectedApp.status] ?? 'neutral'} label={selectedApp.status} />
+                <StatusBadge status={STATUS_TONE[selected.status]} label={STATUS_LABELS[selected.status]} />
                 <Typography variant="caption" color="text.secondary">
-                  ₹{Number(selectedApp.requestedAmount?.amount || 0).toLocaleString('en-IN')} • {selectedApp.tenureMonths || 36}m
+                  {formatRequested(selected.requestedAmount, selected.currency) ??
+                    'Requested amount not recorded'}
+                  {formatTenure(selected.tenureMonths) ? ` · ${formatTenure(selected.tenureMonths)}` : ''}
                 </Typography>
               </Stack>
             )}
           </Box>
-          <IconButton
-            aria-label="close"
-            onClick={() => setSelectedAppId(null)}
-            size="small"
-            sx={{ color: 'text.secondary' }}
-          >
+          <Button aria-label="close" onClick={() => setSelected(null)} size="small" sx={{ minWidth: 0 }}>
             <CancelIcon fontSize="small" />
-          </IconButton>
+          </Button>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 3 }}>
-          {selectedApp && (
+          {selected && (
             <EligibilityCard
-              applicationId={selectedApp.id}
-              hasProduct={Boolean(selectedApp.productVersionId)}
+              applicationId={selected.id}
+              applicationStatus={selected.status}
+              hasProduct={Boolean(selected.productVersionId)}
               variant="dialog"
               autoRun
-              productVersionId={selectedApp.productVersionId}
-              status={selectedApp.status}
+              productVersionId={selected.productVersionId}
+              updatedAt={selected.updatedAt}
+              status={selected.status}
             />
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
-          {selectedApp && (
-            <Button
-              component={RouterLink}
-              to={`/applications/${selectedApp.id}`}
-              size="small"
-              variant="text"
-            >
-              Open Application Details
-            </Button>
-          )}
-          <Button onClick={() => setSelectedAppId(null)} variant="outlined">
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setSelected(null)} variant="outlined">
             Close
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
-  );
-}
-
-function TextFieldStatus({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <TextField
-      select
-      size="small"
-      label="Status"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      sx={{ minWidth: 180 }}
-    >
-      <MenuItem value="ALL">All Statuses</MenuItem>
-      {STATUS_OPTIONS.map((s) => (
-        <MenuItem key={s} value={s}>
-          {s}
-        </MenuItem>
-      ))}
-    </TextField>
   );
 }

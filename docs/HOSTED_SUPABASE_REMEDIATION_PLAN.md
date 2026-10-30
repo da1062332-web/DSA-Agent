@@ -207,6 +207,7 @@ Approval received: the owner replied "approved all" and asked for everything to 
 
 **Not done, and why**
 - **P0-2 apply to hosted.** Done by the owner on 2026-10-27, with `npx supabase db query --linked -f supabase/migrations/20261001000091_security_hardening.sql`. Verified read-only afterwards: `label_set` has no anon SELECT, anon UPDATE or authenticated DELETE, and runs with `security_invoker`. No public view is readable by anon or writable by authenticated. The two test-login lookups and `app.authenticate_user` are gone from the API role's reach. Anonymous Data API requests to `label_set`, `activity` and `app_user` return `401 42501`. The API role still reads the demo tenant (14 active users). The hosted database has no migration ledger, so no ledger row was written.
+- **Correction, 2026-10-29 (read-only check, `docs/HOSTED_STATUS_2026-10-29.md`).** The statement above that the two test-login lookups are out of the API role's reach is not true on hosted: `dsa_app`, `dsa_api` and PUBLIC still hold EXECUTE on both. `app.authenticate_user` is absent and the grant changes on `public` are present, as recorded.
 - **P0-1 password rotation.** Hosted write. Not attempted. Needs approval, plus a team freeze.
 - **P0-3 API keys.** Rotating the JWT secret or the API keys is not in the CLI commands I checked. It needs the Supabase dashboard, and it breaks the publishable key and all sessions.
 - **P0-4 network allowlist.** Needs the list of IP addresses that keep access (`--db-allow-cidr`). Currently open to 0.0.0.0/0 and ::/0.

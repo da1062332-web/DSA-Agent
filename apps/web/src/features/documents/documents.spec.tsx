@@ -35,7 +35,16 @@ vi.mock('../../config', () => ({
 
 import { getChecklist } from './api';
 import { DocumentsPage } from './DocumentsPage';
-import { groupByParty, itemActions, nextAction, progressText, statusTone, type ChecklistItem } from './model';
+import { DocumentTypesPage } from './DocumentTypesPage';
+import {
+  documentTypeProblem,
+  groupByParty,
+  itemActions,
+  nextAction,
+  progressText,
+  statusTone,
+  type ChecklistItem,
+} from './model';
 import { routes } from './routes';
 
 const item = (over: Partial<ChecklistItem>): ChecklistItem => ({
@@ -157,7 +166,7 @@ describe('checklist row actions (CMP-DOC.03.1, CMP-DOC.05.1, API-APP-009)', () =
       item({ status: 'PENDING' }),
       can('document.upload', 'document.waive', 'document.review'),
     );
-    expect(a).toEqual({ upload: true, view: false, review: false, waive: true });
+    expect(a).toEqual({ upload: true, view: false, download: false, review: false, waive: true });
   });
 
   it('TEST-UI-DOC-11 a received file can be viewed and reviewed by a verifier, who cannot upload or waive', () => {
@@ -165,7 +174,7 @@ describe('checklist row actions (CMP-DOC.03.1, CMP-DOC.05.1, API-APP-009)', () =
       item({ status: 'SUBMITTED', documentId: 'doc_1' }),
       can('document.view', 'document.review'),
     );
-    expect(a).toEqual({ upload: false, view: true, review: true, waive: false });
+    expect(a).toEqual({ upload: false, view: true, download: false, review: true, waive: false });
   });
 
   it('TEST-UI-DOC-12 an accepted, waived or not-applicable item is closed to upload, review and waiver', () => {
@@ -174,7 +183,7 @@ describe('checklist row actions (CMP-DOC.03.1, CMP-DOC.05.1, API-APP-009)', () =
         item({ status, documentId: 'doc_1' }),
         can('document.upload', 'document.view', 'document.review', 'document.waive'),
       );
-      expect(a).toEqual({ upload: false, view: true, review: false, waive: false });
+      expect(a).toEqual({ upload: false, view: true, download: false, review: false, waive: false });
     }
   });
 
@@ -185,5 +194,53 @@ describe('checklist row actions (CMP-DOC.03.1, CMP-DOC.05.1, API-APP-009)', () =
     );
     expect(a.upload).toBe(true);
     expect(a.review).toBe(false);
+  });
+
+  it('TEST-UI-DOC-14 a received file can be downloaded only by someone holding document.download', () => {
+    const received = item({ status: 'ACCEPTED', documentId: 'doc_1' });
+    expect(itemActions(received, can('document.download')).download).toBe(true);
+    expect(itemActions(received, can('document.view')).download).toBe(false);
+    expect(itemActions(item({ status: 'PENDING' }), can('document.download')).download).toBe(false);
+  });
+});
+
+describe('document types (TEST-UI-DOC-15 and 16)', () => {
+  const ok = {
+    code: 'GST_RETURN',
+    name: 'GST return',
+    allowedMime: ['application/pdf'],
+    maxSizeMb: '10',
+    validityMonths: '',
+    instructions: '',
+  };
+
+  it('TEST-UI-DOC-15 the form follows the upsert rules: code, name, a file type, size up to 50 MB and validity 1 to 120', () => {
+    expect(documentTypeProblem(ok)).toBeNull();
+    expect(documentTypeProblem({ ...ok, code: 'gst' })).toMatch(/code/);
+    expect(documentTypeProblem({ ...ok, name: ' x ' })).toMatch(/name/);
+    expect(documentTypeProblem({ ...ok, allowedMime: [] })).toMatch(/file type/);
+    expect(documentTypeProblem({ ...ok, maxSizeMb: '51' })).toMatch(/50 MB/);
+    expect(documentTypeProblem({ ...ok, maxSizeMb: '50' })).toBeNull();
+    expect(documentTypeProblem({ ...ok, validityMonths: '121' })).toMatch(/Validity/);
+    expect(documentTypeProblem({ ...ok, validityMonths: '120' })).toBeNull();
+    expect(documentTypeProblem({ ...ok, validityMonths: '1.5' })).toMatch(/Validity/);
+  });
+
+  it('TEST-UI-DOC-16 /documents/types is routed, linked from Documents for config.manage, and only config.manage can add a type', () => {
+    expect(routes.map((r) => r.path)).toContain('/documents/types');
+    expect(render('application.read', 'config.manage')).toContain('documents.types-link');
+    expect(render('application.read')).not.toContain('documents.types-link');
+    const page = (...codes: string[]) => {
+      me.grants = codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] }));
+      return renderToString(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <DocumentTypesPage />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    };
+    expect(page('config.manage')).toContain('documents.types.new');
+    expect(page('application.read')).not.toContain('documents.types.new');
   });
 });

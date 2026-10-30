@@ -36,12 +36,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         label: 'Approvals',
         to: '/approvals',
-        anyOf: [
-          'config.manage',
-          'data_correction.approve',
-          'commission.plan.approve',
-          'payout.approve',
-        ],
+        anyOf: ['config.manage', 'data_correction.approve', 'commission.plan.approve', 'payout.approve'],
       },
       {
         label: 'Activity',
@@ -228,7 +223,12 @@ export function routeAllowed(
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const isPlatformPath = PLATFORM_PATHS.some((p) => underPath(path, p));
   if (platformRealm) {
-    return path === '/' || path === '/account/security' || path === '/settings' || (isPlatformPath && can('platform.console'));
+    return (
+      path === '/' ||
+      path === '/account/security' ||
+      path === '/settings' ||
+      (isPlatformPath && can('platform.console'))
+    );
   }
   if (isPlatformPath) return false;
   const rule = ruleFor(path);
@@ -439,8 +439,8 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     category: 'Loan Origination',
     to: '/eligibility',
     anyOf: ['application.read'],
-    description: 'Borrower FOIR and loan eligibility assessment',
-    keywords: ['calculator', 'foir', 'borrowing capacity', 'eligibility check'],
+    description: 'Preliminary checks of applications against the approved eligibility rules',
+    keywords: ['eligibility check', 'eligibility rules', 'preliminary eligibility', 'credit rules'],
   },
   {
     id: 'lenders',
@@ -812,10 +812,7 @@ export function getSearchableItems(
 /**
  * Search and rank suggestions by relevance based on query.
  */
-export function searchSuggestions(
-  items: SearchableItem[],
-  query: string,
-): SearchableItem[] {
+export function searchSuggestions(items: SearchableItem[], query: string): SearchableItem[] {
   const clean = query.trim().toLowerCase();
   if (!clean) return items.slice(0, 8); // top suggestions when empty
 
@@ -884,6 +881,7 @@ export type ActionId =
   | 'sanction.record'
   | 'disbursement.record'
   | 'disbursement.verify'
+  | 'disbursement.exception_approve'
   // Connectors
   | 'connector.manage'
   | 'connector.attribution_change'
@@ -965,6 +963,7 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'sanction.record': ['sanction.record'],
   'disbursement.record': ['disbursement.record'],
   'disbursement.verify': ['disbursement.verify'],
+  'disbursement.exception_approve': ['disbursement.exception_approve'],
 
   // Connectors
   'connector.manage': ['connector.manage'],
@@ -1255,4 +1254,3 @@ export function visibleSettings(
     }),
   })).filter((cat) => cat.items.length > 0);
 }
-

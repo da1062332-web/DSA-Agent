@@ -50,6 +50,14 @@ export const TERMINAL: ApplicationStatus[] = ['CLOSED', 'REJECTED', 'WITHDRAWN',
 /** Applicant details may be edited only before underwriting starts (assumption, confirm with the spec owner). */
 export const EDITABLE: ApplicationStatus[] = ['DRAFT', 'DOCUMENTS_PENDING'];
 
+/** T-APP-07: a disbursed or terminal file can be closed (application.close); a closed file cannot be reopened. */
+export const CLOSABLE: ApplicationStatus[] = ['DISBURSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED'];
+/** Same rule as the API for a rework (T-APP-03) or send back (T-APP-05) reason: 5 to 200 characters. */
+export const isValidTransitionReason = (reason: string) => {
+  const t = reason.trim();
+  return t.length >= 5 && t.length <= 200;
+};
+
 export const canEditDetails = (status: ApplicationStatus) => EDITABLE.includes(status);
 export const canHold = (status: ApplicationStatus) => !TERMINAL.includes(status);
 
@@ -66,3 +74,56 @@ export const isValidTenure = (v: string) => {
   const n = Number(v);
   return Number.isInteger(n) && n >= 1 && n <= 480;
 };
+
+// ---- Parties, owners, archive and legal hold (API-APP-006, API-APP-011, API-DOC-009, API-PRV-004) ----
+
+/** Parties change only before the application is with a lender (API: PARTY_EDITABLE_STATUSES). */
+export const PARTY_EDITABLE: ApplicationStatus[] = ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'];
+export const canChangeParties = (status: ApplicationStatus) => PARTY_EDITABLE.includes(status);
+
+export interface PartyView {
+  role: 'PRIMARY' | 'CO_APPLICANT' | 'GUARANTOR';
+  removedAt: string | null;
+}
+/** The primary applicant stays; a party already removed has nothing left to remove. */
+export const canRemoveParty = (p: PartyView) => p.role !== 'PRIMARY' && p.removedAt === null;
+
+/** Owners can be reassigned until the application is closed (API: refused for terminal statuses). */
+export const canAssignOwners = (status: ApplicationStatus) => !TERMINAL.includes(status);
+
+/** Same rule as the API: a reassignment needs a reason of 3 to 200 characters. */
+export const isValidAssignmentReason = (reason: string) => {
+  const t = reason.trim();
+  return t.length >= 3 && t.length <= 200;
+};
+
+/** Same rule as the API: a legal hold needs a reason of 5 to 1000 characters. */
+export const isValidLegalHoldReason = (reason: string) => {
+  const t = reason.trim();
+  return t.length >= 5 && t.length <= 1000;
+};
+
+/** Free text must not carry a PAN, an Aadhaar number or an account number (the API refuses them with 422). */
+export const hasRestrictedNumber = (text: string) =>
+  /\b[A-Z]{5}[0-9]{4}[A-Z]\b/i.test(text) ||
+  /\b\d{4}\s?\d{4}\s?\d{4}\b/.test(text) ||
+  /\b\d{9,18}\b/.test(text);
+
+// ---- New application (API-APP-001) ----
+export const PRODUCT_CATEGORIES = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'] as const;
+
+export interface NewApplicationInput {
+  customerId: string | null;
+  branchId: string | null;
+  amount: string;
+  tenure: string;
+}
+/** What is still missing before a new application can be opened, or null when it is ready. */
+export function newApplicationProblem(input: NewApplicationInput): string | null {
+  if (!input.customerId) return 'Choose the customer.';
+  if (!input.branchId) return 'Choose the branch.';
+  if (!isValidAmount(input.amount)) return 'Enter the requested amount, for example 300000.00.';
+  if (input.tenure !== '' && !isValidTenure(input.tenure))
+    return 'Tenure is a whole number of months from 1 to 480.';
+  return null;
+}

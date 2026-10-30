@@ -2,6 +2,7 @@
 import type { RequestContext, Tx, TxRunner } from '@dsa/contracts';
 import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { FakeApplicationPort } from '@dsa/contracts/fakes';
 import { InMemorySanctionRepository } from '../src/modules/origination/sanctions/repository';
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
@@ -24,6 +25,7 @@ const inMemoryTxRunner: TxRunner = {
 };
 
 describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
+  let applicationPort: FakeApplicationPort;
   let repository: InMemorySanctionRepository;
 
   const tenantA = 'ten_01JTESTTENANTA0000000000000';
@@ -77,17 +79,21 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       tenant_id: tenantA,
       application_id: appId,
       lender_id: 'lnd_hdfc_01',
+      product_version_id: null,
       status: 'UNDER_PROCESSING',
       lock_version: 0,
     });
 
-    // Seed application
-    repository.applications.set(`${tenantA}:${appId}`, {
+    // Seed application (owned by the applications module, rolled up through ApplicationPort)
+    applicationPort = new FakeApplicationPort();
+    applicationPort.seedApplication(tenantA, {
       id: appId,
-      tenant_id: tenantA,
+      branchId: 'br_01',
+      customerId: 'cust_01',
+      productCategory: 'HL',
       status: 'SUBMITTED',
-      sub_status: null,
-      lock_version: 0,
+      subStatus: null,
+      version: 0,
     });
   });
 
@@ -97,6 +103,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       deps: {
         txRunner: inMemoryTxRunner,
         sanctionRepository: repository,
+        applicationPort,
       } as any,
     });
   }
@@ -132,8 +139,15 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
       expect(updatedCase?.status).toBe('SANCTIONED');
 
       // Verify application was updated to SANCTIONED (ROLLUP-4)
-      const updatedApp = await repository.findApplication({} as Tx, tenantA, appId);
+      const updatedApp = applicationPort.applications.get(`${tenantA}:${appId}`);
       expect(updatedApp?.status).toBe('SANCTIONED');
+      expect(applicationPort.rollUps).toEqual([
+        expect.objectContaining({
+          applicationId: appId,
+          transitionCode: 'ROLLUP-4',
+          causedByLenderCaseId: caseId,
+        }),
+      ]);
 
       // Outbox event
       expect(repository.outboxEvents.some((e) => e.eventName === 'sanction.recorded')).toBe(true);
@@ -179,6 +193,7 @@ describe('Module 19 — Sanction and Disbursement (MOD-SND)', () => {
         tenant_id: tenantA,
         application_id: appId,
         lender_id: 'lnd_hdfc_01',
+        product_version_id: null,
         status: 'DRAFT',
         lock_version: 0,
       });

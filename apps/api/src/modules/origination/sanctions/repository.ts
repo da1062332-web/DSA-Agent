@@ -16,21 +16,13 @@ export interface LenderCaseSummary {
   tenant_id: string;
   application_id: string;
   lender_id: string;
+  product_version_id: string | null;
   status: string;
-  lock_version: number;
-}
-
-export interface ApplicationSummary {
-  id: string;
-  tenant_id: string;
-  status: string;
-  sub_status: string | null;
   lock_version: number;
 }
 
 export interface SanctionRepository {
   findLenderCase(tx: Tx, tenantId: string, caseId: string): Promise<LenderCaseSummary | null>;
-  findApplication(tx: Tx, tenantId: string, appId: string): Promise<ApplicationSummary | null>;
   findSanctionById(tx: Tx, tenantId: string, id: string): Promise<SanctionRow | null>;
   listSanctionsByCase(tx: Tx, tenantId: string, lenderCaseId: string): Promise<SanctionRow[]>;
   listAllSanctions(
@@ -57,16 +49,6 @@ export interface SanctionRepository {
     actor: string,
     reasonText?: string | null,
   ): Promise<void>;
-  updateApplicationStatus(
-    tx: Tx,
-    tenantId: string,
-    appId: string,
-    newStatus: string,
-    subStatus: string | null,
-    transitionCode: string,
-    actor: string,
-    causedByCaseId?: string,
-  ): Promise<void>;
   findExpiringSanctions(tx: Tx, tenantId: string, currentDate: string): Promise<SanctionRow[]>;
   emitOutboxEvent(tx: Tx, event: OutboxEventRecord): Promise<void>;
 }
@@ -74,20 +56,10 @@ export interface SanctionRepository {
 export class SqlSanctionRepository implements SanctionRepository {
   async findLenderCase(tx: Tx, tenantId: string, caseId: string): Promise<LenderCaseSummary | null> {
     const res = await (tx as any).query(
-      `SELECT id, tenant_id, application_id, lender_id, status, lock_version
+      `SELECT id, tenant_id, application_id, lender_id, product_version_id, status, lock_version
        FROM app.lender_case
        WHERE tenant_id = $1 AND id = $2`,
       [tenantId, caseId],
-    );
-    return res.rows[0] ?? null;
-  }
-
-  async findApplication(tx: Tx, tenantId: string, appId: string): Promise<ApplicationSummary | null> {
-    const res = await (tx as any).query(
-      `SELECT id, tenant_id, status, sub_status, lock_version
-       FROM app.loan_application
-       WHERE tenant_id = $1 AND id = $2`,
-      [tenantId, appId],
     );
     return res.rows[0] ?? null;
   }
@@ -339,52 +311,6 @@ export class SqlSanctionRepository implements SanctionRepository {
     );
   }
 
-  async updateApplicationStatus(
-    tx: Tx,
-    tenantId: string,
-    appId: string,
-    newStatus: string,
-    subStatus: string | null,
-    transitionCode: string,
-    actor: string,
-    causedByCaseId?: string,
-  ): Promise<void> {
-    const oldApp = await this.findApplication(tx, tenantId, appId);
-    if (!oldApp) return;
-
-    await (tx as any).query(
-      `UPDATE app.loan_application SET
-        status = $3,
-        sub_status = $4,
-        product_version_id = COALESCE(product_version_id, (SELECT product_version_id FROM app.lender_case WHERE id = $6)),
-        lock_version = lock_version + 1,
-        updated_at = now(),
-        updated_by = $5
-       WHERE tenant_id = $1 AND id = $2`,
-      [tenantId, appId, newStatus, subStatus, actor, causedByCaseId ?? null],
-    );
-
-    const histId = `ash_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await (tx as any).query(
-      `INSERT INTO app.application_status_history (
-        id, tenant_id, application_id, from_status, to_status, from_sub_status, to_sub_status,
-        transition_code, caused_by_lender_case_id, actor, occurred_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())`,
-      [
-        histId,
-        tenantId,
-        appId,
-        oldApp.status,
-        newStatus,
-        oldApp.sub_status,
-        subStatus,
-        transitionCode,
-        causedByCaseId ?? null,
-        actor,
-      ],
-    );
-  }
-
   async findExpiringSanctions(tx: Tx, tenantId: string, currentDate: string): Promise<SanctionRow[]> {
     const res = await (tx as any).query(
       `SELECT * FROM app.sanction
@@ -419,17 +345,11 @@ export class InMemorySanctionRepository implements SanctionRepository {
   readonly sanctions = new Map<string, SanctionRow>();
   readonly tranches = new Map<string, DisbursementTrancheRow>();
   readonly lenderCases = new Map<string, LenderCaseSummary>();
-  readonly applications = new Map<string, ApplicationSummary>();
   readonly outboxEvents: OutboxEventRecord[] = [];
 
   async findLenderCase(_tx: Tx, tenantId: string, caseId: string): Promise<LenderCaseSummary | null> {
     const k = `${tenantId}:${caseId}`;
     return this.lenderCases.get(k) ?? null;
-  }
-
-  async findApplication(_tx: Tx, tenantId: string, appId: string): Promise<ApplicationSummary | null> {
-    const k = `${tenantId}:${appId}`;
-    return this.applications.get(k) ?? null;
   }
 
   async findSanctionById(_tx: Tx, tenantId: string, id: string): Promise<SanctionRow | null> {
@@ -522,25 +442,6 @@ export class InMemorySanctionRepository implements SanctionRepository {
     const existing = this.lenderCases.get(k);
     if (existing) {
       existing.status = newStatus;
-      existing.lock_version++;
-    }
-  }
-
-  async updateApplicationStatus(
-    _tx: Tx,
-    tenantId: string,
-    appId: string,
-    newStatus: string,
-    subStatus: string | null,
-    _transitionCode: string,
-    _actor: string,
-    _causedByCaseId?: string,
-  ): Promise<void> {
-    const k = `${tenantId}:${appId}`;
-    const existing = this.applications.get(k);
-    if (existing) {
-      existing.status = newStatus;
-      existing.sub_status = subStatus;
       existing.lock_version++;
     }
   }

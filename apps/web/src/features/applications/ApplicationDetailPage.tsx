@@ -1,6 +1,7 @@
-// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 010). Edit the applicant request while the
-// status allows it, and put the file on hold with a reason. Every change sends the version the screen loaded (If-Match),
-// so a stale screen gets the conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
+// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; MODULE 20 API-DOC-009; API-PRV-004).
+// Edit the applicant request while the status allows it, put the file on hold with a reason, manage parties and owners, archive
+// the documents and place a legal hold. Every change sends the version the screen loaded (If-Match), so a stale screen gets the
+// conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
 import {
   Alert,
   Box,
@@ -14,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
@@ -24,16 +25,19 @@ import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admi
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
+import { ArchiveCard, LegalHoldCard, OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { EligibilityCard } from './EligibilityCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
 import { AppButton, AppCard, FieldGrid } from '../../ui';
 import {
+  CLOSABLE,
   STATUS_LABELS,
   canEditDetails,
   canHold,
   isValidAmount,
   isValidHoldReason,
   isValidTenure,
+  isValidTransitionReason,
 } from './rules';
 
 const PURPOSES = [
@@ -85,13 +89,21 @@ export function ApplicationDetailPage() {
           {a.holdUntil ? ` until ${formatDate(a.holdUntil)}` : ''}.
         </Alert>
       )}
+      {a.reworkReason && a.status === 'DOCUMENTS_PENDING' && (
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="application.rework-reason">
+          Sent back for rework: {a.reworkReason}
+        </Alert>
+      )}
 
       <RelationsCard app={a} />
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
+      <PartiesCard app={a} />
+      <OwnersCard app={a} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
       <EligibilityCard
         applicationId={a.id}
+        applicationStatus={a.status}
         hasProduct={!!a.productVersionId}
         autoRun
         productVersionId={a.productVersionId}
@@ -99,6 +111,8 @@ export function ApplicationDetailPage() {
         status={a.status}
       />
       <ChecklistCard applicationId={a.id} />
+      <ArchiveCard applicationId={a.id} />
+      <LegalHoldCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />
@@ -299,22 +313,8 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
             </AppButton>
           </Stack>
         ) : (
-          <FieldGrid minColumnWidth={260} spanNonFields>
-            <TextField
-              label="Reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              helperText="3 to 200 characters. Shown to the team while the hold is on."
-            />
-            <TextField
-              label="Hold until"
-              type="date"
-              value={until}
-              onChange={(e) => setUntil(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              helperText="Optional."
-            />
-            <Stack direction="row" justifyContent="flex-end">
+          <StepRow
+            action={
               <AppButton
                 variant="danger"
                 loading={hold.isPending}
@@ -329,8 +329,27 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
               >
                 Put on hold
               </AppButton>
+            }
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                helperText="3 to 200 characters. Shown to the team while the hold is on."
+                sx={{ flex: { sm: 2 }, minWidth: 0 }}
+              />
+              <TextField
+                label="Hold until"
+                type="date"
+                value={until}
+                onChange={(e) => setUntil(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional."
+                sx={{ flex: { sm: 1 }, minWidth: 0 }}
+              />
             </Stack>
-          </FieldGrid>
+          </StepRow>
         )}
       </CardContent>
     </Card>
@@ -344,20 +363,37 @@ const CANCEL_REASONS = [
   { value: 'OTHER', label: 'Other' },
 ] as const;
 
-/** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-10
- *  (cancel). Only the steps the caller's permissions and the current status allow are shown. The API re-checks all of it. */
-function TransitionCard({ app }: { app: Application }) {
+/** One step on the page: its fields on the left, the action button on the right, side by side. Stacks on a phone. */
+function StepRow({ children, action }: { children: ReactNode; action: ReactNode }) {
+  return (
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
+      <Stack spacing={2} sx={{ flex: 1, minWidth: 0, maxWidth: { sm: 640 } }}>
+        {children}
+      </Stack>
+      <Box sx={{ flexShrink: 0 }}>{action}</Box>
+    </Stack>
+  );
+}
+
+/** The next step for this application: T-APP-01 (draft, pick a product version), T-APP-02 (send to review), T-APP-03
+ *  (send back for rework), T-APP-04 (ready), T-APP-05 (send back to review), T-APP-07 (close), T-APP-08 (withdraw), T-APP-09
+ *  (reopen) and T-APP-10 (cancel). Only the steps the caller's permissions and the current status allow are shown. The API
+ *  re-checks all of it. */
+export function TransitionCard({ app }: { app: Application }) {
   const me = useMe();
   const canUpdate = hasPermission(me.data, 'application.update');
   const canReview = hasPermission(me.data, 'application.review');
   const canCancel = hasPermission(me.data, 'application.cancel');
   const canWithdraw = hasPermission(me.data, 'application.withdraw');
   const canReopen = hasPermission(me.data, 'application.reopen');
+  const canClose = hasPermission(me.data, 'application.close');
   const [productId, setProductId] = useState('');
   const [versionId, setVersionId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [withdrawReason, setWithdrawReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+  const [sendBackReason, setSendBackReason] = useState('');
+  const [closeReason, setCloseReason] = useState('');
 
   const showStart = app.status === 'DRAFT' && canUpdate;
   const showReview = app.status === 'DOCUMENTS_PENDING' && canReview;
@@ -369,6 +405,23 @@ function TransitionCard({ app }: { app: Application }) {
     ['DOCUMENTS_PENDING', 'UNDER_REVIEW', 'READY_FOR_SUBMISSION'].includes(app.status) && canWithdraw;
   // T-APP-09: a cancelled or withdrawn file is reopened as a draft. A reason is required.
   const showReopen = ['CANCELLED', 'WITHDRAWN'].includes(app.status) && canReopen;
+  // T-APP-03 (under review) and T-APP-05 (ready): send the file back a step, with a reason.
+  const sendBack =
+    app.status === 'UNDER_REVIEW' && canReview
+      ? ({
+          code: 'T-APP-03',
+          label: 'Send back for rework',
+          hint: 'The file goes back to documents pending.',
+        } as const)
+      : app.status === 'READY_FOR_SUBMISSION' && canReview
+        ? ({
+            code: 'T-APP-05',
+            label: 'Send back to review',
+            hint: 'The file goes back to under review.',
+          } as const)
+        : null;
+  // T-APP-07: a disbursed or terminal file is closed for good.
+  const showClose = CLOSABLE.includes(app.status) && canClose;
 
   // Products of this application's category, then their versions. Only versions in force today can be chosen.
   const products = useLookup<Product>(
@@ -385,7 +438,16 @@ function TransitionCard({ app }: { app: Application }) {
 
   const run = useCommand<
     {
-      transitionCode: 'T-APP-01' | 'T-APP-02' | 'T-APP-04' | 'T-APP-08' | 'T-APP-09' | 'T-APP-10';
+      transitionCode:
+        | 'T-APP-01'
+        | 'T-APP-02'
+        | 'T-APP-03'
+        | 'T-APP-04'
+        | 'T-APP-05'
+        | 'T-APP-07'
+        | 'T-APP-08'
+        | 'T-APP-09'
+        | 'T-APP-10';
       productVersionId?: string;
       cancelReason?: string;
       reason?: string;
@@ -396,7 +458,17 @@ function TransitionCard({ app }: { app: Application }) {
     [[`/v1/applications/${app.id}`], ['/v1/applications']],
   );
 
-  if (!showStart && !showReview && !showCancel && !showReady && !showWithdraw && !showReopen) return null;
+  if (
+    !showStart &&
+    !showReview &&
+    !showCancel &&
+    !showReady &&
+    !showWithdraw &&
+    !showReopen &&
+    !sendBack &&
+    !showClose
+  )
+    return null;
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -405,45 +477,10 @@ function TransitionCard({ app }: { app: Application }) {
           Next step
         </Typography>
         <ErrorAlert error={run.error} />
-        <FieldGrid minColumnWidth={260} spanNonFields>
+        <Stack spacing={3}>
           {showStart && (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Choose the product and the version in force today, then start the documents.
-              </Typography>
-              <TextField
-                select
-                label="Product"
-                value={productId}
-                onChange={(e) => {
-                  setProductId(e.target.value);
-                  setVersionId('');
-                }}
-                helperText={
-                  products.data?.length === 0 ? `No active ${app.productCategory} products.` : undefined
-                }
-              >
-                {(products.data ?? []).map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Product version"
-                value={versionId}
-                onChange={(e) => setVersionId(e.target.value)}
-                disabled={!productId}
-                helperText={productId && inForce.length === 0 ? 'No version is in force today.' : undefined}
-              >
-                {inForce.map((v) => (
-                  <MenuItem key={v.id} value={v.id}>
-                    Version {v.versionNo} (from {formatDate(v.effectiveFrom)})
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="primary"
                   loading={run.isPending}
@@ -452,8 +489,48 @@ function TransitionCard({ app }: { app: Application }) {
                 >
                   Start documents
                 </AppButton>
+              }
+            >
+              <Typography variant="body2" color="text.secondary">
+                Choose the product and the version in force today, then start the documents.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="Product"
+                  value={productId}
+                  onChange={(e) => {
+                    setProductId(e.target.value);
+                    setVersionId('');
+                  }}
+                  helperText={
+                    products.data?.length === 0 ? `No active ${app.productCategory} products.` : undefined
+                  }
+                  sx={{ flex: { sm: 1 }, minWidth: 0 }}
+                >
+                  {(products.data ?? []).map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Product version"
+                  value={versionId}
+                  onChange={(e) => setVersionId(e.target.value)}
+                  disabled={!productId}
+                  helperText={productId && inForce.length === 0 ? 'No version is in force today.' : undefined}
+                  sx={{ flex: { sm: 1 }, minWidth: 0 }}
+                >
+                  {inForce.map((v) => (
+                    <MenuItem key={v.id} value={v.id}>
+                      Version {v.versionNo} (from {formatDate(v.effectiveFrom)})
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Stack>
-            </>
+            </StepRow>
           )}
 
           {showReview && (
@@ -480,15 +557,68 @@ function TransitionCard({ app }: { app: Application }) {
             </Stack>
           )}
 
-          {showWithdraw && (
-            <>
+          {sendBack && (
+            <StepRow
+              action={
+                <AppButton
+                  variant="outlined"
+                  loading={run.isPending}
+                  disabled={!isValidTransitionReason(sendBackReason)}
+                  dataTestId="application.send-back"
+                  onClick={() =>
+                    run.mutate(
+                      { transitionCode: sendBack.code, reason: sendBackReason.trim() },
+                      { onSuccess: () => setSendBackReason('') },
+                    )
+                  }
+                >
+                  {sendBack.label}
+                </AppButton>
+              }
+            >
               <TextField
-                label="Withdrawal reason"
-                value={withdrawReason}
-                onChange={(e) => setWithdrawReason(e.target.value)}
-                helperText="At least 5 characters. Recorded in the status history."
+                fullWidth
+                label="Reason for sending back"
+                value={sendBackReason}
+                onChange={(e) => setSendBackReason(e.target.value)}
+                helperText={`5 to 200 characters. ${sendBack.hint}`}
+                inputProps={{ 'data-testid': 'application.send-back-reason' }}
               />
-              <Stack direction="row" justifyContent="flex-end">
+            </StepRow>
+          )}
+
+          {showClose && (
+            <StepRow
+              action={
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={closeReason.trim() !== '' && !isValidTransitionReason(closeReason)}
+                  dataTestId="application.close"
+                  onClick={() =>
+                    run.mutate({
+                      transitionCode: 'T-APP-07',
+                      ...(closeReason.trim() ? { reason: closeReason.trim() } : {}),
+                    })
+                  }
+                >
+                  Close application
+                </AppButton>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Closing note (optional)"
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                helperText="5 to 200 characters when given. A closed file cannot be reopened."
+              />
+            </StepRow>
+          )}
+
+          {showWithdraw && (
+            <StepRow
+              action={
                 <AppButton
                   variant="danger"
                   loading={run.isPending}
@@ -497,19 +627,21 @@ function TransitionCard({ app }: { app: Application }) {
                 >
                   Withdraw application
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Withdrawal reason"
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                helperText="At least 5 characters. Recorded in the status history."
+              />
+            </StepRow>
           )}
 
           {showReopen && (
-            <>
-              <TextField
-                label="Reopen reason"
-                value={reopenReason}
-                onChange={(e) => setReopenReason(e.target.value)}
-                helperText="At least 5 characters. The file goes back to draft."
-              />
-              <Stack direction="row" justifyContent="flex-end">
+            <StepRow
+              action={
                 <AppButton
                   variant="primary"
                   loading={run.isPending}
@@ -518,13 +650,33 @@ function TransitionCard({ app }: { app: Application }) {
                 >
                   Reopen as draft
                 </AppButton>
-              </Stack>
-            </>
+              }
+            >
+              <TextField
+                fullWidth
+                label="Reopen reason"
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                helperText="At least 5 characters. The file goes back to draft."
+              />
+            </StepRow>
           )}
 
           {showCancel && (
-            <>
+            <StepRow
+              action={
+                <AppButton
+                  variant="danger"
+                  loading={run.isPending}
+                  disabled={!cancelReason}
+                  onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
+                >
+                  Cancel application
+                </AppButton>
+              }
+            >
               <TextField
+                fullWidth
                 select
                 label="Cancel reason"
                 value={cancelReason}
@@ -536,19 +688,9 @@ function TransitionCard({ app }: { app: Application }) {
                   </MenuItem>
                 ))}
               </TextField>
-              <Stack direction="row" justifyContent="flex-end">
-                <AppButton
-                  variant="danger"
-                  loading={run.isPending}
-                  disabled={!cancelReason}
-                  onClick={() => run.mutate({ transitionCode: 'T-APP-10', cancelReason })}
-                >
-                  Cancel application
-                </AppButton>
-              </Stack>
-            </>
+            </StepRow>
           )}
-        </FieldGrid>
+        </Stack>
       </CardContent>
     </Card>
   );

@@ -36,7 +36,7 @@ const SCREENS: { to: string; label: string; title: string; feature: string }[] =
     title: 'Sanctions & Disbursements',
     feature: 'Sanction and disbursement',
   },
-  { to: '/eligibility', label: 'Eligibility', title: 'Credit & Eligibility Engine', feature: 'Eligibility engine' },
+  { to: '/eligibility', label: 'Eligibility', title: 'Eligibility', feature: 'Eligibility checks' },
   { to: '/lenders', label: 'Lenders', title: 'Lender Directory', feature: 'Lender directory' },
   { to: '/products', label: 'Products', title: 'Loan Product Catalogue', feature: 'Product catalogue' },
   { to: '/commission', label: 'Commission', title: 'Commission Management Hub', feature: 'Commission' },

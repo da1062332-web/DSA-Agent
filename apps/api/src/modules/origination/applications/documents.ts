@@ -39,8 +39,9 @@ import { sql } from 'kysely';
 import crypto from 'node:crypto';
 import { idempotencyKey, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
-import { MagicByteFileScanner } from '../document-sharing/storage-port';
+import { MagicByteFileScanner, type FileScannerPort } from '../document-sharing/storage-port';
 import { advanceForChecklistItem, advanceWhenDocumentsComplete, isComplete } from './application-port';
+import { EncryptedDocumentObjectStore } from './document-backends';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
 import {
@@ -56,7 +57,7 @@ const LINK_TTL_SECONDS = 300;
 const UPLOAD_TTL_MINUTES = 15;
 
 /** Platform defaults for the fixed type codes (PA-10); a tenant row with the same code overrides one. */
-const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
+export const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
   [
     ['PAN_CARD', 'PAN card', 'IDENTITY', 'S3'],
     ['AADHAAR_MASKED', 'Aadhaar (masked)', 'IDENTITY', 'S3'],
@@ -86,6 +87,7 @@ export interface DocumentDeps {
   store: DocumentObjectStore;
   signer: FileLinkSigner;
   secret: string;
+  scanner: FileScannerPort;
 }
 
 /** The documents dependencies from ApiDeps, or local defaults (development and tests). */
@@ -93,10 +95,14 @@ export function documentDeps(deps: ApiDeps): DocumentDeps {
   // A short or empty key would make links forgeable, so only a real secret is used; otherwise a per-process one.
   const secret =
     deps.documentLinkSecret && deps.documentLinkSecret.length >= 32 ? deps.documentLinkSecret : processSecret;
+  const store = (deps.documentStore as DocumentObjectStore | undefined) ?? new LocalDocumentObjectStore();
   return {
-    store: (deps.documentStore as DocumentObjectStore | undefined) ?? new LocalDocumentObjectStore(),
+    // Files are encrypted at rest whenever a real secret is configured (AUD-013). A per-process secret would make them
+    // unreadable after a restart, so local runs without one keep plain files.
+    store: secret === processSecret ? store : new EncryptedDocumentObjectStore(store, secret),
     signer: new FileLinkSigner(secret),
     secret,
+    scanner: (deps.documentScanner as FileScannerPort | undefined) ?? new MagicByteFileScanner(),
   };
 }
 // Without a configured secret (unit tests, local runs) links are valid only for this process.
@@ -343,7 +349,6 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
   router.post('/upload-intents/:id/completion', async (req, res) => {
     const ctx = requireCtx(req);
     deps.authz.requirePermission(ctx, 'document.upload');
-    const scanner = new MagicByteFileScanner();
     const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const intent = (
         await sql<Row>`select * from upload_intent where id = ${req.params.id} for update`.execute(tx)
@@ -371,7 +376,7 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
           { field: 'sha256', issue: 'MISMATCH' },
         ]);
       }
-      const scan = await scanner.scan(bytes, String(intent.file_name), String(intent.mime_type));
+      const scan = await docs.scanner.scan(bytes, String(intent.file_name), String(intent.mime_type));
       const scanStatus = scan.clean ? 'CLEAN' : 'QUARANTINED';
 
       // One document per checklist item; a new upload becomes its next version and supersedes the previous one.
