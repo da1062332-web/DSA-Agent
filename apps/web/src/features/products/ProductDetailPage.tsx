@@ -30,8 +30,8 @@ import { LenderName } from '../../shell/display';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
-import { createProductVersion, fetchProductById } from './api';
-import type { CreateProductVersionInput, LoanProduct } from './types';
+import { createProductVersion, fetchProductById, fetchProductVersions } from './api';
+import type { CreateProductVersionInput, LoanProduct, ProductVersion } from './types';
 import { NotSet } from '../../ui/NotSet';
 
 export function ProductDetailPage() {
@@ -64,15 +64,33 @@ export function ProductDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const found = await fetchProductById(id);
-      setProduct(found);
-      if (found.activeVersion) {
-        setVerAmountMin(Number(found.activeVersion.amountMin));
-        setVerAmountMax(Number(found.activeVersion.amountMax));
-        setVerTenureMin(found.activeVersion.tenureMin);
-        setVerTenureMax(found.activeVersion.tenureMax);
-        setVerRateText(found.activeVersion.illustrativeRateText || '');
-        setVerFeeText(found.activeVersion.feeText || '');
+      const [found, versionsRes] = await Promise.all([
+        fetchProductById(id),
+        fetchProductVersions(id).catch(() => ({ data: [] })),
+      ]);
+      const rawVersions = versionsRes.data ?? [];
+      const normalizedVersions: ProductVersion[] = rawVersions.map((v: any) => ({
+        ...v,
+        tenureMin: v.tenureMin ?? v.tenureMinMonths ?? 12,
+        tenureMax: v.tenureMax ?? v.tenureMaxMonths ?? 60,
+      }));
+      const activeVer = normalizedVersions.find((v) => v.isCurrent) || normalizedVersions[0] || null;
+
+      const fullProduct: LoanProduct = {
+        ...found,
+        activeVersion: activeVer ?? undefined,
+        activeVersionNo: activeVer ? activeVer.versionNo : (found.activeVersionNo ?? 1),
+        versions: normalizedVersions,
+      };
+
+      setProduct(fullProduct);
+      if (activeVer) {
+        setVerAmountMin(Number(activeVer.amountMin));
+        setVerAmountMax(Number(activeVer.amountMax));
+        setVerTenureMin(activeVer.tenureMin);
+        setVerTenureMax(activeVer.tenureMax);
+        setVerRateText(activeVer.illustrativeRateText || '');
+        setVerFeeText(activeVer.feeText || '');
       }
     } catch (err) {
       setError(errorText(err));
@@ -278,10 +296,10 @@ export function ProductDetailPage() {
               header: 'Status',
               render: (ver) => (
                 <Chip
-                  label={ver.versionNo === product.activeVersionNo ? 'ACTIVE PINNED' : 'HISTORICAL'}
+                  label={ver.isCurrent || ver.versionNo === product.activeVersionNo ? 'ACTIVE PINNED' : 'HISTORICAL'}
                   size="small"
                   variant="outlined"
-                  color={ver.versionNo === product.activeVersionNo ? 'success' : 'default'}
+                  color={ver.isCurrent || ver.versionNo === product.activeVersionNo ? 'success' : 'default'}
                 />
               ),
             },

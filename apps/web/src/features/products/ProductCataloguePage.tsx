@@ -37,7 +37,7 @@ import { errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { fetchLenders } from '../lenders/api';
 import type { Lender } from '../lenders/types';
-import { createProduct, fetchProducts, updateProductStatus } from './api';
+import { createProduct, fetchProductVersions, fetchProducts, updateProductStatus } from './api';
 import { PRODUCT_CATEGORY_OPTIONS, categoryLabel } from './types';
 import type { CreateProductInput, LoanProduct, ProductCategory, ProductStatus } from './types';
 import { NotSet } from '../../ui/NotSet';
@@ -88,7 +88,30 @@ export function ProductCataloguePage() {
         }),
         fetchLenders({ limit: 100 }),
       ]);
-      setProducts(prodRes.data);
+      const enrichedProducts = await Promise.all(
+        prodRes.data.map(async (p) => {
+          try {
+            const vRes = await fetchProductVersions(p.id);
+            const vers = vRes.data ?? [];
+            const active = vers.find((v: any) => v.isCurrent) || vers[0];
+            if (active) {
+              return {
+                ...p,
+                activeVersion: {
+                  ...active,
+                  tenureMin: active.tenureMin ?? (active as any).tenureMinMonths ?? 12,
+                  tenureMax: active.tenureMax ?? (active as any).tenureMaxMonths ?? 60,
+                },
+                activeVersionNo: active.versionNo,
+              };
+            }
+          } catch {
+            // fallback without version
+          }
+          return p;
+        }),
+      );
+      setProducts(enrichedProducts);
       setLenders(lendRes.data);
     } catch (err) {
       setError(errorText(err));

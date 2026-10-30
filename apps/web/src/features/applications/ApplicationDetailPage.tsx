@@ -60,6 +60,12 @@ const APPLICANT_TYPES = [
   'NON_INDIVIDUAL',
 ] as const;
 
+function getAmountString(amt: unknown): string {
+  if (amt == null) return '';
+  if (typeof amt === 'object' && amt !== null) return String((amt as { amount?: unknown }).amount ?? '');
+  return String(amt);
+}
+
 export function ApplicationDetailPage() {
   const { id } = useParams();
   const me = useMe();
@@ -74,7 +80,7 @@ export function ApplicationDetailPage() {
     <>
       <PageHeader
         title="Application"
-        subtitle={`${a.productCategory} · ${a.currency} ${a.requestedAmount} · version ${a.version}`}
+        subtitle={`${a.productCategory} · ${a.currency || 'INR'} ${getAmountString(a.requestedAmount)} · version ${a.version ?? 0}`}
         action={<StatusChip active={!a.onHold} label={STATUS_LABELS[a.status]} />}
       />
       {a.onHold && (
@@ -166,12 +172,12 @@ function RelationsCard({ app }: { app: Application }) {
 }
 
 function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
-  const [amount, setAmount] = useState(app.requestedAmount);
+  const [amount, setAmount] = useState(() => getAmountString(app.requestedAmount));
   const [tenure, setTenure] = useState(app.tenureMonths ? String(app.tenureMonths) : '');
   const [purpose, setPurpose] = useState(app.purposeCode ?? '');
   const [applicantType, setApplicantType] = useState(app.applicantType);
   useEffect(() => {
-    setAmount(app.requestedAmount);
+    setAmount(getAmountString(app.requestedAmount));
     setTenure(app.tenureMonths ? String(app.tenureMonths) : '');
     setPurpose(app.purposeCode ?? '');
     setApplicantType(app.applicantType);
@@ -182,7 +188,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
     [[`/v1/applications/${app.id}`], ['/v1/applications']],
   );
   const dirty =
-    amount.trim() !== app.requestedAmount ||
+    amount.trim() !== getAmountString(app.requestedAmount) ||
     tenure !== (app.tenureMonths ? String(app.tenureMonths) : '') ||
     (purpose || null) !== app.purposeCode ||
     applicantType !== app.applicantType;

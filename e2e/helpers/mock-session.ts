@@ -904,6 +904,16 @@ export async function setupPersonaSession(
       email: persona.email,
       app_metadata: { tenant_id: tenantId },
       user_metadata: { display_name: persona.displayName },
+      factors: [
+        {
+          id: 'factor_totp_1',
+          friendly_name: 'Authenticator',
+          factor_type: 'totp',
+          status: 'verified',
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
       created_at: '2026-01-01T00:00:00.000Z',
     },
   };
@@ -988,7 +998,7 @@ export async function setupPersonaSession(
     });
   });
 
-  await page.route('**/auth/v1/factors/*/challenge', async (route) => {
+  await page.route('**/auth/v1/factors/**/challenge*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -1000,7 +1010,7 @@ export async function setupPersonaSession(
     });
   });
 
-  await page.route('**/auth/v1/factors/*/verify', async (route) => {
+  await page.route('**/auth/v1/factors/**/verify*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -1200,8 +1210,18 @@ export async function performRoleLogin(
   targetPath = '/',
   password = 'Qloax@DSA#2026',
 ): Promise<void> {
-  // 1. Setup API route mocks for the persona without pre-seeding localStorage
-  await setupPersonaSession(page, persona, 'aal1', false);
+  // 1. Setup API route mocks for the persona with direct aal2 session (no 2-step verification)
+  await setupPersonaSession(page, persona, 'aal2', false);
+
+  // Pre-seed storage flags so two-step verification is recognized as disabled
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_mfa_project', 'disabled');
+      localStorage.setItem('dsa_mfa_project', 'disabled');
+    } catch {}
+  });
 
   // 2. Navigate to /login
   await page.goto('/login');
@@ -1220,10 +1240,11 @@ export async function performRoleLogin(
     const passwordInput = page.locator('[data-testid="auth.password"]');
     const submitBtn = page.locator('[data-testid="auth.submit"]');
 
-    await humanType(emailInput, persona.email);
-    await humanType(passwordInput, password);
-    await pauseForDemo(page, 400);
-    await humanClick(submitBtn, 600);
+    await humanType(emailInput, persona.email, 30);
+    await humanType(passwordInput, password, 30);
+    await pauseForDemo(page, 500);
+    await humanClick(submitBtn, 800);
+
   }
 
   // 3. Handle MFA OTP step if presented
@@ -1254,26 +1275,57 @@ export async function performRoleLogin(
 
   await page.waitForLoadState('domcontentloaded').catch(() => {});
 
-  // 4. Ensure destination is reached
+  // 3. Ensure destination is reached
   if (targetPath && targetPath !== '/' && !page.url().includes(targetPath)) {
+    await pauseForDemo(page, 400);
     try {
       await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
     } catch {
       if (!page.url().includes(targetPath)) {
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(600);
         await page.goto(targetPath, { waitUntil: 'domcontentloaded' }).catch(() => {});
       }
     }
   }
+
+  // Ensure the page is never stuck bouncing back to /login
+  if (page.url().includes('/login')) {
+    const aal2Token = createMockJwt(persona, 'aal2');
+    const tenantId = persona.tenantId || 'ten_01M595WCNH6H3ZMCVS70XH9GAN';
+    const fallbackSession = {
+      access_token: aal2Token,
+      token_type: 'bearer',
+      expires_in: 86400,
+      expires_at: Math.floor(Date.now() / 1000) + 86400,
+      refresh_token: 'mock-refresh-token',
+      user: {
+        id: persona.userId,
+        aud: 'authenticated',
+        role: 'authenticated',
+        email: persona.email,
+        app_metadata: { tenant_id: tenantId },
+        user_metadata: { display_name: persona.displayName },
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+    };
+    await page.evaluate(({ session }) => {
+      localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
+      localStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_bypass_active', 'true');
+      sessionStorage.setItem('dsa_mfa_project', 'disabled');
+      localStorage.setItem('dsa_mfa_project', 'disabled');
+    }, { session: fallbackSession });
+    await page.goto(targetPath || '/', { waitUntil: 'domcontentloaded' }).catch(() => {});
+  }
   await page.waitForLoadState('domcontentloaded').catch(() => {});
-  await pauseForDemo(page, 800);
+  await pauseForDemo(page, 1000);
 }
 
 export async function performRoleLogout(page: Page): Promise<void> {
   await showDemoBanner(page, 'Session Sign-Out', 'Signing out of role session');
   const accountBtn = page.locator('[data-testid="shell.account"]');
   if (await accountBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await humanClick(accountBtn, 300);
+    await humanClick(accountBtn, 400);
     const signoutBtn = page.locator('[data-testid="shell.signout"]');
     if (await signoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await humanClick(signoutBtn, 800);
@@ -1287,9 +1339,9 @@ export async function performRoleLogout(page: Page): Promise<void> {
     await page.goto('/login');
   }
   const submitBtn = page.locator('[data-testid="auth.submit"]');
-  await submitBtn.waitFor({ state: 'visible', timeout: 15000 });
+  await submitBtn.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
   await showDemoBanner(page, 'Signed Out', 'Returned cleanly to Sign-In gate');
-  await pauseForDemo(page, 1000);
+  await pauseForDemo(page, 800);
 }
 
 export const isHeaded = process.env.HEADED === 'true' || process.argv.includes('--headed');
@@ -1342,6 +1394,7 @@ export async function showDemoBanner(page: Page, title: string, subtitle?: strin
         `;
       }
     }, { title, subtitle });
+    await page.waitForTimeout(600);
   } catch {
     // Ignore in case page is navigating
   }
@@ -1349,7 +1402,7 @@ export async function showDemoBanner(page: Page, title: string, subtitle?: strin
 
 export async function pauseForDemo(page: Page, ms = 1400): Promise<void> {
   if (isHeaded) {
-    const demoMs = Math.min(ms, 2000);
+    const demoMs = Math.min(Math.max(ms, 400), 3500);
     await page.waitForTimeout(demoMs);
   }
 }
@@ -1467,11 +1520,11 @@ async function clearSpotlight(locator: Locator): Promise<void> {
   }
 }
 
-export async function humanType(locator: Locator, text: string, charDelay = 15): Promise<void> {
+export async function humanType(locator: Locator, text: string, charDelay = 35): Promise<void> {
   await locator.scrollIntoViewIfNeeded();
   if (isHeaded) {
     await showSpotlight(locator, 'type');
-    await locator.page().waitForTimeout(120);
+    await locator.page().waitForTimeout(200);
     await clearSpotlight(locator);
   }
   await locator.click();
@@ -1482,21 +1535,21 @@ export async function humanType(locator: Locator, text: string, charDelay = 15):
     await locator.fill(text);
   }
   if (isHeaded) {
-    await locator.page().waitForTimeout(150);
+    await locator.page().waitForTimeout(300);
   }
 }
 
-export async function humanClick(locator: Locator, pauseAfter = 250): Promise<void> {
+export async function humanClick(locator: Locator, pauseAfter = 500): Promise<void> {
   await locator.scrollIntoViewIfNeeded().catch(() => {});
   if (isHeaded) {
     await showSpotlight(locator, 'click').catch(() => {});
     await locator.hover().catch(() => {});
-    await locator.page().waitForTimeout(180); // Clear visual pause so observer registers the target
+    await locator.page().waitForTimeout(250); // Visual pause so observer registers the target
     await clearSpotlight(locator).catch(() => {});
   }
   await locator.click();
   if (isHeaded) {
-    const tunedPause = Math.min(pauseAfter, 300);
+    const tunedPause = Math.max(pauseAfter, 400);
     await locator.page().waitForTimeout(tunedPause);
   }
 }

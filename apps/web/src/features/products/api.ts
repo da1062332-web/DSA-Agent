@@ -37,6 +37,12 @@ export async function fetchProductById(id: string): Promise<LoanProduct> {
   return apiFetch<LoanProduct>(`/v1/products/${id}`);
 }
 
+export async function fetchProductVersions(
+  productId: string,
+): Promise<{ data: ProductVersion[] }> {
+  return apiFetch<{ data: ProductVersion[] }>(`/v1/products/${productId}/versions`);
+}
+
 export async function createProduct(input: CreateProductInput): Promise<LoanProduct> {
   return apiFetch<LoanProduct>('/v1/products', {
     method: 'POST',
