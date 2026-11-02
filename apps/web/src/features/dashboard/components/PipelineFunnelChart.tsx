@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useRouteAllowed } from '../../../shell/RouteAccess';
 import { formatIndianCurrency } from './KpiMetricCard';
 
 export interface FunnelStage {
@@ -38,13 +39,16 @@ const DEFAULT_STAGE_PALETTE = ['#3876BE', '#215988', '#64748B', '#16A34A', '#158
 export function PipelineFunnelChart({
   title = 'Pipeline Conversion Funnel',
   subtitle,
-  stages,
+  stages: requestedStages,
   isLoading = false,
   emptyMessage = 'No pipeline activity recorded in this period',
   onStageClick,
   dataTestId,
   variant = 'bars',
 }: PipelineFunnelChartProps) {
+  // A stage whose screen the user may not open keeps its count but is not a link. Both layouts below read this filtered list.
+  const allowed = useRouteAllowed();
+  const stages = requestedStages.map((s) => (s.to && !allowed(s.to) ? { ...s, to: undefined } : s));
   const peakStageCount = stages.length > 0 ? Math.max(...stages.map((s) => s.count), 1) : 1;
   const totalCount = stages.reduce((sum, s) => sum + s.count, 0);
 

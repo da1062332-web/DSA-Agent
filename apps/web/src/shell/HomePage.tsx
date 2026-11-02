@@ -121,7 +121,7 @@ export function HomePage() {
   // A platform operator is offered only the Platform Console, and customer-tenant users are never offered it (audit F-07).
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   const shownCards = cards.filter((c) =>
-    routeAllowed(c.to, (code) => hasPermission(me.data, code), platformRealm),
+    routeAllowed(c.to, (code) => hasPermission(me.data, code), platformRealm, me.data?.disabledModules),
   );
 
   return (

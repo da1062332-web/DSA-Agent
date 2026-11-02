@@ -1,5 +1,6 @@
 // What each role sees in the sidebar, using the grants those roles hold on the shared hosted project (demo-alpha tenant, read 2026-10-17).
 // A role must see the screens its work needs and none whose API would answer 403 (owner: Dev 1; spec: role catalogue, DSA Notion).
+import { withSubPermissionBackfill } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 import { visibleGroups } from './Sidebar';
 
@@ -93,7 +94,8 @@ const HOSTED_GRANTS: Record<string, string[]> = {
 };
 
 const screens = (role: string) => {
-  const held = new Set(HOSTED_GRANTS[role]);
+  // The hosted grants above were read before migration M-098; a migrated tenant also holds the sub-permissions it backfills.
+  const held = new Set(withSubPermissionBackfill(HOSTED_GRANTS[role] ?? []));
   return visibleGroups(false, (c) => held.has(c))
     .flatMap((g) => g.items)
     .filter((i) => i.to)
@@ -163,8 +165,18 @@ const EXPECT: Record<string, { sees: string[]; hidden: string[] }> = {
     ],
   },
   'ROLE-RM': {
-    sees: ['Leads', 'Customers', 'Applications', 'Documents', 'Tasks'],
-    hidden: ['Commission', 'Payouts', 'Invoices', 'Reconciliation', 'Automation rules', 'Rule sets', 'Audit'],
+    // Roles §6.3: the RM works in leads, customers, applications and tasks; the document workbench is the verifier's and loan ops'.
+    sees: ['Leads', 'Customers', 'Applications', 'Tasks'],
+    hidden: [
+      'Documents',
+      'Commission',
+      'Payouts',
+      'Invoices',
+      'Reconciliation',
+      'Automation rules',
+      'Rule sets',
+      'Audit',
+    ],
   },
   'ROLE-COMPLIANCE': {
     sees: ['Audit', 'Privacy and consent', 'Applications'],

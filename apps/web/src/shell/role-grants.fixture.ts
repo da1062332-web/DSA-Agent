@@ -2,7 +2,13 @@
 // Role names and permission codes only: no user, customer or tenant data. Used by the permission and navigation specs so every role is tested
 // against what it really holds. ROLE-ORG-OWNER holds role.manage without user.manage (audit F-13); ROLE-TENANT-ADMIN holds the
 // six platform.* permissions by mistake on hosted (F-09): kept as read so the specs prove the web app still hides the Platform Console.
-export const QLOAX_ROLE_GRANTS: Record<string, string[]> = {
+//
+// QLOAX_ROLE_GRANTS_PRE_M098 is that snapshot as read. QLOAX_ROLE_GRANTS is the same roles after migration M-098 has backfilled the
+// sub-permissions (withSubPermissionBackfill, which the migration mirrors): what a migrated tenant holds before the role matrix trims it.
+// The specs use the migrated view, because the web app gates screens by the sub-permissions.
+import { withSubPermissionBackfill } from '@dsa/contracts';
+
+export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
   'ROLE-BRANCH-MGR': [
     'activity.create',
     'api.manage',
@@ -310,3 +316,11 @@ export const QLOAX_ROLE_GRANTS: Record<string, string[]> = {
     'verification.update',
   ],
 };
+
+/** The same roles after M-098 backfilled the sub-permissions: what a migrated tenant holds before the role matrix trims it. */
+export const QLOAX_ROLE_GRANTS: Record<string, string[]> = Object.fromEntries(
+  Object.entries(QLOAX_ROLE_GRANTS_PRE_M098).map(([role, grants]) => [
+    role,
+    withSubPermissionBackfill(grants),
+  ]),
+);

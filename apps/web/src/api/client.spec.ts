@@ -5,6 +5,7 @@ import {
   apiFetch,
   apiStream,
   errorText,
+  MODULE_NOT_ENABLED_TEXT,
   registerStepUpHandler,
   registerStepUpRefusedHandler,
 } from './client';
@@ -48,6 +49,13 @@ describe('errorText', () => {
     expect(errorText(new ApiError('FORBIDDEN', 403, 'Principal requires message.send'))).toBe(
       ACCESS_DENIED_TEXT,
     );
+  });
+  it('TEST-MODULE-01 a module the tenant has switched off reads as a plan matter, not a permission, and hides the internal module code', () => {
+    const err = new ApiError('MODULE_NOT_ENABLED', 403, 'MOD-VER is not enabled for this tenant.');
+    const text = errorText(err);
+    expect(text).toBe(MODULE_NOT_ENABLED_TEXT);
+    expect(text).not.toContain('MOD-VER');
+    expect(text).not.toBe(ACCESS_DENIED_TEXT);
   });
   it('keeps field details and the reference for other errors', () => {
     const err = new ApiError('VALIDATION_ERROR', 422, 'Invalid.', 'ref1', [

@@ -16,7 +16,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { GuardedRouterLink as RouterLink } from '../../shell/GuardedRouterLink';
 import { Can } from '../../shell/Can';
 import { fetchLeads } from '../leads/api';
 import { listTasks } from '../tasks/api';

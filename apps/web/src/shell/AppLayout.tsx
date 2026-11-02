@@ -27,6 +27,7 @@ import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { hasPermission, mfaRequired, useMe, useTenant } from '../api/useMe';
 import { useAuth } from '../auth/AuthProvider';
 import { StepUpProvider } from '../auth/StepUpProvider';
+import { RouteAccessProvider } from './RouteAccess';
 import { mfaProjectState } from '../auth/mfa-project';
 import { mfaSkipRequested } from '../auth/test-auth';
 
@@ -127,8 +128,8 @@ export function AppLayout() {
       try {
         localStorage.setItem('dsa_sidebar_width', String(next));
       } catch {
-      // Storage can be blocked or unavailable; the preference simply is not remembered.
-    }
+        // Storage can be blocked or unavailable; the preference simply is not remembered.
+      }
       return next;
     });
   };
@@ -139,8 +140,8 @@ export function AppLayout() {
       try {
         localStorage.setItem('dsa_sidebar_width', String(next));
       } catch {
-      // Storage can be blocked or unavailable; the preference simply is not remembered.
-    }
+        // Storage can be blocked or unavailable; the preference simply is not remembered.
+      }
       return next;
     });
   };
@@ -168,8 +169,8 @@ export function AppLayout() {
         try {
           localStorage.setItem('dsa_sidebar_width', String(latest));
         } catch {
-      // Storage can be blocked or unavailable; the preference simply is not remembered.
-    }
+          // Storage can be blocked or unavailable; the preference simply is not remembered.
+        }
         return latest;
       });
     };
@@ -266,8 +267,10 @@ export function AppLayout() {
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   // Route guard (audit F-08): by this point the profile and its grants are loaded (the spinner above covers the wait), and a missing
   // profile has no grants, so the check fails closed. The same rules drive the sidebar and the Home cards.
+  const disabledModules = me.data?.disabledModules ?? [];
   const pageAllowed =
-    isConnectorLogin || routeAllowed(location.pathname, (code) => hasPermission(me.data, code), platformRealm);
+    isConnectorLogin ||
+    routeAllowed(location.pathname, (code) => hasPermission(me.data, code), platformRealm, disabledModules);
 
   return (
     <StepUpProvider>
@@ -373,7 +376,14 @@ export function AppLayout() {
                 }}
               >
                 <Avatar
-                  sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 600, bgcolor: 'rgba(255, 255, 255, 0.18)', color: '#ffffff' }}
+                  sx={{
+                    width: 30,
+                    height: 30,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    bgcolor: 'rgba(255, 255, 255, 0.18)',
+                    color: '#ffffff',
+                  }}
                 >
                   {initials(me.data?.displayName)}
                 </Avatar>
@@ -382,7 +392,9 @@ export function AppLayout() {
                     {me.data?.displayName}
                   </Typography>
                   {roleLabel && (
-                    <Typography sx={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.78)', lineHeight: 1.25 }}>
+                    <Typography
+                      sx={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.78)', lineHeight: 1.25 }}
+                    >
                       {roleLabel}
                     </Typography>
                   )}
@@ -508,6 +520,8 @@ export function AppLayout() {
               isAdmin={isAdmin}
               can={(code) => hasPermission(me.data, code)}
               platformRealm={platformRealm}
+              disabledModules={disabledModules}
+              connectorLogin={isConnectorLogin}
               onNavigate={() => setDrawerOpen(false)}
               collapsed={wide && sidebarCollapsed}
               onToggleCollapse={wide ? toggleSidebarCollapse : () => setDrawerOpen(false)}
@@ -523,13 +537,21 @@ export function AppLayout() {
           <Box component="main" sx={{ flex: 1, minWidth: 0, bgcolor: '#ffffff', p: { xs: 2, md: 3 } }}>
             {stepUpBlocked && mfaProjectState() === 'disabled' && (
               <Alert severity="warning" sx={{ mb: 2 }} data-testid="shell.mfa-blocked">
-                <strong>Two-step verification is required for your role, but it is switched off for this project.</strong> The API is
-                refusing your requests until that is resolved. Ask an administrator to turn on authenticator (TOTP) sign-in in
-                Supabase. For local development, set <code>SUPABASE_MFA_ENABLED=false</code> in <code>apps/api/.env</code> and
-                restart the API.
+                <strong>
+                  Two-step verification is required for your role, but it is switched off for this project.
+                </strong>{' '}
+                The API is refusing your requests until that is resolved. Ask an administrator to turn on
+                authenticator (TOTP) sign-in in Supabase. For local development, set{' '}
+                <code>SUPABASE_MFA_ENABLED=false</code> in <code>apps/api/.env</code> and restart the API.
               </Alert>
             )}
-            {pageAllowed ? <Outlet /> : <Forbidden />}
+            {pageAllowed ? (
+              <RouteAccessProvider me={me.data}>
+                <Outlet />
+              </RouteAccessProvider>
+            ) : (
+              <Forbidden />
+            )}
           </Box>
         </Box>
       </Box>

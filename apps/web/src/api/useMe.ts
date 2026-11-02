@@ -17,6 +17,8 @@ export interface Me {
   mfaVerifiedAt: string | null;
   /** app_user.lock_version; sent as If-Match on PATCH /v1/me (API-USR-009). */
   lockVersion?: number;
+  /** Gated modules (MOD-TEN entitlements) switched off for this tenant. The API answers 403 MODULE_NOT_ENABLED for them. */
+  disabledModules?: string[];
 }
 
 export interface Tenant {
@@ -41,6 +43,7 @@ export function useMe() {
         ...unwrapped,
         grants: Array.isArray(unwrapped?.grants) ? unwrapped.grants : [],
         roles: Array.isArray(unwrapped?.roles) ? unwrapped.roles : [],
+        disabledModules: Array.isArray(unwrapped?.disabledModules) ? unwrapped.disabledModules : [],
       } as Me;
     },
     enabled: !!session,
@@ -65,6 +68,9 @@ export function useTenant(enabled = true) {
 
 export const hasPermission = (me: Me | undefined, code: string) =>
   !!me?.grants?.some?.((g) => g.code === code);
+
+/** Is this gated module (MOD-TEN entitlement) on for the tenant? Only an explicit "off" from the API disables it. */
+export const moduleEnabled = (me: Me | undefined, module: string) => !me?.disabledModules?.includes(module);
 
 /** Doc 03 §5.1: MFA is mandatory for admin, owner, branch manager, loan ops, verifier, compliance, finance,
  *  rule roles and auditors. In the MVP these are the users holding any of these permissions. */
@@ -92,5 +98,14 @@ const MFA_REQUIRED = [
   'platform.release',
   'data_correction.approve',
   'finance.period_close',
+  // Write-capable slices of the codes above (M-098); keep in step with packages/kernel/src/authz/mfa.ts.
+  'org.manage',
+  'settings.manage',
+  'user.invite',
+  'user.offboard',
+  'access_review.manage',
+  'audit.seal',
+  'payout.disburse',
+  'ledger.journal_post',
 ];
 export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));

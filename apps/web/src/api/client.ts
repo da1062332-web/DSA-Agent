@@ -151,6 +151,10 @@ async function send<T>(path: string, req: ApiRequest): Promise<{ data: T; etag?:
 export const ACCESS_DENIED_TEXT =
   "You don't have access to this. Ask your administrator to grant you the permission.";
 
+/** Shown when the API refuses a request because the tenant does not have the module (MODULE_NOT_ENABLED). */
+export const MODULE_NOT_ENABLED_TEXT =
+  'This feature is not enabled for your organisation. Ask your administrator if you need it.';
+
 const INTERNAL_CLASS_PATTERNS = [
   /System\.(Xml|IO|Data|Web|Net|Collections|Runtime|Threading|Security)/i,
   /XmlElement/i,
@@ -172,6 +176,8 @@ export function errorText(err: unknown): string {
     return sanitizeErrorMessage(raw);
   }
   if (err.code === 'FORBIDDEN') return ACCESS_DENIED_TEXT;
+  // A module the tenant has not switched on is a plan matter, not the user's permission: say that, not the internal module code.
+  if (err.code === 'MODULE_NOT_ENABLED') return MODULE_NOT_ENABLED_TEXT;
   const rawMsg = sanitizeErrorMessage(err.message);
   const fields = err.details.filter((d) => d.field).map((d) => `${d.field}: ${d.issue.toLowerCase()}`);
   const ref = err.correlationId ? ` (ref ${err.correlationId})` : '';

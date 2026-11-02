@@ -4,14 +4,47 @@
 // here grants access. A screen the API answers with 403 for a role is hidden from that role; a screen with no rule is open to every signed-in
 // user of a customer tenant by decision (Home, Notifications, Lenders, Products, Workforce, account Security).
 
-export interface NavItem {
+import { withLegacy, type PermissionCode } from '@dsa/contracts';
+
+/**
+ * What a screen needs. Every part that is present must hold: the tenant must have the module switched on, the user must hold at
+ * least one of `anyOf`, and all of `allOf`. A rule with none of them is open to every signed-in user of a customer tenant.
+ */
+export interface AccessRule {
+  /** A gated module (MOD-TEN entitlement). Hidden when the tenant has it off: the API answers 403 MODULE_NOT_ENABLED for it. */
+  module?: string;
+  /** Shown only to users holding at least one of these permissions. */
+  anyOf?: string[];
+  /** Shown only to users holding every one of these permissions. */
+  allOf?: string[];
+  /** A connector portal login only. Staff never see it: the page has nothing for them. */
+  connectorOnly?: boolean;
+}
+
+export interface NavItem extends AccessRule {
   label: string;
   /** Route when the screen exists. Omit for modules that are not built yet. */
   to?: string;
   /** Spec reference, shown in the tooltip for items that are not built. */
   task?: string;
-  /** Shown only to users holding at least one of these permissions. Omit to show the item to everyone signed in. */
-  anyOf?: string[];
+}
+
+/**
+ * The permissions that open a screen: the sub-permission(s) given and, until the role matrix is applied, the coarse codes that opened it
+ * before the split (withLegacy). The API accepts the same set, so a screen the sidebar shows is a screen the API serves.
+ */
+const opens = (...codes: PermissionCode[]): string[] => [...new Set(codes.flatMap((c) => withLegacy(c)))];
+
+/** May the user pass this rule? `disabledModules` comes from GET /v1/me; absent means every module is on. */
+export function ruleAllows(
+  rule: AccessRule,
+  can: (code: string) => boolean,
+  disabledModules: readonly string[] = [],
+): boolean {
+  if (rule.module && disabledModules.includes(rule.module)) return false;
+  if (rule.anyOf && !rule.anyOf.some(can)) return false;
+  if (rule.allOf && !rule.allOf.every(can)) return false;
+  return true;
 }
 
 export interface NavGroup {
@@ -22,10 +55,11 @@ export interface NavGroup {
 }
 
 // Permissions the API checks for each screen (DSA Notion module pages MSG, GRV, LCS and SND; the routers for the rest).
-// Items without anyOf (Home, Notifications, Lenders, Products, Workforce, the account Security page and the Soon items) are shown
-// to everyone: the spec says any staff may use them, so there is no permission to check. Every other screen is filtered by the
-// permission its list endpoint enforces, so a role never sees a screen that would answer 403.
-const RULE_PERMISSIONS = ['rule.author', 'rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'];
+// Each screen is filtered by the permission its list endpoint enforces, so a role never sees a screen that would answer 403. The
+// sub-permissions (opens(...)) give a screen its own code where one coarse code used to open several (finance.view, application.read,
+// report.read, customer.read), and `module` hides a screen whose module the tenant has switched off. Items with no rule (Home,
+// Notifications, the account Security page and the Soon items) are open to every signed-in user: they belong to the person, not a role.
+const RULE_AUTHORING = ['rule.author', 'rule.simulate'];
 
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -36,13 +70,15 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         label: 'Approvals',
         to: '/approvals',
-        anyOf: ['config.manage', 'data_correction.approve', 'commission.plan.approve', 'payout.approve'],
+        anyOf: [
+          'config.manage',
+          'data_correction.approve',
+          'data_correction.request',
+          'commission.plan.approve',
+          'payout.approve',
+        ],
       },
-      {
-        label: 'Activity',
-        to: '/activities',
-        anyOf: ['lead.read', 'customer.read', 'application.read', 'activity.create'],
-      },
+      { label: 'Activity', to: '/activities', anyOf: opens('activity.read') },
       { label: 'Notifications', to: '/notifications' },
     ],
   },
@@ -51,73 +87,98 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Leads', to: '/leads', anyOf: ['lead.read'] },
       { label: 'Customers', to: '/customers', anyOf: ['customer.read'] },
-      { label: 'Messaging', to: '/messaging', anyOf: ['message.send', 'config.manage'] },
-      { label: 'Grievances', to: '/complaints', anyOf: ['complaint.create', 'complaint.manage'] },
+      { label: 'Messaging', to: '/messaging', anyOf: ['message.send', ...opens('message_template.manage')] },
+      { label: 'Grievances', to: '/complaints', anyOf: opens('complaint.read') },
     ],
   },
   {
     title: 'Loan Origination',
     items: [
       { label: 'Applications', to: '/applications', anyOf: ['application.read'] },
-      { label: 'Documents', to: '/documents', anyOf: ['application.read'] },
-      { label: 'Document sharing', to: '/document-sharing', anyOf: ['document.upload', 'share.create'] },
-      { label: 'Verification', to: '/verifications', anyOf: ['verification.read', 'verification.perform'] },
+      // The document workbench is for people who hold a document permission (view, download, review, waive): application.read opens
+      // the application, not the workbench. document.upload is not here: it belongs to Document sharing (customer upload links).
       {
+        label: 'Documents',
+        to: '/documents',
+        anyOf: ['document.view', 'document.download', 'document.review', 'document.waive'],
+      },
+      {
+        label: 'Document sharing',
+        to: '/document-sharing',
+        anyOf: ['document.upload', 'share.create'],
+        module: 'MOD-DSH',
+      },
+      { label: 'Verification', to: '/verifications', anyOf: ['verification.read'], module: 'MOD-VER' },
+      {
+        // The workbench lists the requests (verification.read) and records the checks (verification.perform): it needs both.
         label: 'Verification workbench',
         to: '/verifications/workbench',
-        anyOf: ['verification.read', 'verification.perform'],
+        allOf: ['verification.read', 'verification.perform'],
+        module: 'MOD-VER',
       },
-      { label: 'Lender cases', to: '/lender-cases', anyOf: ['application.read', 'lender_case.submit'] },
+      { label: 'Lender cases', to: '/lender-cases', anyOf: opens('lender_case.read') },
       {
         label: 'Sanction and disbursement',
         to: '/sanctions',
-        anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
+        anyOf: opens('sanction.read', 'disbursement.read'),
       },
-      { label: 'Eligibility', to: '/eligibility', anyOf: ['application.read'] },
-      { label: 'Lenders', to: '/lenders' },
-      { label: 'Products', to: '/products' },
+      { label: 'Eligibility', to: '/eligibility', anyOf: opens('eligibility.read') },
+      { label: 'Lenders', to: '/lenders', anyOf: ['lender.read'] },
+      { label: 'Products', to: '/products', anyOf: ['product.read'] },
     ],
   },
   {
     title: 'Finance & Settlement',
     items: [
+      { label: 'Commission', to: '/commission', anyOf: opens('commission.view'), module: 'MOD-COM' },
+      { label: 'Payouts', to: '/payouts', anyOf: opens('payout.view'), module: 'MOD-PAY' },
+      { label: 'Ledger', to: '/ledger', anyOf: opens('ledger.view') },
+      { label: 'Invoices', to: '/invoices', anyOf: opens('invoice.view'), module: 'MOD-INV' },
       {
-        label: 'Commission',
-        to: '/commission',
-        anyOf: ['finance.view', 'commission.plan.edit', 'commission.plan.approve'],
+        label: 'Reconciliation',
+        to: '/reconciliation',
+        anyOf: opens('reconciliation.view'),
+        module: 'MOD-REC',
       },
-      {
-        label: 'Payouts',
-        to: '/payouts',
-        anyOf: ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
-      },
-      { label: 'Ledger', to: '/ledger', anyOf: ['finance.view'] },
-      { label: 'Invoices', to: '/invoices', anyOf: ['finance.view', 'invoice.manage'] },
-      { label: 'Reconciliation', to: '/reconciliation', anyOf: ['finance.view', 'finance.reconcile'] },
     ],
   },
   {
     title: 'Partners & Operations',
     items: [
-      { label: 'Connectors', to: '/connectors', anyOf: ['connector.read', 'connector.manage'] },
-      { label: 'Workforce', to: '/workforce' },
-      { label: 'Connector portal', to: '/connector-portal', anyOf: ['connector.read', 'connector.manage'] },
+      { label: 'Connectors', to: '/connectors', anyOf: ['connector.read'], module: 'MOD-CON' },
+      { label: 'Workforce', to: '/workforce', anyOf: opens('attendance.read') },
+      { label: 'Connector portal', to: '/connector-portal', connectorOnly: true, module: 'MOD-CPT' },
     ],
   },
   {
     title: 'Analytics & Performance',
     items: [
-      { label: 'Performance Dashboard', to: '/performance', anyOf: ['report.read'] },
-      { label: 'Targets', to: '/targets', anyOf: ['report.read', 'target.manage'] },
-      { label: 'Leaderboard', to: '/performance/leaderboard', anyOf: ['report.read'] },
-      { label: 'Reports & Catalogue', to: '/reports', anyOf: ['report.read', 'report.manage'] },
+      {
+        label: 'Performance Dashboard',
+        to: '/performance',
+        anyOf: opens('performance.read'),
+        module: 'MOD-RPT',
+      },
+      { label: 'Targets', to: '/targets', anyOf: opens('target.read'), module: 'MOD-PERF' },
+      {
+        label: 'Leaderboard',
+        to: '/performance/leaderboard',
+        anyOf: opens('performance.read'),
+        module: 'MOD-PERF',
+      },
+      {
+        label: 'Reports & Catalogue',
+        to: '/reports',
+        anyOf: ['report.read', 'report.manage'],
+        module: 'MOD-RPT',
+      },
     ],
   },
   {
     title: 'Governance & Administration',
     items: [
-      { label: 'Rule sets', to: '/rules', anyOf: RULE_PERMISSIONS },
-      { label: 'Decisions', to: '/decisions', anyOf: RULE_PERMISSIONS },
+      { label: 'Rule sets', to: '/rules', anyOf: RULE_AUTHORING },
+      { label: 'Decisions', to: '/decisions', anyOf: ['rule.simulate'] },
       {
         label: 'Automation rules',
         to: '/automations',
@@ -128,25 +189,35 @@ export const NAV_GROUPS: NavGroup[] = [
           'automation.execute',
           'automation.operator',
         ],
+        module: 'MOD-WFA',
       },
-      { label: 'Users', to: '/users', anyOf: ['user.manage'] },
-      { label: 'Access control', to: '/roles', anyOf: ['user.manage', 'role.manage'] },
-      { label: 'Organisation', to: '/admin/organisation', anyOf: ['config.manage'] },
-      { label: 'Branches', to: '/admin/branches', anyOf: ['config.manage'] },
-      { label: 'Teams', to: '/admin/teams', anyOf: ['config.manage'] },
-      { label: 'Work queues', to: '/admin/queues', anyOf: ['config.manage'] },
-      { label: 'Configuration', to: '/config', anyOf: ['config.manage'] },
-      { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence', 'config.manage'] },
-      { label: 'Privacy and consent', to: '/privacy', anyOf: ['audit.read', 'customer.read'] },
-      { label: 'Security events and incidents', to: '/security', anyOf: ['security.incident'] },
+      { label: 'Users', to: '/users', anyOf: opens('user.read') },
+      { label: 'Access control', to: '/roles', anyOf: opens('role.read') },
+      { label: 'Organisation', to: '/admin/organisation', anyOf: opens('org.manage') },
+      { label: 'Branches', to: '/admin/branches', anyOf: opens('org.manage') },
+      { label: 'Teams', to: '/admin/teams', anyOf: opens('team.manage') },
+      { label: 'Work queues', to: '/admin/queues', anyOf: opens('team.manage') },
+      { label: 'Configuration', to: '/config', anyOf: opens('settings.manage') },
+      { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence'] },
+      { label: 'Privacy and consent', to: '/privacy', anyOf: opens('privacy.read') },
+      { label: 'Security events and incidents', to: '/security', anyOf: opens('security.read') },
       { label: 'Security', to: '/account/security' },
       {
         label: 'Integrations',
         to: '/integrations',
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
       },
-      { label: 'API management', to: '/api-management', anyOf: ['api.read', 'api.manage', 'config.manage'] },
-      { label: 'Import and export', to: '/admin/import-export', anyOf: ['import.run', 'export.run'] },
+      {
+        label: 'API management',
+        to: '/api-management',
+        anyOf: ['api.read', 'api.manage', 'config.manage'],
+        module: 'MOD-API',
+      },
+      {
+        label: 'Import and export',
+        to: '/admin/import-export',
+        anyOf: [...opens('import.read'), 'export.run'],
+      },
       { label: 'Platform Console', to: '/platform-admin', anyOf: ['platform.console'] },
     ],
   },
@@ -156,41 +227,52 @@ export const NAV_GROUPS: NavGroup[] = [
  * Screens that have a route but no sidebar entry, or that need more than the section they sit in. The longest matching path wins, so
  * '/leads/new' (create) is stricter than '/leads' (read). Every other route is covered by the nav item whose path is its prefix.
  */
-export const EXTRA_ROUTE_RULES: { to: string; anyOf?: string[] }[] = [
+export const EXTRA_ROUTE_RULES: (AccessRule & { to: string })[] = [
   { to: '/leads/new', anyOf: ['lead.create'] },
   // The duplicate review queue (API-LEAD-008) answers 403 without lead.merge.
   { to: '/leads/duplicates', anyOf: ['lead.merge'] },
-  { to: '/permissions', anyOf: ['user.manage', 'role.manage'] },
-  { to: '/grievances', anyOf: ['complaint.create', 'complaint.manage'] },
-  { to: '/message-templates', anyOf: ['message.send', 'config.manage'] },
+  { to: '/permissions', anyOf: opens('role.read') },
+  { to: '/grievances', anyOf: opens('complaint.read') },
+  { to: '/message-templates', anyOf: ['message.send', ...opens('message_template.manage')] },
   { to: '/admin/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },
   { to: '/platform-console', anyOf: ['platform.console'] },
   // The /admin layout page itself (its sections are the Administration items above).
-  { to: '/admin', anyOf: ['config.manage', 'user.manage'] },
+  { to: '/admin', anyOf: [...opens('org.manage'), ...opens('team.manage'), ...opens('settings.manage')] },
 ];
 
 /** A platform operator has no customer data, so the menu offers only these screens (the API refuses the rest anyway). */
 const PLATFORM_REALM_SCREENS = new Set(['/', '/platform-admin', '/account/security']);
 const PLATFORM_PATHS = ['/platform-admin', '/platform-console'];
+/** What a connector portal login reaches: its own portal page and its account security. Every internal page would answer 403. */
+const CONNECTOR_LOGIN_SCREENS = new Set(['/connector-portal', '/account/security']);
 
-/** Groups and items the current user may see. A group with no visible item is dropped. */
+/**
+ * Groups and items the current user may see. A group with no visible item is dropped. `disabledModules` is from GET /v1/me (tenant
+ * entitlements); `connectorLogin` is a connector portal login, which holds no role and sees only its own screens.
+ */
 export function visibleGroups(
   isAdmin: boolean,
   can: (code: string) => boolean = () => true,
   platformRealm = false,
+  disabledModules: readonly string[] = [],
+  connectorLogin = false,
 ): NavGroup[] {
   // A platform operator holds no tenant admin permission, yet its one admin-group screen is the Platform Console.
-  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm)
+  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm || connectorLogin)
     .map((g) => ({
       ...g,
-      items: g.items.filter(
-        (i) =>
+      items: g.items.filter((i) => {
+        if (connectorLogin) return !!i.to && CONNECTOR_LOGIN_SCREENS.has(i.to);
+        return (
           (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) &&
           // The Platform Console belongs to the platform realm only. A customer-tenant role that holds platform.console by mistake
           // (found on hosted, 2026-10-17) must not get a menu entry that leads to a refusal.
           (platformRealm || i.to !== '/platform-admin') &&
-          (!i.anyOf || i.anyOf.some(can)),
-      ),
+          // The connector portal is for connector logins; staff have nothing there.
+          !i.connectorOnly &&
+          ruleAllows(i, can, disabledModules)
+        );
+      }),
     }))
     .filter((g) => g.items.length > 0);
 }
@@ -199,7 +281,7 @@ const underPath = (pathname: string, to: string): boolean =>
   to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`);
 
 /** The rule that governs a path: the longest matching nav item or extra rule. Undefined for a path no rule covers (the not-found page). */
-export function ruleFor(pathname: string): { to: string; anyOf?: string[] } | undefined {
+export function ruleFor(pathname: string): (AccessRule & { to: string }) | undefined {
   const candidates = [
     ...NAV_GROUPS.flatMap((g) => g.items).filter((i): i is NavItem & { to: string } => !!i.to),
     ...EXTRA_ROUTE_RULES,
@@ -211,14 +293,16 @@ export function ruleFor(pathname: string): { to: string; anyOf?: string[] } | un
 }
 
 /**
- * May this user open this screen? Used by the route guard and the Home cards, so a link is offered only where the page would open.
- * Fails closed: `can` must be given (permissions not loaded means no); a platform operator reaches only the Platform Console, Home and
- * its own account security; a customer-tenant user never reaches the Platform Console, whatever it holds.
+ * May this user open this screen? Used by the route guard, the search, the Settings hub and the Home cards, so a link is offered only
+ * where the page would open. Fails closed: `can` must be given (permissions not loaded means no); a platform operator reaches only the
+ * Platform Console, Home and its own account security; a customer-tenant user never reaches the Platform Console, whatever it holds; a
+ * screen of a module the tenant has switched off is closed (`disabledModules`, from GET /v1/me).
  */
 export function routeAllowed(
   pathname: string,
   can: (code: string) => boolean,
   platformRealm: boolean,
+  disabledModules: readonly string[] = [],
 ): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   const isPlatformPath = PLATFORM_PATHS.some((p) => underPath(path, p));
@@ -233,7 +317,8 @@ export function routeAllowed(
   if (isPlatformPath) return false;
   const rule = ruleFor(path);
   if (!rule) return true; // the not-found page
-  return !rule.anyOf || rule.anyOf.some(can);
+  if (rule.connectorOnly) return false; // a connector login is routed to its portal before this check is reached
+  return ruleAllows(rule, can, disabledModules);
 }
 
 export interface SearchableItem {
@@ -244,6 +329,7 @@ export interface SearchableItem {
   description?: string;
   to: string;
   keywords?: string[];
+  /** Not consulted by search: the route rule for `to` decides (getSearchableItems). Kept as a hint for readers of this list. */
   anyOf?: string[];
   adminOnly?: boolean;
 }
@@ -579,7 +665,7 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     label: 'Rule Sets',
     category: 'Governance & Administration',
     to: '/rules',
-    anyOf: RULE_PERMISSIONS,
+    anyOf: RULE_AUTHORING,
     description: 'Business rules engine, policy sets, and eligibility criteria',
     keywords: ['bre', 'decision rules', 'policy sets', 'underwriting rules'],
   },
@@ -588,7 +674,7 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     label: 'Decisions',
     category: 'Governance & Administration',
     to: '/decisions',
-    anyOf: RULE_PERMISSIONS,
+    anyOf: ['rule.simulate'],
     description: 'Automated decision execution audit logs and rule simulations',
     keywords: ['decision log', 'simulation', 'rule evaluation audit'],
   },
@@ -776,7 +862,11 @@ export function getSearchableItems(
   isAdmin: boolean,
   can: (code: string) => boolean = () => true,
   platformRealm = false,
+  disabledModules: readonly string[] = [],
+  connectorLogin = false,
 ): SearchableItem[] {
+  // A connector portal login reaches its own page only; every other suggestion would bounce it back.
+  if (connectorLogin) return ALL_SEARCHABLE_ITEMS.filter((item) => CONNECTOR_LOGIN_SCREENS.has(item.to));
   return ALL_SEARCHABLE_ITEMS.filter((item) => {
     // 1. Platform realm isolation
     if (platformRealm) {
@@ -797,15 +887,9 @@ export function getSearchableItems(
       return false;
     }
 
-    // 4. anyOf permission check
-    if (item.anyOf && item.anyOf.length > 0) {
-      if (!item.anyOf.some(can)) {
-        return false;
-      }
-    }
-
-    // 5. Verify against routeAllowed
-    return routeAllowed(item.to, can, platformRealm);
+    // 4. The route rule decides (permissions, module entitlement). The item's own anyOf is not consulted: it was a second copy of the
+    // rule that drifted from NAV_GROUPS, and it could only hide what the guard allows.
+    return routeAllowed(item.to, can, platformRealm, disabledModules);
   });
 }
 
@@ -919,6 +1003,7 @@ export type ActionId =
   | 'import.run'
   | 'export.run'
   | 'audit.export_evidence'
+  | 'audit.seal'
   | 'security.incident'
   | 'target.manage'
   | 'message.send';
@@ -933,7 +1018,8 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'lead.update': ['lead.update'],
   'lead.assign': ['lead.assign'],
   'lead.reopen': ['lead.reopen', 'lead.update'], // fallback to lead.update supported
-  'lead.convert': ['lead.convert'],
+  // Converting a lead creates an application: the API gates it with application.create (lead.convert is not a permission).
+  'lead.convert': ['application.create'],
   'lead.qualify': ['lead.qualify'],
   'lead.merge': ['lead.merge'],
   'lead.archive': ['lead.archive'],
@@ -945,10 +1031,12 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
 
   // Verifications & Documents
   'verification.create': ['verification.create'],
+  // Each action asks for its own permission. document.review (accept or reject a checklist document) is not verification.perform
+  // (record a check), so holding one no longer shows the other's buttons.
   'verification.update': ['verification.update', 'verification.perform'],
-  'verification.perform': ['verification.perform', 'document.review'],
+  'verification.perform': ['verification.perform'],
   'verification.complete': ['verification.complete'],
-  'document.review': ['document.review', 'verification.perform'],
+  'document.review': ['document.review'],
   'document.upload': ['document.upload'],
   'share.create': ['share.create'],
 
@@ -1006,6 +1094,7 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'import.run': ['import.run'],
   'export.run': ['export.run'],
   'audit.export_evidence': ['audit.export_evidence'],
+  'audit.seal': ['audit.seal'],
   'security.incident': ['security.incident'],
   'target.manage': ['target.manage'],
   'message.send': ['message.send'],
@@ -1242,6 +1331,7 @@ export function visibleSettings(
   isAdmin: boolean,
   can: (code: string) => boolean = () => true,
   platformRealm = false,
+  disabledModules: readonly string[] = [],
 ): SettingsCategory[] {
   return SETTINGS_CATEGORIES.map((cat) => ({
     ...cat,
@@ -1249,6 +1339,10 @@ export function visibleSettings(
       if (item.platformOnly && !platformRealm) return false;
       if (!item.platformOnly && platformRealm && item.to !== '/account/security') return false;
       if (item.adminOnly && !isAdmin && !platformRealm) return false;
+      // The route rule decides, like the sidebar and the guard. The item's own anyOf is kept for the platform-only cards, which have no
+      // route rule of their own, and for any path no rule covers.
+      if (!item.platformOnly && ruleFor(item.to))
+        return routeAllowed(item.to, can, platformRealm, disabledModules);
       if (item.anyOf && !item.anyOf.some(can)) return false;
       return true;
     }),

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useRouteAllowed } from '../../../shell/RouteAccess';
 import { NotSet } from '../../../ui/NotSet';
 
 export interface KpiMetricCardProps {
@@ -76,10 +77,13 @@ export function KpiMetricCard({
   isLoading = false,
   isError = false,
   unavailableMessage,
-  to,
+  to: requestedTo,
   onClick,
   dataTestId,
 }: KpiMetricCardProps) {
+  // A card whose screen the user may not open keeps its figure but is not a link (no "You do not have permission" page behind it).
+  const allowed = useRouteAllowed();
+  const to = requestedTo && allowed(requestedTo) ? requestedTo : undefined;
   const isClickable = Boolean(to || onClick);
   const isUnavailable = (value === null || value === undefined) && !isLoading && !isError;
 

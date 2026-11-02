@@ -123,6 +123,8 @@ export function SidebarContent({
   isAdmin,
   can,
   platformRealm,
+  disabledModules,
+  connectorLogin = false,
   onNavigate,
   collapsed = false,
   onToggleCollapse,
@@ -137,6 +139,10 @@ export function SidebarContent({
   isAdmin: boolean;
   can?: (code: string) => boolean;
   platformRealm?: boolean;
+  /** Gated modules the tenant has switched off (GET /v1/me disabledModules). Their screens are not offered. */
+  disabledModules?: readonly string[];
+  /** A connector portal login: it holds no role and is offered only its own screens. */
+  connectorLogin?: boolean;
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -149,7 +155,7 @@ export function SidebarContent({
   onResetWidth?: () => void;
 }) {
   const location = useLocation();
-  const groups = visibleGroups(isAdmin, can, platformRealm);
+  const groups = visibleGroups(isAdmin, can, platformRealm, disabledModules, connectorLogin);
 
   // Initialize all visible groups to expanded (true) by default
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -174,8 +180,8 @@ export function SidebarContent({
 
   // All modules and submodules filtered strictly by user permissions and realm (RBAC)
   const accessibleItems = useMemo(
-    () => getSearchableItems(isAdmin, can, platformRealm),
-    [isAdmin, can, platformRealm],
+    () => getSearchableItems(isAdmin, can, platformRealm, disabledModules, connectorLogin),
+    [isAdmin, can, platformRealm, disabledModules, connectorLogin],
   );
 
   // Suggestions ranked by search relevance

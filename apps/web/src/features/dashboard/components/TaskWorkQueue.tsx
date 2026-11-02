@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useRouteAllowed } from '../../../shell/RouteAccess';
 import { NotSet } from '../../../ui/NotSet';
 
 export interface TaskWorkQueueItem {
@@ -99,6 +100,9 @@ export function TaskWorkQueue({
   dataTestId,
 }: TaskWorkQueueProps) {
   const displayItems = items.slice(0, maxItems);
+  // A link to a screen the user may not open is shown as plain text (or left out), not as a route to "You do not have permission".
+  const allowed = useRouteAllowed();
+  const linkable = (to?: string): to is string => Boolean(to) && allowed(to as string);
 
   return (
     <Card
@@ -131,7 +135,7 @@ export function TaskWorkQueue({
               </Typography>
             )}
           </Box>
-          {viewAllTo && (
+          {viewAllTo && linkable(viewAllTo) && (
             <Button
               component={RouterLink}
               to={viewAllTo}
@@ -222,11 +226,11 @@ export function TaskWorkQueue({
                     <TableCell sx={{ py: 1, px: 1 }}>
                       {item.entityLink ? (
                         <Chip
-                          component={RouterLink}
-                          to={item.entityLink.to}
+                          component={linkable(item.entityLink.to) ? RouterLink : 'span'}
+                          to={linkable(item.entityLink.to) ? item.entityLink.to : undefined}
                           label={item.entityLink.label}
                           size="small"
-                          clickable
+                          clickable={linkable(item.entityLink.to)}
                           variant="outlined"
                           color="primary"
                           sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
@@ -242,8 +246,8 @@ export function TaskWorkQueue({
                           size="small"
                           variant="outlined"
                           onClick={() => item.onAction?.(item)}
-                          component={item.entityLink?.to ? RouterLink : 'button'}
-                          to={item.entityLink?.to}
+                          component={linkable(item.entityLink?.to) ? RouterLink : 'button'}
+                          to={linkable(item.entityLink?.to) ? item.entityLink?.to : undefined}
                           sx={{
                             fontSize: 11,
                             py: 0.25,
