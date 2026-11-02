@@ -54,7 +54,7 @@ describe('Module 37 — Audit (MOD-AUD) UI Component Suite', () => {
   }
 
   it('TEST-UI-AUD-001 renders AuditSearchPage title, filters, and action buttons when authorized', () => {
-    mockGrants(['audit.read', 'config.manage', 'audit.export_evidence']);
+    mockGrants(['audit.read', 'audit.seal', 'audit.export_evidence']);
     const html = renderAuditPage();
 
     expect(html).toContain('Audit Trail &amp; Cryptographic Verification');
@@ -62,6 +62,13 @@ describe('Module 37 — Audit (MOD-AUD) UI Component Suite', () => {
     expect(html).toContain('Seal Chain');
     expect(html).toContain('Export Evidence Pack');
     expect(html).toContain('Filter Audit Log');
+  });
+
+  it('TEST-UI-AUD-002 Seal Chain needs audit.seal, the permission the API checks: config.manage no longer shows it', () => {
+    mockGrants(['audit.read', 'config.manage']);
+    expect(renderAuditPage()).not.toContain('Seal Chain');
+    mockGrants(['audit.read', 'audit.seal']);
+    expect(renderAuditPage()).toContain('Seal Chain');
   });
 
   it('hides Seal Chain and Export Evidence Pack for view-only auditors', () => {

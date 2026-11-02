@@ -86,7 +86,9 @@
   "20261001000095_app_routine_execute_hardening.sql": "b824f5dc60fb6a1de15a4b19ad0e31a8bdefd040c1ac6b09d5a80839a4c4c31b",
   "20261001000096_drop_test_login_functions.sql": "8d5f0aa9878157e3560744dc9566706b2ad627a961bc01257373e71304914ece",
   "20261001000097_connector_role_guard.sql": "927c9b2ac47c87cc7665656f02727cae8de683be1137108410373d7293900718",
-  "20261001000098_connector_portal_dispute_and_upload.sql": "330eb09d09c36c362df15a8a528c73166b78768cda06ffb8678a08a8063951c2",
-  "20261001000099_verification_connector_subject.sql": "965a1e943f77a3d10a2f2eb01d0b038d186076b7368037521dd65d3324a96dac",
-  "20261001000100_partner_dispute_category_required.sql": "8dd9d79df6bd1304205be039f5d76aec0861ffae30dd42b6f4a8cbcebbfefff8"
+  "20261001000098_permission_sub_permissions_expand.sql": "48fdc3334f46bb3fa8f89d0dd3af9e9def73471833723406edaa71341480b73f",
+  "20261001000099_role_grants_per_roles_page.sql": "4d7c6627635e3b9d61b3de8251e96ff4e3b96591be67f8b18e58485574479be8",
+  "20261001000100_connector_portal_dispute_and_upload.sql": "c6c046f131f386f76e1228057d1e78eed2246617f6a79531551fa0299c55a322",
+  "20261001000101_verification_connector_subject.sql": "7e238c62af6ad8e6a394e8b8352bbb671ab4b54d987e83848933d830c603ed8a",
+  "20261001000102_partner_dispute_category_required.sql": "98d3202ff98f2ce90bbb41cf0fb33ab9bdc047f67c405cf8ba52d13a09ab7409"
 }

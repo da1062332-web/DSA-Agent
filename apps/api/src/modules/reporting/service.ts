@@ -64,6 +64,9 @@ import {
   toReportScheduleDto,
 } from './types';
 
+/** Dashboard codes (normalised) that need performance.read instead of report.read. */
+const PERFORMANCE_DASHBOARDS = new Set(['TEAM_PERFORMANCE', 'TEAM_PERF', 'LEADERBOARD']);
+
 export class ReportingService {
   constructor(
     private readonly repo: ReportingRepository,
@@ -79,6 +82,22 @@ export class ReportingService {
       !grants.includes('config.manage')
     ) {
       throw AppError.of('FORBIDDEN', 'Principal does not have report.read permission.');
+    }
+  }
+
+  /**
+   * The Performance Dashboard and the leaderboard: performance.read, or report.manage / config.manage as for every report. report.read
+   * alone no longer opens them: it is held for the report catalogue by roles that have no business with team performance, and migration
+   * M-098 already gave performance.read to every role that held report.read.
+   */
+  private requirePerformanceRead(ctx: RequestContext): void {
+    const grants = ctx.principal.grants.map((g) => g.code);
+    if (
+      !grants.includes('performance.read') &&
+      !grants.includes('report.manage') &&
+      !grants.includes('config.manage')
+    ) {
+      throw AppError.of('FORBIDDEN', 'Principal does not have performance.read permission.');
     }
   }
 
@@ -331,8 +350,10 @@ export class ReportingService {
     code: string,
     query: DashboardQuery,
   ): Promise<AnyDashboardDto> {
-    this.requireReportRead(ctx);
     const normalizedCode = code.toUpperCase().replace('-', '_');
+    // Team performance and the leaderboard have their own permission (performance.read); every other dashboard stays report.read.
+    if (PERFORMANCE_DASHBOARDS.has(normalizedCode)) this.requirePerformanceRead(ctx);
+    else this.requireReportRead(ctx);
 
     switch (normalizedCode) {
       case 'TEAM_PERFORMANCE':

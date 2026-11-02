@@ -1,4 +1,4 @@
--- Migration 0098: a controlled category for a partner dispute, and an approval flag for the document types a partner may upload.
+-- Migration 0100: a controlled category for a partner dispute, and an approval flag for the document types a partner may upload.
 -- Why: a partner dispute carries only a free-text reason, so staff cannot sort it by kind. A document type can be uploaded by staff
 -- only, because nothing marks it as one a partner may send. Both changes are additive. Existing rows keep their values (category NULL,
 -- partner_upload false), so no staff dispute and no document type changes meaning.

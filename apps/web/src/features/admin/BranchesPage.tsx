@@ -18,10 +18,11 @@ import { useCommand, useList, type Branch } from './api';
 import { ConfirmDialog, ErrorAlert, LoadMore, PageHeader, StatusChip } from './components';
 import { DataTable, FilterToolbar, type ColumnDef } from '../../ui';
 import { NotSet } from '../../ui/NotSet';
+import { canPerformAction } from '../../shell/access';
 
 export function BranchesPage() {
   const me = useMe();
-  const canEdit = hasPermission(me.data, 'config.manage');
+  const canEdit = canPerformAction('org.manage', (code) => hasPermission(me.data, code));
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const list = useList<Branch>('/v1/branches', { q: search || undefined, status: status || undefined });

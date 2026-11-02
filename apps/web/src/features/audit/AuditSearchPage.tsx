@@ -560,7 +560,7 @@ export function AuditSearchPage() {
         subtitle="Tamper-evident immutable ledger with SHA-256 hash chaining, state diff tracking, and compliance evidence packs."
         actions={
           <Stack direction="row" spacing={1.5} flexWrap="wrap">
-            <Can action="config.manage">
+            <Can action="audit.seal">
               <Button variant="outlined" startIcon={<LockIcon />} onClick={handleSealChain} disabled={loading}>
                 Seal Chain
               </Button>

@@ -1,4 +1,4 @@
--- Verify migration 0099 (a verification record can be about a connector). Read-only. Catalog checks only: each row is PASS or FAIL, and a
+-- Verify migration 0101 (a verification record can be about a connector). Read-only. Catalog checks only: each row is PASS or FAIL, and a
 -- missing object is a FAIL row, never an error and never a silent pass. Expect no FAIL row. INFO rows are not failures.
 -- Run before the apply (the column is absent, so the structure rows FAIL) and after it.
 WITH col AS (

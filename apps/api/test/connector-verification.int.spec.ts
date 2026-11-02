@@ -1,4 +1,4 @@
-// Connector verification (migration 0099) against a real database: activation and bank accounts take only a VERIFIED verification of the
+// Connector verification (migration 0101) against a real database: activation and bank accounts take only a VERIFIED verification of the
 // connector itself, and the database refuses an invalid subject combination (TEST-CVER). Synthetic data only. The verification rows are
 // written directly, because the API cannot record a connector verification until connector consent is decided (see the decision note).
 import crypto from 'node:crypto';

@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { GuardedRouterLink as RouterLink } from '../../shell/GuardedRouterLink';
 import { hasPermission, useMe } from '../../api/useMe';
 import { PLATFORM_TENANT_ID } from '@dsa/contracts';
 import { routeAllowed } from '../../shell/access';
@@ -217,7 +217,7 @@ export function AdminDashboard({ role }: AdminDashboardProps) {
   ];
 
   const allowedModules = adminModules.filter((m) =>
-    routeAllowed(m.to, (code) => hasPermission(me.data, code), platformRealm),
+    routeAllowed(m.to, (code) => hasPermission(me.data, code), platformRealm, me.data?.disabledModules),
   );
 
   return (

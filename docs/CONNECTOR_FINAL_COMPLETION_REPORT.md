@@ -19,7 +19,7 @@ This is not a claim that the code is finished. It is a claim that the listed che
 
 - **Internal connector workspace (MOD-CON, web):** dashboard with counts, tabs for overview, referrals, activity, earnings and verification, a directory with a branch filter and "Load more", Add Connector wording.
 - **Connector insights (API):** `GET /v1/connectors/summary` (a count is null when the caller lacks its permission), `GET /v1/connectors/:id/referrals` (lead.read, no mobile number), `GET /v1/connectors/:id/activity` (audit events, no before or after values).
-- **Verification bound to the connector:** activation and bank accounts accept only a VERIFIED verification record about that connector (migration 0099). Suspended-connector reactivation requires a reason of at least 5 characters.
+- **Verification bound to the connector:** activation and bank accounts accept only a VERIFIED verification record about that connector (migration 0101). Suspended-connector reactivation requires a reason of at least 5 characters.
 - **Partner portal (MOD-CPT, `/portal/v1`):** referral list and detail (`GET /referrals/:id`) with partner-safe progress; duplicate refusal; statements; rate card; payout requests with step-up MFA that excludes lines under open dispute; disputes with a required category, and a disputes list.
 - **Partner document upload:** list of documents approved for partners, upload intent, and completion. Only types with `document_type.partner_upload = true` are accepted, and only while a malware scanner answers PING. The partner learns only ACCEPTED or NOT_ACCEPTED.
 - **Partner progress:** `apps/api/src/modules/partner-view/partner-progress.ts` maps internal lead states to four partner states. Application and lender states are recorded but not shown to partners (approval item).
@@ -37,16 +37,16 @@ This is not a claim that the code is finished. It is a claim that the listed che
 ## C. Files
 
 - **Modified tracked files (25):** `apps/api/src/app.ts`, `apps/api/src/modules/finance/connector-portal.ts`, `apps/api/src/modules/finance/openapi-paths.ts`, `apps/api/src/modules/origination/applications/document-backends.ts`, `apps/api/src/modules/origination/applications/documents.ts`, `apps/api/src/modules/origination/applications/openapi.ts`, `apps/api/src/modules/origination/connectors/connector-service.ts`, `apps/api/src/modules/origination/connectors/openapi-paths.ts`, `apps/api/src/modules/origination/connectors/router.ts`, four API integration specs, `apps/api/vitest.future-clock.config.ts` (not reverted, see section H), web connector files (`ConnectorPage.tsx` and its spec, `ConnectorPortalPage.tsx` and its spec), `check_status.cjs`, `docs/MIGRATION_MATRIX.md`, `openapi/openapi.yaml`, `packages/contracts/src/connector.ts`, `packages/contracts/src/documents.ts`, `supabase/MANIFEST.md`, `supabase/migrations.lock.json`.
-- **New untracked files (40 before this report):** the connector insights module, the `partner-view` module, the new API and web test files, the web connector components and models, three migrations (0098, 0099, 0100), six verify and rollback scripts in `tools/sql/batch/`, and the connector docs.
+- **New untracked files (40 before this report):** the connector insights module, the `partner-view` module, the new API and web test files, the web connector components and models, three migrations (0100, 0101, 0102), six verify and rollback scripts in `tools/sql/batch/`, and the connector docs.
 - **Formatting churn:** `docs/MIGRATION_MATRIX.md`, `supabase/MANIFEST.md` and `ConnectorPage.tsx` were already unformatted at HEAD. Prettier rewrote them, so their diffs are larger than their content changes. The git diff stat for the 25 tracked files is 5,989 insertions and 2,852 deletions.
 
 ## D. Migrations
 
 | Migration                                  | State                               | Notes                                                                                                       |
 | ------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 0098 `connector_portal_dispute_and_upload` | Locked, unchanged                   | Partner dispute, upload and document-type tables                                                            |
-| 0099 `verification_connector_subject`      | Prepared, **not applied to hosted** | Adds CONNECTOR as a verification subject, with a composite FK and a check that connector ID matches subject |
-| 0100 `partner_dispute_category_required`   | Prepared, **not applied to hosted** | `NOT VALID` rule: partner disputes need a category                                                          |
+| 0100 `connector_portal_dispute_and_upload` | Locked, unchanged                   | Partner dispute, upload and document-type tables                                                            |
+| 0101 `verification_connector_subject`      | Prepared, **not applied to hosted** | Adds CONNECTOR as a verification subject, with a composite FK and a check that connector ID matches subject |
+| 0102 `partner_dispute_category_required`   | Prepared, **not applied to hosted** | `NOT VALID` rule: partner disputes need a category                                                          |
 
 Migration lock check: `migrations unchanged (90 files)`, run in this pass.
 
@@ -67,7 +67,7 @@ Migration lock check: `migrations unchanged (90 files)`, run in this pass.
 
 Full findings are in `docs/CONNECTOR_SECURITY_AUDIT.md`. Summary:
 
-- **Fixed:** F2 (suspended reactivation needs a reason), F3 (verification bound to the connector, in code and migration 0099), F5, F6, F10 to F18 (partner upload refusals, cross-connector 404s, connector identity refusal, response allow-lists).
+- **Fixed:** F2 (suspended reactivation needs a reason), F3 (verification bound to the connector, in code and migration 0101), F5, F6, F10 to F18 (partner upload refusals, cross-connector 404s, connector identity refusal, response allow-lists).
 - **Open:** F1 (credential rotation and history cleanup, administrator action), F7 (TLS certificate check in `check_status.cjs`), F21 (tampered signed link returns 200), F22 (resend returns SKIPPED), F20 (stray whitespace in the future-clock config).
 - **Accepted, to confirm:** F4 (a duplicate refusal confirms an open enquiry).
 
@@ -99,8 +99,8 @@ Full findings are in `docs/CONNECTOR_SECURITY_AUDIT.md`. Summary:
 | `connector-portal-documents.int.spec.ts`                                   | 13 of 13                                                    |
 | `document-type-approval.int.spec.ts`                                       | 5 of 5                                                      |
 | `connector-access.int.spec.ts`                                             | 21 of 21                                                    |
-| `migration-upgrade-0098-0100.int.spec.ts`                                  | 9 of 9                                                      |
-| `migration-0098.int.spec.ts`                                               | 3 of 3                                                      |
+| `migration-upgrade-0100-0102.int.spec.ts`                                  | 9 of 9                                                      |
+| `migration-0100.int.spec.ts`                                               | 3 of 3                                                      |
 | `migration-audit-batch.int.spec.ts`                                        | 19 of 19                                                    |
 | `connector-role-guard.int.spec.ts` / `connector-role-precheck.int.spec.ts` | 14 of 14 / 6 of 6                                           |
 | `vite build` (web)                                                         | Not run                                                     |
@@ -116,7 +116,7 @@ Re-run the integration suites through `apps/api/vitest.int.config.ts` only. Re-r
 2. **Duplicate refusal disclosure (F4):** accept that a refusal confirms an open enquiry.
 3. **Partner progress labels for application and lender states:** `docs/CONNECTOR_PHASE1_CONTRACT.md` section B. Until approved, partners see lead-level steps only.
 4. **Partner document types:** which types have `partner_upload = true`.
-5. **Partner dispute categories:** the category list and whether to backfill existing partner disputes (0100 requires a category on new rows only).
+5. **Partner dispute categories:** the category list and whether to backfill existing partner disputes (0102 requires a category on new rows only).
 6. **Dispute evidence attachments:** not built. A new subject type is needed first.
 7. **Staff visibility of customer name on the connector workspace:** today `lead.read` staff see it, and the mobile number is hidden.
 
@@ -129,9 +129,9 @@ Nothing has been applied to hosted. Before any hosted change:
 - Rotate the hosted database credentials and clean the history that holds the old password (F1). The rotation runs under `docs/SECURITY_CREDENTIAL_ROTATION.md`. Do not rewrite history without the team's agreement.
 - Replace `rejectUnauthorized: false` in `check_status.cjs` with certificate verification (F7), or confirm it is only run from a trusted network.
 
-**Deployment order:** apply migrations 0098, then 0099, then 0100, in the order given in `docs/MIGRATION_INVENTORY_CONNECTOR_2026-11.md` (not re-read in this pass). Run the matching `tools/sql/batch/NN.verify.sql` before and after each step. Deploy the API and web build only after the migrations are applied.
+**Deployment order:** apply migrations 0100, then 0101, then 0102, in the order given in `docs/MIGRATION_INVENTORY_CONNECTOR_2026-11.md` (not re-read in this pass). Run the matching `tools/sql/batch/NN.verify.sql` before and after each step. Deploy the API and web build only after the migrations are applied.
 
-**Rollback:** `tools/sql/batch/100.rollback.sql` drops the partner dispute category rule only. `99.rollback.sql` refuses while any CONNECTOR verification exists. `98.rollback.sql` refuses while categorised disputes or partner-approved document types exist. Roll back in reverse order (100, 99, 98).
+**Rollback:** `tools/sql/batch/102.rollback.sql` drops the partner dispute category rule only. `101.rollback.sql` refuses while any CONNECTOR verification exists. `100.rollback.sql` refuses while categorised disputes or partner-approved document types exist. Roll back in reverse order (100, 99, 98).
 
 ## K. Final git status
 

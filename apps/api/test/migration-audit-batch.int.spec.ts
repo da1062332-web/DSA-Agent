@@ -38,7 +38,7 @@ const ORDER = [
 const files = readdirSync(DIR)
   .filter((f) => f.endsWith('.sql'))
   .sort();
-const migration = (n: string) => files.find((f) => f.startsWith(`202610010000${n}_`))!;
+const migration = (n: string) => files.find((f) => f.startsWith(`20261001${n.padStart(6, '0')}_`))!;
 const script = (name: string) => readFileSync(path.join(SQL, name), 'utf8');
 
 let container: StartedPostgreSqlContainer;
@@ -92,13 +92,13 @@ beforeAll(async () => {
   admin = await connectTo('postgres');
   await admin.query('CREATE DATABASE hosted_like');
   const base = await connectTo('hosted_like');
-  // 0098 alters document_type (0071), which this hosted-like base does not have at that point, and 0100 needs 0098's dispute category. Neither
-  // is part of this batch; their rehearsals are migration-0098.int.spec.ts and migration-upgrade-0098-0100.int.spec.ts. 0099 needs only
+  // 0100 alters document_type (0071), which this hosted-like base does not have at that point, and 0102 needs 0100's dispute category. Neither
+  // is part of this batch; their rehearsals are migration-0100.int.spec.ts and migration-upgrade-0100-0102.int.spec.ts. 0101 needs only
   // tables this base has, so it is applied here as before.
   const pending = new Set([
     ...ORDER.map(migration),
-    migration('98'),
-    files.find((f) => f.startsWith('20261001000100_'))!,
+    migration('100'),
+    files.find((f) => f.startsWith('20261001000102_'))!,
   ]);
   const fixture = (name: string) => readFileSync(path.join(ROOT, 'tests/guard/fixtures', name), 'utf8');
   for (const f of files.filter((x) => !pending.has(x))) {

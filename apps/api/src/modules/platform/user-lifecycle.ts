@@ -17,6 +17,7 @@ import {
   type RequestContext,
   type Tx,
   type UserTransferResponse,
+  withLegacy,
 } from '@dsa/contracts';
 import { withIdempotency, type PrincipalResolverOptions } from '@dsa/kernel';
 import type { Router } from 'express';
@@ -31,6 +32,7 @@ import {
   countActiveAdministrators,
 } from './role-guards';
 import { ACTIVATION_REFUSED, DELETED_REFUSED } from './user-status';
+import { requireAnyPermission } from '../../http/permissions';
 import {
   MAX_RESENDS,
   RESEND_COOLDOWN_MS,
@@ -239,7 +241,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // API-USR-001
   router.post('/users/invitations', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.invite'));
     const key = idempotencyKey(req);
     const input = InviteUserRequest.parse(req.body);
     const email = input.email.trim().toLowerCase();
@@ -317,7 +319,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // passed by two requests at once, and a request is refused while an earlier one is still being sent.
   router.post('/users/:id/invitation/resend', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.invite'));
     const userId = req.params.id;
     await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const person = (
@@ -396,7 +398,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // The state of the latest invitation of a user, for administrators (API-USR-001).
   router.get('/users/:id/invitation', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.invite'));
     const userId = req.params.id;
     const view = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const person = (
@@ -454,7 +456,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // API-USR-004
   router.post('/users/:id/deactivation', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.offboard'));
     const key = idempotencyKey(req);
     const version = ifMatchVersion(req);
     const input = DeactivateUserRequest.parse(req.body);
@@ -523,7 +525,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // the provisioning worker, the only holder of the service-role key; until then the old account matches no user.
   router.post('/users/:id/erasure', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.offboard'));
     const key = idempotencyKey(req);
     const version = ifMatchVersion(req);
     const input = EraseUserRequest.parse(req.body);
@@ -630,7 +632,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // API-USR-005
   router.post('/users/:id/suspension', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.offboard'));
     const version = ifMatchVersion(req);
     const input = SuspendUserRequest.parse(req.body);
     refuseSelf(ctx, req.params.id, 'suspend or reactivate');
@@ -744,7 +746,7 @@ export function registerUserLifecycleRoutes(router: Router, deps: ApiDeps): void
   // API-USR-008
   router.post('/users/:id/transfers', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('user.offboard'));
     const key = idempotencyKey(req);
     const input = TransferUserRequest.parse(req.body);
     const effectiveAt = input.effectiveAt ? new Date(input.effectiveAt) : ctx.now;

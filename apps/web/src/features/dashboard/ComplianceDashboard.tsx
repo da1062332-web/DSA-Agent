@@ -18,7 +18,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { GuardedRouterLink as RouterLink } from '../../shell/GuardedRouterLink';
 import { searchAuditEvents } from '../audit/api';
 import { listIncidents } from '../security/api';
 import {

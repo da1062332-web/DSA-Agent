@@ -61,12 +61,13 @@ describe('F-08 the route guard and the sidebar agree, for every role', () => {
   });
 
   it('TEST-ACC-03 every route the web app defines is covered by a rule or is deliberately open', () => {
-    const open = new Set(['/', '/notifications', '/lenders', '/products', '/workforce', '/account/security']);
+    const open = new Set(['/', '/notifications', '/account/security']);
     for (const route of featureRoutes) {
       const path = (route.path ?? '').replace(/:[A-Za-z]+/g, 'x1');
       if (!path || path === '*') continue;
       const rule = ruleFor(path);
-      const isOpen = !rule?.anyOf;
+      // A rule that names permissions, a combination of them, or a connector login is a gate; anything else is deliberately open.
+      const isOpen = !rule?.anyOf && !rule?.allOf && !rule?.connectorOnly;
       if (isOpen) {
         const top = '/' + path.split('/').filter(Boolean)[0];
         expect(open.has(path) || open.has(top) || !rule, `no rule for ${route.path}`).toBe(true);
@@ -83,17 +84,16 @@ describe('F-08 the route guard and the sidebar agree, for every role', () => {
 
 describe('F-08 direct URL access, by role', () => {
   it('TEST-ACC-04 a user with no permissions reaches only the open screens', () => {
-    for (const open of [
-      '/',
-      '/notifications',
+    for (const open of ['/', '/notifications', '/account/security'])
+      expect(routeAllowed(open, NONE, false), open).toBe(true);
+    for (const closed of [
       '/lenders',
       '/lenders/x',
       '/products',
       '/workforce',
-      '/account/security',
-    ])
-      expect(routeAllowed(open, NONE, false), open).toBe(true);
-    for (const closed of [
+      '/connector-portal',
+      '/documents',
+      '/lender-cases',
       '/leads',
       '/leads/new',
       '/customers',
@@ -326,7 +326,7 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
   });
 
   it('TEST-SETTING-04 compliance auditor sees Audit, Privacy & Consent, and Personal Security', () => {
-    const auditorCan = (c: string) => c === 'audit.read' || c === 'customer.read';
+    const auditorCan = (c: string) => ['audit.read', 'customer.read', 'privacy.read'].includes(c);
     const categories = visibleSettings(false, auditorCan, false);
     const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
     expect(itemPaths).toContain('/audit');
@@ -335,6 +335,14 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
     expect(itemPaths).not.toContain('/users');
     expect(itemPaths).not.toContain('/admin/organisation');
     expect(itemPaths).not.toContain('/config');
+    // Reading the audit trail and customers is not the privacy register: it takes privacy.read (a migrated Compliance role holds it).
+    const withoutPrivacy = visibleSettings(
+      false,
+      (c) => c === 'audit.read' || c === 'customer.read',
+      false,
+    ).flatMap((c) => c.items.map((i) => i.to));
+    expect(withoutPrivacy).toContain('/audit');
+    expect(withoutPrivacy).not.toContain('/privacy');
   });
 
   it('TEST-SETTING-05 for all 14 roles, every setting link offered to a role is permitted by routeAllowed (zero 403 links)', () => {

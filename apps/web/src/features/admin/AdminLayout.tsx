@@ -5,13 +5,24 @@
 import { Alert, Container } from '@mui/material';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { hasPermission, useMe } from '../../api/useMe';
+import { canPerformAction, routeAllowed } from '../../shell/access';
+
+const ADMIN_SCREENS = ['/admin/organisation', '/admin/branches', '/admin/teams', '/admin/queues'];
 
 export function AdminLayout() {
   const me = useMe();
   const { pathname } = useLocation();
-  if (pathname === '/admin') return <Navigate to="/admin/organisation" replace />;
+  const can = (code: string) => hasPermission(me.data, code);
+  if (pathname === '/admin') {
+    // The first administration screen this user may open: a role that holds only team.manage goes to Teams, not to Organisation.
+    const first = ADMIN_SCREENS.find((p) => routeAllowed(p, can, false, me.data?.disabledModules));
+    return <Navigate to={first ?? ADMIN_SCREENS[0]!} replace />;
+  }
 
-  const allowed = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
+  const allowed =
+    canPerformAction('org.manage', can) ||
+    canPerformAction('team.manage', can) ||
+    canPerformAction('settings.manage', can);
 
   return (
     <Container maxWidth={false} disableGutters>

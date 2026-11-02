@@ -30,6 +30,7 @@ import {
   type RequestContext,
   type Tx,
   type UpdateCommissionPlanInput,
+  withLegacy,
 } from '@dsa/contracts';
 import { createHash } from 'crypto';
 import { ulid } from 'ulid';
@@ -147,9 +148,12 @@ export class FinanceService {
     }
   }
 
-  /** Reading commission plans, calculations and payables. Checked before any lookup, so an id cannot be probed without it. */
+  /**
+   * Reading commission plans, calculations and payables: commission.view, or any of the codes the Commission screen was shown for
+   * before the split (LEGACY_PARENTS). Checked before any lookup, so an id cannot be probed without it.
+   */
   private assertCommissionRead(ctx: RequestContext): void {
-    this.assertAnyPermission(ctx, ['finance.view', 'commission.plan.edit', 'commission.plan.approve']);
+    this.assertAnyPermission(ctx, withLegacy('commission.view'));
   }
 
   // --- COMMISSION PLANS ---
@@ -593,7 +597,7 @@ export class FinanceService {
     ctx: RequestContext,
     id: string,
   ): Promise<RecalculationProposalResponse> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertCommissionRead(ctx);
     const row = await this.deps.repository.findRecalculationProposalById(tx, ctx.principal.tenantId, id);
     if (!row) {
       throw AppError.of('NOT_FOUND', `Recalculation proposal ${id} not found.`);
@@ -602,7 +606,7 @@ export class FinanceService {
   }
 
   async listRecalculationProposals(tx: Tx, ctx: RequestContext): Promise<RecalculationProposalResponse[]> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertCommissionRead(ctx);
     const rows = await this.deps.repository.listRecalculationProposals(tx, ctx.principal.tenantId);
     return rows.map((r) => this.toRecalculationProposalResponse(r));
   }
@@ -1116,7 +1120,7 @@ export class FinanceService {
     id: string,
     input: DisbursePayoutGatewayInput,
   ): Promise<DisbursePayoutGatewayResponse> {
-    this.assertPermission(ctx, 'payout.record_payment');
+    this.assertAnyPermission(ctx, withLegacy('payout.disburse'));
 
     const tenantId = ctx.principal.tenantId;
     const payout = await this.deps.repository.findPayoutRequestById(tx, tenantId, id);
@@ -1161,7 +1165,7 @@ export class FinanceService {
     batchId: string,
     mode: 'IMPS' | 'NEFT' | 'RTGS' = 'IMPS',
   ): Promise<{ batchId: string; totalDisbursed: number; results: DisbursePayoutGatewayResponse[] }> {
-    this.assertPermission(ctx, 'payout.record_payment');
+    this.assertAnyPermission(ctx, withLegacy('payout.disburse'));
     const tenantId = ctx.principal.tenantId;
     const batch = await this.deps.repository.findPayoutBatchById(tx, tenantId, batchId);
     if (!batch) {
@@ -1198,7 +1202,7 @@ export class FinanceService {
     ctx: RequestContext,
     input: CreatePayoutBatchInput,
   ): Promise<PayoutBatchResponse> {
-    this.assertPermission(ctx, 'payout.record_payment');
+    this.assertAnyPermission(ctx, withLegacy('payout.disburse'));
 
     const tenantId = ctx.principal.tenantId;
     const uniqueIds = new Set(input.payoutIds);
@@ -1295,7 +1299,7 @@ export class FinanceService {
     ctx: RequestContext,
     id: string,
   ): Promise<{ buffer: Buffer; filename: string; sha256: string }> {
-    this.assertPermission(ctx, 'payout.record_payment');
+    this.assertAnyPermission(ctx, withLegacy('payout.disburse'));
 
     const tenantId = ctx.principal.tenantId;
     const batch = await this.deps.repository.findPayoutBatchById(tx, tenantId, id);

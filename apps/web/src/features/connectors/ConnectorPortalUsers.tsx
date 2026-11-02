@@ -31,6 +31,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ConnectorPortalUser, ConnectorResource } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
+import { canPerformAction } from '../../shell/access';
 
 export interface PortalInviteInput {
   displayName: string;
@@ -120,7 +121,7 @@ export function ConnectorPortalUsers({
 }: ConnectorPortalUsersProps) {
   const me = useMe();
   const queryClient = useQueryClient();
-  const canManage = hasPermission(me.data, 'connector.manage');
+  const canManage = canPerformAction('connector.portal_user_manage', (code) => hasPermission(me.data, code));
   const queryKey = ['connector-portal-users', connector.id];
   const inviteAllowed = connector.status !== 'SUSPENDED' && connector.status !== 'TERMINATED';
 

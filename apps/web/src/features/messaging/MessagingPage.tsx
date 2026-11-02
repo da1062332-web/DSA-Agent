@@ -10,6 +10,7 @@ import { Can } from '../../shell/Can';
 import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import { DataTable, DetailCard, PageHeader } from '../../ui';
 import type { ColumnDef } from '../../ui';
+import { canPerformAction } from '../../shell/access';
 
 export interface MessagingPageProps {
   defaultTab?: number;
@@ -23,7 +24,7 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
   const [denied, setDenied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const me = useMe();
-  const canApprove = hasPermission(me.data, 'config.manage');
+  const canApprove = canPerformAction('message_template.manage', (code) => hasPermission(me.data, code));
   const canSend = hasPermission(me.data, 'message.send');
 
   const fetchTemplates = useCallback(async () => {
@@ -228,7 +229,7 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
         title="Messaging"
         subtitle="Templates • Dispatch • Delivery Tracking • Consent & Quiet Hours Guard"
         actions={
-          <Can action="config.manage">
+          <Can action="message_template.manage">
             <Button variant="contained" onClick={() => setEditorOpen(true)}>
               New Template
             </Button>

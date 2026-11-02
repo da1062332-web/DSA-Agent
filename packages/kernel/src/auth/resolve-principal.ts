@@ -47,6 +47,20 @@ export interface PrincipalResolverOptions {
 }
 
 const KNOWN_PERMISSIONS = new Set<string>(PERMISSION_CODES);
+
+/**
+ * One row per role assignment and permission means a user with two roles that share a code gets it twice. Only exact repeats (same code,
+ * scope and branches) are dropped: grants with different scopes stay separate, because authorisation reads the scope of each one.
+ */
+export function dedupeGrants(grants: PermissionGrant[]): PermissionGrant[] {
+  const seen = new Set<string>();
+  return grants.filter((g) => {
+    const key = `${g.code}|${g.scope}|${[...g.branchIds].sort().join(',')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 const UNAUTHENTICATED_MESSAGE = 'Missing or invalid access token.';
 const EXPIRED = 'EXPIRED' as const;
 
@@ -132,13 +146,15 @@ export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalRe
           primaryBranchId: row.primary_branch_id,
           managedTeamMemberIds: managed.rows.map((r) => r.user_id),
           queueIds: queues.rows.map((r) => r.queue_id),
-          grants: grants.rows
-            .filter((g) => KNOWN_PERMISSIONS.has(g.permission_code))
-            .map((g): PermissionGrant => ({
-              code: g.permission_code as PermissionCode,
-              scope: g.scope_type,
-              branchIds: g.scope_type === 'BRANCH' ? g.scope_branch_ids : [],
-            })),
+          grants: dedupeGrants(
+            grants.rows
+              .filter((g) => KNOWN_PERMISSIONS.has(g.permission_code))
+              .map((g): PermissionGrant => ({
+                code: g.permission_code as PermissionCode,
+                scope: g.scope_type,
+                branchIds: g.scope_type === 'BRANCH' ? g.scope_branch_ids : [],
+              })),
+          ),
           authTime: token.mfaVerifiedAt?.toISOString().replace(/\.\d{3}Z$/, 'Z') ?? null,
           userType: row.user_type as 'STAFF' | 'CONNECTOR',
         } satisfies Principal;

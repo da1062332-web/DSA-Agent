@@ -6,12 +6,13 @@ import { CONSTITUTIONS, useCommand, useLookup, type Organisation } from './api';
 import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from './components';
 
 import { FieldGrid } from '../../ui';
+import { canPerformAction } from '../../shell/access';
 
 export function OrganisationPage() {
   const me = useMe();
   const tenant = useTenant();
   // The organisation profile is config.manage only (API-ORG-001); others see the tenant facts.
-  const canEdit = hasPermission(me.data, 'config.manage');
+  const canEdit = canPerformAction('org.manage', (code) => hasPermission(me.data, code));
   const orgs = useLookup<Organisation>('/v1/organisations', {}, canEdit);
 
   if (tenant.isPending || (canEdit && orgs.isPending)) return <Loading />;

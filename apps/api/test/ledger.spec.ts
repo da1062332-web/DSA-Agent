@@ -32,7 +32,7 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const service = new LedgerService({ repository: repo });
       const unauthCtx = makeCtx('ten_01', 'payout.request'); // lacking finance.view
 
-      await expect(service.listAccounts({} as Tx, unauthCtx, {})).rejects.toThrow(/finance.view required/);
+      await expect(service.listAccounts({} as Tx, unauthCtx, {})).rejects.toThrow(/ledger.view required/);
     });
 
     it('TC-LED-002: Successfully lists default chart of accounts with type filter', async () => {
@@ -126,7 +126,7 @@ describe('MOD-LED: Ledger Management (Domain DOM-K)', () => {
       const service = new LedgerService({ repository: repo });
       const unauthCtx = makeCtx('ten_01', 'commission.calculate');
 
-      await expect(service.listJournals({} as Tx, unauthCtx, {})).rejects.toThrow(/finance.view required/);
+      await expect(service.listJournals({} as Tx, unauthCtx, {})).rejects.toThrow(/ledger.view required/);
     });
 
     it('TC-LED-007: Atomic balanced journal posting (DEBIT = CREDIT)', async () => {

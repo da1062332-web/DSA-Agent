@@ -16,12 +16,14 @@ import {
   RecordPaymentInputSchema,
   RejectClawbackInputSchema,
   UpdateCommissionPlanInputSchema,
+  withLegacy,
   type RequestContext,
   type Tx,
 } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
+import { requireAnyPermission } from '../../http/permissions';
 import type { ApiDeps } from '../types';
 import { FinanceService } from './finance-service';
 import { SqlFinanceRepository } from './repository';
@@ -398,7 +400,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-requests', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'finance.view');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.view'));
       const connectorId = typeof req.query.connectorId === 'string' ? req.query.connectorId : undefined;
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
       const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
@@ -417,7 +419,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-requests/:id', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'finance.view');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.view'));
       const id = extractParam(req.params.id, 'id');
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.getPayoutRequest(tx, ctx, id);
@@ -601,7 +603,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-batches', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
       const parsed = CreatePayoutBatchInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
 
@@ -640,7 +642,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/payout-batches/:id/bank-file', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
       deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
       const fileData = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
@@ -662,7 +664,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-requests/:id/disburse-gateway', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
       deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = DisbursePayoutGatewayInputSchema.safeParse(req.body);
@@ -703,7 +705,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/payout-batches/:id/dispatch-gateway', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
-      deps.authz.requirePermission(ctx, 'payout.record_payment');
+      requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
       deps.authz.requireStepUp(ctx);
       const id = extractParam(req.params.id, 'id');
       const mode = (req.body?.mode as 'IMPS' | 'NEFT' | 'RTGS') || 'IMPS';

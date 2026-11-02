@@ -3,7 +3,7 @@
 // Memberships are effective-dated: removing a member closes its range, history is kept (TEAM scope uses it).
 // Reads: any signed-in user. Team create/edit: config.manage or user.manage; members: user.manage (API-ORG-007…009).
 // A BRANCH-scoped grant (branch manager) only covers teams of its own branches, never cross-branch teams.
-import { AppError, type Tx } from '@dsa/contracts';
+import { AppError, type Tx, withLegacy } from '@dsa/contracts';
 import { requirePermissionForBranch, withIdempotency } from '@dsa/kernel';
 import type { PermissionCode } from '@dsa/contracts';
 import type { Router } from 'express';
@@ -60,7 +60,7 @@ async function loadTeamDetail(tx: Tx, id: string): Promise<TeamDetail> {
   };
 }
 
-const TEAM_ADMIN: PermissionCode[] = ['config.manage', 'user.manage'];
+const TEAM_ADMIN: PermissionCode[] = withLegacy('team.manage');
 
 async function validateRefs(tx: Tx, input: { branchId?: string | null; managerUserId?: string | null }) {
   if (input.branchId) await requireActiveBranch(tx, input.branchId, 'branchId');

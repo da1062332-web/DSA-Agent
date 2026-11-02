@@ -24,7 +24,11 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     tenantId: tenantA,
     id: 'usr_reporter',
     primaryBranchId: 'brn_main',
-    grants: [{ code: 'report.read', scope: 'TENANT', branchIds: [] }],
+    grants: [
+      { code: 'report.read', scope: 'TENANT', branchIds: [] },
+      // Team performance and the leaderboard are performance.read (M-098 gave it to every report.read holder).
+      { code: 'performance.read', scope: 'TENANT', branchIds: [] },
+    ],
   });
 
   const reportAdmin = testPrincipal({
@@ -41,7 +45,10 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     tenantId: tenantA,
     id: 'usr_bm',
     primaryBranchId: 'brn_main',
-    grants: [{ code: 'report.read', scope: 'BRANCH', branchIds: ['brn_main'] }],
+    grants: [
+      { code: 'report.read', scope: 'BRANCH', branchIds: ['brn_main'] },
+      { code: 'performance.read', scope: 'BRANCH', branchIds: ['brn_main'] },
+    ],
   });
 
   const unprivilegedUser = testPrincipal({
@@ -55,7 +62,10 @@ describe('Module MOD-RPT — Reporting Engine and Performance Analytics', () => 
     tenantId: tenantB,
     id: 'usr_tenant_b',
     primaryBranchId: 'brn_b1',
-    grants: [{ code: 'report.read', scope: 'TENANT', branchIds: [] }],
+    grants: [
+      { code: 'report.read', scope: 'TENANT', branchIds: [] },
+      { code: 'performance.read', scope: 'TENANT', branchIds: [] },
+    ],
   });
 
   const exportUser = testPrincipal({

@@ -7,6 +7,8 @@ export * from './ids';
 export * from './pagination';
 export * from './events';
 export * from './permissions';
+export * from './permission-groups';
+export * from './entitlements';
 export * from './kernel';
 export * from './users';
 export * from './config';

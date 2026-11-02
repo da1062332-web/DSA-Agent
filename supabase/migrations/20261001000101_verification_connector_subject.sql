@@ -1,4 +1,4 @@
--- Migration 0099: a verification record can be about a connector, and a connector activation may use only a verification about that connector.
+-- Migration 0101: a verification record can be about a connector, and a connector activation may use only a verification about that connector.
 -- Why: connector activation accepted any VERIFIED record in the tenant. A verification about a customer, or about another connector,
 -- therefore activated a connector. A verification now names its connector (connector_id). A CONNECTOR subject must name the connector it is
 -- about, and a connector_id may appear only on a CONNECTOR subject. Existing records keep their subject and connector_id NULL, so they are

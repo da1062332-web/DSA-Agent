@@ -1,4 +1,4 @@
-// Migration 0098 rehearsal (TEST-MIG-98). The verify script passes on a freshly migrated database, and the rollback refuses while data
+// Migration 0100 rehearsal (TEST-MIG-98). The verify script passes on a freshly migrated database, and the rollback refuses while data
 // would be lost, then removes exactly the two columns. Runs in a local container only: nothing here touches hosted Supabase.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -6,8 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/harness';
 
 let env: IsolationEnv;
-const VERIFY = fileURLToPath(new URL('../../../tools/sql/batch/98.verify.sql', import.meta.url));
-const ROLLBACK = fileURLToPath(new URL('../../../tools/sql/batch/98.rollback.sql', import.meta.url));
+const VERIFY = fileURLToPath(new URL('../../../tools/sql/batch/100.verify.sql', import.meta.url));
+const ROLLBACK = fileURLToPath(new URL('../../../tools/sql/batch/100.rollback.sql', import.meta.url));
 
 beforeAll(async () => {
   env = await startIsolationEnv();
@@ -17,7 +17,7 @@ afterAll(async () => {
   await env?.stop();
 });
 
-describe('migration 0098 (TEST-MIG-98)', () => {
+describe('migration 0100 (TEST-MIG-98)', () => {
   it('TEST-MIG-98-01 the verify script reports no FAIL on a freshly migrated database', async () => {
     const res = await env.admin.query(readFileSync(VERIFY, 'utf8'));
     const rows = res.rows as { check: string; result: string; detail: string }[];

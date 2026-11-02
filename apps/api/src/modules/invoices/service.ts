@@ -1,6 +1,7 @@
 // apps/api/src/modules/invoices/service.ts — Module 33: Invoices & Statements Service
 import {
   AppError,
+  withLegacy,
   type AuditPort,
   type Authz,
   type ConnectorStatement,
@@ -10,6 +11,7 @@ import {
   type InvoiceListQuery,
   type InvoiceRecord,
   type InvoiceStatus,
+  type PermissionCode,
   type RequestContext,
   type StatementQuery,
   type Tx,
@@ -32,15 +34,14 @@ export class InvoiceService {
     return `${prefix}_${raw}`;
   }
 
+  /** Viewing invoices: invoice.view, or finance.view / invoice.manage (its legacy parents) until the role matrix is applied. */
   private checkViewPermission(ctx: RequestContext): void {
-    const hasView = ctx.principal.grants.some(
-      (g) => g.code === 'finance.view' || g.code === 'invoice.manage',
-    );
-    if (hasView) {
+    const allowed: PermissionCode[] = withLegacy('invoice.view');
+    if (ctx.principal.grants.some((g) => allowed.includes(g.code))) {
       return;
     }
     // Fall back to Authz check which throws 403
-    this.deps.authz.requirePermission(ctx, 'finance.view');
+    this.deps.authz.requirePermission(ctx, 'invoice.view');
   }
 
   /**
@@ -229,9 +230,8 @@ export class InvoiceService {
     connectorId: string,
     query: StatementQuery,
   ): Promise<ConnectorStatement> {
-    const hasFinanceView = ctx.principal.grants.some(
-      (g) => g.code === 'finance.view' || g.code === 'invoice.manage',
-    );
+    const allowedView: PermissionCode[] = withLegacy('invoice.view');
+    const hasFinanceView = ctx.principal.grants.some((g) => allowedView.includes(g.code));
     const isConnectorOwn = ctx.principal.id === connectorId;
 
     if (!hasFinanceView && !isConnectorOwn) {

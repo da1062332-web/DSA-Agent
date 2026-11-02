@@ -21,6 +21,7 @@ import {
   type TaskPort,
   type Tx,
   type UpdateLenderCaseStatusInput,
+  withLegacy,
 } from '@dsa/contracts';
 import { createHash } from 'crypto';
 import { monotonicFactory } from 'ulid';
@@ -130,21 +131,32 @@ export class LenderCaseService {
   }
 
   private requirePermission(ctx: RequestContext, code: PermissionCode): void {
+    this.requireAnyPermission(ctx, [code]);
+  }
+
+  /** Any one of the codes authorises. A sub-permission passes its own code and its legacy parents (withLegacy). */
+  private requireAnyPermission(ctx: RequestContext, codes: PermissionCode[]): void {
     const { principal } = ctx;
     if (principal.kind === 'SERVICE') return;
-    const hasGrant = principal.grants.some((g) => g.code === code);
+    const hasGrant = principal.grants.some((g) => codes.includes(g.code));
     if (!hasGrant) {
-      throw AppError.of('FORBIDDEN', `Permission denied: ${code} required.`);
+      throw AppError.of('FORBIDDEN', `Permission denied: ${codes[0]} required.`);
     }
   }
 
-  private checkBranchScope(ctx: RequestContext, code: PermissionCode, branchId: string): void {
+  /** Branch scope is read from the grants of the same codes that authorised the request, not from a different code. */
+  private checkBranchScope(
+    ctx: RequestContext,
+    codeOrCodes: PermissionCode | PermissionCode[],
+    branchId: string,
+  ): void {
     const { principal } = ctx;
     if (principal.kind === 'SERVICE') return;
-    const tenantGrants = principal.grants.filter((g) => g.code === code && g.scope === 'TENANT');
+    const codes = Array.isArray(codeOrCodes) ? codeOrCodes : [codeOrCodes];
+    const tenantGrants = principal.grants.filter((g) => codes.includes(g.code) && g.scope === 'TENANT');
     if (tenantGrants.length > 0) return;
 
-    const branchGrants = principal.grants.filter((g) => g.code === code && g.scope === 'BRANCH');
+    const branchGrants = principal.grants.filter((g) => codes.includes(g.code) && g.scope === 'BRANCH');
     if (branchGrants.length > 0) {
       const allowed = new Set<string>();
       for (const g of branchGrants) {
@@ -412,7 +424,7 @@ export class LenderCaseService {
    */
   async getCase(tx: Tx, ctx: RequestContext, id: string): Promise<LenderCaseResource> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
 
     const row = await this.deps.repository.findCaseById(tx, tenantId, id);
     if (!row) {
@@ -421,7 +433,7 @@ export class LenderCaseService {
 
     const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
-      this.checkBranchScope(ctx, 'application.read', app.branch_id);
+      this.checkBranchScope(ctx, withLegacy('lender_case.read'), app.branch_id);
     }
 
     return this.toResource(row);
@@ -432,13 +444,13 @@ export class LenderCaseService {
    */
   async listCases(tx: Tx, ctx: RequestContext, applicationId: string): Promise<LenderCaseResource[]> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
 
     const app = await this.findApplication(tx, ctx, applicationId);
     if (!app) {
       throw AppError.of('NOT_FOUND', `Application '${applicationId}' not found.`);
     }
-    this.checkBranchScope(ctx, 'application.read', app.branch_id);
+    this.checkBranchScope(ctx, withLegacy('lender_case.read'), app.branch_id);
 
     const rows = await this.deps.repository.listCasesByApplication(tx, tenantId, applicationId);
     return rows.map((r) => this.toResource(r));
@@ -454,7 +466,7 @@ export class LenderCaseService {
     filter?: { status?: string; lenderId?: string; applicationId?: string; limit?: number; cursor?: string },
   ): Promise<{ data: LenderCaseResource[]; meta: { nextCursor: string | null; limit: number } }> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
     const limit = Math.min(filter?.limit ?? 50, 200);
     const after = decodeLenderCaseCursor(filter?.cursor);
     // One row beyond the page tells us whether another page exists.
@@ -482,7 +494,7 @@ export class LenderCaseService {
     }
     const app = await this.findApplication(tx, ctx, row.application_id);
     if (app) {
-      this.checkBranchScope(ctx, 'application.read', app.branch_id);
+      this.checkBranchScope(ctx, withLegacy('lender_case.read'), app.branch_id);
     }
     return row;
   }
@@ -493,7 +505,7 @@ export class LenderCaseService {
    */
   async listQueries(tx: Tx, ctx: RequestContext, id: string): Promise<LenderQueryHistoryResource[]> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
     await this.loadCaseInScope(tx, ctx, id);
 
     const rows = await this.deps.repository.listQueriesByCase(tx, tenantId, id);
@@ -523,7 +535,7 @@ export class LenderCaseService {
     id: string,
   ): Promise<LenderCaseStatusHistoryResource[]> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
     await this.loadCaseInScope(tx, ctx, id);
 
     const rows = await this.deps.repository.listStatusHistory(tx, tenantId, id);
@@ -543,7 +555,7 @@ export class LenderCaseService {
   /** The submission package the case was built and frozen with. */
   async getPackage(tx: Tx, ctx: RequestContext, id: string): Promise<SubmissionPackageResource> {
     const tenantId = ctx.principal.tenantId;
-    this.requirePermission(ctx, 'application.read');
+    this.requireAnyPermission(ctx, withLegacy('lender_case.read'));
     const row = await this.loadCaseInScope(tx, ctx, id);
     if (!row.package_id) {
       throw AppError.of('NOT_FOUND', 'No submission package has been built for this lender case yet.');

@@ -25,7 +25,7 @@ const PLATFORM_INCOME_CODES = DEFAULT_TYPES.filter((t) => t.category === 'INCOME
 export async function loadScopedApplication(
   tx: Tx,
   ctx: RequestContext,
-  code: PermissionCode,
+  code: PermissionCode | readonly PermissionCode[],
   id: string,
   opts: { lock?: boolean } = {},
 ): Promise<Row> {

@@ -20,6 +20,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { deleteRole, fetchPermissions, fetchRoleById, updateRole } from './api';
 import { Can } from '../../shell/Can';
 import { PageHeader, PageContainer } from '../../ui';
+import { groupPermissionsForEditor } from './permission-grouping';
 import type { Permission, Role } from './types';
 
 export function RoleDetailPage() {
@@ -69,13 +70,12 @@ export function RoleDetailPage() {
     }
   }
 
-  function handleSelectAllDomain(domain: string) {
-    const domainPerms = permissions.filter((p) => p.code.startsWith(domain + '.')).map((p) => p.code);
-    const allSelected = domainPerms.every((c) => selectedPermissions.includes(c));
+  function handleSelectAllGroup(codes: string[]) {
+    const allSelected = codes.every((c) => selectedPermissions.includes(c));
     if (allSelected) {
-      setSelectedPermissions(selectedPermissions.filter((c) => !domainPerms.includes(c)));
+      setSelectedPermissions(selectedPermissions.filter((c) => !codes.includes(c)));
     } else {
-      setSelectedPermissions(Array.from(new Set([...selectedPermissions, ...domainPerms])));
+      setSelectedPermissions(Array.from(new Set([...selectedPermissions, ...codes])));
     }
   }
 
@@ -119,10 +119,8 @@ export function RoleDetailPage() {
     }
   }
 
-  // Group permissions by prefix/domain
-  const domains: string[] = Array.from(new Set(permissions.map((p) => p.code.split('.')[0])))
-    .filter((d): d is string => Boolean(d))
-    .sort();
+  // Group permissions by module and feature (PERMISSION_GROUPS), so a sub-permission sits with the ones it was split from.
+  const groups = groupPermissionsForEditor(permissions);
 
   if (loading) {
     return (
@@ -248,12 +246,13 @@ export function RoleDetailPage() {
             <Divider />
             <CardContent>
               <Stack spacing={3}>
-                {domains.map((dom) => {
-                  const domPerms = permissions.filter((p) => p.code.startsWith(dom + '.'));
+                {groups.map((group) => {
+                  const domPerms = group.permissions;
                   const countSelected = domPerms.filter((p) => selectedPermissions.includes(p.code)).length;
                   return (
                     <Box
-                      key={dom}
+                      key={group.key}
+                      data-testid={`access-control.group.${group.key}`}
                       sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}
                     >
                       <Stack
@@ -263,13 +262,14 @@ export function RoleDetailPage() {
                         sx={{ mb: 1.5 }}
                       >
                         <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography
-                            variant="subtitle1"
-                            fontWeight={700}
-                            sx={{ textTransform: 'capitalize' }}
-                          >
-                            {dom} Module
-                          </Typography>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">
+                              {group.moduleLabel}
+                            </Typography>
+                            <Typography variant="subtitle1" fontWeight={700}>
+                              {group.featureLabel}
+                            </Typography>
+                          </Box>
                           <Chip
                             label={`${countSelected}/${domPerms.length}`}
                             size="small"
@@ -277,8 +277,12 @@ export function RoleDetailPage() {
                             variant="outlined"
                           />
                         </Stack>
-                        <Button size="small" variant="text" onClick={() => handleSelectAllDomain(dom)}>
-                          {countSelected === domPerms.length ? 'Deselect Module' : 'Select All'}
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => handleSelectAllGroup(domPerms.map((p) => p.code))}
+                        >
+                          {countSelected === domPerms.length ? 'Deselect feature' : 'Select all'}
                         </Button>
                       </Stack>
                       <Grid container spacing={1}>

@@ -1,0 +1,13 @@
+# Ignore backend, database, and test artifacts for Vercel web deployment
+apps/api
+supabase
+seeds
+e2e
+tests
+uploads
+test-results
+pnpm-lock.yaml
+*.xlsx
+.env.local
+.env
+

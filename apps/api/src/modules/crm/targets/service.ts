@@ -1,5 +1,5 @@
 // apps/api/src/modules/crm/targets/service.ts — owner: Dev 5 (MOD-PERF Targets)
-import { AppError, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, withLegacy, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
 import type {
   ApproveTargetRequest,
   CreateTargetRequest,
@@ -23,17 +23,21 @@ export class TargetService {
     private readonly deps: ApiDeps,
   ) {}
 
-  private checkPermission(ctx: RequestContext, code: PermissionCode): void {
-    const hasGrant = ctx.principal.grants.some((g) => g.code === code);
+  /** Any one of the codes passes. A sub-permission passes its own code and its legacy parents (withLegacy). */
+  private checkPermission(ctx: RequestContext, code: PermissionCode | readonly PermissionCode[]): void {
+    const codes: readonly PermissionCode[] = typeof code === 'string' ? [code] : code;
+    const hasGrant = ctx.principal.grants.some((g) => codes.includes(g.code));
     if (!hasGrant) {
-      throw AppError.of('FORBIDDEN', `Missing required permission: ${code}`);
+      throw AppError.of('FORBIDDEN', `Missing required permission: ${codes[0]}`);
     }
   }
 
-  private resolveScope(ctx: RequestContext, code: PermissionCode): ScopeContext {
+  /** Scope is read from the grants of the codes that authorised the call, so a role holding only the new code is scoped by it. */
+  private resolveScope(ctx: RequestContext, code: PermissionCode | readonly PermissionCode[]): ScopeContext {
     this.checkPermission(ctx, code);
 
-    const matchingGrants = ctx.principal.grants.filter((g) => g.code === code);
+    const codes: readonly PermissionCode[] = typeof code === 'string' ? [code] : code;
+    const matchingGrants = ctx.principal.grants.filter((g) => codes.includes(g.code));
     let isTenantWide = false;
     const branchIds = new Set<string>();
     let allowedOwnUserId: string | null = null;
@@ -273,7 +277,7 @@ export class TargetService {
   }
 
   async getTarget(tx: Tx, ctx: RequestContext, targetId: string): Promise<TargetDto> {
-    const scope = this.resolveScope(ctx, 'report.read');
+    const scope = this.resolveScope(ctx, withLegacy('target.read'));
     const tenantId = ctx.principal.tenantId;
 
     const target = await this.repo.findTargetById(tx, tenantId, targetId);
@@ -299,7 +303,7 @@ export class TargetService {
   }
 
   async listTargets(tx: Tx, ctx: RequestContext, query: TargetListQuery): Promise<TargetListResponse> {
-    const scope = this.resolveScope(ctx, 'report.read');
+    const scope = this.resolveScope(ctx, withLegacy('target.read'));
     const tenantId = ctx.principal.tenantId;
 
     const result = await this.repo.listTargets(tx, {
@@ -323,7 +327,7 @@ export class TargetService {
   }
 
   async getTargetHistory(tx: Tx, ctx: RequestContext, targetId: string): Promise<TargetListResponse> {
-    const scope = this.resolveScope(ctx, 'report.read');
+    const scope = this.resolveScope(ctx, withLegacy('target.read'));
     const tenantId = ctx.principal.tenantId;
 
     const target = await this.repo.findTargetById(tx, tenantId, targetId);

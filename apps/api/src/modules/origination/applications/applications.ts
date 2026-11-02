@@ -48,9 +48,15 @@ export const toApplication = (r: Row): Application => ({
  * BRANCH sees its branches, TEAM sees records owned by the caller or a managed member, OWN sees records the caller
  * owns; queue membership adds the queue's records for TEAM and OWN. A principal with no grant sees nothing.
  */
-export function applicationScope(ctx: RequestContext, code: PermissionCode): RawBuilder<unknown> {
+export function applicationScope(
+  ctx: RequestContext,
+  code: PermissionCode | readonly PermissionCode[],
+): RawBuilder<unknown> {
   const p = ctx.principal;
-  const grants = p.grants.filter((g) => g.code === code);
+  // Scope comes from the grants of the code(s) that authorised the request: a sub-permission passes its own code and its legacy
+  // parents (withLegacy), so a role holding only the new code is scoped by it, not refused for lacking the parent.
+  const codes: readonly PermissionCode[] = typeof code === 'string' ? [code] : code;
+  const grants = p.grants.filter((g) => codes.includes(g.code));
   if (grants.some((g) => g.scope === 'TENANT')) return sql`true`;
   const mine = [p.id, ...p.managedTeamMemberIds];
   const queues = p.queueIds;

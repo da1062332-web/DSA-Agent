@@ -1,3 +1,4 @@
+import { withSubPermissionBackfill } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
 import { mfaRequired, type Me } from '../api/useMe';
@@ -13,8 +14,10 @@ const grants = (...codes: string[]): Me['grants'] =>
 describe('sidebar visibility by permission', () => {
   it('hides screens whose API the user cannot call', () => {
     // ROLE-RM on the Beta tenant: no message.send, no complaint.*, no sanction.*.
-    const rm = new Set(['lead.read', 'task.read', 'application.read', 'verification.read']);
-    const shown = labels((c) => rm.has(c));
+    const before = ['lead.read', 'task.read', 'application.read', 'verification.read'];
+    // Migration M-098 backfills the sub-permissions from the codes a role already holds, so a migrated RM keeps every screen it had.
+    const migrated = new Set(withSubPermissionBackfill(before));
+    const shown = labels((c) => migrated.has(c));
     expect(shown).toEqual(
       expect.arrayContaining(['Leads', 'Tasks', 'Applications', 'Lender cases', 'Verification']),
     );
@@ -22,6 +25,10 @@ describe('sidebar visibility by permission', () => {
     expect(shown).not.toContain('Grievances');
     expect(shown).not.toContain('Sanction and disbursement');
     expect(shown).not.toContain('Rule sets');
+    // A role created after the migration with only application.read gets Applications and not Lender cases: reading an application is
+    // not working lender cases.
+    const created = new Set(before);
+    expect(labels((c) => created.has(c))).not.toContain('Lender cases');
   });
 
   it('shows security events and incidents only to someone holding security.incident, and never to a platform operator', () => {
@@ -31,12 +38,25 @@ describe('sidebar visibility by permission', () => {
     expect(platform).not.toContain('Security events and incidents');
   });
 
-  it('offers Documents as a real screen to anyone who can read applications', () => {
-    const group = visibleGroups(false, (c) => c === 'application.read')
-      .flatMap((g) => g.items)
-      .find((i) => i.label === 'Documents');
-    expect(group?.to).toBe('/documents');
-    expect(group?.task).toBeUndefined();
+  it('offers Documents as a real screen to anyone who holds a document permission, not to everyone who can read applications', () => {
+    for (const code of ['document.view', 'document.download', 'document.review', 'document.waive']) {
+      const item = visibleGroups(false, (c) => c === code)
+        .flatMap((g) => g.items)
+        .find((i) => i.label === 'Documents');
+      expect(item?.to, code).toBe('/documents');
+      expect(item?.task).toBeUndefined();
+    }
+    const readOnly = visibleGroups(false, (c) => c === 'application.read').flatMap((g) =>
+      g.items.map((i) => i.label),
+    );
+    expect(readOnly).toContain('Applications');
+    expect(readOnly).not.toContain('Documents');
+    // document.upload makes customer upload links: that is Document sharing, not the document workbench.
+    const upload = visibleGroups(false, (c) => c === 'document.upload').flatMap((g) =>
+      g.items.map((i) => i.label),
+    );
+    expect(upload).toContain('Document sharing');
+    expect(upload).not.toContain('Documents');
   });
 
   it('shows the Platform Console only in the platform realm, even to a customer-tenant role that holds platform.console', () => {
@@ -52,11 +72,18 @@ describe('sidebar visibility by permission', () => {
     expect(labels((c) => c === 'rule.simulate')).toContain('Decisions');
   });
 
-  it('keeps screens that name no read permission, and drops empty groups', () => {
+  it('keeps only the screens that belong to the person, and drops empty groups', () => {
     const shown = labels(() => false);
-    expect(shown).toEqual(expect.arrayContaining(['Home', 'Lenders', 'Products', 'Notifications']));
+    expect(shown).toEqual(expect.arrayContaining(['Home', 'Notifications', 'Security']));
     // Every other screen is tied to the permission its list endpoint enforces, so none of these shows for someone with no grants.
+    // Lenders, Products and Workforce used to be open to every staff user; each now has its own read permission.
     for (const hidden of [
+      'Lenders',
+      'Products',
+      'Workforce',
+      'Lender cases',
+      'Documents',
+      'Ledger',
       'Leads',
       'Customers',
       'Activity',

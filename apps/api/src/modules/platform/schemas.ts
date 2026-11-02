@@ -53,6 +53,8 @@ export const MeResponse = z.object({
   ),
   /** Time of the latest TOTP verification in this session (aal2), else null. Step-up needs it within 900 s. */
   mfaVerifiedAt: z.string().nullable(),
+  /** Gated modules (MOD-TEN entitlements) switched off for the caller's tenant. The API answers 403 MODULE_NOT_ENABLED for them. */
+  disabledModules: z.array(z.string()).default([]),
 });
 export type MeResponse = z.infer<typeof MeResponse>;
 

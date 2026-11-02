@@ -1,4 +1,4 @@
-// Upgrade rehearsal for migrations 0098, 0099 and 0100 (TEST-UPG). A database is built from the migrations before 0098, historical data is
+// Upgrade rehearsal for migrations 0100, 0101 and 0102 (TEST-UPG). A database is built from the migrations before 0100, historical data is
 // written as it would be then, and the three migrations are applied to it. The data must survive, the new rules must hold, the verify
 // scripts must pass, and each rollback must do what it says: refuse when data would be lost, and remove exactly its own objects otherwise.
 // Local container only. The real migrations folder is not changed: the rehearsal copies the earlier ones into a temporary folder.
@@ -12,9 +12,9 @@ const ROOT = path.resolve(__dirname, '../../..');
 const MIGRATIONS = path.join(ROOT, 'supabase/migrations');
 const BATCH = path.join(ROOT, 'tools/sql/batch');
 const file = (prefix: string) => readdirSync(MIGRATIONS).find((f) => f.startsWith(prefix))!;
-const M98 = file('20261001000098_');
-const M99 = file('20261001000099_');
-const M100 = file('20261001000100_');
+const M98 = file('20261001000100_');
+const M99 = file('20261001000101_');
+const M100 = file('20261001000102_');
 const sql = (name: string) => readFileSync(name, 'utf8');
 const verifyRows = async (env: IsolationEnv, script: string) =>
   (await env.admin.query(sql(path.join(BATCH, script)))).rows as { check: string; result: string }[];
@@ -27,8 +27,8 @@ const CONNECTOR = 'con_upg_1';
 const VER_CUSTOMER = 'ver_01JZ000000000000000000000H';
 
 beforeAll(async () => {
-  tmp = mkdtempSync(path.join(os.tmpdir(), 'dsa-pre0098-'));
-  for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && x < '20261001000098')) {
+  tmp = mkdtempSync(path.join(os.tmpdir(), 'dsa-pre0100-'));
+  for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith('.sql') && x < '20261001000100')) {
     copyFileSync(path.join(MIGRATIONS, f), path.join(tmp, f));
   }
   process.env.DSA_MIGRATIONS_DIR = tmp;
@@ -36,7 +36,7 @@ beforeAll(async () => {
   const { startIsolationEnv } = await import('../../../tests/isolation/harness');
   env = await startIsolationEnv();
 
-  // Historical data, as it would be before 0098: an active connector with a connector dispute and a lender dispute, a customer's
+  // Historical data, as it would be before 0100: an active connector with a connector dispute and a lender dispute, a customer's
   // verification, and an existing document type. None of it has the new columns.
   const a = env.A;
   const q = (text: string, values: unknown[]) => env.admin.query(text, values);
@@ -88,7 +88,7 @@ afterAll(async () => {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
+describe('upgrade to migrations 0100, 0101 and 0102 (TEST-UPG)', () => {
   it('TEST-UPG-01 the historical records survive the upgrade unchanged', async () => {
     const disputes = await env.admin.query(
       `select id, party_type, reason, status, category from app.dispute where id in ($1, $2) order by id`,
@@ -152,7 +152,7 @@ describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
   });
 
   it('TEST-UPG-03 the verify scripts report no FAIL on the upgraded database', async () => {
-    for (const script of ['98.verify.sql', '99.verify.sql', '100.verify.sql']) {
+    for (const script of ['100.verify.sql', '101.verify.sql', '102.verify.sql']) {
       const rows = await verifyRows(env, script);
       expect(rows.length, script).toBeGreaterThan(0);
       expect(
@@ -186,8 +186,8 @@ describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
     expect(after.rows).toEqual(before.rows);
   });
 
-  it('TEST-UPG-06 the rollback of 0100 removes only its rule, and the rule can be applied again', async () => {
-    await env.admin.query(sql(path.join(BATCH, '100.rollback.sql')));
+  it('TEST-UPG-06 the rollback of 0102 removes only its rule, and the rule can be applied again', async () => {
+    await env.admin.query(sql(path.join(BATCH, '102.rollback.sql')));
     const gone = await env.admin.query(
       `select 1 from pg_constraint where conname = 'dispute_partner_category_required'`,
     );
@@ -199,27 +199,27 @@ describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
     expect(back.rows[0].convalidated).toBe(false);
   });
 
-  it('TEST-UPG-07 the rollback of 0099 removes its own objects when no connector verification exists, and the migration applies again', async () => {
-    await env.admin.query(sql(path.join(BATCH, '99.rollback.sql')));
+  it('TEST-UPG-07 the rollback of 0101 removes its own objects when no connector verification exists, and the migration applies again', async () => {
+    await env.admin.query(sql(path.join(BATCH, '101.rollback.sql')));
     const cols = await env.admin.query(
       `select 1 from information_schema.columns where table_schema = 'app' and table_name = 'verification' and column_name = 'connector_id'`,
     );
     expect(cols.rows.length).toBe(0);
     await env.admin.query(sql(path.join(MIGRATIONS, M99)));
-    expect((await verifyRows(env, '99.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
+    expect((await verifyRows(env, '101.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
   });
 
-  it('TEST-UPG-08 the rollback of 0098 refuses while a dispute carries a category, and removes its columns once none does', async () => {
+  it('TEST-UPG-08 the rollback of 0100 refuses while a dispute carries a category, and removes its columns once none does', async () => {
     await env.admin.query(`update app.dispute set category = 'OTHER' where id = $1`, [DISPUTE_LENDER]);
-    await expect(env.admin.query(sql(path.join(BATCH, '98.rollback.sql')))).rejects.toThrow(
+    await expect(env.admin.query(sql(path.join(BATCH, '100.rollback.sql')))).rejects.toThrow(
       /rollback refused/,
     );
     await env.admin.query('ROLLBACK');
     // Clear the categories the rehearsal set: the internal dispute's category is reset, and the partner dispute this file created is removed.
-    // A partner dispute cannot be updated to a NULL category (0100 applies to every row written), so it is removed, not edited.
+    // A partner dispute cannot be updated to a NULL category (0102 applies to every row written), so it is removed, not edited.
     await env.admin.query(`update app.dispute set category = null where id = $1`, [DISPUTE_LENDER]);
     await env.admin.query(`delete from app.dispute where id = 'dsp_new_partner_ok'`);
-    await env.admin.query(sql(path.join(BATCH, '98.rollback.sql')));
+    await env.admin.query(sql(path.join(BATCH, '100.rollback.sql')));
     const cols = await env.admin.query(
       `select table_name from information_schema.columns where table_schema = 'app'
           and (table_name, column_name) in (('dispute', 'category'), ('document_type', 'partner_upload'))`,
@@ -227,10 +227,10 @@ describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
     expect(cols.rows).toEqual([]);
     await env.admin.query(sql(path.join(MIGRATIONS, M98)));
     await env.admin.query(sql(path.join(MIGRATIONS, M100)));
-    expect((await verifyRows(env, '98.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
+    expect((await verifyRows(env, '100.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
   });
 
-  it('TEST-UPG-09 once a connector verification exists, the rollback of 0099 refuses, and the record and its link stay', async () => {
+  it('TEST-UPG-09 once a connector verification exists, the rollback of 0101 refuses, and the record and its link stay', async () => {
     const id = 'ver_01JZ0000000000000000000K1';
     await env.admin.query(
       `insert into app.verification (id, tenant_id, subject_type, subject_id, check_type, method, purpose, consent_record_id, result,
@@ -238,12 +238,12 @@ describe('upgrade to migrations 0098, 0099 and 0100 (TEST-UPG)', () => {
        values ($1, $2, 'CONNECTOR', $3, 'PAN', 'MANUAL', 'KYC', 'cns_upg_1', 'VERIFIED', '{}', 'evidence-ref', $4, now(), $3)`,
       [id, env.A.tenantId, CONNECTOR, env.A.userIds[0]],
     );
-    await expect(env.admin.query(sql(path.join(BATCH, '99.rollback.sql')))).rejects.toThrow(
+    await expect(env.admin.query(sql(path.join(BATCH, '101.rollback.sql')))).rejects.toThrow(
       /rollback refused/,
     );
     await env.admin.query('ROLLBACK');
     const still = await env.admin.query(`select connector_id from app.verification where id = $1`, [id]);
     expect(still.rows[0].connector_id).toBe(CONNECTOR);
-    expect((await verifyRows(env, '99.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
+    expect((await verifyRows(env, '101.verify.sql')).filter((r) => r.result === 'FAIL')).toEqual([]);
   });
 });

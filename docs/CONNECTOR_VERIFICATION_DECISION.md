@@ -1,6 +1,6 @@
 # Connector verification: the decision needed before connectors can be activated
 
-Status: **open. Compliance and product decision required.** Migrations 0099 and the application code are prepared and tested locally. Nothing is applied to hosted.
+Status: **open. Compliance and product decision required.** Migrations 0101 and the application code are prepared and tested locally. Nothing is applied to hosted.
 
 ## The defect
 
@@ -8,7 +8,7 @@ Connector activation (`POST /v1/connectors/:id/activation`) accepted any VERIFIE
 
 ## What is changed now
 
-- Migration `20261001000099_verification_connector_subject.sql` lets a verification record name the connector it is about. A CONNECTOR subject must name its own connector, and only a CONNECTOR subject may carry a connector. The link is a composite foreign key, so a record cannot point at another tenant's connector. Existing records are unchanged.
+- Migration `20261001000101_verification_connector_subject.sql` lets a verification record name the connector it is about. A CONNECTOR subject must name its own connector, and only a CONNECTOR subject may carry a connector. The link is a composite foreign key, so a record cannot point at another tenant's connector. Existing records are unchanged.
 - Activation now requires a VERIFIED record whose subject is that connector. A customer's record, another connector's record, and a REJECTED record each refuse the activation with a specific issue (`NOT_THIS_CONNECTOR`, `NOT_VERIFIED`). A missing record is refused as before.
 - A bank account given a `verificationId` must be a VERIFIED record of that connector. A bank account given no `verificationId` is unchanged.
 

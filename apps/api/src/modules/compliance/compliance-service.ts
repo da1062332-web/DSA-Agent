@@ -5,10 +5,12 @@ import {
   type DataSharingRecord,
   type ListDataSharingRecordsQuery,
   type ListDataSharingRecordsResponse,
+  type PermissionCode,
   type PrivacyStats,
   type RequestContext,
   type VerifyConsentInput,
   type VerifyConsentResult,
+  withLegacy,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiDeps } from '../types';
@@ -20,11 +22,12 @@ export class ComplianceService {
     if (!ctx || !ctx.principal) {
       throw AppError.of('UNAUTHENTICATED', 'Authentication required.');
     }
-    const hasAuditOrCustomer = ctx.principal.grants.some(
-      (g) => g.code === 'audit.read' || g.code === 'customer.read',
-    );
-    if (!hasAuditOrCustomer) {
-      this.deps.authz.requirePermission(ctx, 'audit.read');
+    // The privacy register is its own permission: reading the audit trail or customers (audit.read, customer.read) no longer opens it.
+    // privacy.manage (the legal-hold and retention role) still does. Migration M-098 gave privacy.read to every role that held
+    // audit.read or customer.read, so no current holder loses access.
+    const allowed: PermissionCode[] = withLegacy('privacy.read');
+    if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
+      this.deps.authz.requirePermission(ctx, 'privacy.read');
     }
   }
 

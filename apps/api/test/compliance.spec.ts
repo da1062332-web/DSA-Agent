@@ -1,5 +1,5 @@
 // apps/api/test/compliance.spec.ts — Module 29: Privacy and Consent (MOD-PRV) Test Suite
-import type { RequestContext, Tx, TxRunner } from '@dsa/contracts';
+import type { PermissionCode, RequestContext, Tx, TxRunner } from '@dsa/contracts';
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +18,8 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
     grants: [
       { code: 'audit.read', scope: 'TENANT', branchIds: [] },
       { code: 'customer.read', scope: 'TENANT', branchIds: [] },
+      // Migration M-098 gives privacy.read to every role that held audit.read or customer.read.
+      { code: 'privacy.read', scope: 'TENANT', branchIds: [] },
     ],
   });
 
@@ -33,7 +35,10 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
 
   const foreignTenantAuditor = testPrincipal({
     tenantId: tenantB,
-    grants: [{ code: 'audit.read', scope: 'TENANT', branchIds: [] }],
+    grants: [
+      { code: 'audit.read', scope: 'TENANT', branchIds: [] },
+      { code: 'privacy.read', scope: 'TENANT', branchIds: [] },
+    ],
   });
 
   const dummyTxRunner: TxRunner = {
@@ -169,6 +174,33 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
       app.use(errorHandler());
       return app;
     }
+
+    it('TEST-PRV-READ-01 the privacy register needs privacy.read: customer.read or audit.read alone no longer opens it', async () => {
+      const only = (...codes: PermissionCode[]) =>
+        testPrincipal({
+          tenantId: tenantA,
+          grants: codes.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })),
+        });
+      for (const route of [
+        '/v1/compliance/data-sharing-records',
+        '/v1/compliance/stats',
+        '/v1/privacy/stats',
+      ]) {
+        for (const refused of [
+          only('customer.read'),
+          only('audit.read'),
+          only('customer.read', 'audit.read'),
+        ]) {
+          const res = await request(makeApp(refused)).get(route);
+          expect(res.status, `${route} for ${refused.grants.map((g) => g.code).join('+')}`).toBe(403);
+        }
+        // privacy.read opens it, and so does privacy.manage (the legal-hold and retention role).
+        for (const allowed of [only('privacy.read'), only('privacy.manage')]) {
+          const res = await request(makeApp(allowed)).get(route);
+          expect(res.status, `${route} for ${allowed.grants.map((g) => g.code).join('+')}`).toBe(200);
+        }
+      }
+    });
 
     it('rejects unprivileged user accessing data sharing inventory with 403', async () => {
       const app = makeApp(unprivilegedUser);

@@ -86,7 +86,7 @@ export function SettingsOverviewPage() {
   const isPlatformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
 
   const categories: SettingsCategory[] = useMemo(
-    () => visibleSettings(isAdmin, can, isPlatformRealm),
+    () => visibleSettings(isAdmin, can, isPlatformRealm, me.data?.disabledModules),
     [isAdmin, me.data, isPlatformRealm],
   );
 
