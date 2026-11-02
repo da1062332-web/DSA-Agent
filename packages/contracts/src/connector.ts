@@ -381,3 +381,54 @@ export interface AttributionDisputeResource {
   updatedAt: string;
   updatedBy: string;
 }
+
+// ==========================================
+// Connector workspace reads: the dashboard summary, a connector's referrals and its activity (internal, /v1).
+// ==========================================
+export const ConnectorSummaryQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type ConnectorSummaryQuery = z.infer<typeof ConnectorSummaryQuerySchema>;
+
+export const ConnectorActivityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ConnectorActivityQuery = z.infer<typeof ConnectorActivityQuerySchema>;
+
+/**
+ * The dashboard counts. A figure the caller may not see is null, not zero: attribution disputes need connector.dispute_resolve,
+ * partner disputes and earnings need a finance permission. Money is a decimal string in rupees.
+ */
+export interface ConnectorSummaryResource {
+  range: { from: string | null; to: string | null };
+  connectors: { total: number; byStatus: Record<ConnectorStatus, number> };
+  referrals: { total: number; pending: number; converted: number };
+  disputes: { attributionOpen: number | null; partnerOpen: number | null };
+  earnings: { currency: 'INR'; expected: string; approved: string; paid: string; held: string } | null;
+}
+
+/** A referral attributed to the connector, as staff see it. The mobile number is never returned. */
+export interface ConnectorReferralResource {
+  id: string;
+  customerName: string;
+  productCategory: string;
+  state: string;
+  duplicateFlag: string;
+  createdAt: string;
+  updatedAt: string;
+  applicationId: string | null;
+  applicationStatus: string | null;
+}
+
+/** One line of a connector's activity. The payload of the event is not returned, only what happened, by whom, and why. */
+export interface ConnectorActivityResource {
+  id: string;
+  occurredAt: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  actorId: string;
+  actorName: string | null;
+  reason: string | null;
+}

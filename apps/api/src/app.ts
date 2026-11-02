@@ -16,7 +16,10 @@ import swaggerUi from 'swagger-ui-express';
 import { apiModules } from './modules';
 import { createPublicMessagingRouter } from './modules/crm/messaging/router';
 import { createPublicDocumentSharingRouter } from './modules/origination/document-sharing/router';
-import { createPublicDocumentRouter } from './modules/origination/applications/documents';
+import {
+  createPartnerUploadRouter,
+  createPublicDocumentRouter,
+} from './modules/origination/applications/documents';
 import { createPublicApplyRouter } from './modules/crm/leads/lead-extras';
 import { createPublicAuthRouter } from './http/public-auth-router';
 import type { TestAuthConfig } from './test-auth';
@@ -158,6 +161,7 @@ export function createApp(opts: CreateAppOptions): Express {
   portalV1.use(rateLimit());
   portalV1.use(express.json({ limit: '1mb' }));
   portalV1.use(createConnectorPortalRouter(opts.deps));
+  portalV1.use(createPartnerUploadRouter(opts.deps));
   portalV1.use(notFound);
   app.use('/portal/v1', portalV1);
 

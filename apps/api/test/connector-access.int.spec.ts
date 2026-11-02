@@ -386,7 +386,12 @@ describe('connector portal login on the internal and portal APIs (TEST-ACC-PORTA
     const res = await request(portal)
       .post('/portal/v1/disputes')
       .set('Idempotency-Key', key('dispute'))
-      .send({ subjectType: 'STATEMENT_LINE', subjectId: PAYABLE_B, reason: 'Synthetic dispute reason' });
+      .send({
+        subjectType: 'STATEMENT_LINE',
+        subjectId: PAYABLE_B,
+        category: 'COMMISSION_CALCULATION',
+        reason: 'Synthetic dispute reason',
+      });
     expect(res.status).toBe(404);
     const written = await env.admin.query(
       `SELECT count(*)::int AS n FROM app.dispute WHERE subject_id = $1`,

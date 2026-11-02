@@ -92,7 +92,14 @@ beforeAll(async () => {
   admin = await connectTo('postgres');
   await admin.query('CREATE DATABASE hosted_like');
   const base = await connectTo('hosted_like');
-  const pending = new Set(ORDER.map(migration));
+  // 0098 alters document_type (0071), which this hosted-like base does not have at that point, and 0100 needs 0098's dispute category. Neither
+  // is part of this batch; their rehearsals are migration-0098.int.spec.ts and migration-upgrade-0098-0100.int.spec.ts. 0099 needs only
+  // tables this base has, so it is applied here as before.
+  const pending = new Set([
+    ...ORDER.map(migration),
+    migration('98'),
+    files.find((f) => f.startsWith('20261001000100_'))!,
+  ]);
   const fixture = (name: string) => readFileSync(path.join(ROOT, 'tests/guard/fixtures', name), 'utf8');
   for (const f of files.filter((x) => !pending.has(x))) {
     await base.query(readFileSync(path.join(DIR, f), 'utf8'));

@@ -19,7 +19,12 @@ import { idempotencyKey, requireCtx } from '../../http/request';
 import { computeMobileHash, normalizeMobile } from '../crm/leads/normalizer';
 import { createLeadService } from '../crm/leads/router';
 import { CreateLeadInputSchema } from '../crm/leads/types';
+import { partnerLeadStatus, partnerTimeline, PARTNER_LEAD_STATUS } from '../partner-view/partner-progress';
 import type { ApiDeps } from '../types';
+
+// Shown when a referral duplicates an open enquiry. It names no customer, lead or connector.
+const DUPLICATE_REFERRAL =
+  'This referral cannot be added because an open enquiry for this customer already exists. Contact your relationship manager if you need help.';
 
 type Row = Record<string, unknown>;
 const OTP_TTL_MS = 10 * 60_000;
@@ -63,9 +68,15 @@ export const PortalDispute = z
   .object({
     subjectType: z.enum(['STATEMENT_LINE', 'PAYOUT']),
     subjectId: z.string().min(3).max(64),
+    category: z.enum(['COMMISSION_CALCULATION', 'PAYOUT', 'OTHER']),
     reason: Reason,
   })
   .strict();
+// The categories a partner may choose for each kind of item. Referral categories wait for a decision (docs/CONNECTOR_PHASE1_CONTRACT.md).
+const DISPUTE_CATEGORIES_FOR: Record<'STATEMENT_LINE' | 'PAYOUT', readonly string[]> = {
+  STATEMENT_LINE: ['COMMISSION_CALCULATION', 'OTHER'],
+  PAYOUT: ['PAYOUT', 'OTHER'],
+};
 
 interface Me {
   userId: string;
@@ -93,17 +104,8 @@ async function me(tx: Tx, ctx: RequestContext): Promise<Me> {
 const otpHash = (id: string, code: string) =>
   crypto.createHash('sha256').update(`${id}:${code}`).digest('hex');
 
-const COARSE: Record<string, string> = {
-  NEW: 'RECEIVED',
-  CONTACT_ATTEMPTED: 'IN_PROGRESS',
-  IN_PROGRESS: 'IN_PROGRESS',
-  QUALIFIED: 'IN_PROGRESS',
-  CONVERTED: 'APPLICATION',
-  DISQUALIFIED: 'CLOSED',
-  NOT_CONTACTABLE: 'CLOSED',
-  MERGED: 'CLOSED',
-  ARCHIVED: 'CLOSED',
-};
+/** The partner status of each lead state. Defined once in partner-progress.ts, and kept under this name for the tests that read it. */
+export const COARSE: Record<string, string> = PARTNER_LEAD_STATUS;
 
 const maskName = (name: string) =>
   name
@@ -121,18 +123,45 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
     const data = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const m = await me(tx, ctx);
       const r = await sql<Row>`
-        select id, full_name, mobile_e164, product_category, state, created_at from lead
+        select id, full_name, mobile_e164, product_category, state, created_at, updated_at from lead
          where connector_id = ${m.connectorId} order by created_at desc, id desc limit 200`.execute(tx);
       return r.rows.map((l) => ({
         id: String(l.id),
         name: maskName(String(l.full_name)),
         mobileMasked: maskMobile(String(l.mobile_e164)),
         productCategory: String(l.product_category),
-        status: COARSE[String(l.state)] ?? 'IN_PROGRESS',
+        status: partnerLeadStatus(String(l.state)),
         submittedAt: new Date(String(l.created_at)).toISOString(),
+        lastUpdatedAt: new Date(String(l.updated_at)).toISOString(),
       }));
     });
     res.json({ data, meta: { nextCursor: null, limit: 200 } });
+  });
+
+  // API-CPT-001b: one of my referrals, with the progress a partner may see. A referral that is not mine is not found.
+  router.get('/referrals/:id', async (req, res) => {
+    const ctx = requireCtx(req);
+    const id = String(req.params.id);
+    const data = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const m = await me(tx, ctx);
+      const r = await sql<Row>`
+        select id, full_name, mobile_e164, product_category, state, created_at, updated_at from lead
+         where id = ${id} and connector_id = ${m.connectorId}`.execute(tx);
+      const l = r.rows[0];
+      if (!l) throw AppError.of('NOT_FOUND', 'Referral not found.');
+      const status = partnerLeadStatus(String(l.state));
+      return {
+        id: String(l.id),
+        name: maskName(String(l.full_name)),
+        mobileMasked: maskMobile(String(l.mobile_e164)),
+        productCategory: String(l.product_category),
+        status,
+        steps: partnerTimeline(status),
+        submittedAt: new Date(String(l.created_at)).toISOString(),
+        lastUpdatedAt: new Date(String(l.updated_at)).toISOString(),
+      };
+    });
+    res.json(data);
   });
 
   // API-CPT-003
@@ -244,6 +273,15 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
             },
           });
           const created = await createLeadService(deps).createLead(tx, svc, lead, `cpt_${key.slice(0, 100)}`);
+          // An open enquiry for the same customer in this branch (EXACT), or one already attributed to another connector
+          // (ATTRIBUTION_CONFLICT), is refused. Throwing rolls back the lead and leaves the consent code unused. A match in another
+          // branch (POSSIBLE) is created and flagged for internal review.
+          if (
+            created.resource.duplicateFlag === 'EXACT' ||
+            created.resource.duplicateFlag === 'ATTRIBUTION_CONFLICT'
+          ) {
+            throw AppError.of('INVALID_STATE', DUPLICATE_REFERRAL, [{ issue: 'DUPLICATE_OPEN_ENQUIRY' }]);
+          }
           await sql`update referral_consent_otp set used_by_lead = ${created.resource.id} where id = ${String(otp.id)}`.execute(
             tx,
           );
@@ -336,11 +374,14 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
            where p.id = any(${input.payableIds}::text[]) and p.connector_id = ${m.connectorId}
              and p.state in ('ELIGIBLE', 'APPROVED')
              and not exists (select 1 from payout_line l where l.payable_id = p.id and l.status = 'INCLUDED')
+             and not exists (select 1 from dispute d where d.subject_type = 'STATEMENT_LINE' and d.subject_id = p.id
+                                                       and d.status in ('OPEN', 'UNDER_REVIEW'))
            for update of p`.execute(tx);
           if (lines.rows.length !== new Set(input.payableIds).size) {
+            // A line under dispute is refused here, as a line already in a payout is: a disputed amount is not paid until it is resolved.
             throw AppError.of(
               'VALIDATION_ERROR',
-              'Every line must be yours, payable, and not already in a payout.',
+              'Every line must be yours, payable, not under dispute, and not already in a payout.',
               [{ field: 'payableIds', issue: 'NOT_PAYABLE' }],
             );
           }
@@ -399,6 +440,11 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
                   tx,
                 );
           if (!owned.rows.length) throw AppError.of('NOT_FOUND', 'Statement line or payout not found.');
+          if (!DISPUTE_CATEGORIES_FOR[input.subjectType].includes(input.category)) {
+            throw AppError.of('VALIDATION_ERROR', 'That category does not fit this kind of item.', [
+              { field: 'category', issue: 'NOT_ALLOWED_FOR_SUBJECT' },
+            ]);
+          }
           const open = await sql`
           select 1 from dispute where subject_type = ${input.subjectType} and subject_id = ${input.subjectId}
                                   and status in ('OPEN', 'UNDER_REVIEW')`.execute(tx);
@@ -406,19 +452,30 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
             throw AppError.of('INVALID_STATE', 'There is already an open dispute on this item.');
           const id = deps.ids.next('dsp');
           await sql`
-          insert into dispute (id, tenant_id, party_type, party_id, subject_type, subject_id, reason, created_by, updated_by)
+          insert into dispute (id, tenant_id, party_type, party_id, subject_type, subject_id, category, reason, created_by, updated_by)
           values (${id}, ${ctx.principal.tenantId}, 'CONNECTOR', ${m.connectorId}, ${input.subjectType}, ${input.subjectId},
-                  ${input.reason}, ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
+                  ${input.category}, ${input.reason}, ${ctx.principal.id}, ${ctx.principal.id})`.execute(tx);
           await deps.audit.record(tx, ctx, {
             action: 'dispute.raised',
             entityType: 'DISPUTE',
             entityId: id,
-            after: { subjectType: input.subjectType, subjectId: input.subjectId, origin: 'CONNECTOR' },
+            after: {
+              subjectType: input.subjectType,
+              subjectId: input.subjectId,
+              category: input.category,
+              origin: 'CONNECTOR',
+            },
             permissionUsed: 'finance.dispute',
           });
           return {
             status: 201,
-            body: { id, status: 'OPEN', subjectType: input.subjectType, subjectId: input.subjectId },
+            body: {
+              id,
+              status: 'OPEN',
+              subjectType: input.subjectType,
+              subjectId: input.subjectId,
+              category: input.category,
+            },
             resourceRef: id,
           };
         },
@@ -426,6 +483,28 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
     );
     if (result.replayed) res.set('Idempotent-Replayed', 'true');
     res.status(result.status).json(result.body);
+  });
+
+  // My disputes. The resolution is an internal decision and is not returned.
+  router.get('/disputes', async (req, res) => {
+    const ctx = requireCtx(req);
+    const data = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const m = await me(tx, ctx);
+      const r = await sql<Row>`
+        select id, subject_type, subject_id, category, status, reason, created_at from dispute
+         where party_type = 'CONNECTOR' and party_id = ${m.connectorId}
+         order by created_at desc, id desc limit 200`.execute(tx);
+      return r.rows.map((d) => ({
+        id: String(d.id),
+        subjectType: String(d.subject_type),
+        subjectId: String(d.subject_id),
+        category: d.category === null ? null : String(d.category),
+        status: String(d.status),
+        reason: String(d.reason),
+        raisedAt: new Date(String(d.created_at)).toISOString(),
+      }));
+    });
+    res.json({ data, meta: { nextCursor: null, limit: 200 } });
   });
 
   return router;

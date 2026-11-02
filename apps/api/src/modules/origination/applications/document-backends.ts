@@ -189,6 +189,19 @@ export function clamdInstream(host: string, port: number, bytes: Buffer, timeout
   });
 }
 
+/** Sends PING to clamd and returns its one-line answer, "PONG" while the daemon is running. */
+export function clamdPing(host: string, port: number, timeoutMs: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect({ host, port });
+    const chunks: Buffer[] = [];
+    socket.setTimeout(timeoutMs, () => socket.destroy(new Error('clamd timed out')));
+    socket.on('error', reject);
+    socket.on('data', (d) => chunks.push(d));
+    socket.on('close', () => resolve(Buffer.concat(chunks).toString('utf8').replace(/\0/g, '').trim()));
+    socket.on('connect', () => socket.write('zPING\0'));
+  });
+}
+
 export class ClamAvFileScanner implements FileScannerPort {
   constructor(
     private readonly host: string,
@@ -196,6 +209,15 @@ export class ClamAvFileScanner implements FileScannerPort {
     private readonly signatureCheck: FileScannerPort = new MagicByteFileScanner(),
     private readonly timeoutMs = 30_000,
   ) {}
+
+  /** True when clamd answers PING. A scanner that cannot answer is not ready, so partner uploads are refused. */
+  async healthy(): Promise<boolean> {
+    try {
+      return (await clamdPing(this.host, this.port, 5_000)) === 'PONG';
+    } catch {
+      return false;
+    }
+  }
 
   async scan(buffer: Buffer, filename: string, mimeType: string): Promise<FileScanResult> {
     const signature = await this.signatureCheck.scan(buffer, filename, mimeType);

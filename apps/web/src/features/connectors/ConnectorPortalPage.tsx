@@ -3,12 +3,14 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   MenuItem,
   Stack,
   Tab,
@@ -20,39 +22,38 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../api/client';
 import { useToast } from '../../shell/toast';
 import { useMe } from '../../api/useMe';
-import {
-  DataTable,
-  DetailCard,
-  PageHeader,
-  StatCard,
-  StatCardGrid,
-  StatusBadge,
-} from '../../ui';
+import { DataTable, DetailCard, PageHeader, StatCard, StatCardGrid, StatusBadge } from '../../ui';
+import { PartnerReferralDetail } from './PartnerReferralDetail';
 import type { ColumnDef } from '../../ui';
-
-interface Referral {
-  id: string;
-  fullName: string;
-  mobileMasked: string;
-  productCategory: string;
-  status: string;
-  indicativeAmount?: { amount: string; currency: string };
-  createdAt: string;
-}
-
-interface Statement {
-  id: string;
-  calculationId: string;
-  amount: number;
-  shareRate: number;
-  state: string;
-  createdAt: string;
-}
+import {
+  DISPUTE_CATEGORIES,
+  disputeCategoryLabel,
+  disputeReasonError,
+  payableLines,
+  referralStatusLabel,
+  sumMoney,
+  type PortalDispute,
+  type PortalReferral,
+  type PortalStatementLine,
+  type PortalStatements,
+} from './portal-model';
 
 const STATEMENT_TONE: Record<string, 'success' | 'info' | 'neutral'> = {
   PAID: 'success',
   ELIGIBLE: 'info',
 };
+
+const DISPUTE_STATUS_TONE: Record<string, 'success' | 'info' | 'neutral'> = {
+  RESOLVED: 'success',
+  OPEN: 'info',
+  UNDER_REVIEW: 'info',
+  REJECTED: 'neutral',
+  WITHDRAWN: 'neutral',
+};
+
+const money = (rupees: number) => `₹${rupees.toLocaleString('en-IN')}`;
+const errorText = (err: unknown) =>
+  err instanceof Error ? err.message : 'Something went wrong. Please try again.';
 
 export function ConnectorPortalPage() {
   const queryClient = useQueryClient();
@@ -70,28 +71,55 @@ export function ConnectorPortalPage() {
   const [otpId, setOtpId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Payout dialog state
+  // Payout dialog state: the statement lines the request covers
   const [payoutOpen, setPayoutOpen] = useState(false);
-  const [payoutAmount, setPayoutAmount] = useState('10000');
-  const [payoutNotes, setPayoutNotes] = useState('');
+  const [payoutSelection, setPayoutSelection] = useState<string[]>([]);
+
+  // Dispute dialog state: the statement line being disputed
+  const [disputeLine, setDisputeLine] = useState<PortalStatementLine | null>(null);
+  const [disputeCategory, setDisputeCategory] = useState(DISPUTE_CATEGORIES.STATEMENT_LINE[0]!.value);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeTouched, setDisputeTouched] = useState(false);
+
+  // The referral whose progress and documents are open, and whether a payout request is being sent (so it cannot be sent twice).
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  const [payoutBusy, setPayoutBusy] = useState(false);
 
   const me = useMe();
   const isConnector = me.data?.userType === 'CONNECTOR';
 
-  const { data: referralsData, isLoading: loadingReferrals } = useQuery<{ data: Referral[] }>({
+  const referralsQuery = useQuery<{ data: PortalReferral[] }>({
     queryKey: ['/portal/v1/referrals'],
-    queryFn: () => apiFetch<{ data: Referral[] }>('/portal/v1/referrals').catch(() => ({ data: [] })),
+    queryFn: () => apiFetch<{ data: PortalReferral[] }>('/portal/v1/referrals'),
     enabled: isConnector,
   });
 
-  const { data: statementsData, isLoading: loadingStatements } = useQuery<{ data: Statement[] }>({
+  const statementsQuery = useQuery<PortalStatements>({
     queryKey: ['/portal/v1/statements'],
-    queryFn: () => apiFetch<{ data: Statement[] }>('/portal/v1/statements').catch(() => ({ data: [] })),
+    queryFn: () => apiFetch<PortalStatements>('/portal/v1/statements'),
     enabled: isConnector,
   });
 
-  const referrals = referralsData?.data ?? [];
-  const statements = statementsData?.data ?? [];
+  const disputesQuery = useQuery<{ data: PortalDispute[] }>({
+    queryKey: ['/portal/v1/disputes'],
+    queryFn: () => apiFetch<{ data: PortalDispute[] }>('/portal/v1/disputes'),
+    enabled: isConnector,
+  });
+
+  const referrals = referralsQuery.data?.data ?? [];
+  const statements = statementsQuery.data;
+  const statementLines = statements?.lines ?? [];
+  const disputes = disputesQuery.data?.data ?? [];
+  const eligibleLines = payableLines(statementLines);
+  const eligibleAmount = sumMoney(eligibleLines.map((l) => l.amount));
+  const accumulatedAmount = statements
+    ? sumMoney([
+        statements.totals.expected,
+        statements.totals.approved,
+        statements.totals.paid,
+        statements.totals.held,
+      ])
+    : 0;
 
   const handleSendOtp = async () => {
     if (!refMobile || refMobile.length < 10) {
@@ -100,21 +128,18 @@ export function ConnectorPortalPage() {
     }
     try {
       setSubmitting(true);
-      const res = await apiFetch<{ otpId: string }>('/portal/v1/referrals/consent-otp', {
+      const res = await apiFetch<{ otpId: string; status: string }>('/portal/v1/referrals/consent-otp', {
         method: 'POST',
         body: {
           action: 'SEND',
           mobile: refMobile.startsWith('+91') ? refMobile : `+91${refMobile}`,
         },
       });
-      setOtpId(res.otpId || 'otp_mock_id');
+      setOtpId(res.otpId);
       setOtpSent(true);
-      toast.success('Consent verification OTP sent to customer mobile.');
-    } catch {
-      // Mock OTP success for testing if endpoint requires live SMS gateway
-      setOtpId(`otp_${Date.now()}`);
-      setOtpSent(true);
-      toast.info('Consent verification OTP sent (Testing Mode).');
+      toast.success('Consent verification OTP sent to the customer’s mobile.');
+    } catch (err) {
+      toast.error(errorText(err));
     } finally {
       setSubmitting(false);
     }
@@ -123,11 +148,27 @@ export function ConnectorPortalPage() {
   const handleSubmitReferral = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode) {
-      toast.error('Please enter customer consent verification OTP.');
+      toast.error('Please enter the customer’s consent verification OTP.');
       return;
     }
     try {
       setSubmitting(true);
+      // The code is checked first. A referral needs a verified consent code for the same mobile.
+      const verified = await apiFetch<{ status: string; attemptsLeft?: number }>(
+        '/portal/v1/referrals/consent-otp',
+        {
+          method: 'POST',
+          body: { action: 'VERIFY', otpId, code: otpCode },
+        },
+      );
+      if (verified.status !== 'VERIFIED') {
+        toast.error(
+          verified.status === 'INCORRECT'
+            ? `The code is incorrect. ${verified.attemptsLeft ?? 0} attempts left.`
+            : 'This code can no longer be used. Send a new one.',
+        );
+        return;
+      }
       await apiFetch('/portal/v1/referrals', {
         method: 'POST',
         body: {
@@ -138,93 +179,176 @@ export function ConnectorPortalPage() {
           consentOtpId: otpId,
         },
       });
-      toast.success('Lead referral successfully submitted with consent!');
+      toast.success('Referral submitted with the customer’s consent.');
       setNewReferralOpen(false);
       setRefName('');
       setRefMobile('');
       setOtpSent(false);
       setOtpCode('');
+      setOtpId('');
       queryClient.invalidateQueries({ queryKey: ['/portal/v1/referrals'] });
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to submit referral');
+    } catch (err) {
+      toast.error(errorText(err));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const openPayout = () => {
+    setPayoutSelection(eligibleLines.map((l) => l.id));
+    setPayoutOpen(true);
+  };
+
   const handleRequestPayout = async () => {
+    if (payoutSelection.length === 0) {
+      toast.error('Select at least one line for the payout.');
+      return;
+    }
+    if (payoutBusy) return;
+    setPayoutBusy(true);
     try {
-      await apiFetch('/portal/v1/payout-requests', {
+      // The API may ask for a second factor first; the client handles that and retries. The success message shows the status it returned.
+      const res = await apiFetch<{ id: string; status: string }>('/portal/v1/payout-requests', {
         method: 'POST',
-        body: {
-          amount: Number(payoutAmount),
-          notes: payoutNotes,
-        },
+        body: { payableIds: payoutSelection },
       });
-      toast.success('Payout request successfully submitted for review.');
+      toast.success(
+        `Payout request ${res.id} is ${res.status.toLowerCase()}. It is reviewed before any payment is made.`,
+      );
       setPayoutOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/portal/v1/statements'] });
-    } catch (err: any) {
-      toast.info(err.message || 'Payout request submitted.');
-      setPayoutOpen(false);
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setPayoutBusy(false);
     }
   };
 
-  const totalEarned = statements.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const eligibleAmount = statements
-    .filter((s) => s.state === 'ELIGIBLE')
-    .reduce((sum, s) => sum + (s.amount || 0), 0);
+  const openDispute = (line: PortalStatementLine) => {
+    setDisputeLine(line);
+    setDisputeCategory(DISPUTE_CATEGORIES.STATEMENT_LINE[0]!.value);
+    setDisputeReason('');
+    setDisputeTouched(false);
+  };
 
-  const referralColumns: ColumnDef<Referral>[] = [
-    { id: 'name', header: 'Applicant Name', render: (ref) => <strong>{ref.fullName}</strong> },
+  const reasonError = disputeReasonError(disputeReason);
+
+  const handleRaiseDispute = async () => {
+    setDisputeTouched(true);
+    if (!disputeLine || reasonError) return;
+    try {
+      await apiFetch('/portal/v1/disputes', {
+        method: 'POST',
+        body: {
+          subjectType: 'STATEMENT_LINE',
+          subjectId: disputeLine.id,
+          category: disputeCategory,
+          reason: disputeReason.trim(),
+        },
+      });
+      toast.success('Dispute raised. Our team will review it.');
+      setDisputeLine(null);
+      queryClient.invalidateQueries({ queryKey: ['/portal/v1/disputes'] });
+      queryClient.invalidateQueries({ queryKey: ['/portal/v1/statements'] });
+    } catch (err) {
+      toast.error(errorText(err));
+    }
+  };
+
+  const referralColumns: ColumnDef<PortalReferral>[] = [
+    { id: 'name', header: 'Applicant Name', render: (ref) => <strong>{ref.name}</strong> },
     { id: 'mobile', header: 'Mobile (Masked)', render: (ref) => ref.mobileMasked || 'XXXXXX' },
-    { id: 'product', header: 'Product', render: (ref) => <Chip label={ref.productCategory} size="small" variant="outlined" /> },
     {
-      id: 'amount',
-      header: 'Indicative Amount',
-      align: 'right',
-      render: (ref) => `₹${Number(ref.indicativeAmount?.amount || 0).toLocaleString('en-IN')}`,
+      id: 'product',
+      header: 'Product',
+      render: (ref) => <Chip label={ref.productCategory} size="small" variant="outlined" />,
     },
     {
       id: 'status',
       header: 'Status',
       render: (ref) => (
         <StatusBadge
-          status={ref.status === 'CONVERTED' ? 'success' : 'neutral'}
-          label={ref.status || 'SUBMITTED'}
+          status={ref.status === 'APPLICATION' ? 'success' : ref.status === 'CLOSED' ? 'neutral' : 'info'}
+          label={referralStatusLabel(ref.status)}
         />
       ),
     },
-    { id: 'date', header: 'Referred Date', render: (ref) => new Date(ref.createdAt || Date.now()).toLocaleDateString() },
+    {
+      id: 'date',
+      header: 'Submitted',
+      render: (ref) => new Date(ref.submittedAt).toLocaleDateString('en-IN'),
+    },
   ];
 
-  const statementColumns: ColumnDef<Statement>[] = [
-    { id: 'rate', header: 'Share Rate', align: 'right', render: (s) => `${(s.shareRate * 100).toFixed(1)}%` },
+  const statementColumns: ColumnDef<PortalStatementLine>[] = [
     {
       id: 'payable',
       header: 'Payable Amount',
       align: 'right',
-      render: (s) => <strong>₹{s.amount?.toLocaleString('en-IN')}</strong>,
+      render: (s) => <strong>{money(Number(s.amount.amount))}</strong>,
     },
     {
       id: 'state',
       header: 'State',
       render: (s) => <StatusBadge status={STATEMENT_TONE[s.state] ?? 'neutral'} label={s.state} />,
     },
-    { id: 'date', header: 'Date', render: (s) => new Date(s.createdAt || Date.now()).toLocaleDateString() },
+    {
+      id: 'disputed',
+      header: 'Dispute',
+      render: (s) => (s.disputed ? <Chip label="Under dispute" size="small" color="warning" /> : 'None'),
+    },
+    { id: 'date', header: 'Date', render: (s) => new Date(s.createdAt).toLocaleDateString('en-IN') },
+    {
+      id: 'action',
+      header: '',
+      align: 'right',
+      render: (s) =>
+        s.disputed ? null : (
+          <Button size="small" onClick={() => openDispute(s)} data-testid={`cpt.dispute.${s.id}`}>
+            Dispute
+          </Button>
+        ),
+    },
   ];
+
+  const disputeColumns: ColumnDef<PortalDispute>[] = [
+    { id: 'raised', header: 'Raised', render: (d) => new Date(d.raisedAt).toLocaleDateString('en-IN') },
+    {
+      id: 'subject',
+      header: 'Item',
+      render: (d) => (d.subjectType === 'PAYOUT' ? 'Payout' : 'Statement line'),
+    },
+    { id: 'category', header: 'Category', render: (d) => disputeCategoryLabel(d.category) },
+    {
+      id: 'status',
+      header: 'Status',
+      render: (d) => <StatusBadge status={DISPUTE_STATUS_TONE[d.status] ?? 'neutral'} label={d.status} />,
+    },
+    { id: 'reason', header: 'Your description', render: (d) => d.reason },
+  ];
+
+  const tabTitle = ['My Referrals', 'Commission Statements', 'Disputes'][activeTab];
+  const tabSubtitle = [
+    'Leads you have referred, with their consent-verified status.',
+    'Payable commission statements and their state.',
+    'Disputes you have raised on statement lines.',
+  ][activeTab];
 
   return (
     <Box sx={{ p: 3 }}>
       <PageHeader
         title="Connector Partner Portal"
-        subtitle="Manage referred leads, monitor commission payouts, and view product rate cards."
+        subtitle="Manage referred leads, monitor commission payouts, and raise disputes on statements."
         actions={
           <Stack direction="row" spacing={2}>
-            <Button variant="outlined" onClick={() => setPayoutOpen(true)} data-testid="cpt.request-payout">
+            <Button variant="outlined" onClick={openPayout} data-testid="cpt.request-payout">
               Request Payout
             </Button>
-            <Button variant="contained" onClick={() => setNewReferralOpen(true)} data-testid="cpt.submit-referral">
+            <Button
+              variant="contained"
+              onClick={() => setNewReferralOpen(true)}
+              data-testid="cpt.submit-referral"
+            >
               Submit Referral
             </Button>
           </Stack>
@@ -233,8 +357,21 @@ export function ConnectorPortalPage() {
 
       {!isConnector && !me.isLoading && (
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-          <strong>Partner Portal Preview:</strong> You are signed in as internal staff ({me.data?.displayName || me.data?.email || 'Staff'}).
-          This self-service portal is dedicated to external Connector partners (Sub-DSAs) to submit customer referrals with OTP consent, track payouts, and inspect commission statements.
+          <strong>Partner Portal Preview:</strong> You are signed in as internal staff (
+          {me.data?.displayName || me.data?.email || 'Staff'}). This self-service portal is dedicated to
+          external Connector partners (Sub-DSAs) to submit customer referrals with OTP consent, track payouts,
+          and inspect commission statements.
+        </Alert>
+      )}
+
+      {referralsQuery.isError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Your referrals could not be loaded. {errorText(referralsQuery.error)}
+        </Alert>
+      )}
+      {statementsQuery.isError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Your statements could not be loaded. {errorText(statementsQuery.error)}
         </Alert>
       )}
 
@@ -248,41 +385,36 @@ export function ConnectorPortalPage() {
         />
         <StatCard
           title="ACCUMULATED COMMISSION"
-          value={`₹${totalEarned.toLocaleString('en-IN')}`}
+          value={money(accumulatedAmount)}
           format="raw"
           status="success"
-          subtext="Lifetime earnings from disbursements"
+          subtext="All payable commission on your statements"
         />
         <StatCard
           title="ELIGIBLE FOR PAYOUT"
-          value={`₹${eligibleAmount.toLocaleString('en-IN')}`}
+          value={money(eligibleAmount)}
           format="raw"
           status="warning"
-          subtext="Ready for withdrawal batch processing"
+          subtext="Eligible or approved lines not under dispute"
         />
       </StatCardGrid>
 
-      <DetailCard
-        title={activeTab === 0 ? 'My Referrals' : 'Commission Statements'}
-        subtitle={
-          activeTab === 0
-            ? 'Leads you have referred, with their consent-verified status.'
-            : 'Payable commission statements and their state.'
-        }
-      >
+      <DetailCard title={tabTitle} subtitle={tabSubtitle}>
         <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)} sx={{ mb: 2 }}>
           <Tab label="My Referrals" />
           <Tab label="Commission Statements" />
+          <Tab label="Disputes" />
         </Tabs>
 
         {activeTab === 0 && (
-          <DataTable<Referral>
+          <DataTable<PortalReferral>
             dataTestId="cpt.table.referrals"
+            onRowClick={(ref) => setDetailLeadId(ref.id)}
             data={referrals}
             columns={referralColumns}
             keyExtractor={(ref) => ref.id}
             emptyMessage={
-              loadingReferrals
+              referralsQuery.isLoading
                 ? 'Loading referrals...'
                 : 'No referrals submitted yet. Click "Submit Referral" to refer a borrower.'
             }
@@ -290,12 +422,26 @@ export function ConnectorPortalPage() {
         )}
 
         {activeTab === 1 && (
-          <DataTable<Statement>
+          <DataTable<PortalStatementLine>
             dataTestId="cpt.table.statements"
-            data={statements}
+            data={statementLines}
             columns={statementColumns}
             keyExtractor={(s) => s.id}
-            emptyMessage={loadingStatements ? 'Loading statements...' : 'No payable statements recorded yet.'}
+            emptyMessage={
+              statementsQuery.isLoading ? 'Loading statements...' : 'No payable statements recorded yet.'
+            }
+          />
+        )}
+
+        {activeTab === 2 && (
+          <DataTable<PortalDispute>
+            dataTestId="cpt.table.disputes"
+            data={disputes}
+            columns={disputeColumns}
+            keyExtractor={(d) => d.id}
+            emptyMessage={
+              disputesQuery.isLoading ? 'Loading disputes...' : 'You have not raised any disputes.'
+            }
           />
         )}
       </DetailCard>
@@ -306,7 +452,8 @@ export function ConnectorPortalPage() {
           <DialogTitle sx={{ fontWeight: 700 }}>Submit Lead Referral</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              In accordance with DPDP consent requirements, submitting a referral requires borrower consent verification.
+              In accordance with DPDP consent requirements, submitting a referral requires borrower consent
+              verification.
             </Typography>
 
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -346,7 +493,7 @@ export function ConnectorPortalPage() {
                   label="Consent Verification OTP"
                   placeholder="Enter 6-digit OTP received by customer"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.slice(0, 6))}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   helperText="Verification OTP confirms borrower consent to share details with NBFC partners"
                 />
               )}
@@ -387,42 +534,113 @@ export function ConnectorPortalPage() {
         </form>
       </Dialog>
 
-      {/* Request Payout Dialog */}
-      <Dialog open={payoutOpen} onClose={() => setPayoutOpen(false)} maxWidth="xs" fullWidth>
+      {/* Request Payout Dialog: the lines the request covers, each one a choice */}
+      <Dialog open={payoutOpen} onClose={() => setPayoutOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>Request Commission Payout</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Eligible balance: <strong>₹{eligibleAmount.toLocaleString('en-IN')}</strong>. Payouts undergo dual-control
-            verification (SOD-03).
+            Choose the eligible statement lines to include. The request undergoes dual-control verification
+            (SOD-03).
           </Typography>
+          {eligibleLines.length === 0 ? (
+            <Alert severity="info">You have no eligible lines to pay out.</Alert>
+          ) : (
+            <Stack>
+              {eligibleLines.map((line) => (
+                <FormControlLabel
+                  key={line.id}
+                  control={
+                    <Checkbox
+                      checked={payoutSelection.includes(line.id)}
+                      onChange={(e) =>
+                        setPayoutSelection((sel) =>
+                          e.target.checked ? [...sel, line.id] : sel.filter((id) => id !== line.id),
+                        )
+                      }
+                    />
+                  }
+                  label={`${money(Number(line.amount.amount))} · ${line.state} · ${new Date(line.createdAt).toLocaleDateString('en-IN')}`}
+                />
+              ))}
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Selected:{' '}
+                <strong>
+                  {money(
+                    sumMoney(
+                      eligibleLines.filter((l) => payoutSelection.includes(l.id)).map((l) => l.amount),
+                    ),
+                  )}
+                </strong>
+              </Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setPayoutOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleRequestPayout}
+            disabled={payoutSelection.length === 0 || payoutBusy}
+            data-testid="cpt.payout.submit"
+          >
+            Submit Request
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Referral detail: the progress on approved steps and the documents requested */}
+      <Dialog open={detailLeadId !== null} onClose={() => setDetailLeadId(null)} maxWidth="md" fullWidth>
+        <DialogContent sx={{ pt: 3 }}>
+          {detailLeadId && <PartnerReferralDetail leadId={detailLeadId} />}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDetailLeadId(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Raise Dispute Dialog */}
+      <Dialog open={disputeLine !== null} onClose={() => setDisputeLine(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Dispute a statement line</DialogTitle>
+        <DialogContent>
+          {disputeLine && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Line of {money(Number(disputeLine.amount.amount))} ({disputeLine.state}). Only you and our team
+              see this dispute.
+            </Typography>
+          )}
           <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              select
+              fullWidth
+              label="Category"
+              value={disputeCategory}
+              onChange={(e) => setDisputeCategory(e.target.value)}
+            >
+              {DISPUTE_CATEGORIES.STATEMENT_LINE.map((c) => (
+                <MenuItem key={c.value} value={c.value}>
+                  {c.label}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               required
               fullWidth
-              type="number"
-              label="Requested Payout (₹)"
-              value={payoutAmount}
-              onChange={(e) => setPayoutAmount(e.target.value)}
-              inputProps={{ min: 1000, max: eligibleAmount || 1000000 }}
-              onKeyDown={(e) => {
-                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
-              }}
-            />
-            <TextField
-              fullWidth
               multiline
-              rows={2}
-              label="Bank Reference Notes (Optional)"
-              value={payoutNotes}
-              onChange={(e) => setPayoutNotes(e.target.value)}
-              placeholder="e.g. Regular monthly settlement"
+              rows={3}
+              label="What is wrong?"
+              placeholder="Describe the problem. Do not include PAN, Aadhaar or account numbers."
+              value={disputeReason}
+              onChange={(e) => setDisputeReason(e.target.value)}
+              onBlur={() => setDisputeTouched(true)}
+              error={disputeTouched && reasonError !== null}
+              helperText={disputeTouched && reasonError ? reasonError : `${disputeReason.trim().length}/500`}
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setPayoutOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleRequestPayout}>
-            Submit Request
+          <Button onClick={() => setDisputeLine(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleRaiseDispute} data-testid="cpt.dispute.submit">
+            Raise dispute
           </Button>
         </DialogActions>
       </Dialog>

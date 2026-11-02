@@ -17,6 +17,7 @@ import {
 } from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z, type ZodTypeAny } from 'zod';
+import { registerOperation } from '../../../http/openapi-op';
 import { ChecklistResponseSchema } from './checklist-schemas';
 import {
   ApplicantInputs,
@@ -483,6 +484,35 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
       404: { description: 'NOT_FOUND' },
       409: { description: 'INVALID_STATE (nothing uploaded yet, or already completed)' },
     },
+  });
+
+  // The partner routes of the documents module, mounted under /portal/v1. A partner sees only the types approved for partners and learns
+  // only ACCEPTED or NOT_ACCEPTED after a scan.
+  const portalTag = 'MOD-CPT Connector Portal';
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/referrals/:leadId/documents',
+    operationId: 'API-CPT-009',
+    summary: 'My referral: the documents approved for partners, with the partner status of each',
+    tag: portalTag,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/referrals/:leadId/documents/upload-intents',
+    operationId: 'API-CPT-008',
+    summary: 'Ask for a one-time upload link for a partner document (needs a working malware scanner)',
+    tag: portalTag,
+    body: CreateUploadIntentSchema,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/portal/v1/upload-intents/:id/completion',
+    operationId: 'API-CPT-010',
+    summary: 'Complete my upload: the file is scanned, and I learn only ACCEPTED or NOT_ACCEPTED',
+    tag: portalTag,
+    status: 202,
   });
 
   registry.registerPath({

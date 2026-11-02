@@ -52,27 +52,27 @@ describe('Module 27 — ConnectorPage Component Rendering & Action Guarding', ()
     } as any);
   }
 
-  it('renders ConnectorPage header and hides + Onboard Connector for view-only users', () => {
+  it('renders ConnectorPage header and hides + Add Connector for view-only users', () => {
     mockGrants(['connector.read']);
     const html = renderConnectorPage();
 
     expect(html).toContain('Connectors');
-    expect(html).not.toContain('+ Onboard Connector');
+    expect(html).not.toContain('+ Add Connector');
   });
 
-  it('renders + Onboard Connector when user has connector.manage', () => {
+  it('renders + Add Connector when user has connector.manage', () => {
     mockGrants(['connector.read', 'connector.manage']);
     const html = renderConnectorPage();
 
     expect(html).toContain('Connectors');
-    expect(html).toContain('+ Onboard Connector');
+    expect(html).toContain('+ Add Connector');
   });
 
   it('renders clean top-level directory tabs without leaking connector-specific tabs onto main screen', () => {
     mockGrants(['connector.read', 'connector.manage']);
     const html = renderConnectorPage();
 
-    expect(html).toContain('Directory &amp; Onboarding');
+    expect(html).toContain('>Directory<');
     expect(html).toContain('Attribution Requests');
     expect(html).toContain('Disputes &amp; Duplicate Referrals');
     // Connector-specific tabs are NOT rendered on the top-level main screen

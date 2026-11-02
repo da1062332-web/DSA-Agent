@@ -122,6 +122,13 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     idempotent: true,
   });
   registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/referrals/:id',
+    operationId: 'API-CPT-001b',
+    summary: 'One of my referrals, with the progress a partner may see (not mine: 404)',
+    tag: cpt,
+  });
+  registerOperation(registry, {
     method: 'post',
     path: '/portal/v1/referrals/consent-otp',
     operationId: 'API-CPT-003',
@@ -155,6 +162,13 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     body: PortalDispute,
     status: 201,
     idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/disputes',
+    operationId: 'API-CPT-006b',
+    summary: 'My disputes and their status (the internal resolution is not returned)',
+    tag: cpt,
   });
   registerOperation(registry, {
     method: 'get',

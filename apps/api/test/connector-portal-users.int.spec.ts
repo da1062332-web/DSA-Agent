@@ -317,4 +317,22 @@ describe('connector portal users (TEST-CPU)', () => {
       .send({ action: 'SUSPEND', reason: 'Not a portal user' });
     expect(staff.status).toBe(404);
   });
+
+  it('TEST-CPU-10 an invitation past its expiry cannot activate the login: the sign-in is refused, the invitation is EXPIRED and the login stays INVITED', async () => {
+    const res = await invite(CON_P, 'partner.four@pu.example.com', 'Partner Four');
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const late = res.body.id as string;
+    await deliver();
+    await env.admin.query(
+      `update app.staff_invitation set expires_at = now() - interval '1 minute' where user_id = $1`,
+      [late],
+    );
+    const subject = (await one(`select idp_subject from app.app_user where id = $1`, [late]))
+      .idp_subject as string;
+    await expect(signIn(subject, 'partner.four@pu.example.com')).rejects.toThrow(/expired/);
+    expect((await one(`select status from app.staff_invitation where user_id = $1`, [late])).status).toBe(
+      'EXPIRED',
+    );
+    expect((await one(`select status from app.app_user where id = $1`, [late])).status).toBe('INVITED');
+  });
 });

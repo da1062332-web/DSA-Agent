@@ -9,8 +9,10 @@ import {
   CreateAttributionChangeRequestSchema,
   CreateConnectorAgreementSchema,
   CreateConnectorBankAccountSchema,
+  ConnectorActivityQuerySchema,
   ConnectorLookupQuerySchema,
   ConnectorPortalAccessSchema,
+  ConnectorSummaryQuerySchema,
   ConnectorPortalRevocationSchema,
   CreateConnectorSchema,
   InviteConnectorUserSchema,
@@ -22,6 +24,7 @@ import {
 } from '@dsa/contracts';
 import { ifMatchVersion } from '../../../http/request';
 import type { ApiDeps } from '../../types';
+import { connectorActivity, connectorReferrals, connectorSummary } from './connector-insights';
 import { ConnectorService } from './connector-service';
 
 function requireContext(req: Request): RequestContext {
@@ -91,6 +94,46 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const query = ConnectorLookupQuerySchema.parse(req.query);
       const result = await service.lookupConnectors(ctx, query);
       res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // GET /v1/connectors/summary: the dashboard counts for the connectors the caller may see. Declared before /connectors/:id.
+  // ==========================================
+  router.get('/connectors/summary', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const query = ConnectorSummaryQuerySchema.parse(req.query);
+      res.status(200).json(await connectorSummary(deps, ctx, query));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // GET /v1/connectors/:id/referrals: the referrals attributed to one connector (lead.read, and the connector must be visible)
+  // ==========================================
+  router.get('/connectors/:id/referrals', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const items = await connectorReferrals(deps, ctx, String(req.params.id));
+      res.status(200).json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // GET /v1/connectors/:id/activity: the audit events of one connector and its records (connector.read, and visible)
+  // ==========================================
+  router.get('/connectors/:id/activity', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = requireContext(req);
+      const query = ConnectorActivityQuerySchema.parse(req.query);
+      const items = await connectorActivity(deps, ctx, String(req.params.id), query);
+      res.status(200).json({ items });
     } catch (err) {
       next(err);
     }

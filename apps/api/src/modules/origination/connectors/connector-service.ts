@@ -51,7 +51,7 @@ const managesConnectors = (ctx: RequestContext): boolean =>
  *     BRANCH scope). A relationship manager (connector.read only) therefore sees only its own connectors.
  * Permission and scope decide it, not the name of the role. The owner clause is what a relationship manager is left with.
  */
-function visibility(ctx: RequestContext): RawBuilder<unknown> {
+export function visibility(ctx: RequestContext): RawBuilder<unknown> {
   const grants = ctx.principal.grants;
   const tenantWide = grants.some(
     (g) =>
@@ -69,7 +69,7 @@ function visibility(ctx: RequestContext): RawBuilder<unknown> {
 }
 
 /** Another connector, outside what the principal may see, is reported as not found, as an invisible record is everywhere else. */
-async function assertVisible(tx: Tx, ctx: RequestContext, id: string): Promise<void> {
+export async function assertVisible(tx: Tx, ctx: RequestContext, id: string): Promise<void> {
   const found = await sql<{ id: string }>`
     SELECT id FROM app.connector
      WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${id} ${visibility(ctx)}`.execute(tx);
@@ -174,6 +174,41 @@ export function assertInternalRelationshipOwner(
     throw AppError.of('VALIDATION_ERROR', 'The relationship owner must be an active staff member.', [
       { field: 'relationshipOwnerUserId', issue: 'OWNER_NOT_ACTIVE' },
     ]);
+  }
+}
+
+/**
+ * A verification counts for a connector only if it is a VERIFIED record whose subject is that connector (migration 0099). A record about a
+ * customer, a lead or another connector does not count. A record that does not exist in the tenant is reported as missing.
+ */
+async function assertConnectorVerification(
+  tx: Tx,
+  ctx: RequestContext,
+  connectorId: string,
+  verificationId: string,
+): Promise<void> {
+  const r = await sql<{ result: string; subject_type: string; connector_id: string | null }>`
+    SELECT result, subject_type, connector_id FROM app.verification
+     WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${verificationId}`.execute(tx);
+  const row = r.rows[0];
+  if (!row) {
+    throw AppError.of('VALIDATION_ERROR', 'Referenced verification record does not exist.', [
+      { field: 'verificationId', issue: 'NOT_FOUND' },
+    ]);
+  }
+  if (row.subject_type !== 'CONNECTOR' || row.connector_id !== connectorId) {
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'That verification record is not a verification of this connector.',
+      [{ field: 'verificationId', issue: 'NOT_THIS_CONNECTOR' }],
+    );
+  }
+  if (row.result !== 'VERIFIED') {
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      `This connector needs a VERIFIED check. Verification ${verificationId} has result ${row.result}.`,
+      [{ field: 'verificationId', issue: 'NOT_VERIFIED' }],
+    );
   }
 }
 
@@ -637,26 +672,17 @@ export class ConnectorService {
             throw AppError.of('VALIDATION_ERROR', 'Terminated connectors cannot be activated.');
           }
 
-          // Verify linked verification record in app.verification (ENT-064)
-          const verRes = await sql<{ id: string; result: string }>`
-            SELECT id, result FROM app.verification
-            WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${input.verificationId}
-          `.execute(tx);
-
-          if (verRes.rows.length === 0) {
-            throw AppError.of('VALIDATION_ERROR', 'Referenced verification record does not exist.', [
-              { field: 'verificationId', issue: 'NOT_FOUND' },
-            ]);
-          }
-
-          const verRow = verRes.rows[0]!;
-          if (verRow.result !== 'VERIFIED') {
+          // Reactivating a suspended connector is a sensitive change: it needs a stated reason, as a suspension does.
+          if (current.status === 'SUSPENDED' && !(input.remarks && input.remarks.trim().length >= 5)) {
             throw AppError.of(
               'VALIDATION_ERROR',
-              `Connector activation requires a VERIFIED check. Verification ${input.verificationId} has result ${verRow.result}.`,
-              [{ field: 'verificationId', issue: 'NOT_VERIFIED' }],
+              'A reason of at least 5 characters is needed to reactivate a suspended connector.',
+              [{ field: 'remarks', issue: 'REQUIRED' }],
             );
           }
+
+          // The verification must be a VERIFIED record about this connector (app.verification, ENT-064; migration 0099).
+          await assertConnectorVerification(tx, ctx, id, input.verificationId);
 
           const now = new Date();
           const activated = await sql`
@@ -795,6 +821,10 @@ export class ConnectorService {
         async () => {
           // Verify connector exists
           await this.getConnector(ctx, connectorId);
+
+          // A verification given for a bank account must also be a VERIFIED record about this connector (migration 0099).
+          if (input.verificationId)
+            await assertConnectorVerification(tx, ctx, connectorId, input.verificationId);
 
           const bankAccountId = `cba_${nextUlid()}`;
           const now = new Date();

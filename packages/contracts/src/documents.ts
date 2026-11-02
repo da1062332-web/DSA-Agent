@@ -41,6 +41,8 @@ export const DocumentTypeSchema = z.object({
   retentionClass: z.string(),
   instructions: z.string().nullable(),
   active: z.boolean(),
+  /** Whether a partner may send this type through the partner portal. Off unless a configuration manager approves it. */
+  partnerUpload: z.boolean().optional(),
   /** false for the platform defaults a tenant has not customised. */
   custom: z.boolean(),
   version: z.number().int().nullable(),
@@ -58,6 +60,8 @@ export const UpsertDocumentTypeSchema = z.object({
   retentionClass: z.enum(['R-CFG', 'R-OPS', 'R-LOAN', 'R-FIN', 'R-AUD', 'R-SHORT']).optional(),
   instructions: z.string().max(1000).nullable().optional(),
   active: z.boolean().optional(),
+  /** Approves (true) or withdraws (false) the type for partner upload. Left out, the stored approval is kept; a new type starts unapproved. */
+  partnerUpload: z.boolean().optional(),
 });
 export type UpsertDocumentTypeInput = z.infer<typeof UpsertDocumentTypeSchema>;
 

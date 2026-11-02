@@ -80,4 +80,12 @@ describe('Module 28 — ConnectorPortalPage Component Rendering & Workflows', ()
     expect(html).toContain('Submit Referral');
     expect(html).toContain('Loading referrals...');
   });
+
+  it('TEST-CPTUI-06 the partner sees a Disputes tab beside the statements', () => {
+    mockGrants(['connector.read']);
+    const html = renderConnectorPortalPage();
+
+    expect(html).toContain('Disputes');
+    expect(html).toContain('Commission Statements');
+  });
 });

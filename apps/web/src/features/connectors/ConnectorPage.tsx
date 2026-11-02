@@ -15,7 +15,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   Grid,
@@ -27,17 +26,11 @@ import {
   Stack,
   Tab,
   Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, ApiError, errorText } from '../../api/client';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, errorText } from '../../api/client';
 import {
   ConnectorPortalUsers,
   invitationErrors,
@@ -46,6 +39,19 @@ import {
   type PortalInviteInput,
 } from './ConnectorPortalUsers';
 import { hasPermission, useMe } from '../../api/useMe';
+import { useList } from '../admin/api';
+import { ConnectorActivityTab } from './ConnectorActivityTab';
+import { ConnectorDashboard } from './ConnectorDashboard';
+import { ConnectorEarningsTab } from './ConnectorEarningsTab';
+import { ConnectorOverviewTab } from './ConnectorOverviewTab';
+import { ConnectorReferralsTab } from './ConnectorReferralsTab';
+import { ConnectorVerificationTab } from './ConnectorVerificationTab';
+import {
+  connectorTabLabel,
+  DIRECTORY_STATUS_OPTIONS,
+  visibleConnectorTabs,
+  type ConnectorTabKey,
+} from './connector-workspace-model';
 import { Can } from '../../shell/Can';
 import { ConnectorSelect, LeadSelect, UserSelect } from '../../shell/selectors';
 import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
@@ -56,7 +62,6 @@ import type {
   ConnectorAgreementResource,
   ConnectorBankAccountResource,
   ConnectorResource,
-  ConnectorStatus,
   ConnectorType,
   CreateAttributionChangeRequestInput,
   CreateConnectorAgreementInput,
@@ -92,7 +97,7 @@ export function ConnectorPage() {
   // Selected Connector for Detail / Workspace view
   const [selectedConnector, setSelectedConnector] = useState<ConnectorResource | null>(null);
   // Inner tab state for the selected connector's workspace
-  const [activeConnectorTab, setActiveConnectorTab] = useState(0);
+  const [activeConnectorTab, setActiveConnectorTab] = useState<ConnectorTabKey>('overview');
 
   // Dialog states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -100,7 +105,11 @@ export function ConnectorPage() {
   // failed invitation neither duplicates the connector nor creates a second login.
   const [createKey, setCreateKey] = useState('');
   const [inviteAfterSave, setInviteAfterSave] = useState(false);
-  const [initialInvite, setInitialInvite] = useState<PortalInviteInput>({ displayName: '', email: '', mobileE164: '' });
+  const [initialInvite, setInitialInvite] = useState<PortalInviteInput>({
+    displayName: '',
+    email: '',
+    mobileE164: '',
+  });
   const [initialInviteKey, setInitialInviteKey] = useState('');
   const [failedInvite, setFailedInvite] = useState<{
     connectorId: string;
@@ -172,22 +181,46 @@ export function ConnectorPage() {
   });
 
   // Queries
-  const connectorsQuery = useQuery({
-    queryKey: ['connectors', statusFilter, searchQuery],
-    queryFn: async () => {
+  const [branchFilter, setBranchFilter] = useState('');
+  // The directory is paged by the API's cursor. "Load more" asks for the next page; nothing is fetched until it is asked for.
+  const connectorsQuery = useInfiniteQuery({
+    queryKey: ['connectors', statusFilter, searchQuery, branchFilter],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       if (statusFilter) params.set('status', statusFilter);
       if (searchQuery) params.set('q', searchQuery);
-      const res = await apiFetch<{ items: ConnectorResource[] }>(`/v1/connectors?${params.toString()}`);
-      return res.items;
+      if (branchFilter) params.set('branchId', branchFilter);
+      if (pageParam) params.set('cursor', pageParam);
+      return apiFetch<{ items: ConnectorResource[]; nextCursor?: string | null }>(
+        `/v1/connectors?${params.toString()}`,
+      );
     },
+    getNextPageParam: (last) => last.nextCursor ?? null,
   });
+  const connectorRows = connectorsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  // Branches for the directory filter. A caller without the branch read gets no options, and the filter stays on "All Branches".
+  const branchesQuery = useList<{ id: string; name: string; code: string }>('/v1/branches', {}, 100);
+  const branchOptions = branchesQuery.data?.pages.flatMap((page) => page.data) ?? [];
 
   // Bank details and agreement terms are read only by the roles that manage or approve them (the API refuses the others), so the
   // page does not ask for them otherwise. A relationship manager sees the connector itself, not these.
   const canSeeBankAccounts =
     hasPermission(me.data, 'connector.manage') || hasPermission(me.data, 'connector.bank_change_approve');
   const canSeeAgreements = hasPermission(me.data, 'connector.manage');
+  // The workspace tabs this caller may read. A tab it may not read is left out; the API refuses those reads as well.
+  const canReadReferrals = hasPermission(me.data, 'lead.read');
+  const canReadEarnings =
+    hasPermission(me.data, 'finance.view') ||
+    hasPermission(me.data, 'commission.plan.edit') ||
+    hasPermission(me.data, 'commission.plan.approve');
+  const visibleTabs = visibleConnectorTabs({
+    canReadBank: canSeeBankAccounts,
+    canReadAgreements: canSeeAgreements,
+    canReadReferrals,
+    canReadEarnings,
+  });
+  const tab: ConnectorTabKey = visibleTabs.includes(activeConnectorTab) ? activeConnectorTab : 'overview';
 
   const selectedBankAccountsQuery = useQuery({
     queryKey: ['connector-bank-accounts', selectedConnector?.id],
@@ -249,16 +282,21 @@ export function ConnectorPage() {
       setCreateModalOpen(false);
       setSelectedConnector(created);
       if (!inviteAfterSave) {
-        setActiveConnectorTab(0);
+        setActiveConnectorTab('overview');
         return;
       }
-      setActiveConnectorTab(4);
+      setActiveConnectorTab('portal');
       try {
         await invitePortalUser(created.id, initialInvite, initialInviteKey);
         setFailedInvite(null);
       } catch (err) {
         // The connector stays saved; the Portal Access tab offers a retry with the same invitation key.
-        setFailedInvite({ connectorId: created.id, input: initialInvite, idempotencyKey: initialInviteKey, message: errorText(err) });
+        setFailedInvite({
+          connectorId: created.id,
+          input: initialInvite,
+          idempotencyKey: initialInviteKey,
+          message: errorText(err),
+        });
       }
       queryClient.invalidateQueries({ queryKey: ['connector-portal-users', created.id] });
     },
@@ -485,21 +523,32 @@ export function ConnectorPage() {
                 size="small"
                 sx={{ fontWeight: 600 }}
               />
-              <Chip label={selectedConnector.connectorType} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
+              <Chip
+                label={selectedConnector.connectorType}
+                size="small"
+                variant="outlined"
+                sx={{ fontWeight: 500 }}
+              />
             </Stack>
           }
           subtitle={
             <Typography variant="body2" color="text.secondary">
               <strong>Contact:</strong> {selectedConnector.contactPerson} • <strong>Mobile:</strong>{' '}
               {selectedConnector.mobileE164} • <strong>Email:</strong> {selectedConnector.email} •{' '}
-              <strong>PAN:</strong> <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
+              <strong>PAN:</strong>{' '}
+              <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
             </Typography>
           }
           actions={
             <Stack direction="row" spacing={1}>
               {selectedConnector.status === 'DRAFT' && (
                 <Can action="connector.manage">
-                  <Button size="small" color="success" variant="contained" onClick={() => setActivateModalOpen(true)}>
+                  <Button
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    onClick={() => setActivateModalOpen(true)}
+                  >
                     Activate Connector
                   </Button>
                 </Can>
@@ -541,21 +590,76 @@ export function ConnectorPage() {
         {/* Contextual Tabs inside this Connector */}
         <Paper sx={{ mb: 3, borderRadius: 2 }}>
           <Tabs
-            value={activeConnectorTab}
-            onChange={(_, v) => setActiveConnectorTab(v)}
+            value={tab}
+            onChange={(_, v) => setActiveConnectorTab(v as ConnectorTabKey)}
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab label="Profile & KYC Details" />
-            <Tab label={`Bank Accounts & SOD (${selectedBankAccountsQuery.data?.length || 0})`} />
-            <Tab label={`Agreements & Rate Cards (${selectedAgreementsQuery.data?.length || 0})`} />
-            <Tab label="Attributions & Disputes" />
-            <Tab label="Portal Access & Users" data-testid="con.tab.portal-users" />
+            {visibleTabs.map((key) => (
+              <Tab
+                key={key}
+                value={key}
+                label={connectorTabLabel(key, {
+                  bank: selectedBankAccountsQuery.data?.length || 0,
+                  agreements: selectedAgreementsQuery.data?.length || 0,
+                })}
+                data-testid={key === 'portal' ? 'con.tab.portal-users' : undefined}
+              />
+            ))}
           </Tabs>
         </Paper>
 
-        {/* CONNECTOR TAB 0: Profile & Details */}
-        {activeConnectorTab === 0 && (
+        {tab === 'overview' && (
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <ConnectorOverviewTab
+                connector={selectedConnector}
+                canReadReferrals={canReadReferrals}
+                agreementCount={selectedAgreementsQuery.data?.length || 0}
+                bankAccountCount={canSeeBankAccounts ? selectedBankAccountsQuery.data?.length || 0 : null}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === 'verification' && (
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <ConnectorVerificationTab
+                connector={selectedConnector}
+                canManage={hasPermission(me.data, 'connector.manage')}
+                onActivate={() => setActivateModalOpen(true)}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === 'referrals' && (
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <ConnectorReferralsTab connectorId={selectedConnector.id} />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === 'earnings' && (
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <ConnectorEarningsTab connectorId={selectedConnector.id} />
+            </CardContent>
+          </Card>
+        )}
+
+        {tab === 'activity' && (
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: 3 }}>
+              <ConnectorActivityTab connectorId={selectedConnector.id} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* CONNECTOR TAB: Profile & Details */}
+        {tab === 'profile' && (
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight={700} gutterBottom>
@@ -612,7 +716,11 @@ export function ConnectorPage() {
                       PRIMARY BRANCH
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
-                      <BranchName id={selectedConnector.primaryBranchId} fallback="Default Branch" typographyProps={{ fontWeight: 600, variant: 'body1' }} />
+                      <BranchName
+                        id={selectedConnector.primaryBranchId}
+                        fallback="Default Branch"
+                        typographyProps={{ fontWeight: 600, variant: 'body1' }}
+                      />
                     </Box>
                   </Paper>
                 </Grid>
@@ -622,7 +730,11 @@ export function ConnectorPage() {
                       RELATIONSHIP MANAGER (INTERNAL STAFF)
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
-                      <UserName id={selectedConnector.relationshipOwnerUserId} fallback="Unassigned" typographyProps={{ fontWeight: 600, variant: 'body1' }} />
+                      <UserName
+                        id={selectedConnector.relationshipOwnerUserId}
+                        fallback="Unassigned"
+                        typographyProps={{ fontWeight: 600, variant: 'body1' }}
+                      />
                     </Box>
                   </Paper>
                 </Grid>
@@ -652,7 +764,7 @@ export function ConnectorPage() {
         )}
 
         {/* CONNECTOR TAB 1: Bank Accounts & SOD */}
-        {activeConnectorTab === 1 && (
+        {tab === 'bank' && (
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -661,13 +773,13 @@ export function ConnectorPage() {
                     Bank Accounts & Dual-Control SOD
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Requires Dual-Control Separation of Duties (SOD). The account creator cannot approve the bank
-                    details. A 24-hr cooling period applies after activation.
+                    Requires Dual-Control Separation of Duties (SOD). The account creator cannot approve the
+                    bank details. A 24-hr cooling period applies after activation.
                   </Typography>
                   {!canSeeBankAccounts && (
                     <Alert severity="info" sx={{ mt: 1 }}>
-                      Bank details are shown only to connector managers and bank-change approvers. An empty list here does not
-                      mean there are no accounts.
+                      Bank details are shown only to connector managers and bank-change approvers. An empty
+                      list here does not mean there are no accounts.
                     </Alert>
                   )}
                 </Box>
@@ -700,14 +812,31 @@ export function ConnectorPage() {
                   data={selectedBankAccountsQuery.data}
                   keyExtractor={(acc) => acc.id}
                   columns={[
-                    { id: 'holder', header: 'Account Holder', render: (acc) => <Box sx={{ fontWeight: 600 }}>{acc.accountHolderName}</Box> },
-                    { id: 'masked', header: 'Account Number (Masked)', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.accountMasked}</Box> },
-                    { id: 'ifsc', header: 'IFSC Code', render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.ifscCode}</Box> },
+                    {
+                      id: 'holder',
+                      header: 'Account Holder',
+                      render: (acc) => <Box sx={{ fontWeight: 600 }}>{acc.accountHolderName}</Box>,
+                    },
+                    {
+                      id: 'masked',
+                      header: 'Account Number (Masked)',
+                      render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.accountMasked}</Box>,
+                    },
+                    {
+                      id: 'ifsc',
+                      header: 'IFSC Code',
+                      render: (acc) => <Box sx={{ fontFamily: 'monospace' }}>{acc.ifscCode}</Box>,
+                    },
                     {
                       id: 'status',
                       header: 'Status',
                       render: (acc) => (
-                        <Chip label={acc.status} color={STATUS_COLORS[acc.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                        <Chip
+                          label={acc.status}
+                          color={STATUS_COLORS[acc.status] || 'default'}
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
                       ),
                     },
                     {
@@ -722,7 +851,11 @@ export function ConnectorPage() {
                           <NotSet />
                         ),
                     },
-                    { id: 'createdBy', header: 'Created By', render: (acc) => <UserName id={acc.createdBy} /> },
+                    {
+                      id: 'createdBy',
+                      header: 'Created By',
+                      render: (acc) => <UserName id={acc.createdBy} />,
+                    },
                     {
                       id: 'sod',
                       header: 'Dual-Control SOD Actions',
@@ -752,7 +885,11 @@ export function ConnectorPage() {
                                 label="✓ Approved (Dual-Control Verified)"
                                 color="success"
                                 size="small"
-                                sx={{ fontWeight: 600, bgcolor: 'rgba(46, 125, 50, 0.12)', color: 'success.main' }}
+                                sx={{
+                                  fontWeight: 600,
+                                  bgcolor: 'rgba(46, 125, 50, 0.12)',
+                                  color: 'success.main',
+                                }}
                               />
                               {acc.approvedBy && (
                                 <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5 }}>
@@ -761,7 +898,9 @@ export function ConnectorPage() {
                               )}
                             </Box>
                           )}
-                          {acc.status === 'DISABLED' && <Chip label="Disabled" size="small" variant="outlined" color="default" />}
+                          {acc.status === 'DISABLED' && (
+                            <Chip label="Disabled" size="small" variant="outlined" color="default" />
+                          )}
                         </>
                       ),
                     },
@@ -769,7 +908,8 @@ export function ConnectorPage() {
                 />
               ) : (
                 <Alert severity="info">
-                  No bank accounts registered for this connector yet. Add an account to enable automated payout disbursements.
+                  No bank accounts registered for this connector yet. Add an account to enable automated
+                  payout disbursements.
                 </Alert>
               )}
             </CardContent>
@@ -777,7 +917,7 @@ export function ConnectorPage() {
         )}
 
         {/* CONNECTOR TAB 2: Agreements & Rate Cards */}
-        {activeConnectorTab === 2 && (
+        {tab === 'agreements' && (
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -786,12 +926,13 @@ export function ConnectorPage() {
                     Commercial Agreements & Commission Rate Scope
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Governs permitted product eligibility and rate cards without duplicating commission engine calculations.
+                    Governs permitted product eligibility and rate cards without duplicating commission engine
+                    calculations.
                   </Typography>
                   {!canSeeAgreements && (
                     <Alert severity="info" sx={{ mt: 1 }}>
-                      Agreement terms are shown only to connector managers. An empty list here does not mean there are no
-                      agreements.
+                      Agreement terms are shown only to connector managers. An empty list here does not mean
+                      there are no agreements.
                     </Alert>
                   )}
                 </Box>
@@ -829,13 +970,18 @@ export function ConnectorPage() {
                         </Stack>
                       ),
                     },
-                    { id: 'scope', header: 'Rule Scope', render: (agr) => <Box sx={{ fontWeight: 600 }}>{agr.shareRuleScope}</Box> },
+                    {
+                      id: 'scope',
+                      header: 'Rule Scope',
+                      render: (agr) => <Box sx={{ fontWeight: 600 }}>{agr.shareRuleScope}</Box>,
+                    },
                     {
                       id: 'validity',
                       header: 'Validity Period',
                       render: (agr) => (
                         <>
-                          {new Date(agr.validFrom).toLocaleDateString()} – {new Date(agr.validTo).toLocaleDateString()}
+                          {new Date(agr.validFrom).toLocaleDateString()} –{' '}
+                          {new Date(agr.validTo).toLocaleDateString()}
                         </>
                       ),
                     },
@@ -843,31 +989,36 @@ export function ConnectorPage() {
                       id: 'status',
                       header: 'Status',
                       render: (agr) => (
-                        <Chip label={agr.status} color={STATUS_COLORS[agr.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                        <Chip
+                          label={agr.status}
+                          color={STATUS_COLORS[agr.status] || 'default'}
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
                       ),
                     },
                   ]}
                 />
               ) : (
-                <Alert severity="info">
-                  No active commission agreements attached to this connector yet.
-                </Alert>
+                <Alert severity="info">No active commission agreements attached to this connector yet.</Alert>
               )}
             </CardContent>
           </Card>
         )}
 
         {/* CONNECTOR TAB 4: Portal Access & Users */}
-        {activeConnectorTab === 4 && (
+        {tab === 'portal' && (
           <ConnectorPortalUsers
             connector={selectedConnector}
-            failedInvite={failedInvite && failedInvite.connectorId === selectedConnector.id ? failedInvite : null}
+            failedInvite={
+              failedInvite && failedInvite.connectorId === selectedConnector.id ? failedInvite : null
+            }
             onFailedInviteResolved={() => setFailedInvite(null)}
           />
         )}
 
         {/* CONNECTOR TAB 3: Attributions & Disputes */}
-        {activeConnectorTab === 3 && (
+        {tab === 'attributions' && (
           <Card variant="outlined" sx={{ borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -876,7 +1027,8 @@ export function ConnectorPage() {
                     Attribution History & Lead Referral Conflicts
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    View attribution requests and duplicate referral disputes concerning {selectedConnector.legalName}.
+                    View attribution requests and duplicate referral disputes concerning{' '}
+                    {selectedConnector.legalName}.
                   </Typography>
                 </Box>
                 <Can action="connector.manage">
@@ -900,7 +1052,8 @@ export function ConnectorPage() {
               </Stack>
 
               <Alert severity="info" sx={{ mb: 2 }}>
-                Referrals originating from this connector are protected under first-touch attribution policies unless an attribution change request is reviewed under SOD-09.
+                Referrals originating from this connector are protected under first-touch attribution policies
+                unless an attribution change request is reviewed under SOD-09.
               </Alert>
             </CardContent>
           </Card>
@@ -1042,7 +1195,12 @@ export function ConnectorPage() {
         </Dialog>
 
         {/* Dialog: Create Agreement */}
-        <Dialog open={agreementModalOpen} onClose={() => setAgreementModalOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={agreementModalOpen}
+          onClose={() => setAgreementModalOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>New Commission Agreement</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1095,9 +1253,7 @@ export function ConnectorPage() {
                 label="Proposed Connector"
                 required
                 value={attributionInput.proposedConnectorId}
-                onChange={(id) =>
-                  setAttributionInput({ ...attributionInput, proposedConnectorId: id ?? '' })
-                }
+                onChange={(id) => setAttributionInput({ ...attributionInput, proposedConnectorId: id ?? '' })}
               />
               <TextField
                 size="small"
@@ -1139,13 +1295,8 @@ export function ConnectorPage() {
         subtitle="Direct Selling Agents (DSA), Broker Onboarding, Dual-Control Bank Accounts & Attribution Dispute Workbench"
         actions={
           <Can action="connector.manage">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={openCreate}
-              sx={{ fontWeight: 600, px: 3 }}
-            >
-              + Onboard Connector
+            <Button variant="contained" color="primary" onClick={openCreate} sx={{ fontWeight: 600, px: 3 }}>
+              + Add Connector
             </Button>
           </Can>
         }
@@ -1159,7 +1310,7 @@ export function ConnectorPage() {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Directory & Onboarding" />
+          <Tab label="Directory" />
           <Tab label={`Attribution Requests (${attributionRequestsQuery.data?.length || 0})`} />
           <Tab label={`Disputes & Duplicate Referrals (${disputesQuery.data?.length || 0})`} />
         </Tabs>
@@ -1169,6 +1320,8 @@ export function ConnectorPage() {
       {activeMainTab === 0 && (
         <Card variant="outlined" sx={{ borderRadius: 2 }}>
           <CardContent sx={{ p: 3 }}>
+            <ConnectorDashboard />
+
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
               <TextField
                 size="small"
@@ -1177,33 +1330,61 @@ export function ConnectorPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{ minWidth: 320 }}
               />
+              <FormControl size="small" sx={{ width: 200 }} disabled={branchOptions.length === 0}>
+                <InputLabel>Branch</InputLabel>
+                <Select value={branchFilter} label="Branch" onChange={(e) => setBranchFilter(e.target.value)}>
+                  <MenuItem value="">All Branches</MenuItem>
+                  {branchOptions.map((b) => (
+                    <MenuItem key={b.id} value={b.id}>
+                      {b.code} · {b.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <FormControl size="small" sx={{ width: 180 }}>
                 <InputLabel>Status</InputLabel>
                 <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="">All Statuses</MenuItem>
-                  <MenuItem value="DRAFT">DRAFT</MenuItem>
-                  <MenuItem value="ACTIVE">ACTIVE</MenuItem>
-                  <MenuItem value="SUSPENDED">SUSPENDED</MenuItem>
-                  <MenuItem value="TERMINATED">TERMINATED</MenuItem>
+                  {DIRECTORY_STATUS_OPTIONS.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Stack>
+
+            {connectorsQuery.hasNextPage && (
+              <Button
+                variant="outlined"
+                size="small"
+                sx={{ mb: 2 }}
+                disabled={connectorsQuery.isFetchingNextPage}
+                onClick={() => connectorsQuery.fetchNextPage()}
+              >
+                {connectorsQuery.isFetchingNextPage ? 'Loading…' : 'Load more connectors'}
+              </Button>
+            )}
 
             {connectorsQuery.isLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
               </Box>
-            ) : connectorsQuery.data && connectorsQuery.data.length > 0 ? (
-              <DataTable<(typeof connectorsQuery.data)[number]>
+            ) : connectorRows.length > 0 ? (
+              <DataTable<ConnectorResource>
                 dataTestId="con.table.connectors"
-                data={connectorsQuery.data}
+                data={connectorRows}
                 keyExtractor={(con) => con.id}
                 onRowClick={(con) => {
                   setSelectedConnector(con);
-                  setActiveConnectorTab(0);
+                  setActiveConnectorTab('overview');
                 }}
                 columns={[
-                  { id: 'connector', header: 'Connector', render: (con) => <ConnectorName id={con.id} typographyProps={{ fontWeight: 600 }} /> },
+                  {
+                    id: 'connector',
+                    header: 'Connector',
+                    render: (con) => <ConnectorName id={con.id} typographyProps={{ fontWeight: 600 }} />,
+                  },
                   {
                     id: 'legal',
                     header: 'Legal Name / Contact',
@@ -1218,8 +1399,16 @@ export function ConnectorPage() {
                       </>
                     ),
                   },
-                  { id: 'type', header: 'Type', render: (con) => <Chip label={con.connectorType} size="small" variant="outlined" /> },
-                  { id: 'pan', header: 'PAN (Masked)', render: (con) => <Box sx={{ fontFamily: 'monospace' }}>{con.panMasked}</Box> },
+                  {
+                    id: 'type',
+                    header: 'Type',
+                    render: (con) => <Chip label={con.connectorType} size="small" variant="outlined" />,
+                  },
+                  {
+                    id: 'pan',
+                    header: 'PAN (Masked)',
+                    render: (con) => <Box sx={{ fontFamily: 'monospace' }}>{con.panMasked}</Box>,
+                  },
                   {
                     id: 'contact',
                     header: 'Email / Mobile',
@@ -1236,7 +1425,12 @@ export function ConnectorPage() {
                     id: 'status',
                     header: 'Status',
                     render: (con) => (
-                      <Chip label={con.status} color={STATUS_COLORS[con.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                      <Chip
+                        label={con.status}
+                        color={STATUS_COLORS[con.status] || 'default'}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                      />
                     ),
                   },
                   {
@@ -1244,57 +1438,62 @@ export function ConnectorPage() {
                     header: 'Actions',
                     align: 'right',
                     render: (con) => (
-                      <Stack direction="row" spacing={1} justifyContent="flex-end" onClick={(e) => e.stopPropagation()}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        justifyContent="flex-end"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           size="small"
                           variant="outlined"
                           onClick={() => {
                             setSelectedConnector(con);
-                            setActiveConnectorTab(0);
+                            setActiveConnectorTab('overview');
                           }}
                         >
                           Manage Details →
                         </Button>
                         <RowAction allowed={con.status === 'DRAFT'} action="connector.manage">
-                            <Button
-                              size="small"
-                              color="success"
-                              variant="contained"
-                              onClick={() => {
-                                setSelectedConnector(con);
-                                setActivateModalOpen(true);
-                              }}
-                            >
-                              Activate
-                            </Button>
+                          <Button
+                            size="small"
+                            color="success"
+                            variant="contained"
+                            onClick={() => {
+                              setSelectedConnector(con);
+                              setActivateModalOpen(true);
+                            }}
+                          >
+                            Activate
+                          </Button>
                         </RowAction>
                         <RowAction allowed={con.status === 'ACTIVE'} action="connector.manage">
-                            <Button
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              onClick={() => {
-                                setSelectedConnector(con);
-                                setTargetStatus('SUSPENDED');
-                                setStatusModalOpen(true);
-                              }}
-                            >
-                              Suspend
-                            </Button>
+                          <Button
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            onClick={() => {
+                              setSelectedConnector(con);
+                              setTargetStatus('SUSPENDED');
+                              setStatusModalOpen(true);
+                            }}
+                          >
+                            Suspend
+                          </Button>
                         </RowAction>
                         <RowAction allowed={con.status === 'SUSPENDED'} action="connector.manage">
-                            <Button
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              onClick={() => {
-                                setSelectedConnector(con);
-                                setTargetStatus('ACTIVE');
-                                setStatusModalOpen(true);
-                              }}
-                            >
-                              Reinstate
-                            </Button>
+                          <Button
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            onClick={() => {
+                              setSelectedConnector(con);
+                              setTargetStatus('ACTIVE');
+                              setStatusModalOpen(true);
+                            }}
+                          >
+                            Reinstate
+                          </Button>
                         </RowAction>
                       </Stack>
                     ),
@@ -1351,14 +1550,21 @@ export function ConnectorPage() {
                   {
                     id: 'proposed',
                     header: 'Proposed Connector',
-                    render: (req) => <ConnectorName id={req.proposedConnectorId} typographyProps={{ fontWeight: 600 }} />,
+                    render: (req) => (
+                      <ConnectorName id={req.proposedConnectorId} typographyProps={{ fontWeight: 600 }} />
+                    ),
                   },
                   { id: 'reason', header: 'Reason', render: (req) => req.reason },
                   {
                     id: 'status',
                     header: 'Status',
                     render: (req) => (
-                      <Chip label={req.status} color={STATUS_COLORS[req.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                      <Chip
+                        label={req.status}
+                        color={STATUS_COLORS[req.status] || 'default'}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                      />
                     ),
                   },
                   {
@@ -1366,7 +1572,10 @@ export function ConnectorPage() {
                     header: 'Requester',
                     render: (req) => (
                       <Box>
-                        <UserName id={req.requesterId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                        <UserName
+                          id={req.requesterId}
+                          typographyProps={{ fontWeight: 600, variant: 'body2' }}
+                        />
                       </Box>
                     ),
                   },
@@ -1374,7 +1583,7 @@ export function ConnectorPage() {
                     id: 'actions',
                     header: 'Actions',
                     align: 'right',
-                    render: (req) =>
+                    render: (req) => (
                       <RowAction allowed={req.status === 'PENDING'}>
                         <Button
                           size="small"
@@ -1389,7 +1598,8 @@ export function ConnectorPage() {
                         >
                           Approve (SOD-09)
                         </Button>
-                      </RowAction>,
+                      </RowAction>
+                    ),
                   },
                 ]}
               />
@@ -1430,7 +1640,10 @@ export function ConnectorPage() {
                         {disp.claimantConnectorIds.map((cid) => (
                           <Box key={cid}>
                             <ConnectorName id={cid} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
-                            <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block' }}
+                            >
                               {cid}
                             </Typography>
                           </Box>
@@ -1438,14 +1651,21 @@ export function ConnectorPage() {
                       </Stack>
                     ),
                   },
-                  { id: 'resolution', header: 'Resolution', render: (disp) => disp.resolution || 'Pending Adjudication' },
+                  {
+                    id: 'resolution',
+                    header: 'Resolution',
+                    render: (disp) => disp.resolution || 'Pending Adjudication',
+                  },
                   {
                     id: 'winner',
                     header: 'Winner Connector',
                     render: (disp) =>
                       disp.resolvedConnectorId ? (
                         <Box>
-                          <ConnectorName id={disp.resolvedConnectorId} typographyProps={{ fontWeight: 600, variant: 'body2' }} />
+                          <ConnectorName
+                            id={disp.resolvedConnectorId}
+                            typographyProps={{ fontWeight: 600, variant: 'body2' }}
+                          />
                         </Box>
                       ) : (
                         <NotSet />
@@ -1455,27 +1675,33 @@ export function ConnectorPage() {
                     id: 'status',
                     header: 'Status',
                     render: (disp) => (
-                      <Chip label={disp.status} color={STATUS_COLORS[disp.status] || 'default'} size="small" sx={{ fontWeight: 600 }} />
+                      <Chip
+                        label={disp.status}
+                        color={STATUS_COLORS[disp.status] || 'default'}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                      />
                     ),
                   },
                   {
                     id: 'actions',
                     header: 'Actions',
                     align: 'right',
-                    render: (disp) =>
+                    render: (disp) => (
                       <RowAction allowed={disp.status !== 'RESOLVED'} action="connector.dispute_resolve">
-                          <Button
-                            size="small"
-                            color="primary"
-                            variant="contained"
-                            onClick={() => {
-                              setSelectedDispute(disp);
-                              setDisputeModalOpen(true);
-                            }}
-                          >
-                            Adjudicate
-                          </Button>
-                      </RowAction>,
+                        <Button
+                          size="small"
+                          color="primary"
+                          variant="contained"
+                          onClick={() => {
+                            setSelectedDispute(disp);
+                            setDisputeModalOpen(true);
+                          }}
+                        >
+                          Adjudicate
+                        </Button>
+                      </RowAction>
+                    ),
                   },
                 ]}
               />
@@ -1488,7 +1714,7 @@ export function ConnectorPage() {
 
       {/* Dialog: Create Connector */}
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Onboard New Connector</DialogTitle>
+        <DialogTitle>Add New Connector</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
@@ -1556,7 +1782,9 @@ export function ConnectorPage() {
             />
             <UserSelect
               value={newConnector.relationshipOwnerUserId ?? null}
-              onChange={(id) => setNewConnector({ ...newConnector, relationshipOwnerUserId: id ?? undefined })}
+              onChange={(id) =>
+                setNewConnector({ ...newConnector, relationshipOwnerUserId: id ?? undefined })
+              }
               label="Relationship manager (internal staff)"
               helperText="The internal person who answers for this partner. A partner portal login cannot be chosen."
               staffOnly
@@ -1576,8 +1804,8 @@ export function ConnectorPage() {
             {inviteAfterSave && (
               <>
                 <Typography variant="caption" color="text.secondary">
-                  The portal user is an external person at the connector, not the relationship manager. They receive an e-mail to set a
-                  password; no password is entered here.
+                  The portal user is an external person at the connector, not the relationship manager. They
+                  receive an e-mail to set a password; no password is entered here.
                 </Typography>
                 <TextField
                   size="small"
@@ -1649,9 +1877,7 @@ export function ConnectorPage() {
               label="Proposed Connector"
               required
               value={attributionInput.proposedConnectorId}
-              onChange={(id) =>
-                setAttributionInput({ ...attributionInput, proposedConnectorId: id ?? '' })
-              }
+              onChange={(id) => setAttributionInput({ ...attributionInput, proposedConnectorId: id ?? '' })}
             />
             <TextField
               size="small"

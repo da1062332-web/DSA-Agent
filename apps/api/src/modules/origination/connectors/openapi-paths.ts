@@ -5,8 +5,10 @@ import {
   ActivateConnectorSchema,
   ApproveAttributionChangeRequestSchema,
   ApproveConnectorBankAccountSchema,
+  ConnectorActivityQuerySchema,
   ConnectorPortalAccessSchema,
   ConnectorPortalRevocationSchema,
+  ConnectorSummaryQuerySchema,
   CreateAttributionChangeRequestSchema,
   CreateConnectorAgreementSchema,
   CreateConnectorBankAccountSchema,
@@ -132,6 +134,30 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     operationId: 'CON-GET-CONNECTORS-LOOKUP',
     summary: 'GET /v1/connectors/lookup (picker data: id, legal name, status, branch only)',
     tag,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/connectors/summary',
+    operationId: 'CON-GET-CONNECTORS-SUMMARY',
+    summary: 'GET /v1/connectors/summary (dashboard counts; a count is null without its permission)',
+    tag,
+    query: ConnectorSummaryQuerySchema,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/connectors/:id/referrals',
+    operationId: 'CON-GET-CONNECTORS-BY-ID-REFERRALS',
+    summary: 'GET /v1/connectors/:id/referrals (lead.read; the mobile number is not returned)',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/connectors/:id/activity',
+    operationId: 'CON-GET-CONNECTORS-BY-ID-ACTIVITY',
+    summary:
+      'GET /v1/connectors/:id/activity (audit events; stored before and after values are not returned)',
+    tag,
+    query: ConnectorActivityQuerySchema,
   });
   registerOperation(registry, {
     method: 'get',

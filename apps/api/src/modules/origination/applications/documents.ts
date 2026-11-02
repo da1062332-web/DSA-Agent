@@ -25,6 +25,7 @@ import {
   UpsertDocumentTypeSchema,
   WaiveChecklistItemSchema,
   type DocumentResource,
+  type CreateUploadIntentInput,
   type DocumentType,
   type DocumentVersion,
   type LegalHold,
@@ -41,7 +42,8 @@ import { idempotencyKey, requireCtx, sendResource } from '../../../http/request'
 import type { ApiDeps } from '../../types';
 import { MagicByteFileScanner, type FileScannerPort } from '../document-sharing/storage-port';
 import { advanceForChecklistItem, advanceWhenDocumentsComplete, isComplete } from './application-port';
-import { EncryptedDocumentObjectStore } from './document-backends';
+import { partnerDocumentStatus } from '../../partner-view/partner-progress';
+import { ClamAvFileScanner, EncryptedDocumentObjectStore } from './document-backends';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
 import {
@@ -119,6 +121,7 @@ const toType = (r: Row): DocumentType => ({
   retentionClass: String(r.retention_class),
   instructions: (r.instructions as string | null) ?? null,
   active: Boolean(r.active),
+  partnerUpload: Boolean(r.partner_upload),
   custom: true,
   version: Number(r.lock_version),
 });
@@ -186,6 +189,196 @@ async function emit(
             ${JSON.stringify(data)}::jsonb, ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
 }
 
+/** Whether a malware scanner is configured (not the file-signature check alone) and answers PING. Used to tell a partner what is available. */
+export async function malwareScannerReady(deps: ApiDeps): Promise<boolean> {
+  const scanner = documentDeps(deps).scanner;
+  return scanner instanceof ClamAvFileScanner && (await scanner.healthy());
+}
+
+/**
+ * Partner uploads need a working malware scanner. Refuses when none is configured (the file-signature check alone is not enough)
+ * or when clamd does not answer PING.
+ */
+export async function assertMalwareScannerReady(deps: ApiDeps): Promise<void> {
+  if (!(await malwareScannerReady(deps))) {
+    throw AppError.of(
+      'DEPENDENCY_UNAVAILABLE',
+      'Document uploads are unavailable: the malware scanner is not configured or not responding.',
+    );
+  }
+}
+
+/**
+ * API-DOC-001 for a checklist item the caller may upload to: checks the application and the item, then the type's rules, then records
+ * the intent and returns the signed PUT. Shared by staff (/v1) and the connector portal, so both follow the same rules.
+ */
+export async function issueUploadIntent(
+  deps: ApiDeps,
+  tx: Tx,
+  ctx: RequestContext,
+  item: Row,
+  app: Row,
+  input: CreateUploadIntentInput,
+  via: 'STAFF' | 'CONNECTOR',
+) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  if (['CANCELLED', 'CLOSED', 'REJECTED', 'WITHDRAWN', 'DISBURSED'].includes(String(app.status))) {
+    throw AppError.of('INVALID_STATE', `Documents cannot be added while the application is ${app.status}.`);
+  }
+  if (['ACCEPTED', 'WAIVED', 'NOT_APPLICABLE'].includes(String(item.status))) {
+    throw AppError.of('INVALID_STATE', `The checklist item is already ${item.status}.`);
+  }
+  const type = await typeFor(tx, String(item.document_type_code));
+  if (!type.allowedMime.includes(input.mimeType)) {
+    throw AppError.of('VALIDATION_ERROR', `${type.name} accepts ${type.allowedMime.join(', ')}.`, [
+      { field: 'mimeType', issue: 'NOT_ALLOWED' },
+    ]);
+  }
+  if (input.sizeBytes > type.maxSizeBytes) {
+    throw AppError.of('VALIDATION_ERROR', `${type.name} is limited to ${type.maxSizeBytes} bytes.`, [
+      { field: 'sizeBytes', issue: 'TOO_LARGE' },
+    ]);
+  }
+  const id = deps.ids.next('upi');
+  const expiresAt = new Date(ctx.now.getTime() + UPLOAD_TTL_MINUTES * 60_000);
+  await sql`
+    insert into upload_intent (id, tenant_id, checklist_item_id, application_id, document_type_code, file_name,
+                               size_bytes, mime_type, sha256, token_hash, expires_at, created_by)
+    values (${id}, ${ctx.principal.tenantId}, ${input.checklistItemId}, ${String(item.application_id)},
+            ${String(item.document_type_code)}, ${input.fileName}, ${input.sizeBytes}, ${input.mimeType},
+            ${input.sha256}, ${sha256Hex(token)}, ${expiresAt}, ${ctx.principal.id})`.execute(tx);
+  await deps.audit.record(tx, ctx, {
+    action: 'document.upload_requested',
+    entityType: 'UPLOAD_INTENT',
+    entityId: id,
+    after: {
+      checklistItemId: input.checklistItemId,
+      mimeType: input.mimeType,
+      sizeBytes: input.sizeBytes,
+      origin: via,
+    },
+    permissionUsed: 'document.upload',
+  });
+  return {
+    status: 201,
+    body: {
+      uploadIntentId: id,
+      method: 'PUT' as const,
+      url: `/public/v1/document-uploads/${token}`,
+      expiresAt: expiresAt.toISOString(),
+      requiredHeaders: { 'Content-Type': input.mimeType, 'Content-Length': String(input.sizeBytes) },
+    },
+    resourceRef: id,
+  };
+}
+
+/**
+ * API-DOC-002 for an upload intent the caller may complete: checks the bytes against the declared sha256, scans them and registers
+ * the version. A file that is not clean stays as a quarantined version and does not submit the checklist item. Shared by staff and the
+ * connector portal; `via` records where the file came from.
+ */
+export async function completeUploadIntent(
+  deps: ApiDeps,
+  tx: Tx,
+  ctx: RequestContext,
+  intent: Row,
+  via: 'STAFF' | 'CONNECTOR',
+) {
+  const docs = documentDeps(deps);
+  if (intent.status === 'COMPLETED') {
+    const v = (
+      await sql<Row>`select scan_status from document_version where id = ${intent.version_id}`.execute(tx)
+    ).rows[0];
+    return {
+      documentId: String(intent.document_id),
+      versionId: String(intent.version_id),
+      scanStatus: v?.scan_status,
+    };
+  }
+  if (intent.status !== 'UPLOADED') {
+    throw AppError.of('INVALID_STATE', 'Nothing has been uploaded for this intent yet.');
+  }
+  const bytes = await docs.store.get(ctx.principal.tenantId, String(intent.object_key));
+  if (!bytes || sha256Hex(bytes) !== intent.sha256) {
+    throw AppError.of('VALIDATION_ERROR', 'The stored file does not match the declared sha256.', [
+      { field: 'sha256', issue: 'MISMATCH' },
+    ]);
+  }
+  const scan = await docs.scanner.scan(bytes, String(intent.file_name), String(intent.mime_type));
+  const scanStatus = scan.clean ? 'CLEAN' : 'QUARANTINED';
+
+  // One document per checklist item; a new upload becomes its next version and supersedes the previous one.
+  let doc = (
+    await sql<Row>`select * from document where checklist_item_id = ${intent.checklist_item_id} for update`.execute(
+      tx,
+    )
+  ).rows[0];
+  if (!doc) {
+    const item = (
+      await sql<Row>`select party_id from checklist_item where id = ${intent.checklist_item_id}`.execute(tx)
+    ).rows[0]!;
+    doc = (
+      await sql<Row>`
+        insert into document (id, tenant_id, owner_type, owner_id, application_id, checklist_item_id, document_type_code,
+                              created_by, updated_by)
+        values (${deps.ids.next('doc')}, ${ctx.principal.tenantId}, 'PARTY', ${String(item.party_id)},
+                ${String(intent.application_id)}, ${String(intent.checklist_item_id)},
+                ${String(intent.document_type_code)}, ${ctx.principal.id}, ${ctx.principal.id})
+        returning *`.execute(tx)
+    ).rows[0]!;
+  }
+  const next = (
+    await sql<{
+      n: number;
+    }>`select coalesce(max(version_no), 0) + 1 as n from document_version where document_id = ${doc.id}`.execute(
+      tx,
+    )
+  ).rows[0]!.n;
+  await sql`
+    update document_version set review_status = 'SUPERSEDED'
+     where document_id = ${doc.id} and review_status = 'PENDING'`.execute(tx);
+  const versionId = deps.ids.next('dvr');
+  await sql`
+    insert into document_version (id, tenant_id, document_id, version_no, object_key, file_name, sha256, size_bytes,
+                                  detected_mime, scan_status, uploaded_by, uploaded_via)
+    values (${versionId}, ${ctx.principal.tenantId}, ${String(doc.id)}, ${Number(next)}, ${String(intent.object_key)},
+            ${String(intent.file_name)}, ${String(intent.sha256)}, ${bytes.length}, ${String(intent.mime_type)},
+            ${scanStatus}, ${ctx.principal.id}, ${via})`.execute(tx);
+  await sql`update document set current_version_id = ${versionId}, updated_by = ${ctx.principal.id} where id = ${doc.id}`.execute(
+    tx,
+  );
+  if (scanStatus === 'CLEAN') {
+    await sql`
+      update checklist_item set status = 'SUBMITTED', document_id = ${String(doc.id)}, reviewed_by = null,
+             reviewed_at = null, reject_reason = null, updated_by = ${ctx.principal.id}
+       where id = ${intent.checklist_item_id}`.execute(tx);
+  }
+  await sql`
+    update upload_intent set status = 'COMPLETED', document_id = ${String(doc.id)}, version_id = ${versionId},
+           updated_at = now()
+     where id = ${intent.id}`.execute(tx);
+  await deps.audit.record(tx, ctx, {
+    action: 'document.uploaded',
+    entityType: 'DOCUMENT',
+    entityId: String(doc.id),
+    after: {
+      versionId,
+      versionNo: Number(next),
+      scanStatus,
+      documentTypeCode: intent.document_type_code,
+      origin: via,
+    },
+    permissionUsed: 'document.upload',
+  });
+  await emit(deps, tx, ctx, 'document.uploaded', String(doc.id), { documentId: doc.id, versionId });
+  await emit(deps, tx, ctx, 'document.scanned', String(doc.id), {
+    documentId: doc.id,
+    versionId,
+    scanStatus,
+  });
+  return { documentId: String(doc.id), versionId, scanStatus };
+}
+
 export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
   const docs = documentDeps(deps);
 
@@ -225,6 +418,7 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
           instructions:
             input.instructions !== undefined ? input.instructions : (existing?.instructions ?? null),
           active: input.active ?? (existing ? Boolean(existing.active) : true),
+          partnerUpload: input.partnerUpload ?? (existing ? Boolean(existing.partner_upload) : false),
         };
         const row = existing
           ? (
@@ -233,16 +427,16 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
                        allowed_mime = ${merged.allowedMime}::text[], max_size_bytes = ${merged.maxSizeBytes},
                        validity_months = ${merged.validityMonths}, sensitivity = ${merged.sensitivity},
                        retention_class = ${merged.retentionClass}, instructions = ${merged.instructions},
-                       active = ${merged.active}, updated_by = ${ctx.principal.id}
+                       active = ${merged.active}, partner_upload = ${merged.partnerUpload}, updated_by = ${ctx.principal.id}
                  where id = ${existing.id} returning *`.execute(tx)
             ).rows[0]!
           : (
               await sql<Row>`
                 insert into document_type (id, tenant_id, code, name, category, allowed_mime, max_size_bytes, validity_months,
-                                           sensitivity, retention_class, instructions, active, created_by, updated_by)
+                                           sensitivity, retention_class, instructions, active, partner_upload, created_by, updated_by)
                 values (${deps.ids.next('dtp')}, ${ctx.principal.tenantId}, ${input.code}, ${input.name}, ${input.category},
                         ${merged.allowedMime}::text[], ${merged.maxSizeBytes}, ${merged.validityMonths}, ${merged.sensitivity},
-                        ${merged.retentionClass}, ${merged.instructions}, ${merged.active}, ${ctx.principal.id},
+                        ${merged.retentionClass}, ${merged.instructions}, ${merged.active}, ${merged.partnerUpload}, ${ctx.principal.id},
                         ${ctx.principal.id})
                 returning *`.execute(tx)
             ).rows[0]!;
@@ -255,6 +449,7 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
             category: input.category,
             sensitivity: merged.sensitivity,
             active: merged.active,
+            partnerUpload: merged.partnerUpload,
           },
           permissionUsed: 'config.manage',
         });
@@ -272,7 +467,6 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
     deps.authz.requirePermission(ctx, 'document.upload');
     const key = idempotencyKey(req);
     const input = CreateUploadIntentSchema.parse(req.body);
-    const token = crypto.randomBytes(32).toString('base64url');
     const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
       withIdempotency(
         tx,
@@ -288,56 +482,7 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
               throw AppError.of('NOT_FOUND', 'Checklist item not found.');
             },
           );
-          if (['CANCELLED', 'CLOSED', 'REJECTED', 'WITHDRAWN', 'DISBURSED'].includes(String(app.status))) {
-            throw AppError.of(
-              'INVALID_STATE',
-              `Documents cannot be added while the application is ${app.status}.`,
-            );
-          }
-          if (['ACCEPTED', 'WAIVED', 'NOT_APPLICABLE'].includes(String(item.status))) {
-            throw AppError.of('INVALID_STATE', `The checklist item is already ${item.status}.`);
-          }
-          const type = await typeFor(tx, String(item.document_type_code));
-          if (!type.allowedMime.includes(input.mimeType)) {
-            throw AppError.of('VALIDATION_ERROR', `${type.name} accepts ${type.allowedMime.join(', ')}.`, [
-              { field: 'mimeType', issue: 'NOT_ALLOWED' },
-            ]);
-          }
-          if (input.sizeBytes > type.maxSizeBytes) {
-            throw AppError.of('VALIDATION_ERROR', `${type.name} is limited to ${type.maxSizeBytes} bytes.`, [
-              { field: 'sizeBytes', issue: 'TOO_LARGE' },
-            ]);
-          }
-          const id = deps.ids.next('upi');
-          const expiresAt = new Date(ctx.now.getTime() + UPLOAD_TTL_MINUTES * 60_000);
-          await sql`
-          insert into upload_intent (id, tenant_id, checklist_item_id, application_id, document_type_code, file_name,
-                                     size_bytes, mime_type, sha256, token_hash, expires_at, created_by)
-          values (${id}, ${ctx.principal.tenantId}, ${input.checklistItemId}, ${String(item.application_id)},
-                  ${String(item.document_type_code)}, ${input.fileName}, ${input.sizeBytes}, ${input.mimeType},
-                  ${input.sha256}, ${sha256Hex(token)}, ${expiresAt}, ${ctx.principal.id})`.execute(tx);
-          await deps.audit.record(tx, ctx, {
-            action: 'document.upload_requested',
-            entityType: 'UPLOAD_INTENT',
-            entityId: id,
-            after: {
-              checklistItemId: input.checklistItemId,
-              mimeType: input.mimeType,
-              sizeBytes: input.sizeBytes,
-            },
-            permissionUsed: 'document.upload',
-          });
-          return {
-            status: 201,
-            body: {
-              uploadIntentId: id,
-              method: 'PUT' as const,
-              url: `/public/v1/document-uploads/${token}`,
-              expiresAt: expiresAt.toISOString(),
-              requiredHeaders: { 'Content-Type': input.mimeType, 'Content-Length': String(input.sizeBytes) },
-            },
-            resourceRef: id,
-          };
+          return issueUploadIntent(deps, tx, ctx, item, app, input, 'STAFF');
         },
       ),
     );
@@ -357,99 +502,7 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
       await scopedApplication(tx, ctx, 'document.upload', String(intent.application_id)).catch(() => {
         throw AppError.of('NOT_FOUND', 'Upload intent not found.');
       });
-      if (intent.status === 'COMPLETED') {
-        const v = (
-          await sql<Row>`select scan_status from document_version where id = ${intent.version_id}`.execute(tx)
-        ).rows[0];
-        return {
-          documentId: String(intent.document_id),
-          versionId: String(intent.version_id),
-          scanStatus: v?.scan_status,
-        };
-      }
-      if (intent.status !== 'UPLOADED') {
-        throw AppError.of('INVALID_STATE', 'Nothing has been uploaded for this intent yet.');
-      }
-      const bytes = await docs.store.get(ctx.principal.tenantId, String(intent.object_key));
-      if (!bytes || sha256Hex(bytes) !== intent.sha256) {
-        throw AppError.of('VALIDATION_ERROR', 'The stored file does not match the declared sha256.', [
-          { field: 'sha256', issue: 'MISMATCH' },
-        ]);
-      }
-      const scan = await docs.scanner.scan(bytes, String(intent.file_name), String(intent.mime_type));
-      const scanStatus = scan.clean ? 'CLEAN' : 'QUARANTINED';
-
-      // One document per checklist item; a new upload becomes its next version and supersedes the previous one.
-      let doc = (
-        await sql<Row>`select * from document where checklist_item_id = ${intent.checklist_item_id} for update`.execute(
-          tx,
-        )
-      ).rows[0];
-      if (!doc) {
-        const item = (
-          await sql<Row>`select party_id from checklist_item where id = ${intent.checklist_item_id}`.execute(
-            tx,
-          )
-        ).rows[0]!;
-        doc = (
-          await sql<Row>`
-            insert into document (id, tenant_id, owner_type, owner_id, application_id, checklist_item_id, document_type_code,
-                                  created_by, updated_by)
-            values (${deps.ids.next('doc')}, ${ctx.principal.tenantId}, 'PARTY', ${String(item.party_id)},
-                    ${String(intent.application_id)}, ${String(intent.checklist_item_id)},
-                    ${String(intent.document_type_code)}, ${ctx.principal.id}, ${ctx.principal.id})
-            returning *`.execute(tx)
-        ).rows[0]!;
-      }
-      const next = (
-        await sql<{
-          n: number;
-        }>`select coalesce(max(version_no), 0) + 1 as n from document_version where document_id = ${doc.id}`.execute(
-          tx,
-        )
-      ).rows[0]!.n;
-      await sql`
-        update document_version set review_status = 'SUPERSEDED'
-         where document_id = ${doc.id} and review_status = 'PENDING'`.execute(tx);
-      const versionId = deps.ids.next('dvr');
-      await sql`
-        insert into document_version (id, tenant_id, document_id, version_no, object_key, file_name, sha256, size_bytes,
-                                      detected_mime, scan_status, uploaded_by, uploaded_via)
-        values (${versionId}, ${ctx.principal.tenantId}, ${String(doc.id)}, ${Number(next)}, ${String(intent.object_key)},
-                ${String(intent.file_name)}, ${String(intent.sha256)}, ${bytes.length}, ${String(intent.mime_type)},
-                ${scanStatus}, ${ctx.principal.id}, 'STAFF')`.execute(tx);
-      await sql`update document set current_version_id = ${versionId}, updated_by = ${ctx.principal.id} where id = ${doc.id}`.execute(
-        tx,
-      );
-      if (scanStatus === 'CLEAN') {
-        await sql`
-          update checklist_item set status = 'SUBMITTED', document_id = ${String(doc.id)}, reviewed_by = null,
-                 reviewed_at = null, reject_reason = null, updated_by = ${ctx.principal.id}
-           where id = ${intent.checklist_item_id}`.execute(tx);
-      }
-      await sql`
-        update upload_intent set status = 'COMPLETED', document_id = ${String(doc.id)}, version_id = ${versionId},
-               updated_at = now()
-         where id = ${intent.id}`.execute(tx);
-      await deps.audit.record(tx, ctx, {
-        action: 'document.uploaded',
-        entityType: 'DOCUMENT',
-        entityId: String(doc.id),
-        after: {
-          versionId,
-          versionNo: Number(next),
-          scanStatus,
-          documentTypeCode: intent.document_type_code,
-        },
-        permissionUsed: 'document.upload',
-      });
-      await emit(deps, tx, ctx, 'document.uploaded', String(doc.id), { documentId: doc.id, versionId });
-      await emit(deps, tx, ctx, 'document.scanned', String(doc.id), {
-        documentId: doc.id,
-        versionId,
-        scanStatus,
-      });
-      return { documentId: String(doc.id), versionId, scanStatus };
+      return completeUploadIntent(deps, tx, ctx, intent, 'STAFF');
     });
     res.status(202).json(result);
   });
@@ -828,6 +881,147 @@ const serviceCtx = (tenantId: string, correlationId: string): RequestContext => 
   correlationId,
   now: new Date(),
 });
+
+/** The connector behind a portal login: an active CONNECTOR user whose connector is active. Anyone else is refused. */
+async function activeConnectorOf(tx: Tx, ctx: RequestContext): Promise<string> {
+  const r = await sql<Row>`
+    select u.connector_id from app_user u join connector c on c.id = u.connector_id
+     where u.id = ${ctx.principal.id} and u.user_type = 'CONNECTOR' and u.status = 'ACTIVE' and c.status = 'ACTIVE'`.execute(
+    tx,
+  );
+  if (!r.rows[0]) throw AppError.of('FORBIDDEN', 'The portal is for active connector users.');
+  return String(r.rows[0].connector_id);
+}
+
+/** The application of one of a connector's referrals. Any other referral is not found, so no other connector's data is confirmed. */
+async function ownedApplication(tx: Tx, connectorId: string, leadId: string): Promise<Row> {
+  const r = await sql<Row>`
+    select la.* from loan_application la join lead l on l.tenant_id = la.tenant_id and l.id = la.lead_id
+     where la.lead_id = ${leadId} and l.connector_id = ${connectorId}`.execute(tx);
+  if (!r.rows[0]) throw AppError.of('NOT_FOUND', 'Referral not found.');
+  return r.rows[0];
+}
+
+/**
+ * Partner document upload (API-CPT-008), mounted under /portal/v1. The bytes follow the same token-scoped PUT as staff uploads. Only a
+ * document type approved for partners (document_type.partner_upload) and a working malware scanner are accepted. No route returns a
+ * file to a partner.
+ */
+export function createPartnerUploadRouter(deps: ApiDeps): Router {
+  const router = express.Router();
+
+  // The document requests of one of my referrals that are approved for partners, with the partner's status for each. Only approved types
+  // appear. The reason a document was rejected is internal and is not returned: the partner is told to send it again.
+  router.get('/referrals/:leadId/documents', async (req, res) => {
+    const ctx = requireCtx(req);
+    const leadId = String(req.params.leadId);
+    const data = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const connectorId = await activeConnectorOf(tx, ctx);
+      const app = await ownedApplication(tx, connectorId, leadId);
+      const rows = (
+        await sql<Row>`
+          select c.id, c.status, t.name, t.allowed_mime, t.max_size_bytes
+            from checklist_item c join document_type t on t.code = c.document_type_code
+           where c.application_id = ${String(app.id)} and t.partner_upload = true
+           order by c.ordinal, c.id`.execute(tx)
+      ).rows;
+      const closed = ['CANCELLED', 'CLOSED', 'REJECTED', 'WITHDRAWN', 'DISBURSED'].includes(
+        String(app.status),
+      );
+      const unavailableReason =
+        rows.length === 0
+          ? 'NO_APPROVED_TYPES'
+          : closed
+            ? 'APPLICATION_CLOSED'
+            : (await malwareScannerReady(deps))
+              ? null
+              : 'SCANNER_UNAVAILABLE';
+      return {
+        uploadAvailable: unavailableReason === null,
+        unavailableReason,
+        items: rows.map((r) => {
+          const status = partnerDocumentStatus(String(r.status));
+          return {
+            checklistItemId: String(r.id),
+            documentName: String(r.name),
+            allowedMime: r.allowed_mime as string[],
+            maxSizeBytes: Number(r.max_size_bytes),
+            status,
+            actionRequired: status === 'NOT_SUBMITTED' || status === 'ACTION_REQUIRED',
+          };
+        }),
+      };
+    });
+    res.json(data);
+  });
+
+  router.post('/referrals/:leadId/documents/upload-intents', async (req, res) => {
+    const ctx = requireCtx(req);
+    const key = idempotencyKey(req);
+    const input = CreateUploadIntentSchema.parse(req.body);
+    const leadId = String(req.params.leadId);
+    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
+      withIdempotency(
+        tx,
+        ctx,
+        {
+          key,
+          method: 'POST',
+          path: '/portal/v1/referrals/documents/upload-intents',
+          body: { leadId, ...input },
+        },
+        async () => {
+          const connectorId = await activeConnectorOf(tx, ctx);
+          const app = await ownedApplication(tx, connectorId, leadId);
+          const item = (
+            await sql<Row>`select * from checklist_item where id = ${input.checklistItemId} and application_id = ${String(app.id)}`.execute(
+              tx,
+            )
+          ).rows[0];
+          if (!item) throw AppError.of('NOT_FOUND', 'Checklist item not found.');
+          const type =
+            await sql<Row>`select partner_upload from document_type where code = ${String(item.document_type_code)}`.execute(
+              tx,
+            );
+          if (!type.rows[0]?.partner_upload) {
+            throw AppError.of('FORBIDDEN', 'This document is not requested through the partner portal.');
+          }
+          await assertMalwareScannerReady(deps);
+          return issueUploadIntent(deps, tx, ctx, item, app, input, 'CONNECTOR');
+        },
+      ),
+    );
+    if (result.replayed) res.set('Idempotent-Replayed', 'true');
+    res.status(result.status).json(result.body);
+  });
+
+  // Completes an upload the caller started. The file is scanned here. The partner learns only whether it was accepted.
+  router.post('/upload-intents/:id/completion', async (req, res) => {
+    const ctx = requireCtx(req);
+    const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+      const connectorId = await activeConnectorOf(tx, ctx);
+      const intent = (
+        await sql<Row>`select * from upload_intent where id = ${String(req.params.id)} and created_by = ${ctx.principal.id} for update`.execute(
+          tx,
+        )
+      ).rows[0];
+      if (!intent) throw AppError.of('NOT_FOUND', 'Upload intent not found.');
+      const owned = await sql`
+        select 1 from loan_application la join lead l on l.tenant_id = la.tenant_id and l.id = la.lead_id
+         where la.id = ${String(intent.application_id)} and l.connector_id = ${connectorId}`.execute(tx);
+      if (!owned.rows.length) throw AppError.of('NOT_FOUND', 'Upload intent not found.');
+      await assertMalwareScannerReady(deps);
+      const done = await completeUploadIntent(deps, tx, ctx, intent, 'CONNECTOR');
+      return {
+        uploadIntentId: String(req.params.id),
+        status: done.scanStatus === 'CLEAN' ? 'ACCEPTED' : 'NOT_ACCEPTED',
+      };
+    });
+    res.status(202).json(result);
+  });
+
+  return router;
+}
 
 export function createPublicDocumentRouter(deps: ApiDeps): Router {
   const router = express.Router();
