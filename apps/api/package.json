@@ -18,6 +18,7 @@
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {
+    "@dsa/bre-core": "*",
     "@dsa/contracts": "*",
     "@dsa/kernel": "*",
     "cors": "^2.8.5",
