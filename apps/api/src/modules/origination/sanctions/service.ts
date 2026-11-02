@@ -14,6 +14,7 @@ import {
   type TxRunner,
   type VerifyTrancheRequest,
   type VoidTrancheRequest,
+  withLegacy,
 } from '@dsa/contracts';
 import { ulid } from 'ulid';
 import type { SanctionRepository } from './repository';
@@ -56,17 +57,12 @@ export class SanctionService {
   }
 
   /**
-   * Reading sanctions and disbursement tranches: any of the permissions the Sanction and disbursement screen is shown for
-   * (docs/PERMISSION_UI_VISIBILITY_AUDIT.md F-02). Checked before any lookup, so an id cannot be probed without it. There is no
-   * separate read permission; widening this to application.read is decision D-02.
+   * Reading sanctions (sanction.read) and disbursement tranches (disbursement.read). Each also accepts the four action permissions the
+   * Sanction and disbursement screen was shown for before the split (LEGACY_PARENTS), so no role loses the screen when this ships
+   * (docs/PERMISSION_UI_VISIBILITY_AUDIT.md F-02). Checked before any lookup, so an id cannot be probed without it.
    */
-  private checkReadAccess(ctx: RequestContext): void {
-    const allowed = [
-      'sanction.record',
-      'disbursement.record',
-      'disbursement.verify',
-      'disbursement.exception_approve',
-    ];
+  private checkReadAccess(ctx: RequestContext, code: 'sanction.read' | 'disbursement.read'): void {
+    const allowed: string[] = withLegacy(code);
     if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
       throw AppError.of('FORBIDDEN', `One of these permissions is required: ${allowed.join(', ')}`);
     }
@@ -177,7 +173,7 @@ export class SanctionService {
   }
 
   async getSanction(ctx: RequestContext, id: string): Promise<SanctionDto> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'sanction.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const sanction = await this.repo.findSanctionById(tx, tenantId, id);
@@ -189,7 +185,7 @@ export class SanctionService {
   }
 
   async listSanctionsForCase(ctx: RequestContext, lenderCaseId: string): Promise<SanctionDto[]> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'sanction.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const lenderCase = await this.repo.findLenderCase(tx, tenantId, lenderCaseId);
@@ -205,7 +201,7 @@ export class SanctionService {
     ctx: RequestContext,
     filter?: { status?: string; limit?: number },
   ): Promise<SanctionDto[]> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'sanction.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllSanctions(tx, tenantId, filter);
@@ -217,7 +213,7 @@ export class SanctionService {
     ctx: RequestContext,
     filter?: { status?: string; limit?: number },
   ): Promise<DisbursementTrancheDto[]> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'disbursement.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const list = await this.repo.listAllTranches(tx, tenantId, filter);
@@ -418,7 +414,7 @@ export class SanctionService {
   }
 
   async getTranche(ctx: RequestContext, id: string): Promise<DisbursementTrancheDto> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'disbursement.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const tranche = await this.repo.findTrancheById(tx, tenantId, id);
@@ -430,7 +426,7 @@ export class SanctionService {
   }
 
   async listTranchesForSanction(ctx: RequestContext, sanctionId: string): Promise<DisbursementTrancheDto[]> {
-    this.checkReadAccess(ctx);
+    this.checkReadAccess(ctx, 'disbursement.read');
     const tenantId = ctx.principal.tenantId;
     return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
       const sanction = await this.repo.findSanctionById(tx, tenantId, sanctionId);

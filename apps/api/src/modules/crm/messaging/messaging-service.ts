@@ -13,6 +13,7 @@ import {
   type SendMessageInput,
   type Tx,
   type TxRunner,
+  withLegacy,
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
@@ -236,10 +237,10 @@ export class MessagingService {
   ): Promise<{ template: MessageTemplate; isReplayed: boolean }> {
     const tenantId = ctx.principal.tenantId;
 
-    // Check config.manage permission
-    const hasPermission = ctx.principal.grants.some((g) => g.code === 'config.manage');
+    // Check message_template.manage permission (config.manage still counts: its legacy parent)
+    const hasPermission = ctx.principal.grants.some((g) => withLegacy('message_template.manage').includes(g.code));
     if (!hasPermission) {
-      throw AppError.of('FORBIDDEN', 'Principal requires config.manage permission to create templates');
+      throw AppError.of('FORBIDDEN', 'Principal requires message_template.manage permission to create templates');
     }
 
     const run = async (tx?: Tx) => {
@@ -357,8 +358,8 @@ export class MessagingService {
     templateId: string,
   ): Promise<{ id: string; code: string; version: number; status: 'APPROVED'; lockVersion: number }> {
     const tenantId = ctx.principal.tenantId;
-    if (!ctx.principal.grants.some((g) => g.code === 'config.manage')) {
-      throw AppError.of('FORBIDDEN', 'Principal requires config.manage permission to approve templates');
+    if (!ctx.principal.grants.some((g) => withLegacy('message_template.manage').includes(g.code))) {
+      throw AppError.of('FORBIDDEN', 'Principal requires message_template.manage permission to approve templates');
     }
 
     const check = (status: string, createdBy: string) => {

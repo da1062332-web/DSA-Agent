@@ -16,6 +16,7 @@ describe('Module 37: Audit (MOD-AUD) Integration & Route Tests', () => {
     grants: [
       { code: 'audit.read', scope: 'TENANT', branchIds: [] },
       { code: 'audit.export_evidence', scope: 'TENANT', branchIds: [] },
+      { code: 'audit.seal', scope: 'TENANT', branchIds: [] },
     ],
   });
 
@@ -323,6 +324,26 @@ describe('Module 37: Audit (MOD-AUD) Integration & Route Tests', () => {
 
   // ==========================================================================
   // Evidence Packs: Export & Retrieval (TASK-408 / SUB-AUD.03 C)
+  // ==========================================================================
+  it('TEST-AUD-SEAL-01 sealing the chain writes to it, so audit.read alone is refused with 403 and audit.seal alone is accepted', async () => {
+    const readOnly = testPrincipal({
+      tenantId: tenantA,
+      id: 'usr_read_only',
+      grants: [{ code: 'audit.read', scope: 'TENANT', branchIds: [] }],
+    });
+    const refused = await request(getApp(readOnly)).post('/v1/audit-chain/seal');
+    expect(refused.status).toBe(403);
+    expect(refused.body.error?.code).toBe('FORBIDDEN');
+
+    const sealer = testPrincipal({
+      tenantId: tenantA,
+      id: 'usr_sealer',
+      grants: [{ code: 'audit.seal', scope: 'TENANT', branchIds: [] }],
+    });
+    const accepted = await request(getApp(sealer)).post('/v1/audit-chain/seal');
+    expect(accepted.status).toBe(200);
+  });
+
   // ==========================================================================
   it('TEST-AUD-008 rejects evidence pack creation without audit.export_evidence with 403', async () => {
     const principalWithoutExport = testPrincipal({

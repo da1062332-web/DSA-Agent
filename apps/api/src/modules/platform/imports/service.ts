@@ -24,18 +24,27 @@ export class ImportService {
     private readonly storage: ObjectStoragePort = globalStorage,
   ) {}
 
-  /** Whether the caller may work with imports of this target: import.run or config.manage for any, else the target's create permission. */
+  /**
+   * Whether the caller may see imports of this target: import.read (view only), import.run or config.manage for any, else the target's
+   * create permission. Working with a batch (create, map, commit, roll back) is checked by requireTargetPermission, which import.read
+   * does not satisfy.
+   */
   private canUseTarget(ctx: RequestContext, targetEntity: string): boolean {
     const grants = ctx.principal.grants.map((g) => g.code);
     const required = targetEntity === 'CUSTOMER' ? 'customer.create' : 'lead.create';
     return (
-      grants.includes(required as any) || grants.includes('import.run') || grants.includes('config.manage')
+      grants.includes(required as any) ||
+      grants.includes('import.read') ||
+      grants.includes('import.run') ||
+      grants.includes('config.manage')
     );
   }
 
-  /** import.run and config.manage see every batch of the tenant; anyone else (a holder of only a create permission) sees their own. */
+  /** import.read, import.run and config.manage see every batch of the tenant; anyone else (a holder of only a create permission) sees their own. */
   private seesAllBatches(ctx: RequestContext): boolean {
-    return ctx.principal.grants.some((g) => g.code === 'import.run' || g.code === 'config.manage');
+    return ctx.principal.grants.some(
+      (g) => g.code === 'import.read' || g.code === 'import.run' || g.code === 'config.manage',
+    );
   }
 
   /** Whether this caller may see this batch: the target rule, and for a non-administrator only their own uploads (audit F-06). */
@@ -54,7 +63,7 @@ export class ImportService {
     if (!this.canUseTarget(ctx, 'CUSTOMER') && !this.canUseTarget(ctx, 'LEAD')) {
       throw AppError.of(
         'FORBIDDEN',
-        'Import access requires import.run, config.manage, customer.create or lead.create.',
+        'Import access requires import.read, import.run, config.manage, customer.create or lead.create.',
       );
     }
   }

@@ -3,11 +3,11 @@
 // everything (the pilot default). The core Workflow A modules (leads, customers, tasks, applications, documents, lender
 // cases, rules, users, configuration) are never gated, nor is the ledger: posting is for system identities only and must be
 // refused before any database access (F-03), which a gate lookup would precede. Entitlements are read once per tenant per 30 seconds.
-import { AppError, type TxRunner } from '@dsa/contracts';
+import { AppError, type GatedModule, type TxRunner } from '@dsa/contracts';
 import type { RequestHandler } from 'express';
 import { sql } from 'kysely';
 
-const PREFIXES: [RegExp, string][] = [
+const PREFIXES: [RegExp, GatedModule][] = [
   [/^\/(automations|automation-versions|automation-executions)(\/|$)/, 'MOD-WFA'],
   [
     /^\/(commission|commission-plans|commission-calculations|clawbacks|recalculation-proposals)(\/|-|$)/,

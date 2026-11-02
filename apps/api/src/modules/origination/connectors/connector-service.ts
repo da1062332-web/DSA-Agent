@@ -30,6 +30,7 @@ import {
   type Tx,
   type UpdateConnectorInput,
   type UpdateConnectorStatusInput,
+  withLegacy,
 } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import { sql, type RawBuilder } from 'kysely';
@@ -37,6 +38,7 @@ import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../../types';
 import { invitationExpiry, invitationState, resendRefusal, unboundSubject } from '../../platform/invitations';
 import { assertMayBecomeActive } from '../../platform/user-lifecycle';
+import { requireAnyPermission } from '../../../http/permissions';
 
 const nextUlid = monotonicFactory();
 
@@ -774,7 +776,7 @@ export class ConnectorService {
     input: CreateConnectorBankAccountInput,
     idempotencyKey: string,
   ): Promise<{ bankAccount: ConnectorBankAccountResource; isReplayed?: boolean }> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.bank_account_manage'));
 
     const cleanAcc = input.accountNumber.trim();
     const cleanIfsc = input.ifscCode.trim().toUpperCase();
@@ -965,7 +967,7 @@ export class ConnectorService {
    */
   async listBankAccounts(ctx: RequestContext, connectorId: string): Promise<ConnectorBankAccountResource[]> {
     // Bank details are read by the people who manage or approve them, not by everyone who can read the directory.
-    requireAnyGrant(ctx, ['connector.manage', 'connector.bank_change_approve']);
+    requireAnyGrant(ctx, [...withLegacy('connector.bank_account_manage'), 'connector.bank_change_approve']);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       await assertVisible(tx, ctx, connectorId);
@@ -1029,7 +1031,7 @@ export class ConnectorService {
     input: CreateConnectorAgreementInput,
     idempotencyKey: string,
   ): Promise<{ agreement: ConnectorAgreementResource; isReplayed?: boolean }> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.agreement_manage'));
 
     const validFrom = new Date(input.validFrom);
     const validTo = new Date(input.validTo);
@@ -1134,7 +1136,7 @@ export class ConnectorService {
    */
   async listAgreements(ctx: RequestContext, connectorId: string): Promise<ConnectorAgreementResource[]> {
     // Agreement terms (commission share, evidence references) are managed by tenant administration only.
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.agreement_manage'));
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       await assertVisible(tx, ctx, connectorId);
@@ -1200,7 +1202,7 @@ export class ConnectorService {
     input: InviteConnectorUserInput,
     idempotencyKey: string,
   ): Promise<{ user: ConnectorPortalUser; isReplayed?: boolean }> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const result = await withIdempotency(
@@ -1250,7 +1252,7 @@ export class ConnectorService {
             entityType: 'USER',
             entityId: userId,
             after: { connectorId, status: 'INVITED', invitationId, delivery: 'QUEUED' },
-            permissionUsed: 'connector.manage',
+            permissionUsed: 'connector.portal_user_manage',
           });
           return {
             status: 201,
@@ -1265,7 +1267,7 @@ export class ConnectorService {
 
   /** GET /v1/connectors/{id}/users: the connector's portal logins and the state of each one's latest invitation. */
   async listPortalUsers(ctx: RequestContext, connectorId: string): Promise<ConnectorPortalUser[]> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       await assertVisible(tx, ctx, connectorId);
       return this.portalUsers(tx, ctx, connectorId);
@@ -1281,7 +1283,7 @@ export class ConnectorService {
     connectorId: string,
     userId: string,
   ): Promise<ConnectorPortalUser> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       await assertVisible(tx, ctx, connectorId);
       const login = await lockPortalUser(tx, ctx, connectorId, userId);
@@ -1349,7 +1351,7 @@ export class ConnectorService {
           resent: current ? 'EXISTING_INVITATION' : 'NEW_INVITATION',
           delivery: 'QUEUED',
         },
-        permissionUsed: 'connector.manage',
+        permissionUsed: 'connector.portal_user_manage',
       });
       return this.readPortalUser(tx, ctx, connectorId, userId);
     });
@@ -1366,7 +1368,7 @@ export class ConnectorService {
     userId: string,
     input: ConnectorPortalAccessInput,
   ): Promise<ConnectorPortalUser> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const connector = await this.readConnector(tx, ctx, connectorId);
       const login = await lockPortalUser(tx, ctx, connectorId, userId);
@@ -1399,7 +1401,7 @@ export class ConnectorService {
         before: { status: from },
         after: { connectorId, status: to },
         reason: input.reason,
-        permissionUsed: 'connector.manage',
+        permissionUsed: 'connector.portal_user_manage',
       });
       return this.readPortalUser(tx, ctx, connectorId, userId);
     });
@@ -1415,7 +1417,7 @@ export class ConnectorService {
     userId: string,
     input: ConnectorPortalRevocationInput,
   ): Promise<ConnectorPortalUser> {
-    this.deps.authz.requirePermission(ctx, 'connector.manage');
+    requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       await assertVisible(tx, ctx, connectorId);
       const login = await lockPortalUser(tx, ctx, connectorId, userId);
@@ -1438,7 +1440,7 @@ export class ConnectorService {
         before: { status: 'INVITED' },
         after: { connectorId, status: 'DEACTIVATED' },
         reason: input.reason,
-        permissionUsed: 'connector.manage',
+        permissionUsed: 'connector.portal_user_manage',
       });
       return this.readPortalUser(tx, ctx, connectorId, userId);
     });

@@ -6,8 +6,10 @@ import {
   IncidentListQuerySchema,
   SecurityEventListQuerySchema,
   UpdateIncidentRequestSchema,
+  withLegacy,
 } from '@dsa/contracts';
 import { Router } from 'express';
+import { requireAnyPermission } from '../../http/permissions';
 import { idempotencyKey, ifMatchVersion, requireCtx, sendResource } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { SecurityService } from './service';
@@ -61,7 +63,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/security/events', async (req, res, next) => {
     try {
       const ctx = requireCtx(req);
-      deps.authz.requirePermission(ctx, 'security.incident');
+      // Reading is security.read; filing and managing stay security.incident (which also reads, as before).
+      requireAnyPermission(deps.authz, ctx, withLegacy('security.read'));
 
       const parsedQuery = SecurityEventListQuerySchema.safeParse(req.query);
       if (!parsedQuery.success) {
@@ -142,7 +145,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/incidents/:id', async (req, res, next) => {
     try {
       const ctx = requireCtx(req);
-      deps.authz.requirePermission(ctx, 'security.incident');
+      requireAnyPermission(deps.authz, ctx, withLegacy('security.read'));
 
       const incident = await service.getIncident(ctx, req.params.id);
       sendResource(res, 200, { ...incident, version: incident.lockVersion });
@@ -158,7 +161,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/incidents', async (req, res, next) => {
     try {
       const ctx = requireCtx(req);
-      deps.authz.requirePermission(ctx, 'security.incident');
+      requireAnyPermission(deps.authz, ctx, withLegacy('security.read'));
 
       const parsedQuery = IncidentListQuerySchema.safeParse(req.query);
       if (!parsedQuery.success) {

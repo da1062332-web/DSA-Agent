@@ -5,8 +5,10 @@ import {
   AppError,
   AuditSearchQuery,
   CreateEvidencePackRequest,
+  withLegacy,
   type EvidencePackResponse,
 } from '@dsa/contracts';
+import { requireAnyPermission } from '../../http/permissions';
 import { requireCtx } from '../../http/request';
 import type { ApiDeps } from '../types';
 import {
@@ -110,7 +112,8 @@ export function createRouter(deps: ApiDeps): Router {
   // ==========================================================================
   router.post('/audit-chain/seal', async (req: Request, res: Response) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'audit.read');
+    // Sealing writes to the chain, so it is its own permission: reading the trail (audit.read) no longer includes it.
+    requireAnyPermission(deps.authz, ctx, withLegacy('audit.seal'));
 
     const sealResult = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       return sealTenantAuditChain(tx, ctx.principal.tenantId);

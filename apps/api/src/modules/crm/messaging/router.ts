@@ -15,6 +15,7 @@ import {
   ListTemplatesQuerySchema,
   SendMessageSchema,
   type RequestContext,
+  withLegacy,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../../types';
 import { MessagingService } from './messaging-service';
@@ -34,9 +35,14 @@ export function createRouter(deps: ApiDeps, serviceOverride?: MessagingService):
         throw AppError.of('UNAUTHENTICATED', 'Authentication required');
       }
 
-      const hasPermission = ctx.principal.grants.some((g) => g.code === 'config.manage');
+      const hasPermission = ctx.principal.grants.some((g) =>
+        withLegacy('message_template.manage').includes(g.code),
+      );
       if (!hasPermission) {
-        throw AppError.of('FORBIDDEN', 'Principal requires config.manage permission to create templates');
+        throw AppError.of(
+          'FORBIDDEN',
+          'Principal requires message_template.manage permission to create templates',
+        );
       }
 
       const idempotencyKey = req.get('Idempotency-Key');

@@ -1,13 +1,15 @@
 // MOD-ELG Eligibility (owner: Dev 3; DSA Notion MODULE 17). APIs: API-ELG-001 run (evaluates the approved rule set through the
 // decision engine), 002 history, 003 override, 004 latest assessment. Applicant figures are in eligibility-inputs.ts.
 // Running an assessment needs application.update (it writes a record that feeds a credit decision); reading needs
-// application.read; an override needs eligibility.override. Scope follows the application.
+// eligibility.read (or application.read until the role matrix is applied); an override needs eligibility.override. Scope follows
+// the application.
 // An assessment never promises approval: a PASS is a preliminary result against the approved rules.
-import { AppError, type DecisionRequest, type Tx } from '@dsa/contracts';
+import { AppError, withLegacy, type DecisionRequest, type Tx } from '@dsa/contracts';
 import { computeContentHash } from '@dsa/bre-core';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
+import { requireAnyPermission } from '../../../http/permissions';
 import { idempotencyKey, requireCtx } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { iso, keysetPage, type Row } from './db';
@@ -263,10 +265,10 @@ export function registerEligibilityRoutes(router: Router, deps: ApiDeps): void {
 
   router.get('/applications/:id/eligibility-assessments', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'application.read');
+    requireAnyPermission(deps.authz, ctx, withLegacy('eligibility.read'));
     const q = EligibilityListQuery.parse(req.query);
     const page = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      await loadScopedApplication(tx, ctx, 'application.read', req.params.id);
+      await loadScopedApplication(tx, ctx, withLegacy('eligibility.read'), req.params.id);
       return keysetPage(tx, {
         from: sql`eligibility_assessment`,
         sortColumn: 'id',
@@ -282,9 +284,9 @@ export function registerEligibilityRoutes(router: Router, deps: ApiDeps): void {
   // API-ELG-004: the newest assessment, by time and then id. Works however many assessments the application has.
   router.get('/applications/:id/eligibility-assessments/latest', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'application.read');
+    requireAnyPermission(deps.authz, ctx, withLegacy('eligibility.read'));
     const row = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      await loadScopedApplication(tx, ctx, 'application.read', req.params.id);
+      await loadScopedApplication(tx, ctx, withLegacy('eligibility.read'), req.params.id);
       const r = await sql<Row>`
         select * from eligibility_assessment
          where application_id = ${req.params.id}

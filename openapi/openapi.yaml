@@ -2475,7 +2475,7 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-10-29
+          default: 2026-11-02
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -3725,6 +3725,38 @@ paths:
                             - automation.manage
                             - automation.operate
                             - decision.evaluate
+                            - lender_case.read
+                            - sanction.read
+                            - disbursement.read
+                            - eligibility.read
+                            - org.manage
+                            - team.manage
+                            - settings.manage
+                            - message_template.manage
+                            - user.read
+                            - user.invite
+                            - user.offboard
+                            - role.read
+                            - access_review.manage
+                            - activity.read
+                            - complaint.read
+                            - attendance.read
+                            - commission.view
+                            - payout.view
+                            - ledger.view
+                            - reconciliation.view
+                            - invoice.view
+                            - payout.disburse
+                            - ledger.journal_post
+                            - connector.bank_account_manage
+                            - connector.agreement_manage
+                            - connector.portal_user_manage
+                            - performance.read
+                            - target.read
+                            - audit.seal
+                            - security.read
+                            - privacy.read
+                            - import.read
                         scope:
                           type: string
                           enum:
@@ -3744,6 +3776,11 @@ paths:
                     type:
                       - string
                       - "null"
+                  disabledModules:
+                    type: array
+                    items:
+                      type: string
+                    default: []
                 required:
                   - id
                   - tenantId
@@ -12479,7 +12516,7 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-10-29T11:18:40.600Z
+                  default: 2026-11-02T05:12:58.990Z
               required:
                 - paymentRef
       responses:
@@ -48836,7 +48873,7 @@ paths:
                     - "null"
                 eventDate:
                   type: string
-                  default: 2026-10-29
+                  default: 2026-11-02
                 basisAmount:
                   type: string
                   pattern: ^\d+(\.\d{1,2})?$

@@ -9,7 +9,7 @@
 //   API-CFG-006 GET  /v1/picklists/{category}     API-CFG-007 POST /v1/picklists/{category}/values   Idempotency-Key.
 //   API-CFG-008 POST /v1/config-bundles/export    Idempotency-Key; the tenant's settings, labels, calendars and picklists.
 //   API-CFG-009 POST /v1/config-bundles/import    validated and kept as a draft (config_bundle_draft); nothing is applied.
-import { AppError, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, withLegacy, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
@@ -135,9 +135,11 @@ export const ConfigBundle = z
   })
   .strict();
 
+/** Writing tenant settings, labels, calendars, picklists and config bundles: settings.manage, or config.manage (its legacy parent). */
 function requireConfig(ctx: RequestContext): void {
-  if (!ctx.principal.grants.some((g) => g.code === 'config.manage')) {
-    throw AppError.of('FORBIDDEN', 'Permission denied: config.manage required.');
+  const allowed: PermissionCode[] = withLegacy('settings.manage');
+  if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
+    throw AppError.of('FORBIDDEN', 'Permission denied: settings.manage required.');
   }
 }
 

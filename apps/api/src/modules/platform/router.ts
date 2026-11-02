@@ -26,8 +26,10 @@ import {
   UpdateRoleRequest,
   UpdateTenantConfigRequest,
   UpdateUserRequest,
+  disabledModulesOf,
   maskEmail,
   maskMobile,
+  withLegacy,
 } from '@dsa/contracts';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { sql } from 'kysely';
@@ -142,6 +144,7 @@ export function createRouter(deps: ApiDeps): Router {
       let roles: string[] = [];
       let userType = 'STAFF';
       let connectorId: string | null = null;
+      let disabledModules: string[] = [];
       try {
         await deps.txRunner.withTenantTx(ctx, async (tx) => {
           const r = await sql<{
@@ -172,6 +175,12 @@ export function createRouter(deps: ApiDeps): Router {
             ORDER BY r.code
           `.execute(tx);
           roles = rRoles.rows.map((row) => row.code);
+
+          // The modules the tenant is not entitled to, so the web hides what the module gate would refuse (MODULE_NOT_ENABLED).
+          const rTenant = await sql<{ entitlements: unknown }>`
+            SELECT entitlements FROM app.tenant WHERE id = ${p.tenantId}
+          `.execute(tx);
+          disabledModules = disabledModulesOf(rTenant.rows[0]?.entitlements);
         });
       } catch {
         // tx fallback
@@ -219,6 +228,7 @@ export function createRouter(deps: ApiDeps): Router {
         mfaVerifiedAt: p.authTime,
         lockVersion,
         notificationPreferences: resolvedNotificationPreferences,
+        disabledModules,
       };
 
       res.set('ETag', `"${lockVersion}"`).json({
@@ -361,7 +371,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/branches', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+      requireAnyPermission(ctx, withLegacy('org.manage'));
 
       if (!req.headers['idempotency-key'] && req.body?.name === 'X') {
         throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header is required.');
@@ -482,7 +492,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/branches/:id/deactivation', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+      requireAnyPermission(ctx, withLegacy('org.manage'));
       const ifMatchHeader = req.headers['if-match'];
       if (!ifMatchHeader) {
         throw AppError.of('MALFORMED_REQUEST', 'If-Match header is required.');
@@ -577,7 +587,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.patch('/branches/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+      requireAnyPermission(ctx, withLegacy('org.manage'));
 
       if (!req.headers['if-match'] && req.body?.name === 'X') {
         throw AppError.of('MALFORMED_REQUEST', 'If-Match header is required.');
@@ -687,7 +697,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/config', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+      requireAnyPermission(ctx, withLegacy('settings.manage'));
 
       const config = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const tenantResult = await sql<{
@@ -770,7 +780,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.patch('/config', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requirePermission(ctx, 'config.manage');
+      requireAnyPermission(ctx, withLegacy('settings.manage'));
 
       const parsed = UpdateTenantConfigRequest.safeParse(req.body);
       if (!parsed.success) {
@@ -911,7 +921,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/roles', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+      requireAnyPermission(ctx, withLegacy('role.read'));
 
       const roles = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
@@ -956,7 +966,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/permissions', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+      requireAnyPermission(ctx, withLegacy('role.read'));
 
       const permissions = await deps.txRunner.withTenantTx(ctx, async (tx) => {
         const result = await sql<{
@@ -986,7 +996,7 @@ export function createRouter(deps: ApiDeps): Router {
   router.get('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ctx = getContext(req);
-      requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+      requireAnyPermission(ctx, withLegacy('role.read'));
 
       const roleId = req.params.id;
       const role = await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -1786,7 +1796,7 @@ export function createRouter(deps: ApiDeps): Router {
 
       // Allow self-view or require role.manage / user.manage
       if (ctx.principal.id !== targetUserId) {
-        requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+        requireAnyPermission(ctx, withLegacy('role.read'));
       }
 
       const assignments = await deps.txRunner.withTenantTx(ctx, async (tx) => {
@@ -1843,7 +1853,7 @@ export function createRouter(deps: ApiDeps): Router {
 
       // Allow self-view or require role.manage / user.manage
       if (ctx.principal.id !== targetUserId) {
-        requireAnyPermission(ctx, ['role.manage', 'user.manage']);
+        requireAnyPermission(ctx, withLegacy('role.read'));
       }
 
       const effectiveGrants = await deps.txRunner.withTenantTx(ctx, async (tx) => {

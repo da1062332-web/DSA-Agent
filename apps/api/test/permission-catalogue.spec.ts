@@ -2,7 +2,7 @@
 // exists when it runs (as on hosted), because role_permission.permission_code references permission(code). Static check, no database.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PERMISSION_CODES } from '@dsa/contracts';
+import { LEGACY_PARENTS, PERMISSION_CODES, SUB_PERMISSION_CODES } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 
 const DIR = path.resolve(__dirname, '../../../supabase/migrations');
@@ -43,9 +43,27 @@ describe('permission catalogue', () => {
     expect(problems).toEqual([]);
   });
 
-  it('TEST-PERM-03 every permission in the contracts (the 100-code catalogue) is defined by some migration, so a role can actually hold it', () => {
+  it('TEST-PERM-03 every permission in the contracts (the 151-code catalogue) is defined by some migration, so a role can actually hold it', () => {
     const missing = PERMISSION_CODES.filter((code) => !defined.has(code));
     expect(missing).toEqual([]);
+  });
+
+  it('TEST-PERM-07 the 32 sub-permissions are defined by migration 98 and by no other migration', () => {
+    for (const code of SUB_PERMISSION_CODES)
+      expect(defined.get(code), code).toBe('20261001000098_permission_sub_permissions_expand.sql');
+  });
+
+  it('TEST-PERM-07 the backfill in migration 98 grants each sub-permission from exactly its LEGACY_PARENTS, so SQL and contract cannot drift', () => {
+    const sql = readFileSync(path.join(DIR, '20261001000098_permission_sub_permissions_expand.sql'), 'utf8');
+    const backfill = /VALUES\s*(.*?)\)\s*AS m\(parent, child\)/is.exec(sql)?.[1] ?? '';
+    const fromSql = new Set<string>();
+    for (const m of backfill.matchAll(/\(\s*'([a-z_.]+)'\s*,\s*'([a-z_.]+)'\s*\)/g))
+      fromSql.add(`${m[1]} -> ${m[2]}`);
+    const fromContract = new Set<string>();
+    for (const [child, parents] of Object.entries(LEGACY_PARENTS))
+      for (const parent of parents) fromContract.add(`${parent} -> ${child}`);
+    expect([...fromSql].filter((p) => !fromContract.has(p))).toEqual([]);
+    expect([...fromContract].filter((p) => !fromSql.has(p))).toEqual([]);
   });
 
   it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions in migration 60', () => {

@@ -7,7 +7,7 @@
 //   API-ACL-006 POST /v1/access-reviews/{id}/decisions    user.manage. CERTIFY or REVOKE items; SOD-10 (never one's own
 //               access); a REVOKE ends the assignment, and no decision may leave the tenant without an administrator.
 //               GET /v1/access-reviews/{id} shows the campaign and its items.
-import { AppError, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, type RequestContext, type Tx, withLegacy } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { idempotencyKey, requireCtx, sendResource } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { assertAdministratorRemains, countActiveAdministrators } from './role-guards';
+import { requireAnyPermission } from '../../http/permissions';
 
 type Row = Record<string, unknown>;
 
@@ -140,7 +141,7 @@ export function registerOrgChartAndReviewRoutes(router: Router, deps: ApiDeps): 
   // API-ACL-005
   router.post('/access-reviews', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('access_review.manage'));
     const key = idempotencyKey(req);
     const input = AccessReviewCreate.parse(req.body);
     if (new Date(input.dueAt).getTime() <= ctx.now.getTime()) {
@@ -180,7 +181,7 @@ export function registerOrgChartAndReviewRoutes(router: Router, deps: ApiDeps): 
 
   router.get('/access-reviews/:id', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('access_review.manage'));
     const body = await deps.txRunner.withTenantTx(ctx, (tx) => loadReview(tx, req.params.id));
     sendResource(res, 200, body);
   });
@@ -188,7 +189,7 @@ export function registerOrgChartAndReviewRoutes(router: Router, deps: ApiDeps): 
   // API-ACL-006
   router.post('/access-reviews/:id/decisions', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'user.manage');
+    requireAnyPermission(deps.authz, ctx, withLegacy('access_review.manage'));
     const input = AccessReviewDecisions.parse(req.body);
     const body = await deps.txRunner.withTenantTx(ctx, async (tx) => {
       const review = (

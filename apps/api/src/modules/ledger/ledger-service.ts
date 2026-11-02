@@ -1,5 +1,13 @@
 // apps/api/src/modules/ledger/ledger-service.ts — MOD-LED Ledger Management
-import { AppError, type AuditPort, type OutboxPort, type RequestContext, type Tx } from '@dsa/contracts';
+import {
+  AppError,
+  withLegacy,
+  type AuditPort,
+  type OutboxPort,
+  type PermissionCode,
+  type RequestContext,
+  type Tx,
+} from '@dsa/contracts';
 import { requiresMfa } from '@dsa/kernel';
 import type {
   AccountBalanceResponse,
@@ -49,6 +57,14 @@ export class LedgerService {
     }
   }
 
+  /** Reading the ledger: ledger.view, or finance.view (its legacy parent) until the role matrix is applied. */
+  private assertLedgerView(ctx: RequestContext, message: string) {
+    const allowed: PermissionCode[] = withLegacy('ledger.view');
+    if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
+      throw AppError.of('FORBIDDEN', message);
+    }
+  }
+
   /**
    * Manual journal posting over the HTTP API (POST /v1/ledger/journals).
    *
@@ -70,7 +86,7 @@ export class LedgerService {
   // --- SUB-LED.01: Accounts ---
 
   async listAccounts(tx: Tx, ctx: RequestContext, query: ListLedgerAccountsQuery): Promise<LedgerAccount[]> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required to view ledger accounts');
+    this.assertLedgerView(ctx, 'ledger.view required to view ledger accounts');
     const tenantId = ctx.principal.tenantId;
     const rows = await this.deps.repository.listAccounts(tx, tenantId, {
       type: query.type,
@@ -349,7 +365,7 @@ export class LedgerService {
     ctx: RequestContext,
     query: ListLedgerJournalsQuery,
   ): Promise<{ data: LedgerJournal[]; nextCursor: string | null }> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required to view ledger journals');
+    this.assertLedgerView(ctx, 'ledger.view required to view ledger journals');
     const tenantId = ctx.principal.tenantId;
     const limit = query.limit ?? 20;
 
@@ -465,7 +481,7 @@ export class LedgerService {
     accountId: string,
     query: GetAccountBalanceQuery,
   ): Promise<AccountBalanceResponse> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required to view account balance');
+    this.assertLedgerView(ctx, 'ledger.view required to view account balance');
     const tenantId = ctx.principal.tenantId;
 
     const account = await this.deps.repository.findAccountById(tx, tenantId, accountId);
@@ -515,7 +531,7 @@ export class LedgerService {
     connectorId: string,
     query: GetConnectorStatementsQuery,
   ): Promise<ConnectorStatementResponse> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required to view statements');
+    this.assertLedgerView(ctx, 'ledger.view required to view statements');
     const tenantId = ctx.principal.tenantId;
 
     if (
@@ -576,7 +592,7 @@ export class LedgerService {
     ctx: RequestContext,
     input: CreateLedgerExportInput,
   ): Promise<LedgerExportResponse> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required');
+    this.assertLedgerView(ctx, 'ledger.view required');
     this.assertPermission(ctx, 'export.run', 'export.run required to run ledger exports');
     const tenantId = ctx.principal.tenantId;
 
@@ -617,7 +633,7 @@ export class LedgerService {
     variance: string;
     isBalanced: boolean;
   }> {
-    this.assertPermission(ctx, 'finance.view', 'finance.view required to view trial balance');
+    this.assertLedgerView(ctx, 'ledger.view required to view trial balance');
     const tenantId = ctx.principal.tenantId;
     const res = await this.deps.repository.calculateTrialBalance(tx, tenantId, period);
     return {

@@ -1,5 +1,6 @@
 import {
   AppError,
+  withLegacy,
   type AuditPort,
   type AutoIngestBankFeedInput,
   type AutoIngestBankFeedResponse,
@@ -54,6 +55,17 @@ export class ReconciliationService {
     const hasGrant = ctx.principal.grants.some((g) => g.code === permission);
     if (!hasGrant) {
       throw AppError.of('FORBIDDEN', `Permission '${permission}' is required.`);
+    }
+  }
+
+  /**
+   * Reading statements, exceptions, adjustments and disputes: reconciliation.view, or any of the codes the Reconciliation screen was
+   * shown for before the split (LEGACY_PARENTS). Checked before any lookup, so an id cannot be probed without it.
+   */
+  private assertReconciliationRead(ctx: RequestContext): void {
+    const allowed: PermissionCode[] = withLegacy('reconciliation.view');
+    if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {
+      throw AppError.of('FORBIDDEN', `One of these permissions is required: ${allowed.join(', ')}.`);
     }
   }
 
@@ -224,7 +236,7 @@ export class ReconciliationService {
   }
 
   async getLenderStatement(tx: Tx, ctx: RequestContext, id: string): Promise<LenderStatementResponse> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertReconciliationRead(ctx);
     const statement = await this.deps.repository.findLenderStatementById(tx, ctx.principal.tenantId, id);
     if (!statement) {
       throw AppError.of('NOT_FOUND', `Lender statement ${id} not found.`);
@@ -238,7 +250,7 @@ export class ReconciliationService {
     ctx: RequestContext,
     lenderId?: string,
   ): Promise<LenderStatementResponse[]> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertReconciliationRead(ctx);
     const statements = await this.deps.repository.listLenderStatements(tx, ctx.principal.tenantId, lenderId);
     return statements.map((s) => this.toStatementResponse(s));
   }
@@ -394,7 +406,7 @@ export class ReconciliationService {
     ctx: RequestContext,
     query: ListExceptionsQuery,
   ): Promise<{ items: ReconciliationExceptionResponse[]; nextCursor: string | null }> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertReconciliationRead(ctx);
     const { rows, nextCursor } = await this.deps.repository.listExceptions(tx, ctx.principal.tenantId, query);
     return {
       items: rows.map((r) => this.toExceptionResponse(r)),
@@ -542,7 +554,7 @@ export class ReconciliationService {
   }
 
   async listAdjustments(tx: Tx, ctx: RequestContext): Promise<AdjustmentResponse[]> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertReconciliationRead(ctx);
     const list = await this.deps.repository.listAdjustments(tx, ctx.principal.tenantId);
     return list.map((a) => this.toAdjustmentResponse(a));
   }
@@ -656,7 +668,7 @@ export class ReconciliationService {
     ctx: RequestContext,
     filters?: { status?: string; partyType?: string },
   ): Promise<DisputeResponse[]> {
-    this.assertPermission(ctx, 'finance.view');
+    this.assertReconciliationRead(ctx);
     const list = await this.deps.repository.listDisputes(tx, ctx.principal.tenantId, filters);
     return list.map((d) => this.toDisputeResponse(d));
   }
