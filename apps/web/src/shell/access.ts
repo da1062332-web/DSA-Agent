@@ -173,12 +173,22 @@ export const EXTRA_ROUTE_RULES: { to: string; anyOf?: string[] }[] = [
 const PLATFORM_REALM_SCREENS = new Set(['/', '/platform-admin', '/account/security']);
 const PLATFORM_PATHS = ['/platform-admin', '/platform-console'];
 
+/**
+ * What a connector portal login sees: the portal and nothing else. It holds no role, so the staff menu (whose items without a permission
+ * rule are open to every staff user) does not apply to it.
+ */
+export const CONNECTOR_LOGIN_GROUPS: NavGroup[] = [
+  { title: 'Partner', items: [{ label: 'Connector Portal', to: '/connector-portal' }] },
+];
+
 /** Groups and items the current user may see. A group with no visible item is dropped. */
 export function visibleGroups(
   isAdmin: boolean,
   can: (code: string) => boolean = () => true,
   platformRealm = false,
+  connectorLogin = false,
 ): NavGroup[] {
+  if (connectorLogin) return CONNECTOR_LOGIN_GROUPS;
   // A platform operator holds no tenant admin permission, yet its one admin-group screen is the Platform Console.
   return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm)
     .map((g) => ({
@@ -776,7 +786,14 @@ export function getSearchableItems(
   isAdmin: boolean,
   can: (code: string) => boolean = () => true,
   platformRealm = false,
+  connectorLogin = false,
 ): SearchableItem[] {
+  // A connector portal login searches the portal only (see CONNECTOR_LOGIN_GROUPS).
+  if (connectorLogin) {
+    return [
+      { id: 'connector-portal', label: 'Connector Portal', category: 'Partner', to: '/connector-portal' },
+    ];
+  }
   return ALL_SEARCHABLE_ITEMS.filter((item) => {
     // 1. Platform realm isolation
     if (platformRealm) {

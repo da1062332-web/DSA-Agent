@@ -508,6 +508,7 @@ export function AppLayout() {
               isAdmin={isAdmin}
               can={(code) => hasPermission(me.data, code)}
               platformRealm={platformRealm}
+              connectorLogin={isConnectorLogin}
               onNavigate={() => setDrawerOpen(false)}
               collapsed={wide && sidebarCollapsed}
               onToggleCollapse={wide ? toggleSidebarCollapse : () => setDrawerOpen(false)}

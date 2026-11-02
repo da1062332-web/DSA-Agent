@@ -123,6 +123,7 @@ export function SidebarContent({
   isAdmin,
   can,
   platformRealm,
+  connectorLogin = false,
   onNavigate,
   collapsed = false,
   onToggleCollapse,
@@ -149,7 +150,7 @@ export function SidebarContent({
   onResetWidth?: () => void;
 }) {
   const location = useLocation();
-  const groups = visibleGroups(isAdmin, can, platformRealm);
+  const groups = visibleGroups(isAdmin, can, platformRealm, connectorLogin);
 
   // Initialize all visible groups to expanded (true) by default
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
@@ -174,8 +175,8 @@ export function SidebarContent({
 
   // All modules and submodules filtered strictly by user permissions and realm (RBAC)
   const accessibleItems = useMemo(
-    () => getSearchableItems(isAdmin, can, platformRealm),
-    [isAdmin, can, platformRealm],
+    () => getSearchableItems(isAdmin, can, platformRealm, connectorLogin),
+    [isAdmin, can, platformRealm, connectorLogin],
   );
 
   // Suggestions ranked by search relevance
@@ -946,7 +947,8 @@ export function SidebarContent({
         )}
       </Box>
 
-      {/* Fixed Settings Row at bottom (Always fixed, both in expanded and collapsed modes) */}
+      {/* Fixed Settings Row at bottom (Always fixed, both in expanded and collapsed modes). Not offered to a connector portal login. */}
+      {!connectorLogin && (
       <Box
         sx={{
           borderTop: '1px solid',
@@ -1084,6 +1086,7 @@ export function SidebarContent({
           </ListItemButton>
         )}
       </Box>
+      )}
     </Box>
   );
 }
