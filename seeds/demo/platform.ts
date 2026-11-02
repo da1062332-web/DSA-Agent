@@ -6,6 +6,7 @@
 // MOD-ORG (DSA Notion, MODULE 2): TENANT-ADMIN and ORG-OWNER hold config.manage; BRANCH-MGR manages teams and
 // membership in its branch (user.manage at BRANCH scope).
 // TODO(TASK-104): confirm the rest of the role → permission map against Contracts §8 / Doc 03 §5.6 before Gate 1.
+import { withSubPermissionBackfill } from '@dsa/contracts';
 
 export type Scope = 'OWN' | 'TEAM' | 'BRANCH' | 'TENANT';
 
@@ -57,7 +58,7 @@ const LEAD_WORK = [
 ];
 const TASK_WORK = ['task.read', 'task.create', 'task.update'];
 
-export const ROLES: RoleSeed[] = [
+const BASE_ROLES: RoleSeed[] = [
   {
     code: 'ROLE-TENANT-ADMIN',
     name: 'Tenant administrator',
@@ -209,6 +210,13 @@ export const ROLES: RoleSeed[] = [
     permissions: ['rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'],
   },
 ];
+
+// A tenant provisioned from this seed gets the sub-permissions (M-098) that an existing tenant got from the migration's backfill, so the
+// two match. Derived, not listed, so the seed and the migration cannot drift.
+export const ROLES: RoleSeed[] = BASE_ROLES.map((r) => ({
+  ...r,
+  permissions: withSubPermissionBackfill(r.permissions),
+}));
 
 export const TEAM = {
   name: 'MUM01 Sales',

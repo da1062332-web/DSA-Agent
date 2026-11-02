@@ -29,6 +29,16 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'platform.release',
   'data_correction.approve',
   'finance.period_close',
+  // Write-capable slices of the codes above (M-098). Once a role is trimmed it may hold the slice without the parent, so the slice
+  // must demand the same second factor. The read-only slices (user.read, role.read, import.read and the *.view codes) do not.
+  'org.manage',
+  'settings.manage',
+  'user.invite',
+  'user.offboard',
+  'access_review.manage',
+  'audit.seal',
+  'payout.disburse',
+  'ledger.journal_post',
 ];
 
 export function requiresMfa(principal: Principal): boolean {

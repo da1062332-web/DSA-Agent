@@ -1,6 +1,55 @@
 // packages/contracts/src/permissions.ts — owner: Dev 1 — frozen at Gate 1
 // MVP permission codes (Contracts §8, Doc 03 §5.6). Role grants are seeded by migration M-001.
 
+// Sub-permissions (additive; migration M-098). Each one splits a coarse code that gated several features that the Notion Roles page
+// gives to different roles, or gives a screen its own visibility, or separates a write that hid behind a read. The legacy parent of
+// each is in permission-groups.ts (LEGACY_PARENTS); codes are immutable once released (FR-ACL-001), so the parents stay.
+export const SUB_PERMISSION_CODES = [
+  // Origination
+  'lender_case.read',
+  'sanction.read',
+  'disbursement.read',
+  'eligibility.read',
+  // Administration and configuration (slices of config.manage)
+  'org.manage',
+  'team.manage',
+  'settings.manage',
+  'message_template.manage',
+  // Users and access (slices of user.manage / role.manage)
+  'user.read',
+  'user.invite',
+  'user.offboard',
+  'role.read',
+  'access_review.manage',
+  // CRM
+  'activity.read',
+  'complaint.read',
+  'attendance.read',
+  // Finance (finance.view split per screen; payout.record_payment and manual journal posting split by action)
+  'commission.view',
+  'payout.view',
+  'ledger.view',
+  'reconciliation.view',
+  'invoice.view',
+  'payout.disburse',
+  'ledger.journal_post',
+  // Connectors (slices of connector.manage)
+  'connector.bank_account_manage',
+  'connector.agreement_manage',
+  'connector.portal_user_manage',
+  // Reporting (report.read split)
+  'performance.read',
+  'target.read',
+  // Audit, security, privacy
+  'audit.seal',
+  'security.read',
+  'privacy.read',
+  // Integrations and data
+  'import.read',
+] as const;
+
+export type SubPermissionCode = (typeof SUB_PERMISSION_CODES)[number];
+
 export const PERMISSION_CODES = [
   'lead.read',
   'lead.create',
@@ -122,6 +171,8 @@ export const PERMISSION_CODES = [
   'automation.manage',
   'automation.operate',
   'decision.evaluate',
+  // Added 2026-11-02 (additive; migration M-098): the sub-permissions above.
+  ...SUB_PERMISSION_CODES,
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];
