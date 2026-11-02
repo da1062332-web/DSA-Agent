@@ -211,11 +211,33 @@ const BASE_ROLES: RoleSeed[] = [
   },
 ];
 
+// What migration M-099 adds to the seeded template roles: permissions the Notion Roles page names for the role and the role did not hold.
+// Additive; a test compares this list with the migration's rows. Roles the demo seed does not define (Finance Executive) are skipped.
+export const ROLE_GRANT_FIXES: Record<string, string[]> = {
+  'ROLE-TENANT-ADMIN': ['api.manage', 'api.read', 'integration.manage', 'integration.read', 'webhook.manage'],
+  'ROLE-ORG-OWNER': ['user.read'],
+  'ROLE-BRANCH-MGR': [
+    'report.read',
+    'target.manage',
+    'application.update',
+    'performance.read',
+    'target.read',
+  ],
+  'ROLE-RM': ['document.upload', 'share.create'],
+  'ROLE-SALES-EXEC': ['activity.update'],
+  'ROLE-COMPLIANCE': ['report.read'],
+  'ROLE-FINANCE-EXEC': ['payout.request', 'disbursement.verify', 'disbursement.read'],
+};
+
 // A tenant provisioned from this seed gets the sub-permissions (M-098) that an existing tenant got from the migration's backfill, so the
-// two match. Derived, not listed, so the seed and the migration cannot drift.
+// two match. Derived, not listed, so the seed and the migration cannot drift. The M-099 grants go on after the backfill, as they do in
+// the database: they are listed in full, including the sub-permissions a role is meant to hold (Compliance gets report.read, not
+// performance.read).
 export const ROLES: RoleSeed[] = BASE_ROLES.map((r) => ({
   ...r,
-  permissions: withSubPermissionBackfill(r.permissions),
+  permissions: [
+    ...new Set([...withSubPermissionBackfill(r.permissions), ...(ROLE_GRANT_FIXES[r.code] ?? [])]),
+  ],
 }));
 
 export const TEAM = {

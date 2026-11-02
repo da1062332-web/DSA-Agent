@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { LEGACY_PARENTS, PERMISSION_CODES, SUB_PERMISSION_CODES } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
+import { ROLE_GRANT_FIXES } from '../../../seeds/demo/platform';
 
 const DIR = path.resolve(__dirname, '../../../supabase/migrations');
 const files = readdirSync(DIR)
@@ -64,6 +65,32 @@ describe('permission catalogue', () => {
       for (const parent of parents) fromContract.add(`${parent} -> ${child}`);
     expect([...fromSql].filter((p) => !fromContract.has(p))).toEqual([]);
     expect([...fromContract].filter((p) => !fromSql.has(p))).toEqual([]);
+  });
+
+  it('TEST-PERM-08 migration 99 grants exactly the ROLE_GRANT_FIXES of the demo seed, so the seed and the database cannot drift', () => {
+    const sql = readFileSync(path.join(DIR, '20261001000099_role_grants_per_roles_page.sql'), 'utf8');
+    const rows = /VALUES\s*(.*?)\)\s*AS g\(role_code, permission_code\)/is.exec(sql)?.[1] ?? '';
+    const fromSql = new Set<string>();
+    for (const m of rows.matchAll(/\(\s*'(ROLE-[A-Z-]+)'\s*,\s*'([a-z_.]+)'\s*\)/g))
+      fromSql.add(`${m[1]} ${m[2]}`);
+    const fromSeed = new Set<string>();
+    for (const [role, codes] of Object.entries(ROLE_GRANT_FIXES))
+      for (const code of codes) fromSeed.add(`${role} ${code}`);
+    expect(fromSql.size).toBeGreaterThan(0);
+    expect([...fromSql].filter((p) => !fromSeed.has(p))).toEqual([]);
+    expect([...fromSeed].filter((p) => !fromSql.has(p))).toEqual([]);
+  });
+
+  it('TEST-PERM-08 migration 99 only adds grants: it deletes and updates nothing, and every code it grants is in the catalogue', () => {
+    const sql = readFileSync(path.join(DIR, '20261001000099_role_grants_per_roles_page.sql'), 'utf8')
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n');
+    // Statements only: a quoted permission code such as 'application.update' is not an UPDATE.
+    expect(sql.replace(/'[^']*'/g, "''")).not.toMatch(/\b(DELETE|UPDATE|TRUNCATE|DROP)\b/i);
+    const catalogue = new Set<string>(PERMISSION_CODES);
+    const unknown = [...sql.matchAll(CODE)].map((m) => m[1]!).filter((c) => !catalogue.has(c));
+    expect(unknown).toEqual([]);
   });
 
   it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions in migration 60', () => {
