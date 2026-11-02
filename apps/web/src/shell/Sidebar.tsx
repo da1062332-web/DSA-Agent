@@ -138,6 +138,8 @@ export function SidebarContent({
   isAdmin: boolean;
   can?: (code: string) => boolean;
   platformRealm?: boolean;
+  /** A connector portal login: the menu, search and footer show the portal only. */
+  connectorLogin?: boolean;
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;

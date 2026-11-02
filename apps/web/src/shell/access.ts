@@ -184,7 +184,7 @@ export const CONNECTOR_LOGIN_GROUPS: NavGroup[] = [
 /** Groups and items the current user may see. A group with no visible item is dropped. */
 export function visibleGroups(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
   connectorLogin = false,
 ): NavGroup[] {
@@ -784,7 +784,7 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
  */
 export function getSearchableItems(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
   connectorLogin = false,
 ): SearchableItem[] {
@@ -1257,7 +1257,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
 
 export function visibleSettings(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
 ): SettingsCategory[] {
   return SETTINGS_CATEGORIES.map((cat) => ({

@@ -75,8 +75,12 @@ describe('sidebar visibility by permission', () => {
     expect(groups).not.toContain('Analytics & Performance');
   });
 
-  it('shows everything when no check is given', () => {
-    expect(visibleGroups(true).flatMap((g) => g.items).length).toBeGreaterThan(30);
+  it('shows only the items open to everyone when no check is given (fails closed, not open)', () => {
+    // With no permission check, a permission-gated screen must stay hidden; only items without a rule may appear.
+    const items = visibleGroups(true).flatMap((g) => g.items);
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBeLessThan(30);
+    expect(items.map((i) => i.to)).not.toContain('/users');
   });
 });
 
