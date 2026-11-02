@@ -34,6 +34,7 @@ import { displayStatus, userActions } from './user-actions';
 import { Can } from '../../shell/Can';
 import { PageHeader } from '../../ui';
 import type { Branch, Role, UserSummary } from './types';
+import { ACCOUNT_TYPE_LABEL, detailTabValues, isPartnerAccount } from './account-type';
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -241,6 +242,13 @@ export function UserDetailPage() {
               {user.displayName.charAt(0).toUpperCase()}
             </Avatar>
             {user.displayName}
+            <Chip
+              label={user.userType}
+              size="small"
+              variant="outlined"
+              color={isPartnerAccount(user) ? 'info' : 'default'}
+              data-testid="users.detail.account-type"
+            />
           </Box>
         }
         subtitle={
@@ -276,6 +284,13 @@ export function UserDetailPage() {
         </Alert>
       )}
 
+      {isPartnerAccount(user) && (
+        <Alert severity="info" sx={{ mb: 3 }} data-testid="users.detail.partner">
+          {ACCOUNT_TYPE_LABEL.CONNECTOR} login. It holds no role: its access comes from its linked connector,
+          and its portal access is managed from that connector&apos;s Portal Access &amp; Users tab.
+        </Alert>
+      )}
+
       {/* Feedback Alerts */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -295,10 +310,13 @@ export function UserDetailPage() {
           onChange={(_e, v) => setActiveTab(v)}
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
         >
-          <Tab label="Profile Settings" />
-          <Tab label="Account Status" />
-          <Tab label={`Roles (${user.assignedRoles.length})`} />
-          <Tab label="Audit & Details" />
+          <Tab value={0} label="Profile Settings" />
+          <Tab value={1} label="Account Status" />
+          {/* A partner login holds no role, so there is no Roles tab for it (see account-type.ts). */}
+          {detailTabValues(user).includes(2) && (
+            <Tab value={2} label={`Roles (${user.assignedRoles.length})`} />
+          )}
+          <Tab value={3} label="Audit & Details" />
         </Tabs>
       </Paper>
 

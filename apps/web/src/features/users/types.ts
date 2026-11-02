@@ -1,10 +1,13 @@
+/** STAFF is an internal employee. CONNECTOR is a partner portal login: it holds no role, and its access comes from its linked connector. */
+export type AccountType = 'STAFF' | 'CONNECTOR';
+
 export interface UserSummary {
   id: string;
   tenantId: string;
   email: string;
   mobileE164: string | null;
   displayName: string;
-  userType: 'STAFF';
+  userType: AccountType;
   status: 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
   availability: 'AVAILABLE' | 'BUSY' | 'OFF_DUTY' | 'ON_LEAVE';
   primaryBranchId: string;
