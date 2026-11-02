@@ -17,8 +17,8 @@ const labelsFor = (held: string[], opts: { disabledModules?: string[]; connector
     false,
     (c) => set.has(c),
     false,
-    opts.disabledModules ?? [],
     opts.connectorLogin ?? false,
+    opts.disabledModules ?? [],
   )
     .flatMap((g) => g.items)
     .filter((i) => i.to)
@@ -306,7 +306,8 @@ describe('tenant module entitlements', () => {
   it('TEST-SUBPERM-04 search and the route guard agree with the sidebar on a switched-off module', () => {
     const held = new Set(['verification.read', 'verification.perform']);
     const can = (c: string) => held.has(c);
-    const found = (disabled: string[]) => getSearchableItems(false, can, false, disabled).map((i) => i.to);
+    const found = (disabled: string[]) =>
+      getSearchableItems(false, can, false, false, disabled).map((i) => i.to);
     expect(found([])).toContain('/verifications');
     expect(found(['MOD-VER'])).not.toContain('/verifications');
     expect(found(['MOD-VER'])).not.toContain('/verifications/workbench');
@@ -314,13 +315,13 @@ describe('tenant module entitlements', () => {
 });
 
 describe('connector portal logins', () => {
-  it('TEST-SUBPERM-05 a connector login is offered its own portal and account security, nothing else', () => {
-    const shown = labelsFor([], { connectorLogin: true });
-    expect(shown).toEqual(expect.arrayContaining(['Connector portal', 'Security']));
-    for (const gone of ['Home', 'Notifications', 'Lenders', 'Products', 'Workforce', 'Leads'])
-      expect(shown, gone).not.toContain(gone);
-    const found = getSearchableItems(false, () => false, false, [], true).map((i) => i.to);
-    expect(found.every((to) => to === '/connector-portal' || to === '/account/security')).toBe(true);
+  it('TEST-SUBPERM-05 a connector login is offered its own portal and nothing else, even when a module is switched off', () => {
+    expect(labelsFor([], { connectorLogin: true })).toEqual(['Connector Portal']);
+    expect(labelsFor([], { connectorLogin: true, disabledModules: ['MOD-CPT'] })).toEqual([
+      'Connector Portal',
+    ]);
+    const found = getSearchableItems(false, () => false, false, true).map((i) => i.to);
+    expect(found).toEqual(['/connector-portal']);
   });
 
   it('TEST-SUBPERM-05 staff never see the connector portal, even with connector.read', () => {

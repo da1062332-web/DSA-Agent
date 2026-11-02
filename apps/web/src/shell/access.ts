@@ -243,36 +243,40 @@ export const EXTRA_ROUTE_RULES: (AccessRule & { to: string })[] = [
 /** A platform operator has no customer data, so the menu offers only these screens (the API refuses the rest anyway). */
 const PLATFORM_REALM_SCREENS = new Set(['/', '/platform-admin', '/account/security']);
 const PLATFORM_PATHS = ['/platform-admin', '/platform-console'];
-/** What a connector portal login reaches: its own portal page and its account security. Every internal page would answer 403. */
-const CONNECTOR_LOGIN_SCREENS = new Set(['/connector-portal', '/account/security']);
+/**
+ * What a connector portal login sees: the portal and nothing else. It holds no role, so the staff menu (whose items without a permission
+ * rule are open to every staff user) does not apply to it.
+ */
+export const CONNECTOR_LOGIN_GROUPS: NavGroup[] = [
+  { title: 'Partner', items: [{ label: 'Connector Portal', to: '/connector-portal' }] },
+];
 
 /**
- * Groups and items the current user may see. A group with no visible item is dropped. `disabledModules` is from GET /v1/me (tenant
- * entitlements); `connectorLogin` is a connector portal login, which holds no role and sees only its own screens.
+ * Groups and items the current user may see. A group with no visible item is dropped. `connectorLogin` is a connector portal login,
+ * which holds no role and sees the portal only; `disabledModules` is from GET /v1/me (tenant entitlements).
  */
 export function visibleGroups(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
-  disabledModules: readonly string[] = [],
   connectorLogin = false,
+  disabledModules: readonly string[] = [],
 ): NavGroup[] {
+  if (connectorLogin) return CONNECTOR_LOGIN_GROUPS;
   // A platform operator holds no tenant admin permission, yet its one admin-group screen is the Platform Console.
-  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm || connectorLogin)
+  return NAV_GROUPS.filter((g) => !g.adminOnly || isAdmin || platformRealm)
     .map((g) => ({
       ...g,
-      items: g.items.filter((i) => {
-        if (connectorLogin) return !!i.to && CONNECTOR_LOGIN_SCREENS.has(i.to);
-        return (
+      items: g.items.filter(
+        (i) =>
           (!platformRealm || (!!i.to && PLATFORM_REALM_SCREENS.has(i.to))) &&
           // The Platform Console belongs to the platform realm only. A customer-tenant role that holds platform.console by mistake
           // (found on hosted, 2026-10-17) must not get a menu entry that leads to a refusal.
           (platformRealm || i.to !== '/platform-admin') &&
           // The connector portal is for connector logins; staff have nothing there.
           !i.connectorOnly &&
-          ruleAllows(i, can, disabledModules)
-        );
-      }),
+          ruleAllows(i, can, disabledModules),
+      ),
     }))
     .filter((g) => g.items.length > 0);
 }
@@ -860,13 +864,17 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
  */
 export function getSearchableItems(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
-  disabledModules: readonly string[] = [],
   connectorLogin = false,
+  disabledModules: readonly string[] = [],
 ): SearchableItem[] {
-  // A connector portal login reaches its own page only; every other suggestion would bounce it back.
-  if (connectorLogin) return ALL_SEARCHABLE_ITEMS.filter((item) => CONNECTOR_LOGIN_SCREENS.has(item.to));
+  // A connector portal login searches the portal only (see CONNECTOR_LOGIN_GROUPS).
+  if (connectorLogin) {
+    return [
+      { id: 'connector-portal', label: 'Connector Portal', category: 'Partner', to: '/connector-portal' },
+    ];
+  }
   return ALL_SEARCHABLE_ITEMS.filter((item) => {
     // 1. Platform realm isolation
     if (platformRealm) {
@@ -1329,7 +1337,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
 
 export function visibleSettings(
   isAdmin: boolean,
-  can: (code: string) => boolean = () => true,
+  can: (code: string) => boolean = () => false,
   platformRealm = false,
   disabledModules: readonly string[] = [],
 ): SettingsCategory[] {

@@ -29,6 +29,7 @@ import {
 import type { Branch, UserListItem } from './types';
 import { RowAction } from '../../shell/RowAction';
 import { displayStatus, userActions } from './user-actions';
+import { roleCell } from './account-type';
 
 export function UserListPage() {
   const navigate = useNavigate();
@@ -146,6 +147,14 @@ export function UserListPage() {
             <Typography variant="body1" fontWeight={600}>
               {user.displayName}
             </Typography>
+            <Chip
+              label={user.userType}
+              size="small"
+              variant="outlined"
+              color={user.userType === 'CONNECTOR' ? 'info' : 'default'}
+              data-testid="users.list.account-type"
+              sx={{ mt: 0.5 }}
+            />
           </Box>
         </Box>
       ),
@@ -172,19 +181,35 @@ export function UserListPage() {
     {
       id: 'roles',
       header: 'Roles',
-      accessor: (user) => (
-        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-          {(user.assignedRoles ?? []).length > 0 ? (
-            (user.assignedRoles ?? []).map((role) => (
-              <Chip key={role} label={role} size="small" variant="outlined" sx={{ my: 0.25 }} />
-            ))
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              None
-            </Typography>
-          )}
-        </Stack>
-      ),
+      accessor: (user) => {
+        // A partner login holds no role, so it gets a "Partner portal" chip instead of "None" (see account-type.ts).
+        const cell = roleCell(user);
+        if (cell.partner) {
+          return (
+            <Chip
+              label={cell.labels[0]}
+              size="small"
+              color="info"
+              variant="outlined"
+              data-testid="users.list.partner-role"
+              sx={{ my: 0.25 }}
+            />
+          );
+        }
+        return (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {cell.labels.length > 0 ? (
+              cell.labels.map((role) => (
+                <Chip key={role} label={role} size="small" variant="outlined" sx={{ my: 0.25 }} />
+              ))
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                None
+              </Typography>
+            )}
+          </Stack>
+        );
+      },
     },
     {
       id: 'status',

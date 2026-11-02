@@ -426,3 +426,31 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
     expect(routeAllowed('/users', platCan, true)).toBe(false);
   });
 });
+
+// A connector portal login holds no role, so no permission rule applies to it. It must see the portal and nothing else, in the menu
+// and in search, whatever the staff rules would show a user with no grants (TEST-CONLOGIN).
+describe('connector portal login menu (TEST-CONLOGIN)', () => {
+  it('TEST-CONLOGIN-01 the menu offers only the Connector Portal, with no staff screens and no Settings', () => {
+    const groups = visibleGroups(false, NONE, false, true);
+    const items = groups.flatMap((g) => g.items);
+    expect(items.map((i) => i.to)).toEqual(['/connector-portal']);
+  });
+
+  it('TEST-CONLOGIN-02 the menu for a connector login ignores grants: none of the staff items appear, even with every permission', () => {
+    const everything = () => true;
+    const items = visibleGroups(true, everything, false, true).flatMap((g) => g.items.map((i) => i.to));
+    expect(items).toEqual(['/connector-portal']);
+  });
+
+  it('TEST-CONLOGIN-03 search for a connector login returns the portal only, and never a staff screen', () => {
+    const results = getSearchableItems(false, NONE, false, true);
+    expect(results.map((r) => r.to)).toEqual(['/connector-portal']);
+  });
+
+  it('TEST-CONLOGIN-04 a staff user with no grants still sees the staff items as before (no regression)', () => {
+    const staffItems = visibleGroups(false, NONE, false, false).flatMap((g) => g.items.map((i) => i.to));
+    // Home and the other items without a permission rule stay open to staff, as the access rules intend.
+    expect(staffItems).toContain('/');
+    expect(staffItems).not.toContain('/connector-portal');
+  });
+});
