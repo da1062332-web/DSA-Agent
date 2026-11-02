@@ -464,7 +464,7 @@ export function UserDetailPage() {
             </Paper>
 
             {user.status === 'INVITED' && (
-              <Can action="user.manage">
+              <Can action="user.invite">
                 <Box sx={{ mb: 3 }}>
                   <InvitationPanel userId={user.id} canResend />
                 </Box>
@@ -500,7 +500,9 @@ export function UserDetailPage() {
                     Suspend Account
                   </Button>
                 )}
-                {/* Delete replaces Deactivate: the details are erased for good (DeleteAccountDialog). */}
+              </Can>
+              {/* Delete replaces Deactivate: the details are erased for good (DeleteAccountDialog). Erasure is its own permission. */}
+              <Can action="user.offboard">
                 {actions.delete && (
                   <Button
                     variant="outlined"

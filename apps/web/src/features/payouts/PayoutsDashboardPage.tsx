@@ -34,6 +34,7 @@ import {
 import { errorText } from '../../api/client';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { hasPermission, useMe } from '../../api/useMe';
+import { canPerformAction } from '../../shell/access';
 import { ConnectorName, UserName } from '../../shell/display';
 import { fetchPayables } from '../commission/api';
 import type { CommissionPayable } from '../commission/types';
@@ -78,6 +79,8 @@ export function PayoutsDashboardPage() {
   const canRequestPayout = hasPermission(me.data, 'payout.request');
   const canApprovePayout = hasPermission(me.data, 'payout.approve');
   const canRecordPayment = hasPermission(me.data, 'payout.record_payment');
+  // Batches, the bank file and the gateway are their own permission (payout.disburse), separate from recording a payment.
+  const canDisburse = canPerformAction('payout.disburse', (code) => hasPermission(me.data, code));
 
   const [activeTab, setActiveTab] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -493,26 +496,32 @@ export function PayoutsDashboardPage() {
       align: 'right',
       accessor: (p) => (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            disabled={disbursingId === p.id}
-            onClick={() => handleGatewayDisburse(p)}
-          >
-            {disbursingId === p.id ? <CircularProgress size={16} /> : 'Net-Banking API'}
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            color="success"
-            onClick={() => handleOpenPaymentDialog(p)}
-          >
-            Record UTR
-          </Button>
-          <Button size="small" color="error" onClick={() => handleOpenFailureDialog(p)}>
-            Mark Failed
-          </Button>
+          {canDisburse && (
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={disbursingId === p.id}
+              onClick={() => handleGatewayDisburse(p)}
+            >
+              {disbursingId === p.id ? <CircularProgress size={16} /> : 'Net-Banking API'}
+            </Button>
+          )}
+          {canRecordPayment && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="success"
+              onClick={() => handleOpenPaymentDialog(p)}
+            >
+              Record UTR
+            </Button>
+          )}
+          {canRecordPayment && (
+            <Button size="small" color="error" onClick={() => handleOpenFailureDialog(p)}>
+              Mark Failed
+            </Button>
+          )}
         </Stack>
       ),
     },
@@ -535,22 +544,22 @@ export function PayoutsDashboardPage() {
       align: 'right',
       accessor: (b) => (
         <Stack direction="row" spacing={1} justifyContent="flex-end">
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            disabled={batching}
-            onClick={() => handleBatchGatewayDispatch(b.id)}
-          >
-            Gateway Dispatch
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => handleDownloadBankFile(b.id)}
-          >
-            Download CSV
-          </Button>
+          {canDisburse && (
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={batching}
+              onClick={() => handleBatchGatewayDispatch(b.id)}
+            >
+              Gateway Dispatch
+            </Button>
+          )}
+          {canDisburse && (
+            <Button size="small" variant="outlined" onClick={() => handleDownloadBankFile(b.id)}>
+              Download CSV
+            </Button>
+          )}
         </Stack>
       ),
     },
@@ -680,7 +689,7 @@ export function PayoutsDashboardPage() {
                   title="Approved Payouts Ready for Payment"
                   subheader="Record bank reference (UTR) or record bank payment failures"
                   action={
-                    canRecordPayment &&
+                    canDisburse &&
                     readyForPayment.length > 0 && (
                       <Button
                         variant="contained"

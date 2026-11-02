@@ -288,7 +288,7 @@ export function UserListPage() {
         title="Staff User Management"
         subtitle="Manage NBFC staff directory, branch allocations, account credentials, and permissions."
         actions={
-          <Can action="user.manage">
+          <Can action="user.invite">
             <Button
               variant="contained"
               size="large"

@@ -6,9 +6,11 @@ import {
   ACTION_RULES,
   EXTRA_ROUTE_RULES,
   NAV_GROUPS,
+  canPerformAction,
   getSearchableItems,
   routeAllowed,
   visibleGroups,
+  type ActionId,
 } from './access';
 
 const labelsFor = (held: string[], opts: { disabledModules?: string[]; connectorLogin?: boolean } = {}) => {
@@ -358,5 +360,66 @@ describe('the rules use only real permission codes', () => {
     expect(ACTION_RULES['verification.perform']).not.toContain('document.review');
     expect(ACTION_RULES['document.review']).not.toContain('verification.perform');
     expect(only('document.review')('verification.perform')).toBe(false);
+  });
+});
+
+describe('buttons follow the permission the API checks', () => {
+  const holding = (...codes: string[]) => {
+    const set = new Set(codes);
+    return (c: string) => set.has(c);
+  };
+
+  // [action, codes that show it (own code, then the legacy parent), codes that must not]
+  const CASES: [ActionId, string[], string[]][] = [
+    ['user.invite', ['user.invite', 'user.manage'], ['user.offboard', 'user.read']],
+    ['user.offboard', ['user.offboard', 'user.manage'], ['user.invite', 'user.read']],
+    ['payout.disburse', ['payout.disburse', 'payout.record_payment'], ['payout.request', 'payout.view']],
+    ['org.manage', ['org.manage', 'config.manage'], ['team.manage', 'settings.manage', 'user.manage']],
+    ['team.manage', ['team.manage', 'user.manage', 'config.manage'], ['org.manage', 'settings.manage']],
+    ['settings.manage', ['settings.manage', 'config.manage'], ['org.manage', 'team.manage']],
+    ['message_template.manage', ['message_template.manage', 'config.manage'], ['message.send', 'org.manage']],
+    [
+      'connector.bank_account_manage',
+      ['connector.bank_account_manage', 'connector.manage'],
+      ['connector.agreement_manage', 'connector.bank_change_approve'],
+    ],
+    [
+      'connector.agreement_manage',
+      ['connector.agreement_manage', 'connector.manage'],
+      ['connector.bank_account_manage', 'connector.portal_user_manage'],
+    ],
+    [
+      'connector.portal_user_manage',
+      ['connector.portal_user_manage', 'connector.manage'],
+      ['connector.agreement_manage', 'connector.read'],
+    ],
+  ];
+
+  for (const [action, shows, hides] of CASES) {
+    for (const code of shows) {
+      it(`TEST-SUBPERM-07 ${action} is shown to a role holding only ${code}`, () => {
+        expect(canPerformAction(action, holding(code))).toBe(true);
+      });
+    }
+    for (const code of hides) {
+      it(`TEST-SUBPERM-07 ${action} is hidden from a role holding only ${code}`, () => {
+        expect(canPerformAction(action, holding(code))).toBe(false);
+      });
+    }
+  }
+
+  // The API checks each of these on its own code, with no connector.manage fallback (SOD-09): the button must not appear for the parent.
+  it.each([
+    'connector.attribution_change',
+    'connector.bank_change_approve',
+    'connector.dispute_resolve',
+  ] as const)('TEST-SUBPERM-07 %s is shown only for its own code, not for connector.manage', (action) => {
+    expect(canPerformAction(action, holding(action))).toBe(true);
+    expect(canPerformAction(action, holding('connector.manage'))).toBe(false);
+  });
+
+  it('TEST-SUBPERM-07 Record UTR and Mark Failed stay on payout.record_payment, not on the bank-batch permission', () => {
+    expect(canPerformAction('payout.record_payment', holding('payout.record_payment'))).toBe(true);
+    expect(canPerformAction('payout.record_payment', holding('payout.disburse'))).toBe(false);
   });
 });

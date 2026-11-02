@@ -144,6 +144,27 @@ const GATES: Gate[] = [
     opens: ['target.read', 'target.manage'],
     refuses: ['report.read', 'performance.read', 'lead.read'],
   },
+  {
+    name: 'team performance dashboard',
+    method: 'get',
+    path: '/v1/dashboards/TEAM_PERFORMANCE',
+    opens: ['performance.read', 'report.manage', 'config.manage'],
+    refuses: ['report.read', 'target.read', 'lead.read'],
+  },
+  {
+    name: 'leaderboard dashboard',
+    method: 'get',
+    path: '/v1/dashboards/leaderboard',
+    opens: ['performance.read', 'report.manage', 'config.manage'],
+    refuses: ['report.read', 'target.read', 'lead.read'],
+  },
+  {
+    name: 'executive dashboard stays report.read',
+    method: 'get',
+    path: '/v1/dashboards/EXECUTIVE',
+    opens: ['report.read', 'report.manage', 'config.manage'],
+    refuses: ['performance.read', 'target.read', 'lead.read'],
+  },
 
   // Connectors
   {
@@ -304,14 +325,17 @@ const GATES: Gate[] = [
   },
 ];
 
+/** Call the gate's route as a caller holding only these codes. */
+const callAs = (gate: Gate, ...codes: PermissionCode[]) => {
+  const req = request(appFor(...codes))[gate.method](gate.path);
+  return req.set(gate.headers ?? {}).send(gate.body ?? {});
+};
+
 describe('API gates for the sub-permissions', () => {
   for (const gate of GATES) {
     for (const code of gate.opens) {
       it(`TEST-SUBGATE ${gate.name}: ${code} alone gets past the gate`, async () => {
-        const res = await request(appFor(code))
-          [gate.method](gate.path)
-          .set(gate.headers ?? {})
-          .send(gate.body ?? {});
+        const res = await callAs(gate, code);
         expect(
           res.status,
           `${gate.method.toUpperCase()} ${gate.path} with ${code}: ${JSON.stringify(res.body?.error ?? res.body)}`,
@@ -320,10 +344,7 @@ describe('API gates for the sub-permissions', () => {
     }
     for (const code of gate.refuses) {
       it(`TEST-SUBGATE ${gate.name}: ${code} alone is refused with 403`, async () => {
-        const res = await request(appFor(code))
-          [gate.method](gate.path)
-          .set(gate.headers ?? {})
-          .send(gate.body ?? {});
+        const res = await callAs(gate, code);
         expect(
           res.status,
           `${gate.method.toUpperCase()} ${gate.path} with ${code}: ${JSON.stringify(res.body?.error ?? res.body)}`,
@@ -331,10 +352,7 @@ describe('API gates for the sub-permissions', () => {
       });
     }
     it(`TEST-SUBGATE ${gate.name}: a caller with no permission is refused with 403`, async () => {
-      const res = await request(appFor())
-        [gate.method](gate.path)
-        .set(gate.headers ?? {})
-        .send(gate.body ?? {});
+      const res = await callAs(gate);
       expect(res.status).toBe(403);
     });
   }

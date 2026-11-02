@@ -66,6 +66,7 @@ import type {
 } from '@dsa/contracts';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
+import { canPerformAction } from '../../shell/access';
 
 const STATUS_COLORS: Record<
   string,
@@ -186,8 +187,9 @@ export function ConnectorPage() {
   // Bank details and agreement terms are read only by the roles that manage or approve them (the API refuses the others), so the
   // page does not ask for them otherwise. A relationship manager sees the connector itself, not these.
   const canSeeBankAccounts =
-    hasPermission(me.data, 'connector.manage') || hasPermission(me.data, 'connector.bank_change_approve');
-  const canSeeAgreements = hasPermission(me.data, 'connector.manage');
+    canPerformAction('connector.bank_account_manage', (code) => hasPermission(me.data, code)) ||
+    hasPermission(me.data, 'connector.bank_change_approve');
+  const canSeeAgreements = canPerformAction('connector.agreement_manage', (code) => hasPermission(me.data, code));
 
   const selectedBankAccountsQuery = useQuery({
     queryKey: ['connector-bank-accounts', selectedConnector?.id],
@@ -671,7 +673,7 @@ export function ConnectorPage() {
                     </Alert>
                   )}
                 </Box>
-                <Can action="connector.manage">
+                <Can action="connector.bank_account_manage">
                   <Button
                     variant="contained"
                     color="primary"
@@ -795,7 +797,7 @@ export function ConnectorPage() {
                     </Alert>
                   )}
                 </Box>
-                <Can action="connector.manage">
+                <Can action="connector.agreement_manage">
                   <Button
                     variant="contained"
                     color="primary"
@@ -879,7 +881,7 @@ export function ConnectorPage() {
                     View attribution requests and duplicate referral disputes concerning {selectedConnector.legalName}.
                   </Typography>
                 </Box>
-                <Can action="connector.manage">
+                <Can action="connector.attribution_change">
                   <Button
                     variant="outlined"
                     color="primary"

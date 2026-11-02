@@ -47,6 +47,7 @@ import {
 } from './components';
 import { NotSet } from '../../ui/NotSet';
 import { RecordLink } from '../../ui/RecordLink';
+import { canPerformAction } from '../../shell/access';
 
 function useNames() {
   const branches = useLookup<Branch>('/v1/branches');
@@ -62,7 +63,7 @@ function useNames() {
 export function TeamsPage() {
   const me = useMe();
   // Branch managers hold user.manage for their own branch only; the API rejects other branches with 403.
-  const canEdit = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
+  const canEdit = canPerformAction('team.manage', (code) => hasPermission(me.data, code));
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ACTIVE');
   const list = useList<Team>('/v1/teams', { q: search || undefined, status: status || undefined });
@@ -197,7 +198,7 @@ export function TeamDetailPage() {
   const { id } = useParams();
   const me = useMe();
   // Branch managers hold user.manage for their own branch only; the API rejects other branches with 403.
-  const canEdit = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
+  const canEdit = canPerformAction('team.manage', (code) => hasPermission(me.data, code));
   const team = useResource<TeamDetail>(`/v1/teams/${id}`);
 
   const [name, setName] = useState('');

@@ -1014,7 +1014,18 @@ export type ActionId =
   | 'audit.seal'
   | 'security.incident'
   | 'target.manage'
-  | 'message.send';
+  | 'message.send'
+  // Sub-permissions (M-098): the actions whose buttons used to check the broader code
+  | 'user.invite'
+  | 'user.offboard'
+  | 'payout.disburse'
+  | 'connector.bank_account_manage'
+  | 'connector.agreement_manage'
+  | 'connector.portal_user_manage'
+  | 'org.manage'
+  | 'team.manage'
+  | 'settings.manage'
+  | 'message_template.manage';
 
 /**
  * Standard mapping from Action IDs to the permission codes required to execute them.
@@ -1063,9 +1074,13 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
 
   // Connectors
   'connector.manage': ['connector.manage'],
-  'connector.attribution_change': ['connector.attribution_change', 'connector.manage'],
-  'connector.bank_change_approve': ['connector.bank_change_approve', 'connector.manage'],
-  'connector.dispute_resolve': ['connector.dispute_resolve', 'connector.manage'],
+  // The API checks each of these three on its own, so connector.manage is not a way to a button it would refuse.
+  'connector.attribution_change': ['connector.attribution_change'],
+  'connector.bank_change_approve': ['connector.bank_change_approve'],
+  'connector.dispute_resolve': ['connector.dispute_resolve'],
+  'connector.bank_account_manage': opens('connector.bank_account_manage'),
+  'connector.agreement_manage': opens('connector.agreement_manage'),
+  'connector.portal_user_manage': opens('connector.portal_user_manage'),
 
   // Finance & Payouts
   'finance.reconcile': ['finance.reconcile'],
@@ -1106,6 +1121,13 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'security.incident': ['security.incident'],
   'target.manage': ['target.manage'],
   'message.send': ['message.send'],
+  'message_template.manage': opens('message_template.manage'),
+  'user.invite': opens('user.invite'),
+  'user.offboard': opens('user.offboard'),
+  'payout.disburse': opens('payout.disburse'),
+  'org.manage': opens('org.manage'),
+  'team.manage': opens('team.manage'),
+  'settings.manage': opens('settings.manage'),
 };
 
 /**
