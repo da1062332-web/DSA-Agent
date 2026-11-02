@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import proposedDiff from '../docs/PROPOSED_PERMISSION_GRANTS_DIFF.json';
-import { QLOAX_ROLE_GRANTS } from '../apps/web/src/shell/role-grants.fixture';
+import { QLOAX_ROLE_GRANTS_PRE_M098 as QLOAX_ROLE_GRANTS } from '../apps/web/src/shell/role-grants.fixture';
 
 describe('Rehearsal for Migration 0085: Permission Realignment & Period Close', () => {
   const root = path.resolve(import.meta.dirname, '..');
