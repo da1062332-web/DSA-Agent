@@ -392,4 +392,17 @@ describe('the provisioning worker', () => {
     });
     expect(auth.emails).toHaveLength(2);
   });
+
+  // The root cause of the intermittent TEST-WRK-10 failure (F22): a due request was compared with the worker's clock, while the database
+  // wrote the due time with its own clock. A worker whose clock is far behind must still claim a request that is due on the database clock.
+  it('TEST-WRK-11 a worker whose clock is behind still claims a request that is due: due and stale are judged on the database clock', async () => {
+    auth = new FakeAuth();
+    const { invitationId } = await invite(env.A, 'skewed@wrk.example.test');
+    const behind = { ...worker(), now: () => new Date(0) };
+    expect(await deliverInvitation(behind, env.A.tenantId, invitationId)).toMatchObject({
+      result: 'SENT',
+      authAccount: 'CREATED',
+    });
+    expect(auth.emails.map((e) => e.kind)).toEqual(['invite']);
+  });
 });

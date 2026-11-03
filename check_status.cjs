@@ -5,6 +5,8 @@
 // string, and it runs select statements only.
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS script run with node; the package has no ESM for .cjs
 const { Client } = require('pg');
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- as above
+const { readFileSync } = require('node:fs');
 
 const APP_ID = process.argv[2] || 'app_01M60KBHCY91ENFSQRRYPPQ9QH';
 const url = process.env.HOSTED_CHECK_DATABASE_URL;
@@ -16,9 +18,25 @@ if (!url) {
   process.exit(1);
 }
 
+// TLS is always verified. The pooler's CA comes from HOSTED_CHECK_CA_FILE: the certificate from the Supabase dashboard, a file on the
+// operator's machine, never stored here. Without it the system trust store is used, and the connection fails if that store does not trust
+// the pooler. Never set this to skip the check (docs/SECURITY_CREDENTIAL_ROTATION.md, section 3).
+const caFile = process.env.HOSTED_CHECK_CA_FILE;
+let ca;
+if (caFile) {
+  try {
+    ca = readFileSync(caFile, 'utf8');
+  } catch {
+    console.error(
+      `HOSTED_CHECK_CA_FILE is set but cannot be read (${caFile}). Point it at the pooler CA certificate file.`,
+    );
+    process.exit(1);
+  }
+}
+
 const client = new Client({
   connectionString: url,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: true, ...(ca ? { ca } : {}) },
 });
 
 async function main() {

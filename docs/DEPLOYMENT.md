@@ -73,6 +73,19 @@ Do not set `VITE_TEST_AUTH`, `VITE_TEST_BYPASS_OTP` or `VITE_DISABLE_MFA` on Ver
 3. **Web on Vercel.** Set the variables above, using the Render URL, and deploy.
 4. **Back to Render.** Set `CORS_ALLOWED_ORIGINS` to the Vercel URL and redeploy. Browser calls fail until this is done.
 
+## Observed state (2026-11-03, read-only checks; not a deployment log)
+
+- **API (Render):** `/health` returns 200. `/public/v1/auth/config` returns `{"mfaEnabled":false}`, so the running code includes the MFA
+  setting endpoint, and the service's `SUPABASE_MFA_ENABLED` is `false`. `/v1/me` without a token returns 401. The CORS preflight allows the
+  Vercel origin.
+- **Web (Vercel):** the page and a deep link return 200. The bundle points at the Render API and the hosted Supabase project and has no
+  `localhost` API references. It does **not** contain the auth-config request or the OTP gating, so the served frontend predates the MFA
+  change. The likely cause is that the Vercel production branch is `main`, which is still at `d423452`. Not verified: the Vercel settings
+  (no dashboard access).
+- **Migration order risk:** the running API needs the sub-permission migrations 0098 and 0099 on the database it uses. See
+  [docs/HOSTED_MIGRATION_RUNBOOK.md](HOSTED_MIGRATION_RUNBOOK.md), section 6, and check it before anything else.
+- **Not verified:** authenticated sign-in, tenant loading and the connector APIs. Those need a test account and the hosted data.
+
 ## Before going live
 
 These are open in `docs/CONNECTOR_SECURITY_AUDIT.md` (not yet on beta) and are not fixed by this change:

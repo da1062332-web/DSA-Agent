@@ -37,6 +37,13 @@ import {
   type PortalStatementLine,
   type PortalStatements,
 } from './portal-model';
+import {
+  portalDataOpen,
+  portalNotice,
+  portalNoticeSeverity,
+  portalTableText,
+  type PortalEligibility,
+} from './portal-eligibility';
 
 const STATEMENT_TONE: Record<string, 'success' | 'info' | 'neutral'> = {
   PAID: 'success',
@@ -88,22 +95,36 @@ export function ConnectorPortalPage() {
   const me = useMe();
   const isConnector = me.data?.userType === 'CONNECTOR';
 
+  // The state of this login comes first. Nothing else is asked for unless the server says the login is eligible: a refused login
+  // gets one request and one clear message, not a request per screen.
+  const eligibilityQuery = useQuery<PortalEligibility>({
+    queryKey: ['/portal/v1/eligibility'],
+    queryFn: () => apiFetch<PortalEligibility>('/portal/v1/eligibility'),
+    enabled: isConnector,
+    retry: false,
+  });
+  const portalOpen = portalDataOpen(eligibilityQuery.data);
+  const notice = portalNotice(eligibilityQuery.data, eligibilityQuery.error);
+  // An empty table says why it is empty: still checking, closed for this login, loading, or nothing yet (see portalTableText).
+  const tableText = (dataLoading: boolean, loadingText: string, emptyText: string) =>
+    portalTableText(portalOpen, eligibilityQuery.isLoading, loadingText, emptyText, dataLoading);
+
   const referralsQuery = useQuery<{ data: PortalReferral[] }>({
     queryKey: ['/portal/v1/referrals'],
     queryFn: () => apiFetch<{ data: PortalReferral[] }>('/portal/v1/referrals'),
-    enabled: isConnector,
+    enabled: portalOpen,
   });
 
   const statementsQuery = useQuery<PortalStatements>({
     queryKey: ['/portal/v1/statements'],
     queryFn: () => apiFetch<PortalStatements>('/portal/v1/statements'),
-    enabled: isConnector,
+    enabled: portalOpen,
   });
 
   const disputesQuery = useQuery<{ data: PortalDispute[] }>({
     queryKey: ['/portal/v1/disputes'],
     queryFn: () => apiFetch<{ data: PortalDispute[] }>('/portal/v1/disputes'),
-    enabled: isConnector,
+    enabled: portalOpen,
   });
 
   const referrals = referralsQuery.data?.data ?? [];
@@ -341,12 +362,18 @@ export function ConnectorPortalPage() {
         subtitle="Manage referred leads, monitor commission payouts, and raise disputes on statements."
         actions={
           <Stack direction="row" spacing={2}>
-            <Button variant="outlined" onClick={openPayout} data-testid="cpt.request-payout">
+            <Button
+              variant="outlined"
+              onClick={openPayout}
+              disabled={!portalOpen}
+              data-testid="cpt.request-payout"
+            >
               Request Payout
             </Button>
             <Button
               variant="contained"
               onClick={() => setNewReferralOpen(true)}
+              disabled={!portalOpen}
               data-testid="cpt.submit-referral"
             >
               Submit Referral
@@ -361,6 +388,12 @@ export function ConnectorPortalPage() {
           {me.data?.displayName || me.data?.email || 'Staff'}). This self-service portal is dedicated to
           external Connector partners (Sub-DSAs) to submit customer referrals with OTP consent, track payouts,
           and inspect commission statements.
+        </Alert>
+      )}
+
+      {notice && (
+        <Alert severity={portalNoticeSeverity(eligibilityQuery.data)} sx={{ mb: 3 }} data-testid="cpt.notice">
+          {notice}
         </Alert>
       )}
 
@@ -413,11 +446,11 @@ export function ConnectorPortalPage() {
             data={referrals}
             columns={referralColumns}
             keyExtractor={(ref) => ref.id}
-            emptyMessage={
-              referralsQuery.isLoading
-                ? 'Loading referrals...'
-                : 'No referrals submitted yet. Click "Submit Referral" to refer a borrower.'
-            }
+            emptyMessage={tableText(
+              referralsQuery.isLoading,
+              'Loading referrals...',
+              'No referrals submitted yet. Click "Submit Referral" to refer a borrower.',
+            )}
           />
         )}
 
@@ -427,9 +460,11 @@ export function ConnectorPortalPage() {
             data={statementLines}
             columns={statementColumns}
             keyExtractor={(s) => s.id}
-            emptyMessage={
-              statementsQuery.isLoading ? 'Loading statements...' : 'No payable statements recorded yet.'
-            }
+            emptyMessage={tableText(
+              statementsQuery.isLoading,
+              'Loading statements...',
+              'No payable statements recorded yet.',
+            )}
           />
         )}
 
@@ -439,9 +474,11 @@ export function ConnectorPortalPage() {
             data={disputes}
             columns={disputeColumns}
             keyExtractor={(d) => d.id}
-            emptyMessage={
-              disputesQuery.isLoading ? 'Loading disputes...' : 'You have not raised any disputes.'
-            }
+            emptyMessage={tableText(
+              disputesQuery.isLoading,
+              'Loading disputes...',
+              'You have not raised any disputes.',
+            )}
           />
         )}
       </DetailCard>

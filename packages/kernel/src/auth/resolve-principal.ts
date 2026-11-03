@@ -62,6 +62,11 @@ export function dedupeGrants(grants: PermissionGrant[]): PermissionGrant[] {
   });
 }
 const UNAUTHENTICATED_MESSAGE = 'Missing or invalid access token.';
+/** Shown to an invitee whose account is linked to this sign-in but who has not yet signed in with the password they set. */
+export const PORTAL_INVITATION_PENDING_MESSAGE =
+  'Your connector portal invitation is pending. Please complete the invitation process using the link sent to your registered email.';
+const STAFF_INVITATION_PENDING_MESSAGE =
+  'Your invitation is pending. Please complete the invitation process using the link sent to your registered email.';
 const EXPIRED = 'EXPIRED' as const;
 
 interface UserRow {
@@ -73,7 +78,10 @@ interface UserRow {
   tenant_status: string;
 }
 
-export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalResolverOptions = {}): PrincipalResolver {
+export function createPrincipalResolver(
+  txRunner: TxRunner,
+  options: PrincipalResolverOptions = {},
+): PrincipalResolver {
   return {
     async resolve(token, { correlationId, now }) {
       const bootstrap: RequestContext = {
@@ -106,12 +114,26 @@ export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalRe
            order by (u.idp_subject = ${token.subject}) desc
            limit 1`.execute(tx);
         let row: UserRow | undefined = found.rows[0];
-        if (row && row.idp_subject !== token.subject && row.id !== token.subject) options.onEmailFallback?.(row.id);
+        if (row && row.idp_subject !== token.subject && row.id !== token.subject)
+          options.onEmailFallback?.(row.id);
         if (row && row.status === 'INVITED') {
           const accepted = await acceptInvitation(tx, row, token, { correlationId, now }, options);
           // An expired invitation is recorded as EXPIRED and committed; the refusal is raised after the transaction.
           if (accepted === EXPIRED) return EXPIRED;
           row = accepted;
+        }
+
+        // A suspended partner login is told so. The token has already proved who it is, and the message says nothing about the connector.
+        if (
+          row &&
+          row.status === 'SUSPENDED' &&
+          row.user_type === 'CONNECTOR' &&
+          row.tenant_status === 'ACTIVE'
+        ) {
+          throw AppError.of(
+            'FORBIDDEN',
+            'Your portal access has been suspended. Please contact your DSA administrator.',
+          );
         }
 
         // Unknown subject, inactive user or suspended tenant: the token is not usable here.
@@ -160,7 +182,8 @@ export function createPrincipalResolver(txRunner: TxRunner, options: PrincipalRe
         } satisfies Principal;
       });
 
-      if (outcome === EXPIRED) throw AppError.of('UNAUTHENTICATED', 'This invitation has expired. Ask for a new one.');
+      if (outcome === EXPIRED)
+        throw AppError.of('UNAUTHENTICATED', 'This invitation has expired. Ask for a new one.');
       return outcome;
     },
   };
@@ -178,8 +201,14 @@ async function acceptInvitation(
   options: PrincipalResolverOptions,
 ): Promise<UserRow | typeof EXPIRED> {
   const signedInWithPassword = (token.authMethods ?? []).includes('password');
-  if (row.idp_subject !== token.subject || !signedInWithPassword || row.tenant_status !== 'ACTIVE') {
+  if (row.idp_subject !== token.subject || row.tenant_status !== 'ACTIVE') {
     throw AppError.of('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
+  }
+  if (!signedInWithPassword) {
+    // The account is linked to this sign-in, so the message can say what to do. The first sign-in with the password completes the invitation.
+    const message =
+      row.user_type === 'CONNECTOR' ? PORTAL_INVITATION_PENDING_MESSAGE : STAFF_INVITATION_PENDING_MESSAGE;
+    throw AppError.of('UNAUTHENTICATED', message);
   }
 
   // Only an invitation the provisioning worker has sent counts: until then the account, the claim and the binding may be incomplete.
@@ -199,7 +228,9 @@ async function acceptInvitation(
     update app_user u set status = 'ACTIVE', availability = 'AVAILABLE', updated_by = 'SYSTEM:auth'
       from tenant t
      where u.id = ${row.id} and t.id = u.tenant_id and u.status = 'INVITED'
-    returning u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status`.execute(tx);
+    returning u.id, u.primary_branch_id, u.status, u.idp_subject, u.user_type, t.status as tenant_status`.execute(
+    tx,
+  );
   const user = activated.rows[0];
   if (!user) throw AppError.of('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
 

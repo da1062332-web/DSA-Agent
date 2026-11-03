@@ -10,7 +10,7 @@
 //   API-CPT-006 POST /portal/v1/disputes                Idempotency-Key; dispute one of my statement lines or payouts
 // The OTP itself is never returned or logged; the consent.otp_requested event carries only its id, for the messaging sender.
 import crypto from 'node:crypto';
-import { AppError, maskMobile, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, maskMobile, type RequestContext } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import express, { type Router } from 'express';
 import { sql } from 'kysely';
@@ -20,6 +20,7 @@ import { computeMobileHash, normalizeMobile } from '../crm/leads/normalizer';
 import { createLeadService } from '../crm/leads/router';
 import { CreateLeadInputSchema } from '../crm/leads/types';
 import { partnerLeadStatus, partnerTimeline, PARTNER_LEAD_STATUS } from '../partner-view/partner-progress';
+import { portalMe as me, PORTAL_STATE_MESSAGE, standing } from '../partner-view/portal-standing';
 import type { ApiDeps } from '../types';
 
 // Shown when a referral duplicates an open enquiry. It names no customer, lead or connector.
@@ -78,29 +79,6 @@ const DISPUTE_CATEGORIES_FOR: Record<'STATEMENT_LINE' | 'PAYOUT', readonly strin
   PAYOUT: ['PAYOUT', 'OTHER'],
 };
 
-interface Me {
-  userId: string;
-  connectorId: string;
-  branchId: string;
-}
-
-/** The connector behind the caller; 403 for anyone else (staff use /v1). */
-async function me(tx: Tx, ctx: RequestContext): Promise<Me> {
-  const r = await sql<Row>`
-    select u.id, u.connector_id, c.primary_branch_id
-      from app_user u join connector c on c.id = u.connector_id
-     where u.id = ${ctx.principal.id} and u.user_type = 'CONNECTOR' and u.status = 'ACTIVE' and c.status = 'ACTIVE'`.execute(
-    tx,
-  );
-  const row = r.rows[0];
-  if (!row) throw AppError.of('FORBIDDEN', 'The portal is for active connector users.');
-  return {
-    userId: String(row.id),
-    connectorId: String(row.connector_id),
-    branchId: String(row.primary_branch_id),
-  };
-}
-
 const otpHash = (id: string, code: string) =>
   crypto.createHash('sha256').update(`${id}:${code}`).digest('hex');
 
@@ -116,6 +94,15 @@ const maskName = (name: string) =>
 
 export function createConnectorPortalRouter(deps: ApiDeps): Router {
   const router = express.Router();
+
+  // The state of this portal login. The web app reads it first and loads nothing else unless the state is ELIGIBLE. It names no connector.
+  router.get('/eligibility', async (req, res) => {
+    const ctx = requireCtx(req);
+    const s = await deps.txRunner.withTenantTx(ctx, (tx) => standing(tx, ctx));
+    if (s.state !== 'ELIGIBLE')
+      req.log?.warn({ portalState: s.state, reason: s.reason }, 'portal login not eligible');
+    res.json({ state: s.state, message: s.state === 'ELIGIBLE' ? null : PORTAL_STATE_MESSAGE[s.state] });
+  });
 
   // API-CPT-001
   router.get('/referrals', async (req, res) => {

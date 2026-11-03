@@ -43,6 +43,7 @@ import type { ApiDeps } from '../../types';
 import { MagicByteFileScanner, type FileScannerPort } from '../document-sharing/storage-port';
 import { advanceForChecklistItem, advanceWhenDocumentsComplete, isComplete } from './application-port';
 import { partnerDocumentStatus } from '../../partner-view/partner-progress';
+import { portalMe } from '../../partner-view/portal-standing';
 import { ClamAvFileScanner, EncryptedDocumentObjectStore } from './document-backends';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
@@ -882,15 +883,9 @@ const serviceCtx = (tenantId: string, correlationId: string): RequestContext => 
   now: new Date(),
 });
 
-/** The connector behind a portal login: an active CONNECTOR user whose connector is active. Anyone else is refused. */
+/** The connector behind a portal login. Any other login is refused with the message for its state (partner-view/portal-standing.ts). */
 async function activeConnectorOf(tx: Tx, ctx: RequestContext): Promise<string> {
-  const r = await sql<Row>`
-    select u.connector_id from app_user u join connector c on c.id = u.connector_id
-     where u.id = ${ctx.principal.id} and u.user_type = 'CONNECTOR' and u.status = 'ACTIVE' and c.status = 'ACTIVE'`.execute(
-    tx,
-  );
-  if (!r.rows[0]) throw AppError.of('FORBIDDEN', 'The portal is for active connector users.');
-  return String(r.rows[0].connector_id);
+  return (await portalMe(tx, ctx)).connectorId;
 }
 
 /** The application of one of a connector's referrals. Any other referral is not found, so no other connector's data is confirmed. */
