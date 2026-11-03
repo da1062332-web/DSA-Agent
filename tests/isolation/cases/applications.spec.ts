@@ -80,8 +80,9 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
   });
 
   it('API-ELG-001 API-ELG-002 API-ELG-003: tenant B cannot assess, read or override a tenant A eligibility assessment', async () => {
-    const a = env.appAs(env.A, APP_CODES);
-    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES, 'eligibility.override']);
+    // Reading an assessment needs eligibility.read. A broad parent such as application.read does not authorise it (TASK-412).
+    const a = env.appAs(env.A, [...APP_CODES, 'eligibility.read']);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES, 'eligibility.read', 'eligibility.override']);
     // An application with a product, so tenant A can run an assessment.
     await env.admin.query(
       `insert into app.lender (id, tenant_id, name, lender_type, created_by, updated_by)
@@ -132,8 +133,8 @@ describe('TEST-SEC-001 origination/applications: tenants never cross', () => {
   });
 
   it('API-ELG-004 API-ELG-005 API-ELG-006: tenant B cannot read or change tenant A applicant figures, or see its latest assessment', async () => {
-    const a = env.appAs(env.A, APP_CODES);
-    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES]);
+    const a = env.appAs(env.A, [...APP_CODES, 'eligibility.read']);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES, 'eligibility.read']);
     await env.admin.query(`update app.loan_application set status = 'DOCUMENTS_PENDING' where id = $1`, [
       appId,
     ]);

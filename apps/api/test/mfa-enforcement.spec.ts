@@ -49,12 +49,14 @@ describe('mandatory two-step verification at the API (SUB-AUTH.02)', () => {
     expect(res.body.error?.code).not.toBe('STEP_UP_REQUIRED');
   });
 
+  // One app per permission, so the time grows with the mandatory list (it passed 30 s before the sub-permission split). The longer limit
+  // says so; the assertion is unchanged.
   it('TEST-MFA-API-05 every mandatory permission triggers the rule', async () => {
     for (const code of MFA_REQUIRED_PERMISSIONS) {
       const res = await call(appFor(withGrant(code), 'aal1'));
       expect(res.body.error?.code, code).toBe('STEP_UP_REQUIRED');
     }
-  });
+  }, 180_000);
 
   it('TEST-MFA-API-06 bypass tokens or missing tokens are strictly rejected with UNAUTHENTICATED', async () => {
     const app = appFor(withGrant('config.manage'), 'aal2');

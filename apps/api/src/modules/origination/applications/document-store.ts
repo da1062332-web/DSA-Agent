@@ -75,10 +75,14 @@ export class FileLinkSigner {
   }
 
   verify(token: string, nowSeconds: number): FileLinkClaims | null {
-    const [body, sig] = token.split('.');
-    if (!body || !sig) return null;
+    // Exactly two segments: a third would be ignored, so the same link would have a second spelling.
+    const [body, sig, extra] = token.split('.');
+    if (!body || !sig || extra !== undefined) return null;
     const expected = crypto.createHmac('sha256', this.key).update(body).digest();
     const given = Buffer.from(sig, 'base64url');
+    // Only the canonical spelling of the signature is accepted. base64url decoding ignores the unused bits of the last character, so
+    // without this check one signature had several valid spellings.
+    if (given.toString('base64url') !== sig) return null;
     if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
     try {
       const claims = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as FileLinkClaims;

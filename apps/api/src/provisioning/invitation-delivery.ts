@@ -137,9 +137,11 @@ export async function deliverInvitation(
            set delivery_state = 'SENDING', claimed_at = ${now}::timestamptz, claimed_by = ${deps.workerId},
                delivery_attempts = delivery_attempts + 1, updated_by = ${PROVISIONING_ACTOR}
          where id = ${invitationId}
-           and ((delivery_state = 'QUEUED' and next_attempt_at <= ${now}::timestamptz)
+           -- Due and stale are judged on the database clock, the clock the rows were written with, so the claim cannot disagree with them
+           -- when the worker's clock drifts (TEST-WRK-10 failed intermittently under load).
+           and ((delivery_state = 'QUEUED' and next_attempt_at <= now())
              or (delivery_state = 'SENDING'
-                 and claimed_at < ${new Date(now.getTime() - STALE_CLAIM_SECONDS * 1000)}::timestamptz))
+                 and claimed_at < now() - make_interval(secs => ${STALE_CLAIM_SECONDS})))
         returning id, user_id, status, requested_at, delivery_attempts`.execute(tx)
     ).rows[0];
     if (!row) return { done: { ...base, result: 'SKIPPED' } as DeliveryOutcome };

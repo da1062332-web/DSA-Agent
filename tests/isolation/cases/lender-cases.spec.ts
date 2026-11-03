@@ -65,8 +65,9 @@ afterAll(async () => {
 
 describe('TEST-SEC-001 lender cases: tenants never cross', () => {
   it('API-LCS-008 API-LCS-009 API-LCS-010: queries, status history and package stay in the caller tenant', async () => {
-    // Both tenants hold every admin permission plus application.read, the permission these reads need.
-    const reader: PermissionCode[] = [...ALL_ADMIN, 'application.read'];
+    // Both tenants hold every admin permission plus the permissions these reads need. A broad parent such as application.read does not
+    // authorise lender case reads (TASK-412), so lender_case.read is granted as well.
+    const reader: PermissionCode[] = [...ALL_ADMIN, 'application.read', 'lender_case.read'];
     const a = env.appAs(env.A, reader);
     const b = env.appAs(env.B, reader);
 
