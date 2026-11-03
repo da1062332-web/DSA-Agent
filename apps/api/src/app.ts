@@ -22,6 +22,7 @@ import {
 } from './modules/origination/applications/documents';
 import { createPublicApplyRouter } from './modules/crm/leads/lead-extras';
 import { createPublicAuthRouter } from './http/public-auth-router';
+import { createAuthConfigRouter } from './http/auth-config-router';
 import type { TestAuthConfig } from './test-auth';
 import { createConnectorPortalRouter } from './modules/finance/connector-portal';
 import { createPublicIntegrationWebhookRouter } from './modules/integrations/inbound-webhooks';
@@ -132,6 +133,8 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentRouter(opts.deps));
   publicV1.use(createPublicApplyRouter(opts.deps, () => createLeadService(opts.deps)));
   publicV1.use(createPublicIntegrationWebhookRouter(opts.deps));
+  // The second-factor setting is public and always mounted: the sign-in screen reads it before anyone is signed in.
+  publicV1.use(createAuthConfigRouter());
   // Test login is mounted only when createApp is given a testAuth. Without it these paths answer 404 like any unknown path.
   if (opts.testAuth) publicV1.use(createPublicAuthRouter({ deps: opts.deps, testAuth: opts.testAuth }));
   app.use('/public/v1', publicV1);

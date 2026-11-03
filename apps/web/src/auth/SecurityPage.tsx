@@ -20,6 +20,8 @@ import type { Factor } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mfaRequired, useMe } from '../api/useMe';
+import { useAuthConfig } from './auth-config';
+import { secondFactorPromptAllowed } from './mfa-flow';
 import { useAuth } from './AuthProvider';
 import { getSupabase, isBypassActive } from './supabase';
 import { verifiedTotpFactors } from './totp';
@@ -45,6 +47,10 @@ export function SecurityPage() {
     }
   }, []);
   useEffect(() => void load(), [load]);
+
+  // Set-up controls are offered only when the project asks for a second factor (see mfa-flow.ts).
+  const authConfig = useAuthConfig();
+  const setupOffered = secondFactorPromptAllowed(authConfig?.mfaEnabled ?? null);
 
   const remove = async (factorId: string) => {
     if (mfaRequired(me.data) && (factors?.length ?? 0) <= 1) {
@@ -107,7 +113,11 @@ export function SecurityPage() {
               label={aal?.current === 'aal2' ? 'Verified this session' : 'Not verified this session'}
             />
           </Stack>
-          {factors === null ? (
+          {!setupOffered ? (
+            <Alert severity="info">
+              Two-step verification is switched off for this project, so there is no authenticator app to set up.
+            </Alert>
+          ) : factors === null ? (
             <CircularProgress size={24} />
           ) : factors.length === 0 ? (
             <Alert severity={mfaRequired(me.data) ? 'warning' : 'info'}>
@@ -132,15 +142,17 @@ export function SecurityPage() {
               ))}
             </List>
           )}
-          <Button
-            variant="contained"
-            sx={{ mt: 2 }}
-            onClick={() =>
-              navigate('/login', { state: { from: '/account/security', addAuthenticator: true } })
-            }
-          >
-            {factors?.length === 0 ? 'Set up authenticator' : 'Add another authenticator / Scan barcode'}
-          </Button>
+          {setupOffered && (
+            <Button
+              variant="contained"
+              sx={{ mt: 2 }}
+              onClick={() =>
+                navigate('/login', { state: { from: '/account/security', addAuthenticator: true } })
+              }
+            >
+              {factors?.length === 0 ? 'Set up authenticator' : 'Add another authenticator / Scan barcode'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

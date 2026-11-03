@@ -334,7 +334,7 @@ async function retireOtherFactors(keepId: string): Promise<void> {
 }
 
 // Test builds only. Signs in through the API's test login, which is off in every other build.
-async function signInWithTestCode(email: string, code: string, from: string): Promise<void> {
+export async function signInWithTestCode(email: string, code: string, from: string): Promise<void> {
   const config = readConfig();
   const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
   const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';

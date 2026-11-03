@@ -30,6 +30,9 @@ import { StepUpProvider } from '../auth/StepUpProvider';
 import { RouteAccessProvider } from './RouteAccess';
 import { mfaProjectState } from '../auth/mfa-project';
 import { mfaSkipRequested } from '../auth/test-auth';
+import { useAuthConfig } from '../auth/auth-config';
+import { shellSkipsSecondFactor } from '../auth/mfa-flow';
+import { isPartnerPortalLogin } from './partner-login';
 
 import { ROLE_LABELS, resolveUserRoles } from '../features/dashboard/role-routing';
 import { NotificationCenter } from '../features/notifications/NotificationCenter';
@@ -74,14 +77,20 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { session, aal, signOut } = useAuth();
   const me = useMe();
+  // The API's setting (GET /public/v1/auth/config). With second factors off for the project, no second step applies (see mfa-flow.ts).
+  const authConfig = useAuthConfig();
+  const skipMfa = shellSkipsSecondFactor(authConfig, mfaSkipRequested());
   // Only call the API once the sign-in has passed the mandatory MFA check (see the guard below).
   const mfaPassed =
     !!session &&
     !!aal &&
     !me.isPending &&
     !(aal.next === 'aal2' && aal.current !== 'aal2') &&
-    !(aal.next !== 'aal2' && mfaRequired(me.data));
-  const tenant = useTenant(mfaPassed);
+    !(aal.next !== 'aal2' && mfaRequired(me.data) && !skipMfa);
+  // A partner portal login is refused every internal /v1 endpoint except /v1/me, so the shell does not ask for the tenant or
+  // notifications for it.
+  const isConnectorLogin = isPartnerPortalLogin(me.data);
+  const tenant = useTenant(mfaPassed && !isConnectorLogin);
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // While the project has authenticator sign-in off and the API has not been told (SUPABASE_MFA_ENABLED=false), the API refuses every
@@ -248,9 +257,8 @@ export function AppLayout() {
     );
   }
 
-  // No second step when the project has authenticator sign-in off (learned at sign-in), or in a development build that switches it off.
-  // The API still enforces step-up for sensitive actions whatever the screen does.
-  const skipMfa = mfaSkipRequested() || mfaProjectState() === 'disabled';
+  // No second step when the project has authenticator sign-in off, or in a development build that switches it off. The API still
+  // enforces step-up for sensitive actions whatever the screen does.
   const needsChallenge = !skipMfa && aal.next === 'aal2' && aal.current !== 'aal2';
   const needsEnrolment = !skipMfa && aal.next !== 'aal2' && mfaRequired(me.data);
   if (needsChallenge || needsEnrolment)
@@ -258,7 +266,6 @@ export function AppLayout() {
 
   // A connector portal login holds no role, so no permission opens a page for it. It uses the connector portal page only, where the
   // portal API decides what it sees from its identity and linked connector; every internal page would answer 403.
-  const isConnectorLogin = me.data?.userType === 'CONNECTOR';
   if (isConnectorLogin && location.pathname !== CONNECTOR_PORTAL_PATH)
     return <Navigate to={CONNECTOR_PORTAL_PATH} replace />;
 
@@ -357,7 +364,7 @@ export function AppLayout() {
 
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box sx={{ color: '#ffffff' }}>
-                <NotificationCenter />
+                {!isConnectorLogin && <NotificationCenter />}
               </Box>
               <Button
                 color="inherit"

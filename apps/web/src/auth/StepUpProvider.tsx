@@ -22,6 +22,8 @@ import { setAuthToken } from './token';
 import { readConfig } from '../config';
 import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
 import { mfaProjectState } from './mfa-project';
+import { authConfigSnapshot } from './auth-config';
+import { secondFactorPromptAllowed } from './mfa-flow';
 
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { refreshAal } = useAuth();
@@ -48,8 +50,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
             resolve(true);
             return;
           }
-          // The project has authenticator sign-in off, so there is no code to ask for. The request fails as it would without a dialog.
-          if (mfaProjectState() === 'disabled') {
+          // Second factors are off for this project, so there is no code to ask for. The request fails as it would without a dialog.
+          if (!secondFactorPromptAllowed(authConfigSnapshot()?.mfaEnabled ?? null) || mfaProjectState() === 'disabled') {
             resolve(false);
             return;
           }

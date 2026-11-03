@@ -25,7 +25,14 @@ import { mfaSkipRequested, testAuthEnabled, testOtp } from './test-auth';
 import { secondFactorPlan } from './secondFactor';
 import { isMfaDisabledError, setMfaProjectState } from './mfa-project';
 import { enrolmentErrorMessage, startTotpEnrolment } from './totp';
-import { SecondFactorDialog, type SecondFactorState } from './SecondFactorDialog';
+import { SecondFactorDialog, signInWithTestCode, type SecondFactorState } from './SecondFactorDialog';
+import { loadAuthConfig, useAuthConfig, type AuthConfig } from './auth-config';
+import { loginRedirect, secondFactorDialogAllowed, signInFinishesWithoutCode } from './mfa-flow';
+
+// Shown when the API asks for a second factor but the sign-in service has authenticator sign-in switched off.
+const SETTING_MISMATCH =
+  'This app asks for a second factor, but the sign-in service has authenticator sign-in switched off. Ask an administrator to make the two match.';
+const SETTINGS_UNAVAILABLE = 'Sign-in settings could not be loaded. Refresh the page and try again.';
 
 export const HARDCODED_TEST_OTP = testOtp();
 
@@ -84,6 +91,8 @@ export function LoginPage() {
   const requested = (location.state as { from?: string } | null)?.from ?? '/';
   const from = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
   const addAuthenticator = Boolean((location.state as { addAuthenticator?: boolean } | null)?.addAuthenticator);
+  // The API's setting for second factors (GET /public/v1/auth/config). Null until it is known.
+  const authConfig = useAuthConfig();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -122,6 +131,16 @@ export function LoginPage() {
 
     setIsLoading(true);
     try {
+      // The API's setting decides whether a second step follows. It is read before the password is sent, so nothing is signed in on a
+      // setting the page does not know.
+      let config: AuthConfig;
+      try {
+        config = authConfig ?? (await loadAuthConfig());
+      } catch {
+        setErrorMessage(SETTINGS_UNAVAILABLE);
+        return;
+      }
+
       // 1. Standard Supabase authentication
       const { data, error } = await withTimeout(
         getSupabase().auth.signInWithPassword({ email, password }),
@@ -129,6 +148,11 @@ export function LoginPage() {
       );
 
       if (!error && data?.session) {
+        if (signInFinishesWithoutCode(config.mfaEnabled)) {
+          // Second factors are off for this project: the sign-in is complete. No factor is listed or enrolled, and no dialog opens.
+          finishSignIn();
+          return;
+        }
         try {
           sessionStorage.setItem('dsa_pending_email', email);
           localStorage.setItem('dsa_pending_email', email);
@@ -143,8 +167,8 @@ export function LoginPage() {
       // 2. Test builds only: direct database test login, then the MFA step with the fixed code
       if (testAuthEnabled()) {
         try {
-          const config = readConfig();
-          const baseUrl = config.success ? config.data.VITE_API_BASE_URL : '';
+          const webConfig = readConfig();
+          const baseUrl = webConfig.success ? webConfig.data.VITE_API_BASE_URL : '';
           const endpoint = baseUrl ? `${baseUrl}/public/v1/auth/test-login` : '/public/v1/auth/test-login';
 
           const checkRes = await fetch(endpoint, {
@@ -154,6 +178,11 @@ export function LoginPage() {
           });
 
           if (checkRes.ok) {
+            if (signInFinishesWithoutCode(config.mfaEnabled)) {
+              // Second factors are off for this project: the test sign-in completes without the code step.
+              await signInWithTestCode(email, testOtp(), from);
+              return;
+            }
             try {
               sessionStorage.setItem('dsa_pending_email', email);
               localStorage.setItem('dsa_pending_email', email);
@@ -192,12 +221,13 @@ export function LoginPage() {
     }
   };
 
-  // The project has authenticator sign-in off: record it and let the sign-in continue without a code.
-  const continueWithoutSecondFactor = () => {
-    setMfaProjectState('disabled');
+  // The API asks for a second factor, but the sign-in service has none switched on. Neither side can finish the sign-in, so it is ended and
+  // the reason is shown.
+  const failOnSettingMismatch = () => {
     setSecondFactor(null);
     clearPendingEmail();
-    finishSignIn();
+    setErrorMessage(SETTING_MISMATCH);
+    void signOut();
   };
 
   // A normal sign-in always starts on the person's own home, whatever page sent them to the login. Only adding an authenticator from the
@@ -219,7 +249,7 @@ export function LoginPage() {
       if (plan.mode === 'challenge') {
         const { error: challengeError } = await getSupabase().auth.mfa.challenge({ factorId: plan.factorId });
         if (challengeError && isMfaDisabledError(challengeError)) {
-          continueWithoutSecondFactor();
+          failOnSettingMismatch();
           return;
         }
         if (challengeError) {
@@ -236,7 +266,7 @@ export function LoginPage() {
         setSecondFactor({ mode: 'enrol', resetExisting, enrolment });
       } catch (err) {
         if (isMfaDisabledError(err)) {
-          continueWithoutSecondFactor();
+          failOnSettingMismatch();
           return;
         }
         setErrorMessage(enrolmentErrorMessage(err));
@@ -263,19 +293,17 @@ export function LoginPage() {
   };
 
   const aalLevel = aal?.current;
+  const developerSkip = mfaSkipRequested();
+  const mfaEnabled = authConfig?.mfaEnabled ?? null;
   useEffect(() => {
-    if (!session || secondFactor) return;
-    if (addAuthenticator) {
-      void openSecondFactor(true);
-      return;
-    }
-    if (aalLevel === 'aal2' || mfaSkipRequested()) return;
-    void openSecondFactor(false);
-  }, [session, aalLevel, addAuthenticator, secondFactor]);
+    if (secondFactor) return;
+    if (!secondFactorDialogAllowed({ session: !!session, mfaEnabled, aal: aalLevel, developerSkip, addAuthenticator })) return;
+    void openSecondFactor(addAuthenticator);
+  }, [session, aalLevel, addAuthenticator, secondFactor, mfaEnabled, developerSkip]);
 
-  if (session && (aal?.current === 'aal2' || mfaSkipRequested()) && !addAuthenticator) {
-    return <Navigate to={HOME_PATH} replace />;
-  }
+  const redirect = loginRedirect({ session: !!session, mfaEnabled, aal: aalLevel, developerSkip, addAuthenticator });
+  if (redirect === 'home') return <Navigate to={HOME_PATH} replace />;
+  if (redirect === 'from') return <Navigate to={resolveSafeRedirect(from, session)} replace />;
 
   return (
     <Box
