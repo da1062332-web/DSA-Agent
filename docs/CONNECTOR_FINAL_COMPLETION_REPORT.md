@@ -2,7 +2,60 @@
 
 Date: 2026-11-02. Branch `beta`, HEAD `071d6c2`. All work is uncommitted. Nothing was pushed, merged, rebased, or applied to hosted Supabase.
 
-## Verdict
+## Update: 2026-11-03 (supersedes the verdict below where they differ)
+
+**Verdict: PARTIALLY COMPLETE — TECHNICAL WORK REMAINS.** The code work is done and verified. The verdict stays partial for two reasons: the 20 browser scenarios could not be run in this environment, and two operator actions are still open (rotating the hosted database password, and verifying the pooler certificate in `check_status.cjs`).
+
+What changed since 2026-11-02:
+
+- **F21 fixed.** The signed-link verifier accepts only the canonical signature spelling and exactly two segments (`apps/api/src/modules/origination/applications/document-store.ts`). Tests: `apps/api/test/file-link-signer.spec.ts`, 4 of 4.
+- **F22 fixed.** The invitation claim judges due and stale times on the database clock (`apps/api/src/provisioning/invitation-delivery.ts`). The failure was intermittent, and the root cause is likely rather than proven. The provisioning worker file passes 10 of 10.
+- **Optional MFA (per the spec).** `GET /public/v1/auth/config` reports `SUPABASE_MFA_ENABLED`, and the sign-in screen reads it before signing anyone in. With second factors off, no factor is listed or enrolled and no dialog opens. With them on, the existing second step runs. If the API asks for a second factor but the sign-in service has none, sign-in ends with a message. The app shell follows the same setting. Tests: `apps/web/src/auth/mfa-flow.spec.ts` and `auth-config.spec.ts`, and `apps/api/test/auth-config.spec.ts`.
+- **Isolation grants.** Two cases now grant the permissions that origin's TASK-412 model requires (`eligibility.read`, `lender_case.read`). The 403s were the new permission model, not a tenant leak.
+- **Test fixture.** A database URL in the new API spec contained a password-shaped string, which the secrets scan flagged. It is removed.
+
+Verification on 2026-11-03:
+
+| Check | Result |
+|---|---|
+| Full isolation sweep | 18 of 18 files, 548 of 548 tests |
+| Connector integration suites and MFA integration test | 10 files, 97 of 97 tests |
+| Web unit suite | 108 files, 730 of 730 tests |
+| API unit suite | Two failures found, both fixed. The MFA enforcement file passes 6 of 6 on rerun, and the secrets and auth-config files pass. The full suite was not re-run after those two fixes. |
+| API and web typecheck | Pass |
+| Production builds (web `vite build`, API `tsup`) | Pass |
+| ESLint on changed files | 0 errors |
+
+Still open:
+
+- Browser verification of the 20 scenarios: not possible here, since no browser tool is available.
+- Business decisions: the connector consent rule, partner document types, partner dispute categories, progress labels, staff visibility of customer names, and dispute evidence.
+- Migrations 0100–0102: prepared, not applied to hosted.
+- F1 (rotate the hosted database password and clean the history, administrator action), F7 (certificate verification, needs the pooler certificate), and F20 (the `vitest.future-clock` whitespace change, which needs a keep-or-discard decision).
+- All changes are uncommitted, and nothing was pushed in this pass.
+
+### Final verification (2026-11-03, end of day)
+
+| Check | Result |
+|---|---|
+| Full isolation sweep (`npm run test:isolation`) | 18 of 18 files, 548 of 548 tests |
+| Connector integration suites and MFA integration test (`vitest.int.config.ts`) | 10 files, 97 of 97 tests |
+| API unit suite (`apps/api`, `npx vitest run`) | 98 files, 1409 of 1409 tests |
+| Web unit suite (`apps/web`, `npx vitest run`) | 109 files, 733 of 733 tests |
+| Web typecheck and API typecheck | Pass |
+| Production builds: web `vite build`, API `tsup` | Pass (web 11.7 s, API 2.4 s) |
+| ESLint on the changed shell and auth files | 0 errors |
+
+Changes since the update above:
+
+- **Partner logins no longer call internal endpoints.** `AppLayout` skips `/v1/tenant` and the notification centre for a partner portal login, because the API refuses both (`CONNECTOR_IDENTITY_NOT_ALLOWED`). The check is `isPartnerPortalLogin` in `apps/web/src/shell/partner-login.ts`, with tests in `partner-login.spec.ts`.
+- **Env examples document the MFA setting.** `apps/api/.env.example` describes `SUPABASE_MFA_ENABLED`, and `apps/web/.env.example` says the web app reads it from `GET /public/v1/auth/config`.
+- **OTP module follows the setting.** With second factors on, the authenticator code step runs as before, at sign-in, for step-up and on the security page. With second factors off, no OTP module appears anywhere: sign-in finishes with the password, including the dev test-login path, step-up does not open the code dialog, and the security page explains that there is nothing to set up.
+- **F20 is resolved in the tree.** `apps/api/vitest.future-clock.config.ts` matches the committed file, which ends with a clean newline.
+
+Still open, and needing a decision or access that is not available here: browser verification, the business decisions listed above, applying migrations 0100–0102 to hosted, rotating the hosted database password (F1), and certificate verification in `check_status.cjs` (F7).
+
+## Verdict (as of 2026-11-02, before the update)
 
 **PARTIALLY COMPLETE — TECHNICAL WORK REMAINS**
 
