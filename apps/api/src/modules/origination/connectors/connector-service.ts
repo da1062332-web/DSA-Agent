@@ -267,6 +267,19 @@ export class ConnectorService {
             );
           }
 
+          // The mobile number is checked for duplicates in the same way as the PAN (AUD-P2-01): a second connector with it is refused.
+          const existingMobile = await sql<{ id: string }>`
+            SELECT id FROM app.connector
+            WHERE tenant_id = ${ctx.principal.tenantId} AND mobile_hash = ${mobileHash}
+          `.execute(tx);
+          if (existingMobile.rows.length > 0) {
+            throw AppError.of(
+              'VALIDATION_ERROR',
+              'A connector with this mobile number already exists in this organization.',
+              [{ field: 'mobileE164', issue: 'DUPLICATE_MOBILE' }],
+            );
+          }
+
           // Verify branch exists
           const branchCheck = await sql<{ id: string }>`
             SELECT id FROM app.branch
@@ -1864,6 +1877,15 @@ export class ConnectorService {
       }
 
       const dispute = res.rows[0]!;
+
+      // Separation of duties: the person who raised a dispute cannot resolve it (AUD-P1-05).
+      if (dispute.created_by === ctx.principal.id) {
+        throw AppError.of(
+          'SOD_VIOLATION',
+          'Separation of Duties: the person who raised this dispute cannot resolve it.',
+          [{ field: 'resolution', issue: 'SOD_SELF_RESOLUTION_PROHIBITED' }],
+        );
+      }
 
       if (dispute.lock_version !== ifMatchVersion) {
         throw AppError.of('VERSION_CONFLICT', 'Precondition failed: ETag does not match lock version.', [

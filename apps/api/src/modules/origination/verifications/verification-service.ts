@@ -63,8 +63,10 @@ export class VerificationService {
             purpose: string;
             purpose_target: string | null;
             expires_at: Date | null;
+            subject_type: string;
+            subject_id: string;
           }>`
-            SELECT id, status, purpose, purpose_target, expires_at
+            SELECT id, status, purpose, purpose_target, expires_at, subject_type, subject_id
             FROM app.consent_record
             WHERE tenant_id = ${ctx.principal.tenantId}
               AND id = ${input.consentRecordId}
@@ -88,6 +90,25 @@ export class VerificationService {
             throw AppError.of(
               'VALIDATION_ERROR',
               `Consent record purpose is ${consent.purpose}; expected VERIFICATION_CHECK.`,
+            );
+          }
+
+          // The consent must belong to the subject being verified. A consent given by one person cannot support a check of another
+          // (AUD-P1-03). A loan application's subject is its customer.
+          const expected: { type: string; id: string } | null =
+            input.subjectType === 'LOAN_APPLICATION'
+              ? await sql<{ customer_id: string }>`
+                  SELECT customer_id FROM app.loan_application
+                   WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${input.subjectId}
+                   LIMIT 1`
+                  .execute(tx)
+                  .then((r) => (r.rows[0] ? { type: 'CUSTOMER', id: r.rows[0].customer_id } : null))
+              : { type: input.subjectType, id: input.subjectId };
+          if (!expected || consent.subject_type !== expected.type || consent.subject_id !== expected.id) {
+            throw AppError.of(
+              'VALIDATION_ERROR',
+              'The consent record is not a consent of the subject being verified.',
+              [{ field: 'consentRecordId', issue: 'CONSENT_SUBJECT_MISMATCH' }],
             );
           }
 

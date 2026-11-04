@@ -173,6 +173,13 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
                                     correlation_id, chain_depth, created_at)
           values (${deps.ids.next('evt')}, ${ctx.principal.tenantId}, 'consent.otp_requested', 1, 'CONNECTOR', ${m.connectorId},
                   ${JSON.stringify({ otpId: id })}::jsonb, ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
+        // Every code sent is audited: who asked, for which connector, and which code id. The code itself is never recorded (AUD-P3-02).
+        await deps.audit.record(tx, ctx, {
+          action: 'consent.otp_sent',
+          entityType: 'REFERRAL_CONSENT_OTP',
+          entityId: id,
+          after: { connectorId: m.connectorId },
+        });
         return { otpId: id, expiresAt: expiresAt.toISOString(), status: 'SENT' };
       }
       const r = await sql<Row>`

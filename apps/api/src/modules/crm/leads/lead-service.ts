@@ -13,6 +13,7 @@ import {
 } from '@dsa/contracts';
 import { ulid } from 'ulid';
 import { requestHash } from '@dsa/kernel';
+import { sql } from 'kysely';
 import { getScopeFilter, requireLeadAccess, requirePermission } from './authz-helper';
 import {
   assertNoS3Data,
@@ -388,6 +389,21 @@ export class LeadService {
       updated_at: now,
       updated_by: ctx.principal.id,
     };
+
+    // A referral can only be attributed to an ACTIVE connector. A suspended, terminated or pending connector cannot receive new referrals
+    // (AUD-P1-04, docs/CONNECTOR_COMPREHENSIVE_AUDIT.md). The foreign key only checks that the connector exists.
+    if (input.connectorId) {
+      const connector = await sql<{ status: string }>`
+        SELECT status FROM app.connector
+         WHERE tenant_id = ${tenantId} AND id = ${input.connectorId}`.execute(tx);
+      if (connector.rows[0]?.status !== 'ACTIVE') {
+        throw AppError.of(
+          'INVALID_STATE',
+          'This connector is not active, so it cannot be given new referrals.',
+          [{ field: 'connectorId', issue: 'CONNECTOR_NOT_ACTIVE' }],
+        );
+      }
+    }
 
     // 1. Insert Lead
     await this.deps.repository.insertLead(tx, leadRow);
