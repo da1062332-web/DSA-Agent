@@ -75,7 +75,7 @@ Lifecycle and portal tests are in `apps/api/test/connector-invitation-lifecycle.
 | ACCESS_SUSPENDED | Login SUSPENDED, or connector SUSPENDED or TERMINATED | Access suspended, contact the DSA administrator |
 | NOT_LINKED | Not a partner login, login not ACTIVE, or no connector link | Not linked to an active connector |
 
-The response names no connector, customer, mobile or ID. A refused data request carries a reason code in its error `details` (for example `CONNECTOR_PENDING_VERIFICATION`). It is an enum-like code from the database, never a name or contact detail. The eligibility route logs the reason on the server only.
+The response names no connector, customer, mobile or ID. A refused data request carries a reason code in its error `details` (for example `CONNECTOR_PENDING_VERIFICATION`). It is an enum-like code from the database, never a name or contact detail. The eligibility response carries the state and the message only, so the reason code is not returned there.
 
 ### Web
 
