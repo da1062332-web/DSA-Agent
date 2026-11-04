@@ -1134,6 +1134,7 @@ export class FinanceService {
       );
     }
 
+    // Refused until a payment-rail integration returns a bank reference. The call throws, so nothing below it runs and no payment is recorded.
     const gatewayResult = await paymentGatewayService.disburse({
       payoutId: id,
       amount: payout.total,

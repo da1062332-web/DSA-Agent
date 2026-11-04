@@ -1,10 +1,9 @@
 // apps/api/src/modules/finance/payment-gateway.ts
-// Automated Direct Net-Banking / Payment Gateway Integration (MOD-PAY / TASK-418)
-import crypto from 'node:crypto';
-import { monotonicFactory } from 'ulid';
+// Payment-rail gateway for payouts (MOD-PAY). No payment-rail integration is configured, so every disbursement is refused and nothing is
+// recorded. The earlier version generated its own bank reference and bank acknowledgement and so recorded payments that never moved money
+// (AUD-P0-02, docs/CONNECTOR_COMPREHENSIVE_AUDIT.md). A real integration must take its reference from the bank, and that is the only
+// reference the system may record.
 import { AppError } from '@dsa/contracts';
-
-const nextUlid = monotonicFactory();
 
 export interface GatewayBeneficiary {
   accountNumber: string;
@@ -35,7 +34,8 @@ export interface GatewayDisbursementResult {
 
 export class PaymentGatewayService {
   /**
-   * Disburse payout directly via automated Net-Banking / Payment Gateway
+   * Refused until a payment-rail integration exists. The request is still validated first, so a bad amount or an RTGS below the threshold
+   * gets its own message. No reference is generated, no signature is made, and no payment is recorded. The caller's transaction is rolled back.
    */
   async disburse(req: GatewayDisbursementRequest): Promise<GatewayDisbursementResult> {
     const numAmount = Number(req.amount);
@@ -51,33 +51,15 @@ export class PaymentGatewayService {
       );
     }
 
-    // Generate bank transaction reference (UTR) and transfer identifier
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomHex = crypto.randomBytes(4).toString('hex').toUpperCase();
-    const utrNumber = `CMS${dateStr}${req.mode}${randomHex}`;
-    const transferId = `gw_tx_${nextUlid()}`;
-    const nowIso = new Date().toISOString();
-
-    // Generate bank digital acknowledgement signature
-    const hmac = crypto.createHmac('sha256', 'BANK_GW_SECRET_INTEGRATION_KEY');
-    hmac.update(`${transferId}:${req.payoutId}:${req.amount}:${utrNumber}:${nowIso}`);
-    const bankAckSignature = hmac.digest('hex');
-
-    return {
-      transferId,
-      payoutId: req.payoutId,
-      utrNumber,
-      gatewayMode: req.mode,
-      status: 'SUCCESS',
-      amount: String(req.amount),
-      currency: req.currency || 'INR',
-      disbursedAt: nowIso,
-      bankAckSignature,
-    };
+    throw AppError.of(
+      'DEPENDENCY_UNAVAILABLE',
+      'Gateway disbursement is not available: no payment-rail integration is configured. Pay the payout through a bank-file batch and record the bank reference.',
+      [{ issue: 'GATEWAY_NOT_CONFIGURED' }],
+    );
   }
 
   /**
-   * Disburse a batch of payouts through payment gateway
+   * Disburse a batch of payouts through payment gateway. Refused at the first payout, so no result is produced.
    */
   async disburseBatch(
     batchId: string,

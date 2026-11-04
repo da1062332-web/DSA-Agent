@@ -202,6 +202,15 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const id = String(req.params.id);
       const ifMatch = ifMatchVersion(req);
       const idemKey = requireIdempotencyKey(req);
+      // ACTIVE is refused here with its own message. Only the activation route can activate a connector, and it checks the verification record
+      // (AUD-P0-01). The schema refuses it too, as a second layer.
+      if (req.body?.targetStatus === 'ACTIVE') {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'To activate a connector, use the activation route, which checks its verification record.',
+          [{ field: 'targetStatus', issue: 'USE_ACTIVATION_ROUTE' }],
+        );
+      }
       const input = UpdateConnectorStatusSchema.parse(req.body);
 
       const { connector, isReplayed } = await service.updateConnectorStatus(ctx, id, input, ifMatch, idemKey);

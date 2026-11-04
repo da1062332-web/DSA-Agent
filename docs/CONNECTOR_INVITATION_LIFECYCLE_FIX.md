@@ -154,7 +154,7 @@ The owner asked for this sequence to be verified: invitation, password setup, ac
 | 1. Invitation | Verified through the product's routes and the provisioning worker | TEST-CPU-01, TEST-CPU-04 |
 | 2. Password setup | Verified at the API boundary: the first password sign-in activates the login and accepts the invitation. The Supabase password screen is outside the API and was not exercised | Lifecycle 1, TEST-CPU-05 |
 | 3. Active portal user | Verified: the login is ACTIVE, the portal state is CONNECTOR_PENDING, and the data routes stay closed | Portal 2 |
-| 4. Connector verification | **Blocked.** No connector verification can be recorded: the consent table and the verification API both reject a connector subject, and every verification needs active consent. Activation of a connector that is not ACTIVE is refused | `connector-verification.int.spec.ts`, `docs/CONNECTOR_VERIFICATION_DECISION.md` |
+| 4. Connector verification | **Blocked.** No connector verification can be recorded: the consent table and the verification API both reject a connector subject, and every verification needs active consent. The activation route refuses a connector that is not ACTIVE, and the status route now refuses ACTIVE too, uncommitted (AUD-P0-01 in `docs/CONNECTOR_COMPREHENSIVE_AUDIT.md`) | `connector-verification.int.spec.ts`, `docs/CONNECTOR_VERIFICATION_DECISION.md` |
 | 5. Approved activation | **Not reached.** It needs step 4. Not performed | None |
 | 6. Portal dashboard | Verified only for a connector that is ACTIVE by fixture in the test database. This is not an approved activation, so it does not verify step 5 | Portal 1 |
 

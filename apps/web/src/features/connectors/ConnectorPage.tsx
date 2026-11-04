@@ -149,7 +149,9 @@ export function ConnectorPage() {
   });
 
   const [activationVerificationId, setActivationVerificationId] = useState('');
-  const [targetStatus, setTargetStatus] = useState<'ACTIVE' | 'SUSPENDED' | 'TERMINATED'>('SUSPENDED');
+  // A suspended connector is reinstated through the activation route, which needs a reason of at least five characters.
+  const [activationRemarks, setActivationRemarks] = useState('');
+  const [targetStatus, setTargetStatus] = useState<'SUSPENDED' | 'TERMINATED'>('SUSPENDED');
   const [statusReason, setStatusReason] = useState('');
 
   const [bankAccountInput, setBankAccountInput] = useState<Partial<CreateConnectorBankAccountInput>>({
@@ -310,10 +312,12 @@ export function ConnectorPage() {
       id,
       lockVersion,
       verificationId,
+      remarks,
     }: {
       id: string;
       lockVersion: number;
       verificationId: string;
+      remarks?: string;
     }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/activation`, {
         method: 'POST',
@@ -321,7 +325,7 @@ export function ConnectorPage() {
           'If-Match': `"${lockVersion}"`,
           'Idempotency-Key': `act_idem_${Date.now()}`,
         },
-        body: JSON.stringify({ verificationId }),
+        body: JSON.stringify(remarks ? { verificationId, remarks } : { verificationId }),
       });
     },
     onSuccess: (updated) => {
@@ -576,10 +580,7 @@ export function ConnectorPage() {
                     size="small"
                     color="primary"
                     variant="outlined"
-                    onClick={() => {
-                      setTargetStatus('ACTIVE');
-                      setStatusModalOpen(true);
-                    }}
+                    onClick={() => setActivateModalOpen(true)}
                   >
                     Reinstate
                   </Button>
@@ -1078,18 +1079,35 @@ export function ConnectorPage() {
               onChange={(e) => setActivationVerificationId(e.target.value)}
               placeholder="ver_01ARZ3NDEKTSV4RRFFQ69G5FAV"
             />
+            {selectedConnector.status === 'SUSPENDED' && (
+              <TextField
+                size="small"
+                fullWidth
+                multiline
+                minRows={2}
+                label="Reason for reinstating (at least 5 characters)"
+                required
+                value={activationRemarks}
+                onChange={(e) => setActivationRemarks(e.target.value)}
+                sx={{ mt: 2 }}
+              />
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setActivateModalOpen(false)}>Cancel</Button>
             <Button
               variant="contained"
               color="success"
-              disabled={!activationVerificationId}
+              disabled={
+                !activationVerificationId ||
+                (selectedConnector.status === 'SUSPENDED' && activationRemarks.trim().length < 5)
+              }
               onClick={() => {
                 activateConnectorMutation.mutate({
                   id: selectedConnector.id,
                   lockVersion: selectedConnector.lockVersion,
                   verificationId: activationVerificationId,
+                  remarks: selectedConnector.status === 'SUSPENDED' ? activationRemarks.trim() : undefined,
                 });
               }}
             >
@@ -1110,7 +1128,6 @@ export function ConnectorPage() {
                   label="Target Status"
                   onChange={(e) => setTargetStatus(e.target.value as any)}
                 >
-                  <MenuItem value="ACTIVE">ACTIVE (Reinstate)</MenuItem>
                   <MenuItem value="SUSPENDED">SUSPENDED (Hold Payouts & Revoke Portal)</MenuItem>
                   <MenuItem value="TERMINATED">TERMINATED (Permanent Debarment)</MenuItem>
                 </Select>
@@ -1490,8 +1507,7 @@ export function ConnectorPage() {
                             variant="outlined"
                             onClick={() => {
                               setSelectedConnector(con);
-                              setTargetStatus('ACTIVE');
-                              setStatusModalOpen(true);
+                              setActivateModalOpen(true);
                             }}
                           >
                             Reinstate

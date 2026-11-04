@@ -58350,8 +58350,8 @@ paths:
               properties:
                 targetStatus:
                   type: string
+                  description: ACTIVE is not accepted here. Activate a connector through POST /v1/connectors/{id}/activation, which requires a VERIFIED record of that connector.
                   enum:
-                    - ACTIVE
                     - SUSPENDED
                     - TERMINATED
                 reason:
