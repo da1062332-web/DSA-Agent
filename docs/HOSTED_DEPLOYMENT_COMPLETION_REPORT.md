@@ -40,11 +40,21 @@ The Playwright e2e suite was not run. It needs browsers and the public Vercel UR
 - Migration 0098 verify script: the first run on a fixture-built database reports 29 missing backfill grants. Re-applying 0098 clears them. The migration's own notes say re-running is idempotent. The grants were missing because the fixtures create roles after the migrations run, so this does not show what hosted will report.
 - Dependency: 0098 inserts grants for permission codes defined by migrations 54–65. Applying 0098 without them fails on a foreign key. The rehearsal tests (`migration-sequence`, `migration-batch-partial`, `migration-batch-runbook`) skip 54–65 as pending while still applying 0098, so they fail. This is a stale test model, not a defect in the migrations. Those three files are unchanged by this work.
 
-**Hosted (read-only check, 2026-11-04; nothing was written):**
+**Hosted writes (approved by the owner, 2026-11-04):**
+- Backups taken before the first write, outside git: `C:\Users\Vaibhav\dsa-backups\2026-11-04\schema-app-public.sql` and `data-app-public.sql`. They contain personal data. Keep them out of the repository and secure them.
+- Restore test: both files were restored into a local PostgreSQL 17, not a Supabase scratch project. It is a local emulation of the Supabase roles and extensions. The counts matched the hosted counts before the writes: `permission` 119, `role_permission` 218, `app_user` 22, `connector` 2, `staff_invitation` 4.
+- Snapshots (runbook section 5): `dsa_backup.permission_pre_m098` (119 rows), `dsa_backup.role_permission_pre_m098` (218), `dsa_backup.role_permission_pre_m099` (355).
+- Applied in order, each as one transaction through `tools/sql/make-apply-run.mjs`, with the wrapper body checked against the migration: 0098, 0099, 0100, 0101, 0102.
+- Verify after each migration (read-only): `98`, `99`, `100`, `101` and `102` each reported no FAIL row. The only non-pass rows are informational.
+- Final read-only check: 32 catalogue rows introduced by M-098, 366 role grants, and the 0100 and 0101 columns present.
+- Migration ledger: `supabase_migrations.schema_migrations` still does not exist. The migrations went in through the SQL wrapper, not the migration tool, so the CLI's migration history still shows none of them.
+- The CLI created temporary login roles on the project for its read-only commands and for the writes. Those roles were not removed.
+
+**Hosted (read-only check, 2026-11-04, before the writes):**
 - Linked Supabase project `DSA-Agent`, reference `mlpkwwhnagxzinaohdxg`.
 - Remote migration history: every one of the 92 local migrations shows no remote entry. The table `supabase_migrations.schema_migrations` does not exist. The migration tool cannot reconcile this project.
 - Schema counts and existence checks: `app.staff_invitation` (0092) and `app.api_client` (0054) are present. The 0098 sub-permission codes (`lender_case.read`, `sanction.read`, `disbursement.read`, `eligibility.read`) are absent. The 0100 columns (`document_type.partner_upload`, `dispute.category`) and the 0101 column (`verification.connector_id`) are absent. The `dsa_backup` schema that the runbook creates before 0098 is absent.
-- Conclusion: hosted is behind the code on `beta`. Its ledger cannot be reconciled with the CLI. No migration was applied.
+- Conclusion before the writes: hosted was behind the code on `beta`, and its ledger cannot be reconciled with the CLI. The writes listed above followed.
 - The statements below come from the repository documents and were not checked against hosted:
 - `docs/MIGRATION_MATRIX.md` records migrations 54, 57, 59, 60, 61, 58, 55, 63, 64 and 65 as applied on 2026-10-17. This is a document claim, not a check.
 - `docs/HOSTED_MIGRATION_RUNBOOK.md` expects hosted at version 0097, with 0098 and 0099 not yet applied.
@@ -56,7 +66,7 @@ The Playwright e2e suite was not run. It needs browsers and the public Vercel UR
 - Blueprint `render.yaml`: service `dsa-api`, root `apps/api`, build `npm install && npm run build`, start `npm start`, health check `/health`. The route exists in `apps/api/src/app.ts`.
 - Auto-deploy for `beta`: paused, as confirmed by the owner on 2026-11-04. **Not re-verified** in the dashboard by this session.
 - **No deploy was performed.**
-- Before resuming deploys, the following must hold:
+- Hosted migrations 0098 to 0102 are applied and verified (section 3), so the first precondition is met. Before resuming deploys, the following must also hold:
   - Hosted has 0098 and 0099 applied and verified. If 54–65 are not on hosted, they come first. Applying them needs approval.
   - `DOCUMENT_STORE` is a deliberate choice. The blueprint does not set it, so the code defaults to `local`. Document files are lost on redeploy.
   - `SUPABASE_MFA_ENABLED` matches the intended Supabase MFA policy. Its value is **unverified**.
@@ -101,7 +111,7 @@ No value was printed or checked.
 
 ## 9. Work that needs administrator or business approval
 
-- **Hosted:** approval for a read-only ledger and data check, and approval to apply 0098 and 0099 (and 54–65 and 0100–0102 if needed), with their verify scripts.
+- **Hosted:** migrations 0098 to 0102 are applied and verified (done 2026-11-04). Still open: the migration ledger table is absent, which needs an owner decision, and the backups in `C:\Users\Vaibhav\dsa-backups\2026-11-04` need a secure home.
 - **Render:** decide `DOCUMENT_STORE` (and set S3 if required), confirm `SUPABASE_MFA_ENABLED`, and confirm the auto-deploy policy before resuming deploys.
 - **Vercel:** confirm `VITE_API_BASE_URL` for the production environment.
 - **Key rotation (AUD-P0-03):** security owner, coordinated with every consumer of the key. History rewrite is not approved.
