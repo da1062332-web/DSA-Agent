@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-03
 **Scope:** Why an invited connector login could not use the connector portal, what each lifecycle step does, and what changed.
-**Status:** Code and tests done. Committed to `beta` and pushed after owner review of the diff. Not deployed. No hosted database was read or changed.
+**Status:** Code and tests done. Committed to `beta` and pushed after owner review of the diff. A later change, the activation dialog dropdown, is not committed. Not deployed. No hosted database was read or changed.
 
 ## Verdict
 
@@ -81,6 +81,7 @@ The response names no connector, customer, mobile or ID. A refused data request 
 
 - **`apps/web/src/features/connectors/portal-eligibility.ts`** (new). Maps the state to the notice and to whether the portal is open. `portalTableText` gives an empty table its reason: still checking, closed for this login, loading, or simply empty.
 - **`apps/web/src/features/connectors/ConnectorPortalPage.tsx`.** Reads the state first. Referrals, statements and disputes are requested only when the state is ELIGIBLE. Request Payout and Submit Referral are disabled unless it is. A notice banner shows the state's text (information for a pending connector, warning otherwise).
+- **`apps/web/src/features/connectors/ConnectorPage.tsx`, activation dialog.** The Verification ID text box is now a dropdown of the passed verifications for this connector (`activation-verification.ts`). It lists only VERIFIED records whose subject is this connector, and it is empty until connector verification can be recorded. The server still checks the record on submit, so the dropdown cannot make an activation succeed.
 
 ### Database
 
