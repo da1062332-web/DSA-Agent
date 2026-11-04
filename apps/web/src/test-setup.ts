@@ -9,10 +9,8 @@ if (typeof window === 'undefined') {
 
 const originalConsoleError = console.error;
 console.error = (...args: unknown[]) => {
-  if (
-    typeof args[0] === 'string' &&
-    args[0].includes('useLayoutEffect does nothing on the server')
-  ) {
+  const msg = args.map((a) => (typeof a === 'string' ? a : '')).join(' ');
+  if (msg.includes('useLayoutEffect does nothing on the server')) {
     return;
   }
   originalConsoleError(...args);

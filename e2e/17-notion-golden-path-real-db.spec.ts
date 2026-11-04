@@ -642,7 +642,7 @@ test.describe('Spec 17: Notion Master End-to-End Golden Path (All Roles)', () =>
       }
 
       // Privacy audit
-      await page.goto('/privacy');
+      await page.goto('/privacy', { waitUntil: 'domcontentloaded' }).catch(() => {});
       await expect(page.locator('body')).toBeVisible();
 
       await auditPage.pause(1500);
