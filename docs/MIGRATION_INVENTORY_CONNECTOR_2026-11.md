@@ -65,3 +65,9 @@ The application code reads `verification.connector_id`, so rolling back 0101 whi
 ## Not applied anywhere except local containers
 
 Nothing in this document has been applied to hosted Supabase. No hosted credential was used.
+
+## Hosted runbook (added 2026-11-03)
+
+The hosted steps for 0098 to 0102, with the snapshots, the apply and verify order, the rollback refusals and the approval checklist, are in
+`docs/HOSTED_MIGRATION_RUNBOOK.md`. Nothing in this inventory has been applied to hosted. The release state is in
+`docs/DSA_FINAL_RELEASE_READINESS.md`.

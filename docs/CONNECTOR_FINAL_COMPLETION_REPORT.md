@@ -16,15 +16,15 @@ What changed since 2026-11-02:
 
 Verification on 2026-11-03:
 
-| Check | Result |
-|---|---|
-| Full isolation sweep | 18 of 18 files, 548 of 548 tests |
-| Connector integration suites and MFA integration test | 10 files, 97 of 97 tests |
-| Web unit suite | 108 files, 730 of 730 tests |
-| API unit suite | Two failures found, both fixed. The MFA enforcement file passes 6 of 6 on rerun, and the secrets and auth-config files pass. The full suite was not re-run after those two fixes. |
-| API and web typecheck | Pass |
-| Production builds (web `vite build`, API `tsup`) | Pass |
-| ESLint on changed files | 0 errors |
+| Check                                                 | Result                                                                                                                                                                            |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full isolation sweep                                  | 18 of 18 files, 548 of 548 tests                                                                                                                                                  |
+| Connector integration suites and MFA integration test | 10 files, 97 of 97 tests                                                                                                                                                          |
+| Web unit suite                                        | 108 files, 730 of 730 tests                                                                                                                                                       |
+| API unit suite                                        | Two failures found, both fixed. The MFA enforcement file passes 6 of 6 on rerun, and the secrets and auth-config files pass. The full suite was not re-run after those two fixes. |
+| API and web typecheck                                 | Pass                                                                                                                                                                              |
+| Production builds (web `vite build`, API `tsup`)      | Pass                                                                                                                                                                              |
+| ESLint on changed files                               | 0 errors                                                                                                                                                                          |
 
 Still open:
 
@@ -34,17 +34,25 @@ Still open:
 - F1 (rotate the hosted database password and clean the history, administrator action), F7 (certificate verification, needs the pooler certificate), and F20 (the `vitest.future-clock` whitespace change, which needs a keep-or-discard decision).
 - All changes are uncommitted, and nothing was pushed in this pass.
 
+### Final release pass (2026-11-03)
+
+The full set of checks, the release blockers, the hosted runbook and the manual browser checklist are in
+[docs/DSA_FINAL_RELEASE_READINESS.md](DSA_FINAL_RELEASE_READINESS.md). The hosted steps are in
+[docs/HOSTED_MIGRATION_RUNBOOK.md](HOSTED_MIGRATION_RUNBOOK.md). Verdict unchanged: **PARTIALLY COMPLETE — TECHNICAL WORK REMAINS**, for the
+reasons listed there (hosted migration and its checks, credential rotation, the consent decision, the MFA policy, the Vercel deployment,
+and browser verification, which could not be run here).
+
 ### Final verification (2026-11-03, end of day)
 
-| Check | Result |
-|---|---|
-| Full isolation sweep (`npm run test:isolation`) | 18 of 18 files, 548 of 548 tests |
-| Connector integration suites and MFA integration test (`vitest.int.config.ts`) | 10 files, 97 of 97 tests |
-| API unit suite (`apps/api`, `npx vitest run`) | 98 files, 1409 of 1409 tests |
-| Web unit suite (`apps/web`, `npx vitest run`) | 109 files, 733 of 733 tests |
-| Web typecheck and API typecheck | Pass |
-| Production builds: web `vite build`, API `tsup` | Pass (web 11.7 s, API 2.4 s) |
-| ESLint on the changed shell and auth files | 0 errors |
+| Check                                                                          | Result                           |
+| ------------------------------------------------------------------------------ | -------------------------------- |
+| Full isolation sweep (`npm run test:isolation`)                                | 18 of 18 files, 548 of 548 tests |
+| Connector integration suites and MFA integration test (`vitest.int.config.ts`) | 10 files, 97 of 97 tests         |
+| API unit suite (`apps/api`, `npx vitest run`)                                  | 98 files, 1409 of 1409 tests     |
+| Web unit suite (`apps/web`, `npx vitest run`)                                  | 109 files, 733 of 733 tests      |
+| Web typecheck and API typecheck                                                | Pass                             |
+| Production builds: web `vite build`, API `tsup`                                | Pass (web 11.7 s, API 2.4 s)     |
+| ESLint on the changed shell and auth files                                     | 0 errors                         |
 
 Changes since the update above:
 

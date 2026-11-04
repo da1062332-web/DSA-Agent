@@ -22,4 +22,24 @@ describe('check_status.cjs configuration (TEST-CHKSTAT)', () => {
     expect(run.stdout).toBe('');
     expect(run.stderr).not.toMatch(/postgres/i);
   });
+
+  it('TEST-CHKSTAT-03 TLS is always verified: the script never turns certificate checks off', () => {
+    const source = readFileSync(SCRIPT, 'utf8');
+    expect(source).not.toMatch(/rejectUnauthorized\s*:\s*false/);
+    expect(source).toMatch(/rejectUnauthorized\s*:\s*true/);
+    expect(source).toContain('HOSTED_CHECK_CA_FILE');
+  });
+
+  it('TEST-CHKSTAT-04 a CA file that cannot be read stops the run before any connection is made', () => {
+    const env = {
+      ...process.env,
+      HOSTED_CHECK_DATABASE_URL: 'postgresql://127.0.0.1:1/postgres',
+      HOSTED_CHECK_CA_FILE: '/nonexistent/dsa-pooler-ca.pem',
+    };
+    const run = spawnSync(process.execPath, [SCRIPT], { env, encoding: 'utf8', timeout: 20_000 });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('HOSTED_CHECK_CA_FILE is set but cannot be read');
+    expect(run.stderr).not.toMatch(/ECONNREFUSED|connect/i);
+    expect(run.stdout).toBe('');
+  });
 });
