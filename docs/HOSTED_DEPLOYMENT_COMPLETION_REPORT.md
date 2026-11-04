@@ -40,11 +40,16 @@ The Playwright e2e suite was not run. It needs browsers and the public Vercel UR
 - Migration 0098 verify script: the first run on a fixture-built database reports 29 missing backfill grants. Re-applying 0098 clears them. The migration's own notes say re-running is idempotent. The grants were missing because the fixtures create roles after the migrations run, so this does not show what hosted will report.
 - Dependency: 0098 inserts grants for permission codes defined by migrations 54–65. Applying 0098 without them fails on a foreign key. The rehearsal tests (`migration-sequence`, `migration-batch-partial`, `migration-batch-runbook`) skip 54–65 as pending while still applying 0098, so they fail. This is a stale test model, not a defect in the migrations. Those three files are unchanged by this work.
 
-**Hosted (unverified):**
+**Hosted (read-only check, 2026-11-04; nothing was written):**
+- Linked Supabase project `DSA-Agent`, reference `mlpkwwhnagxzinaohdxg`.
+- Remote migration history: every one of the 92 local migrations shows no remote entry. The table `supabase_migrations.schema_migrations` does not exist. The migration tool cannot reconcile this project.
+- Schema counts and existence checks: `app.staff_invitation` (0092) and `app.api_client` (0054) are present. The 0098 sub-permission codes (`lender_case.read`, `sanction.read`, `disbursement.read`, `eligibility.read`) are absent. The 0100 columns (`document_type.partner_upload`, `dispute.category`) and the 0101 column (`verification.connector_id`) are absent. The `dsa_backup` schema that the runbook creates before 0098 is absent.
+- Conclusion: hosted is behind the code on `beta`. Its ledger cannot be reconciled with the CLI. No migration was applied.
+- The statements below come from the repository documents and were not checked against hosted:
 - `docs/MIGRATION_MATRIX.md` records migrations 54, 57, 59, 60, 61, 58, 55, 63, 64 and 65 as applied on 2026-10-17. This is a document claim, not a check.
 - `docs/HOSTED_MIGRATION_RUNBOOK.md` expects hosted at version 0097, with 0098 and 0099 not yet applied.
 - 0100, 0101 and 0102 are pending owner approval.
-- No hosted ledger query was run. No approval for one has been given.
+- The read-only checks above only read counts and existence flags. They did not change hosted data or schema. They ran during a request to update hosted, so the owner should confirm that reading was in scope.
 
 ## 4. Render (API)
 
