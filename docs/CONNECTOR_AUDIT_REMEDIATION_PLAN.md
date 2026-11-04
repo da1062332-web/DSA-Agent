@@ -49,10 +49,10 @@ Each item needs the approval named, and cannot be built before the step above it
 1. [ ] **AUD-P1-01 consent OTP delivery.** Add the consumer for `consent.otp_requested` that sends the code through the messaging channel. The code is never written to the event.
    - *Approval:* product owner (the channel and message text).
    - *Test:* an end-to-end test with a messaging double that receives the code and completes a referral. Keep the existing outbox test.
-2. [ ] **AUD-P1-04 lead attribution to inactive connectors.** Refuse a connector that is not ACTIVE on lead creation and reassignment.
+2. [x] **AUD-P1-04 lead attribution to inactive connectors.** *(Done, uncommitted; `connector-p1-remediation.int.spec.ts`.)* Refuse a connector that is not ACTIVE on lead creation and reassignment.
    - *Approval:* business owner (the policy).
    - *Test:* lead creation with a SUSPENDED, TERMINATED and PENDING_VERIFICATION connector is refused.
-3. [ ] **AUD-P1-05 dispute self-resolution.** Refuse resolution by the person who raised the dispute.
+3. [x] **AUD-P1-05 dispute self-resolution.** *(Done, uncommitted; `connector-p1-remediation.int.spec.ts`.)* Refuse resolution by the person who raised the dispute.
    - *Approval:* none beyond the SOD policy already used for attribution.
    - *Test:* confirm first that the raiser is recorded in `created_by`. Then add the test that the raiser cannot resolve.
 4. [ ] **AUD-P1-08 step-up on approvals.** Add `requireStepUp` to bank approval, attribution approval, dispute resolution and status changes.
@@ -62,7 +62,7 @@ Each item needs the approval named, and cannot be built before the step above it
    - *Approval:* finance owner.
    - *Depends on:* AUD-P2-02 for the account lifecycle, and Step 2 for the payment decision.
    - *Test:* a request without an approved account is refused. The payout stores the reference.
-6. [ ] **AUD-P1-03 consent subject.** Require the consent record's subject to equal the verified subject.
+6. [x] **AUD-P1-03 consent subject.** *(Done, uncommitted; `connector-p1-remediation.int.spec.ts`.)* Require the consent record's subject to equal the verified subject.
    - *Approval:* compliance owner.
    - *Test:* a verification citing another subject's consent is refused, for a customer and for a connector.
 7. [ ] **AUD-P1-06 agreements and commission.** Decide the source of truth for a partner's rate. Then link agreements to rule-set versions, or make the rate card read the rule set.
@@ -73,7 +73,7 @@ Each item needs the approval named, and cannot be built before the step above it
 
 ## Step 4: P2 defects
 
-- [ ] **AUD-P2-01** Duplicate mobile on connector creation. Add a check on the same basis as PAN. *Approval:* product owner. *Test:* a duplicate mobile is refused, with a message that does not reveal the other connector.
+- [x] **AUD-P2-01** *(Done, uncommitted; `connector-p2-remediation.int.spec.ts`.)* Duplicate mobile on connector creation. Add a check on the same basis as PAN. *Approval:* product owner. *Test:* a duplicate mobile is refused, with a message that does not reveal the other connector.
 - [ ] **AUD-P2-02** Bank accounts: a rejection state that is audited, a primary-account rule, and change history. *Approval:* finance owner. *Test:* rejected accounts cannot be used for payout; change history is written.
 - [ ] **AUD-P2-03** Agreement overlap guard for the same connector and product. *Approval:* finance owner. *Test:* an overlapping agreement is refused.
 - [ ] **AUD-P2-04** Partner profile view and update. *Approval:* product owner (fields that partners may change). *Test:* partners cannot change fields outside the approved list.
@@ -83,8 +83,8 @@ Each item needs the approval named, and cannot be built before the step above it
 
 ## Step 5: P3 and documentation
 
-- [ ] **AUD-P3-01** Add `GET /portal/v1/eligibility` to `openapi/openapi.yaml`. Describe the four states and the message field. No behaviour change.
-- [ ] **AUD-P3-02** Audit consent-OTP sends, with no code in the event. *Approval:* none. *Test:* the audit row exists and contains no code.
+- [x] **AUD-P3-01** *(Done, uncommitted.)* Add `GET /portal/v1/eligibility` to `openapi/openapi.yaml`. Describe the four states and the message field. No behaviour change.
+- [x] **AUD-P3-02** *(Done, uncommitted; `connector-p2-remediation.int.spec.ts`.)* Audit consent-OTP sends, with no code in the event. *Approval:* none. *Test:* the audit row exists and contains no code.
 - [ ] **AUD-P3-03** Partner recent-activity feed. *Approval:* product owner.
 - [ ] **AUD-P3-04** Dispute evidence attachments. *Approval:* product and compliance owners. Needs a new subject type, scanning and access control before any build.
 - [ ] **AUD-P3-05** Correct the two documents that say activation of a non-ACTIVE connector is refused. The decision document has a correction note already. Re-check after Step 1 and update the lifecycle fix document's end-to-end table.

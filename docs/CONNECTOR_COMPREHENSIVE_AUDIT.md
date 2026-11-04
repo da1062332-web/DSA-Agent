@@ -401,6 +401,7 @@ Priority: P0 critical security or integrity · P1 major functionality or busines
 - *Test needed:* request refused without an approved account. Payout record carries the account reference.
 
 **AUD-P1-03: the consent subject is not checked against the verified subject.**
+- *Status (uncommitted, verified by tests):* fixed. A verification is refused with `CONSENT_SUBJECT_MISMATCH` unless the consent record's subject is the subject being verified. A loan application's subject is its customer. Tests: `connector-p1-remediation.int.spec.ts`.
 - *Evidence:* `verification-service.ts` (around lines 60–100) reads the consent record by id, tenant, status, purpose and expiry. It does not compare `purpose_target` or any subject with `subject_id`. The decision document records this as a related finding.
 - *Impact:* a verification of one person can cite the consent of another. This is a compliance defect for customers as well as connectors.
 - *Fix:* require the consent record's subject to equal the verified subject.
@@ -408,12 +409,14 @@ Priority: P0 critical security or integrity · P1 major functionality or busines
 - *Test needed:* a verification citing another subject's consent is refused.
 
 **AUD-P1-04: leads can be attributed to suspended, terminated or pending connectors.**
+- *Status (uncommitted, verified by tests):* fixed for lead creation. A referral attributed to a connector that is not ACTIVE is refused with `CONNECTOR_NOT_ACTIVE` and no lead is written. Reassignment of an existing lead's connector was not found in the code, so it is not covered. Tests: `connector-p1-remediation.int.spec.ts`.
 - *Evidence:* `crm/leads/lead-service.ts` line 365 stores `connector_id` as given. The foreign key `lead_connector_fk` checks only that the connector exists in the tenant.
 - *Impact:* a new referral can be attributed to a suspended connector, and commission can accrue to it.
 - *Fix:* refuse a connector that is not ACTIVE when the lead is created or reassigned.
 - *Test needed:* lead creation with a suspended connector is refused.
 
 **AUD-P1-05: attribution-dispute resolution has no segregation of duties.**
+- *Status (uncommitted, verified by tests):* fixed. The person who raised a dispute (`created_by`) cannot resolve it (`SOD_SELF_RESOLUTION_PROHIBITED`), and the dispute stays OPEN. Another authorised person can resolve it. Tests: `connector-p1-remediation.int.spec.ts`.
 - *Evidence:* `resolveAttributionDispute` (service, around line 1832) checks `connector.dispute_resolve` only. The attribution-approval method has the requester check (line 1706). The dispute method has no comparison with the person who raised the dispute.
 - *Impact:* the person who raised a dispute can resolve it.
 - *Fix:* refuse resolution by the person who raised the dispute.
@@ -449,7 +452,7 @@ Priority: P0 critical security or integrity · P1 major functionality or busines
 
 ### P2
 
-**AUD-P2-01: mobile is not checked for duplicates on connector creation.** `connector_mobile_idx` is a non-unique index. PAN and e-mail are checked. Fix: add a mobile duplicate check on the same basis as PAN.
+**AUD-P2-01: mobile is not checked for duplicates on connector creation.** *(Fixed, uncommitted, verified by tests: a second connector with the same mobile number is refused with `DUPLICATE_MOBILE`. Tests: `connector-p2-remediation.int.spec.ts`.)* `connector_mobile_idx` is a non-unique index. PAN and e-mail are checked. Fix: add a mobile duplicate check on the same basis as PAN.
 
 **AUD-P2-02: bank accounts have no rejection path, no primary account, and no separate change history.** Only approve and disable exist. Fix: add a reject state that is audited, a primary-account rule, and a change history table if the business needs one.
 
@@ -463,9 +466,9 @@ Priority: P0 critical security or integrity · P1 major functionality or busines
 
 ### P3
 
-**AUD-P3-01: `GET /portal/v1/eligibility` is missing from `openapi/openapi.yaml`.**
+**AUD-P3-01: `GET /portal/v1/eligibility` is missing from `openapi/openapi.yaml`.** *(Fixed, uncommitted: the path is documented with its four states. The file parses.)*
 
-**AUD-P3-02: consent-OTP sends are not audited.** Fix: add an audit event with no code in it.
+**AUD-P3-02: consent-OTP sends are not audited.** Fix: add an audit event with no code in it. *(Fixed, uncommitted, verified by tests: each send writes `consent.otp_sent` against the code id and the connector, and no code appears in the audit row or the response.)*
 
 **AUD-P3-03: no partner-facing recent-activity feed.** Business decision.
 
