@@ -22,6 +22,16 @@ function getSlowMo(): number {
 
 const slowMoMs = getSlowMo();
 
+const cliBaseUrl =
+  process.argv.find((a) => a.startsWith('--base-url='))?.split('=')[1] ||
+  process.argv.find((a) => a.startsWith('--use.baseURL='))?.split('=')[1];
+const targetBaseUrl = process.env.PLAYWRIGHT_BASE_URL || cliBaseUrl || 'http://localhost:5173';
+const isRemote = Boolean(
+  process.env.PLAYWRIGHT_BASE_URL ||
+  cliBaseUrl ||
+  (targetBaseUrl && !targetBaseUrl.includes('localhost') && !targetBaseUrl.includes('127.0.0.1'))
+);
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 600_000,
@@ -33,7 +43,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: targetBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     headless: !isHeaded,
@@ -43,12 +53,16 @@ export default defineConfig({
       args: isHeaded ? ['--start-maximized'] : [],
     },
   },
-  webServer: {
-    command: 'npm run dev -w @dsa/web',
-    port: 5173,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  ...(isRemote
+    ? {}
+    : {
+        webServer: {
+          command: 'npm run dev -w @dsa/web',
+          port: 5173,
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+      }),
   projects: [
     {
       name: 'chromium',

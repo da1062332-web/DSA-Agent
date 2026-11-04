@@ -1126,6 +1126,30 @@ export async function setupPersonaSession(
     });
   });
 
+  await page.route(/\/v1\/applications(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { limit: 50, nextCursor: null } }),
+    });
+  });
+
+  await page.route('**/v1/commission-plans**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { limit: 50, total: 0 } }),
+    });
+  });
+
+  await page.route('**/v1/incidents**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], meta: { limit: 50, total: 0 } }),
+    });
+  });
+
   await page.route('**/v1/users**', async (route) => {
     const url = route.request().url();
     const idMatch = url.match(/\/v1\/users\/([^?]+)/);
@@ -1228,7 +1252,10 @@ export async function performRoleLogin(
   await page.waitForLoadState('domcontentloaded');
 
   const emailInput = page.locator('[data-testid="auth.email"]');
-  const isLoginPage = await emailInput.isVisible({ timeout: 4000 }).catch(() => false);
+  const isLoginPage = await emailInput
+    .waitFor({ state: 'visible', timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
 
   if (isLoginPage) {
     await showDemoBanner(
@@ -1324,19 +1351,24 @@ export async function performRoleLogin(
 export async function performRoleLogout(page: Page): Promise<void> {
   await showDemoBanner(page, 'Session Sign-Out', 'Signing out of role session');
   const accountBtn = page.locator('[data-testid="shell.account"]');
-  if (await accountBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await humanClick(accountBtn, 400);
+  const isAccountVisible = await accountBtn.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
+  let loggedOut = false;
+  if (isAccountVisible) {
+    await accountBtn.click({ timeout: 3000 }).catch(() => {});
     const signoutBtn = page.locator('[data-testid="shell.signout"]');
-    if (await signoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await humanClick(signoutBtn, 800);
+    const isSignoutVisible = await signoutBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
+    if (isSignoutVisible) {
+      await signoutBtn.click({ timeout: 3000 }).catch(() => {});
+      loggedOut = true;
     }
-  } else {
-    // If shell header is not visible (e.g. 403 or non-shell screen), clear storage and return to login
+  }
+  if (!loggedOut || !page.url().includes('/login')) {
+    // If not already cleanly logged out, clear storage and navigate to login
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();
-    });
-    await page.goto('/login');
+    }).catch(() => {});
+    await page.goto('/login').catch(() => {});
   }
   const submitBtn = page.locator('[data-testid="auth.submit"]');
   await submitBtn.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});

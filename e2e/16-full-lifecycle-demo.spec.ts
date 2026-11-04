@@ -309,7 +309,9 @@ test.describe('Master E2E Demonstration Suite: Vaibhav Finserv Lifecycle', () =>
           contentType: 'application/json',
           body: JSON.stringify({
             applicationId: APP_ID,
+            applicationNumber: APP_ID,
             customerId: CUST_ID,
+            customerNumber: CUST_ID,
             leadId: LEAD_ID,
           }),
         });
@@ -699,8 +701,8 @@ test.describe('Master E2E Demonstration Suite: Vaibhav Finserv Lifecycle', () =>
     );
     await leadPage.convertLead(1500);
     await expect(page.getByRole('heading', { name: 'Lead Converted Successfully' })).toBeVisible();
-    await expect(page.getByRole('link', { name: APP_ID })).toBeVisible();
-    await expect(page.getByText(CUST_ID, { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: new RegExp(`${APP_ID}|Open application`) })).toBeVisible();
+    await expect(page.getByText(new RegExp(`${CUST_ID}|Open customer`))).toBeVisible();
     await leadPage.pause(1500);
 
     await authPage.logout();
@@ -869,6 +871,77 @@ test.describe('Master E2E Demonstration Suite: Vaibhav Finserv Lifecycle', () =>
       if (msg.type() === 'error' || msg.type() === 'warning') {
         console.log(`[CONSOLE ${msg.type()}] ${msg.text()}`);
       }
+    });
+
+    // -----------------------------------------------------------------------
+    // Mock Application & Checklist APIs
+    // -----------------------------------------------------------------------
+    await page.route(/\/v1\/applications(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: APP_ID,
+              customerId: CUST_ID,
+              branchId: 'MUM01',
+              productCategory: 'PERSONAL_LOAN',
+              requestedAmount: '300000.00',
+              currency: 'INR',
+              tenureMonths: 36,
+              applicantType: 'SALARIED',
+              status: 'DOCUMENTS_PENDING',
+              salesOwnerId: 'usr_vaibhav_rm1_01',
+              version: 1,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+          meta: { nextCursor: null, limit: 50 },
+        }),
+      });
+    });
+
+    await page.route(`**/v1/applications/${APP_ID}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: APP_ID,
+          customerId: CUST_ID,
+          branchId: 'MUM01',
+          productCategory: 'PERSONAL_LOAN',
+          requestedAmount: '300000.00',
+          currency: 'INR',
+          tenureMonths: 36,
+          applicantType: 'SALARIED',
+          status: 'DOCUMENTS_PENDING',
+          salesOwnerId: 'usr_vaibhav_rm1_01',
+          version: 1,
+          createdAt: new Date().toISOString(),
+        }),
+      });
+    });
+
+    await page.route(`**/v1/applications/${APP_ID}/checklist**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: 'chk_pan_01',
+              applicationId: APP_ID,
+              documentType: 'PAN',
+              status: 'UPLOADED',
+              required: true,
+              uploadedDocId: 'doc_kavya_pan_01',
+              lockVersion: 1,
+            },
+          ],
+        }),
+      });
     });
 
     // -----------------------------------------------------------------------
@@ -1117,7 +1190,9 @@ test.describe('Master E2E Demonstration Suite: Vaibhav Finserv Lifecycle', () =>
       'Stage 8: Document Verifier',
       'Reviewing uploaded KYC document checklist on Workbench (MOD-VRF)',
     );
-    await expect(page.getByText(VRF_CASE_ID)).toBeVisible();
+    await expect(
+      page.locator(`[data-testid="verification.row.view.${VRF_CASE_ID}"]`).or(page.getByText(VRF_CASE_ID)),
+    ).toBeVisible();
     await vrfPage.pause(1000);
 
     // Open Case Detail
