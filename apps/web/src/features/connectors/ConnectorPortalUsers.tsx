@@ -33,6 +33,16 @@ import { apiFetch, errorText } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { canPerformAction } from '../../shell/access';
 
+/**
+ * The portal logins of one connector, as the list the API returns. The Overview tab and this tab share one cache entry under this key, so
+ * both must store the list. If one stored the response object and the other the list, whichever tab read second would crash.
+ */
+export const connectorPortalUsersQuery = (connectorId: string) => ({
+  queryKey: ['connector-portal-users', connectorId] as const,
+  queryFn: async (): Promise<ConnectorPortalUser[]> =>
+    (await apiFetch<{ items: ConnectorPortalUser[] }>(`/v1/connectors/${connectorId}/users`)).items,
+});
+
 export interface PortalInviteInput {
   displayName: string;
   email: string;
@@ -122,15 +132,10 @@ export function ConnectorPortalUsers({
   const me = useMe();
   const queryClient = useQueryClient();
   const canManage = canPerformAction('connector.portal_user_manage', (code) => hasPermission(me.data, code));
-  const queryKey = ['connector-portal-users', connector.id];
+  const usersQueryOptions = connectorPortalUsersQuery(connector.id);
   const inviteAllowed = connector.status !== 'SUSPENDED' && connector.status !== 'TERMINATED';
 
-  const usersQuery = useQuery({
-    queryKey,
-    queryFn: async () =>
-      (await apiFetch<{ items: ConnectorPortalUser[] }>(`/v1/connectors/${connector.id}/users`)).items,
-    enabled: canManage,
-  });
+  const usersQuery = useQuery({ ...usersQueryOptions, enabled: canManage });
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState<PortalInviteInput>({ displayName: '', email: '', mobileE164: '' });
@@ -140,7 +145,7 @@ export function ConnectorPortalUsers({
   const [pending, setPending] = useState<{ kind: ActionKind; user: ConnectorPortalUser } | null>(null);
   const [reason, setReason] = useState('');
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: usersQueryOptions.queryKey });
 
   const inviteMutation = useMutation({
     mutationFn: ({ input, key }: { input: PortalInviteInput; key: string }) =>

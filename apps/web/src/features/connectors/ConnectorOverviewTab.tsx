@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ConnectorActivityResource, ConnectorReferralResource, ConnectorResource } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
 import { StatCard, StatCardGrid } from '../../ui';
+import { connectorPortalUsersQuery } from './ConnectorPortalUsers';
 import { activityLabel } from './connector-workspace-model';
 
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -34,11 +35,7 @@ export function ConnectorOverviewTab({
       apiFetch<{ items: ConnectorReferralResource[] }>(`/v1/connectors/${connector.id}/referrals`),
     enabled: canReadReferrals,
   });
-  const portalUsers = useQuery<{ items: { id: string; status: string }[] }>({
-    queryKey: ['connector-portal-users', connector.id],
-    queryFn: () =>
-      apiFetch<{ items: { id: string; status: string }[] }>(`/v1/connectors/${connector.id}/users`),
-  });
+  const portalUsers = useQuery(connectorPortalUsersQuery(connector.id));
   const recent = useQuery<{ items: ConnectorActivityResource[] }>({
     queryKey: ['connector-activity', connector.id, 'recent'],
     queryFn: () =>
@@ -46,7 +43,7 @@ export function ConnectorOverviewTab({
   });
 
   const referralItems = referrals.data?.items ?? [];
-  const users = portalUsers.data?.items ?? [];
+  const users = portalUsers.data ?? [];
 
   return (
     <Stack spacing={3}>
