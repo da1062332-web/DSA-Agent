@@ -343,11 +343,10 @@ export class SqlFinanceRepository implements FinanceRepository {
         basis = COALESCE(${updates.basis ?? null}, basis),
         rounding_mode = COALESCE(${updates.rounding_mode ?? null}, rounding_mode),
         clawback_window_days = COALESCE(${updates.clawback_window_days ?? null}, clawback_window_days),
-        status = COALESCE(${updates.status ?? null}, status),
         lock_version = lock_version + 1,
         updated_at = now(),
         updated_by = COALESCE(${updates.updated_by ?? 'system'}, updated_by)
-      WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion}
+      WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion} AND status = 'DRAFT'
       RETURNING *
     `.execute(tx);
     return res.rows[0] ?? null;
@@ -368,6 +367,7 @@ export class SqlFinanceRepository implements FinanceRepository {
         updated_at = now(),
         updated_by = ${approverId}
       WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion}
+        AND status IN ('DRAFT', 'PENDING_APPROVAL')
       RETURNING *
     `.execute(tx);
     return res.rows[0] ?? null;
