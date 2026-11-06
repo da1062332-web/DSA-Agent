@@ -237,4 +237,35 @@ describe('connector verification (TEST-CVER)', () => {
       env.admin.query(`update app.verification set notes = 'changed' where id = $1`, [id]),
     ).rejects.toThrow(/verification|forbid|immutable|not allowed/i);
   });
+
+  it('TEST-CVER-09 a VERIFIED record whose validity has run out does not activate the connector, and nothing changes', async () => {
+    // CV_C's only other record is REJECTED. This one is VERIFIED about CV_C, but its validity ended yesterday.
+    const expired = `ver_${ulid('5')}`;
+    await env.admin.query(
+      `insert into app.verification (id, tenant_id, subject_type, subject_id, check_type, method, purpose, consent_record_id, result,
+                                     minimal_result, evidence_ref, performed_by, performed_at, validity_expires_at, connector_id)
+       values ($1, $2, 'CONNECTOR', $3, 'PAN', 'MANUAL', 'KYC', $4, 'VERIFIED', '{}', 'evidence-ref', $5, now() - interval '2 days',
+               now() - interval '1 day', $3)`,
+      [expired, env.A.tenantId, CV_C, CONSENT, MANAGER],
+    );
+    const before = await env.admin.query(`select status from app.connector where id = $1`, [CV_C]);
+    const res = await activate(CV_C, expired, 'cver_act_000009');
+    expect(res.status, JSON.stringify(res.body)).toBe(422);
+    expect(res.body.error.details?.[0]).toMatchObject({ issue: 'VERIFICATION_EXPIRED' });
+    const after = await env.admin.query(`select status from app.connector where id = $1`, [CV_C]);
+    expect(after.rows[0]).toEqual(before.rows[0]);
+  });
+
+  it('TEST-CVER-10 the generic status route refuses ACTIVE, so a connector can be activated only through a verification', async () => {
+    const before = await env.admin.query(`select status from app.connector where id = $1`, [CV_C]);
+    const res = await request(manager())
+      .post(`/v1/connectors/${CV_C}/status`)
+      .set('Idempotency-Key', 'cver_status_000010')
+      .set('If-Match', '"0"')
+      .send({ targetStatus: 'ACTIVE' });
+    expect(res.status, JSON.stringify(res.body)).toBe(422);
+    expect(res.body.error.details?.[0]).toMatchObject({ issue: 'USE_ACTIVATION_ROUTE' });
+    const after = await env.admin.query(`select status from app.connector where id = $1`, [CV_C]);
+    expect(after.rows[0]).toEqual(before.rows[0]);
+  });
 });

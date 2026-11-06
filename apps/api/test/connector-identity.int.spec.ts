@@ -46,7 +46,16 @@ beforeAll(async () => {
                                 created_by, updated_by)
      values ($1, $2, 'INDIVIDUAL', 'Synthetic Identity Connector', 'Identity Person', '+919876500601', $3, 'con-id@example.com', $4,
              $5, $6, 'XXXXX1234X', $7, $8, 'ACTIVE', 'iso', 'iso')`,
-    [CONNECTOR, a.tenantId, h('m-id'), h('e-id'), Buffer.from('synthetic'), h('p-id'), a.branchId, a.userIds[0]],
+    [
+      CONNECTOR,
+      a.tenantId,
+      h('m-id'),
+      h('e-id'),
+      Buffer.from('synthetic'),
+      h('p-id'),
+      a.branchId,
+      a.userIds[0],
+    ],
   );
   await q(
     `insert into app.app_user (id, tenant_id, idp_subject, email, display_name, user_type, status, primary_branch_id, connector_id,
@@ -64,10 +73,10 @@ beforeAll(async () => {
     `insert into app.role (id, tenant_id, code, name, created_by) values ($1, $2, 'ROLE-RM-CONTAINMENT-TEST', 'Containment test role', 'iso')`,
     [ROLE, a.tenantId],
   );
-  await q(`insert into app.role_permission (tenant_id, role_id, permission_code) values ($1, $2, 'lead.read')`, [
-    a.tenantId,
-    ROLE,
-  ]);
+  await q(
+    `insert into app.role_permission (tenant_id, role_id, permission_code) values ($1, $2, 'lead.read')`,
+    [a.tenantId, ROLE],
+  );
   await q(
     `insert into app.user_role_assignment (id, tenant_id, user_id, role_id, scope_type, scope_branch_ids, created_by)
      values ('ura_id_staff', $1, $2, $3, 'TENANT', '{}', 'iso')`,
@@ -119,14 +128,22 @@ describe('TEST-CONIDENT-INT connector portal identity on the HTTP stack', () => 
     );
     expect(open.rows[0].n).toBe(1);
 
-    const principal = await resolver.resolve(tokens.get(PORTAL_TOKEN)!, { correlationId: 'corr-id-1', now: new Date() });
+    const principal = await resolver.resolve(tokens.get(PORTAL_TOKEN)!, {
+      correlationId: 'corr-id-1',
+      now: new Date(),
+    });
     expect(principal).toMatchObject({ kind: 'USER', id: PORTAL_USER, userType: 'CONNECTOR', grants: [] });
   });
 
   it('TEST-CONCONTAIN-INT-02 GET /v1/me for the portal login shows no role and no grant', async () => {
     const res = await request(app).get('/v1/me').set('Authorization', `Bearer ${PORTAL_TOKEN}`);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.data).toMatchObject({ userType: 'CONNECTOR', connectorId: CONNECTOR, roles: [], grants: [] });
+    expect(res.body.data).toMatchObject({
+      userType: 'CONNECTOR',
+      connectorId: CONNECTOR,
+      roles: [],
+      grants: [],
+    });
     expect(JSON.stringify(res.body)).not.toContain('ROLE-RM-CONTAINMENT-TEST');
   });
 
@@ -147,6 +164,34 @@ describe('TEST-CONIDENT-INT connector portal identity on the HTTP stack', () => 
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.data).toMatchObject({ userType: 'STAFF' });
     expect(res.body.data.roles).toContain('ROLE-RM-CONTAINMENT-TEST');
-    expect(res.body.data.grants).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'lead.read' })]));
+    expect(res.body.data.grants).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'lead.read' })]),
+    );
+  });
+
+  it('TEST-CONIDENT-INT-06 the portal login is refused every internal staff route, including the platform realm', async () => {
+    for (const path of ['/v1/leads', '/v1/applications', '/v1/commission-plans', '/platform/v1/users']) {
+      const res = await request(app).get(path).set('Authorization', `Bearer ${PORTAL_TOKEN}`);
+      expect(res.status, `${path}: ${JSON.stringify(res.body)}`).toBe(403);
+      expect(JSON.stringify(res.body)).toContain('CONNECTOR_IDENTITY_NOT_ALLOWED');
+    }
+  });
+
+  it('TEST-CONIDENT-INT-07 an internal employee with the permission reaches the internal route that permission allows', async () => {
+    const res = await request(app).get('/v1/leads').set('Authorization', `Bearer ${STAFF_TOKEN}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+  });
+
+  it('TEST-CONIDENT-INT-08 a token issued for another tenant does not authenticate the tenant A portal login', async () => {
+    const otherTenantToken = 'aaa.bbb.portalb';
+    tokens.set(otherTenantToken, { ...tokens.get(PORTAL_TOKEN)!, tenantId: env.B.tenantId });
+    const res = await request(app)
+      .get('/portal/v1/referrals')
+      .set('Authorization', `Bearer ${otherTenantToken}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(401);
+    const principal = await resolver
+      .resolve(tokens.get(otherTenantToken)!, { correlationId: 'corr-id-tenant', now: new Date() })
+      .catch((e: unknown) => e);
+    expect(principal).toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 });

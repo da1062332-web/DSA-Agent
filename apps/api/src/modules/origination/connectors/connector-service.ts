@@ -189,8 +189,13 @@ async function assertConnectorVerification(
   connectorId: string,
   verificationId: string,
 ): Promise<void> {
-  const r = await sql<{ result: string; subject_type: string; connector_id: string | null }>`
-    SELECT result, subject_type, connector_id FROM app.verification
+  const r = await sql<{
+    result: string;
+    subject_type: string;
+    connector_id: string | null;
+    validity_expires_at: Date | null;
+  }>`
+    SELECT result, subject_type, connector_id, validity_expires_at FROM app.verification
      WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${verificationId}`.execute(tx);
   const row = r.rows[0];
   if (!row) {
@@ -211,6 +216,12 @@ async function assertConnectorVerification(
       `This connector needs a VERIFIED check. Verification ${verificationId} has result ${row.result}.`,
       [{ field: 'verificationId', issue: 'NOT_VERIFIED' }],
     );
+  }
+  // A VERIFIED record whose validity has run out no longer counts (validity_expires_at, migration 0026).
+  if (row.validity_expires_at && new Date(row.validity_expires_at).getTime() <= ctx.now.getTime()) {
+    throw AppError.of('VALIDATION_ERROR', `Verification ${verificationId} has expired.`, [
+      { field: 'verificationId', issue: 'VERIFICATION_EXPIRED' },
+    ]);
   }
 }
 
