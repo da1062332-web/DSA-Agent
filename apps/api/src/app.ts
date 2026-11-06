@@ -12,6 +12,7 @@ import { errorHandler } from './http/error-handler';
 import { notFound } from './http/not-found';
 import { moduleGate } from './http/module-gate';
 import { rateLimit } from './http/rate-limit';
+import { redactRequestPath } from './http/redact';
 import swaggerUi from 'swagger-ui-express';
 import { apiModules } from './modules';
 import { createPublicMessagingRouter } from './modules/crm/messaging/router';
@@ -83,9 +84,9 @@ export function createApp(opts: CreateAppOptions): Express {
         genReqId: (req) => req.correlationId,
         // One readable line: "GET /v1/users/usr_1 200 12ms [01M5V...]". The correlation id stays in the log record.
         customSuccessMessage: (req, res, ms) =>
-          `${req.method} ${req.url?.split('?')[0]} ${res.statusCode} ${Math.round(ms)}ms${req.id ? ` [${req.id}]` : ''}`,
+          `${req.method} ${redactRequestPath(req.url ?? '')} ${res.statusCode} ${Math.round(ms)}ms${req.id ? ` [${req.id}]` : ''}`,
         customErrorMessage: (req, res, err) =>
-          `${req.method} ${req.url?.split('?')[0]} ${res.statusCode} ${err.message}${req.id ? ` [${req.id}]` : ''}`,
+          `${req.method} ${redactRequestPath(req.url ?? '')} ${res.statusCode} ${err.message}${req.id ? ` [${req.id}]` : ''}`,
         customLogLevel: (_req, res, err) => {
           if (err || res.statusCode >= 500 || res.statusCode === 401) return 'error';
           if (res.statusCode >= 400) return 'warn';
@@ -96,7 +97,7 @@ export function createApp(opts: CreateAppOptions): Express {
           req: (req: { id: string; method: string; url?: string }) => ({
             correlationId: req.id,
             method: req.method,
-            route: req.url?.split('?')[0],
+            route: redactRequestPath(req.url ?? ''),
           }),
           res: (res: { statusCode: number }) => ({ status: res.statusCode }),
         },

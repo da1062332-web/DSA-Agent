@@ -406,7 +406,9 @@ describe('Module 37 — API Development (MOD-DEV) Test Suite', () => {
 
       expect(uploadRes.status).toBe(201);
       expect(uploadRes.body.sessionId).toMatch(/^upl_/);
-      expect(uploadRes.body.uploadUrl).toContain('/public/v1/upload/');
+      // The URL uses the document upload PUT route. The closed /public/v1/upload/ route must never be returned (2026-11-04).
+      expect(uploadRes.body.uploadUrl).toContain('/public/v1/document-uploads/');
+      expect(uploadRes.body.uploadUrl).not.toContain('/public/v1/upload/');
       expect(uploadRes.body.items).toContain('SALARY_SLIP');
     });
   });

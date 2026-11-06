@@ -7,7 +7,7 @@ import { AppError, type ErrorEnvelope } from '@dsa/contracts';
 import type { ErrorRequestHandler } from 'express';
 import type { Logger } from 'pino';
 import { ZodError } from 'zod';
-import { redactSecrets } from './redact';
+import { redactRequestPath, redactSecrets } from './redact';
 
 function isBodyParserError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false;
@@ -109,7 +109,7 @@ export function errorHandler(logger?: Logger): ErrorRequestHandler {
       const e = err as { name?: string; code?: string; stack?: string; message?: unknown };
       const stack = redactSecrets(e.stack ?? '');
       if (process.env.NODE_ENV !== 'production') {
-        console.error(`[API ERROR ${appError.httpStatus}] ${req.method} ${redactSecrets(req.originalUrl || req.url)}:`, {
+        console.error(`[API ERROR ${appError.httpStatus}] ${req.method} ${redactRequestPath(req.originalUrl || req.url || '')}:`, {
           name: e.name,
           code: e.code,
           message: redactSecrets(String(e.message ?? '')),

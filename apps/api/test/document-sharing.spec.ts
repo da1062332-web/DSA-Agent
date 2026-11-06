@@ -177,12 +177,14 @@ describe('Module 25: Document Sharing (MOD-DSH) Route Tests', () => {
       expect(res.status).toBe(403);
     });
 
-    it('API-DSH-003: GET /public/v1/upload/{token} resolves link status anonymously', async () => {
+    it('API-DSH-003: GET /public/v1/upload/{token} is closed by containment and refused with 503', async () => {
       const app = createTestApp();
 
+      // 2026-11-04 containment (docs/PRODUCTION_SECURITY_CONTAINMENT.md): the public upload route accepts no new request.
+      // The full set of checks is in public-upload-containment.spec.ts.
       const res = await request(app).get('/public/v1/upload/test_valid_token');
-      // If mock service or real DB query
-      expect([200, 404]).toContain(res.status);
+      expect(res.status).toBe(503);
+      expect(res.body.error.code).toBe('DEPENDENCY_UNAVAILABLE');
     });
   });
 

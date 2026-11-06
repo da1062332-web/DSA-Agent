@@ -536,9 +536,12 @@ export class PartnerApiService {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + input.expiresInMinutes * 60000).toISOString();
 
+    // The upload target is the PUT route that every document upload uses (2026-11-04). The public /upload/ route is closed. This session
+    // is an in-memory stub: the token is not yet registered as an upload intent, so the PUT answers 404 until partner sessions persist
+    // their intents (docs/PRODUCTION_SECURITY_CONTAINMENT.md, section 8.6).
     return {
       sessionId,
-      uploadUrl: `https://app.dsa-crm.com/public/v1/upload/${token}`,
+      uploadUrl: `https://app.dsa-crm.com/public/v1/document-uploads/${token}`,
       token,
       expiresAt,
       items: input.documentChecklistCodes,

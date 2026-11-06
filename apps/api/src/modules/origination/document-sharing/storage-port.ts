@@ -23,6 +23,11 @@ export interface FileScanResult {
 
 export interface FileScannerPort {
   scan(buffer: Buffer, filename: string, mimeType: string): Promise<FileScanResult>;
+  /**
+   * Whether this scanner can give a malware verdict right now. A scanner without this method (the file-signature check) is not a malware
+   * scanner, and document uploads fail closed without a ready one (2026-11-04 containment).
+   */
+  ready?(): Promise<boolean>;
 }
 
 /**

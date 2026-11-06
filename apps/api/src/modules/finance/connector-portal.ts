@@ -15,6 +15,7 @@ import { withIdempotency } from '@dsa/kernel';
 import express, { type Router } from 'express';
 import { sql } from 'kysely';
 import { z } from 'zod';
+import { requireFinancialStepUp } from '../../http/financial-step-up';
 import { idempotencyKey, requireCtx } from '../../http/request';
 import { computeMobileHash, normalizeMobile } from '../crm/leads/normalizer';
 import { createLeadService } from '../crm/leads/router';
@@ -351,7 +352,7 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
   // API-CPT-005
   router.post('/payout-requests', async (req, res) => {
     const ctx = requireCtx(req);
-    deps.authz.requireStepUp(ctx);
+    requireFinancialStepUp(deps.authz, ctx);
     const key = idempotencyKey(req);
     const input = PortalPayoutRequest.parse(req.body);
     const result = await deps.txRunner.withTenantTx(ctx, (tx) =>

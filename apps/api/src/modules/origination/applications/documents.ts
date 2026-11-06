@@ -38,13 +38,14 @@ import express, { type Router } from 'express';
 import { zipSync } from 'fflate';
 import { sql } from 'kysely';
 import crypto from 'node:crypto';
+import { rateLimit } from '../../../http/rate-limit';
 import { idempotencyKey, requireCtx, sendResource } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { MagicByteFileScanner, type FileScannerPort } from '../document-sharing/storage-port';
 import { advanceForChecklistItem, advanceWhenDocumentsComplete, isComplete } from './application-port';
 import { partnerDocumentStatus } from '../../partner-view/partner-progress';
 import { portalMe } from '../../partner-view/portal-standing';
-import { ClamAvFileScanner, EncryptedDocumentObjectStore } from './document-backends';
+import { EncryptedDocumentObjectStore } from './document-backends';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
 import {
@@ -58,6 +59,11 @@ import {
 
 const LINK_TTL_SECONDS = 300;
 const UPLOAD_TTL_MINUTES = 15;
+/**
+ * The largest file an upload intent accepts, and the most bytes the PUT reads. It is within clamd's default stream limit (25 MB), so a
+ * larger file could never get a verdict.
+ */
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 /** Platform defaults for the fixed type codes (PA-10); a tenant row with the same code overrides one. */
 export const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
@@ -87,7 +93,10 @@ export const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
 }));
 
 export interface DocumentDeps {
+  /** Scanned, clean files. Read only through paths that require a CLEAN version: signed links and archives. */
   store: DocumentObjectStore;
+  /** Uploaded bytes awaiting their verdict. Nothing reads from here except completion, and it is never served. */
+  quarantine: DocumentObjectStore;
   signer: FileLinkSigner;
   secret: string;
   scanner: FileScannerPort;
@@ -99,10 +108,14 @@ export function documentDeps(deps: ApiDeps): DocumentDeps {
   const secret =
     deps.documentLinkSecret && deps.documentLinkSecret.length >= 32 ? deps.documentLinkSecret : processSecret;
   const store = (deps.documentStore as DocumentObjectStore | undefined) ?? new LocalDocumentObjectStore();
+  const quarantine =
+    (deps.documentQuarantineStore as DocumentObjectStore | undefined) ??
+    new LocalDocumentObjectStore(process.env.DOCUMENT_QUARANTINE_DIR ?? './uploads/documents-quarantine');
   return {
     // Files are encrypted at rest whenever a real secret is configured (AUD-013). A per-process secret would make them
     // unreadable after a restart, so local runs without one keep plain files.
     store: secret === processSecret ? store : new EncryptedDocumentObjectStore(store, secret),
+    quarantine: secret === processSecret ? quarantine : new EncryptedDocumentObjectStore(quarantine, secret),
     signer: new FileLinkSigner(secret),
     secret,
     scanner: (deps.documentScanner as FileScannerPort | undefined) ?? new MagicByteFileScanner(),
@@ -190,15 +203,23 @@ async function emit(
             ${JSON.stringify(data)}::jsonb, ${ctx.correlationId}, 0, ${ctx.now})`.execute(tx);
 }
 
-/** Whether a malware scanner is configured (not the file-signature check alone) and answers PING. Used to tell a partner what is available. */
+/**
+ * Whether the configured scanner can give a malware verdict right now. The file-signature check has no readiness method, so it is never
+ * ready: it would clear any file with the right first bytes. A check that throws counts as not ready.
+ */
 export async function malwareScannerReady(deps: ApiDeps): Promise<boolean> {
   const scanner = documentDeps(deps).scanner;
-  return scanner instanceof ClamAvFileScanner && (await scanner.healthy());
+  if (typeof scanner.ready !== 'function') return false;
+  try {
+    return await scanner.ready();
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Partner uploads need a working malware scanner. Refuses when none is configured (the file-signature check alone is not enough)
- * or when clamd does not answer PING.
+ * Every document upload needs a working malware scanner (fail closed, 2026-11-04). Refuses when none is configured, or when it does not
+ * answer. Checked before an intent is issued, before a PUT is stored, and before a file is scanned.
  */
 export async function assertMalwareScannerReady(deps: ApiDeps): Promise<void> {
   if (!(await malwareScannerReady(deps))) {
@@ -240,6 +261,13 @@ export async function issueUploadIntent(
       { field: 'sizeBytes', issue: 'TOO_LARGE' },
     ]);
   }
+  if (input.sizeBytes > MAX_UPLOAD_BYTES) {
+    throw AppError.of('VALIDATION_ERROR', `Files are limited to ${MAX_UPLOAD_BYTES} bytes.`, [
+      { field: 'sizeBytes', issue: 'TOO_LARGE' },
+    ]);
+  }
+  // No intent, and so no URL, while nothing can scan the file.
+  await assertMalwareScannerReady(deps);
   const id = deps.ids.next('upi');
   const expiresAt = new Date(ctx.now.getTime() + UPLOAD_TTL_MINUTES * 60_000);
   await sql`
@@ -299,7 +327,9 @@ export async function completeUploadIntent(
   if (intent.status !== 'UPLOADED') {
     throw AppError.of('INVALID_STATE', 'Nothing has been uploaded for this intent yet.');
   }
-  const bytes = await docs.store.get(ctx.principal.tenantId, String(intent.object_key));
+  // Fail closed: without a verdict there is no version. The intent stays UPLOADED, so completion can be retried.
+  await assertMalwareScannerReady(deps);
+  const bytes = await docs.quarantine.get(ctx.principal.tenantId, String(intent.object_key));
   if (!bytes || sha256Hex(bytes) !== intent.sha256) {
     throw AppError.of('VALIDATION_ERROR', 'The stored file does not match the declared sha256.', [
       { field: 'sha256', issue: 'MISMATCH' },
@@ -307,6 +337,11 @@ export async function completeUploadIntent(
   }
   const scan = await docs.scanner.scan(bytes, String(intent.file_name), String(intent.mime_type));
   const scanStatus = scan.clean ? 'CLEAN' : 'QUARANTINED';
+  // Only a clean file leaves quarantine. An infected file stays where no route reads it.
+  const objectKey =
+    scanStatus === 'CLEAN'
+      ? await docs.store.put(ctx.principal.tenantId, `${intent.id}-${intent.sha256}`, bytes)
+      : String(intent.object_key);
 
   // One document per checklist item; a new upload becomes its next version and supersedes the previous one.
   let doc = (
@@ -342,7 +377,7 @@ export async function completeUploadIntent(
   await sql`
     insert into document_version (id, tenant_id, document_id, version_no, object_key, file_name, sha256, size_bytes,
                                   detected_mime, scan_status, uploaded_by, uploaded_via)
-    values (${versionId}, ${ctx.principal.tenantId}, ${String(doc.id)}, ${Number(next)}, ${String(intent.object_key)},
+    values (${versionId}, ${ctx.principal.tenantId}, ${String(doc.id)}, ${Number(next)}, ${objectKey},
             ${String(intent.file_name)}, ${String(intent.sha256)}, ${bytes.length}, ${String(intent.mime_type)},
             ${scanStatus}, ${ctx.principal.id}, ${via})`.execute(tx);
   await sql`update document set current_version_id = ${versionId}, updated_by = ${ctx.principal.id} where id = ${doc.id}`.execute(
@@ -981,7 +1016,7 @@ export function createPartnerUploadRouter(deps: ApiDeps): Router {
           if (!type.rows[0]?.partner_upload) {
             throw AppError.of('FORBIDDEN', 'This document is not requested through the partner portal.');
           }
-          await assertMalwareScannerReady(deps);
+          // The malware-scanner check is inside issueUploadIntent, the same for staff and partners.
           return issueUploadIntent(deps, tx, ctx, item, app, input, 'CONNECTOR');
         },
       ),
@@ -1005,7 +1040,6 @@ export function createPartnerUploadRouter(deps: ApiDeps): Router {
         select 1 from loan_application la join lead l on l.tenant_id = la.tenant_id and l.id = la.lead_id
          where la.id = ${String(intent.application_id)} and l.connector_id = ${connectorId}`.execute(tx);
       if (!owned.rows.length) throw AppError.of('NOT_FOUND', 'Upload intent not found.');
-      await assertMalwareScannerReady(deps);
       const done = await completeUploadIntent(deps, tx, ctx, intent, 'CONNECTOR');
       return {
         uploadIntentId: String(req.params.id),
@@ -1025,7 +1059,9 @@ export function createPublicDocumentRouter(deps: ApiDeps): Router {
   // The upload target of API-DOC-001: the raw bytes, which must match the intent's size and sha256.
   router.put(
     '/document-uploads/:token',
-    express.raw({ type: () => true, limit: '52mb' }),
+    // Each call can carry up to MAX_UPLOAD_BYTES and needs no login, so it has a tighter limit than the rest of the public API.
+    rateLimit({ perMinute: 30 }),
+    express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
     async (req, res, next) => {
       try {
         const tokenHash = sha256Hex(String(req.params.token));
@@ -1055,7 +1091,10 @@ export function createPublicDocumentRouter(deps: ApiDeps): Router {
               { field: 'body', issue: 'MISMATCH' },
             ]);
           }
-          const objectKey = await docs.store.put(found.tenant_id, `${intent.id}-${intent.sha256}`, bytes);
+          // Fail closed: no bytes are stored while nothing can scan them.
+          await assertMalwareScannerReady(deps);
+          // The bytes go to quarantine, not to the store that serves files. Completion scans them and only a clean file is promoted.
+          const objectKey = await docs.quarantine.put(found.tenant_id, `${intent.id}-${intent.sha256}`, bytes);
           await sql`update upload_intent set status = 'UPLOADED', object_key = ${objectKey}, updated_at = now()
                      where id = ${intent.id}`.execute(tx);
         });

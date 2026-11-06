@@ -24,6 +24,7 @@ import { withIdempotency } from '@dsa/kernel';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
 import { requireAnyPermission } from '../../http/permissions';
+import { requireFinancialStepUp } from '../../http/financial-step-up';
 import type { ApiDeps } from '../types';
 import { FinanceService } from './finance-service';
 import { SqlFinanceRepository } from './repository';
@@ -157,6 +158,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/commission-plans/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'commission.plan.approve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const lockVersion = extractIfMatch(req);
       const parsed = ApproveCommissionPlanInputSchema.safeParse(req.body);
@@ -262,6 +265,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/clawbacks/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'adjustment.approve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.approveClawback(tx, ctx, id);
@@ -276,6 +281,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/clawbacks/:id/rejection', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'adjustment.approve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = RejectClawbackInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -340,6 +347,8 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/recalculation-proposals/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'adjustment.approve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = ApproveRecalculationProposalInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -436,7 +445,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       deps.authz.requirePermission(ctx, 'payout.approve');
-      deps.authz.requireStepUp(ctx);
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = PayoutApprovalInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -517,7 +526,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       deps.authz.requirePermission(ctx, 'payout.record_payment');
-      deps.authz.requireStepUp(ctx);
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = RecordPaymentInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -560,6 +569,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       deps.authz.requirePermission(ctx, 'payout.record_payment');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = RecordPaymentFailureInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -604,6 +614,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
+      requireFinancialStepUp(deps.authz, ctx);
       const parsed = CreatePayoutBatchInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
 
@@ -643,7 +654,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
-      deps.authz.requireStepUp(ctx);
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const fileData = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.getPayoutBatchBankFile(tx, ctx, id);
@@ -665,7 +676,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
-      deps.authz.requireStepUp(ctx);
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const parsed = DisbursePayoutGatewayInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -706,7 +717,7 @@ export function createRouter(deps: ApiDeps): Router {
     try {
       const ctx = getRequestContext(req);
       requireAnyPermission(deps.authz, ctx, withLegacy('payout.disburse'));
-      deps.authz.requireStepUp(ctx);
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id, 'id');
       const mode = (req.body?.mode as 'IMPS' | 'NEFT' | 'RTGS') || 'IMPS';
 

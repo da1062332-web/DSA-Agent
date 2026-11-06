@@ -16,6 +16,7 @@ import {
 import { withIdempotency } from '@dsa/kernel';
 import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
+import { requireFinancialStepUp } from '../../http/financial-step-up';
 import type { ApiDeps } from '../types';
 import { ReconciliationService } from './reconciliation-service';
 import { PgReconciliationRepository } from './repository';
@@ -197,6 +198,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ReconciliationServ
   router.post('/reconciliation-exceptions/:id/resolution', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      // Only a write-off is gated: it accepts a financial loss. Other resolutions stay as they are.
+      if (req.body?.status === 'WRITTEN_OFF') {
+        deps.authz.requirePermission(ctx, 'finance.reconcile');
+        requireFinancialStepUp(deps.authz, ctx);
+      }
       const id = extractParam(req.params.id);
       const parsed = ResolveExceptionInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -230,6 +236,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ReconciliationServ
   router.post('/adjustments/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'adjustment.approve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id);
       const parsed = AdjustmentApprovalInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
@@ -302,6 +310,11 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ReconciliationServ
   router.patch('/disputes/:id', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      // Only a dispute that releases held payables is gated: that moves money. Other updates stay as they are.
+      if (req.body?.releaseHolds === true) {
+        deps.authz.requirePermission(ctx, 'finance.reconcile');
+        requireFinancialStepUp(deps.authz, ctx);
+      }
       const id = extractParam(req.params.id);
       const ifMatch = extractIfMatch(req);
       const parsed = UpdateDisputeInputSchema.safeParse(req.body);
@@ -343,6 +356,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ReconciliationServ
   router.post('/reconciliation/payouts/:id/bank-reconcile', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'finance.reconcile');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = extractParam(req.params.id);
       const parsed = BankReconcilePayoutInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);

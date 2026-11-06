@@ -13,14 +13,6 @@ const stubTx: TxRunner = {
   },
 };
 
-const appFor = (...codes: PermissionCode[]) =>
-  createTestApp({
-    auth: fakeAuth(
-      testPrincipal({ grants: codes.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })) }),
-    ),
-    deps: { txRunner: stubTx },
-  });
-
 type Method = 'get' | 'post';
 interface Gate {
   /** What the gate protects, for the test name. */
@@ -34,6 +26,8 @@ interface Gate {
   /** A valid request, for routes that validate the headers and body before they reach the permission check. */
   headers?: Record<string, string>;
   body?: Record<string, unknown>;
+  /** The route also needs a recent step-up (2026-11-04 containment): the caller is given one, so an "opens" code really gets past it. */
+  freshStepUp?: boolean;
 }
 
 const IDEM = { 'Idempotency-Key': 'sub-permission-gate-test' };
@@ -246,6 +240,7 @@ const GATES: Gate[] = [
     path: '/v1/payout-batches',
     opens: ['payout.disburse', 'payout.record_payment'],
     refuses: ['payout.view', 'finance.view', 'payout.request'],
+    freshStepUp: true,
   },
   {
     name: 'commission plans (list)',
@@ -327,7 +322,12 @@ const GATES: Gate[] = [
 
 /** Call the gate's route as a caller holding only these codes. */
 const callAs = (gate: Gate, ...codes: PermissionCode[]) => {
-  const req = request(appFor(...codes))[gate.method](gate.path);
+  const principal = testPrincipal({
+    grants: codes.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })),
+    authTime: gate.freshStepUp ? new Date().toISOString() : null,
+  });
+  const app = createTestApp({ auth: fakeAuth(principal), deps: { txRunner: stubTx } });
+  const req = request(app)[gate.method](gate.path);
   return req.set(gate.headers ?? {}).send(gate.body ?? {});
 };
 

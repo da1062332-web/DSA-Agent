@@ -75,11 +75,14 @@ class MemoryStore {
   }
 }
 const store = new MemoryStore();
+// Uploaded bytes wait here until their verdict (2026-11-04 containment). Memory only, like the store.
+const quarantine = new MemoryStore();
 
 const portalApp = (opts: { id?: string; scanner?: ClamAvFileScanner } = {}) =>
   createApp({
     deps: createProductionDeps(createTxRunner(env.db), {
       documentStore: store,
+      documentQuarantineStore: quarantine,
       documentScanner: opts.scanner,
     }),
     corsAllowedOrigins: [],

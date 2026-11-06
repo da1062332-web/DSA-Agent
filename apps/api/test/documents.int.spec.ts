@@ -8,9 +8,13 @@ import { createDocumentArchiveHandler } from '../src/modules/origination/applica
 import { createProductionDeps } from '../src/wiring';
 import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/harness';
 import { testPrincipal } from './support/fake-auth';
+import { MemoryObjectStore, ReadyTestScanner } from './support/document-doubles';
 import type { PermissionCode } from '@dsa/contracts';
 
 let env: IsolationEnv;
+// Uploads are scanned by a ready test double and kept in memory: the production default refuses uploads (2026-11-04 containment).
+const documentStore = new MemoryObjectStore();
+const documentQuarantineStore = new MemoryObjectStore();
 const APP = 'app_doc_int_1';
 const CUST = 'cust_doc_int_1';
 const PARTY = 'pty_doc_int_1';
@@ -20,7 +24,11 @@ const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer 
 const sha = (b: Buffer) => crypto.createHash('sha256').update(b).digest('hex');
 
 beforeAll(async () => {
-  env = await startIsolationEnv();
+  env = await startIsolationEnv({
+    documentStore,
+    documentQuarantineStore,
+    documentScanner: new ReadyTestScanner(),
+  });
   const a = env.A;
   const q = (text: string, values: unknown[]) => env.admin.query(text, values);
   await q(
@@ -233,7 +241,12 @@ describe('TEST-DOC-INT documents', () => {
       `select id, payload from app.job_queue where job_type = 'document.archive'`,
     );
     expect(job.rows).toHaveLength(1);
-    const deps = createProductionDeps(createTxRunner(env.db));
+    // The same stores as the uploads above: the archive reads the clean files from where they were promoted.
+    const deps = createProductionDeps(createTxRunner(env.db), {
+      documentStore,
+      documentQuarantineStore,
+      documentScanner: new ReadyTestScanner(),
+    });
     const handler = createDocumentArchiveHandler(deps);
     await createTxRunner(env.db).withTenantTx(
       {
