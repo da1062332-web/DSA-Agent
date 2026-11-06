@@ -58,17 +58,18 @@ Until those outputs are recorded, C-01 stays open in the fix plan.
 
 ## 6. Verification
 
-Run here (unit tests only; no database):
+Run here, against a local Testcontainers PostgreSQL through the guarded configs (Docker Desktop started for this run):
 
-- `packages/kernel`: `resolve-principal.spec.ts`, 7 of 7 pass (4 new).
-- `apps/api`: `connector-identity-gate.spec.ts`, 7 of 7 pass; `connector-role-guard.spec.ts`, 13 of 13 pass.
-- `packages/kernel` and `apps/api` typecheck: pass.
-- ESLint on the three changed files: 0 errors. One warning, an existing `any` at `router.ts` line 203, outside this change.
+- New regression spec `apps/api/test/connector-identity.int.spec.ts`, 5 of 5 pass. It runs the real resolver, `supabaseAuth`, the internal-API gate, `GET /v1/me` and `/portal/v1` against a database. `TEST-CONCONTAIN-INT-01` and `-02` fail on the pre-fix resolver and router and pass with the fix. The other three already passed before the fix and must keep passing.
+- The 11 connector integration suites (109 tests): pass. They include the cross-connector cases (`TEST-ACC-PORTAL-03` and `-05`, `TEST-CPT-DSP-03`), which show that changing the id in a portal request does not reach another connector's data, and the verification-gated activation case in `connector-verification.int.spec.ts`.
+- API unit suite, whole: 101 files, 1,488 of 1,488 pass. Kernel unit suite: 35 of 35 pass, including 4 new `TEST-CONCONTAIN` cases.
+- Typecheck `packages/kernel` and `apps/api`: pass. ESLint on the changed files: 0 errors (one existing `any` warning in `router.ts`, outside this change).
+- Migration immutability (`check:migrations`): 92 files unchanged.
+- Tenant isolation suite (`npm run test:isolation`): 18 files, 549 of 549 pass.
 
 Not run:
 
-- Integration suites (`connector-access`, `connector-portal`, `connector-verification`, `connector-identity`). They use Testcontainers, and this environment has no Docker. Cross-connector isolation and verification-gated activation are covered by those suites and were not re-run here.
-- Hosted: not touched.
+- Hosted: not touched. No hosted query, no hosted write.
 
 ## 7. Open items
 
