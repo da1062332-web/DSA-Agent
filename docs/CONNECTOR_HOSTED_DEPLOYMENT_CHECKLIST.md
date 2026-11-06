@@ -7,6 +7,24 @@
 
 Each step needs explicit written approval before it starts. Stop at any failed check.
 
+## 0. Containment status, 2026-11-06
+
+Nothing here is marked complete unless its evidence is recorded. Root cause and code changes: `docs/CONNECTOR_CONTAINMENT_ROOT_CAUSE_2026-11-06.md`.
+
+| Item | Status on 2026-11-06 |
+|---|---|
+| Application: connector logins get no grants and no role codes (`/v1/me`) | Done locally, commit `682d581` on `beta`. Not pushed, not deployed |
+| Hosted C1: RM assignment ended through the API, named operator | Recorded as done 2026-10-29 in the header above. Not re-verified. Owner to confirm with the post-check |
+| Hosted C2: suspend the login | Recorded as not suspended (header). Owner decision, unchanged |
+| Hosted C3: keep portal access | Recorded as kept (header). Owner decision, unchanged |
+| Hosted C4: identity question (`Farhan Finance` and `Farhan Finance (Partner)`) | Not recorded in the repository. Open |
+| Hosted C5: evidence export with SHA-256 | Recorded as exported (header). Not re-verified |
+| Post-check, read-only: open connector-login roles 0; history 1; event 1; guard installed | Not run in this session. Owner to run and record the output |
+| Migration 0097 applied to hosted | Conflicting records (header says applied; runbook and remediation record say not). Owner to confirm with `97.verify.sql` |
+| Deployment of the application change (step 2) | Open. Smoke test should also check that `GET /v1/me` shows no roles for a connector login |
+
+Section 1 boxes stay unticked until the owner records the post-check output.
+
 ## 1. Account containment (partner login) — approvals C1, C2, C5 (C3 and C4 as decided)
 
 Follow `docs/CONNECTOR_CONTAINMENT_RUNBOOK.md`.
