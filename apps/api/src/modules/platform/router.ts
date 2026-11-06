@@ -166,7 +166,9 @@ export function createRouter(deps: ApiDeps): Router {
             connectorId = r.rows[0].connector_id ?? null;
           }
 
-          const rRoles = await sql<{ code: string }>`
+          // A connector portal login holds no role, so none is shown, even if an old row is still open (see effectiveGrants in @dsa/kernel).
+          if (userType !== 'CONNECTOR') {
+            const rRoles = await sql<{ code: string }>`
             SELECT r.code
             FROM app.user_role_assignment ura
             JOIN app.role r ON r.id = ura.role_id AND r.tenant_id = ura.tenant_id
@@ -174,7 +176,8 @@ export function createRouter(deps: ApiDeps): Router {
               AND ura.effective_range @> now()
             ORDER BY r.code
           `.execute(tx);
-          roles = rRoles.rows.map((row) => row.code);
+            roles = rRoles.rows.map((row) => row.code);
+          }
 
           // The modules the tenant is not entitled to, so the web hides what the module gate would refuse (MODULE_NOT_ENABLED).
           const rTenant = await sql<{ entitlements: unknown }>`
