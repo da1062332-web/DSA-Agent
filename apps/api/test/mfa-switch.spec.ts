@@ -83,7 +83,14 @@ describe('startup refuses a prohibited DISABLE_MFA', () => {
   it('TEST-MFASW-06 it starts with the switch on a local stack, and with the switch absent anywhere', () => {
     expect(loadConfig({ ...base, SUPABASE_URL: LOCAL, DISABLE_MFA: 'true' }).DISABLE_MFA).toBe(true);
     expect(loadConfig({ ...base, SUPABASE_URL: HOSTED }).DISABLE_MFA).toBe(false);
-    expect(loadConfig({ ...base, SUPABASE_URL: HOSTED, NODE_ENV: 'production' }).DISABLE_MFA).toBe(false);
+    // Production also requires the data-protection secrets (src/secrets.ts).
+    const secrets = Object.fromEntries(
+      ['ENCRYPTION_KEY', 'HMAC_SECRET', 'MOBILE_HMAC_SECRET', 'REC_HMAC_SALT', 'DOCUMENT_UPLOAD_SESSION_SECRET'].map((k) => [
+        k,
+        'c'.repeat(64),
+      ]),
+    );
+    expect(loadConfig({ ...base, SUPABASE_URL: HOSTED, NODE_ENV: 'production', ...secrets }).DISABLE_MFA).toBe(false);
   });
 
   it('TEST-MFASW-07 the error names the variable and never prints a value', () => {

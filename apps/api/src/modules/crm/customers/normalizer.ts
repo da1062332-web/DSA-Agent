@@ -1,8 +1,8 @@
 // apps/api/src/modules/crm/customers/normalizer.ts — owner: Dev 5 (MOD-CUST)
 import { AppError } from '@dsa/contracts';
-import crypto from 'node:crypto';
+import { blindIndexKeys, tenantBlindIndex } from '../../../secrets';
 
-const HMAC_SECRET = process.env.MOBILE_HMAC_SECRET || 'dsa_mobile_hmac_default_secret_key_32';
+// The keyed hashes used for lookup take their key from MOBILE_HMAC_SECRET (required in production; see src/secrets.ts).
 
 /** Normalizes a phone number to canonical E.164 standard. */
 export function normalizeMobile(raw: string): string {
@@ -38,9 +38,21 @@ export function normalizeMobile(raw: string): string {
   ]);
 }
 
-/** Computes tenant-scoped HMAC-SHA-256 for mobile matching. */
-export function computeMobileHash(tenantId: string, mobileE164: string): Buffer {
-  return crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`).update(mobileE164).digest();
+/** Computes tenant-scoped HMAC-SHA-256 for mobile matching. Rows are written with the current key. */
+export function computeMobileHash(
+  tenantId: string,
+  mobileE164: string,
+  secret: string = blindIndexKeys('MOBILE_HMAC_SECRET').current,
+): Buffer {
+  return tenantBlindIndex('MOBILE_HMAC_SECRET', tenantId, mobileE164, secret);
+}
+
+/** The hashes a stored mobile hash may match: the current key, and the previous key when MOBILE_HMAC_SECRET_PREVIOUS is set. */
+export function mobileHashCandidates(tenantId: string, mobileE164: string): Buffer[] {
+  const keys = blindIndexKeys('MOBILE_HMAC_SECRET');
+  const hashes = [computeMobileHash(tenantId, mobileE164, keys.current)];
+  if (keys.previous !== undefined) hashes.push(computeMobileHash(tenantId, mobileE164, keys.previous));
+  return hashes;
 }
 
 /** Normalizes email address. */
@@ -56,9 +68,21 @@ export function normalizeEmail(raw?: string | null): string | null {
   return cleaned;
 }
 
-/** Computes tenant-scoped HMAC-SHA-256 for email matching. */
-export function computeEmailHash(tenantId: string, email: string): Buffer {
-  return crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`).update(email).digest();
+/** Computes tenant-scoped HMAC-SHA-256 for email matching. Rows are written with the current key. */
+export function computeEmailHash(
+  tenantId: string,
+  email: string,
+  secret: string = blindIndexKeys('MOBILE_HMAC_SECRET').current,
+): Buffer {
+  return tenantBlindIndex('MOBILE_HMAC_SECRET', tenantId, email, secret);
+}
+
+/** The hashes a stored e-mail hash may match: the current key, and the previous key when MOBILE_HMAC_SECRET_PREVIOUS is set. */
+export function emailHashCandidates(tenantId: string, email: string): Buffer[] {
+  const keys = blindIndexKeys('MOBILE_HMAC_SECRET');
+  const hashes = [computeEmailHash(tenantId, email, keys.current)];
+  if (keys.previous !== undefined) hashes.push(computeEmailHash(tenantId, email, keys.previous));
+  return hashes;
 }
 
 /** Enforces no S3-class data (PAN, Aadhaar, account numbers) in free-text fields (ADR-4D-04). */

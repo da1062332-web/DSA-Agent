@@ -62,7 +62,14 @@ describe('startup configuration guards', () => {
     expect(message({ APP_SIGNING_SECRET: 'too-short' })).toMatch(/APP_SIGNING_SECRET/);
     expect(message({ APP_SIGNING_SECRET: '<64-hex-characters>' })).toMatch(/APP_SIGNING_SECRET/);
     expect(message({ NODE_ENV: 'production' })).toMatch(/APP_SIGNING_SECRET/);
-    expect(message({ NODE_ENV: 'production', APP_SIGNING_SECRET: 'a'.repeat(64) })).toBe('');
+    // Production also needs the data-protection secrets (src/secrets.ts); TEST-SECRET in secrets.spec.ts covers each one.
+    const withSecrets = Object.fromEntries(
+      ['ENCRYPTION_KEY', 'HMAC_SECRET', 'MOBILE_HMAC_SECRET', 'REC_HMAC_SALT', 'DOCUMENT_UPLOAD_SESSION_SECRET'].map((k) => [
+        k,
+        'b'.repeat(64),
+      ]),
+    );
+    expect(message({ NODE_ENV: 'production', APP_SIGNING_SECRET: 'a'.repeat(64), ...withSecrets })).toBe('');
     expect(message({ APP_SIGNING_SECRET: 'a'.repeat(64) })).not.toContain('a'.repeat(64));
   });
 

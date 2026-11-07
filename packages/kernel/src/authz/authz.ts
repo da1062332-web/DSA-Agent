@@ -71,8 +71,11 @@ export function createAuthz(): Authz {
     },
 
     requireStepUp(ctx: RequestContext, maxAgeSeconds = STEP_UP_MAX_AGE_SECONDS) {
-      // The developer switch, or a project with authenticator sign-in off (SUPABASE_MFA_ENABLED=false): no second factor can be asked for.
-      if (process.env.DISABLE_MFA === 'true' || process.env.SUPABASE_MFA_ENABLED === 'false') return;
+      // A project with authenticator sign-in off (SUPABASE_MFA_ENABLED=false): no second factor can be asked for. Financial routes are refused
+      // in that state by requireFinancialStepUp. The developer switch DISABLE_MFA is never honoured in production (config refuses it there);
+      // this check repeats that rule so a stray variable cannot remove the step-up requirement.
+      if (process.env.SUPABASE_MFA_ENABLED === 'false') return;
+      if (process.env.DISABLE_MFA === 'true' && process.env.NODE_ENV !== 'production') return;
       const at = ctx.principal.authTime ? Date.parse(ctx.principal.authTime) : NaN;
       if (Number.isNaN(at) || ctx.now.getTime() - at > maxAgeSeconds * 1000) {
         throw AppError.of('STEP_UP_REQUIRED', 'Verify with your authenticator app to continue.');

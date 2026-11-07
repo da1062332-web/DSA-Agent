@@ -1,5 +1,6 @@
 // apps/api/src/modules/platform/imports/service.ts — owner: Platform Squad (MOD-IMP, TASK-413)
 import crypto from 'node:crypto';
+import { tenantBlindIndex } from '../../../secrets';
 import {
   AppError,
   type CommitImportDto,
@@ -321,8 +322,10 @@ export class ImportService {
       validCount++;
 
       // Insert record retaining import_batch_id
-      const mobileHash = crypto.createHash('sha256').update(mobileE164).digest();
-      const emailHash = email ? crypto.createHash('sha256').update(email).digest() : null;
+      // Keyed, tenant-scoped hashes, as leads and customers use. An unkeyed SHA-256 of a phone number can be reversed by enumeration, and it
+      // never matched the keyed lookups, so an imported row could not be found.
+      const mobileHash = tenantBlindIndex('MOBILE_HMAC_SECRET', ctx.principal.tenantId, mobileE164);
+      const emailHash = email ? tenantBlindIndex('MOBILE_HMAC_SECRET', ctx.principal.tenantId, email) : null;
 
       try {
         if (typeof (tx as any)?.getExecutor === 'function') {

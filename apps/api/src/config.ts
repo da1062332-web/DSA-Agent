@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { mfaMayBeDisabledHere } from './http/mfa-switch';
 import { testAuthProblems } from './test-auth';
+import { PRODUCTION_SECRET_VARIABLES, SECRET_MIN_LENGTH } from './secrets';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 const isLocalHost = (url: string) => {
@@ -32,10 +33,12 @@ const EnvSchema = z
      * Identity binding (D5). true: a token whose subject is bound to no user may still be matched to a user by its e-mail address, as
      * before. false: a token is matched by its subject only. Set false once tools/identity-binding.ts reports every account bound.
      */
+    // Unset means the default for the environment: on in development and test, off in production (see the transform at the end of this
+    // schema). Turning it on in production can bind an account by e-mail address, so the owner checks the bindings first.
     IDENTITY_EMAIL_FALLBACK: z
       .enum(['true', 'false'])
-      .default('true')
-      .transform((v) => v === 'true'),
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true')),
     // Empty means unset: hosted projects sign tokens with asymmetric keys and leave this blank.
     SUPABASE_JWT_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     /**
@@ -44,6 +47,13 @@ const EnvSchema = z
      * `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
      */
     APP_SIGNING_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(32).optional()),
+    // Secrets for data at rest and blind indexes (src/secrets.ts). Each is required in production and checked below; development and test
+    // use the labelled values in secrets.ts. Empty means unset.
+    ENCRYPTION_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    HMAC_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    MOBILE_HMAC_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    REC_HMAC_SALT: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
+    DOCUMENT_UPLOAD_SESSION_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
     TEST_TOKENS: z
       .enum(['true', 'false'])
       .default('false')
@@ -182,7 +192,30 @@ const EnvSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['TEST_AUTH_ENABLED'], message });
       }
     }
-  });
+    // Names only in the messages: a value is never echoed back in an error.
+    if (env.NODE_ENV === 'production') {
+      for (const name of PRODUCTION_SECRET_VARIABLES) {
+        const value = env[name];
+        if (value === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [name],
+            message: `is required in production (at least ${SECRET_MIN_LENGTH} characters)`,
+          });
+        } else if (value.length < SECRET_MIN_LENGTH) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [name],
+            message: `must be at least ${SECRET_MIN_LENGTH} characters`,
+          });
+        }
+      }
+    }
+  })
+  .transform((env) => ({
+    ...env,
+    IDENTITY_EMAIL_FALLBACK: env.IDENTITY_EMAIL_FALLBACK ?? env.NODE_ENV !== 'production',
+  }));
 
 export type ApiConfig = z.infer<typeof EnvSchema>;
 

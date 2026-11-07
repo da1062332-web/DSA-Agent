@@ -185,7 +185,7 @@ export interface LeadRepository {
   insertLead(tx: Tx, lead: LeadRow): Promise<void>;
   findLeadById(tx: Tx, tenantId: string, id: string): Promise<LeadRow | null>;
   findLeadByIdForUpdate(tx: Tx, tenantId: string, id: string): Promise<LeadRow | null>;
-  findLeadsByMobileHash(tx: Tx, tenantId: string, mobileHash: Buffer): Promise<LeadRow[]>;
+  findLeadsByMobileHash(tx: Tx, tenantId: string, mobileHashes: Buffer[]): Promise<LeadRow[]>;
   listLeads(tx: Tx, params: ListLeadsParams): Promise<{ leads: LeadRow[]; nextCursor: string | null }>;
   updateLead(
     tx: Tx,
@@ -277,10 +277,12 @@ export class SqlLeadRepository implements LeadRepository {
     return result.rows[0] ?? null;
   }
 
-  async findLeadsByMobileHash(tx: Tx, tenantId: string, mobileHash: Buffer): Promise<LeadRow[]> {
+  async findLeadsByMobileHash(tx: Tx, tenantId: string, mobileHashes: Buffer[]): Promise<LeadRow[]> {
+    // The current hash, and the previous one when MOBILE_HMAC_SECRET_PREVIOUS is set (see mobileHashCandidates).
+    const [current, previous = current] = mobileHashes;
     const result = await sql<LeadRow>`
       SELECT * FROM lead
-      WHERE tenant_id = ${tenantId} AND mobile_hash = ${mobileHash}
+      WHERE tenant_id = ${tenantId} AND (mobile_hash = ${current} OR mobile_hash = ${previous})
       ORDER BY created_at DESC
       LIMIT 10
     `.execute(tx);
@@ -586,10 +588,10 @@ export class InMemoryLeadRepository implements LeadRepository {
     return this.findLeadById(_tx, tenantId, id);
   }
 
-  async findLeadsByMobileHash(_tx: Tx, tenantId: string, mobileHash: Buffer): Promise<LeadRow[]> {
+  async findLeadsByMobileHash(_tx: Tx, tenantId: string, mobileHashes: Buffer[]): Promise<LeadRow[]> {
     const res: LeadRow[] = [];
     for (const l of this.leads.values()) {
-      if (l.tenant_id === tenantId && Buffer.compare(l.mobile_hash, mobileHash) === 0) {
+      if (l.tenant_id === tenantId && mobileHashes.some((h) => Buffer.compare(l.mobile_hash, h) === 0)) {
         res.push({ ...l });
       }
     }

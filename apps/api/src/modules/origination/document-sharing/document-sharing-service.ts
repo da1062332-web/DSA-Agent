@@ -1,5 +1,6 @@
 // apps/api/src/modules/origination/document-sharing/document-sharing-service.ts
 import crypto from 'node:crypto';
+import { secretFromEnv } from '../../../secrets';
 import {
   AppError,
   type CreateShareInput,
@@ -27,7 +28,8 @@ import {
 } from './storage-port';
 
 const nextUlid = monotonicFactory();
-const SESSION_SECRET = 'dsa_upload_session_signing_secret_2026';
+// Signs upload-session tokens. Required in production (DOCUMENT_UPLOAD_SESSION_SECRET); there is no literal fallback (src/secrets.ts).
+const SESSION_SECRET = secretFromEnv('DOCUMENT_UPLOAD_SESSION_SECRET');
 
 export class DocumentSharingService {
   private storage: DocumentStoragePort;

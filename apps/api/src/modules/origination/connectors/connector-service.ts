@@ -1,6 +1,7 @@
 // apps/api/src/modules/origination/connectors/connector-service.ts
 // Module 27: Connector Management (MOD-CON) — Service Implementation
 import crypto from 'node:crypto';
+import { blindIndexKeys, secretFromEnv } from '../../../secrets';
 import {
   AppError,
   maskAccountNumber,
@@ -134,19 +135,28 @@ function requireAnyGrant(ctx: RequestContext, codes: readonly string[]): void {
   ]);
 }
 
-const HMAC_SECRET = process.env.HMAC_SECRET || 'dev_dsa_hmac_secret_key_32_bytes_long!!';
-const ENCRYPTION_KEY = crypto
-  .createHash('sha256')
-  .update(process.env.ENCRYPTION_KEY || 'dev_dsa_encryption_key_32_bytes!')
-  .digest();
+// The keys come from configuration (src/secrets.ts): ENCRYPTION_KEY for PAN and account encryption, HMAC_SECRET for the blind indexes that find
+// rows. Production requires both; there is no literal fallback. Rows are written with the current key.
+function computeBlindIndex(
+  tenantId: string,
+  value: string,
+  key: string = blindIndexKeys('HMAC_SECRET').current,
+): Buffer {
+  return crypto.createHmac('sha256', `${key}:${tenantId}`).update(value).digest();
+}
 
-function computeBlindIndex(tenantId: string, value: string): Buffer {
-  return crypto.createHmac('sha256', `${HMAC_SECRET}:${tenantId}`).update(value).digest();
+/** The blind indexes a stored value may match: the current key, and the previous key when HMAC_SECRET_PREVIOUS is set. */
+function blindIndexCandidates(tenantId: string, value: string): Buffer[] {
+  const keys = blindIndexKeys('HMAC_SECRET');
+  const hashes = [computeBlindIndex(tenantId, value, keys.current)];
+  if (keys.previous !== undefined) hashes.push(computeBlindIndex(tenantId, value, keys.previous));
+  return hashes;
 }
 
 function encryptData(plaintext: string): Buffer {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  const key = crypto.createHash('sha256').update(secretFromEnv('ENCRYPTION_KEY')).digest();
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, encrypted]);
@@ -265,9 +275,11 @@ export class ConnectorService {
         },
         async () => {
           // Check uniqueness of pan_hash in this tenant
+          // The current hash, and the previous one when HMAC_SECRET_PREVIOUS is set (blindIndexCandidates).
+          const [panNow, panBefore = panNow] = blindIndexCandidates(ctx.principal.tenantId, cleanPan);
           const existingPan = await sql<{ id: string }>`
             SELECT id FROM app.connector
-            WHERE tenant_id = ${ctx.principal.tenantId} AND pan_hash = ${panHash}
+            WHERE tenant_id = ${ctx.principal.tenantId} AND (pan_hash = ${panNow} OR pan_hash = ${panBefore})
           `.execute(tx);
 
           if (existingPan.rows.length > 0) {
@@ -279,9 +291,13 @@ export class ConnectorService {
           }
 
           // The mobile number is checked for duplicates in the same way as the PAN (AUD-P2-01): a second connector with it is refused.
+          const [mobileNow, mobileBefore = mobileNow] = blindIndexCandidates(
+            ctx.principal.tenantId,
+            cleanMobile,
+          );
           const existingMobile = await sql<{ id: string }>`
             SELECT id FROM app.connector
-            WHERE tenant_id = ${ctx.principal.tenantId} AND mobile_hash = ${mobileHash}
+            WHERE tenant_id = ${ctx.principal.tenantId} AND (mobile_hash = ${mobileNow} OR mobile_hash = ${mobileBefore})
           `.execute(tx);
           if (existingMobile.rows.length > 0) {
             throw AppError.of(

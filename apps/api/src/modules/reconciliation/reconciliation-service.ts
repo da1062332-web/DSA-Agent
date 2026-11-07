@@ -11,7 +11,7 @@ import {
 } from '@dsa/contracts';
 import { createHash } from 'node:crypto';
 import { ulid } from 'ulid';
-import { hashLoanAccount, maskCustomerName } from './crypto';
+import { hashLoanAccount, loanAccountHashCandidates, maskCustomerName } from './crypto';
 import { parseCsvFeed, parseMt940Feed } from './statement-parser';
 
 import type { ReconciliationRepository } from './repository';
@@ -296,7 +296,10 @@ export class ReconciliationService {
 
       // Match against candidate calculations
       const candidate = calculations.find((c) => {
-        if (c.loan_account_no && hashLoanAccount(c.loan_account_no) === line.loan_account_hash) {
+        if (
+          c.loan_account_no &&
+          loanAccountHashCandidates(c.loan_account_no).includes(line.loan_account_hash)
+        ) {
           return true;
         }
         return Math.abs(Number(c.gross_amount) - Number(line.commission_amount)) < 0.01;

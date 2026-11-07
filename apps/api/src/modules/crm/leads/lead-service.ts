@@ -19,6 +19,7 @@ import {
   assertNoS3Data,
   computeEmailHash,
   computeMobileHash,
+  mobileHashCandidates,
   maskEmail,
   maskMobile,
   normalizeEmail,
@@ -273,7 +274,11 @@ export class LeadService {
     assertNoS3Data(input.campaign, 'campaign');
 
     // Duplicate detection
-    const existingMatches = await this.deps.repository.findLeadsByMobileHash(tx, tenantId, mobileHash);
+    const existingMatches = await this.deps.repository.findLeadsByMobileHash(
+      tx,
+      tenantId,
+      mobileHashCandidates(tenantId, mobileE164),
+    );
     let duplicateFlag: MaskedLeadResource['duplicateFlag'] = 'NONE';
     const duplicateCandidateIds: string[] = [];
 

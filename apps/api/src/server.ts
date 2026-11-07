@@ -53,7 +53,16 @@ try {
 
 // Secrets the process must never print. A driver message can carry the connection string, and a stack trace repeats the message.
 registerDatabaseUrl(config.DATABASE_URL);
-registerSecrets([config.SUPABASE_JWT_SECRET, config.APP_SIGNING_SECRET, config.BYPASS_JWT_SECRET]);
+registerSecrets([
+  config.SUPABASE_JWT_SECRET,
+  config.APP_SIGNING_SECRET,
+  config.BYPASS_JWT_SECRET,
+  config.ENCRYPTION_KEY,
+  config.HMAC_SECRET,
+  config.MOBILE_HMAC_SECRET,
+  config.REC_HMAC_SALT,
+  config.DOCUMENT_UPLOAD_SESSION_SECRET,
+]);
 
 // Development prints one readable line per message; other environments keep JSON for the log collector.
 const logger = pino({

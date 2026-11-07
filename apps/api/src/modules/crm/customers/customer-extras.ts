@@ -12,7 +12,14 @@ import { z } from 'zod';
 import { idempotencyKey, requireCtx } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { requireCustomerAccess } from './authz-helper';
-import { computeEmailHash, computeMobileHash, normalizeEmail, normalizeMobile } from './normalizer';
+import {
+  computeEmailHash,
+  computeMobileHash,
+  emailHashCandidates,
+  mobileHashCandidates,
+  normalizeEmail,
+  normalizeMobile,
+} from './normalizer';
 import type { CustomerRepository, CustomerRow } from './repository';
 
 const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
@@ -86,8 +93,13 @@ export function registerCustomerExtraRoutes(router: Router, deps: ApiDeps, repo:
           const value = input.kind === 'MOBILE' ? normalizeMobile(input.value) : normalizeEmail(input.value)!;
           const hash =
             input.kind === 'MOBILE' ? computeMobileHash(tenantId, value) : computeEmailHash(tenantId, value);
+          // The duplicate check accepts the current hash and the previous one when MOBILE_HMAC_SECRET_PREVIOUS is set.
+          const [hashNow, hashBefore = hashNow] =
+            input.kind === 'MOBILE'
+              ? mobileHashCandidates(tenantId, value)
+              : emailHashCandidates(tenantId, value);
           const dup = await sql`
-            select 1 from customer_contact_point where customer_id = ${customer.id} and kind = ${input.kind} and value_hash = ${hash}`.execute(
+            select 1 from customer_contact_point where customer_id = ${customer.id} and kind = ${input.kind} and (value_hash = ${hashNow} or value_hash = ${hashBefore})`.execute(
             tx,
           );
           if (dup.rows.length) {

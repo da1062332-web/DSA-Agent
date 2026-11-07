@@ -1,14 +1,15 @@
 // apps/api/src/modules/finance/crypto.ts — Cryptographic utilities for MOD-PAY
 import crypto from 'node:crypto';
+import { financeEncryptionKeySource } from '../../secrets';
 
 const ALGORITHM = 'aes-256-gcm';
-const DEFAULT_KEY_SOURCE =
-  process.env.FINANCE_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || 'dsa-crm-default-finance-key-32b!';
 
+// The key comes from configuration (FINANCE_ENCRYPTION_KEY, else ENCRYPTION_KEY). Production refuses to start without one; there is no literal
+// fallback. Encryption is write-only in the application, so a change of key affects new rows only.
 function resolveKey(keySource?: string): Buffer {
   return crypto
     .createHash('sha256')
-    .update(keySource || DEFAULT_KEY_SOURCE)
+    .update(keySource || financeEncryptionKeySource())
     .digest();
 }
 
