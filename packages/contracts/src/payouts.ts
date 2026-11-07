@@ -85,7 +85,8 @@ export type CancelPayoutRequestInput = z.infer<typeof CancelPayoutRequestInputSc
 
 export const RecordPaymentInputSchema = z.object({
   paymentRef: z.string().min(4).max(64), // e.g. UTR number
-  paidOn: z.string().default(() => new Date().toISOString()),
+  // No schema default: a time computed at generation time made the OpenAPI document change on every run (CI-03). The service uses now.
+  paidOn: z.string().optional(),
 });
 export type RecordPaymentInput = z.infer<typeof RecordPaymentInputSchema>;
 

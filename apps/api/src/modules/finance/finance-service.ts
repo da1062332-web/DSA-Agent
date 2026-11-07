@@ -1144,7 +1144,7 @@ export class FinanceService {
     // Encrypt payment reference using AES-256-GCM and retain masked value for display
     const ciphertext = encryptPaymentRef(input.paymentRef);
     const masked = maskPaymentRef(input.paymentRef) || `******${input.paymentRef.slice(-4)}`;
-    const paidOn = new Date(input.paidOn);
+    const paidOn = input.paidOn ? new Date(input.paidOn) : ctx.now;
 
     // MOD-LED Settlement Journal Integration (ENT-080 / ENT-081)
     if (this.deps.settlementJournalPort) {

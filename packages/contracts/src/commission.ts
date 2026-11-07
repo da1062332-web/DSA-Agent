@@ -104,7 +104,8 @@ export const CalculateCommissionInputSchema = z.object({
   applicationId: z.string().optional().nullable(),
   lenderCaseId: z.string().optional().nullable(),
   connectorId: z.string().optional().nullable(),
-  eventDate: z.string().default(() => new Date().toISOString().slice(0, 10)),
+  // No schema default: a date computed at generation time made the OpenAPI document change on every run (CI-03). The service uses today.
+  eventDate: z.string().optional(),
   basisAmount: z.string().regex(/^\d+(\.\d{1,2})?$/),
   currency: z.string().length(3).default('INR'),
   customRate: z.number().min(0).max(1).optional(),

@@ -4,6 +4,7 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { CalculateCommissionInputSchema, DisbursePayoutGatewayInputSchema } from '@dsa/contracts';
 import { ConsentOtpRequest, PortalDispute, PortalPayoutRequest, ReferralCreate } from './connector-portal';
 import { registerOperation } from '../../http/openapi-op';
+import { z } from 'zod';
 
 const tag = 'MOD-COM Commission and Payouts';
 
@@ -135,6 +136,19 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'Send a consent code to the customer, or verify it (5 attempts, 10 minutes)',
     tag: cpt,
     body: ConsentOtpRequest,
+  });
+  // CI-04: registered in source so that generation keeps it (it was hand-added to the generated file and dropped on each run).
+  registerOperation(registry, {
+    method: 'get',
+    path: '/portal/v1/eligibility',
+    operationId: 'API-CPT-000',
+    summary:
+      'The state of this portal login: ELIGIBLE, CONNECTOR_PENDING, ACCESS_SUSPENDED or NOT_LINKED, with a fixed message. It names no connector.',
+    tag: cpt,
+    response: z.object({
+      state: z.enum(['ELIGIBLE', 'CONNECTOR_PENDING', 'ACCESS_SUSPENDED', 'NOT_LINKED']),
+      message: z.string().nullable(),
+    }),
   });
   registerOperation(registry, {
     method: 'get',

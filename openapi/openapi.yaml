@@ -2475,7 +2475,6 @@ components:
             - "null"
         eventDate:
           type: string
-          default: 2026-11-02
         basisAmount:
           type: string
           pattern: ^\d+(\.\d{1,2})?$
@@ -11454,6 +11453,91 @@ paths:
                   - createdBy
                   - updatedAt
                   - updatedBy
+  /v1/commission-plans/{id}/retirement:
+    post:
+      operationId: API-COM-008R
+      summary: Retire an ACTIVE commission plan. Needs commission.plan.approve and a fresh second factor; the reason is audited. Approving a replacement for the same lender retires the current plan automatically.
+      tags:
+        - MOD-COM Commission
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 255
+              required:
+                - reason
+      responses:
+        "200":
+          description: Plan retired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^cpl_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  qualifyingEvent:
+                    type: string
+                    enum: *a20
+                  basis:
+                    type: string
+                    enum: *a21
+                  roundingMode:
+                    type: string
+                  clawbackWindowDays:
+                    type: integer
+                  ruleSetId:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum: *a22
+                  lockVersion:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - qualifyingEvent
+                  - basis
+                  - roundingMode
+                  - clawbackWindowDays
+                  - ruleSetId
+                  - status
+                  - lockVersion
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
   /v1/commission-calculations/{id}:
     get:
       operationId: API-COM-001
@@ -12516,7 +12600,6 @@ paths:
                   maxLength: 64
                 paidOn:
                   type: string
-                  default: 2026-11-02T10:41:43.630Z
               required:
                 - paymentRef
       responses:
@@ -49606,7 +49689,6 @@ paths:
                     - "null"
                 eventDate:
                   type: string
-                  default: 2026-11-02
                 basisAmount:
                   type: string
                   pattern: ^\d+(\.\d{1,2})?$
@@ -52703,7 +52785,7 @@ paths:
         - MOD-CPT Connector Portal
       responses:
         "200":
-          description: The state of the login
+          description: Success
           content:
             application/json:
               schema:
@@ -52717,8 +52799,222 @@ paths:
                       - ACCESS_SUSPENDED
                       - NOT_LINKED
                   message:
-                    type: string
-                    nullable: true
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - state
+                  - message
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /portal/v1/statements:
     get:
       operationId: API-CPT-004
@@ -58374,7 +58670,6 @@ paths:
               properties:
                 targetStatus:
                   type: string
-                  description: ACTIVE is not accepted here. Activate a connector through POST /v1/connectors/{id}/activation, which requires a VERIFIED record of that connector.
                   enum:
                     - SUSPENDED
                     - TERMINATED
