@@ -164,6 +164,19 @@ export function createPublicDocumentSharingRouter(
   const router = Router();
   const service = serviceOverride ?? new DocumentSharingService(deps);
 
+  // Containment (2026-11-04, docs/PRODUCTION_SECURITY_CONTAINMENT.md). The public upload route accepts no new requests: every method under
+  // /upload is refused with 503 DEPENDENCY_UNAVAILABLE before any handler or service runs. No sharing record or uploaded document is read,
+  // changed or removed. The handlers below are kept unchanged so the route can be reopened by a reviewed change once the upload-session
+  // secret, persistent document storage and malware scanning are in place.
+  router.use('/upload', (_req: Request, _res: Response, next) => {
+    next(
+      AppError.of(
+        'DEPENDENCY_UNAVAILABLE',
+        'Public upload links are temporarily unavailable. Try again later.',
+      ),
+    );
+  });
+
   /**
    * API-DSH-003: GET /public/v1/upload/:token
    */

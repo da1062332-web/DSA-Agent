@@ -8,6 +8,7 @@ import type { PermissionCode } from '@dsa/contracts';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startIsolationEnv, type IsolationEnv } from '../harness';
+import { ReadyTestScanner } from '../../../apps/api/test/support/document-doubles';
 
 let env: IsolationEnv;
 const APP = 'app_iso_doc_a1';
@@ -60,6 +61,10 @@ const one = async (text: string, params: unknown[]) => (await env.admin.query(te
 beforeAll(async () => {
   env = await startIsolationEnv();
   env.deps.documentStore = new MemoryDocumentStore();
+  // Uploads wait in their own memory store and are scanned by a ready test double. The production default refuses every upload
+  // (fail closed, 2026-11-04), so the upload flow here needs the double. See apps/api/test/support/document-doubles.ts.
+  env.deps.documentQuarantineStore = new MemoryDocumentStore();
+  env.deps.documentScanner = new ReadyTestScanner();
   const a = env.A;
   const q = (text: string, values: unknown[]) => env.admin.query(text, values);
   await q(

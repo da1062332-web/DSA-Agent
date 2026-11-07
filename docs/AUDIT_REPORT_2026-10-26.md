@@ -200,7 +200,7 @@ curl -s -X POST https://<api>/public/v1/auth/test-login \
 **Where.** `apps/api/src/modules/finance/payment-gateway.ts:36-77`; `finance-service.ts:1113-1192`; route `finance/router.ts:703-717` (`POST /v1/payout-batches/:id/dispatch-gateway`).
 
 **Actual.**
-- `disburse()` makes no external call. It fabricates a UTR (`CMS<date><mode><random>`), a transfer id and a "bank acknowledgement signature" using the literal key `BANK_GW_SECRET_INTEGRATION_KEY` (`:62`), and returns `SUCCESS`. The caller then records `PAYMENT_RECORDED` with that fake UTR (`finance-service.ts:1141`). There is no environment guard and no "simulated" marker in the response.
+- `disburse()` makes no external call. It fabricates a UTR (`CMS<date><mode><random>`), a transfer id and a "bank acknowledgement signature" using the literal key `[REDACTED signing key]` (`:62`), and returns `SUCCESS`. The caller then records `PAYMENT_RECORDED` with that fake UTR (`finance-service.ts:1141`). There is no environment guard and no "simulated" marker in the response.
 - No row lock on the batch or payout (`findPayoutRequestById` has no `FOR UPDATE`), no idempotency key, and no state check on the batch. Two concurrent dispatches can both read `APPROVED`.
 - The gateway call sits inside the database transaction (a real gateway call would be a dual write).
 - Amounts are summed as JavaScript numbers (`Number(res.amount)`, `Math.round(total*100)/100`), against the rule that money is a string.
@@ -217,7 +217,7 @@ curl -s -X POST https://<api>/public/v1/auth/test-login \
 | `finance/crypto.ts:5-6` | AES-256-GCM of payment references (UTR, account numbers) | `dsa-crm-default-finance-key-32b!` |
 | `origination/connectors/connector-service.ts:34-38` | blind indexes and encryption of connector PAN, mobile, email | `dev_dsa_hmac_secret_key_32_bytes_long!!`, `dev_dsa_encryption_key_32_bytes!` |
 | `reconciliation/crypto.ts:4` | loan-account hashing | `dsa_reconciliation_salt_2026` |
-| `finance/payment-gateway.ts:62` | gateway signature | `BANK_GW_SECRET_INTEGRATION_KEY` |
+| `finance/payment-gateway.ts:62` | gateway signature | `[REDACTED signing key]` |
 
 `config.ts` validates none of these variables, so production starts happily with the defaults. A mobile-number HMAC with a known key is trivially reversible (10-digit space). **Fix:** add all of them to `EnvSchema`, required and at least 32 characters in production, and remove the literals.
 

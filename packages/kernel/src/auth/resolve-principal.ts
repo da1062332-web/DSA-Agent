@@ -61,6 +61,33 @@ export function dedupeGrants(grants: PermissionGrant[]): PermissionGrant[] {
     return true;
   });
 }
+/** One role-permission row of a user, as read from the database. */
+export interface RawGrant {
+  permission_code: string;
+  scope_type: ScopeType;
+  scope_branch_ids: string[];
+}
+
+/**
+ * The grants a principal carries. A connector portal login carries none: its portal access comes from its identity and its linked
+ * connector (/portal/v1), never from a role, so a role row still open on it (written before migration 0097 or by a tool) reaches
+ * nothing. A staff account keeps the grants of its roles, limited to known permission codes and without exact repeats.
+ */
+export function effectiveGrants(userType: string, rows: readonly RawGrant[]): PermissionGrant[] {
+  if (userType === 'CONNECTOR') return [];
+  return dedupeGrants(
+    rows
+      .filter((g) => KNOWN_PERMISSIONS.has(g.permission_code))
+      .map(
+        (g): PermissionGrant => ({
+          code: g.permission_code as PermissionCode,
+          scope: g.scope_type,
+          branchIds: g.scope_type === 'BRANCH' ? g.scope_branch_ids : [],
+        }),
+      ),
+  );
+}
+
 const UNAUTHENTICATED_MESSAGE = 'Missing or invalid access token.';
 /** Shown to an invitee whose account is linked to this sign-in but who has not yet signed in with the password they set. */
 export const PORTAL_INVITATION_PENDING_MESSAGE =
@@ -141,14 +168,16 @@ export function createPrincipalResolver(
           throw AppError.of('UNAUTHENTICATED', UNAUTHENTICATED_MESSAGE);
         }
 
-        const grants = await sql<{
-          permission_code: string;
-          scope_type: ScopeType;
-          scope_branch_ids: string[];
-        }>`
+        // A connector portal login holds no internal grants, so its role rows are not read at all (see effectiveGrants).
+        const grantRows: RawGrant[] =
+          row.user_type === 'CONNECTOR'
+            ? []
+            : (
+                await sql<RawGrant>`
           select rp.permission_code, a.scope_type, a.scope_branch_ids
             from user_role_assignment a join role_permission rp on rp.role_id = a.role_id
-           where a.user_id = ${row.id} and a.effective_range @> ${now}::timestamptz`.execute(tx);
+           where a.user_id = ${row.id} and a.effective_range @> ${now}::timestamptz`.execute(tx)
+              ).rows;
 
         const managed = await sql<{ user_id: string }>`
           select distinct m.user_id
@@ -168,15 +197,7 @@ export function createPrincipalResolver(
           primaryBranchId: row.primary_branch_id,
           managedTeamMemberIds: managed.rows.map((r) => r.user_id),
           queueIds: queues.rows.map((r) => r.queue_id),
-          grants: dedupeGrants(
-            grants.rows
-              .filter((g) => KNOWN_PERMISSIONS.has(g.permission_code))
-              .map((g): PermissionGrant => ({
-                code: g.permission_code as PermissionCode,
-                scope: g.scope_type,
-                branchIds: g.scope_type === 'BRANCH' ? g.scope_branch_ids : [],
-              })),
-          ),
+          grants: effectiveGrants(row.user_type, grantRows),
           authTime: token.mfaVerifiedAt?.toISOString().replace(/\.\d{3}Z$/, 'Z') ?? null,
           userType: row.user_type as 'STAFF' | 'CONNECTOR',
         } satisfies Principal;

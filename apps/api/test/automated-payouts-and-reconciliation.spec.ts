@@ -5,20 +5,19 @@ import { paymentGatewayService } from '../src/modules/finance/payment-gateway';
 import { parseCsvFeed, parseMt940Feed } from '../src/modules/reconciliation/statement-parser';
 
 describe('MOD-PAY: Automated Direct Net-Banking / Payment Gateway Integration', () => {
-  it('successfully disburses payment via IMPS and generates valid UTR and digital signature', async () => {
-    const res = await paymentGatewayService.disburse({
-      payoutId: 'prq_01M51TESTPAYOUT01',
-      amount: 15000,
-      currency: 'INR',
-      mode: 'IMPS',
-    });
+  // AUD-P0-02: with no payment-rail integration, a disbursement is refused with a clear reason. It must not return a reference, a signature or
+  // a success status, because any of those would be recorded as a payment that never moved money.
+  it('refuses a disbursement with a clear reason and generates no bank reference or acknowledgement', async () => {
+    const outcome = await paymentGatewayService
+      .disburse({ payoutId: 'prq_01M51TESTPAYOUT01', amount: 15000, currency: 'INR', mode: 'IMPS' })
+      .then((res) => ({ resolved: res }))
+      .catch((err: unknown) => ({ rejected: err }));
 
-    expect(res.status).toBe('SUCCESS');
-    expect(res.gatewayMode).toBe('IMPS');
-    expect(res.transferId).toMatch(/^gw_tx_/);
-    expect(res.utrNumber).toMatch(/^CMS\d{8}IMPS[0-9A-F]{8}$/);
-    expect(res.bankAckSignature).toBeDefined();
-    expect(res.bankAckSignature.length).toBe(64);
+    expect(outcome).toHaveProperty('rejected');
+    const err = (outcome as { rejected: { code?: string; details?: Array<{ issue?: string }> } }).rejected;
+    expect(err.code).toBe('DEPENDENCY_UNAVAILABLE');
+    expect(err.details?.[0]?.issue).toBe('GATEWAY_NOT_CONFIGURED');
+    expect(JSON.stringify(outcome)).not.toMatch(/CMS\d{8}IMPS/);
   });
 
   it('enforces RBI minimum amount threshold for RTGS mode', async () => {
@@ -32,18 +31,17 @@ describe('MOD-PAY: Automated Direct Net-Banking / Payment Gateway Integration', 
     ).rejects.toThrow(/RTGS requires a minimum transfer amount of ₹2,00,000/);
   });
 
-  it('successfully disburses batch through payment gateway with consolidated totals', async () => {
+  // AUD-P0-02: a batch is refused at its first payout, so no result, total or reference is produced.
+  it('refuses a batch at its first payout, so no result and no total is produced', async () => {
     const payouts = [
       { id: 'prq_01', amount: '12500', currency: 'INR' },
       { id: 'prq_02', amount: '25000', currency: 'INR' },
     ];
-    const res = await paymentGatewayService.disburseBatch('batch_test_01', payouts, 'NEFT');
-
-    expect(res.batchId).toBe('batch_test_01');
-    expect(res.totalDisbursed).toBe(37500);
-    expect(res.results).toHaveLength(2);
-    expect(res.results[0]?.utrNumber).toMatch(/^CMS\d{8}NEFT/);
-    expect(res.results[1]?.utrNumber).toMatch(/^CMS\d{8}NEFT/);
+    await expect(paymentGatewayService.disburseBatch('batch_test_01', payouts, 'NEFT')).rejects.toMatchObject(
+      {
+        code: 'DEPENDENCY_UNAVAILABLE',
+      },
+    );
   });
 });
 

@@ -98,6 +98,27 @@ function computeAmountWithRate(amountPaise: bigint, rate: number): bigint {
   return (amountPaise * ratePPM + 500_000n) / 1_000_000n;
 }
 
+/**
+ * Only the approval route makes a commission plan ACTIVE (containment report 5.7, P0). A create or an edit that names a status is refused,
+ * whoever asks, so no edit permission can activate or retire a plan without the approval that the route checks.
+ */
+function commissionStatusRefused(): AppError {
+  return AppError.of(
+    'VALIDATION_ERROR',
+    'A commission plan status cannot be set here. A plan becomes ACTIVE only through its approval route.',
+    [{ field: 'status', issue: 'USE_APPROVAL_ROUTE' }],
+  );
+}
+
+/** A plan's terms can change only while it is a DRAFT. A live plan is changed by a new plan that is approved again. */
+function commissionPlanNotDraft(id: string, status: string): AppError {
+  return AppError.of(
+    'INVALID_STATE',
+    `Commission plan ${id} is ${status}. Only a DRAFT plan can be edited.`,
+    [{ issue: 'PLAN_NOT_DRAFT' }],
+  );
+}
+
 export class FinanceService {
   private readonly storage: FinancialStoragePort;
 
@@ -166,6 +187,9 @@ export class FinanceService {
     this.assertPermission(ctx, 'commission.plan.edit');
 
     const tenantId = ctx.principal.tenantId;
+    // Refused for any status but DRAFT. The schema defaults to DRAFT, so an absent status arrives as DRAFT.
+    if (input.status !== undefined && input.status !== 'DRAFT') throw commissionStatusRefused();
+
     const id = this.nextId('cpl');
     const now = new Date();
 
@@ -178,7 +202,7 @@ export class FinanceService {
       rounding_mode: input.roundingMode ?? 'ROUND_HALF_UP',
       clawback_window_days: input.clawbackWindowDays ?? 90,
       rule_set_id: input.ruleSetId ?? null,
-      status: input.status ?? 'DRAFT',
+      status: 'DRAFT',
       lock_version: 0,
       created_at: now,
       created_by: ctx.principal.id,
@@ -227,19 +251,35 @@ export class FinanceService {
     input: UpdateCommissionPlanInput,
   ): Promise<CommissionPlanResponse> {
     this.assertPermission(ctx, 'commission.plan.edit');
+    if (input.status !== undefined) throw commissionStatusRefused();
 
     const tenantId = ctx.principal.tenantId;
+    const plan = await this.deps.repository.findCommissionPlanById(tx, tenantId, id);
+    if (!plan) {
+      throw AppError.of('NOT_FOUND', `Commission plan ${id} not found.`);
+    }
+    if (plan.status !== 'DRAFT') throw commissionPlanNotDraft(id, plan.status);
+
     const updated = await this.deps.repository.updateCommissionPlan(tx, tenantId, id, ifMatchVersion, {
       qualifying_event: input.qualifyingEvent,
       basis: input.basis,
       rounding_mode: input.roundingMode,
       clawback_window_days: input.clawbackWindowDays,
-      status: input.status,
       updated_by: ctx.principal.id,
     });
 
     if (!updated) {
       throw AppError.of('VERSION_CONFLICT', `Commission plan version conflict for ${id}.`);
+    }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'commission_plan.updated',
+        entityType: 'commission_plan',
+        entityId: id,
+        before: { status: plan.status, qualifyingEvent: plan.qualifying_event, basis: plan.basis },
+        after: { status: updated.status, qualifyingEvent: updated.qualifying_event, basis: updated.basis },
+      });
     }
 
     return this.toPlanResponse(updated);
@@ -264,6 +304,12 @@ export class FinanceService {
     if (plan.created_by === ctx.principal.id) {
       throw AppError.of('SOD_VIOLATION', 'SOD-02: Plan creator cannot approve the commission plan.');
     }
+    // Only a plan awaiting approval can be approved. An ACTIVE or RETIRED plan is not approved again.
+    if (plan.status !== 'DRAFT' && plan.status !== 'PENDING_APPROVAL') {
+      throw AppError.of('INVALID_STATE', `Commission plan ${id} is ${plan.status} and cannot be approved.`, [
+        { issue: 'PLAN_NOT_AWAITING_APPROVAL' },
+      ]);
+    }
 
     const approved = await this.deps.repository.approveCommissionPlan(
       tx,
@@ -274,6 +320,17 @@ export class FinanceService {
     );
     if (!approved) {
       throw AppError.of('VERSION_CONFLICT', `Commission plan version conflict for ${id}.`);
+    }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'commission_plan.approved',
+        entityType: 'commission_plan',
+        entityId: id,
+        before: { status: plan.status },
+        after: { status: approved.status },
+        permissionUsed: 'commission.plan.approve',
+      });
     }
 
     return this.toPlanResponse(approved);
@@ -1134,6 +1191,7 @@ export class FinanceService {
       );
     }
 
+    // Refused until a payment-rail integration returns a bank reference. The call throws, so nothing below it runs and no payment is recorded.
     const gatewayResult = await paymentGatewayService.disburse({
       payoutId: id,
       amount: payout.total,

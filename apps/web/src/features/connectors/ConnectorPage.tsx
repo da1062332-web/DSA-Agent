@@ -40,6 +40,7 @@ import {
 } from './ConnectorPortalUsers';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useList } from '../admin/api';
+import { passedVerificationsFor, type VerificationRow } from './activation-verification';
 import { ConnectorActivityTab } from './ConnectorActivityTab';
 import { ConnectorDashboard } from './ConnectorDashboard';
 import { ConnectorEarningsTab } from './ConnectorEarningsTab';
@@ -149,7 +150,9 @@ export function ConnectorPage() {
   });
 
   const [activationVerificationId, setActivationVerificationId] = useState('');
-  const [targetStatus, setTargetStatus] = useState<'ACTIVE' | 'SUSPENDED' | 'TERMINATED'>('SUSPENDED');
+  // A suspended connector is reinstated through the activation route, which needs a reason of at least five characters.
+  const [activationRemarks, setActivationRemarks] = useState('');
+  const [targetStatus, setTargetStatus] = useState<'SUSPENDED' | 'TERMINATED'>('SUSPENDED');
   const [statusReason, setStatusReason] = useState('');
 
   const [bankAccountInput, setBankAccountInput] = useState<Partial<CreateConnectorBankAccountInput>>({
@@ -209,7 +212,9 @@ export function ConnectorPage() {
   const canSeeBankAccounts =
     canPerformAction('connector.bank_account_manage', (code) => hasPermission(me.data, code)) ||
     hasPermission(me.data, 'connector.bank_change_approve');
-  const canSeeAgreements = canPerformAction('connector.agreement_manage', (code) => hasPermission(me.data, code));
+  const canSeeAgreements = canPerformAction('connector.agreement_manage', (code) =>
+    hasPermission(me.data, code),
+  );
   // The workspace tabs this caller may read. A tab it may not read is left out; the API refuses those reads as well.
   const canReadReferrals = hasPermission(me.data, 'lead.read');
   const canReadEarnings =
@@ -247,6 +252,35 @@ export function ConnectorPage() {
     },
     enabled: !!selectedConnector && canSeeAgreements,
   });
+
+  // The passed verifications for the selected connector, for the activation dialog. Read only while the dialog is open, and only by a user
+  // who may read verifications. Activation still checks the record on the server.
+  const canReadVerifications = hasPermission(me.data, 'verification.read');
+  const passedVerificationsQuery = useQuery({
+    queryKey: ['verifications', 'VERIFIED', selectedConnector?.id],
+    queryFn: async () => {
+      if (!selectedConnector) return [];
+      const res = await apiFetch<{ data: VerificationRow[] }>(
+        `/v1/verifications?result=VERIFIED&subjectId=${encodeURIComponent(selectedConnector.id)}&limit=200`,
+      );
+      return res.data;
+    },
+    enabled: activateModalOpen && !!selectedConnector && canReadVerifications,
+  });
+  const passedVerifications = passedVerificationsFor(
+    selectedConnector?.id ?? '',
+    passedVerificationsQuery.data ?? [],
+  );
+  const activationValue = passedVerifications.some((v) => v.id === activationVerificationId)
+    ? activationVerificationId
+    : '';
+  const activationHelp = !canReadVerifications
+    ? 'You need permission to read verifications to choose one.'
+    : passedVerificationsQuery.isLoading
+      ? 'Loading verifications...'
+      : passedVerifications.length === 0
+        ? 'No passed verification for this connector.'
+        : 'Choose the verification that supports this activation.';
 
   const attributionRequestsQuery = useQuery({
     queryKey: ['attribution-change-requests'],
@@ -310,10 +344,12 @@ export function ConnectorPage() {
       id,
       lockVersion,
       verificationId,
+      remarks,
     }: {
       id: string;
       lockVersion: number;
       verificationId: string;
+      remarks?: string;
     }) => {
       return apiFetch<ConnectorResource>(`/v1/connectors/${id}/activation`, {
         method: 'POST',
@@ -321,7 +357,7 @@ export function ConnectorPage() {
           'If-Match': `"${lockVersion}"`,
           'Idempotency-Key': `act_idem_${Date.now()}`,
         },
-        body: JSON.stringify({ verificationId }),
+        body: JSON.stringify(remarks ? { verificationId, remarks } : { verificationId }),
       });
     },
     onSuccess: (updated) => {
@@ -576,10 +612,7 @@ export function ConnectorPage() {
                     size="small"
                     color="primary"
                     variant="outlined"
-                    onClick={() => {
-                      setTargetStatus('ACTIVE');
-                      setStatusModalOpen(true);
-                    }}
+                    onClick={() => setActivateModalOpen(true)}
                   >
                     Reinstate
                   </Button>
@@ -1070,26 +1103,51 @@ export function ConnectorPage() {
               Activation requires evidence of a passed verification record in Verifications.
             </Typography>
             <TextField
+              select
               size="small"
               fullWidth
-              label="Verification ID (ver_...)"
+              label="Passed verification"
               required
-              value={activationVerificationId}
+              value={activationValue}
               onChange={(e) => setActivationVerificationId(e.target.value)}
-              placeholder="ver_01ARZ3NDEKTSV4RRFFQ69G5FAV"
-            />
+              disabled={passedVerifications.length === 0}
+              helperText={activationHelp}
+            >
+              {passedVerifications.map((v) => (
+                <MenuItem key={v.id} value={v.id}>
+                  {v.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            {selectedConnector.status === 'SUSPENDED' && (
+              <TextField
+                size="small"
+                fullWidth
+                multiline
+                minRows={2}
+                label="Reason for reinstating (at least 5 characters)"
+                required
+                value={activationRemarks}
+                onChange={(e) => setActivationRemarks(e.target.value)}
+                sx={{ mt: 2 }}
+              />
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setActivateModalOpen(false)}>Cancel</Button>
             <Button
               variant="contained"
               color="success"
-              disabled={!activationVerificationId}
+              disabled={
+                !activationVerificationId ||
+                (selectedConnector.status === 'SUSPENDED' && activationRemarks.trim().length < 5)
+              }
               onClick={() => {
                 activateConnectorMutation.mutate({
                   id: selectedConnector.id,
                   lockVersion: selectedConnector.lockVersion,
                   verificationId: activationVerificationId,
+                  remarks: selectedConnector.status === 'SUSPENDED' ? activationRemarks.trim() : undefined,
                 });
               }}
             >
@@ -1110,7 +1168,6 @@ export function ConnectorPage() {
                   label="Target Status"
                   onChange={(e) => setTargetStatus(e.target.value as any)}
                 >
-                  <MenuItem value="ACTIVE">ACTIVE (Reinstate)</MenuItem>
                   <MenuItem value="SUSPENDED">SUSPENDED (Hold Payouts & Revoke Portal)</MenuItem>
                   <MenuItem value="TERMINATED">TERMINATED (Permanent Debarment)</MenuItem>
                 </Select>
@@ -1490,8 +1547,7 @@ export function ConnectorPage() {
                             variant="outlined"
                             onClick={() => {
                               setSelectedConnector(con);
-                              setTargetStatus('ACTIVE');
-                              setStatusModalOpen(true);
+                              setActivateModalOpen(true);
                             }}
                           >
                             Reinstate

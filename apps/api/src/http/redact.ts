@@ -40,6 +40,16 @@ const SHAPES: Array<[RegExp, string]> = [
   [/\b(password|passwd|pwd|secret|token|api[_-]?key|authorization)(\s*[=:]\s*)[^\s&;,'"]+/gi, '$1$2[redacted]'],
 ];
 
+/**
+ * Upload and download links carry a bearer token in the path: the upload intent token (/document-uploads/), a signed file link
+ * (/document-files/), and the public upload link (/upload/). Logs keep the route and drop the token. The query string is dropped too.
+ */
+const LINK_TOKEN_PATH = /\/(document-uploads|document-files|upload)\/[^/?#]+/g;
+
+export function redactRequestPath(url: string): string {
+  return url.split('?')[0]!.replace(LINK_TOKEN_PATH, (_match, route: string) => `/${route}/[redacted]`);
+}
+
 /** The text with every registered secret and every credential-shaped part replaced. */
 export function redactSecrets(text: string): string {
   let out = text;

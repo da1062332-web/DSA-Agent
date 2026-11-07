@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-03
 **Scope:** Why an invited connector login could not use the connector portal, what each lifecycle step does, and what changed.
-**Status:** Code and tests done. Committed to `beta` and pushed after owner review of the diff. Not deployed. No hosted database was read or changed.
+**Status:** Code and tests done. Committed to `beta` and pushed after owner review of the diff. A later change, the activation dialog dropdown, is not committed. Not deployed. No hosted database was read or changed.
 
 ## Verdict
 
@@ -75,12 +75,13 @@ Lifecycle and portal tests are in `apps/api/test/connector-invitation-lifecycle.
 | ACCESS_SUSPENDED | Login SUSPENDED, or connector SUSPENDED or TERMINATED | Access suspended, contact the DSA administrator |
 | NOT_LINKED | Not a partner login, login not ACTIVE, or no connector link | Not linked to an active connector |
 
-The response names no connector, customer, mobile or ID. A refused data request carries a reason code in its error `details` (for example `CONNECTOR_PENDING_VERIFICATION`). It is an enum-like code from the database, never a name or contact detail. The eligibility route logs the reason on the server only.
+The response names no connector, customer, mobile or ID. A refused data request carries a reason code in its error `details` (for example `CONNECTOR_PENDING_VERIFICATION`). It is an enum-like code from the database, never a name or contact detail. The eligibility response carries the state and the message only, so the reason code is not returned there.
 
 ### Web
 
 - **`apps/web/src/features/connectors/portal-eligibility.ts`** (new). Maps the state to the notice and to whether the portal is open. `portalTableText` gives an empty table its reason: still checking, closed for this login, loading, or simply empty.
 - **`apps/web/src/features/connectors/ConnectorPortalPage.tsx`.** Reads the state first. Referrals, statements and disputes are requested only when the state is ELIGIBLE. Request Payout and Submit Referral are disabled unless it is. A notice banner shows the state's text (information for a pending connector, warning otherwise).
+- **`apps/web/src/features/connectors/ConnectorPage.tsx`, activation dialog.** The Verification ID text box is now a dropdown of the passed verifications for this connector (`activation-verification.ts`). It lists only VERIFIED records whose subject is this connector, and it is empty until connector verification can be recorded. The server still checks the record on submit, so the dropdown cannot make an activation succeed.
 
 ### Database
 
@@ -154,7 +155,7 @@ The owner asked for this sequence to be verified: invitation, password setup, ac
 | 1. Invitation | Verified through the product's routes and the provisioning worker | TEST-CPU-01, TEST-CPU-04 |
 | 2. Password setup | Verified at the API boundary: the first password sign-in activates the login and accepts the invitation. The Supabase password screen is outside the API and was not exercised | Lifecycle 1, TEST-CPU-05 |
 | 3. Active portal user | Verified: the login is ACTIVE, the portal state is CONNECTOR_PENDING, and the data routes stay closed | Portal 2 |
-| 4. Connector verification | **Blocked.** No connector verification can be recorded: the consent table and the verification API both reject a connector subject, and every verification needs active consent. Activation of a connector that is not ACTIVE is refused | `connector-verification.int.spec.ts`, `docs/CONNECTOR_VERIFICATION_DECISION.md` |
+| 4. Connector verification | **Blocked.** No connector verification can be recorded: the consent table and the verification API both reject a connector subject, and every verification needs active consent. The activation route refuses a connector that is not ACTIVE, and the status route now refuses ACTIVE too, uncommitted (AUD-P0-01 in `docs/CONNECTOR_COMPREHENSIVE_AUDIT.md`) | `connector-verification.int.spec.ts`, `docs/CONNECTOR_VERIFICATION_DECISION.md` |
 | 5. Approved activation | **Not reached.** It needs step 4. Not performed | None |
 | 6. Portal dashboard | Verified only for a connector that is ACTIVE by fixture in the test database. This is not an approved activation, so it does not verify step 5 | Portal 1 |
 

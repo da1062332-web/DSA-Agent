@@ -219,6 +219,11 @@ export class ClamAvFileScanner implements FileScannerPort {
     }
   }
 
+  /** The readiness the upload path checks before it accepts or clears a file. */
+  async ready(): Promise<boolean> {
+    return this.healthy();
+  }
+
   async scan(buffer: Buffer, filename: string, mimeType: string): Promise<FileScanResult> {
     const signature = await this.signatureCheck.scan(buffer, filename, mimeType);
     if (!signature.clean) return signature;

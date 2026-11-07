@@ -152,7 +152,11 @@ export type ActivateConnectorInput = z.infer<typeof ActivateConnectorSchema>;
 // API-CON-006: POST /v1/connectors/{id}/status
 // ==========================================
 export const UpdateConnectorStatusSchema = z.object({
-  targetStatus: z.enum(['ACTIVE', 'SUSPENDED', 'TERMINATED']),
+  // ACTIVE is not a target here. A connector is activated only through POST /v1/connectors/{id}/activation, which needs a VERIFIED record of
+  // that connector (AUD-P0-01, docs/CONNECTOR_COMPREHENSIVE_AUDIT.md).
+  targetStatus: z.enum(['SUSPENDED', 'TERMINATED'], {
+    message: 'To activate a connector, use the activation route, which checks its verification record.',
+  }),
   reason: z
     .string()
     .min(5)

@@ -300,11 +300,13 @@ const fakeOutbox: any = {
   emit: async () => 'evt_mock',
 };
 
-const appWith = (...grants: PermissionCode[]) =>
+// authTime: the caller's last second-factor verification. null for an ordinary caller; a fresh time for step-up operations.
+const appWithAuth = (authTime: string | null, ...grants: PermissionCode[]) =>
   createTestApp({
     auth: fakeAuth(
       testPrincipal({
         grants: grants.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })),
+        authTime,
       }),
     ),
     deps: {
@@ -315,11 +317,18 @@ const appWith = (...grants: PermissionCode[]) =>
     } as any,
   });
 
+const appWith = (...grants: PermissionCode[]) => appWithAuth(null, ...grants);
+
+// Bank settlement is a step-up operation (2026-11-04 containment): this caller has just verified a second factor.
+const appWithStepUp = (...grants: PermissionCode[]) => appWithAuth(new Date().toISOString(), ...grants);
+
 const appWithUser = (userId: string, ...grants: PermissionCode[]) =>
   createTestApp({
     auth: fakeAuth({
       ...testPrincipal({
         grants: grants.map((code) => ({ code, scope: 'TENANT' as const, branchIds: [] })),
+        // Approvals need a recent step-up (2026-11-04 containment). This fixture is for the separation-of-duties tests, not for MFA.
+        authTime: new Date().toISOString(),
       }),
       id: userId,
     }),
@@ -582,7 +591,7 @@ describe('MOD-REC: Reconciliation Management (Domain DOM-K)', () => {
 
   describe('SUB-REC.05: Payout Bank Settlement Reconciliation', () => {
     it('TC-REC-014: Transitions recorded payout to RECONCILED upon matching bank reference and amount', async () => {
-      const app = appWith('finance.reconcile');
+      const app = appWithStepUp('finance.reconcile');
       const res = await request(app)
         .post('/v1/reconciliation/payouts/prq_01JTESTPAYOUT000000000000/bank-reconcile')
         .send({
@@ -596,7 +605,7 @@ describe('MOD-REC: Reconciliation Management (Domain DOM-K)', () => {
     });
 
     it('TC-REC-015: Bank amount mismatch routes to reconciliation exception and throws error', async () => {
-      const app = appWith('finance.reconcile');
+      const app = appWithStepUp('finance.reconcile');
       const res = await request(app)
         .post('/v1/reconciliation/payouts/prq_01JTESTPAYOUT000000000000/bank-reconcile')
         .send({

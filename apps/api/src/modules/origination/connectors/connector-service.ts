@@ -189,8 +189,13 @@ async function assertConnectorVerification(
   connectorId: string,
   verificationId: string,
 ): Promise<void> {
-  const r = await sql<{ result: string; subject_type: string; connector_id: string | null }>`
-    SELECT result, subject_type, connector_id FROM app.verification
+  const r = await sql<{
+    result: string;
+    subject_type: string;
+    connector_id: string | null;
+    validity_expires_at: Date | null;
+  }>`
+    SELECT result, subject_type, connector_id, validity_expires_at FROM app.verification
      WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${verificationId}`.execute(tx);
   const row = r.rows[0];
   if (!row) {
@@ -211,6 +216,12 @@ async function assertConnectorVerification(
       `This connector needs a VERIFIED check. Verification ${verificationId} has result ${row.result}.`,
       [{ field: 'verificationId', issue: 'NOT_VERIFIED' }],
     );
+  }
+  // A VERIFIED record whose validity has run out no longer counts (validity_expires_at, migration 0026).
+  if (row.validity_expires_at && new Date(row.validity_expires_at).getTime() <= ctx.now.getTime()) {
+    throw AppError.of('VALIDATION_ERROR', `Verification ${verificationId} has expired.`, [
+      { field: 'verificationId', issue: 'VERIFICATION_EXPIRED' },
+    ]);
   }
 }
 
@@ -264,6 +275,19 @@ export class ConnectorService {
               'VALIDATION_ERROR',
               'A connector with this PAN already exists in this organization.',
               [{ field: 'pan', issue: 'DUPLICATE_PAN' }],
+            );
+          }
+
+          // The mobile number is checked for duplicates in the same way as the PAN (AUD-P2-01): a second connector with it is refused.
+          const existingMobile = await sql<{ id: string }>`
+            SELECT id FROM app.connector
+            WHERE tenant_id = ${ctx.principal.tenantId} AND mobile_hash = ${mobileHash}
+          `.execute(tx);
+          if (existingMobile.rows.length > 0) {
+            throw AppError.of(
+              'VALIDATION_ERROR',
+              'A connector with this mobile number already exists in this organization.',
+              [{ field: 'mobileE164', issue: 'DUPLICATE_MOBILE' }],
             );
           }
 
@@ -1864,6 +1888,15 @@ export class ConnectorService {
       }
 
       const dispute = res.rows[0]!;
+
+      // Separation of duties: the person who raised a dispute cannot resolve it (AUD-P1-05).
+      if (dispute.created_by === ctx.principal.id) {
+        throw AppError.of(
+          'SOD_VIOLATION',
+          'Separation of Duties: the person who raised this dispute cannot resolve it.',
+          [{ field: 'resolution', issue: 'SOD_SELF_RESOLUTION_PROHIBITED' }],
+        );
+      }
 
       if (dispute.lock_version !== ifMatchVersion) {
         throw AppError.of('VERSION_CONFLICT', 'Precondition failed: ETag does not match lock version.', [

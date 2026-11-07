@@ -1,6 +1,7 @@
 // apps/api/src/modules/origination/connectors/router.ts
 // Module 27: Connector Management (MOD-CON) — Express Router
 import { Router, type Request, type Response } from 'express';
+import { requireFinancialStepUp } from '../../../http/financial-step-up';
 import {
   AppError,
   ActivateConnectorSchema,
@@ -202,6 +203,15 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
       const id = String(req.params.id);
       const ifMatch = ifMatchVersion(req);
       const idemKey = requireIdempotencyKey(req);
+      // ACTIVE is refused here with its own message. Only the activation route can activate a connector, and it checks the verification record
+      // (AUD-P0-01). The schema refuses it too, as a second layer.
+      if (req.body?.targetStatus === 'ACTIVE') {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          'To activate a connector, use the activation route, which checks its verification record.',
+          [{ field: 'targetStatus', issue: 'USE_ACTIVATION_ROUTE' }],
+        );
+      }
       const input = UpdateConnectorStatusSchema.parse(req.body);
 
       const { connector, isReplayed } = await service.updateConnectorStatus(ctx, id, input, ifMatch, idemKey);
@@ -256,6 +266,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
     async (req: Request, res: Response, next) => {
       try {
         const ctx = requireContext(req);
+        deps.authz.requirePermission(ctx, 'connector.bank_change_approve');
+        requireFinancialStepUp(deps.authz, ctx);
         const id = String(req.params.id);
         const accountId = String(req.params.accountId);
         const input = ApproveConnectorBankAccountSchema.parse(req.body);
@@ -425,6 +437,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
   router.post('/attribution-change-requests/:id/approval', async (req: Request, res: Response, next) => {
     try {
       const ctx = requireContext(req);
+      deps.authz.requirePermission(ctx, 'connector.attribution_change');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = String(req.params.id);
       const ifMatch = ifMatchVersion(req);
       const input = ApproveAttributionChangeRequestSchema.parse(req.body);
@@ -457,6 +471,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: ConnectorService):
   router.post('/attribution-disputes/:id/resolution', async (req: Request, res: Response, next) => {
     try {
       const ctx = requireContext(req);
+      deps.authz.requirePermission(ctx, 'connector.dispute_resolve');
+      requireFinancialStepUp(deps.authz, ctx);
       const id = String(req.params.id);
       const ifMatch = ifMatchVersion(req);
       const input = ResolveAttributionDisputeSchema.parse(req.body);

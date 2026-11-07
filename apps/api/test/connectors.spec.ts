@@ -432,7 +432,7 @@ describe('Module 27 — Connector Management (MOD-CON)', () => {
         service.updateConnectorStatus(
           mockCtx,
           'con_01ARZ3NDEKTSV4RRFFQ69G5FAV',
-          { targetStatus: 'ACTIVE', reason: 'Attempt to reopen' },
+          { targetStatus: 'SUSPENDED', reason: 'Attempt to reopen' },
           1,
           'idem_stat_01',
         ),

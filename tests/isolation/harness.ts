@@ -56,7 +56,17 @@ export interface IsolationEnv {
 
 export const ALL_ADMIN: PermissionCode[] = ['config.manage', 'user.manage'];
 
-export async function startIsolationEnv(): Promise<IsolationEnv> {
+/**
+ * Optional overrides for the document dependencies. Absent, the case gets the production defaults: local folders and the file-signature
+ * check, which refuses every upload (fail closed).
+ */
+export interface IsolationOptions {
+  documentStore?: unknown;
+  documentQuarantineStore?: unknown;
+  documentScanner?: unknown;
+}
+
+export async function startIsolationEnv(options: IsolationOptions = {}): Promise<IsolationEnv> {
   const container: StartedPostgreSqlContainer = await startPostgres();
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
@@ -86,7 +96,7 @@ export async function startIsolationEnv(): Promise<IsolationEnv> {
   await assertThrowawayDatabase(container, admin, [url.toString()]);
   const db = createDb(url.toString(), { poolMax: 4 });
   // Exactly the production dependencies (apps/api/src/wiring.ts), so a case sees the same ports as a deployment.
-  const deps = createProductionDeps(createTxRunner(db));
+  const deps = createProductionDeps(createTxRunner(db), options);
 
   const principalOf = (t: TenantFixture, codes: PermissionCode[], userIndex: 0 | 1): Principal =>
     testPrincipal({

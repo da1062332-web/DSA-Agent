@@ -52695,6 +52695,30 @@ paths:
                       - retryable
                 required:
                   - error
+  /portal/v1/eligibility:
+    get:
+      operationId: API-CPT-000
+      summary: "The state of this portal login: ELIGIBLE, CONNECTOR_PENDING, ACCESS_SUSPENDED or NOT_LINKED, with a fixed message. It names no connector."
+      tags:
+        - MOD-CPT Connector Portal
+      responses:
+        "200":
+          description: The state of the login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: string
+                    enum:
+                      - ELIGIBLE
+                      - CONNECTOR_PENDING
+                      - ACCESS_SUSPENDED
+                      - NOT_LINKED
+                  message:
+                    type: string
+                    nullable: true
   /portal/v1/statements:
     get:
       operationId: API-CPT-004
@@ -58350,8 +58374,8 @@ paths:
               properties:
                 targetStatus:
                   type: string
+                  description: ACTIVE is not accepted here. Activate a connector through POST /v1/connectors/{id}/activation, which requires a VERIFIED record of that connector.
                   enum:
-                    - ACTIVE
                     - SUSPENDED
                     - TERMINATED
                 reason:
