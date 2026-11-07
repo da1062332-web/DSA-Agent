@@ -49,6 +49,10 @@ export const CreateCommissionPlanInputSchema = z.object({
   clawbackWindowDays: z.number().int().min(0).default(90),
   defaultRate: z.number().min(0).max(1).default(0.015), // e.g. 1.5%
   ruleSetId: z.string().optional().nullable(),
+  /**
+   * @deprecated Only DRAFT is accepted here, and a plan is made ACTIVE only through POST /v1/commission-plans/{id}/approval. Any other value
+   * is refused with 422 USE_APPROVAL_ROUTE. The field is kept as a shim for one release, then removed (Contracts §15).
+   */
   status: z.enum(COMMISSION_PLAN_STATUSES).default('DRAFT'),
 });
 export type CreateCommissionPlanInput = z.input<typeof CreateCommissionPlanInputSchema>;
@@ -58,6 +62,10 @@ export const UpdateCommissionPlanInputSchema = z.object({
   basis: z.enum(COMMISSION_BASES).optional(),
   roundingMode: z.string().optional(),
   clawbackWindowDays: z.number().int().min(0).optional(),
+  /**
+   * @deprecated Never accepted by PATCH. Any value is refused with 422 USE_APPROVAL_ROUTE; activation and retirement have their own routes.
+   * The field is kept as a shim for one release, then removed (Contracts §15).
+   */
   status: z.enum(COMMISSION_PLAN_STATUSES).optional(),
 });
 export type UpdateCommissionPlanInput = z.infer<typeof UpdateCommissionPlanInputSchema>;
@@ -66,6 +74,12 @@ export const ApproveCommissionPlanInputSchema = z.object({
   comment: z.string().max(255).optional(),
 });
 export type ApproveCommissionPlanInput = z.infer<typeof ApproveCommissionPlanInputSchema>;
+
+/** Retiring an ACTIVE plan stops it from being used for new calculations. The reason is kept in the audit trail. */
+export const RetireCommissionPlanInputSchema = z.object({
+  reason: z.string().trim().min(5, 'A reason of at least 5 characters is needed.').max(255),
+});
+export type RetireCommissionPlanInput = z.infer<typeof RetireCommissionPlanInputSchema>;
 
 export const CommissionPlanResponseSchema = z.object({
   id: IdSchema('cpl'),

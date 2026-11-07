@@ -15,6 +15,7 @@ let env: IsolationEnv;
 const DRAFT = 'cpl_int_draft_1';
 const DRAFT_B = 'cpl_int_draft_b';
 const ACTIVE = 'cpl_int_active_1';
+const REPLACEMENT = 'cpl_int_replace_1';
 const CREATOR = 'usr_int_creator';
 const CHECKER = 'usr_int_checker';
 const savedEnv: Record<string, string | undefined> = {};
@@ -41,6 +42,8 @@ beforeAll(async () => {
   await insert(DRAFT, a.tenantId, 'lnd_int_1', 'DRAFT');
   await insert(DRAFT_B, a.tenantId, 'lnd_int_3', 'DRAFT');
   await insert(ACTIVE, a.tenantId, 'lnd_int_2', 'ACTIVE');
+  // A replacement draft for the same lender as the ACTIVE plan (TEST-COMAPPR-INT-07).
+  await insert(REPLACEMENT, a.tenantId, 'lnd_int_2', 'DRAFT');
   await env.admin.query(`set session_replication_role = origin`);
 }, 240_000);
 
@@ -207,5 +210,48 @@ describe('TEST-COMAPPR-INT commission plan approval over HTTP', () => {
       .send({});
     expect(approve.status).toBe(404);
     expect(await planRow(DRAFT_B)).toEqual(before);
+  });
+});
+
+describe('TEST-COMAPPR-INT replacement and retirement over HTTP', () => {
+  it('TEST-COMAPPR-INT-07 approving a replacement retires the ACTIVE plan of the same lender in the same transaction (one ACTIVE per lender)', async () => {
+    const before = await planRow(REPLACEMENT);
+    const res = await request(as(checker(true)))
+      .post(`/v1/commission-plans/${REPLACEMENT}/approval`)
+      .set('If-Match', `"${before.lock_version}"`)
+      .send({});
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(await planRow(REPLACEMENT)).toMatchObject({ status: 'ACTIVE' });
+    expect(await planRow(ACTIVE)).toMatchObject({ status: 'RETIRED' });
+    expect((await auditActions(ACTIVE)).map((a) => a.action)).toEqual(['commission_plan.retired']);
+  });
+
+  it('TEST-COMAPPR-INT-08 retirement needs a fresh second factor; without it the plan stays ACTIVE', async () => {
+    const before = await planRow(REPLACEMENT);
+    const res = await request(as(checker(false)))
+      .post(`/v1/commission-plans/${REPLACEMENT}/retirement`)
+      .set('If-Match', `"${before.lock_version}"`)
+      .send({ reason: 'Lender terms ended' });
+    expect(res.status, JSON.stringify(res.body)).toBe(401);
+    expect(await planRow(REPLACEMENT)).toEqual(before);
+  });
+
+  it('TEST-COMAPPR-INT-09 retirement with a fresh second factor and a reason makes the plan RETIRED and is audited', async () => {
+    const before = await planRow(REPLACEMENT);
+    const noReason = await request(as(checker(true)))
+      .post(`/v1/commission-plans/${REPLACEMENT}/retirement`)
+      .set('If-Match', `"${before.lock_version}"`)
+      .send({});
+    expect(noReason.status).toBe(422);
+    const res = await request(as(checker(true)))
+      .post(`/v1/commission-plans/${REPLACEMENT}/retirement`)
+      .set('If-Match', `"${before.lock_version}"`)
+      .send({ reason: 'Lender terms ended' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(await planRow(REPLACEMENT)).toMatchObject({ status: 'RETIRED' });
+    expect((await auditActions(REPLACEMENT)).map((a) => a.action)).toEqual([
+      'commission_plan.approved',
+      'commission_plan.retired',
+    ]);
   });
 });

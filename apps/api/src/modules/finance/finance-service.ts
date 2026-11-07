@@ -3,6 +3,7 @@ import {
   AppError,
   type AdjustmentResponse,
   type ApproveCommissionPlanInput,
+  type RetireCommissionPlanInput,
   type ApproveRecalculationProposalInput,
   type AuditPort,
   type CalculateCommissionInput,
@@ -311,6 +312,34 @@ export class FinanceService {
       ]);
     }
 
+    // Replacement. The database keeps one ACTIVE plan per lender (uq_active_lender_plan). Approving a plan for a lender that already has one
+    // retires the current plan in the same transaction, under this approval and its step-up, and records both changes. If the approval then
+    // fails, the transaction rolls back and the current plan stays ACTIVE.
+    const current = await this.deps.repository.findActiveCommissionPlan(tx, tenantId, plan.lender_id);
+    if (current && current.id !== id) {
+      const retired = await this.deps.repository.retireCommissionPlan(
+        tx,
+        tenantId,
+        current.id,
+        current.lock_version,
+        ctx.principal.id,
+      );
+      if (!retired) {
+        throw AppError.of('VERSION_CONFLICT', `Commission plan version conflict for ${current.id}.`);
+      }
+      if (this.deps.audit) {
+        await this.deps.audit.record(tx, ctx, {
+          action: 'commission_plan.retired',
+          entityType: 'commission_plan',
+          entityId: current.id,
+          before: { status: 'ACTIVE' },
+          after: { status: 'RETIRED', replacedBy: id },
+          reason: `Replaced by commission plan ${id}`,
+          permissionUsed: 'commission.plan.approve',
+        });
+      }
+    }
+
     const approved = await this.deps.repository.approveCommissionPlan(
       tx,
       tenantId,
@@ -334,6 +363,58 @@ export class FinanceService {
     }
 
     return this.toPlanResponse(approved);
+  }
+
+  /**
+   * Retires an ACTIVE plan: it is no longer used for new calculations. Same permission as approval, with a fresh second factor (the route
+   * checks it) and a reason, which is audited. A plan that is not ACTIVE cannot be retired.
+   */
+  async retireCommissionPlan(
+    tx: Tx,
+    ctx: RequestContext,
+    id: string,
+    ifMatchVersion: number,
+    input: RetireCommissionPlanInput,
+  ): Promise<CommissionPlanResponse> {
+    this.assertPermission(ctx, 'commission.plan.approve');
+
+    const tenantId = ctx.principal.tenantId;
+    const plan = await this.deps.repository.findCommissionPlanById(tx, tenantId, id);
+    if (!plan) {
+      throw AppError.of('NOT_FOUND', `Commission plan ${id} not found.`);
+    }
+    if (plan.status !== 'ACTIVE') {
+      throw AppError.of(
+        'INVALID_STATE',
+        `Commission plan ${id} is ${plan.status}. Only an ACTIVE plan can be retired.`,
+        [{ issue: 'PLAN_NOT_ACTIVE' }],
+      );
+    }
+
+    const retired = await this.deps.repository.retireCommissionPlan(
+      tx,
+      tenantId,
+      id,
+      ifMatchVersion,
+      ctx.principal.id,
+    );
+    if (!retired) {
+      throw AppError.of('VERSION_CONFLICT', `Commission plan version conflict for ${id}.`);
+    }
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'commission_plan.retired',
+        entityType: 'commission_plan',
+        entityId: id,
+        before: { status: 'ACTIVE' },
+        after: { status: 'RETIRED' },
+        reason: input.reason,
+        permissionUsed: 'commission.plan.approve',
+      });
+    }
+
+    return this.toPlanResponse(retired);
   }
 
   // --- COMMISSION CALCULATION & PAYABLES (Disbursement Event Handlers) ---

@@ -101,6 +101,21 @@ class InMemoryFinanceRepository implements FinanceRepository {
     return updated;
   }
 
+  async retireCommissionPlan(
+    _tx: Tx,
+    tenantId: string,
+    id: string,
+    expectedLockVersion: number,
+    actorId: string,
+  ): Promise<CommissionPlanRow | null> {
+    const p = this.plans.find((x) => x.tenant_id === tenantId && x.id === id);
+    if (!p || p.lock_version !== expectedLockVersion || p.status !== 'ACTIVE') return null;
+    p.status = 'RETIRED';
+    p.lock_version += 1;
+    p.updated_by = actorId;
+    return { ...p };
+  }
+
   async approveCommissionPlan(
     _tx: Tx,
     tenantId: string,

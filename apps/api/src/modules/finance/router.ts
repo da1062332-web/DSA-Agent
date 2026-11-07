@@ -2,6 +2,7 @@
 import {
   AppError,
   ApproveCommissionPlanInputSchema,
+  RetireCommissionPlanInputSchema,
   ApproveRecalculationProposalInputSchema,
   CalculateCommissionInputSchema,
   CancelPayoutRequestInputSchema,
@@ -167,6 +168,27 @@ export function createRouter(deps: ApiDeps): Router {
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.approveCommissionPlan(tx, ctx, id, lockVersion, parsed.data);
+      });
+      res.setHeader('ETag', `"${result.lockVersion}"`);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/commission-plans/:id/retirement: ACTIVE to RETIRED. The approval permission, a fresh second factor and a reason.
+  router.post('/commission-plans/:id/retirement', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      deps.authz.requirePermission(ctx, 'commission.plan.approve');
+      requireFinancialStepUp(deps.authz, ctx);
+      const id = extractParam(req.params.id, 'id');
+      const lockVersion = extractIfMatch(req);
+      const parsed = RetireCommissionPlanInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.retireCommissionPlan(tx, ctx, id, lockVersion, parsed.data);
       });
       res.setHeader('ETag', `"${result.lockVersion}"`);
       res.json(result);

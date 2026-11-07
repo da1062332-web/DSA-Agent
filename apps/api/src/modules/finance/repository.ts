@@ -172,6 +172,14 @@ export interface FinanceRepository {
     expectedLockVersion: number,
     approverId: string,
   ): Promise<CommissionPlanRow | null>;
+  /** ACTIVE to RETIRED only. Returns null when the plan is not ACTIVE or the version does not match. */
+  retireCommissionPlan(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    expectedLockVersion: number,
+    actorId: string,
+  ): Promise<CommissionPlanRow | null>;
 
   // Calculations & Payables
   insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void>;
@@ -368,6 +376,26 @@ export class SqlFinanceRepository implements FinanceRepository {
         updated_by = ${approverId}
       WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion}
         AND status IN ('DRAFT', 'PENDING_APPROVAL')
+      RETURNING *
+    `.execute(tx);
+    return res.rows[0] ?? null;
+  }
+
+  async retireCommissionPlan(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    expectedLockVersion: number,
+    actorId: string,
+  ): Promise<CommissionPlanRow | null> {
+    const res = await sql<CommissionPlanRow>`
+      UPDATE commission_plan
+      SET
+        status = 'RETIRED',
+        lock_version = lock_version + 1,
+        updated_at = now(),
+        updated_by = ${actorId}
+      WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion} AND status = 'ACTIVE'
       RETURNING *
     `.execute(tx);
     return res.rows[0] ?? null;

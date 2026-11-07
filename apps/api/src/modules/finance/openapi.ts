@@ -1,6 +1,7 @@
 import {
   AdjustmentResponseSchema,
   ApproveCommissionPlanInputSchema,
+  RetireCommissionPlanInputSchema,
   ApproveRecalculationProposalInputSchema,
   CalculateCommissionInputSchema,
   CancelPayoutRequestInputSchema,
@@ -98,6 +99,27 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
     responses: {
       200: {
         description: 'Plan approved',
+        content: { 'application/json': { schema: CommissionPlanResponseSchema } },
+      },
+    },
+  });
+
+  // POST /v1/commission-plans/{id}/retirement
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/commission-plans/{id}/retirement',
+    operationId: 'API-COM-008R',
+    summary:
+      'Retire an ACTIVE commission plan. Needs commission.plan.approve and a fresh second factor; the reason is audited. Approving a replacement for the same lender retires the current plan automatically.',
+    tags: ['MOD-COM Commission'],
+    request: {
+      headers: z.object({ 'If-Match': z.string() }),
+      params: z.object({ id: z.string() }),
+      body: { content: { 'application/json': { schema: RetireCommissionPlanInputSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'Plan retired',
         content: { 'application/json': { schema: CommissionPlanResponseSchema } },
       },
     },
