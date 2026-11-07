@@ -19,7 +19,7 @@ import {
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { deleteRole, fetchPermissions, fetchRoleById, updateRole } from './api';
 import { Can } from '../../shell/Can';
-import { PageHeader, PageContainer } from '../../ui';
+import { ConfirmDialog, PageHeader, PageContainer } from '../../ui';
 import { groupPermissionsForEditor } from './permission-grouping';
 import type { Permission, Role } from './types';
 
@@ -34,6 +34,7 @@ export function RoleDetailPage() {
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
   // Form State
   const [name, setName] = useState<string>('');
@@ -104,18 +105,24 @@ export function RoleDetailPage() {
     }
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!id || !role || role.isTemplate) return;
-    if (!window.confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    setConfirmDeleteOpen(true);
+  }
+
+  async function executeDelete() {
+    if (!id || !role || role.isTemplate) return;
 
     setSaving(true);
     setError(null);
     try {
       await deleteRole(id);
+      setConfirmDeleteOpen(false);
       navigate('/roles', { replace: true });
     } catch (err: any) {
       setError(err?.message || 'Failed to delete role.');
       setSaving(false);
+      setConfirmDeleteOpen(false);
     }
   }
 
@@ -322,6 +329,17 @@ export function RoleDetailPage() {
           </Card>
         </Grid>
       </Grid>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete Role"
+        description={`Are you sure you want to delete role "${role.name}"? This action cannot be undone.`}
+        severity="error"
+        confirmLabel="Delete"
+        isLoading={saving}
+        onConfirm={executeDelete}
+        onClose={() => setConfirmDeleteOpen(false)}
+      />
     </PageContainer>
   );
 }

@@ -1244,7 +1244,9 @@ export async function performRoleLogin(
       sessionStorage.setItem('dsa_bypass_active', 'true');
       sessionStorage.setItem('dsa_mfa_project', 'disabled');
       localStorage.setItem('dsa_mfa_project', 'disabled');
-    } catch {}
+    } catch {
+      // Storage access may be restricted in some browser contexts
+    }
   });
 
   // 2. Navigate to /login

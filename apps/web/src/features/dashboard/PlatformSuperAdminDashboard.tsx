@@ -116,6 +116,7 @@ export function PlatformSuperAdminDashboard() {
     data: tenantsData,
     isLoading: tenantsLoading,
     isRefetching: tenantsRefetching,
+    isError: tenantsError,
   } = useQuery({
     queryKey: ['platform-tenants-summary'],
     queryFn: () => fetchPlatformTenants({ limit: 100 }),
@@ -127,6 +128,7 @@ export function PlatformSuperAdminDashboard() {
     data: healthData,
     isLoading: healthLoading,
     isRefetching: healthRefetching,
+    isError: healthError,
   } = useQuery({
     queryKey: ['platform-health-summary'],
     queryFn: () => fetchSystemHealth(),
@@ -202,6 +204,11 @@ export function PlatformSuperAdminDashboard() {
 
   return (
     <Box sx={{ width: '100%', py: 1 }} data-testid="platform-superadmin-dashboard">
+      {(tenantsError || healthError) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to fetch platform telemetry or tenant summary from API. Please verify network or credentials.
+        </Alert>
+      )}
       {/* 1. Executive Platform Command Header */}
       <Paper
         elevation={0}
@@ -253,6 +260,7 @@ export function PlatformSuperAdminDashboard() {
                 <IconButton
                   onClick={handleRefreshAll}
                   disabled={isRefreshing}
+                  aria-label="Refresh telemetry from platform APIs"
                   sx={{
                     border: '1px solid',
                     borderColor: 'divider',

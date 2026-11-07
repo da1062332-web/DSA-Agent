@@ -561,7 +561,7 @@ export const SanctionsPanel: React.FC<SanctionsPanelProps> = ({
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {activeSanction.conditions.map((condition, idx) => (
-                      <Chip key={idx} label={condition} size="small" variant="outlined" />
+                      <Chip key={`${idx}-${condition}`} label={condition} size="small" variant="outlined" />
                     ))}
                   </Stack>
                 </Box>

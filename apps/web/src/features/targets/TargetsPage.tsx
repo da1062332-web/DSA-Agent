@@ -32,6 +32,7 @@ import { useApproveTarget, useCreateTarget, useTargetHistory, useTargets } from 
 import { ProductSelect } from '../../shell/selectors';
 import { BranchName, ProductName, UserName } from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
+import { useToast } from '../../shell/toast';
 import {
   DIMENSION_LABELS,
   METRIC_LABELS,
@@ -125,6 +126,8 @@ export function TargetsPage() {
     }
   };
 
+  const toast = useToast();
+
   const handleApprove = async (target: TargetDto) => {
     try {
       await approveMutation.mutateAsync({
@@ -132,15 +135,16 @@ export function TargetsPage() {
         version: target.lockVersion,
         input: { decision: 'APPROVE' },
       });
+      toast.success('Target approved.');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Approval failed');
+      toast.error(err instanceof Error ? err.message : 'Approval failed');
     }
   };
 
   const handleRejectSubmit = async () => {
     if (!rejectTarget) return;
     if (!rejectionReason.trim() || rejectionReason.trim().length < 3) {
-      alert('Rejection reason must be at least 3 characters.');
+      toast.error('Rejection reason must be at least 3 characters.');
       return;
     }
 
@@ -153,10 +157,11 @@ export function TargetsPage() {
           rejectionReason: rejectionReason.trim(),
         },
       });
+      toast.success('Target rejected.');
       setRejectTarget(null);
       setRejectionReason('');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Rejection failed');
+      toast.error(err instanceof Error ? err.message : 'Rejection failed');
     }
   };
 

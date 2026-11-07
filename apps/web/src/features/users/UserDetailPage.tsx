@@ -32,7 +32,7 @@ import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { InvitationPanel } from './InvitationPanel';
 import { displayStatus, userActions } from './user-actions';
 import { Can } from '../../shell/Can';
-import { PageHeader } from '../../ui';
+import { ConfirmDialog, PageHeader } from '../../ui';
 import type { Branch, Role, UserSummary } from './types';
 import { ACCOUNT_TYPE_LABEL, detailTabValues, isPartnerAccount } from './account-type';
 
@@ -68,6 +68,8 @@ export function UserDetailPage() {
   // Role Assignment Dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState<boolean>(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [roleToUnassign, setRoleToUnassign] = useState<{ name: string; id: string } | null>(null);
+  const [isUnassigningRole, setIsUnassigningRole] = useState<boolean>(false);
   const [selectedScope, setSelectedScope] = useState<string>('TENANT');
   const [isAssigningRole, setIsAssigningRole] = useState<boolean>(false);
 
@@ -173,23 +175,30 @@ export function UserDetailPage() {
     }
   };
 
-  const handleRemoveRole = async (roleName: string) => {
+  const handleRemoveRole = (roleName: string) => {
     if (!user) return;
     const roleObj = roles.find((r) => r.name === roleName || r.code === roleName || r.id === roleName);
     if (!roleObj) {
       setError(`Role definition for "${roleName}" was not found.`);
       return;
     }
+    setRoleToUnassign({ name: roleName, id: roleObj.id });
+  };
 
-    if (!window.confirm(`Are you sure you want to unassign role "${roleName}"?`)) return;
-
+  const executeRemoveRole = async () => {
+    if (!user || !roleToUnassign) return;
+    setIsUnassigningRole(true);
     setError(null);
     try {
-      await removeUserRole(user.id, roleObj.id);
-      setSuccessMessage(`Role "${roleName}" unassigned.`);
+      await removeUserRole(user.id, roleToUnassign.id);
+      setSuccessMessage(`Role "${roleToUnassign.name}" unassigned.`);
+      setRoleToUnassign(null);
       await loadUser();
     } catch (err) {
       setError((err as Error).message || 'Failed to remove role.');
+      setRoleToUnassign(null);
+    } finally {
+      setIsUnassigningRole(false);
     }
   };
 
@@ -721,6 +730,17 @@ export function UserDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(roleToUnassign)}
+        title="Unassign Role"
+        description={`Are you sure you want to unassign role "${roleToUnassign?.name}" from this user?`}
+        severity="error"
+        confirmLabel="Unassign"
+        isLoading={isUnassigningRole}
+        onConfirm={executeRemoveRole}
+        onClose={() => setRoleToUnassign(null)}
+      />
     </Container>
   );
 }

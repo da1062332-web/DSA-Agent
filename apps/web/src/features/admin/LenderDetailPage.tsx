@@ -680,7 +680,7 @@ function ContactsCard({
           <Stack spacing={2}>
             <ErrorAlert error={save.error} />
             {draft.map((c, i) => (
-              <Stack key={i} direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center">
+              <Stack key={`draft-contact-${i}-${c.name || i}`} direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center">
                 <TextField
                   size="small"
                   label="Name"

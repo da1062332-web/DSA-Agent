@@ -39,6 +39,7 @@ import type {
   LedgerJournal,
 } from '@dsa/contracts';
 import {
+  ConfirmDialog,
   DataTable,
   PageHeader,
   StatCard,
@@ -97,6 +98,7 @@ export function LedgerPage() {
   // --- Export State ---
   const [exportPeriod, setExportPeriod] = useState(new Date().toISOString().substring(0, 7));
   const [exportFormat, setExportFormat] = useState<'CSV' | 'JSON' | 'EXCEL'>('CSV');
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [exportHistory, setExportHistory] = useState<
     Array<{ id: string; format: string; period: string; status: string; date: string }>
   >([]);
@@ -200,24 +202,23 @@ export function LedgerPage() {
     }
   };
 
-  const handleClosePeriodSubmit = async (e: React.FormEvent) => {
+  const handleClosePeriodSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !window.confirm(
-        `Are you sure you want to CLOSE accounting period ${trialPeriod}? Once closed, no further journals can be posted to this period.`,
-      )
-    ) {
-      return;
-    }
+    setConfirmCloseOpen(true);
+  };
+
+  const executeClosePeriod = async () => {
     try {
       setIsClosingPeriod(true);
       setError(null);
       const res = await closeLedgerPeriod(trialPeriod, { note: closePeriodNote });
       setSuccessMsg(`Period ${res.period} closed successfully with zero-sum trial balance verification.`);
       setClosePeriodNote('');
+      setConfirmCloseOpen(false);
       loadTrialBalance();
     } catch (err: any) {
       setError(err?.message || 'Period close failed');
+      setConfirmCloseOpen(false);
     } finally {
       setIsClosingPeriod(false);
     }
@@ -1070,6 +1071,17 @@ export function LedgerPage() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmCloseOpen}
+        title={`Close Accounting Period ${trialPeriod}`}
+        description={`Are you sure you want to CLOSE accounting period ${trialPeriod}? Once closed, no further journals can be posted to this period.`}
+        severity="error"
+        confirmLabel="Close Period"
+        isLoading={isClosingPeriod}
+        onConfirm={executeClosePeriod}
+        onClose={() => setConfirmCloseOpen(false)}
+      />
     </Box>
   );
 }

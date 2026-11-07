@@ -70,7 +70,7 @@ export function CustomerConsents(): React.ReactElement {
     enabled: Boolean(customerId),
   });
 
-  const { data: consents = [], isLoading: isConsentsLoading } = useQuery({
+  const { data: consents = [], isLoading: isConsentsLoading, error: consentsError } = useQuery({
     queryKey: ['customer-consents', customerId],
     queryFn: () => getCustomerConsents(customerId),
     enabled: Boolean(customerId),
@@ -160,6 +160,7 @@ export function CustomerConsents(): React.ReactElement {
           </Typography>
         </Box>
 
+        {consentsError && <Alert severity="error">Failed to load consents: {(consentsError as Error).message}</Alert>}
         {actionError && <Alert severity="error">{actionError}</Alert>}
 
         {/* Structured Customer Profile Card */}

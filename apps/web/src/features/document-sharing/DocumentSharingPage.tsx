@@ -129,7 +129,7 @@ export function DocumentSharingPage() {
   const [shareDays, setShareDays] = useState(7);
 
   // Queries
-  const { data: uploadLinksData, isLoading: isLoadingLinks } = useQuery({
+  const { data: uploadLinksData, isLoading: isLoadingLinks, isError: isLinksError, error: linksError } = useQuery({
     queryKey: ['upload-links'],
     queryFn: () => apiFetch<{ data: UploadLinkRecord[] }>('/v1/upload-links'),
   });
@@ -137,7 +137,7 @@ export function DocumentSharingPage() {
   const me = useMe().data;
   const canShare = hasPermission(me, 'share.create') || hasPermission(me, 'customer.read');
 
-  const { data: sharesData, isLoading: isLoadingShares } = useQuery({
+  const { data: sharesData, isLoading: isLoadingShares, isError: isSharesError, error: sharesError } = useQuery({
     queryKey: ['shares'],
     queryFn: () => apiFetch<{ data: ExternalShareRecord[] }>('/v1/shares'),
     enabled: Boolean(canShare && tabIndex === 1),
@@ -284,6 +284,12 @@ export function DocumentSharingPage() {
         }
       />
 
+      {(isLinksError || isSharesError) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {errorText(linksError ?? sharesError)}
+        </Alert>
+      )}
+
       {feedback && (
         <Alert severity={feedback.severity} onClose={() => setFeedback(null)} sx={{ mb: 3 }}>
           {feedback.message}
@@ -342,7 +348,7 @@ export function DocumentSharingPage() {
                                   Requested Documents ({link.items.length}):
                                 </Typography>
                                 {link.itemDetails.map((item, idx) => (
-                                  <Typography key={idx} variant="caption" display="block">
+                                  <Typography key={`${item.documentTypeCode}-${item.ordinal || idx}-${idx}`} variant="caption" display="block">
                                     • {readable(item.documentTypeCode)}
                                     {counts.get(item.documentTypeCode)! > 1
                                       ? item.documentTypeCode === 'SALARY_SLIP'

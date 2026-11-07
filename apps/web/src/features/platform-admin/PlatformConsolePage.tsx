@@ -309,7 +309,7 @@ export function PlatformConsolePage() {
               sx={{ fontWeight: 700 }}
             />
             <Tooltip title="Refresh All Feeds">
-              <IconButton onClick={handleRefreshAll} color="primary" sx={{ border: '1px solid #e0e0e0' }}>
+              <IconButton onClick={handleRefreshAll} color="primary" aria-label="Refresh All Feeds" sx={{ border: '1px solid #e0e0e0' }}>
                 <RefreshIcon />
               </IconButton>
             </Tooltip>

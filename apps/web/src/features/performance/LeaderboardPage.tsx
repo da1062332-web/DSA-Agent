@@ -203,7 +203,7 @@ export function LeaderboardPage() {
             <List dense sx={{ pl: 0.5 }}>
               {leaderboard?.unresolvedDecisions ? (
                 leaderboard.unresolvedDecisions.map((decision, idx) => (
-                  <ListItem key={idx} disableGutters sx={{ py: 0.2 }}>
+                  <ListItem key={`${idx}-${decision}`} disableGutters sx={{ py: 0.2 }}>
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <ErrorOutlineIcon color="warning" fontSize="small" />
                     </ListItemIcon>

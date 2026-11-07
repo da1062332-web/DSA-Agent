@@ -258,6 +258,7 @@ export function ApiManagementPage() {
             <IconButton
               size="small"
               color="primary"
+              aria-label="Rotate Client Secret"
               onClick={() => {
                 setClientToRotate(client);
                 setRotateDialogOpen(true);
@@ -275,9 +276,11 @@ export function ApiManagementPage() {
           >
             {client.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
           </Button>
-          <IconButton size="small" color="error" sx={{ ml: 1 }} onClick={() => handleDeleteClient(client.id)}>
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title="Delete API Client">
+            <IconButton size="small" color="error" aria-label="Delete API Client" sx={{ ml: 1 }} onClick={() => handleDeleteClient(client.id)}>
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </>
       ),
     },
@@ -465,7 +468,7 @@ export function ApiManagementPage() {
               <Typography variant="body2" fontFamily="monospace" fontWeight={700} color="primary.main">
                 {revealedSecret}
               </Typography>
-              <IconButton size="small" onClick={handleCopySecret} color={copied ? 'success' : 'default'}>
+              <IconButton size="small" onClick={handleCopySecret} color={copied ? 'success' : 'default'} aria-label="Copy Client Secret">
                 {copied ? <CheckCircleIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
               </IconButton>
             </Paper>

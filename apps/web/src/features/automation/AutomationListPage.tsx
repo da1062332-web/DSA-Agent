@@ -408,6 +408,7 @@ export function AutomationListPage() {
                             <IconButton
                               size="small"
                               color="primary"
+                              aria-label="Trigger / Execute"
                               disabled={!canExecute}
                               onClick={() => {
                                 setSelectedDefForExec(d);
@@ -424,7 +425,7 @@ export function AutomationListPage() {
                           </AppButton>
                         </RowAction>
                         <Tooltip title="View Details & Versions">
-                          <IconButton size="small" onClick={() => navigate(`/automations/${d.id}`)}>
+                          <IconButton size="small" aria-label="View Details & Versions" onClick={() => navigate(`/automations/${d.id}`)}>
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>

@@ -635,7 +635,7 @@ export function LenderDetailPage() {
           )}
           <Stack spacing={2} sx={{ mt: 1 }}>
             {contactRows.map((row, index) => (
-              <Paper key={index} sx={{ p: 2, bgcolor: 'grey.50' }} variant="outlined">
+              <Paper key={`contact-row-${index}-${row.email || row.name || index}`} sx={{ p: 2, bgcolor: 'grey.50' }} variant="outlined">
                 <Grid container spacing={2} alignItems="center">
                   <Grid item xs={12} sm={3}>
                     <TextField

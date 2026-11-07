@@ -123,7 +123,7 @@ function formatFieldValue(val: unknown): React.ReactNode {
       <Stack direction="row" spacing={0.5} flexWrap="wrap">
         {val.map((item, idx) => (
           <Chip
-            key={idx}
+            key={`${idx}-${typeof item === 'object' ? JSON.stringify(item) : String(item)}`}
             label={typeof item === 'object' ? JSON.stringify(item) : String(item)}
             size="small"
             variant="outlined"
@@ -802,17 +802,20 @@ export function AuditSearchPage() {
                       )}
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => {
-                          setSelectedEvent(ev);
-                          setModalTab(0);
-                          setDetailModalOpen(true);
-                        }}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="View Event Details">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          aria-label="View Event Details"
+                          onClick={() => {
+                            setSelectedEvent(ev);
+                            setModalTab(0);
+                            setDetailModalOpen(true);
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
@@ -864,6 +867,7 @@ export function AuditSearchPage() {
                 <Tooltip title="Copy Event ID">
                   <IconButton
                     size="small"
+                    aria-label="Copy Event ID"
                     onClick={() => selectedEvent && handleCopy(selectedEvent.id, 'Event ID')}
                     sx={{ p: 0.25 }}
                   >
@@ -1047,7 +1051,7 @@ export function AuditSearchPage() {
                           </Typography>
                         </Paper>
                         <Tooltip title="Copy Current Hash">
-                          <IconButton size="small" onClick={() => handleCopy(selectedEvent.hash!, 'Current Hash')}>
+                          <IconButton size="small" aria-label="Copy Current Hash" onClick={() => handleCopy(selectedEvent.hash!, 'Current Hash')}>
                             <ContentCopyIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -1075,6 +1079,7 @@ export function AuditSearchPage() {
                         <Tooltip title="Copy Previous Hash">
                           <IconButton
                             size="small"
+                            aria-label="Copy Previous Hash"
                             onClick={() => handleCopy(selectedEvent.prevHash || '0'.repeat(64), 'Previous Hash')}
                           >
                             <ContentCopyIcon fontSize="small" />

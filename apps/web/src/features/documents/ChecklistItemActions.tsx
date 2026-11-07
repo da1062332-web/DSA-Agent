@@ -60,7 +60,6 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
   });
 
   const view = useMutation({
-    meta: { handled: true },
     mutationFn: async () => {
       if (!item.documentId) {
         throw new Error('No document has been linked to this checklist item.');
@@ -81,7 +80,6 @@ export function ChecklistItemActions({ item }: { item: ChecklistItem }) {
   });
 
   const download = useMutation({
-    meta: { handled: true },
     mutationFn: async () => {
       if (!item.documentId) throw new Error('No document has been linked to this checklist item.');
       const v = currentVersion(await getDocument(item.documentId));

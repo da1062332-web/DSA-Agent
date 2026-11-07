@@ -40,7 +40,7 @@ export function SalesExecDashboard() {
     queryFn: () => fetchLeads({ limit: 50 }),
   });
 
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+  const { data: tasksData, isLoading: tasksLoading, isError: tasksError } = useQuery({
     queryKey: ['sales-dashboard-tasks', dateScope],
     queryFn: () => listTasks({ view: 'MINE', limit: 10 }),
   });
@@ -155,6 +155,12 @@ export function SalesExecDashboard() {
           </Button>
         </Stack>
       </Paper>
+
+      {(leadsError || tasksError) && (
+        <Alert severity="error" sx={{ mb: 2.5 }}>
+          Failed to load pipeline leads or assigned tasks. Please refresh or check connection.
+        </Alert>
+      )}
 
       {/* KPI Overview Cards */}
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>

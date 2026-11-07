@@ -111,6 +111,7 @@ export function PrivacyDashboard(): React.ReactElement {
   const {
     data: stats,
     isLoading: statsLoading,
+    isError: statsError,
     refetch: refetchStats,
   } = useQuery({
     queryKey: ['privacy-stats'],
@@ -120,6 +121,7 @@ export function PrivacyDashboard(): React.ReactElement {
   const {
     data: sharingData,
     isLoading: sharingLoading,
+    isError: sharingError,
     refetch: refetchSharing,
   } = useQuery({
     queryKey: ['privacy-data-sharing'],
@@ -217,6 +219,12 @@ export function PrivacyDashboard(): React.ReactElement {
           </Stack>
         }
       />
+
+      {(statsError || sharingError) && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Failed to load privacy statistics or data sharing logs. Please check your network connection.
+        </Alert>
+      )}
 
       {/* KPI Metric Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

@@ -443,7 +443,7 @@ export function RuleVersionDetailPage() {
           ) : (
             <Box mt={1}>
               {validationReport.issues.map((iss, i) => (
-                <Typography key={i} variant="caption" display="block">
+                <Typography key={`${iss.code}-${iss.ruleUid || i}-${i}`} variant="caption" display="block">
                   [{iss.severity}] {iss.code}: {iss.message} {iss.ruleUid ? `(Rule: ${iss.ruleUid})` : ''}
                 </Typography>
               ))}

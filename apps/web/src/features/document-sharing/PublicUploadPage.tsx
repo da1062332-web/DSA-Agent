@@ -335,7 +335,7 @@ export function PublicUploadPage() {
                 </Typography>
                 <List dense>
                   {uploadedFiles.map((f, i) => (
-                    <ListItem key={i} sx={{ px: 0 }}>
+                    <ListItem key={f.documentId ?? `${f.filename}-${i}`} sx={{ px: 0 }}>
                       <ListItemText
                         primary={f.filename}
                         secondary={`Size: ${formatFileSize(f.fileSizeBytes)} • Ref: ${f.documentId}`}
@@ -468,7 +468,7 @@ export function PublicUploadPage() {
                 const isSelected = selectedChecklistItemId === item.checklistItemId;
                 return (
                   <ListItem
-                    key={idx}
+                    key={item.checklistItemId}
                     onClick={() => setSelectedChecklistItemId(item.checklistItemId)}
                     sx={{
                       bgcolor: isSelected ? '#eff6ff' : 'white',
@@ -568,8 +568,8 @@ export function PublicUploadPage() {
                     label="Select Checklist Item"
                     onChange={(e) => setSelectedChecklistItemId(e.target.value)}
                   >
-                    {effectiveRequestedItems.map((item, idx) => (
-                      <MenuItem key={idx} value={item.checklistItemId}>
+                    {effectiveRequestedItems.map((item) => (
+                      <MenuItem key={item.checklistItemId} value={item.checklistItemId}>
                         {formatRequestedItemLabel(item, typeCounts.get(item.documentTypeCode))}{' '}
                         {item.mandatory ? '(Required)' : '(Optional)'}
                       </MenuItem>
@@ -652,7 +652,7 @@ export function PublicUploadPage() {
                       ? formatRequestedItemLabel(matchedItem, typeCounts.get(matchedItem.documentTypeCode))
                       : file.checklistItemId;
                     return (
-                      <ListItem key={idx} divider={idx < uploadedFiles.length - 1}>
+                      <ListItem key={file.documentId ?? `${file.checklistItemId}-${idx}`} divider={idx < uploadedFiles.length - 1}>
                         <ListItemText
                           primary={file.filename}
                           secondary={`Document: ${categoryLabel} • Size: ${formatFileSize(file.fileSizeBytes)}`}

@@ -100,7 +100,7 @@ export function createConnectorPortalRouter(deps: ApiDeps): Router {
     const ctx = requireCtx(req);
     const s = await deps.txRunner.withTenantTx(ctx, (tx) => standing(tx, ctx));
     if (s.state !== 'ELIGIBLE')
-      req.log?.warn({ portalState: s.state, reason: s.reason }, 'portal login not eligible');
+      (req as any).log?.warn({ portalState: s.state, reason: s.reason }, 'portal login not eligible');
     res.json({ state: s.state, message: s.state === 'ELIGIBLE' ? null : PORTAL_STATE_MESSAGE[s.state] });
   });
 
