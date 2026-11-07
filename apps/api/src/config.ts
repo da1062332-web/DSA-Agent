@@ -49,6 +49,20 @@ const EnvSchema = z
       .default('false')
       .transform((v) => v === 'true'),
     /**
+     * Turns on the background worker (outbox relay and job queue).
+     * Set to false in multi-replica deployments where dedicated worker processes run instead.
+     * Default: true (for single-instance or local dev).
+     */
+    BACKGROUND_WORKER_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /**
+     * In-memory cache TTL for resolved principals in milliseconds.
+     * Eliminates redundant db transactions on every request. Default: 30000 (30 seconds).
+     */
+    PRINCIPAL_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(30_000),
+    /**
      * Turns on the data-correction executor (Release 2, SUB-ADM.07): an in-process worker that carries out APPROVED corrections using the
      * reviewed scripts in correction-scripts.ts. Off unless set to true, because it writes to tenant data.
      */

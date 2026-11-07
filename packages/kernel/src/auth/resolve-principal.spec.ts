@@ -1,4 +1,4 @@
-import type { PermissionGrant, ScopeType } from '@dsa/contracts';
+import type { PermissionGrant, RequestContext, ScopeType, TxRunner } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 import { dedupeGrants, effectiveGrants } from './resolve-principal';
 
@@ -63,5 +63,52 @@ describe('effectiveGrants: a connector login never carries internal grants (TEST
     expect(effectiveGrants('STAFF', [row('lead.read'), row('lead.read'), row('not.a.permission')])).toEqual([
       { code: 'lead.read', scope: 'TENANT', branchIds: [] },
     ]);
+  });
+});
+
+describe('Principal resolution caching', () => {
+  it('serves subsequent resolves from cache when cacheTtlMs is active', async () => {
+    let txCount = 0;
+    const mockTxRunner = {
+      withTenantTx: async <T>(_ctx: RequestContext, _fn: unknown): Promise<T> => {
+        txCount++;
+        return {
+          kind: 'USER' as const,
+          id: 'usr_test_1',
+          tenantId: 'ten_test',
+          primaryBranchId: 'brn_1',
+          managedTeamMemberIds: [],
+          queueIds: [],
+          grants: [],
+          authTime: null,
+          userType: 'STAFF' as const,
+        } as unknown as T;
+      },
+    } as unknown as TxRunner;
+
+    const { createPrincipalResolver } = await import('./resolve-principal');
+    const resolver = createPrincipalResolver(mockTxRunner, { cacheTtlMs: 5000 });
+
+    const token = {
+      tenantId: 'ten_test',
+      subject: 'sub_test_1',
+      email: 'test@example.com',
+      aal: 'aal1' as const,
+      mfaVerifiedAt: null,
+    };
+
+    const first = await resolver.resolve(token, { correlationId: 'c1', now: new Date(1000) });
+    expect(first.id).toBe('usr_test_1');
+    expect(txCount).toBe(1);
+
+    // Second call within TTL should hit cache
+    const second = await resolver.resolve(token, { correlationId: 'c2', now: new Date(2000) });
+    expect(second.id).toBe('usr_test_1');
+    expect(txCount).toBe(1);
+
+    // Call after TTL expires should re-run transaction
+    const third = await resolver.resolve(token, { correlationId: 'c3', now: new Date(7000) });
+    expect(third.id).toBe('usr_test_1');
+    expect(txCount).toBe(2);
   });
 });

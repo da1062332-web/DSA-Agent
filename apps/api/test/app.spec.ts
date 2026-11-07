@@ -42,4 +42,27 @@ describe('app skeleton', () => {
     expect(res.status).toBe(400);
     expect(ErrorEnvelope.parse(res.body).error.code).toBe('MALFORMED_REQUEST');
   });
+
+  it('GET /health/ready returns 200 when database connectivity succeeds', async () => {
+    const mockTxRunner = {
+      withTenantTx: async (_ctx: any, fn: any) => fn({ executeQuery: async () => ({ rows: [{ '?column?': 1 }] }) }),
+    };
+    const app = createTestApp({ deps: { txRunner: mockTxRunner as any } as any });
+    const res = await request(app).get('/health/ready');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ready', database: 'connected' });
+  });
+
+  it('GET /health/ready returns 503 when database connectivity fails', async () => {
+    const failingTxRunner = {
+      withTenantTx: async () => {
+        throw new Error('Connection refused');
+      },
+    };
+    const app = createTestApp({ deps: { txRunner: failingTxRunner as any } as any });
+    const res = await request(app).get('/health/ready');
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe('unhealthy');
+    expect(res.body.database).toBe('disconnected');
+  });
 });

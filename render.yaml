@@ -1,6 +1,9 @@
-# Render blueprint for the API. Secrets are entered in the Render dashboard (sync: false), never in this file.
-# Root directory apps/api: the install runs there, so every workspace the API imports must be declared in apps/api/package.json.
+# Render blueprint for DSA Agent Platform.
+# Multi-service enterprise architecture separating the public API, background workers, and privileged provisioning.
+# Secrets are entered in the Render dashboard (sync: false), never in this file.
+
 services:
+  # 1. Stateless HTTP API Service
   - type: web
     name: dsa-api
     runtime: node
@@ -13,6 +16,10 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
+      - key: BACKGROUND_WORKER_ENABLED
+        value: "false"
+      - key: PRINCIPAL_CACHE_TTL_MS
+        value: "30000"
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: DATABASE_URL
@@ -23,5 +30,68 @@ services:
         sync: false
       - key: APP_SIGNING_SECRET
         sync: false
+      - key: DOCUMENT_STORE
+        value: s3
+      - key: DOCUMENT_S3_ENDPOINT
+        sync: false
+      - key: DOCUMENT_S3_REGION
+        value: ap-south-1
+      - key: DOCUMENT_S3_BUCKET
+        sync: false
+      - key: DOCUMENT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: DOCUMENT_S3_SECRET_ACCESS_KEY
+        sync: false
       - key: CLAMAV_ADDRESS
+        sync: false
+
+  # 2. Dedicated Platform Background Worker (Outbox Relay, Async Jobs, Cleanup)
+  - type: worker
+    name: dsa-worker
+    runtime: node
+    rootDir: apps/api
+    buildCommand: npm install && npm run build
+    startCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: APP_SIGNING_SECRET
+        sync: false
+      - key: DOCUMENT_STORE
+        value: s3
+      - key: DOCUMENT_S3_ENDPOINT
+        sync: false
+      - key: DOCUMENT_S3_REGION
+        value: ap-south-1
+      - key: DOCUMENT_S3_BUCKET
+        sync: false
+      - key: DOCUMENT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: DOCUMENT_S3_SECRET_ACCESS_KEY
+        sync: false
+
+  # 3. Dedicated Staff Provisioning Worker (Architecture B - Sole Keeper of service_role key)
+  - type: worker
+    name: dsa-provisioning
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm run provisioning:worker -w @dsa/tools
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: INVITE_REDIRECT_URL
         sync: false

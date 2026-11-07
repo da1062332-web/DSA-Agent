@@ -3,6 +3,7 @@
 import cors from 'cors';
 import express, { type Express, type RequestHandler } from 'express';
 import helmet from 'helmet';
+import { sql } from 'kysely';
 import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import { authPlaceholder } from './http/auth-placeholder';
@@ -61,6 +62,9 @@ export function createApp(opts: CreateAppOptions): Express {
   const app = express();
   opts = { ...opts, deps: withDepAliases(opts.deps) };
 
+  // AUD-016: Enable trust proxy for accurate client IP extraction behind reverse proxies (Render, Cloudflare, ALB)
+  app.set('trust proxy', 1);
+
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
     cors({
@@ -107,6 +111,41 @@ export function createApp(opts: CreateAppOptions): Express {
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  app.get('/health/ready', async (_req, res) => {
+    try {
+      if (opts.deps?.txRunner) {
+        await opts.deps.txRunner.withTenantTx(
+          {
+            principal: {
+              kind: 'SERVICE',
+              id: 'SYSTEM:health-readiness',
+              tenantId: 'SYSTEM',
+              primaryBranchId: null,
+              managedTeamMemberIds: [],
+              queueIds: [],
+              grants: [],
+              authTime: null,
+            },
+            correlationId: 'readiness_check',
+            now: new Date(),
+          },
+          async (tx) => {
+            if (typeof (tx as any)?.query === 'function') {
+              await (tx as any).query('SELECT 1');
+            } else if (typeof (tx as any)?.executeQuery === 'function') {
+              await (tx as any).executeQuery({ sql: 'SELECT 1', parameters: [] });
+            } else {
+              await sql`SELECT 1`.execute(tx);
+            }
+          },
+        );
+      }
+      res.json({ status: 'ready', database: 'connected' });
+    } catch (err) {
+      res.status(503).json({ status: 'unhealthy', database: 'disconnected', error: (err as Error).message });
+    }
   });
 
   const openApiDoc = buildOpenApiDocument();

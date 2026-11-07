@@ -120,6 +120,7 @@ const app = createApp({
     resolver: createPrincipalResolver(txRunner, {
       onInvitationAccepted: createInvitationAcceptedAudit(deps),
       emailFallback: config.IDENTITY_EMAIL_FALLBACK,
+      cacheTtlMs: config.PRINCIPAL_CACHE_TTL_MS,
       // Each use of the fallback is an account still to bind. The user id is logged, never the e-mail address.
       onEmailFallback: (userId) =>
         logger.warn({ userId }, 'identity resolved by e-mail: bind this account (tools/identity-binding.ts)'),
@@ -177,23 +178,27 @@ const formatWorkerError = (err: unknown): string => {
   return String(err || 'unknown');
 };
 
-const worker = startBackgroundWorker({
-  txRunner,
-  outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
-  onWarning: (message) => logger.warn(`Background worker: ${message}`),
-  onError: (stage, err) =>
-    logger.error(
-      { stage, error: redactSecrets(formatWorkerError(err)) },
-      'background worker tick failed',
-    ),
-});
-
-logger.info('Background worker started (outbox relay and jobs, every 2 seconds)');
+let worker: { stop: () => void } | undefined;
+if (config.BACKGROUND_WORKER_ENABLED) {
+  worker = startBackgroundWorker({
+    txRunner,
+    outboxRelay: new OutboxRelay({ txRunner, subscribers: createOutboxSubscribers(deps) }),
+    onWarning: (message) => logger.warn(`Background worker: ${message}`),
+    onError: (stage, err) =>
+      logger.error(
+        { stage, error: redactSecrets(formatWorkerError(err)) },
+        'background worker tick failed',
+      ),
+  });
+  logger.info('Background worker started (outbox relay and jobs, every 2 seconds)');
+} else {
+  logger.info('Background worker disabled on this instance (BACKGROUND_WORKER_ENABLED=false)');
+}
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     logger.info({ signal }, 'shutting down');
-    worker.stop();
+    worker?.stop();
     server.close(() => {
       void db.destroy().finally(() => process.exit(0));
     });

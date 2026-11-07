@@ -44,6 +44,10 @@ export interface PrincipalResolverOptions {
   emailFallback?: boolean;
   /** Called with the user id each time a token was matched by e-mail rather than by subject: an account still to bind. */
   onEmailFallback?: (userId: string) => void;
+  /** In-memory cache TTL for resolved active principals in milliseconds. Default 0 (disabled). */
+  cacheTtlMs?: number;
+  /** Maximum number of cached principals in the in-memory cache. Default 2000. */
+  cacheMaxSize?: number;
 }
 
 const KNOWN_PERMISSIONS = new Set<string>(PERMISSION_CODES);
@@ -109,8 +113,24 @@ export function createPrincipalResolver(
   txRunner: TxRunner,
   options: PrincipalResolverOptions = {},
 ): PrincipalResolver {
+  const cacheTtlMs = options.cacheTtlMs ?? 0;
+  const cacheMaxSize = options.cacheMaxSize ?? 2000;
+  const cache = new Map<string, { principal: Principal; expiresAt: number }>();
+
   return {
     async resolve(token, { correlationId, now }) {
+      const cacheKey = `${token.tenantId}:${token.subject}:${token.mfaVerifiedAt ? token.mfaVerifiedAt.getTime() : 'no-mfa'}`;
+
+      if (cacheTtlMs > 0) {
+        const entry = cache.get(cacheKey);
+        if (entry) {
+          if (entry.expiresAt > now.getTime()) {
+            return entry.principal;
+          }
+          cache.delete(cacheKey);
+        }
+      }
+
       const bootstrap: RequestContext = {
         principal: {
           kind: 'SERVICE',
@@ -205,6 +225,17 @@ export function createPrincipalResolver(
 
       if (outcome === EXPIRED)
         throw AppError.of('UNAUTHENTICATED', 'This invitation has expired. Ask for a new one.');
+
+      if (cacheTtlMs > 0 && outcome.kind === 'USER') {
+        if (cache.size >= cacheMaxSize) {
+          cache.delete(cache.keys().next().value!);
+        }
+        cache.set(cacheKey, {
+          principal: outcome,
+          expiresAt: now.getTime() + cacheTtlMs,
+        });
+      }
+
       return outcome;
     },
   };
