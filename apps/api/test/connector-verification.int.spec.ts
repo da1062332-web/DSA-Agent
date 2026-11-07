@@ -43,6 +43,8 @@ const as = (id: string, grants: PermissionCode[], overrides: Partial<Principal> 
     ),
   });
 const manager = () => as(MANAGER, ['connector.manage', 'connector.read']);
+// FIN-05: the user who recorded a verification cannot activate on it, so activation is done by a second manager.
+const activator = () => as('usr_cv_activator', ['connector.manage', 'connector.read']);
 
 beforeAll(async () => {
   env = await startIsolationEnv();
@@ -114,7 +116,7 @@ afterAll(async () => {
 });
 
 const activate = (connectorId: string, verificationId: string, key: string) =>
-  request(manager())
+  request(activator())
     .post(`/v1/connectors/${connectorId}/activation`)
     .set('Idempotency-Key', key)
     .set('If-Match', '"0"')
@@ -266,6 +268,19 @@ describe('connector verification (TEST-CVER)', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(422);
     expect(res.body.error.details?.[0]).toMatchObject({ issue: 'USE_ACTIVATION_ROUTE' });
     const after = await env.admin.query(`select status from app.connector where id = $1`, [CV_C]);
+    expect(after.rows[0]).toEqual(before.rows[0]);
+  });
+
+  it('TEST-CVER-11 the user who recorded the verification cannot activate the connector on it (FIN-05)', async () => {
+    const before = await env.admin.query(`select status from app.connector where id = $1`, [CV_B]);
+    const res = await request(manager())
+      .post(`/v1/connectors/${CV_B}/activation`)
+      .set('Idempotency-Key', 'cver_act_000011')
+      .set('If-Match', '"0"')
+      .send({ verificationId: V_B });
+    expect(res.status, JSON.stringify(res.body)).toBe(403);
+    expect(res.body.error.details?.[0]).toMatchObject({ issue: 'VERIFIER_CANNOT_ACTIVATE' });
+    const after = await env.admin.query(`select status from app.connector where id = $1`, [CV_B]);
     expect(after.rows[0]).toEqual(before.rows[0]);
   });
 });

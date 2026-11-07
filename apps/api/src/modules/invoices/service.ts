@@ -18,6 +18,7 @@ import {
 } from '@dsa/contracts';
 import { randomUUID } from 'node:crypto';
 import type { InvoiceRepository } from './repository';
+import { requireFinancialStepUp } from '../../http/financial-step-up';
 
 export interface InvoiceServiceDeps {
   repository: InvoiceRepository;
@@ -138,6 +139,8 @@ export class InvoiceService {
     notes?: string,
   ): Promise<InvoiceRecord> {
     this.deps.authz.requirePermission(ctx, 'invoice.manage');
+    // FIN-04: paying or voiding changes money state, so it needs a fresh second factor, and is refused while the project has none.
+    if (newStatus === 'PAID' || newStatus === 'VOID') requireFinancialStepUp(this.deps.authz, ctx);
 
     const tenantId = ctx.principal.tenantId;
     const userId = ctx.principal.id;
@@ -154,6 +157,12 @@ export class InvoiceService {
     // State machine check
     if (existing.status === 'VOID') {
       throw AppError.of('INVALID_STATE', 'Cannot change the status of a VOID invoice.');
+    }
+    // FIN-04: separation of duties. The user who raised an invoice cannot void it.
+    if (newStatus === 'VOID' && existing.createdBy === userId) {
+      throw AppError.of('SOD_VIOLATION', 'The user who raised this invoice cannot void it.', [
+        { issue: 'CREATOR_CANNOT_VOID' },
+      ]);
     }
 
     const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {

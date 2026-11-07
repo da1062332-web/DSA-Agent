@@ -232,6 +232,9 @@ export function createRouter(deps: ApiDeps): Router {
   router.post('/ledger/exports', async (req: Request, res: Response, next) => {
     try {
       const ctx = getRequestContext(req);
+      // FIN-07: a record-level export needs a fresh second factor, as reporting exports do. The permission is checked first.
+      deps.authz.requirePermission(ctx, 'export.run');
+      deps.authz.requireStepUp(ctx);
       const parsed = CreateLedgerExportInputSchema.safeParse(req.body);
       if (!parsed.success) handleZodError(parsed.error);
 

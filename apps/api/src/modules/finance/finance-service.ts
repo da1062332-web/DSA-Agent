@@ -424,7 +424,8 @@ export class FinanceService {
     ctx: RequestContext,
     input: CalculateCommissionInput,
   ): Promise<{ calculation: CommissionCalculationResponse; payable: CommissionPayableResponse | null }> {
-    this.assertAnyPermission(ctx, ['commission.calculate', 'finance.view']);
+    // FIN-01: calculating creates calculations and payables, which feed payouts. A read permission (finance.view) no longer does it.
+    this.assertPermission(ctx, 'commission.calculate');
 
     const tenantId = ctx.principal.tenantId;
     const plan = await this.deps.repository.findActiveCommissionPlan(tx, tenantId, input.lenderId);
@@ -661,7 +662,8 @@ export class FinanceService {
     ctx: RequestContext,
     input: CreateRecalculationProposalInput,
   ): Promise<RecalculationProposalResponse> {
-    this.assertPermission(ctx, 'commission.plan.edit');
+    // FIN-06: proposing recalculated payables is an adjustment, not a plan edit. Its approval stays gated by step-up.
+    this.assertPermission(ctx, 'adjustment.create');
 
     const tenantId = ctx.principal.tenantId;
     const id = this.nextId('recp');

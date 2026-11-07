@@ -198,14 +198,16 @@ async function assertConnectorVerification(
   ctx: RequestContext,
   connectorId: string,
   verificationId: string,
+  purpose: 'ACTIVATION' | 'BANK_ACCOUNT' = 'BANK_ACCOUNT',
 ): Promise<void> {
   const r = await sql<{
     result: string;
     subject_type: string;
     connector_id: string | null;
     validity_expires_at: Date | null;
+    performed_by: string;
   }>`
-    SELECT result, subject_type, connector_id, validity_expires_at FROM app.verification
+    SELECT result, subject_type, connector_id, validity_expires_at, performed_by FROM app.verification
      WHERE tenant_id = ${ctx.principal.tenantId} AND id = ${verificationId}`.execute(tx);
   const row = r.rows[0];
   if (!row) {
@@ -232,6 +234,14 @@ async function assertConnectorVerification(
     throw AppError.of('VALIDATION_ERROR', `Verification ${verificationId} has expired.`, [
       { field: 'verificationId', issue: 'VERIFICATION_EXPIRED' },
     ]);
+  }
+  // Separation of duties (FIN-05): the user who recorded the verification cannot also activate on it.
+  if (purpose === 'ACTIVATION' && row.performed_by === ctx.principal.id) {
+    throw AppError.of(
+      'SOD_VIOLATION',
+      'The user who recorded the verification cannot activate the connector on it.',
+      [{ field: 'verificationId', issue: 'VERIFIER_CANNOT_ACTIVATE' }],
+    );
   }
 }
 
@@ -686,6 +696,8 @@ export class ConnectorService {
     idempotencyKey: string,
   ): Promise<{ connector: ConnectorResource; isReplayed?: boolean }> {
     this.deps.authz.requirePermission(ctx, 'connector.manage');
+    // Activation lets a connector earn: a fresh second factor (FIN-05). Skipped only while the project has no second factor.
+    this.deps.authz.requireStepUp(ctx);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const result = await withIdempotency(
@@ -724,7 +736,7 @@ export class ConnectorService {
           }
 
           // The verification must be a VERIFIED record about this connector (app.verification, ENT-064; migration 0101).
-          await assertConnectorVerification(tx, ctx, id, input.verificationId);
+          await assertConnectorVerification(tx, ctx, id, input.verificationId, 'ACTIVATION');
 
           const now = new Date();
           const activated = await sql`
@@ -765,6 +777,8 @@ export class ConnectorService {
     idempotencyKey: string,
   ): Promise<{ connector: ConnectorResource; isReplayed?: boolean }> {
     this.deps.authz.requirePermission(ctx, 'connector.manage');
+    // Suspension and termination stop referrals and earnings: a fresh second factor (FIN-05).
+    this.deps.authz.requireStepUp(ctx);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const result = await withIdempotency(
@@ -1102,6 +1116,8 @@ export class ConnectorService {
     idempotencyKey: string,
   ): Promise<{ agreement: ConnectorAgreementResource; isReplayed?: boolean }> {
     requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.agreement_manage'));
+    // An agreement decides which referrals a connector may send: a fresh second factor (FIN-08).
+    this.deps.authz.requireStepUp(ctx);
 
     const validFrom = new Date(input.validFrom);
     const validTo = new Date(input.validTo);
@@ -1439,6 +1455,8 @@ export class ConnectorService {
     input: ConnectorPortalAccessInput,
   ): Promise<ConnectorPortalUser> {
     requireAnyPermission(this.deps.authz, ctx, withLegacy('connector.portal_user_manage'));
+    // Granting or suspending portal access needs a fresh second factor (FIN-09). Skipped only while the project has no second factor.
+    this.deps.authz.requireStepUp(ctx);
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const connector = await this.readConnector(tx, ctx, connectorId);
       const login = await lockPortalUser(tx, ctx, connectorId, userId);

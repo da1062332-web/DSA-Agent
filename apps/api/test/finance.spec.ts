@@ -486,7 +486,7 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it('TC-COM-004b calculateCommission accepts commission.calculate and finance.view, rejects others with 403', async () => {
+  it('TC-COM-004b calculateCommission accepts commission.calculate only; finance.view alone is refused (FIN-01)', async () => {
     const repo = new InMemoryFinanceRepository();
     const service = new FinanceService({ repository: repo });
     const tx = {} as Tx;
@@ -504,7 +504,7 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
     };
 
     await expect(service.calculateCommission(tx, forbiddenCtx, validCalc)).rejects.toThrowError(
-      /commission\.calculate, finance\.view/,
+      /commission\.calculate/,
     );
 
     const calcCtx: RequestContext = {
@@ -522,10 +522,8 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
       correlationId: 'c3',
       now: new Date(),
     };
-    // With finance.view, authz also passes (backward compatible)
-    await expect(service.calculateCommission(tx, viewCtx, validCalc)).rejects.toThrowError(
-      /No active commission plan/,
-    );
+    // FIN-01: a read permission no longer creates calculations and payables
+    await expect(service.calculateCommission(tx, viewCtx, validCalc)).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('TC-COM-005 Full Commission Workflow: plan creation, SOD-02 approval, disbursement calculation and clawback', async () => {
@@ -538,6 +536,7 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
           { code: 'commission.plan.approve', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
           { code: 'adjustment.create', scope: 'TENANT', branchIds: [] },
           { code: 'adjustment.approve', scope: 'TENANT', branchIds: [] },
         ],
@@ -716,6 +715,7 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
         grants: [
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-calc-draft-01',
@@ -751,6 +751,7 @@ describe('Module 30 Part A: Commission (MOD-COM)', () => {
         grants: [
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-round-01',
@@ -952,9 +953,11 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
         id: 'usr_proposer000000000001',
         grants: [
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
+          { code: 'adjustment.create', scope: 'TENANT', branchIds: [] },
           { code: 'commission.plan.approve', scope: 'TENANT', branchIds: [] },
           { code: 'adjustment.approve', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-recp-01',
@@ -1275,6 +1278,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
         grants: [
           { code: 'payout.request', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-pay-iso-01',
@@ -1286,6 +1290,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
         grants: [
           { code: 'payout.request', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-pay-iso-02',
@@ -1524,6 +1529,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
           { code: 'commission.plan.approve', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-large-01',
@@ -1570,6 +1576,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
           { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
           { code: 'commission.plan.approve', scope: 'TENANT', branchIds: [] },
           { code: 'finance.view', scope: 'TENANT', branchIds: [] },
+          { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
         ],
       }),
       correlationId: 'corr-dup-tranche-01',

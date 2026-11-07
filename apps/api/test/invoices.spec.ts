@@ -24,9 +24,11 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
   const tenantB = 'ten_01JTESTTENANTB0000000000000';
 
   // 1. Finance Exec with invoice.manage and finance.view in Tenant A
+  // A recent second factor: paying or voiding an invoice needs a fresh step-up (FIN-04).
   const financeExecA = testPrincipal({
     id: 'usr_fin_exec_01',
     tenantId: tenantA,
+    authTime: new Date().toISOString(),
     grants: [
       { code: 'invoice.manage', scope: 'TENANT', branchIds: [] },
       { code: 'finance.view', scope: 'TENANT', branchIds: [] },
@@ -292,6 +294,49 @@ describe('Module 33 — Invoices & Statements (MOD-INV)', () => {
       expect(ledgerEntries[0]!.entryType).toBe('PAYOUT_DISBURSED');
       expect(ledgerEntries[0]!.amount).toBe(45000);
       expect(ledgerEntries[0]!.referenceId).toBe('INV-CONN-777');
+    });
+
+    it('FIN-04 paying without a fresh second factor is refused, and the invoice is unchanged', async () => {
+      const staleExec = testPrincipal({ ...financeExecA, id: 'usr_fin_exec_02', authTime: null });
+      const app = createTestApp({
+        auth: fakeAuth(staleExec),
+        deps: { txRunner: inMemoryTxRunner, invoiceRepository: repository, audit: inMemoryAudit as any },
+      });
+      await request(app)
+        .post(`/v1/invoices/${createdInvoiceId}/status`)
+        .set('If-Match', '"0"')
+        .send({ status: 'ISSUED' });
+      const res = await request(app)
+        .post(`/v1/invoices/${createdInvoiceId}/status`)
+        .set('If-Match', '"1"')
+        .send({ status: 'PAID' });
+      expect(res.status).toBe(401);
+      expect(res.body.error?.code).toBe('STEP_UP_REQUIRED');
+      const inv = await repository.findInvoiceById({} as Tx, tenantA, createdInvoiceId);
+      expect(inv?.status).toBe('ISSUED');
+    });
+
+    it('FIN-04 the user who raised an invoice cannot void it; another finance user can', async () => {
+      const creatorApp = createTestApp({
+        auth: fakeAuth(financeExecA),
+        deps: { txRunner: inMemoryTxRunner, invoiceRepository: repository, audit: inMemoryAudit as any },
+      });
+      const own = await request(creatorApp)
+        .post(`/v1/invoices/${createdInvoiceId}/status`)
+        .set('If-Match', '"0"')
+        .send({ status: 'VOID' });
+      expect(own.body.error?.code).toBe('SOD_VIOLATION');
+      expect(own.body.error?.details?.[0]?.issue).toBe('CREATOR_CANNOT_VOID');
+      const otherApp = createTestApp({
+        auth: fakeAuth(testPrincipal({ ...financeExecA, id: 'usr_fin_exec_03' })),
+        deps: { txRunner: inMemoryTxRunner, invoiceRepository: repository, audit: inMemoryAudit as any },
+      });
+      const other = await request(otherApp)
+        .post(`/v1/invoices/${createdInvoiceId}/status`)
+        .set('If-Match', '"0"')
+        .send({ status: 'VOID' });
+      expect(other.status, JSON.stringify(other.body)).toBe(200);
+      expect(other.body.status).toBe('VOID');
     });
 
     it('rejects invalid state transition directly from DRAFT to PAID', async () => {
