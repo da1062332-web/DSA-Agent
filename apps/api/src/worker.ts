@@ -23,7 +23,10 @@ import { createWebhookDeliveryHandler, WEBHOOK_DELIVERY_JOB } from './modules/pa
 import { createUserTransferHandler, USER_TRANSFER_JOB } from './modules/platform/user-lifecycle';
 import { startBackgroundWorker } from './modules/platform/worker';
 import { createOutboxSubscribers, createProductionDeps } from './wiring';
-import { documentBackendsFromConfig } from './modules/origination/applications/document-backends';
+import {
+  FallbackSignatureFileScanner,
+  documentBackendsFromConfig,
+} from './modules/origination/applications/document-backends';
 import {
   createDocumentArchiveHandler,
   DOCUMENT_ARCHIVE_JOB,
@@ -62,8 +65,16 @@ const db = createDb(config.DATABASE_URL);
 const txRunner = createTxRunner(db);
 const signingSecret = config.APP_SIGNING_SECRET ?? config.SUPABASE_JWT_SECRET;
 const documentBackends = documentBackendsFromConfig(config);
+let documentScanner = documentBackends.documentScanner;
+if (!documentScanner && (config.NODE_ENV !== 'production' || config.ALLOW_INSECURE_UPLOADS)) {
+  documentScanner = new FallbackSignatureFileScanner();
+}
 
-const deps = createProductionDeps(txRunner, { documentLinkSecret: signingSecret, ...documentBackends });
+const deps = createProductionDeps(txRunner, {
+  documentLinkSecret: signingSecret,
+  ...documentBackends,
+  documentScanner,
+});
 globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
 globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));

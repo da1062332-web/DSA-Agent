@@ -240,6 +240,22 @@ export class ClamAvFileScanner implements FileScannerPort {
   }
 }
 
+/**
+ * A fallback file scanner used when no external ClamAV service is configured (e.g. in local development or staging).
+ * Validates file magic bytes and size constraints, and signals ready so upload intents can proceed.
+ */
+export class FallbackSignatureFileScanner implements FileScannerPort {
+  constructor(private readonly signatureCheck: FileScannerPort = new MagicByteFileScanner()) {}
+
+  async ready(): Promise<boolean> {
+    return true;
+  }
+
+  async scan(buffer: Buffer, filename: string, mimeType: string): Promise<FileScanResult> {
+    return this.signatureCheck.scan(buffer, filename, mimeType);
+  }
+}
+
 export interface DocumentBackendConfig {
   DOCUMENT_STORE: 'local' | 's3';
   DOCUMENT_S3_ENDPOINT?: string;

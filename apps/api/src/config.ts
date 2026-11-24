@@ -128,6 +128,10 @@ const EnvSchema = z
         .regex(/^[A-Za-z0-9.-]+(:\d{1,5})?$/, 'must be host or host:port')
         .optional(),
     ),
+    /** Allow uploads with file-signature checks only when ClamAV is not available. Defaults to false (strict) in production. */
+    ALLOW_INSECURE_UPLOADS: z
+      .preprocess((v) => v === 'true' || v === '1' || v === true, z.boolean())
+      .default(false),
   })
   .superRefine((env, ctx) => {
     if (FORBIDDEN_DB_USERS.test(decodeURIComponent(new URL(env.DATABASE_URL).username))) {

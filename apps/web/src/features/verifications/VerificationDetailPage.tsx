@@ -33,7 +33,17 @@ import { UserPicker } from '../admin/components';
 import { Can } from '../../shell/Can';
 import { UserSelect } from '../../shell/selectors';
 import { ApplicationName, BranchName, CustomerName, UserName } from '../../shell/display';
-import { PageHeader, AppButton, AppCard } from '../../ui';
+import { PageHeader, AppButton, AppCard, StatusBadge } from '../../ui';
+import {
+  apiUrl,
+  currentVersion,
+  downloadDocumentVersion,
+  getDocument,
+  useChecklist,
+} from '../documents/api';
+import { readable, STATUS_LABELS, type ChecklistItem } from '../documents/model';
+import { apiFetch } from '../../api/client';
+import type { DocumentLinkResponse } from '@dsa/contracts';
 import { attestChecklistItem, completeVerification, fetchVerification, updateVerification } from './api';
 import type {
   ChecklistAttestationInput,
@@ -79,6 +89,64 @@ export function VerificationDetailPage() {
   // Document Viewer Modal State
   const [viewDocOpen, setViewDocOpen] = useState(false);
   const [viewDocItem, setViewDocItem] = useState<string | null>(null);
+  const [viewDocName, setViewDocName] = useState<string>('Document');
+  const [viewDocLoading, setViewDocLoading] = useState(false);
+  const [viewDocUrl, setViewDocUrl] = useState<string | null>(null);
+  const [viewDocFileName, setViewDocFileName] = useState<string | null>(null);
+  const [viewDocMimeType, setViewDocMimeType] = useState<string | null>(null);
+  const [viewDocError, setViewDocError] = useState<string | null>(null);
+  const [viewDocVersionId, setViewDocVersionId] = useState<string | null>(null);
+
+  const checklistQuery = useChecklist(data?.applicationId ?? null);
+  const allChecklistItems = checklistQuery.data?.data ?? [];
+  const effectiveItems =
+    data?.checklistItmIds && data.checklistItmIds.length > 0
+      ? allChecklistItems.filter((i) => data.checklistItmIds.includes(i.id))
+      : allChecklistItems;
+
+  const handleOpenDocViewer = async (item: ChecklistItem) => {
+    setViewDocItem(item.id);
+    setViewDocName(readable(item.documentTypeCode));
+    setViewDocOpen(true);
+    setViewDocError(null);
+    setViewDocUrl(null);
+    setViewDocFileName(null);
+    setViewDocMimeType(null);
+    setViewDocVersionId(null);
+
+    if (!item.documentId) {
+      setViewDocError(
+        `No document file has been uploaded for this checklist requirement yet. Status: ${
+          STATUS_LABELS[item.status] ?? item.status
+        }`,
+      );
+      return;
+    }
+
+    try {
+      setViewDocLoading(true);
+      const doc = await getDocument(item.documentId);
+      const v = currentVersion(doc);
+      if (!v) {
+        setViewDocError('This document has no uploaded version available on the server.');
+        return;
+      }
+      setViewDocFileName(v.fileName || `${item.documentTypeCode}.pdf`);
+      setViewDocMimeType(v.detectedMime || 'application/pdf');
+      setViewDocVersionId(v.id);
+
+      const link = await apiFetch<DocumentLinkResponse>(
+        `/v1/document-versions/${encodeURIComponent(v.id)}/view-url`,
+        { method: 'POST', body: { purpose: 'Verification review' } },
+      );
+      const fullUrl = apiUrl(link.url);
+      setViewDocUrl(fullUrl);
+    } catch (err) {
+      setViewDocError((err as Error).message || 'Failed to load document preview.');
+    } finally {
+      setViewDocLoading(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -169,6 +237,7 @@ export function VerificationDetailPage() {
       setAttestOpen(false);
       setActionSuccess(`Checklist item ${selectedChecklistId} marked as ${checklistStatus}!`);
       loadData();
+      void checklistQuery.refetch();
     } catch (err) {
       setError((err as Error).message || 'Failed to review checklist item');
     } finally {
@@ -377,35 +446,77 @@ export function VerificationDetailPage() {
         subtitle="Review and attest uploaded borrower documents against verification checklist"
         divider
       >
-        {(data.checklistItmIds || []).length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-            No specific checklist items linked to this case. General verification applies.
-          </Typography>
+        {checklistQuery.isLoading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 3 }}>
+            <CircularProgress size={24} />
+            <Typography variant="body2" color="text.secondary">
+              Loading borrower documents from application checklist...
+            </Typography>
+          </Box>
+        ) : effectiveItems.length === 0 ? (
+          <Box sx={{ py: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              No document checklist items found for this application.
+            </Typography>
+            {data && (
+              <Button
+                variant="outlined"
+                size="small"
+                component={RouterLink}
+                to={`/applications/${data.applicationId}`}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Open Application & View Documents
+              </Button>
+            )}
+          </Box>
         ) : (
           <Stack spacing={2}>
-            {(data.checklistItmIds || []).map((itemId) => (
+            {effectiveItems.map((item) => (
               <Paper
-                key={itemId}
+                key={item.id}
                 variant="outlined"
-                sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                sx={{
+                  p: 2,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                }}
               >
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    Item: {itemId}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {readable(item.documentTypeCode)}
+                    </Typography>
+                    {item.mandatory && (
+                      <Chip
+                        label="Mandatory"
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        sx={{ height: 20, fontSize: 11 }}
+                      />
+                    )}
+                    <StatusBadge
+                      status={item.status}
+                      label={STATUS_LABELS[item.status] ?? item.status}
+                      size="small"
+                    />
+                  </Stack>
                   <Typography variant="caption" color="text.secondary">
-                    Linked checklist document requirement
+                    Item ID: {item.id} • Party: {item.partyId}
+                    {item.attestationNote ? ` • Note: ${item.attestationNote}` : ''}
+                    {item.reviewedBy ? ' • Reviewed by staff' : ''}
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <AppButton
                     variant="secondary"
                     size="small"
-                    onClick={() => {
-                      setViewDocItem(itemId);
-                      setViewDocOpen(true);
-                    }}
-                    data-testid={`verification.view.${itemId}`}
+                    onClick={() => void handleOpenDocViewer(item)}
+                    data-testid={`verification.view.${item.id}`}
                   >
                     View Document
                   </AppButton>
@@ -413,11 +524,12 @@ export function VerificationDetailPage() {
                     <AppButton
                       variant="outlined"
                       size="small"
+                      disabled={isFinalized}
                       onClick={() => {
-                        setSelectedChecklistId(itemId);
+                        setSelectedChecklistId(item.id);
                         setAttestOpen(true);
                       }}
-                      data-testid={`verification.attest.${itemId}`}
+                      data-testid={`verification.attest.${item.id}`}
                     >
                       Attest / Review
                     </AppButton>
@@ -642,9 +754,13 @@ export function VerificationDetailPage() {
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography variant="h6" fontWeight={700}>
-              Document Viewer: Adhar card.pdf
+              Document Viewer: {viewDocName}
             </Typography>
-            <Chip label="KYC Document" size="small" color="primary" />
+            <Chip
+              label={viewDocUrl ? 'Uploaded & Verified' : 'Checklist Item'}
+              size="small"
+              color={viewDocUrl ? 'success' : 'default'}
+            />
           </Stack>
         </DialogTitle>
         <DialogContent dividers>
@@ -652,57 +768,86 @@ export function VerificationDetailPage() {
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <Typography variant="caption" color="text.secondary">Item Identifier</Typography>
-                <Typography variant="body2" fontWeight={600}>{viewDocItem || 'chk_pan_01'}</Typography>
+                <Typography variant="body2" fontWeight={600}>{viewDocItem || 'chk_...'}</Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Uploaded File</Typography>
-                <Typography variant="body2" fontWeight={600}>Adhar card.pdf (941.5 KB)</Typography>
+                <Typography variant="caption" color="text.secondary">Document Type</Typography>
+                <Typography variant="body2" fontWeight={600}>{viewDocName}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">File Name</Typography>
+                <Typography variant="body2" fontWeight={600}>{viewDocFileName || 'No file attached'}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="caption" color="text.secondary">Integrity & Antivirus Scan</Typography>
-                <Typography variant="body2" color="success.main" fontWeight={600}>PASSED (Clean - SHA-256 Verified)</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Uploaded By</Typography>
-                <Typography variant="body2" fontWeight={600}>Borrower Rahul Sharma via 2FA Public Portal</Typography>
+                <Typography variant="body2" color={viewDocUrl ? 'success.main' : 'text.secondary'} fontWeight={600}>
+                  {viewDocUrl ? 'PASSED (Clean - SHA-256 Verified)' : 'Awaiting File Upload'}
+                </Typography>
               </Grid>
             </Grid>
           </Box>
-          <Box
-            sx={{
-              height: 280,
-              bgcolor: '#0f172a',
-              color: '#f8fafc',
-              borderRadius: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              p: 3,
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="h3" sx={{ mb: 1 }}>📄</Typography>
-            <Typography variant="h6" fontWeight={600}>Government of India — Unique Identification Authority</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, color: '#94a3b8' }}>
-              Aadhaar Card Preview • Verified Identity for Rahul Sharma
-            </Typography>
-            <Chip label="Preview Rendered (%PDF-1.4)" size="small" sx={{ mt: 2, bgcolor: '#1e293b', color: '#38bdf8' }} />
-          </Box>
+
+          {viewDocLoading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8 }}>
+              <CircularProgress size={36} sx={{ mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                Loading secure document preview...
+              </Typography>
+            </Box>
+          ) : viewDocError ? (
+            <Alert severity="info" sx={{ my: 2 }}>
+              {viewDocError}
+            </Alert>
+          ) : viewDocUrl ? (
+            <Box sx={{ width: '100%', borderRadius: 2, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+              {viewDocMimeType?.startsWith('image/') ? (
+                <Box
+                  component="img"
+                  src={viewDocUrl}
+                  alt={viewDocName}
+                  sx={{ width: '100%', maxHeight: 520, objectFit: 'contain', bgcolor: '#0f172a' }}
+                />
+              ) : (
+                <Box
+                  component="iframe"
+                  src={viewDocUrl}
+                  title={viewDocName}
+                  sx={{ width: '100%', height: 500, border: 'none', bgcolor: '#f8fafc' }}
+                />
+              )}
+            </Box>
+          ) : null}
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setViewDocOpen(false)}>Close Viewer</Button>
+          {viewDocUrl && (
+            <Button
+              variant="outlined"
+              onClick={() => window.open(viewDocUrl, '_blank', 'noopener')}
+            >
+              Open in New Tab
+            </Button>
+          )}
+          {viewDocVersionId && (
+            <Button
+              variant="outlined"
+              onClick={() => void downloadDocumentVersion(viewDocVersionId)}
+            >
+              Download File
+            </Button>
+          )}
           <Button
             variant="contained"
             color="success"
             onClick={() => {
               setViewDocOpen(false);
-              setSelectedChecklistId(viewDocItem || 'chk_pan_01');
+              setSelectedChecklistId(viewDocItem || '');
               setAttestOpen(true);
             }}
+            disabled={isFinalized}
             data-testid="verification.view.proceed-to-attest"
           >
-            Approve / Proceed to Attest
+            Proceed to Attest
           </Button>
         </DialogActions>
       </Dialog>

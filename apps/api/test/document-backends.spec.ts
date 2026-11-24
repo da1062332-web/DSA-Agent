@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config';
 import {
   ClamAvFileScanner,
+  FallbackSignatureFileScanner,
   documentBackendsFromConfig,
   EncryptedDocumentObjectStore,
   S3DocumentObjectStore,
@@ -251,5 +252,13 @@ describe('document backend configuration (TEST-DOC-BACKEND-CFG)', () => {
     expect(built.documentStore).toBeInstanceOf(S3DocumentObjectStore);
     expect(built.documentScanner).toBeInstanceOf(ClamAvFileScanner);
     expect(problems({ ...env, DOCUMENT_S3_ENDPOINT: 'not a url' })).not.toContain('synthetic-secret-key');
+  });
+
+  it('TEST-DOC-BACKEND-CFG-03 FallbackSignatureFileScanner reports ready and validates clean signatures', async () => {
+    const scanner = new FallbackSignatureFileScanner();
+    expect(await scanner.ready()).toBe(true);
+    const result = await scanner.scan(PDF, 'doc.pdf', 'application/pdf');
+    expect(result.clean).toBe(true);
+    expect(result.scanStatus).toBe('CLEAN');
   });
 });

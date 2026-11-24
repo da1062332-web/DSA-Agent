@@ -57,7 +57,7 @@ const sha256 = async (bytes: ArrayBuffer) =>
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
-const apiUrl = (path: string) => {
+export const apiUrl = (path: string) => {
   const config = readConfig();
   if (!config.success) throw new ApiError('INTERNAL_ERROR', 0, 'Web configuration is invalid.');
   return `${config.data.VITE_API_BASE_URL}${path}`;

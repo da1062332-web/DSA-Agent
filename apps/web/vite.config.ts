@@ -1,61 +1,59 @@
 import react from '@vitejs/plugin-react';
+import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    chunkSizeWarningLimit: 1500,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@mui') || id.includes('@emotion')) {
-              return 'vendor-mui';
+export default defineConfig(({ mode }) => {
+  // The dev proxy follows VITE_API_BASE_URL from .env / .env.local, so the API can run on another port when 3000 is taken.
+  const apiTarget = loadEnv(mode, process.cwd(), 'VITE_').VITE_API_BASE_URL || 'http://localhost:3000';
+  const proxied = { target: apiTarget, changeOrigin: true };
+
+  return {
+    plugins: [react()],
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('@mui') || id.includes('@emotion')) {
+                return 'vendor-mui';
+              }
+              if (
+                id.includes('react') ||
+                id.includes('scheduler') ||
+                id.includes('@remix-run')
+              ) {
+                return 'vendor-react';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              return 'vendor-misc';
             }
-            if (
-              id.includes('react') ||
-              id.includes('scheduler') ||
-              id.includes('@remix-run')
-            ) {
-              return 'vendor-react';
-            }
-            if (id.includes('@supabase')) {
-              return 'vendor-supabase';
-            }
-            return 'vendor-misc';
-          }
+          },
         },
       },
     },
-  },
-  server: {
-    port: 5173,
-    strictPort: true,
-    proxy: {
-      '/v1': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/auth': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/public': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
+    server: {
+      port: 5173,
+      strictPort: true,
+      proxy: {
+        '/v1': proxied,
+        '/auth': proxied,
+        '/public': proxied,
       },
     },
-  },
-  test: {
-    include: ['src/**/*.spec.{ts,tsx}'],
-    environment: 'node',
-    setupFiles: ['./src/test-setup.ts'],
-    onConsoleLog(log) {
-      if (log.includes('useLayoutEffect does nothing on the server')) {
-        return false;
-      }
+    test: {
+      include: ['src/**/*.spec.{ts,tsx}'],
+      environment: 'node',
+      setupFiles: ['./src/test-setup.ts'],
+      onConsoleLog(log) {
+        if (log.includes('useLayoutEffect does nothing on the server')) {
+          return false;
+        }
+      },
+      // Unit tests use relative API paths and test default MFA enforcement; a developer's .env must not change them.
+      env: { VITE_API_BASE_URL: '', VITE_DISABLE_MFA: 'false' },
     },
-    // Unit tests use relative API paths and test default MFA enforcement; a developer's .env must not change them.
-    env: { VITE_API_BASE_URL: '', VITE_DISABLE_MFA: 'false' },
-  },
+  };
 });

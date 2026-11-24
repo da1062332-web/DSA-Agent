@@ -292,6 +292,7 @@ export function VerificationListPage() {
         columns={columns}
         data={data}
         keyExtractor={(row) => row.id}
+        onRowClick={(row) => navigate(`/verifications/${row.id}`)}
         isLoading={loading}
         isError={Boolean(error)}
         error={error}

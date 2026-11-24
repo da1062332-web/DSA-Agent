@@ -32,7 +32,10 @@ import {
 } from './modules/platform/user-lifecycle';
 import { startBackgroundWorker } from './modules/platform/worker';
 import { createOutboxSubscribers, createProductionDeps } from './wiring';
-import { documentBackendsFromConfig } from './modules/origination/applications/document-backends';
+import {
+  FallbackSignatureFileScanner,
+  documentBackendsFromConfig,
+} from './modules/origination/applications/document-backends';
 import {
   createDocumentArchiveHandler,
   DOCUMENT_ARCHIVE_JOB,
@@ -103,14 +106,24 @@ if (config.IDENTITY_EMAIL_FALLBACK) {
 }
 // Document files (AUD-013): an S3-compatible bucket and clamd when configured, else local disk and the signature check only.
 const documentBackends = documentBackendsFromConfig(config);
+let documentScanner = documentBackends.documentScanner;
+if (!documentScanner) {
+  if (config.NODE_ENV !== 'production' || config.ALLOW_INSECURE_UPLOADS) {
+    documentScanner = new FallbackSignatureFileScanner();
+    logger.warn('CLAMAV_ADDRESS is not set: using fallback file-signature scanner for document uploads.');
+  } else {
+    logger.warn('CLAMAV_ADDRESS is not set: document uploads will be refused until a malware scanner is configured.');
+  }
+}
 if (config.NODE_ENV === 'production' && config.DOCUMENT_STORE === 'local') {
   logger.warn('DOCUMENT_STORE is local: document files are on this machine only and are lost on a redeploy. Set DOCUMENT_STORE=s3.');
 }
-if (config.NODE_ENV === 'production' && !config.CLAMAV_ADDRESS) {
-  logger.warn('CLAMAV_ADDRESS is not set: document uploads get the file-signature check only, no malware scan.');
-}
 // Staff invitations are recorded here and sent by the provisioning worker (tools/provisioning-worker.ts), a separate process.
-const deps = createProductionDeps(txRunner, { documentLinkSecret: signingSecret, ...documentBackends });
+const deps = createProductionDeps(txRunner, {
+  documentLinkSecret: signingSecret,
+  ...documentBackends,
+  documentScanner,
+});
 globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
 globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));
