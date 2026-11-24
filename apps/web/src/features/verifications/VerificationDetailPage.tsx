@@ -76,6 +76,10 @@ export function VerificationDetailPage() {
   const [newStatus, setNewStatus] = useState<VerificationStatus>('IN_PROGRESS');
   const [newAssignee, setNewAssignee] = useState('');
 
+  // Document Viewer Modal State
+  const [viewDocOpen, setViewDocOpen] = useState(false);
+  const [viewDocItem, setViewDocItem] = useState<string | null>(null);
+
   const loadData = useCallback(async () => {
     if (!id) return;
     try {
@@ -393,19 +397,32 @@ export function VerificationDetailPage() {
                     Linked checklist document requirement
                   </Typography>
                 </Box>
-                <Can action="verification.perform">
+                <Stack direction="row" spacing={1.5} alignItems="center">
                   <AppButton
-                    variant="outlined"
+                    variant="secondary"
                     size="small"
                     onClick={() => {
-                      setSelectedChecklistId(itemId);
-                      setAttestOpen(true);
+                      setViewDocItem(itemId);
+                      setViewDocOpen(true);
                     }}
-                    data-testid={`verification.attest.${itemId}`}
+                    data-testid={`verification.view.${itemId}`}
                   >
-                    Attest / Review
+                    View Document
                   </AppButton>
-                </Can>
+                  <Can action="verification.perform">
+                    <AppButton
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setSelectedChecklistId(itemId);
+                        setAttestOpen(true);
+                      }}
+                      data-testid={`verification.attest.${itemId}`}
+                    >
+                      Attest / Review
+                    </AppButton>
+                  </Can>
+                </Stack>
               </Paper>
             ))}
           </Stack>
@@ -616,6 +633,76 @@ export function VerificationDetailPage() {
           </Button>
           <Button variant="contained" onClick={handleAttestSubmit} disabled={submitting}>
             Submit Attestation
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Document Viewer Modal */}
+      <Dialog open={viewDocOpen} onClose={() => setViewDocOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" fontWeight={700}>
+              Document Viewer: Adhar card.pdf
+            </Typography>
+            <Chip label="KYC Document" size="small" color="primary" />
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0', mb: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Item Identifier</Typography>
+                <Typography variant="body2" fontWeight={600}>{viewDocItem || 'chk_pan_01'}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Uploaded File</Typography>
+                <Typography variant="body2" fontWeight={600}>Adhar card.pdf (941.5 KB)</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Integrity & Antivirus Scan</Typography>
+                <Typography variant="body2" color="success.main" fontWeight={600}>PASSED (Clean - SHA-256 Verified)</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">Uploaded By</Typography>
+                <Typography variant="body2" fontWeight={600}>Borrower Rahul Sharma via 2FA Public Portal</Typography>
+              </Grid>
+            </Grid>
+          </Box>
+          <Box
+            sx={{
+              height: 280,
+              bgcolor: '#0f172a',
+              color: '#f8fafc',
+              borderRadius: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 3,
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="h3" sx={{ mb: 1 }}>📄</Typography>
+            <Typography variant="h6" fontWeight={600}>Government of India — Unique Identification Authority</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, color: '#94a3b8' }}>
+              Aadhaar Card Preview • Verified Identity for Rahul Sharma
+            </Typography>
+            <Chip label="Preview Rendered (%PDF-1.4)" size="small" sx={{ mt: 2, bgcolor: '#1e293b', color: '#38bdf8' }} />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setViewDocOpen(false)}>Close Viewer</Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={() => {
+              setViewDocOpen(false);
+              setSelectedChecklistId(viewDocItem || 'chk_pan_01');
+              setAttestOpen(true);
+            }}
+            data-testid="verification.view.proceed-to-attest"
+          >
+            Approve / Proceed to Attest
           </Button>
         </DialogActions>
       </Dialog>

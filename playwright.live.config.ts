@@ -43,6 +43,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
+    channel: 'chrome',
     baseURL: `http://localhost:${WEB_PORT}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -70,5 +71,5 @@ export default defineConfig({
       timeout: 90_000,
     },
   ],
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1536, height: 864 } } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome', viewport: { width: 1536, height: 864 } } }],
 });

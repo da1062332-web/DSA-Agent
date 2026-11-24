@@ -40,7 +40,13 @@
     "test:e2e:vercel:headed": "playwright test -c playwright.vercel.config.ts --headed",
     "test:e2e:live": "playwright test -c playwright.live.config.ts",
     "test:e2e:notion": "playwright test e2e/17-notion-golden-path-real-db.spec.ts",
-    "test:e2e:notion:headed": "playwright test e2e/17-notion-golden-path-real-db.spec.ts --headed"
+    "test:e2e:notion:headed": "playwright test e2e/17-notion-golden-path-real-db.spec.ts --headed",
+    "test:aditya": "playwright test e2e/19-aditya-lifecycle-demo.spec.ts",
+    "test:aditya:headed": "playwright test --headed e2e/19-aditya-lifecycle-demo.spec.ts",
+    "test:aditya:admin": "playwright test e2e/20-aditya-admin-team-setup.spec.ts",
+    "test:aditya:admin:headed": "playwright test --headed e2e/20-aditya-admin-team-setup.spec.ts",
+    "test:vercel:aditya": "playwright test -c playwright.vercel.config.ts --headed e2e/19-aditya-lifecycle-demo.spec.ts",
+    "test:vercel:admin": "playwright test -c playwright.vercel.config.ts --headed e2e/20-aditya-admin-team-setup.spec.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.0",

@@ -80,7 +80,30 @@ describe('TOTP in a test build', () => {
     expect(challengeAndVerify).not.toHaveBeenCalled();
   });
 
-  it('TEST-WEB-12 the stand-in factor is offered only while a test sign-in is active', async () => {
+  it('TEST-WEB-13 enrolment picks a name no kept factor has', async () => {
+    const enroll = vi.fn().mockResolvedValue({
+      data: { id: 'factor-2', totp: { qr_code: 'qr', secret: 's' } },
+      error: null,
+    });
+    supabaseWith({
+      mfa: {
+        listFactors: vi.fn().mockResolvedValue({
+          data: {
+            all: [
+              { id: 'factor-1', factor_type: 'totp', status: 'verified', friendly_name: 'Authenticator 2026-11-24' },
+            ],
+          },
+          error: null,
+        }),
+        unenroll: vi.fn(),
+        enroll,
+      },
+    });
+    await startTotpEnrolment('Authenticator 2026-11-24');
+    expect(enroll).toHaveBeenCalledWith({ factorType: 'totp', friendlyName: 'Authenticator 2026-11-24 (2)' });
+  });
+
+  it('TEST-WEB-12the stand-in factor is offered only while a test sign-in is active', async () => {
     supabaseWith({ mfa: { listFactors: vi.fn().mockResolvedValue({ data: { totp: [] }, error: null }) } });
     await expect(verifiedTotpFactors()).resolves.toEqual([]);
 

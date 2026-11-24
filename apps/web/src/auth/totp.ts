@@ -37,16 +37,23 @@ export async function startTotpEnrolment(friendlyName: string, resetExisting = f
   const supabase = getSupabase();
   const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
   if (listError) throw listError;
+  const kept = new Set<string>();
   for (const f of factors?.all ?? []) {
     if (f.factor_type === 'totp' && (resetExisting || f.status === 'unverified')) {
       try {
-        await supabase.auth.mfa.unenroll({ factorId: f.id });
+        const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: f.id });
+        if (!unenrollError) continue;
       } catch {
         // ignore if unenroll fails or already removed
       }
     }
+    if (f.friendly_name) kept.add(f.friendly_name);
   }
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName });
+  // Supabase refuses (422 mfa_factor_name_conflict) a name that one of the user's factors already has, e.g. a second set-up on the
+  // same day while the verified authenticator from earlier that day is kept until the new one is verified.
+  let name = friendlyName;
+  for (let n = 2; kept.has(name); n++) name = `${friendlyName} (${n})`;
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: name });
   if (error) throw error;
   return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
 }

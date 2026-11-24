@@ -25,7 +25,7 @@ const slowMoMs = getSlowMo();
 const cliBaseUrl =
   process.argv.find((a) => a.startsWith('--base-url='))?.split('=')[1] ||
   process.argv.find((a) => a.startsWith('--use.baseURL='))?.split('=')[1];
-const targetBaseUrl = process.env.PLAYWRIGHT_BASE_URL || cliBaseUrl || 'http://localhost:5173';
+const targetBaseUrl = process.env.PLAYWRIGHT_BASE_URL || cliBaseUrl || 'https://dsa-agent-sand.vercel.app';
 const isRemote = Boolean(
   process.env.PLAYWRIGHT_BASE_URL ||
   cliBaseUrl ||
@@ -43,6 +43,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
+    channel: 'chrome',
     baseURL: targetBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -66,13 +67,16 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: isHeaded
-        ? {
-            viewport: null,
-          }
-        : {
-            viewport: { width: 1536, height: 864 },
-          },
+      use: {
+        channel: 'chrome',
+        ...(isHeaded
+          ? {
+              viewport: null,
+            }
+          : {
+              viewport: { width: 1536, height: 864 },
+            }),
+      },
     },
   ],
 });

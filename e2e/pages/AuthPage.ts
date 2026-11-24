@@ -34,8 +34,8 @@ export class AuthPage extends BasePage {
     await performRoleLogin(this.page, persona, targetPath, password);
   }
 
-  /** Sign out cleanly from current session */
-  async logout(): Promise<void> {
-    await performRoleLogout(this.page);
+  /** Sign out cleanly from current session and redirect to login page */
+  async logout(redirectToLogin = true): Promise<void> {
+    await performRoleLogout(this.page, redirectToLogin);
   }
 }

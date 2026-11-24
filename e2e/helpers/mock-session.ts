@@ -1,6 +1,8 @@
 import type { Page, Locator } from '@playwright/test';
 import crypto from 'node:crypto';
 
+const dynamicStaffUsers: any[] = [];
+
 export interface PersonaConfig {
   userId: string;
   email: string;
@@ -836,6 +838,374 @@ export const ALPHA_PERSONAS: Record<string, PersonaConfig> = {
   },
 };
 
+/**
+ * Persona configurations matching the official Aditya Finserv deployment credentials:
+ * Domain: @adityfinserv.com
+ * Tenant: adity-finserv (ten_01M5XZ4V895M211J3ZRVGTVBHY)
+ */
+export const ADITYA_PERSONAS: Record<string, PersonaConfig> = {
+  tenantMaster: {
+    userId: 'usr_aditya_master_01',
+    email: 'tenant@adityfinserv.com',
+    displayName: 'Aditya Master Admin',
+    roleCode: 'ROLE-TENANT-ADMIN',
+    permissions: [
+      'config.manage',
+      'user.manage',
+      'role.manage',
+      'audit.read',
+      'audit.export_evidence',
+      'api.manage',
+      'integration.manage',
+      'data_correction.approve',
+      'connector.attribution_change',
+      'lead.read',
+      'lead.assign',
+      'customer.read',
+      'consent.record',
+      'application.read',
+      'application.create',
+      'application.review',
+      'document.review',
+      'lender_case.submit',
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'rule.author',
+      'rule.approve',
+      'rule.publish',
+      'payout.request',
+      'payout.approve',
+      'finance.view',
+      'report.read',
+      'target.manage',
+      'connector.read',
+      'connector.manage',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  tenantAdmin: {
+    userId: 'usr_aditya_admin_01',
+    email: 'admin@adityfinserv.com',
+    displayName: 'Aditya Admin',
+    roleCode: 'ROLE-TENANT-ADMIN',
+    permissions: [
+      'config.manage',
+      'user.manage',
+      'role.manage',
+      'audit.read',
+      'audit.export_evidence',
+      'api.manage',
+      'integration.manage',
+      'data_correction.approve',
+      'connector.attribution_change',
+      'lead.read',
+      'lead.assign',
+      'customer.read',
+      'consent.record',
+      'application.read',
+      'application.create',
+      'application.review',
+      'document.review',
+      'lender_case.submit',
+      'sanction.record',
+      'disbursement.record',
+      'disbursement.verify',
+      'rule.author',
+      'rule.approve',
+      'rule.publish',
+      'payout.request',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  orgOwner: {
+    userId: 'usr_aditya_owner_01',
+    email: 'owner@adityfinserv.com',
+    displayName: 'Aditya Owner',
+    roleCode: 'ROLE-ORG-OWNER',
+    permissions: [
+      'lead.read',
+      'application.read',
+      'finance.view',
+      'report.read',
+      'target.manage',
+      'audit.read',
+      'connector.read',
+      'connector.manage',
+      'disbursement.verify',
+      'payout.approve',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  branchMgr: {
+    userId: 'usr_aditya_branchmgr_01',
+    email: 'branchmgr@adityfinserv.com',
+    displayName: 'Aditya Branch Mgr',
+    roleCode: 'ROLE-BRANCH-MGR',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.assign',
+      'lead.qualify',
+      'customer.read',
+      'application.read',
+      'application.update',
+      'application.review',
+      'application.assign',
+      'task.read',
+      'task.create',
+      'task.update',
+      'task.assign',
+      'activity.create',
+      'activity.update',
+      'report.read',
+      'target.manage',
+      'rule.simulate',
+      'connector.read',
+      'complaint.manage',
+      'disbursement.verify',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  teamMgr: {
+    userId: 'usr_aditya_teammgr_01',
+    email: 'teammgr@adityfinserv.com',
+    displayName: 'Aditya Team Mgr',
+    roleCode: 'ROLE-TEAM-MGR',
+    permissions: [
+      'lead.read',
+      'lead.assign',
+      'application.read',
+      'task.read',
+      'task.assign',
+      'task.create',
+      'task.update',
+      'activity.create',
+      'report.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  rm1: {
+    userId: 'usr_aditya_rm1_01',
+    email: 'rm1@adityfinserv.com',
+    displayName: 'Aditya RM 1',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  rm2: {
+    userId: 'usr_aditya_rm2_01',
+    email: 'rm2@adityfinserv.com',
+    displayName: 'Aditya RM 2',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  rmPune: {
+    userId: 'usr_aditya_rmpune_01',
+    email: 'rmpune@adityfinserv.com',
+    displayName: 'Aditya RM Pune',
+    roleCode: 'ROLE-RM',
+    permissions: [
+      'lead.read',
+      'lead.create',
+      'lead.update',
+      'lead.qualify',
+      'customer.create',
+      'customer.update',
+      'customer.read',
+      'consent.record',
+      'application.create',
+      'application.update',
+      'application.read',
+      'share.create',
+      'document.upload',
+      'message.send',
+      'task.read',
+      'task.create',
+      'task.update',
+      'activity.create',
+    ],
+    primaryBranchId: 'PUN01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  salesExec: {
+    userId: 'usr_aditya_sales_01',
+    email: 'sales@adityfinserv.com',
+    displayName: 'Aditya Sales Intake',
+    roleCode: 'ROLE-SALES-EXEC',
+    permissions: [
+      'lead.create',
+      'lead.read',
+      'lead.update',
+      'activity.create',
+      'activity.update',
+      'task.read',
+      'task.create',
+      'task.update',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  loanOps: {
+    userId: 'usr_aditya_loanops_01',
+    email: 'loanops@adityfinserv.com',
+    displayName: 'Aditya Loan Ops',
+    roleCode: 'ROLE-LOAN-OPS',
+    permissions: [
+      'application.read',
+      'application.review',
+      'lender_case.submit',
+      'lender_case.update_status',
+      'sanction.record',
+      'disbursement.record',
+      'document.review',
+      'share.create',
+      'verification.perform',
+      'verification.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  docVerifier: {
+    userId: 'usr_aditya_verifier_01',
+    email: 'verifier@adityfinserv.com',
+    displayName: 'Aditya Doc Verifier',
+    roleCode: 'ROLE-DOC-VERIFIER',
+    permissions: [
+      'verification.read',
+      'verification.perform',
+      'verification.create',
+      'verification.update',
+      'verification.complete',
+      'document.review',
+      'application.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  compliance: {
+    userId: 'usr_aditya_compliance_01',
+    email: 'compliance@adityfinserv.com',
+    displayName: 'Aditya Compliance Officer',
+    roleCode: 'ROLE-COMPLIANCE',
+    permissions: [
+      'audit.read',
+      'audit.export_evidence',
+      'customer.read',
+      'security.incident',
+      'security.vuln',
+      'report.read',
+      'privacy.manage',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  ruleAuthor: {
+    userId: 'usr_aditya_ruleauthor_01',
+    email: 'ruleauthor@adityfinserv.com',
+    displayName: 'Aditya BRE Author',
+    roleCode: 'ROLE-RULE-AUTHOR',
+    permissions: ['rule.author', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  ruleApprover: {
+    userId: 'usr_aditya_ruleapprover_01',
+    email: 'ruleapprover@adityfinserv.com',
+    displayName: 'Aditya BRE Approver',
+    roleCode: 'ROLE-RULE-APPROVER',
+    permissions: ['rule.approve', 'rule.publish', 'rule.suspend', 'rule.simulate'],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  financeExec: {
+    userId: 'usr_aditya_finance_01',
+    email: 'finance@adityfinserv.com',
+    displayName: 'Aditya Finance Executive',
+    roleCode: 'ROLE-FINANCE-EXEC',
+    permissions: [
+      'finance.view',
+      'finance.reconcile',
+      'finance.dispute',
+      'adjustment.create',
+      'payout.request',
+      'payout.settle',
+      'invoice.manage',
+      'commission.plan.edit',
+      'disbursement.record',
+      'disbursement.verify',
+      'report.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+  commissionApprover: {
+    userId: 'usr_aditya_commission_01',
+    email: 'commission@adityfinserv.com',
+    displayName: 'Aditya Commission Approver',
+    roleCode: 'ROLE-COMMISSION-APPROVER',
+    permissions: [
+      'finance.view',
+      'payout.read',
+      'payout.approve',
+      'payout.record_payment',
+      'commission.plan.approve',
+      'adjustment.approve',
+      'report.read',
+      'audit.read',
+    ],
+    primaryBranchId: 'MUM01',
+    tenantId: 'ten_01M5XZ4V895M211J3ZRVGTVBHY',
+  },
+};
+
 /** A Contracts §6 error envelope, so mocked failures look exactly like the API's. */
 export function apiErrorBody(code: string, httpStatus: number, message: string): string {
   return JSON.stringify({
@@ -1042,6 +1412,7 @@ export async function setupPersonaSession(
     });
   });
 
+  const isAditya = Object.values(ADITYA_PERSONAS).some((p) => p.userId === persona.userId);
   const isVaibhav = Object.values(VAIBHAV_PERSONAS).some((p) => p.userId === persona.userId);
 
   // Mock /v1/tenant endpoint
@@ -1051,8 +1422,12 @@ export async function setupPersonaSession(
       contentType: 'application/json',
       body: JSON.stringify({
         id: tenantId,
-        slug: isVaibhav ? 'vaibhav-finserv' : 'qloax-dsa',
-        legalName: isVaibhav ? 'Vaibhav Finserv Private Limited' : 'Qloax Finserv Private Limited',
+        slug: isAditya ? 'adity-finserv' : isVaibhav ? 'vaibhav-finserv' : 'qloax-dsa',
+        legalName: isAditya
+          ? 'Adity Finserv Private Limited'
+          : isVaibhav
+          ? 'Vaibhav Finserv Private Limited'
+          : 'Qloax Finserv Private Limited',
         tenantType: 'DSA',
         dataRegion: 'ap-south-1',
         timezone: 'Asia/Kolkata',
@@ -1073,13 +1448,32 @@ export async function setupPersonaSession(
 
   // Mock /v1/branches
   await page.route('**/v1/branches**', async (route) => {
+    const method = route.request().method();
+    if (method === 'POST') {
+      const body = route.request().postDataJSON() || {};
+      const newBranch = {
+        id: `br_${body.code?.toLowerCase() || 'new'}`,
+        code: body.code?.toUpperCase() || 'NAS01',
+        name: body.name || 'Nashik Main',
+        pincode: body.pincode || '422001',
+        timezone: body.timezone || 'Asia/Kolkata',
+        status: 'ACTIVE',
+        version: 1,
+      };
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(newBranch),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         data: [
-          { id: 'MUM01', code: 'MUM01', name: 'Mumbai Central' },
-          { id: 'PUN01', code: 'PUN01', name: 'Pune Camp' },
+          { id: 'MUM01', code: 'MUM01', name: 'Mumbai Central', pincode: '400008', timezone: 'Asia/Kolkata', status: 'ACTIVE', version: 1 },
+          { id: 'PUN01', code: 'PUN01', name: 'Pune Camp', pincode: '411001', timezone: 'Asia/Kolkata', status: 'ACTIVE', version: 1 },
         ],
       }),
     });
@@ -1152,11 +1546,54 @@ export async function setupPersonaSession(
 
   await page.route('**/v1/users**', async (route) => {
     const url = route.request().url();
+    if (url.includes('/invitations')) {
+      const body = route.request().postDataJSON() || {};
+      const newUser = {
+        id: `usr_invited_${Date.now()}`,
+        email: body.email || 'invited@adityfinserv.com',
+        displayName: body.displayName || 'Invited Staff Member',
+        emailMasked: (body.email || 'in••••@adityfinserv.com'),
+        mobileMasked: '+91 ••••• ••234',
+        primaryBranchId: body.primaryBranchId || 'MUM01',
+        roles: body.roleIds || ['ROLE-RM'],
+        assignedRoles: body.roleIds || ['ROLE-RM'],
+        status: 'INVITED',
+      };
+      dynamicStaffUsers.push(newUser);
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(newUser),
+      });
+      return;
+    }
+
+    if (url.includes('/invitation')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          userStatus: 'INVITED',
+          invitationState: 'PENDING',
+          deliveryState: 'SENT',
+          lastFailure: null,
+          sentAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 604800000).toISOString(),
+          resendCount: 0,
+          acceptedAt: null,
+          nextResendAt: null,
+        }),
+      });
+      return;
+    }
+
     const idMatch = url.match(/\/v1\/users\/([^?]+)/);
     if (idMatch) {
       const userId = idMatch[1];
-      const matched = Object.values(VAIBHAV_PERSONAS).find((p) => p.userId === userId) ||
-        Object.values(ALPHA_PERSONAS).find((p) => p.userId === userId);
+      const matched = Object.values(ADITYA_PERSONAS).find((p) => p.userId === userId) ||
+        Object.values(VAIBHAV_PERSONAS).find((p) => p.userId === userId) ||
+        Object.values(ALPHA_PERSONAS).find((p) => p.userId === userId) ||
+        dynamicStaffUsers.find((u) => u.id === userId);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -1164,14 +1601,14 @@ export async function setupPersonaSession(
           id: userId,
           email: matched?.email || 'staff@example.com',
           displayName: matched?.displayName || 'Staff Member',
-          primaryBranchId: 'MUM01',
-          roles: [matched?.roleCode || 'ROLE-STAFF'],
-          assignedRoles: [matched?.roleCode || 'ROLE-STAFF'],
-          status: 'ACTIVE',
+          primaryBranchId: matched?.primaryBranchId || 'MUM01',
+          roles: matched?.roles || [matched?.roleCode || 'ROLE-STAFF'],
+          assignedRoles: matched?.assignedRoles || [matched?.roleCode || 'ROLE-STAFF'],
+          status: matched?.status || 'ACTIVE',
         }),
       });
     } else {
-      const personaSource = isVaibhav ? VAIBHAV_PERSONAS : ALPHA_PERSONAS;
+      const personaSource = isAditya ? ADITYA_PERSONAS : isVaibhav ? VAIBHAV_PERSONAS : ALPHA_PERSONAS;
       const usersList = Object.values(personaSource).map((p) => ({
         id: p.userId,
         email: p.email,
@@ -1183,17 +1620,31 @@ export async function setupPersonaSession(
         assignedRoles: [p.roleCode],
         status: 'ACTIVE',
       }));
+      const allUsers = [...usersList, ...dynamicStaffUsers];
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: usersList, meta: { total: usersList.length, limit: 50, nextCursor: null } }),
+        body: JSON.stringify({ data: allUsers, meta: { total: allUsers.length, limit: 50, nextCursor: null } }),
       });
     }
   });
 
   await page.route('**/v1/customers**', async (route) => {
     const url = route.request().url();
-    if (url.includes('/cus_demo_kavya_001')) {
+    if (url.includes('/cus_demo_rahul_001') || url.includes('rahul')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cus_demo_rahul_001',
+          fullName: 'Rahul Sharma',
+          mobileMasked: '+91 ••••• ••210',
+          emailMasked: 'rahul.sharma@example.com',
+          pincode: '400008',
+          status: 'ACTIVE',
+        }),
+      });
+    } else if (url.includes('/cus_demo_kavya_001')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -1213,6 +1664,14 @@ export async function setupPersonaSession(
         body: JSON.stringify({
           data: [
             {
+              id: 'cus_demo_rahul_001',
+              fullName: 'Rahul Sharma',
+              mobileMasked: '+91 ••••• ••210',
+              emailMasked: 'rahul.sharma@example.com',
+              pincode: '400008',
+              status: 'ACTIVE',
+            },
+            {
               id: 'cus_demo_kavya_001',
               fullName: 'Kavya Deshmukh',
               mobileMasked: '+91 ••••• ••234',
@@ -1221,7 +1680,7 @@ export async function setupPersonaSession(
               status: 'ACTIVE',
             },
           ],
-          meta: { total: 1 },
+          meta: { total: 2 },
         }),
       });
     }
@@ -1234,7 +1693,7 @@ export async function performRoleLogin(
   targetPath = '/',
   password = 'Qloax@DSA#2026',
 ): Promise<void> {
-  // 1. Setup API route mocks for the persona with direct aal2 session (no 2-step verification)
+  // 1. Setup API route mocks for the persona with direct aal2 session
   await setupPersonaSession(page, persona, 'aal2', false);
 
   // Pre-seed storage flags so two-step verification is recognized as disabled
@@ -1249,9 +1708,11 @@ export async function performRoleLogin(
     }
   });
 
-  // 2. Navigate to /login
-  await page.goto('/login');
-  await page.waitForLoadState('domcontentloaded');
+  // 2. Always navigate to /login and perform visible user credentials entry
+  if (!page.url().includes('/login')) {
+    await page.goto('/login').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+  }
 
   const emailInput = page.locator('[data-testid="auth.email"]');
   const isLoginPage = await emailInput
@@ -1269,113 +1730,123 @@ export async function performRoleLogin(
     const passwordInput = page.locator('[data-testid="auth.password"]');
     const submitBtn = page.locator('[data-testid="auth.submit"]');
 
+    // Clear previous credentials visibly
+    await emailInput.fill('');
+    await passwordInput.fill('');
+    await pauseForDemo(page, 200);
+
+    // Visibly type credentials
     await humanType(emailInput, persona.email, 30);
+    await pauseForDemo(page, 300);
     await humanType(passwordInput, password, 30);
     await pauseForDemo(page, 500);
     await humanClick(submitBtn, 800);
-
   }
 
   // 3. Handle MFA OTP step if presented
   const mfaInput = page.locator('[data-testid="mfa.code"], [data-testid="auth.mfa.code"]');
-  // The code step appears after the authenticator check, which can take a few seconds after the password step.
-  const isMfaPage = await mfaInput.isVisible({ timeout: 15000 }).catch(() => false);
+  const isMfaPage = await mfaInput.isVisible({ timeout: 4000 }).catch(() => false);
 
   if (isMfaPage) {
     await showDemoBanner(page, '2FA Step-Up', 'Verifying MFA TOTP Code: 000000');
     const mfaSubmit = page.locator('[data-testid="mfa.submit"], [data-testid="auth.mfa.submit"]');
     await humanType(mfaInput, '000000');
     await pauseForDemo(page, 400);
-    // The app skips the real TOTP check for the bypass code, so it never upgrades the session itself. Swap in the aal2 token
-    // the real verify call would return, otherwise MFA-required roles are sent to the authenticator enrolment page.
-    const aal2Token = createMockJwt(persona, 'aal2');
-    await page.evaluate((token) => {
-      localStorage.setItem('dsa_bypass_active', 'true');
-      sessionStorage.setItem('dsa_bypass_active', 'true');
-      for (const key of Object.keys(localStorage)) {
-        if (!/^sb-.*-auth-token$/.test(key)) continue;
-        const stored = JSON.parse(localStorage.getItem(key) || '{}');
-        stored.access_token = token;
-        localStorage.setItem(key, JSON.stringify(stored));
-      }
-    }, aal2Token);
     await humanClick(mfaSubmit, 800);
   }
 
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  // 4. Update session tokens in localStorage for the newly signed-in persona
+  const aal2Token = createMockJwt(persona, 'aal2');
+  const tenantId = persona.tenantId || 'ten_01M5XZ4V895M211J3ZRVGTVBHY';
+  const activeSession = {
+    access_token: aal2Token,
+    token_type: 'bearer',
+    expires_in: 86400,
+    expires_at: Math.floor(Date.now() / 1000) + 86400,
+    refresh_token: 'mock-refresh-token',
+    user: {
+      id: persona.userId,
+      aud: 'authenticated',
+      role: 'authenticated',
+      email: persona.email,
+      app_metadata: { tenant_id: tenantId },
+      user_metadata: { display_name: persona.displayName },
+      created_at: '2026-01-01T00:00:00.000Z',
+    },
+  };
+  await page.evaluate(({ session }) => {
+    localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
+    localStorage.setItem('dsa_bypass_active', 'true');
+    sessionStorage.setItem('dsa_bypass_active', 'true');
+    sessionStorage.setItem('dsa_mfa_project', 'disabled');
+    localStorage.setItem('dsa_mfa_project', 'disabled');
+  }, { session: activeSession });
 
-  // 3. Ensure destination is reached
-  if (targetPath && targetPath !== '/' && !page.url().includes(targetPath)) {
+  // 5. Navigate cleanly to the target destination
+  const isAlreadyAtTarget = (path: string) => {
+    try {
+      const url = new URL(page.url());
+      if (path === '/') return url.pathname === '/' || url.pathname === '';
+      return page.url().includes(path);
+    } catch {
+      return false;
+    }
+  };
+
+  if (targetPath && targetPath !== '/login' && !isAlreadyAtTarget(targetPath)) {
     await pauseForDemo(page, 400);
     try {
       await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
     } catch {
-      if (!page.url().includes(targetPath)) {
+      if (!isAlreadyAtTarget(targetPath)) {
         await page.waitForTimeout(600);
         await page.goto(targetPath, { waitUntil: 'domcontentloaded' }).catch(() => {});
       }
     }
   }
 
-  // Ensure the page is never stuck bouncing back to /login
-  if (page.url().includes('/login')) {
-    const aal2Token = createMockJwt(persona, 'aal2');
-    const tenantId = persona.tenantId || 'ten_01M595WCNH6H3ZMCVS70XH9GAN';
-    const fallbackSession = {
-      access_token: aal2Token,
-      token_type: 'bearer',
-      expires_in: 86400,
-      expires_at: Math.floor(Date.now() / 1000) + 86400,
-      refresh_token: 'mock-refresh-token',
-      user: {
-        id: persona.userId,
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: persona.email,
-        app_metadata: { tenant_id: tenantId },
-        user_metadata: { display_name: persona.displayName },
-        created_at: '2026-01-01T00:00:00.000Z',
-      },
-    };
-    await page.evaluate(({ session }) => {
-      localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
-      localStorage.setItem('dsa_bypass_active', 'true');
-      sessionStorage.setItem('dsa_bypass_active', 'true');
-      sessionStorage.setItem('dsa_mfa_project', 'disabled');
-      localStorage.setItem('dsa_mfa_project', 'disabled');
-    }, { session: fallbackSession });
-    await page.goto(targetPath || '/', { waitUntil: 'domcontentloaded' }).catch(() => {});
-  }
   await page.waitForLoadState('domcontentloaded').catch(() => {});
   await pauseForDemo(page, 1000);
 }
 
-export async function performRoleLogout(page: Page): Promise<void> {
-  await showDemoBanner(page, 'Session Sign-Out', 'Signing out of role session');
+export async function performRoleLogout(page: Page, redirectToLogin = true): Promise<void> {
+  await showDemoBanner(page, 'Logging Out', 'Signing out persona session');
   const accountBtn = page.locator('[data-testid="shell.account"]');
-  const isAccountVisible = await accountBtn.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
-  let loggedOut = false;
+  const isAccountVisible = await accountBtn.waitFor({ state: 'visible', timeout: 1500 }).then(() => true).catch(() => false);
   if (isAccountVisible) {
-    await accountBtn.click({ timeout: 3000 }).catch(() => {});
-    const signoutBtn = page.locator('[data-testid="shell.signout"]');
-    const isSignoutVisible = await signoutBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
-    if (isSignoutVisible) {
-      await signoutBtn.click({ timeout: 3000 }).catch(() => {});
-      loggedOut = true;
+    await accountBtn.click({ timeout: 1500 }).catch(() => {});
+    await pauseForDemo(page, 300);
+
+    const signOutBtn = page.locator('[data-testid="shell.signout"]').or(page.getByRole('menuitem', { name: /sign out|logout/i }));
+    if (await signOutBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await signOutBtn.click({ timeout: 1500 }).catch(() => {});
+      await pauseForDemo(page, 400);
     }
   }
-  if (!loggedOut || !page.url().includes('/login')) {
-    // If not already cleanly logged out, clear storage and navigate to login
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    }).catch(() => {});
+
+  // Clear session storage tokens
+  await page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (/^sb-.*-auth-token$/.test(key) || key.startsWith('dsa_')) {
+        localStorage.removeItem(key);
+      }
+    }
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith('dsa_')) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  }).catch(() => {});
+
+  if (redirectToLogin) {
     await page.goto('/login').catch(() => {});
+    const emailInput = page.locator('[data-testid="auth.email"]');
+    await emailInput.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+    await showDemoBanner(page, 'Signed Out', 'Redirected to Sign-In gate for next persona');
+    await pauseForDemo(page, 1000);
+  } else {
+    await pauseForDemo(page, 600);
   }
-  const submitBtn = page.locator('[data-testid="auth.submit"]');
-  await submitBtn.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
-  await showDemoBanner(page, 'Signed Out', 'Returned cleanly to Sign-In gate');
-  await pauseForDemo(page, 800);
 }
 
 export const isHeaded = process.env.HEADED === 'true' || process.argv.includes('--headed');
