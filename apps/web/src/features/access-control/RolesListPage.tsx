@@ -305,7 +305,7 @@ export function RolesListPage() {
           <Stack spacing={2.5}>
             <TextField
               label="Role Code"
-              helperText="Must match pattern ^ROLE-[A-Z-]+$, e.g. ROLE-CREDIT-ANALYST"
+              helperText="Must match pattern ^ROLE-[A-Z-]+$, e.g. ROLE-TELECALLER"
               value={createCode}
               onChange={(e) => setCreateCode(e.target.value.toUpperCase())}
               fullWidth

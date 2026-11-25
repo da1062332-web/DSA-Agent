@@ -3,11 +3,11 @@ import { ACTION_RULES, canPerformAction, routeAllowed, type ActionId } from './a
 import { QLOAX_ROLE_GRANTS } from './role-grants.fixture';
 import { resolveUserRoles } from '../features/dashboard/role-routing';
 
-describe('Phase 5: Persona Verification Matrix across 14 Live Roles', () => {
+describe('Phase 5: Persona Verification Matrix across 13 Live Roles', () => {
   const roles = Object.keys(QLOAX_ROLE_GRANTS);
 
-  it('evaluates all 14 tenant roles from qloax-dsa fixture', () => {
-    expect(roles).toHaveLength(14);
+  it('evaluates all 13 tenant roles from qloax-dsa fixture (ROLE-VERIFIER retired by M-103)', () => {
+    expect(roles).toHaveLength(13);
   });
 
   describe('Dashboard Persona Routing', () => {

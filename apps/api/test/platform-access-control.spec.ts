@@ -137,15 +137,15 @@ describe('Module 5: Access Control (RBAC API)', () => {
       const res = await request(app)
         .post('/v1/roles')
         .send({
-          code: 'ROLE-CREDIT-ANALYST',
-          name: 'Credit Analyst',
+          code: 'ROLE-TELECALLER',
+          name: 'Telecaller',
           permissions: ['lead.read', 'task.read'],
         });
 
       expect(res.status).toBe(201);
       expect(res.body.id).toMatch(/^rol_/);
-      expect(res.body.code).toBe('ROLE-CREDIT-ANALYST');
-      expect(res.body.name).toBe('Credit Analyst');
+      expect(res.body.code).toBe('ROLE-TELECALLER');
+      expect(res.body.name).toBe('Telecaller');
       expect(res.body.isTemplate).toBe(false);
       expect(res.body.version).toBe(1);
       expect(res.body.permissions).toEqual(['lead.read', 'task.read']);

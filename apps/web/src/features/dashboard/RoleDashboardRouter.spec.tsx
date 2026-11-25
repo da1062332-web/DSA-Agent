@@ -81,7 +81,7 @@ describe('RoleDashboardRouter & Persona Dashboards', () => {
     vi.clearAllMocks();
   });
 
-  it('correctly maps each of the 14 tenant roles from role-grants.fixture.ts', () => {
+  it('correctly maps each of the 13 tenant roles from role-grants.fixture.ts', () => {
     for (const [roleCode, grants] of Object.entries(QLOAX_ROLE_GRANTS)) {
       const mockUser: useMeModule.Me = {
         id: 'usr_test',

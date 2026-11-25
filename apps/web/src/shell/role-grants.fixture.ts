@@ -317,10 +317,15 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
   ],
 };
 
-/** The same roles after M-098 backfilled the sub-permissions: what a migrated tenant holds before the role matrix trims it. */
+/** Roles that a later migration retired: still in the snapshot above, gone from a migrated tenant. M-103 retired ROLE-VERIFIER. */
+export const RETIRED_ROLES: readonly string[] = ['ROLE-VERIFIER'];
+
+/**
+ * The same roles after M-098 backfilled the sub-permissions and M-103 retired ROLE-VERIFIER: the 13 roles a migrated tenant holds
+ * before the role matrix trims them.
+ */
 export const QLOAX_ROLE_GRANTS: Record<string, string[]> = Object.fromEntries(
-  Object.entries(QLOAX_ROLE_GRANTS_PRE_M098).map(([role, grants]) => [
-    role,
-    withSubPermissionBackfill(grants),
-  ]),
+  Object.entries(QLOAX_ROLE_GRANTS_PRE_M098)
+    .filter(([role]) => !RETIRED_ROLES.includes(role))
+    .map(([role, grants]) => [role, withSubPermissionBackfill(grants)]),
 );

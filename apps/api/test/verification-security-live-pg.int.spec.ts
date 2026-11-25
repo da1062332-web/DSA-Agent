@@ -85,19 +85,18 @@ describeLivePg('Module 22 (MOD-VER): Live PostgreSQL Security & Isolation Verifi
     expect(rows[0]?.rolbypassrls).toBe(false);
   });
 
-  it('PG-VRF-SEC-002: verifies verifier roles exist with complete verification permissions in database catalog', async () => {
+  it('PG-VRF-SEC-002: verifies the document verifier role holds the verification permissions and ROLE-VERIFIER is retired (M-103)', async () => {
     const ctxA = makeCtx(TENANT_A, USER_A);
 
     const roles = await txRunner.withTenantTx(ctxA, async (tx) => {
       const { rows } = await sql<{ code: string; name: string }>`
-        SELECT code, name FROM app.role 
+        SELECT code, name FROM app.role
         WHERE code IN ('ROLE-DOC-VERIFIER', 'ROLE-VERIFIER')
         ORDER BY code
       `.execute(tx);
       return rows;
     });
 
-    expect(roles.length).toBeGreaterThanOrEqual(1);
     const roleCodes = roles.map((r) => r.code);
     expect(roleCodes).toContain('ROLE-DOC-VERIFIER');
 
@@ -113,6 +112,8 @@ describeLivePg('Module 22 (MOD-VER): Live PostgreSQL Security & Isolation Verifi
       return rows;
     });
 
+    // M-103 retired ROLE-VERIFIER: whatever row is left of it holds no permission.
+    expect(perms.filter((p) => p.code === 'ROLE-VERIFIER')).toEqual([]);
     const grantedCodes = new Set(perms.map((p) => p.permission_code));
     expect(grantedCodes.has('verification.read')).toBe(true);
     expect(grantedCodes.has('verification.perform')).toBe(true);

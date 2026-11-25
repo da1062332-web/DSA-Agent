@@ -140,7 +140,7 @@ export type RoleSummary = z.infer<typeof RoleSummary>;
 export const CreateRoleRequest = z.object({
   code: z
     .string()
-    .regex(/^ROLE-[A-Z-]+$/, 'Role code must match pattern ^ROLE-[A-Z-]+$, e.g. ROLE-CREDIT-ANALYST'),
+    .regex(/^ROLE-[A-Z-]+$/, 'Role code must match pattern ^ROLE-[A-Z-]+$, e.g. ROLE-TELECALLER'),
   name: z.string().min(1).max(100),
   permissions: z.array(z.string()).default([]),
 });

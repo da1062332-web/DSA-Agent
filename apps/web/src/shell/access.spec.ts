@@ -29,8 +29,8 @@ const allowed = (role: string, path: string) => routeAllowed(path, canOf(role), 
 const NONE = () => false;
 
 describe('the fixture covers every live role', () => {
-  it('TEST-ACC-00 14 roles, each with grants', () => {
-    expect(ROLES).toHaveLength(14);
+  it('TEST-ACC-00 13 roles (ROLE-VERIFIER retired by M-103), each with grants', () => {
+    expect(ROLES).toHaveLength(13);
     for (const r of ROLES) expect(QLOAX_ROLE_GRANTS[r]!.length, r).toBeGreaterThan(0);
   });
 });
