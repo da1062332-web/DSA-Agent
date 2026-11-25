@@ -952,8 +952,8 @@ export function SidebarContent({
         )}
       </Box>
 
-      {/* Fixed Settings Row at bottom (Always fixed, both in expanded and collapsed modes). Not offered to a connector portal login. */}
-      {!connectorLogin && (
+      {/* Fixed Settings Row at bottom (Always fixed, both in expanded and collapsed modes). Shown to administrators and platform operators only. */}
+      {!connectorLogin && (isAdmin || platformRealm) && (
       <Box
         sx={{
           borderTop: '1px solid',
