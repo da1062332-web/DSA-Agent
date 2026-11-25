@@ -1,9 +1,13 @@
 const { Client } = require('pg');
 
 async function check() {
-  const client = new Client({
-    connectionString: 'postgresql://postgres.mlpkwwhnagxzinaohdxg:Qloax%40DSA%2312@aws-0-ap-south-1.pooler.supabase.com:6543/postgres'
-  });
+  // The target comes from the environment only (TEST-SECRETS-01): no database URL or password is written in this file.
+  const connectionString = process.env.VERIFY_DATABASE_URL;
+  if (!connectionString) {
+    console.error('Set VERIFY_DATABASE_URL to the database to read.');
+    process.exit(1);
+  }
+  const client = new Client({ connectionString });
   await client.connect();
   const res = await client.query(`
     SELECT r.id, r.tenant_id, r.code, r.name, t.legal_name
