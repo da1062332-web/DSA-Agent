@@ -264,8 +264,10 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
 
 describe('verification screens', () => {
   it('TEST-SUBPERM-03 the workbench needs verification.read and verification.perform together; the list needs read', () => {
-    expect(labelsFor(['verification.read'])).toContain('Verification');
-    expect(labelsFor(['verification.read'])).not.toContain('Verification workbench');
+    // The list is for people who run or oversee checks (task P0-07): read alone, which an RM holds for the application page, is not enough.
+    expect(labelsFor(['verification.read'])).not.toContain('Verification');
+    expect(labelsFor(['verification.read', 'audit.read'])).toContain('Verification');
+    expect(labelsFor(['verification.read', 'audit.read'])).not.toContain('Verification workbench');
     // perform alone opens neither: both lists answer 403 without verification.read.
     expect(labelsFor(['verification.perform'])).not.toContain('Verification');
     expect(labelsFor(['verification.perform'])).not.toContain('Verification workbench');

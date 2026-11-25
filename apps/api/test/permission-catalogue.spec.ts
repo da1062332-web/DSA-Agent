@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { LEGACY_PARENTS, PERMISSION_CODES, SUB_PERMISSION_CODES } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
-import { ROLE_GRANT_FIXES } from '../../../seeds/demo/platform';
+import { ROLE_GRANT_FIXES, ROLE_GRANT_TRIMS } from '../../../seeds/demo/platform';
 
 const DIR = path.resolve(__dirname, '../../../supabase/migrations');
 const files = readdirSync(DIR)
@@ -91,6 +91,34 @@ describe('permission catalogue', () => {
     const catalogue = new Set<string>(PERMISSION_CODES);
     const unknown = [...sql.matchAll(CODE)].map((m) => m[1]!).filter((c) => !catalogue.has(c));
     expect(unknown).toEqual([]);
+  });
+
+  it('TEST-PERM-09 migration 104 removes exactly the ROLE_GRANT_TRIMS of the demo seed, and only catalogue codes', () => {
+    const sql = readFileSync(path.join(DIR, '20261001000104_role_ui_cleanup_trim.sql'), 'utf8');
+    const rows = /VALUES\s*(.*?)\)\s*AS g\(role_code, permission_code\)/is.exec(sql)?.[1] ?? '';
+    const fromSql = new Set<string>();
+    for (const m of rows.matchAll(/\(\s*'(ROLE-[A-Z-]+)'\s*,\s*'([a-z_.]+)'\s*\)/g))
+      fromSql.add(`${m[1]} ${m[2]}`);
+    const fromSeed = new Set<string>();
+    for (const [role, codes] of Object.entries(ROLE_GRANT_TRIMS))
+      for (const code of codes) fromSeed.add(`${role} ${code}`);
+    expect(fromSql.size).toBe(61);
+    expect([...fromSql].filter((p) => !fromSeed.has(p))).toEqual([]);
+    expect([...fromSeed].filter((p) => !fromSql.has(p))).toEqual([]);
+    const catalogue = new Set<string>(PERMISSION_CODES);
+    expect([...fromSql].map((p) => p.split(' ')[1]!).filter((c) => !catalogue.has(c))).toEqual([]);
+  });
+
+  it('TEST-PERM-09 migration 104 only deletes role grants: it inserts, updates and drops nothing', () => {
+    const sql = readFileSync(path.join(DIR, '20261001000104_role_ui_cleanup_trim.sql'), 'utf8')
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('--'))
+      .join('\n')
+      .replace(/'[^']*'/g, "''");
+    expect(sql).not.toMatch(/\b(INSERT|UPDATE|TRUNCATE|DROP|ALTER)\b/i);
+    expect([...sql.matchAll(/\bDELETE FROM\s+([a-z_.]+)/gi)].map((m) => m[1])).toEqual([
+      'app.role_permission',
+    ]);
   });
 
   it('TEST-PERM-04 the migration that completed the catalogue defined nine permissions in migration 60', () => {

@@ -108,7 +108,22 @@ export const NAV_GROUPS: NavGroup[] = [
         anyOf: ['document.upload', 'share.create'],
         module: 'MOD-DSH',
       },
-      { label: 'Verification', to: '/verifications', anyOf: ['verification.read'], module: 'MOD-VER' },
+      {
+        // The verification list is for the people who run or oversee checks (task P0-07). An RM holds verification.read so the
+        // application page can show document status, but has no use for the list itself.
+        label: 'Verification',
+        to: '/verifications',
+        allOf: ['verification.read'],
+        anyOf: [
+          'verification.perform',
+          'verification.create',
+          'verification.update',
+          'verification.complete',
+          'application.review',
+          'audit.read',
+        ],
+        module: 'MOD-VER',
+      },
       {
         // The workbench lists the requests (verification.read) and records the checks (verification.perform): it needs both.
         label: 'Verification workbench',
@@ -192,7 +207,9 @@ export const NAV_GROUPS: NavGroup[] = [
         module: 'MOD-WFA',
       },
       { label: 'Users', to: '/users', anyOf: opens('user.read') },
-      { label: 'Access control', to: '/roles', anyOf: opens('role.read') },
+      // Role administration only (task P0-07). The API still lets user.manage read roles, because assigning a role on the Users screen
+      // needs the list; that is not a reason to show a branch manager the role and permission matrix.
+      { label: 'Access control', to: '/roles', anyOf: ['role.read', 'role.manage'] },
       { label: 'Organisation', to: '/admin/organisation', anyOf: opens('org.manage') },
       { label: 'Branches', to: '/admin/branches', anyOf: opens('org.manage') },
       { label: 'Teams', to: '/admin/teams', anyOf: opens('team.manage') },
@@ -231,7 +248,7 @@ export const EXTRA_ROUTE_RULES: (AccessRule & { to: string })[] = [
   { to: '/leads/new', anyOf: ['lead.create'] },
   // The duplicate review queue (API-LEAD-008) answers 403 without lead.merge.
   { to: '/leads/duplicates', anyOf: ['lead.merge'] },
-  { to: '/permissions', anyOf: opens('role.read') },
+  { to: '/permissions', anyOf: ['role.read', 'role.manage'] },
   { to: '/grievances', anyOf: opens('complaint.read') },
   { to: '/message-templates', anyOf: ['message.send', ...opens('message_template.manage')] },
   { to: '/admin/integrations', anyOf: ['integration.read', 'integration.manage', 'config.manage'] },

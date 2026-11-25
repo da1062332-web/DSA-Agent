@@ -18,9 +18,9 @@ describe('sidebar visibility by permission', () => {
     // Migration M-098 backfills the sub-permissions from the codes a role already holds, so a migrated RM keeps every screen it had.
     const migrated = new Set(withSubPermissionBackfill(before));
     const shown = labels((c) => migrated.has(c));
-    expect(shown).toEqual(
-      expect.arrayContaining(['Leads', 'Tasks', 'Applications', 'Lender cases', 'Verification']),
-    );
+    expect(shown).toEqual(expect.arrayContaining(['Leads', 'Tasks', 'Applications', 'Lender cases']));
+    // The RM reads verifications on the application page; the verification list is not its screen (task P0-07).
+    expect(shown).not.toContain('Verification');
     expect(shown).not.toContain('Messaging');
     expect(shown).not.toContain('Grievances');
     expect(shown).not.toContain('Sanction and disbursement');

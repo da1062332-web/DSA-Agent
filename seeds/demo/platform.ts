@@ -229,15 +229,87 @@ export const ROLE_GRANT_FIXES: Record<string, string[]> = {
   'ROLE-FINANCE-EXEC': ['payout.request', 'disbursement.verify', 'disbursement.read'],
 };
 
+// What migration M-104 removes from the template roles (task P0-07, role-based UI cleanup): grants that open screens the role's job does
+// not use. A test (TEST-PERM-09) compares this list with the migration's rows. Roles the demo seed does not define are listed too, so the
+// two stay identical; a code a seeded role does not hold is simply not there to remove.
+export const ROLE_GRANT_TRIMS: Record<string, string[]> = {
+  'ROLE-BRANCH-MGR': [
+    'verification.perform',
+    'finance.view',
+    'invoice.view',
+    'reconciliation.view',
+    'ledger.view',
+    'role.read',
+    'integration.manage',
+    'integration.read',
+    'api.manage',
+    'api.read',
+    'webhook.manage',
+    'automation.execute',
+    'automation.read',
+  ],
+  'ROLE-TENANT-ADMIN': [
+    'platform.console',
+    'platform.flags',
+    'platform.jobs',
+    'platform.master_data',
+    'platform.release',
+    'platform.support_access',
+    'lead.read',
+    'lead.create',
+    'lead.update',
+    'lead.qualify',
+    'lead.assign',
+    'customer.read',
+    'customer.create',
+    'customer.update',
+    'application.read',
+    'application.create',
+    'application.update',
+    'application.review',
+    'lender_case.read',
+    'lender_case.submit',
+    'lender_case.update_status',
+    'sanction.read',
+    'sanction.record',
+    'disbursement.read',
+    'disbursement.record',
+    'disbursement.verify',
+    'disbursement.exception_approve',
+    'verification.read',
+    'verification.perform',
+    'eligibility.read',
+    'eligibility.override',
+    'share.create',
+  ],
+  'ROLE-LOAN-OPS': [
+    'automation.execute',
+    'automation.read',
+    'connector.read',
+    'connector.manage',
+    'connector.attribution_change',
+    'connector.dispute_resolve',
+    'connector.bank_account_manage',
+    'connector.agreement_manage',
+    'connector.portal_user_manage',
+  ],
+  'ROLE-RM': ['privacy.read'],
+  'ROLE-TEAM-MGR': ['privacy.read'],
+  'ROLE-SALES-EXEC': ['customer.read', 'privacy.read'],
+  'ROLE-COMPLIANCE': ['attendance.read'],
+  'ROLE-FINANCE-EXEC': ['attendance.read'],
+  'ROLE-COMMISSION-APPROVER': ['attendance.read'],
+};
+
 // A tenant provisioned from this seed gets the sub-permissions (M-098) that an existing tenant got from the migration's backfill, so the
 // two match. Derived, not listed, so the seed and the migration cannot drift. The M-099 grants go on after the backfill, as they do in
 // the database: they are listed in full, including the sub-permissions a role is meant to hold (Compliance gets report.read, not
-// performance.read).
+// performance.read). The M-104 trims come off last, as in the database.
 export const ROLES: RoleSeed[] = BASE_ROLES.map((r) => ({
   ...r,
   permissions: [
     ...new Set([...withSubPermissionBackfill(r.permissions), ...(ROLE_GRANT_FIXES[r.code] ?? [])]),
-  ],
+  ].filter((p) => !(ROLE_GRANT_TRIMS[r.code] ?? []).includes(p)),
 }));
 
 export const TEAM = {

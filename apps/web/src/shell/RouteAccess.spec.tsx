@@ -49,9 +49,9 @@ describe('the rule behind dashboard links', () => {
   });
 
   it('TEST-DASH-01 a screen of a module the tenant has switched off is closed even to someone who holds its permission', () => {
-    const who = me(['verification.read'], { disabledModules: ['MOD-VER'] });
+    const who = me(['verification.read', 'verification.perform'], { disabledModules: ['MOD-VER'] });
     expect(routeAccessFor(who)('/verifications')).toBe(false);
-    expect(routeAccessFor(me(['verification.read']))('/verifications')).toBe(true);
+    expect(routeAccessFor(me(['verification.read', 'verification.perform']))('/verifications')).toBe(true);
   });
 });
 
