@@ -270,7 +270,11 @@ export function AppLayout() {
     return <Navigate to={CONNECTOR_PORTAL_PATH} replace />;
 
   const roleLabel = resolveUserRoles(me.data).map((role) => ROLE_LABELS[role])[0];
-  const isAdmin = hasPermission(me.data, 'config.manage') || hasPermission(me.data, 'user.manage');
+  const isAdmin =
+    hasPermission(me.data, 'config.manage') ||
+    hasPermission(me.data, 'user.manage') ||
+    hasPermission(me.data, 'org.manage') ||
+    hasPermission(me.data, 'role.manage');
   const platformRealm = me.data?.tenantId === PLATFORM_TENANT_ID;
   // Route guard (audit F-08): by this point the profile and its grants are loaded (the spinner above covers the wait), and a missing
   // profile has no grants, so the check fails closed. The same rules drive the sidebar and the Home cards.
