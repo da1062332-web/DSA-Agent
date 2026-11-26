@@ -884,6 +884,7 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
           tenantId: DEMO_TENANT_ID,
           grants: [
             { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
+            { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
             { code: 'payout.request', scope: 'TENANT', branchIds: [] },
             { code: 'payout.approve', scope: 'TENANT', branchIds: [] },
             { code: 'adjustment.create', scope: 'TENANT', branchIds: [] },
