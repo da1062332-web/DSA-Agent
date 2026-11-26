@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS script run with node; the package has no ESM for .cjs
 const { Client } = require('pg');
 
 async function check() {
