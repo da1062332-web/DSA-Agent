@@ -21,6 +21,18 @@ UPDATE app.role SET name = 'Rule approver', version = version + 1
 UPDATE app.role SET name = 'Commission and Payout Approver', version = version + 1
  WHERE code = 'ROLE-COMMISSION-APPROVER' AND name = 'Commission and Payout Approver (retired)';
 
+-- Restore the original role names from the snapshot when it exists (hosted: dsa_backup.role_pre_m105), so a name that differs from the
+-- defaults above (for example "Commission approver") comes back exactly as it was.
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'dsa_backup' AND table_name = 'role_pre_m105') THEN
+    UPDATE app.role r SET name = b.name
+      FROM dsa_backup.role_pre_m105 b
+     WHERE b.id = r.id AND b.tenant_id = r.tenant_id
+       AND r.code IN ('ROLE-DOC-VERIFIER', 'ROLE-RULE-AUTHOR', 'ROLE-RULE-APPROVER', 'ROLE-COMMISSION-APPROVER', 'ROLE-SALES-EXEC');
+  END IF;
+END $;
+
 -- Restore permissions from snapshot table if present
 DO $$
 BEGIN
