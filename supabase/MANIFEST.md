@@ -107,9 +107,23 @@ Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orde
 
 ## Reserved number ranges
 
-From Migration Plan §1 (v1.1). Dev 1 has 0004–0009 and 0040–0049 (coordinator for follow-ups). Dev 2 has 0012–0019. Dev 3 has 0023–0029 and 0031–0039.
+### Multi-lender plan (from M-105, recorded 2026-11-26)
 
-> **To confirm at Gate 0:** v1.2 moved M-003 to Dev 5, M-022 to Dev 4 and M-030 to Dev 6, but the ranges were not re-split. Dev 1 should allocate ranges for Dev 4–6 here (manifest PR approved by the other owners) before anyone needs a new migration.
+New migrations from M-105 on follow the five lanes of the multi-lender plan (Notion "DSA CRM — Multi-Lender Missing Scope & Task Plan", sections 6.1 and 12.3, revised 2026-11-26). Each developer writes migrations only in their own range. A number is fixed once given: an unused number stays unused, and only Vaibhav renumbers.
+
+| Range     | Owner (lane)                                           | Numbers given out                                                                                                                                                                                                  |
+| --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0105–0109 | Vaibhav (platform, access control, security, masters)  | 0105 role merge (P0-01, applied); 0106 bank-statement analysis (P4-15); 0107 role-merge dedupe (P0-01); 0108 tenant master overrides (P4-06); 0109 free                                                            |
+| 0110–0119 | Bhushan (customers, leads, partners)                   | 0110 customer profile (P1-02); 0111 collateral (P1-03); 0112 connector parent and split (P2-03); 0113 reason masters (P4-01); 0114 lead sources and score (P4-02); 0115 dedupe results (P4-03); 0116 lead language (P3-01); 0117 telephony (P4-14); 0118 index for P4-05 if needed |
+| 0120–0129 | Dipanshu (lenders, matching, reporting, web app)       | 0120 lender policy and match runs (P1-04); 0121 pack profiles (P2-04); 0122 index for P2-05 if needed; 0123 product variants (P4-04); 0124 support tickets (P4-12); 0125 push subscriptions (P3-02)                   |
+| 0130–0139 | Prathamesh (integrations, messaging, documents, compliance) | 0130 credit report (P1-05); **0131 unused** (P2-02 moved to Devyani); 0132 reserved (P3-03); **0133 unused** (P4-06 moved to Vaibhav); 0134 document extraction (P4-07); 0135 drip and DLT (P4-08); 0136 fraud check (P4-16); 0137 lender API connection (P4-11) |
+| 0140–0149 | Devyani (lender cases, finance and reconciliation, workforce) | 0140 MIS import target and mapping (P1-07); 0141 commission slabs (P2-01); 0142 attendance geo (P3-04); 0143 lender fees (P4-09); 0144 post-sanction (P4-10); **0145 unused** (P4-11 moved to Prathamesh); 0146 statement mapping, UNPAID (P2-02); 0147 reserved for a later ledger-table drop (P0-06) |
+
+M-103 and M-104 came before these ranges and stay as recorded above. Folder owners are in the `owner` field of `apps/api/src/modules/index.ts`.
+
+### Original plan (Gate 0, historical)
+
+From Migration Plan §1 (v1.1). Dev 1 had 0004–0009 and 0040–0049 (coordinator for follow-ups). Dev 2 had 0012–0019. Dev 3 had 0023–0029 and 0031–0039. Ranges for Dev 4–6 were never allocated; migrations up to M-104 took the next free number. Replaced by the table above.
 
 ## Rules
 

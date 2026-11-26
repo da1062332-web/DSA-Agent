@@ -1,5 +1,7 @@
 // Every MVP module router, pre-registered at Gate 0 so nobody edits app.ts later (Assignment Matrix §7).
 // Owners implement their own router.ts; this list only changes when a new module is agreed.
+// Owners follow the five lanes of the multi-lender plan (Notion main page, section 6.1, revised 2026-11-26);
+// the old Dev 1-6 labels are retired. Changes to another owner's folder are guest work that owner reviews.
 import * as compliance from './compliance/router';
 import * as activities from './crm/activities/router';
 import * as customers from './crm/customers/router';
@@ -35,37 +37,41 @@ import * as ledger from './ledger/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
-  { name: 'platform', owner: 'Dev 1', createRouter: platform.createRouter },
-  { name: 'imports', owner: 'Dev 1', createRouter: imports.createRouter },
-  { name: 'platform-admin', owner: 'Dev 1', createRouter: platformAdmin.createRouter },
-  { name: 'integrations', owner: 'Dev 1', createRouter: integrations.createRouter },
-  { name: 'crm/leads', owner: 'Dev 5', createRouter: leads.createRouter },
-  { name: 'crm/customers', owner: 'Dev 5', createRouter: customers.createRouter },
-  { name: 'crm/activities', owner: 'Dev 5', createRouter: activities.createRouter },
-  { name: 'crm/messaging', owner: 'Dev 1', createRouter: messaging.createRouter },
-  { name: 'crm/notifications', owner: 'Dev 1', createRouter: notifications.createRouter },
-  { name: 'compliance', owner: 'Dev 5', createRouter: compliance.createRouter },
-  { name: 'finance', owner: 'Dev 5', createRouter: finance.createRouter },
-  { name: 'invoices', owner: 'Dev 5', createRouter: invoices.createRouter },
-  { name: 'ledger', owner: 'Dev 5', createRouter: ledger.createRouter },
-  { name: 'crm/tasks', owner: 'Dev 6', createRouter: tasks.createRouter },
-  { name: 'crm/grievances', owner: 'Dev 3', createRouter: grievances.createRouter },
-  { name: 'crm/targets', owner: 'Dev 5', createRouter: targets.createRouter },
-  { name: 'crm/workforce', owner: 'Dev 1', createRouter: workforce.createRouter },
-  { name: 'reporting', owner: 'Dev 5', createRouter: reporting.createRouter },
-  { name: 'rules/api', owner: 'Dev 6', createRouter: rulesApi.createRouter },
-  { name: 'origination/catalogue', owner: 'Dev 3', createRouter: catalogue.createRouter },
-  { name: 'origination/applications', owner: 'Dev 3', createRouter: applications.createRouter },
-  { name: 'origination/lender-cases', owner: 'Dev 4', createRouter: lenderCases.createRouter },
-  { name: 'origination/document-sharing', owner: 'Dev 1', createRouter: documentSharing.createRouter },
-  { name: 'verification', owner: 'Dev 2', createRouter: verification.createRouter },
-  { name: 'origination/verifications', owner: 'Dev 2', createRouter: verifications.createRouter },
-  { name: 'origination/connectors', owner: 'Dev 1', createRouter: connectors.createRouter },
-  { name: 'origination/sanctions', owner: 'Dev 3', createRouter: sanctions.createRouter },
-  { name: 'automation', owner: 'Dev 1 / Dev 6', createRouter: automation.createRouter },
-  { name: 'partner-api', owner: 'Dev 2 / Dev 6', createRouter: partnerApi.createRouter },
-  { name: 'audit', owner: 'Dev 1 / Dev 6', createRouter: audit.createRouter },
-  { name: 'security', owner: 'Dev 1 / Platform', createRouter: security.createRouter },
-  { name: 'reconciliation', owner: 'Dev 5', createRouter: reconciliation.createRouter },
+  { name: 'platform', owner: 'Vaibhav', createRouter: platform.createRouter },
+  { name: 'imports', owner: 'Devyani', createRouter: imports.createRouter },
+  { name: 'platform-admin', owner: 'Prathamesh', createRouter: platformAdmin.createRouter },
+  { name: 'integrations', owner: 'Prathamesh', createRouter: integrations.createRouter },
+  { name: 'crm/leads', owner: 'Bhushan', createRouter: leads.createRouter },
+  { name: 'crm/customers', owner: 'Bhushan', createRouter: customers.createRouter },
+  { name: 'crm/activities', owner: 'Bhushan', createRouter: activities.createRouter },
+  { name: 'crm/messaging', owner: 'Prathamesh', createRouter: messaging.createRouter },
+  { name: 'crm/notifications', owner: 'Prathamesh', createRouter: notifications.createRouter },
+  { name: 'compliance', owner: 'Prathamesh', createRouter: compliance.createRouter },
+  { name: 'finance', owner: 'Devyani', createRouter: finance.createRouter },
+  { name: 'invoices', owner: 'Devyani', createRouter: invoices.createRouter },
+  { name: 'ledger', owner: 'Devyani (to remove, P0-06)', createRouter: ledger.createRouter },
+  { name: 'crm/tasks', owner: 'Bhushan', createRouter: tasks.createRouter },
+  { name: 'crm/grievances', owner: 'Prathamesh', createRouter: grievances.createRouter },
+  { name: 'crm/targets', owner: 'Devyani', createRouter: targets.createRouter },
+  { name: 'crm/workforce', owner: 'Devyani', createRouter: workforce.createRouter },
+  { name: 'reporting', owner: 'Dipanshu', createRouter: reporting.createRouter },
+  { name: 'rules/api', owner: 'Dipanshu', createRouter: rulesApi.createRouter },
+  { name: 'origination/catalogue', owner: 'Dipanshu', createRouter: catalogue.createRouter },
+  {
+    name: 'origination/applications',
+    owner: 'Dipanshu (document files: Prathamesh)',
+    createRouter: applications.createRouter,
+  },
+  { name: 'origination/lender-cases', owner: 'Devyani', createRouter: lenderCases.createRouter },
+  { name: 'origination/document-sharing', owner: 'Prathamesh', createRouter: documentSharing.createRouter },
+  { name: 'verification', owner: 'Prathamesh', createRouter: verification.createRouter },
+  { name: 'origination/verifications', owner: 'Prathamesh', createRouter: verifications.createRouter },
+  { name: 'origination/connectors', owner: 'Bhushan', createRouter: connectors.createRouter },
+  { name: 'origination/sanctions', owner: 'Devyani', createRouter: sanctions.createRouter },
+  { name: 'automation', owner: 'Prathamesh', createRouter: automation.createRouter },
+  { name: 'partner-api', owner: 'Vaibhav', createRouter: partnerApi.createRouter },
+  { name: 'audit', owner: 'Vaibhav', createRouter: audit.createRouter },
+  { name: 'security', owner: 'Vaibhav', createRouter: security.createRouter },
+  { name: 'reconciliation', owner: 'Devyani', createRouter: reconciliation.createRouter },
 ];
-// rules/engine (Dev 2) has no router: the engine is in-process behind DecisionPort.
+// rules/engine (Dipanshu, with packages/bre-core) has no router: the engine is in-process behind DecisionPort.
