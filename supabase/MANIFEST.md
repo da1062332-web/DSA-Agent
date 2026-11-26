@@ -2,6 +2,20 @@
 
 Coordinator: **Dev 1**. This file lists owners only. Dev 1 never merges or reorders another owner's file (LR-1.5). Source: Database Migration Plan §0–§1, with owners from Assignment Matrix v1.2 §3.
 
+## Migration number ranges by owner (26 Nov 2026 revision)
+
+Each owner uses only their own range. Numbers are fixed: an unused number stays unused, and renumbering is done only by the platform owner.
+
+| Owner | Range | Notes |
+| --- | --- | --- |
+| Vaibhav (platform lane) | 0105 to 0109 | 0105 role merge (P0-01), 0106 bank-statement analysis (P4-15), 0107 role-merge dedupe (P0-01), 0108 tenant master overrides (P4-06), 0109 unused so far |
+| Bhushan | 0110 to 0119 | 0110 customer profile, 0111 collateral, 0112 connector parent and split, 0113 reason masters and lead enquiry, 0114 lead sources and score, 0115 dedupe results, 0116 lead language, 0117 telephony |
+| Dipanshu | 0120 to 0129 | |
+| Prathamesh | 0130 to 0139 | 0131 unused (P2-02 moved to Devyani), 0133 unused (P4-06 moved to Vaibhav) |
+| Devyani | 0140 to 0149 | 0145 unused (P4-11 moved to Prathamesh), 0147 reserved for a later ledger-table drop |
+
+Reserved and unused numbers: **0131, 0133 and 0145**. Do not use them for a new migration.
+
 Files are `supabase/migrations/2026100100NNNN_<name>.sql`; the Supabase CLI orders them by the 14-digit version. Every file starts with `SET search_path = app, extensions, public;`. All business objects live in schema `app`, which is **not** exposed to the Data API.
 
 | Order | File                                                                  | Owner (v1.2)                    | Task                                                                                                                                    | Creates                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Depends on                        |
