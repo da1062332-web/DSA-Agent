@@ -29,7 +29,7 @@ import {
 import type { Branch, UserListItem } from './types';
 import { RowAction } from '../../shell/RowAction';
 import { displayStatus, userActions } from './user-actions';
-import { roleCell } from './account-type';
+import { contactText, hasRoleDetail, roleCell } from './account-type';
 
 export function UserListPage() {
   const navigate = useNavigate();
@@ -147,14 +147,17 @@ export function UserListPage() {
             <Typography variant="body1" fontWeight={600}>
               {user.displayName}
             </Typography>
-            <Chip
-              label={user.userType}
-              size="small"
-              variant="outlined"
-              color={user.userType === 'CONNECTOR' ? 'info' : 'default'}
-              data-testid="users.list.account-type"
-              sx={{ mt: 0.5 }}
-            />
+            {/* The short directory row (a user.read holder without user.manage) carries no account type. */}
+            {user.userType && (
+              <Chip
+                label={user.userType}
+                size="small"
+                variant="outlined"
+                color={user.userType === 'CONNECTOR' ? 'info' : 'default'}
+                data-testid="users.list.account-type"
+                sx={{ mt: 0.5 }}
+              />
+            )}
           </Box>
         </Box>
       ),
@@ -164,7 +167,7 @@ export function UserListPage() {
       header: 'Contact',
       accessor: (user) => (
         <Box>
-          <Typography variant="body2">{user.emailMasked}</Typography>
+          <Typography variant="body2">{contactText(user)}</Typography>
           {user.mobileMasked && (
             <Typography variant="caption" color="text.secondary">
               {user.mobileMasked}
@@ -182,6 +185,14 @@ export function UserListPage() {
       id: 'roles',
       header: 'Roles',
       accessor: (user) => {
+        // The short directory row has no role data: say nothing instead of "None" (see hasRoleDetail in account-type.ts).
+        if (!hasRoleDetail(user)) {
+          return (
+            <Typography variant="caption" color="text.secondary" data-testid="users.list.roles-hidden">
+              —
+            </Typography>
+          );
+        }
         // A partner login holds no role, so it gets a "Partner portal" chip instead of "None" (see account-type.ts).
         const cell = roleCell(user);
         if (cell.partner) {
