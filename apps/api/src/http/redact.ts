@@ -50,13 +50,27 @@ export function redactRequestPath(url: string): string {
   return url.split('?')[0]!.replace(LINK_TOKEN_PATH, (_match, route: string) => `/${route}/[redacted]`);
 }
 
-/** The text with every registered secret and every credential-shaped part replaced. */
+/**
+ * Identity data (S3) that must never reach a log or an error response (task P1-01). PAN keeps its first five letters and its last
+ * letter, so `ABCDE1234F` becomes `ABCDE****F`. An Aadhaar-shaped number keeps only its last four digits. A date of birth is hidden
+ * when it follows a dob-style key.
+ */
+const PII_SHAPES: Array<[RegExp, string]> = [
+  [/\b([A-Z]{5})[0-9]{4}([A-Z])\b/gi, '$1****$2'],
+  [/\b\d{4}[\s-]?\d{4}[\s-]?(\d{4})\b/g, '**** **** $1'],
+  [/\b(dob|dateOfBirth|date_of_birth)(\s*[=:]\s*)["']?[^\s&;,'"]+/gi, '$1$2[redacted]'],
+];
+
+/** The text with every registered secret, every credential-shaped part and every identity-data pattern replaced. */
 export function redactSecrets(text: string): string {
   let out = text;
   for (const secret of [...registered].sort((a, b) => b.length - a.length)) {
     out = out.split(secret).join('[redacted]');
   }
   for (const [pattern, replacement] of SHAPES) {
+    out = out.replace(pattern, replacement);
+  }
+  for (const [pattern, replacement] of PII_SHAPES) {
     out = out.replace(pattern, replacement);
   }
   return out;
