@@ -12,6 +12,7 @@ export type DashboardRole =
   | 'ROLE-FINANCE-EXEC'
   | 'ROLE-COMMISSION-APPROVER'
   | 'ROLE-COMPLIANCE'
+  | 'ROLE-POLICY-MGR'
   | 'ROLE-RULE-AUTHOR'
   | 'ROLE-RULE-APPROVER'
   | 'ROLE-ORG-OWNER'
@@ -19,7 +20,7 @@ export type DashboardRole =
 
 export const ROLE_LABELS: Record<DashboardRole, string> = {
   'ROLE-PLATFORM-SUPER-ADMIN': 'Platform Super Admin',
-  'ROLE-SALES-EXEC': 'Sales Executive',
+  'ROLE-SALES-EXEC': 'Telecaller',
   'ROLE-LOAN-OPS': 'Loan Operations',
   'ROLE-DOC-VERIFIER': 'Document Verifier',
   'ROLE-RM': 'Relationship Manager',
@@ -28,6 +29,7 @@ export const ROLE_LABELS: Record<DashboardRole, string> = {
   'ROLE-FINANCE-EXEC': 'Finance Executive',
   'ROLE-COMMISSION-APPROVER': 'Commission Approver',
   'ROLE-COMPLIANCE': 'Compliance Officer',
+  'ROLE-POLICY-MGR': 'Lender Policy Manager',
   'ROLE-RULE-AUTHOR': 'Rule Author',
   'ROLE-RULE-APPROVER': 'Rule Approver',
   'ROLE-ORG-OWNER': 'Organisation Owner',
@@ -45,6 +47,7 @@ export const ROLE_PRIORITY: DashboardRole[] = [
   'ROLE-FINANCE-EXEC',
   'ROLE-COMMISSION-APPROVER',
   'ROLE-COMPLIANCE',
+  'ROLE-POLICY-MGR',
   'ROLE-RULE-AUTHOR',
   'ROLE-RULE-APPROVER',
   'ROLE-ORG-OWNER',
@@ -75,10 +78,11 @@ export function resolveUserRoles(me: Me | undefined): DashboardRole[] {
   const grantCodes = new Set(me.grants?.map((g) => g.code) ?? []);
   const inferred: DashboardRole[] = [];
 
-  if (grantCodes.has('rule.author') && !grantCodes.has('rule.approve')) {
+  if (grantCodes.has('rule.author') && grantCodes.has('rule.approve')) {
+    inferred.push('ROLE-POLICY-MGR');
+  } else if (grantCodes.has('rule.author') && !grantCodes.has('rule.approve')) {
     inferred.push('ROLE-RULE-AUTHOR');
-  }
-  if (grantCodes.has('rule.approve')) {
+  } else if (grantCodes.has('rule.approve')) {
     inferred.push('ROLE-RULE-APPROVER');
   }
   if (

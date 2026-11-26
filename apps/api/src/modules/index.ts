@@ -1,5 +1,7 @@
 // Every MVP module router, pre-registered at Gate 0 so nobody edits app.ts later (Assignment Matrix §7).
 // Owners implement their own router.ts; this list only changes when a new module is agreed.
+// Owners follow the five lanes of the multi-lender plan (Notion main page, section 6.1, revised 2026-11-26);
+// the old Dev 1-6 labels are retired. Changes to another owner's folder are guest work that owner reviews.
 import * as compliance from './compliance/router';
 import * as activities from './crm/activities/router';
 import * as customers from './crm/customers/router';
@@ -47,7 +49,7 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'compliance', owner: 'Prathamesh', createRouter: compliance.createRouter },
   { name: 'finance', owner: 'Devyani', createRouter: finance.createRouter },
   { name: 'invoices', owner: 'Devyani', createRouter: invoices.createRouter },
-  { name: 'ledger', owner: 'Devyani', createRouter: ledger.createRouter },
+  { name: 'ledger', owner: 'Devyani (to remove, P0-06)', createRouter: ledger.createRouter },
   { name: 'crm/tasks', owner: 'Bhushan', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Prathamesh', createRouter: grievances.createRouter },
   { name: 'crm/targets', owner: 'Devyani', createRouter: targets.createRouter },
@@ -55,7 +57,11 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'reporting', owner: 'Dipanshu', createRouter: reporting.createRouter },
   { name: 'rules/api', owner: 'Dipanshu', createRouter: rulesApi.createRouter },
   { name: 'origination/catalogue', owner: 'Dipanshu', createRouter: catalogue.createRouter },
-  { name: 'origination/applications', owner: 'Dipanshu', createRouter: applications.createRouter },
+  {
+    name: 'origination/applications',
+    owner: 'Dipanshu (document files: Prathamesh)',
+    createRouter: applications.createRouter,
+  },
   { name: 'origination/lender-cases', owner: 'Devyani', createRouter: lenderCases.createRouter },
   { name: 'origination/document-sharing', owner: 'Prathamesh', createRouter: documentSharing.createRouter },
   { name: 'verification', owner: 'Prathamesh', createRouter: verification.createRouter },
@@ -68,4 +74,4 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'security', owner: 'Vaibhav', createRouter: security.createRouter },
   { name: 'reconciliation', owner: 'Devyani', createRouter: reconciliation.createRouter },
 ];
-// rules/engine (Dipanshu) has no router: the engine is in-process behind DecisionPort.
+// rules/engine (Dipanshu, with packages/bre-core) has no router: the engine is in-process behind DecisionPort.

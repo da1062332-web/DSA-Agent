@@ -19,11 +19,20 @@ export interface UserSummary {
   deleted?: boolean;
 }
 
-/** A row of GET /v1/users for a user.manage holder: contact data is masked in lists (Contracts §12). */
-export type UserListItem = Omit<UserSummary, 'email' | 'mobileE164'> & {
-  emailMasked: string | null;
-  mobileMasked: string | null;
-};
+/**
+ * A row of GET /v1/users (contact data is masked in lists, Contracts §12). A user.manage holder gets the full row; anyone else with
+ * user.read gets the short directory row (id, name, branch, status, availability, deleted), so the other fields can be missing.
+ */
+export type UserListItem = Pick<
+  UserSummary,
+  'id' | 'displayName' | 'primaryBranchId' | 'status' | 'availability' | 'deleted'
+> &
+  Partial<
+    Pick<UserSummary, 'tenantId' | 'userType' | 'assignedRoles' | 'lockVersion' | 'createdAt' | 'updatedAt'>
+  > & {
+    emailMasked?: string | null;
+    mobileMasked?: string | null;
+  };
 
 export interface Branch {
   id: string;

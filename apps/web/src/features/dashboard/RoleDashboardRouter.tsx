@@ -99,6 +99,8 @@ export function RoleDashboardRouter() {
             return <FinanceDashboard />;
           case 'ROLE-COMPLIANCE':
             return <ComplianceDashboard />;
+          case 'ROLE-POLICY-MGR':
+            return <RuleEngineDashboard mode="approver" />;
           case 'ROLE-RULE-AUTHOR':
             return <RuleEngineDashboard mode="author" />;
           case 'ROLE-RULE-APPROVER':
