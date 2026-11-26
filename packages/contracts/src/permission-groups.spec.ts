@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BROAD_PARENTS,
@@ -12,12 +14,33 @@ import {
   withSubPermissionBackfill,
 } from './index';
 
+const MIGRATIONS_DIR = path.resolve(__dirname, '../../../supabase/migrations');
+
+/**
+ * The permission codes the migrations define, read from every `INSERT INTO permission` statement. The catalogue in the code must
+ * match these, so adding a code means adding a migration, and the count is never pinned by hand.
+ */
+function migrationPermissionCodes(): Map<string, string> {
+  const defined = new Map<string, string>();
+  for (const file of readdirSync(MIGRATIONS_DIR).sort()) {
+    const sql = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+    for (const statement of sql.matchAll(/INSERT INTO (?:app\.)?permission \(code[^)]*\)\s*VALUES?([\s\S]*?);/gi)) {
+      for (const row of statement[1]!.matchAll(/\(\s*'([a-z_]+(?:\.[a-z_]+)+)'/g)) {
+        if (!defined.has(row[1]!)) defined.set(row[1]!, file);
+      }
+    }
+  }
+  return defined;
+}
+
 describe('sub-permission catalogue', () => {
-  it('TEST-PERM-06 the catalogue has the 119 original codes plus the 32 sub-permissions, with no duplicates', () => {
-    expect(SUB_PERMISSION_CODES).toHaveLength(32);
-    expect(PERMISSION_CODES).toHaveLength(151);
-    expect(new Set<string>(PERMISSION_CODES).size).toBe(151);
-    expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(32);
+  it('TEST-PERM-06 the catalogue matches the codes the migrations define, with no duplicates and no hand-pinned count', () => {
+    const defined = migrationPermissionCodes();
+    expect(new Set<string>(PERMISSION_CODES).size).toBe(PERMISSION_CODES.length);
+    expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(SUB_PERMISSION_CODES.length);
+    expect(new Set<string>(PERMISSION_CODES)).toEqual(new Set<string>(defined.keys()));
+    expect(SUB_PERMISSION_CODES.filter((code) => !defined.has(code))).toEqual([]);
+    expect(SUB_PERMISSION_CODES.every((code) => (PERMISSION_CODES as readonly string[]).includes(code))).toBe(true);
   });
 
   it('TEST-PERM-06 every catalogue code is in exactly one feature of PERMISSION_GROUPS', () => {
