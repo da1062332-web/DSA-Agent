@@ -73,11 +73,17 @@ describe('role assignment by user type (TEST-CONROLE)', () => {
 });
 
 describe('reserved role codes (TEST-CONROLE-RES)', () => {
-  it('TEST-CONROLE-RES-001 a tenant cannot create a role in the reserved connector namespace', () => {
+  it('TEST-CONROLE-RES-001 a tenant cannot create a role in the reserved connector namespace or retired role codes', () => {
     for (const code of ['ROLE-CONNECTOR-OPS', 'ROLE-CONNECTOR-PORTAL', 'ROLE-CONNECTOR']) {
       expect(refusalOf(() => assertRoleCodeNotReserved(code))).toEqual({
         code: 'VALIDATION_ERROR',
         issue: 'RESERVED_ROLE_CODE',
+      });
+    }
+    for (const code of ['ROLE-VERIFIER', 'ROLE-DOC-VERIFIER', 'ROLE-RULE-AUTHOR', 'ROLE-RULE-APPROVER', 'ROLE-COMMISSION-APPROVER']) {
+      expect(refusalOf(() => assertRoleCodeNotReserved(code))).toEqual({
+        code: 'VALIDATION_ERROR',
+        issue: 'RETIRED_ROLE_CODE',
       });
     }
   });
