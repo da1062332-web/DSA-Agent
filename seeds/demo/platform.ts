@@ -153,7 +153,7 @@ const BASE_ROLES: RoleSeed[] = [
   },
   {
     code: 'ROLE-SALES-EXEC',
-    name: 'Sales executive',
+    name: 'Telecaller',
     permissions: [...LEAD_WORK, 'task.read', 'task.update'],
   },
   {
@@ -175,19 +175,9 @@ const BASE_ROLES: RoleSeed[] = [
       'task.update',
       'verification.perform',
       'verification.read',
-    ],
-  },
-  {
-    code: 'ROLE-DOC-VERIFIER',
-    name: 'Document verifier',
-    permissions: [
-      'customer.read',
-      'application.read',
-      'document.review',
-      'document.view',
-      'document.download',
-      'verification.perform',
-      'verification.read',
+      'verification.create',
+      'verification.update',
+      'verification.complete',
     ],
   },
   {
@@ -203,11 +193,10 @@ const BASE_ROLES: RoleSeed[] = [
       'privacy.manage',
     ],
   },
-  { code: 'ROLE-RULE-AUTHOR', name: 'Rule author', permissions: ['rule.author', 'rule.simulate'] },
   {
-    code: 'ROLE-RULE-APPROVER',
-    name: 'Rule approver',
-    permissions: ['rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'],
+    code: 'ROLE-POLICY-MGR',
+    name: 'Lender policy manager',
+    permissions: ['rule.author', 'rule.simulate', 'rule.approve', 'rule.publish', 'rule.suspend'],
   },
 ];
 
