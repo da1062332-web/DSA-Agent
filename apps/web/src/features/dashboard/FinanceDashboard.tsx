@@ -150,18 +150,11 @@ export function FinanceDashboard() {
               size="small"
               sx={{ fontWeight: 700, fontSize: 11 }}
             />
-            <Chip
-              label="● Ledger Synced"
-              color="success"
-              size="small"
-              variant="outlined"
-              sx={{ fontWeight: 600, fontSize: 11 }}
-            />
           </Stack>
           <Typography variant="body2" color="text.secondary">
             {isChecker
               ? 'Dual-control verification required before partner disbursement.'
-              : 'Oversee partner payouts, commission accruals, period close, and ledger reconciliation.'}
+              : 'Oversee partner payouts, commission accruals, and period close.'}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">

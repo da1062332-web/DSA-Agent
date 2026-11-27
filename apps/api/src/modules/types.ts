@@ -10,6 +10,7 @@ import type {
   DataSharingPort,
   DecisionPort,
   IdGenerator,
+  KycCheckPort,
   OutboxPort,
   PartyPort,
   TaskPort,
@@ -37,6 +38,8 @@ export interface ApiDeps {
   productVersionPort?: ProductVersionPort;
   /** Confirms a lender exists in the tenant, for complaint referrals. Provided by origination/catalogue. */
   lenderPort?: LenderPort;
+  /** Runs provider KYC checks (PAN, GST) for POST /v1/verifications/checks. Provided by integrations. Fails closed (503) without it. */
+  kycPort?: KycCheckPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;

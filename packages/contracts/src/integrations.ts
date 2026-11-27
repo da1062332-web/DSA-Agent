@@ -13,7 +13,21 @@ export const INTEGRATION_STATUSES = ['ACTIVE', 'INACTIVE', 'DEGRADED', 'SUSPENDE
 export type IntegrationStatus = (typeof INTEGRATION_STATUSES)[number];
 export const IntegrationStatusSchema = z.enum(INTEGRATION_STATUSES);
 
-export const CAPABILITY_CATEGORIES = ['MESSAGING', 'VERIFICATION', 'STORAGE', 'BANKING', 'BUREAU'] as const;
+/**
+ * TELEPHONY, FRAUD and LENDER were added 2026-11-26 (additive, Contracts §15, P1-06). They are registered once, here, so that the
+ * lanes that add a vendor adapter for them (telephony P4-02 and P4-14, fraud P4-16, lender API P4-11) only add their own
+ * descriptor to STANDARD_CAPABILITY_DESCRIPTORS and never touch this list.
+ */
+export const CAPABILITY_CATEGORIES = [
+  'MESSAGING',
+  'VERIFICATION',
+  'STORAGE',
+  'BANKING',
+  'BUREAU',
+  'TELEPHONY',
+  'FRAUD',
+  'LENDER',
+] as const;
 export type CapabilityCategory = (typeof CAPABILITY_CATEGORIES)[number];
 export const CapabilityCategorySchema = z.enum(CAPABILITY_CATEGORIES);
 
@@ -189,9 +203,11 @@ export const STANDARD_CAPABILITY_DESCRIPTORS: CapabilityDescriptor[] = [
     displayName: 'Penny-Drop Bank Verification',
     category: 'BANKING',
     description: 'IMPS penny-drop bank account name verification and account validation',
-    requiredConfigFields: ['pennyAmountPaise', 'webhookUrl'],
+    // KARZA (P1-06, 2026-11-26) answers the penny drop synchronously, so the provider-neutral fields are the endpoint and the
+    // name-match threshold; the amount and webhook fields of the earlier SETU-shaped descriptor are not used by any adapter.
+    requiredConfigFields: ['apiEndpoint', 'minMatchScore'],
     dataClassification: 'S3',
-    supportedProviders: ['SETU', 'MOCK'],
+    supportedProviders: ['KARZA', 'SETU', 'MOCK'],
   },
   {
     capability: 'STORAGE.DOC_SCAN',

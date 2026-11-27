@@ -1,6 +1,7 @@
 // packages/contracts/src/commission.ts — owner: Developer 5 (Bhushan) (MOD-COM / Module 30 Part A)
 import { z } from 'zod';
 import { IdSchema } from './ids';
+import { LOAN_CATEGORIES } from './products';
 
 export const QUALIFYING_EVENTS = ['DISBURSEMENT', 'SANCTION', 'FIRST_EMI'] as const;
 export type QualifyingEvent = (typeof QUALIFYING_EVENTS)[number];
@@ -40,6 +41,18 @@ export type PayableState = (typeof PAYABLE_STATES)[number];
 
 export const ADJUSTMENT_TYPES = ['WRITE_OFF', 'CLAWBACK', 'CORRECTION', 'TAX', 'MANUAL'] as const;
 export type AdjustmentType = (typeof ADJUSTMENT_TYPES)[number];
+
+/**
+ * Whether the DSA charges GST on its commission invoice, or the lender pays it under reverse charge.
+ *
+ * Notification 13/2017-Central Tax (Rate) Sl. No. 11 puts services supplied by an individual DSA (explicitly not a body
+ * corporate, partnership or LLP) to a bank or NBFC under reverse charge: the lender accounts for the tax and the DSA's
+ * invoice carries no GST. A company, partnership or LLP DSA charges GST itself under forward charge. Which applies
+ * follows from the tenant's `organisation.constitution`, and is confirmed per tenant by the project owner with
+ * compliance (plan sections 11 and 12.6) rather than inferred in code.
+ */
+export const COMMISSION_TAX_TREATMENTS = ['FORWARD_CHARGE', 'RCM_RECIPIENT_PAYS'] as const;
+export type CommissionTaxTreatment = (typeof COMMISSION_TAX_TREATMENTS)[number];
 
 export const CreateCommissionPlanInputSchema = z.object({
   lenderId: IdSchema('lnd'),
@@ -89,6 +102,10 @@ export const CommissionPlanResponseSchema = z.object({
   roundingMode: z.string(),
   clawbackWindowDays: z.number().int(),
   ruleSetId: z.string().nullable(),
+  // P2-01: how the lender invoice is taxed, and the rates it uses. Rates are basis points (1800 = 18.00%).
+  taxTreatment: z.enum(COMMISSION_TAX_TREATMENTS),
+  gstRateBps: z.number().int(),
+  tdsRateBps: z.number().int(),
   status: z.enum(COMMISSION_PLAN_STATUSES),
   lockVersion: z.number().int(),
   createdAt: z.string(),
@@ -110,6 +127,9 @@ export const CalculateCommissionInputSchema = z.object({
   currency: z.string().length(3).default('INR'),
   customRate: z.number().min(0).max(1).optional(),
   connectorShareRate: z.number().min(0).max(1).default(0.7), // 70% split by default
+  // P2-01. Both optional: the manual correction route may omit them, and customRate still overrides the slab.
+  productCategory: z.enum(LOAN_CATEGORIES).optional(),
+  slabId: z.string().optional().nullable(),
 });
 export type CalculateCommissionInput = z.input<typeof CalculateCommissionInputSchema>;
 
@@ -123,6 +143,8 @@ export const CommissionCalculationResponseSchema = z.object({
   basisAmount: z.string(),
   rate: z.string(),
   rateType: z.string(),
+  /** P2-01: the slab that produced the rate. null for a custom rate and for calculations made before slabs existed. */
+  slabId: z.string().nullable(),
   grossAmount: z.string(),
   currency: z.string(),
   calcKind: z.enum(CALCULATION_KINDS),
@@ -206,3 +228,80 @@ export const RecalculationProposalResponseSchema = z.object({
   createdBy: z.string(),
 });
 export type RecalculationProposalResponse = z.infer<typeof RecalculationProposalResponseSchema>;
+
+// --- P2-01 commission volume slabs (owner: Devyani; migration 0141) -------------------------------------------------
+// Lenders pay on monthly disbursed volume per product category, not on a single rate. These schemas describe that grid.
+// Reviewed by Vaibhav as a contracts change (plan section 10).
+
+/** Amounts in this module are bare decimal strings, matching basisAmount above rather than the Money object. */
+const SlabAmountSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+
+export const CreateCommissionPlanSlabInputSchema = z
+  .object({
+    productCategory: z.enum(LOAN_CATEGORIES),
+    /** Inclusive lower bound of the monthly volume band. */
+    volumeFrom: SlabAmountSchema.default('0'),
+    /** Exclusive upper bound, or null on the open-ended top band. Bands therefore tile without overlapping. */
+    volumeTo: SlabAmountSchema.nullable().optional(),
+    /** 100 bps = 1.00%. Give this or flatAmount, never both. */
+    rateBps: z.number().int().min(0).max(100000).nullable().optional(),
+    /** A fixed amount per qualifying event. Give this or rateBps, never both. */
+    flatAmount: SlabAmountSchema.nullable().optional(),
+    effectiveFrom: z.string(),
+    effectiveTo: z.string().nullable().optional(),
+  })
+  .refine((v) => (v.rateBps === null || v.rateBps === undefined) !== (v.flatAmount === null || v.flatAmount === undefined), {
+    message: 'Give exactly one of rateBps or flatAmount.',
+    path: ['rateBps'],
+  })
+  .refine((v) => v.volumeTo == null || Number(v.volumeTo) > Number(v.volumeFrom ?? '0'), {
+    message: 'volumeTo must be greater than volumeFrom.',
+    path: ['volumeTo'],
+  });
+export type CreateCommissionPlanSlabInput = z.input<typeof CreateCommissionPlanSlabInputSchema>;
+
+export const UpdateCommissionPlanSlabInputSchema = z.object({
+  volumeFrom: SlabAmountSchema.optional(),
+  volumeTo: SlabAmountSchema.nullable().optional(),
+  rateBps: z.number().int().min(0).max(100000).nullable().optional(),
+  flatAmount: SlabAmountSchema.nullable().optional(),
+  effectiveFrom: z.string().optional(),
+  effectiveTo: z.string().nullable().optional(),
+});
+export type UpdateCommissionPlanSlabInput = z.infer<typeof UpdateCommissionPlanSlabInputSchema>;
+
+export const CommissionPlanSlabResponseSchema = z.object({
+  id: IdSchema('cslb'),
+  planId: IdSchema('cpl'),
+  productCategory: z.enum(LOAN_CATEGORIES),
+  volumeFrom: z.string(),
+  volumeTo: z.string().nullable(),
+  rateBps: z.number().int().nullable(),
+  flatAmount: z.string().nullable(),
+  effectiveFrom: z.string(),
+  effectiveTo: z.string().nullable(),
+  lockVersion: z.number().int(),
+  createdAt: z.string(),
+  createdBy: z.string(),
+});
+export type CommissionPlanSlabResponse = z.infer<typeof CommissionPlanSlabResponseSchema>;
+
+/** The slab editor's preview: "10,00,000 disbursed this month in PL -> 1.20% -> 12,000". No write, no clock of its own. */
+export const SlabPreviewInputSchema = z.object({
+  productCategory: z.enum(LOAN_CATEGORIES),
+  monthlyVolume: SlabAmountSchema,
+  basisAmount: SlabAmountSchema,
+  asOf: z.string().optional(),
+});
+export type SlabPreviewInput = z.infer<typeof SlabPreviewInputSchema>;
+
+export const SlabPreviewResponseSchema = z.object({
+  slabId: z.string().nullable(),
+  /** null when no band covers that volume on that date: the caller shows "no slab matches", never a fallback rate. */
+  rateBps: z.number().int().nullable(),
+  flatAmount: z.string().nullable(),
+  grossAmount: z.string().nullable(),
+  currency: z.string(),
+  matched: z.boolean(),
+});
+export type SlabPreviewResponse = z.infer<typeof SlabPreviewResponseSchema>;

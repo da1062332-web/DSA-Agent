@@ -20,6 +20,7 @@ describe('the production wiring provides what the routes require', () => {
     ['complaintSubjectPort', 'complaint intake (subjects must exist in the tenant)'],
     ['productVersionPort', 'application transitions (T-APP-01)'],
     ['lenderPort', 'complaint referrals to a lender (503 DEPENDENCY_UNAVAILABLE without it)'],
+    ['kycPort', 'PAN and GST checks through the KYC provider (503 DEPENDENCY_UNAVAILABLE without it)'],
     ['dataSharingPort', 'document sharing and consent'],
     [
       'decisionPort',
@@ -29,7 +30,7 @@ describe('the production wiring provides what the routes require', () => {
     ['applicationPort', 'lead conversion and lender package documents (503 without it)'],
     ['consentPort', 'lender packages and submissions (503 without it: nothing is shared without consent)'],
     ['partyPort', 'applications created from a customer and added parties (503 without it)'],
-    ['outboxPort', 'domain events from finance, ledger, reconciliation and automation'],
+    ['outboxPort', 'domain events from finance, reconciliation and automation'],
   ])('TEST-WIRING-%# createProductionDeps provides %s (%s)', (key) => {
     expect(depsBlock).toMatch(new RegExp(String.raw`\b${key}\b`));
   });

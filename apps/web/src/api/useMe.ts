@@ -104,6 +104,5 @@ const MFA_REQUIRED = [
   'user.offboard',
   'audit.seal',
   'payout.disburse',
-  'ledger.journal_post',
 ];
 export const mfaRequired = (me: Me | undefined) => !!me?.grants?.some((g) => MFA_REQUIRED.includes(g.code));

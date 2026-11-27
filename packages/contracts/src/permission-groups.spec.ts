@@ -38,9 +38,16 @@ function migrationPermissionCodes(): Map<string, string> {
   return defined;
 }
 
+/**
+ * Codes a merged migration defines that the catalogue has since retired. A merged migration is never edited, so its
+ * INSERT stays on record; P0-06 removed the ledger module and migration 0147 drops the rows once the owner agrees.
+ */
+const RETIRED_PERMISSION_CODES = ['ledger.view', 'ledger.journal_post'];
+
 describe('sub-permission catalogue', () => {
   it('TEST-PERM-06 the catalogue matches the codes the migrations define, with no duplicates and no hand-pinned count', () => {
     const defined = migrationPermissionCodes();
+    for (const code of RETIRED_PERMISSION_CODES) defined.delete(code);
     expect(new Set<string>(PERMISSION_CODES).size).toBe(PERMISSION_CODES.length);
     expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(SUB_PERMISSION_CODES.length);
     expect(new Set<string>(PERMISSION_CODES)).toEqual(new Set<string>(defined.keys()));
@@ -76,7 +83,6 @@ describe('sub-permission catalogue', () => {
       'commission.plan.edit',
       'commission.plan.approve',
     ]);
-    expect(withLegacy('ledger.journal_post')).toEqual(['ledger.journal_post']);
     expect(withLegacy('lead.read')).toEqual(['lead.read']);
   });
 

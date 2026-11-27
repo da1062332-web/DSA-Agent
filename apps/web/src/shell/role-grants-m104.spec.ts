@@ -45,7 +45,6 @@ describe('TEST-ACC-P0-07 migration 104 removes the screens each role does not us
         'Automation rules',
         'Integrations',
         'Invoices',
-        'Ledger',
         'Reconciliation',
         'Verification workbench',
       ].sort(),

@@ -24,14 +24,12 @@ export const SUB_PERMISSION_CODES = [
   'activity.read',
   'complaint.read',
   'attendance.read',
-  // Finance (finance.view split per screen; payout.record_payment and manual journal posting split by action)
+  // Finance (finance.view split per screen; payout.record_payment split by action)
   'commission.view',
   'payout.view',
-  'ledger.view',
   'reconciliation.view',
   'invoice.view',
   'payout.disburse',
-  'ledger.journal_post',
   // Connectors (slices of connector.manage)
   'connector.bank_account_manage',
   'connector.agreement_manage',
@@ -167,6 +165,10 @@ export const PERMISSION_CODES = [
   'decision.evaluate',
   // Added 2026-11-02 (additive; migration M-098): the sub-permissions above.
   ...SUB_PERMISSION_CODES,
+  // Added 2026-11-26 (additive; migration M-120, P1-04 lender policy grid and matching, owner Dipanshu).
+  'lender_policy.read',
+  'lender_policy.manage',
+  'lender_match.run',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

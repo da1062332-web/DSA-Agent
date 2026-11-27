@@ -5,12 +5,13 @@ import crypto from 'node:crypto';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { decryptPaymentRef } from '../src/modules/finance/crypto';
-import { FinanceService, type SettlementJournalPort } from '../src/modules/finance/finance-service';
+import { FinanceService } from '../src/modules/finance/finance-service';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
   CommissionPayableRow,
   CommissionPlanRow,
+  CommissionPlanSlabRow,
   FinanceRepository,
   PayoutApprovalRow,
   PayoutBatchRow,
@@ -19,6 +20,7 @@ import type {
   RecalculationProposalRow,
 } from '../src/modules/finance/repository';
 import { InMemoryFinancialStorage } from '../src/modules/finance/storage';
+import { InMemoryFinanceRepository } from './finance-test-repo';
 import { createTestApp, fakeAuth, testPrincipal } from './support/fake-auth';
 
 const fakeTxRunner: TxRunner = {
@@ -35,412 +37,7 @@ const appWith = (...grants: PermissionCode[]) =>
     deps: { txRunner: fakeTxRunner },
   });
 
-class InMemoryFinanceRepository implements FinanceRepository {
-  plans: CommissionPlanRow[] = [];
-  calculations: CommissionCalculationRow[] = [];
-  payables: CommissionPayableRow[] = [];
-  adjustments: AdjustmentRow[] = [];
-  payouts: PayoutRequestRow[] = [];
-  payoutLines: PayoutLineRow[] = [];
-  payoutApprovals: PayoutApprovalRow[] = [];
-  batches: PayoutBatchRow[] = [];
-  outboxEvents: any[] = [];
 
-  async insertCommissionPlan(_tx: Tx, row: CommissionPlanRow): Promise<void> {
-    this.plans.push(row);
-  }
-
-  async findCommissionPlanById(_tx: Tx, tenantId: string, id: string): Promise<CommissionPlanRow | null> {
-    return this.plans.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
-  }
-
-  async findActiveCommissionPlan(
-    _tx: Tx,
-    tenantId: string,
-    lenderId: string,
-  ): Promise<CommissionPlanRow | null> {
-    return (
-      this.plans.find((p) => p.tenant_id === tenantId && p.lender_id === lenderId && p.status === 'ACTIVE') ??
-      null
-    );
-  }
-
-  async listCommissionPlans(_tx: Tx, tenantId: string, lenderId?: string): Promise<CommissionPlanRow[]> {
-    let list = this.plans.filter((p) => p.tenant_id === tenantId);
-    if (lenderId) list = list.filter((p) => p.lender_id === lenderId);
-    return list;
-  }
-
-  async updateCommissionPlan(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    expectedLockVersion: number,
-    updates: Partial<CommissionPlanRow>,
-  ): Promise<CommissionPlanRow | null> {
-    const idx = this.plans.findIndex((p) => p.tenant_id === tenantId && p.id === id);
-    if (idx === -1) return null;
-    const p = this.plans[idx]!;
-    if (p.lock_version !== expectedLockVersion) return null;
-    const updated: CommissionPlanRow = {
-      ...p,
-      ...updates,
-      id: p.id,
-      tenant_id: p.tenant_id,
-      lender_id: p.lender_id,
-      qualifying_event: updates.qualifying_event ?? p.qualifying_event,
-      basis: updates.basis ?? p.basis,
-      rounding_mode: updates.rounding_mode ?? p.rounding_mode,
-      clawback_window_days: updates.clawback_window_days ?? p.clawback_window_days,
-      status: updates.status ?? p.status,
-      lock_version: p.lock_version + 1,
-      updated_by: updates.updated_by ?? p.updated_by,
-      updated_at: new Date(),
-    };
-    this.plans[idx] = updated;
-    return updated;
-  }
-
-  async retireCommissionPlan(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    expectedLockVersion: number,
-    actorId: string,
-  ): Promise<CommissionPlanRow | null> {
-    const p = this.plans.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!p || p.lock_version !== expectedLockVersion || p.status !== 'ACTIVE') return null;
-    p.status = 'RETIRED';
-    p.lock_version += 1;
-    p.updated_by = actorId;
-    return { ...p };
-  }
-
-  async approveCommissionPlan(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    expectedLockVersion: number,
-    approverId: string,
-  ): Promise<CommissionPlanRow | null> {
-    const idx = this.plans.findIndex((p) => p.tenant_id === tenantId && p.id === id);
-    if (idx === -1) return null;
-    const p = this.plans[idx]!;
-    if (p.lock_version !== expectedLockVersion) return null;
-    const updated: CommissionPlanRow = {
-      ...p,
-      status: 'ACTIVE',
-      lock_version: p.lock_version + 1,
-      updated_by: approverId,
-      updated_at: new Date(),
-    };
-    this.plans[idx] = updated;
-    return updated;
-  }
-
-  async insertCommissionCalculation(_tx: Tx, row: CommissionCalculationRow): Promise<void> {
-    this.calculations.push(row);
-  }
-
-  async findCommissionCalculationById(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<CommissionCalculationRow | null> {
-    return this.calculations.find((c) => c.tenant_id === tenantId && c.id === id) ?? null;
-  }
-
-  async findEarnedCalculationByTranche(
-    _tx: Tx,
-    tenantId: string,
-    trancheId: string,
-  ): Promise<CommissionCalculationRow | null> {
-    return (
-      this.calculations.find(
-        (c) => c.tenant_id === tenantId && c.tranche_id === trancheId && c.calc_kind === 'EARNED',
-      ) ?? null
-    );
-  }
-
-  async listCommissionCalculations(
-    _tx: Tx,
-    tenantId: string,
-    filters: { lenderId?: string; status?: string; cursor?: string; limit: number },
-  ): Promise<{ rows: CommissionCalculationRow[]; nextCursor: string | null }> {
-    let list = this.calculations.filter((c) => c.tenant_id === tenantId);
-    if (filters.lenderId) list = list.filter((c) => c.lender_id === filters.lenderId);
-    if (filters.status) list = list.filter((c) => c.status === filters.status);
-    return { rows: list.slice(0, filters.limit), nextCursor: null };
-  }
-
-  async insertCommissionPayable(_tx: Tx, row: CommissionPayableRow): Promise<void> {
-    this.payables.push(row);
-  }
-
-  async findCommissionPayableById(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<CommissionPayableRow | null> {
-    return this.payables.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
-  }
-
-  async listCommissionPayables(
-    _tx: Tx,
-    tenantId: string,
-    filters: { connectorId?: string; state?: string; cursor?: string; limit: number },
-  ): Promise<{ rows: CommissionPayableRow[]; nextCursor: string | null }> {
-    let list = this.payables.filter((p) => p.tenant_id === tenantId);
-    if (filters.connectorId) list = list.filter((p) => p.connector_id === filters.connectorId);
-    if (filters.state) list = list.filter((p) => p.state === filters.state);
-    return { rows: list.slice(0, filters.limit), nextCursor: null };
-  }
-
-  async updateCommissionPayableState(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    state: string,
-  ): Promise<CommissionPayableRow | null> {
-    const p = this.payables.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!p) return null;
-    p.state = state;
-    return p;
-  }
-
-  async insertAdjustment(_tx: Tx, row: AdjustmentRow): Promise<void> {
-    this.adjustments.push(row);
-  }
-
-  async findAdjustmentById(_tx: Tx, tenantId: string, id: string): Promise<AdjustmentRow | null> {
-    return this.adjustments.find((a) => a.tenant_id === tenantId && a.id === id) ?? null;
-  }
-
-  async listAdjustments(_tx: Tx, tenantId: string): Promise<AdjustmentRow[]> {
-    return this.adjustments.filter((a) => a.tenant_id === tenantId);
-  }
-
-  async approveAdjustment(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    approverId: string,
-  ): Promise<AdjustmentRow | null> {
-    const a = this.adjustments.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!a) return null;
-    a.status = 'APPROVED';
-    a.approved_at = new Date();
-    a.approved_by = approverId;
-    return a;
-  }
-
-  async insertPayoutRequest(_tx: Tx, row: PayoutRequestRow): Promise<void> {
-    this.payouts.push(row);
-  }
-
-  async findPayoutRequestById(_tx: Tx, tenantId: string, id: string): Promise<PayoutRequestRow | null> {
-    return this.payouts.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
-  }
-
-  async listPayoutRequests(
-    _tx: Tx,
-    tenantId: string,
-    filters: { connectorId?: string; status?: string; cursor?: string; limit: number },
-  ): Promise<{ rows: PayoutRequestRow[]; nextCursor: string | null }> {
-    let list = this.payouts.filter((p) => p.tenant_id === tenantId);
-    if (filters.connectorId) list = list.filter((p) => p.connector_id === filters.connectorId);
-    if (filters.status) list = list.filter((p) => p.status === filters.status);
-    return { rows: list.slice(0, filters.limit), nextCursor: null };
-  }
-
-  async insertPayoutLine(_tx: Tx, row: PayoutLineRow): Promise<void> {
-    const existing = this.payoutLines.find(
-      (l) =>
-        l.tenant_id === row.tenant_id &&
-        l.payable_id === row.payable_id &&
-        l.status !== 'REMOVED' &&
-        l.status !== 'PAYMENT_FAILED',
-    );
-    if (existing) {
-      const err: any = new Error('duplicate key value violates unique constraint "uq_payout_line_once"');
-      err.code = '23505';
-      throw err;
-    }
-    this.payoutLines.push(row);
-  }
-
-  async listPayoutLines(_tx: Tx, tenantId: string, payoutId: string): Promise<PayoutLineRow[]> {
-    return this.payoutLines.filter((l) => l.tenant_id === tenantId && l.payout_id === payoutId);
-  }
-
-  async updatePayoutLineStatus(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    status: string,
-  ): Promise<PayoutLineRow | null> {
-    const l = this.payoutLines.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!l) return null;
-    l.status = status;
-    return l;
-  }
-
-  async lockCommissionPayablesAscending(
-    _tx: Tx,
-    tenantId: string,
-    ids: string[],
-  ): Promise<CommissionPayableRow[]> {
-    const sorted = [...ids].sort();
-    const rows: CommissionPayableRow[] = [];
-    for (const id of sorted) {
-      const p = this.payables.find((x) => x.tenant_id === tenantId && x.id === id);
-      if (p) rows.push(p);
-    }
-    return rows;
-  }
-
-  async insertPayoutApproval(_tx: Tx, row: PayoutApprovalRow): Promise<void> {
-    this.payoutApprovals.push(row);
-  }
-
-  async updatePayoutStatus(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    status: string,
-    updates?: {
-      paidOn?: Date;
-      paymentRefMasked?: string;
-      paymentRefCiphertext?: string;
-      failureReason?: string;
-    },
-  ): Promise<PayoutRequestRow | null> {
-    const p = this.payouts.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!p) return null;
-    p.status = status;
-    if (updates?.paidOn) p.paid_on = updates.paidOn;
-    if (updates?.paymentRefMasked) p.payment_ref_masked = updates.paymentRefMasked;
-    if (updates?.paymentRefCiphertext) p.payment_ref_ciphertext = updates.paymentRefCiphertext;
-    if (updates?.failureReason) p.failure_reason = updates.failureReason;
-    return p;
-  }
-
-  async emitOutboxEvent(
-    _tx: Tx,
-    event: {
-      id: string;
-      tenantId: string;
-      eventType: string;
-      subjectType: string;
-      subjectId: string;
-      payload: Record<string, unknown>;
-      correlationId?: string;
-    },
-  ): Promise<void> {
-    this.outboxEvents.push(event);
-  }
-
-  async updateCommissionCalculationStatus(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    status: string,
-  ): Promise<CommissionCalculationRow | null> {
-    const c = this.calculations.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!c) return null;
-    c.status = status;
-    return c;
-  }
-
-  async rejectAdjustment(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    rejecterId: string,
-  ): Promise<AdjustmentRow | null> {
-    const a = this.adjustments.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!a) return null;
-    a.status = 'REJECTED';
-    a.approved_at = new Date();
-    a.approved_by = rejecterId;
-    return a;
-  }
-
-  async findActivePayoutLineForPayable(
-    _tx: Tx,
-    tenantId: string,
-    payableId: string,
-  ): Promise<PayoutLineRow | null> {
-    return (
-      this.payoutLines.find(
-        (l) =>
-          l.tenant_id === tenantId &&
-          l.payable_id === payableId &&
-          l.status !== 'REMOVED' &&
-          l.status !== 'PAYMENT_FAILED',
-      ) ?? null
-    );
-  }
-
-  recalculationProposals: RecalculationProposalRow[] = [];
-
-  async insertRecalculationProposal(_tx: Tx, row: RecalculationProposalRow): Promise<void> {
-    this.recalculationProposals.push(row);
-  }
-
-  async findRecalculationProposalById(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-  ): Promise<RecalculationProposalRow | null> {
-    return this.recalculationProposals.find((p) => p.tenant_id === tenantId && p.id === id) ?? null;
-  }
-
-  async updateRecalculationProposal(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    expectedLockVersion: number,
-    updates: Partial<RecalculationProposalRow>,
-  ): Promise<RecalculationProposalRow | null> {
-    const p = this.recalculationProposals.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!p) return null;
-    if (p.lock_version !== expectedLockVersion) return null;
-    Object.assign(p, updates);
-    p.lock_version += 1;
-    return p;
-  }
-
-  async listRecalculationProposals(_tx: Tx, tenantId: string): Promise<RecalculationProposalRow[]> {
-    return this.recalculationProposals.filter((p) => p.tenant_id === tenantId);
-  }
-
-  async approveRecalculationProposal(
-    _tx: Tx,
-    tenantId: string,
-    id: string,
-    approverId: string,
-  ): Promise<RecalculationProposalRow | null> {
-    const p = this.recalculationProposals.find((x) => x.tenant_id === tenantId && x.id === id);
-    if (!p) return null;
-    p.status = 'APPROVED';
-    p.approved_at = new Date();
-    p.approved_by = approverId;
-    return p;
-  }
-
-  async insertPayoutBatch(_tx: Tx, row: PayoutBatchRow): Promise<void> {
-    this.batches.push(row);
-  }
-
-  async findPayoutBatchById(_tx: Tx, tenantId: string, id: string): Promise<PayoutBatchRow | null> {
-    return this.batches.find((b) => b.tenant_id === tenantId && b.id === id) ?? null;
-  }
-
-  async listPayoutBatches(_tx: Tx, tenantId: string): Promise<PayoutBatchRow[]> {
-    return this.batches.filter((b) => b.tenant_id === tenantId);
-  }
-}
 
 describe('Module 30 Part A: Commission (MOD-COM)', () => {
   it('TC-COM-001 POST /v1/commission-plans enforces permission commission.plan.edit', async () => {
@@ -990,6 +587,8 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
       basis_amount: '1000000.00',
       rate: '0.015000',
       rate_type: 'PERCENTAGE',
+      slab_id: null,
+      product_category: null,
       cap: null,
       gross_amount: '15000.00',
       currency: 'INR',
@@ -1605,6 +1204,8 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
       trancheId: 'trn_dup_01',
       basisAmount: '500000.00',
       currency: 'INR',
+      // P2-01: this test is about rejecting the second calculation, not about pricing, so the rate is given by hand.
+      customRate: 0.015,
     });
 
     // Second calculation for identical tranche MUST reject with DUPLICATE_ENTRY
@@ -1614,6 +1215,7 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
         trancheId: 'trn_dup_01',
         basisAmount: '500000.00',
         currency: 'INR',
+        customRate: 0.015,
       }),
     ).rejects.toThrowError(/already exists for tranche/i);
   });
@@ -2109,93 +1711,6 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     await expect(
       service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' }),
     ).rejects.toThrowError(/PAYABLE_ON_HOLD/);
-  });
-
-  it('TC-PAY-020 MOD-LED Settlement Journal Integration (double-entry atomic balancing)', async () => {
-    const repo = new InMemoryFinanceRepository();
-    const journalEntries: any[] = [];
-    const mockLedger: SettlementJournalPort = {
-      async postSettlementJournal(_tx, tenantId, entry) {
-        // Enforce double entry balancing
-        const totalDebit = entry.lines
-          .filter((l) => l.entryType === 'DEBIT')
-          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
-        const totalCredit = entry.lines
-          .filter((l) => l.entryType === 'CREDIT')
-          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
-        if (Math.abs(totalDebit - totalCredit) > 0.001) {
-          throw new Error('LEDGER_UNBALANCED: Debits and credits must balance');
-        }
-        journalEntries.push({ tenantId, ...entry });
-        return { entryId: 'ent_080_test_journal_01' };
-      },
-    };
-
-    const service = new FinanceService({
-      repository: repo,
-      settlementJournalPort: mockLedger,
-    });
-
-    const makerCtx: RequestContext = {
-      principal: testPrincipal({
-        id: 'usr_maker_led_01',
-        grants: [
-          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
-          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
-        ],
-      }),
-      correlationId: 'corr-led-01',
-      now: new Date(),
-    };
-    const checkerCtx: RequestContext = {
-      principal: testPrincipal({
-        id: 'usr_checker_led_01',
-        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
-      }),
-      correlationId: 'corr-led-02',
-      now: new Date(),
-    };
-    const tx = {} as Tx;
-
-    const pId = 'cpay_01JLED00000000000000000001';
-    await repo.insertCommissionPayable(tx, {
-      id: pId,
-      tenant_id: makerCtx.principal.tenantId,
-      calculation_id: 'ccal_01JLED00000000000000000001',
-      connector_id: 'con_led_01',
-      share_rate: '0.700000',
-      amount: '7500.00',
-      currency: 'INR',
-      state: 'ELIGIBLE',
-      hold_reasons: null,
-      eligibility_decision_id: null,
-      lock_version: 0,
-      created_at: new Date(),
-      created_by: makerCtx.principal.id,
-      updated_at: new Date(),
-      updated_by: makerCtx.principal.id,
-    });
-
-    const payout = await service.createPayoutRequest(tx, makerCtx, {
-      connectorId: 'con_led_01',
-      origin: 'FINANCE',
-      payableIds: [pId as any],
-    });
-    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
-
-    // Record payment triggers atomic settlement journal posting
-    await service.recordPayoutPayment(tx, makerCtx, payout.id, {
-      paymentRef: 'HDFCN26101389999',
-      paidOn: new Date().toISOString(),
-    });
-
-    expect(journalEntries.length).toBe(1);
-    const j = journalEntries[0]!;
-    expect(j.payoutId).toBe(payout.id);
-    expect(j.lines).toEqual([
-      { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'DEBIT', amount: '7500.00' },
-      { accountCode: '1010-SETTLEMENT-BANK', entryType: 'CREDIT', amount: '7500.00' },
-    ]);
   });
 
   it('TC-PAY-021 Domain outbox and audit events emission on payout transitions', async () => {

@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@mui/material';
 import { getCustomer, updateCustomer, ApiError } from './api';
+import { CustomerProfileTabs } from './CustomerProfileTabs';
 import { Can } from '../../shell/Can';
 import { BranchSelect } from '../../shell/selectors';
 import { BranchName } from '../../shell/display';
@@ -262,6 +263,14 @@ export function CustomerDetailPage() {
                 </Box>
               </Stack>
           </DetailCard>
+        </Grid>
+
+        {/* P1-02: profile, encrypted identity and addresses */}
+        <Grid item xs={12}>
+          <CustomerProfileTabs
+            customerId={customer.id}
+            readOnly={!hasPermission(me.data, 'customer.update') || customer.status !== 'ACTIVE'}
+          />
         </Grid>
 
         {/* DPDP Consents Lifecycle Card */}

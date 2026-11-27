@@ -33,6 +33,7 @@ export const ID_PREFIXES = [
   'grv',
   'cust',
   'ccp',
+  'cad', // customer_address (P1-02)
   'cnst',
   'pty',
   'ash',
@@ -129,6 +130,13 @@ export const ID_PREFIXES = [
   'dup',
   'otp',
   'tob',
+  // P1-04 lender policy grid and matching (M-120): lender policy, match run, match result.
+  'lpo',
+  'lmr',
+  'lmx',
+  // P2-01 (migration 0141): commission plan slab, invoice number series.
+  'cslb',
+  'invs',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

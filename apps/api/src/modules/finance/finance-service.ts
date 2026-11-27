@@ -50,33 +50,11 @@ import type {
 } from './repository';
 import { generateBankFileCsv, InMemoryFinancialStorage, type FinancialStoragePort } from './storage';
 
-export interface SettlementJournalEntry {
-  sourceRef: string;
-  payoutId: string;
-  amount: string;
-  currency: string;
-  paidOn: Date;
-  lines: Array<{
-    accountCode: string;
-    entryType: 'DEBIT' | 'CREDIT';
-    amount: string;
-  }>;
-}
-
-export interface SettlementJournalPort {
-  postSettlementJournal(
-    tx: Tx,
-    tenantId: string,
-    entry: SettlementJournalEntry,
-  ): Promise<{ entryId: string }>;
-}
-
 export interface FinanceServiceDeps {
   repository: FinanceRepository;
   audit?: AuditPort;
   outbox?: OutboxPort;
   storage?: FinancialStoragePort;
-  settlementJournalPort?: SettlementJournalPort;
 }
 
 // Deterministic fixed-point integer math (scale: paise = 1/100 INR)
@@ -97,6 +75,43 @@ function computeAmountWithRate(amountPaise: bigint, rate: number): bigint {
   // Scale rate by 1,000,000 (parts per million) with half-up rounding
   const ratePPM = BigInt(Math.round(rate * 1_000_000));
   return (amountPaise * ratePPM + 500_000n) / 1_000_000n;
+}
+
+/**
+ * Integer division honouring commission_plan.rounding_mode (P2-01). Every amount here is non-negative, so rounding
+ * down is the same as truncating. An unknown mode falls back to half-up, which is the column's default.
+ */
+function divideWithRounding(numerator: bigint, denominator: bigint, roundingMode: string): bigint {
+  const quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+  if (remainder === 0n) return quotient;
+  switch (roundingMode) {
+    case 'ROUND_DOWN':
+      return quotient;
+    case 'ROUND_UP':
+      return quotient + 1n;
+    case 'ROUND_HALF_EVEN': {
+      const twice = remainder * 2n;
+      if (twice > denominator) return quotient + 1n;
+      if (twice < denominator) return quotient;
+      return quotient % 2n === 0n ? quotient : quotient + 1n;
+    }
+    case 'ROUND_HALF_UP':
+    default:
+      return remainder * 2n >= denominator ? quotient + 1n : quotient;
+  }
+}
+
+/** Basis points are exact integers, so this never goes through a float the way computeAmountWithRate does. */
+function computeAmountWithBps(amountPaise: bigint, rateBps: number, roundingMode: string): bigint {
+  return divideWithRounding(amountPaise * BigInt(rateBps), 10_000n, roundingMode);
+}
+
+/** The calendar month containing `date`, in UTC, as [start, endExclusive). event_date is a DATE column. */
+function monthBoundsUtc(date: Date): { start: Date; endExclusive: Date } {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+  const endExclusive = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+  return { start, endExclusive };
 }
 
 /**
@@ -203,6 +218,11 @@ export class FinanceService {
       rounding_mode: input.roundingMode ?? 'ROUND_HALF_UP',
       clawback_window_days: input.clawbackWindowDays ?? 90,
       rule_set_id: input.ruleSetId ?? null,
+      // Forward charge at 18% GST and 2% TDS is the default. Whether an individual or proprietorship DSA should instead
+      // be RCM_RECIPIENT_PAYS (Notification 13/2017-CT(R) Sl. 11) is confirmed per tenant, not inferred here.
+      tax_treatment: 'FORWARD_CHARGE',
+      gst_rate_bps: 1800,
+      tds_rate_bps: 200,
       status: 'DRAFT',
       lock_version: 0,
       created_at: now,
@@ -445,16 +465,18 @@ export class FinanceService {
       );
     }
 
-    const rate = input.customRate ?? 0.015;
-
     // Deterministic monetary arithmetic without floating-point errors
     const basisPaise = parseMoneyToPaise(input.basisAmount);
-    const grossPaise = computeAmountWithRate(basisPaise, rate);
-    const grossStr = formatPaiseToMoney(grossPaise);
 
     const calcId = this.nextId('ccal');
     const now = new Date();
     const eventDate = input.eventDate ? new Date(input.eventDate) : now;
+
+    // P2-01: the rate comes from the lender's payout grid, not from a constant. customRate still wins, for corrections.
+    const resolved = await this.resolveCommissionRate(tx, tenantId, plan, input, basisPaise, eventDate);
+    const rate = resolved.rate;
+    const grossPaise = resolved.grossPaise;
+    const grossStr = formatPaiseToMoney(grossPaise);
     const currency = input.currency ?? 'INR';
 
     const calcRow: CommissionCalculationRow = {
@@ -467,7 +489,9 @@ export class FinanceService {
       event_date: eventDate,
       basis_amount: input.basisAmount,
       rate: rate.toFixed(6),
-      rate_type: 'PERCENTAGE',
+      rate_type: resolved.rateType,
+      slab_id: resolved.slabId,
+      product_category: input.productCategory ?? null,
       cap: null,
       gross_amount: grossStr,
       currency,
@@ -1146,23 +1170,6 @@ export class FinanceService {
     const masked = maskPaymentRef(input.paymentRef) || `******${input.paymentRef.slice(-4)}`;
     const paidOn = input.paidOn ? new Date(input.paidOn) : ctx.now;
 
-    // MOD-LED Settlement Journal Integration (ENT-080 / ENT-081)
-    if (this.deps.settlementJournalPort) {
-      const debitAccount = '2100-COMMISSION-PAYABLE';
-      const creditAccount = '1010-SETTLEMENT-BANK';
-      await this.deps.settlementJournalPort.postSettlementJournal(tx, tenantId, {
-        sourceRef: id,
-        payoutId: id,
-        amount: payout.total,
-        currency: payout.currency,
-        paidOn,
-        lines: [
-          { accountCode: debitAccount, entryType: 'DEBIT', amount: payout.total },
-          { accountCode: creditAccount, entryType: 'CREDIT', amount: payout.total },
-        ],
-      });
-    }
-
     const updated = await this.deps.repository.updatePayoutStatus(tx, tenantId, id, 'PAYMENT_RECORDED', {
       paidOn,
       paymentRefMasked: masked,
@@ -1484,6 +1491,88 @@ export class FinanceService {
 
   // --- MAPPERS ---
 
+  /**
+   * The rate for one qualifying event (P2-01; replaces the hard-coded 1.5% default).
+   *
+   * `customRate` still wins, so the manual route can price a correction by hand. Otherwise the plan's payout grid
+   * decides: the band is chosen by the lender's month-to-date disbursed volume in that product category, counting
+   * this event itself, so a month's first 4,00,000 sits in the 0 to 5,00,000 band. If no band covers the volume this
+   * throws rather than falling back to a default rate -- a silently wrong rate here is money the DSA never bills.
+   */
+  private async resolveCommissionRate(
+    tx: Tx,
+    tenantId: string,
+    plan: CommissionPlanRow,
+    input: CalculateCommissionInput,
+    basisPaise: bigint,
+    eventDate: Date,
+  ): Promise<{ rate: number; rateType: 'PERCENTAGE' | 'FLAT'; slabId: string | null; grossPaise: bigint }> {
+    if (input.customRate !== undefined && input.customRate !== null) {
+      return {
+        rate: input.customRate,
+        rateType: 'PERCENTAGE',
+        slabId: null,
+        grossPaise: computeAmountWithRate(basisPaise, input.customRate),
+      };
+    }
+
+    const productCategory = input.productCategory;
+    if (!productCategory) {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'productCategory is required to choose a commission slab; pass customRate to price this event by hand.',
+      );
+    }
+
+    const { start, endExclusive } = monthBoundsUtc(eventDate);
+    const priorVolume = await this.deps.repository.sumEarnedBasisForLenderMonth(
+      tx,
+      tenantId,
+      input.lenderId,
+      productCategory,
+      start,
+      endExclusive,
+    );
+    const volumePaise = parseMoneyToPaise(priorVolume) + basisPaise;
+
+    const slabs = await this.deps.repository.findSlabsForLookup(
+      tx,
+      tenantId,
+      plan.id,
+      productCategory,
+      eventDate,
+    );
+    // volume_from is inclusive and volume_to exclusive, so a volume exactly on a boundary matches one band only.
+    const slab = slabs.find((candidate) => {
+      const from = parseMoneyToPaise(candidate.volume_from);
+      const to = candidate.volume_to === null ? null : parseMoneyToPaise(candidate.volume_to);
+      return volumePaise >= from && (to === null || volumePaise < to);
+    });
+    if (!slab) {
+      throw AppError.of(
+        'INVALID_STATE',
+        `No commission slab on plan ${plan.id} covers ${productCategory} at a monthly volume of ${formatPaiseToMoney(volumePaise)}.`,
+      );
+    }
+
+    if (slab.flat_amount !== null) {
+      return {
+        rate: 0,
+        rateType: 'FLAT',
+        slabId: slab.id,
+        grossPaise: parseMoneyToPaise(slab.flat_amount),
+      };
+    }
+
+    const rateBps = slab.rate_bps ?? 0;
+    return {
+      rate: rateBps / 10_000,
+      rateType: 'PERCENTAGE',
+      slabId: slab.id,
+      grossPaise: computeAmountWithBps(basisPaise, rateBps, plan.rounding_mode),
+    };
+  }
+
   private toPlanResponse(row: CommissionPlanRow): CommissionPlanResponse {
     return {
       id: row.id as any,
@@ -1493,6 +1582,9 @@ export class FinanceService {
       roundingMode: row.rounding_mode,
       clawbackWindowDays: row.clawback_window_days,
       ruleSetId: row.rule_set_id,
+      taxTreatment: row.tax_treatment as any,
+      gstRateBps: row.gst_rate_bps,
+      tdsRateBps: row.tds_rate_bps,
       status: row.status as any,
       lockVersion: row.lock_version,
       createdAt: row.created_at.toISOString(),
@@ -1513,6 +1605,7 @@ export class FinanceService {
       basisAmount: String(row.basis_amount),
       rate: String(row.rate),
       rateType: row.rate_type,
+      slabId: row.slab_id,
       grossAmount: String(row.gross_amount),
       currency: row.currency,
       calcKind: row.calc_kind as any,

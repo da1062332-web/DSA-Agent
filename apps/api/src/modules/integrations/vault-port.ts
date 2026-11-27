@@ -14,6 +14,9 @@ export interface ResolvedCredentials {
 }
 
 export interface IVaultPort {
+  /** True for a vault that returns placeholder credentials. The registry refuses it in production (see IntegrationRegistry). */
+  readonly developmentOnly?: boolean;
+
   resolveSecret(tenantId: string, credentialRef: string): Promise<ResolvedCredentials>;
 }
 
@@ -24,6 +27,7 @@ export interface IVaultPort {
  * vault://tenants/{tenant_id}/{sandbox|production}/{provider}/credentials
  */
 export class DevelopmentVaultAdapter implements IVaultPort {
+  readonly developmentOnly = true;
   private inMemorySecrets = new Map<string, ResolvedCredentials>();
 
   constructor() {

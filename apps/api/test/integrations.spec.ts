@@ -4,7 +4,9 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { errorHandler } from '../src/http/error-handler';
+import { IntegrationRegistry } from '../src/modules/integrations/integration-registry';
 import { IntegrationService } from '../src/modules/integrations/integration-service';
+import { KarzaAdapter } from '../src/modules/integrations/providers/karza-adapter';
 import { createRouter } from '../src/modules/integrations/router';
 import { createTestDeps, fakeAuth, testPrincipal } from './support/fake-auth';
 
@@ -280,8 +282,30 @@ describe('Module 28 — Integration Management (MOD-INT: SUB-INT.01 Adapter Fram
   // ==========================================
   // 10. ADAPTER EXECUTION & SENSITIVE DATA REDACTION
   // ==========================================
-  it('IntegrationRegistry executes operations safely and redacts PII in logs', async () => {
-    const registry = sharedService.getRegistry();
+  it('P1-06 IntegrationRegistry runs the Karza PAN check through the adapter and redacts PII in the call log', async () => {
+    // The Karza adapter makes a real HTTP call, so the test gives it a fake fetch: nothing leaves the process.
+    const sent: { url: string; key: string | undefined; body: Record<string, unknown> }[] = [];
+    const registry = new IntegrationRegistry();
+    registry.registerAdapter(
+      new KarzaAdapter({
+        fetchImpl: async (url, init) => {
+          sent.push({
+            url,
+            key: init.headers['x-karza-key'],
+            body: JSON.parse(init.body) as Record<string, unknown>,
+          });
+          return {
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                request_id: 'req_pan_001',
+                'status-code': '101',
+                result: { name: 'RAVI KUMAR SHARMA', status: 'Valid' },
+              }),
+          };
+        },
+      }),
+    );
     const conn = await sharedService.getIntegration(
       { principal: tenantAdmin } as RequestContext,
       'KARZA',
@@ -291,19 +315,28 @@ describe('Module 28 — Integration Management (MOD-INT: SUB-INT.01 Adapter Fram
     const execution = await registry.executeOperation(
       conn,
       'VERIFICATION.PAN',
-      { idNumber: 'ABCDE1234F', pan: 'ABCDE1234F', aadhaar: '123456789012' },
+      { idNumber: 'ABCDE1234F', name: 'Ravi Kumar Sharma', pan: 'ABCDE1234F', aadhaar: '123456789012' },
       { correlationId: 'test-req-001' },
     );
 
+    // The full PAN goes to the vendor, once, in the request body and nowhere else.
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.url).toBe('https://sandbox.karza.in/v2/pan-verification');
+    expect(sent[0]?.key).toBe('mock_karza_api_key_sand_99999');
+    expect(sent[0]?.body.pan).toBe('ABCDE1234F');
+
     expect(execution.success).toBe(true);
-    expect(execution.data).toBeDefined();
+    const data = execution.data as { outcome: string; verified: boolean; identifierMasked: string };
+    expect(data.outcome).toBe('VERIFIED');
+    expect(data.verified).toBe(true);
+    expect(data.identifierMasked).toBe('ABCDE****F');
+    expect(execution.metadata.environment).toBe('SANDBOX');
 
-    // Verify PAN masking in returned data
-    const data = execution.data as { identifierMasked: string };
-    expect(data.identifierMasked).toBe('ABCDEXXXXF');
-
-    // Verify sensitive PII is redacted in execution log metadata
-    expect(execution.metadata.maskedPayloadSummary).not.toContain('123456789012');
-    expect(execution.metadata.maskedPayloadSummary).toContain('1234-XXXX-9012');
+    // Neither the result nor the call-log summary carries the PAN, the Aadhaar number or the name on the PAN.
+    expect(JSON.stringify(execution)).not.toContain('ABCDE1234F');
+    expect(JSON.stringify(execution)).not.toContain('123456789012');
+    expect(JSON.stringify(execution)).not.toContain('RAVI KUMAR SHARMA');
+    expect(execution.metadata.maskedPayloadSummary).toContain('ABCDE****F');
+    expect(execution.metadata.maskedPayloadSummary).toContain('XXXXXXXX9012');
   });
 });

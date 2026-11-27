@@ -76,7 +76,6 @@ describe('sidebar visibility by permission', () => {
       'Workforce',
       'Lender cases',
       'Documents',
-      'Ledger',
       'Leads',
       'Customers',
       'Activity',

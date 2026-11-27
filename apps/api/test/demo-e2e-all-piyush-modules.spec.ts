@@ -70,11 +70,6 @@ import type {
   ReconciliationMatchRow,
 } from '../src/modules/reconciliation/types';
 
-// Module 41: Ledger
-import { LedgerService } from '../src/modules/ledger/ledger-service';
-import { InMemoryLedgerRepository } from '../src/modules/ledger/repository';
-import { LedgerSettlementJournalAdapter } from '../src/modules/ledger/adapter';
-
 // Module 28: Integrations
 import { IntegrationService } from '../src/modules/integrations/integration-service';
 import { createRouter as createIntegrationsRouter } from '../src/modules/integrations/router';
@@ -565,14 +560,11 @@ class DemoReconciliationRepository {
 describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Piyush Branch Modules', () => {
   const financeRepo = new DemoFinanceRepository();
   const recRepo = new DemoReconciliationRepository();
-  const ledgerRepo = new InMemoryLedgerRepository();
-  const ledgerService = new LedgerService({ repository: ledgerRepo });
   const storage = new InMemoryFinancialStorage();
 
   const financeService = new FinanceService({
     repository: financeRepo as any,
     storage,
-    settlementJournalPort: new LedgerSettlementJournalAdapter(ledgerService),
   });
   const recService = new ReconciliationService({ repository: recRepo as any });
 
@@ -582,11 +574,6 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
     NotificationService.resetMemoryStore();
     financeRepo.reset();
     recRepo.reset();
-    ledgerRepo.accounts = [];
-    ledgerRepo.journals = [];
-    ledgerRepo.entries = [];
-    ledgerRepo.periods = [];
-    ledgerRepo.seedDefaultAccounts(DEMO_TENANT_ID);
 
     // Seed test subjects in tenant
     ActivityService.seedSubject({
@@ -881,6 +868,8 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
           tenantId: DEMO_TENANT_ID,
           grants: [
             { code: 'commission.plan.edit', scope: 'TENANT', branchIds: [] },
+            // calculateCommission was tightened on beta (cf9357f) from
+            // assertAnyPermission(['commission.calculate','finance.view']) to assertPermission('commission.calculate').
             { code: 'commission.calculate', scope: 'TENANT', branchIds: [] },
             { code: 'payout.request', scope: 'TENANT', branchIds: [] },
             { code: 'payout.approve', scope: 'TENANT', branchIds: [] },
@@ -930,6 +919,8 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         basisAmount: '3000000.00',
         currency: 'INR',
         connectorId: 'ptn_apex_consultancy',
+        // P2-01 removed the hard-coded 1.5% default; this demo states the rate it always meant.
+        customRate: 0.015,
       });
       expect(calcResult.calculation.grossAmount).toBe('45000.00'); // 1.5% of 30L
       expect(calcResult.payable).toBeDefined();
@@ -1056,88 +1047,6 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
     });
   });
 
-  // =========================================================================
-  // 6. MODULE 41: LEDGER MANAGEMENT (MOD-LED)
-  // =========================================================================
-  describe('6. Module 41: Ledger Management (MOD-LED)', () => {
-    it('DEMO-LED-01: Chart of Accounts, Double-Entry balancing trigger, Trial Balance, and Step-Up MFA Period Close', async () => {
-      const finCheckerCtx: RequestContext = {
-        principal: testPrincipal({
-          id: DEMO_USER_FIN_CHECKER,
-          tenantId: DEMO_TENANT_ID,
-          grants: [
-            { code: 'finance.view', scope: 'TENANT', branchIds: [] },
-            { code: 'finance.period_close', scope: 'TENANT', branchIds: [] },
-          ],
-          authTime: new Date().toISOString(),
-        }),
-        correlationId: 'corr-demo-led-01',
-        now: new Date(),
-      };
-
-      // 1. Chart of Accounts verification
-      const accounts = await ledgerService.listAccounts({} as Tx, finCheckerCtx, {});
-      expect(accounts.length).toBeGreaterThanOrEqual(4);
-      expect(accounts.some((a) => a.code === '1010-SETTLEMENT-BANK')).toBe(true);
-      expect(accounts.some((a) => a.code === '2100-COMMISSION-PAYABLE')).toBe(true);
-      expect(accounts.some((a) => a.code === '5100-COMMISSION-EXPENSE')).toBe(true);
-
-      // 2. Reject Unbalanced Journal (₹45,000 Debit vs ₹40,000 Credit)
-      await expect(
-        ledgerService.postJournal({} as Tx, finCheckerCtx, {
-          period: '2026-10',
-          referenceType: 'MANUAL',
-          referenceId: 'demo-unbalanced-01',
-          lines: [
-            { accountCode: '5100-COMMISSION-EXPENSE', entryType: 'DEBIT', amount: '45000.00' },
-            { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'CREDIT', amount: '40000.00' },
-          ],
-        }),
-      ).rejects.toThrow(/LEDGER_UNBALANCED/);
-
-      // 3. Post Balanced Journal Entry (₹45,000 Debit == ₹40,500 + ₹4,500 Credit)
-      const journal = await ledgerService.postJournal({} as Tx, finCheckerCtx, {
-        period: '2026-10',
-        referenceType: 'PAYOUT_RECORDING',
-        referenceId: 'demo-settle-01',
-        lines: [
-          { accountCode: '5100-COMMISSION-EXPENSE', entryType: 'DEBIT', amount: '45000.00' },
-          { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'CREDIT', amount: '40500.00' },
-          { accountCode: '9999-SUSPENSE', entryType: 'CREDIT', amount: '4500.00' }, // Withholding tax suspense clearing
-        ],
-      });
-      expect(journal.status).toBe('POSTED');
-
-      // 4. Trial Balance Validation (Total Debits == Total Credits)
-      const tb = await ledgerService.getTrialBalance({} as Tx, finCheckerCtx, '2026-10');
-      expect(tb.totalDebit).toBe('45000.00');
-      expect(tb.totalCredit).toBe('45000.00');
-      expect(tb.isBalanced).toBe(true);
-
-      // 5. Close Period
-      const closedPeriod = await ledgerService.closePeriod({} as Tx, finCheckerCtx, '2026-10', {
-        note: 'Monthly period close approved after verifying trial balance integrity.',
-      });
-      expect(closedPeriod.status).toBe('CLOSED');
-
-      // 6. Verify Append-Only Immutability: Posting journal to closed period is rejected
-      await expect(
-        ledgerService.postJournal({} as Tx, finCheckerCtx, {
-          period: '2026-10',
-          referenceType: 'MANUAL',
-          referenceId: 'demo-late-post-01',
-          lines: [
-            { accountCode: '5100-COMMISSION-EXPENSE', entryType: 'DEBIT', amount: '1000.00' },
-            { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'CREDIT', amount: '1000.00' },
-          ],
-        }),
-      ).rejects.toThrow(/Cannot post to closed accounting period/);
-    });
-  });
-
-  // =========================================================================
-  // 7. MODULE 28: INTEGRATION MANAGEMENT (MOD-INT)
-  // =========================================================================
   describe('7. Module 28: Integration Management (MOD-INT)', () => {
     it('DEMO-INT-01: Discovers capabilities, lists adapters, and tests connectivity health', async () => {
       // No database here: the integration service uses its in-memory store with the seeded demo connections.

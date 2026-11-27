@@ -145,7 +145,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Commission', to: '/commission', anyOf: opens('commission.view'), module: 'MOD-COM' },
       { label: 'Payouts', to: '/payouts', anyOf: opens('payout.view'), module: 'MOD-PAY' },
-      { label: 'Ledger', to: '/ledger', anyOf: opens('ledger.view') },
       { label: 'Invoices', to: '/invoices', anyOf: opens('invoice.view'), module: 'MOD-INV' },
       {
         label: 'Reconciliation',
@@ -573,15 +572,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     anyOf: ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
     description: 'Partner payouts, disbursements, and payment batches',
     keywords: ['payout batches', 'transfers', 'agent payout', 'settlement'],
-  },
-  {
-    id: 'ledger',
-    label: 'Ledger',
-    category: 'Finance & Settlement',
-    to: '/ledger',
-    anyOf: ['finance.view'],
-    description: 'Financial ledger transactions and audit balance entries',
-    keywords: ['accounting', 'transactions', 'journal', 'double entry'],
   },
   {
     id: 'invoices',

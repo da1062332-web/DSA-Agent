@@ -36,7 +36,6 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'user.offboard',
   'audit.seal',
   'payout.disburse',
-  'ledger.journal_post',
 ];
 
 export function requiresMfa(principal: Principal): boolean {

@@ -32,7 +32,6 @@ import * as imports from './platform/imports/router';
 import * as reconciliation from './reconciliation/router';
 import * as workforce from './crm/workforce/router';
 import * as invoices from './invoices/router';
-import * as ledger from './ledger/router';
 import type { ApiModule } from './types';
 
 export const apiModules: readonly ApiModule[] = [
@@ -48,7 +47,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'compliance', owner: 'Prathamesh', createRouter: compliance.createRouter },
   { name: 'finance', owner: 'Devyani', createRouter: finance.createRouter },
   { name: 'invoices', owner: 'Devyani', createRouter: invoices.createRouter },
-  { name: 'ledger', owner: 'Devyani (to remove, P0-06)', createRouter: ledger.createRouter },
   { name: 'crm/tasks', owner: 'Bhushan', createRouter: tasks.createRouter },
   { name: 'crm/grievances', owner: 'Prathamesh', createRouter: grievances.createRouter },
   { name: 'crm/targets', owner: 'Devyani', createRouter: targets.createRouter },

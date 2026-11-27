@@ -1,5 +1,13 @@
 // apps/web/src/features/customers/api.ts — owner: Dev 5 (MOD-CUST)
 import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
+import type {
+  CustomerAddressCreateInput,
+  CustomerAddressUpdateInput,
+  CustomerAddressView,
+  CustomerIdentityView,
+  CustomerProfileUpsertInput,
+  CustomerProfileView,
+} from '@dsa/contracts';
 import type { ConsentResource, CustomerResource, RecordConsentPayload } from './types';
 
 
@@ -108,4 +116,88 @@ export async function withdrawConsent(consentId: string, reason?: string): Promi
     body: JSON.stringify({ withdrawalReason: reason }),
   });
   return data;
+}
+
+// ---- P1-02: profile, identity (masked), reveal and addresses -----------------------------------------------------------------
+
+export async function getCustomerProfile(id: string): Promise<{ profile: CustomerProfileView; etag?: string }> {
+  const { data, etag } = await request<CustomerProfileView>(`/v1/customers/${id}/profile`);
+  return { profile: data, etag };
+}
+
+export async function saveCustomerProfile(
+  id: string,
+  payload: CustomerProfileUpsertInput,
+  etag: string,
+): Promise<{ profile: CustomerProfileView; etag?: string }> {
+  const { data, etag: next } = await request<CustomerProfileView>(`/v1/customers/${id}/profile`, {
+    method: 'PUT',
+    ifMatch: etag,
+    body: JSON.stringify(payload),
+  });
+  return { profile: data, etag: next };
+}
+
+export async function getCustomerIdentity(id: string): Promise<{ identity: CustomerIdentityView; etag?: string }> {
+  const { data, etag } = await request<CustomerIdentityView>(`/v1/customers/${id}/identity`);
+  return { identity: data, etag };
+}
+
+export async function saveCustomerIdentity(
+  id: string,
+  payload: { pan?: string | null; dateOfBirth?: string | null },
+  etag: string,
+): Promise<{ identity: CustomerIdentityView; etag?: string }> {
+  const { data, etag: next } = await request<CustomerIdentityView>(`/v1/customers/${id}/identity`, {
+    method: 'PUT',
+    ifMatch: etag,
+    body: JSON.stringify(payload),
+  });
+  return { identity: data, etag: next };
+}
+
+export async function revealCustomerField(
+  id: string,
+  field: 'PAN' | 'DATE_OF_BIRTH',
+  reason: string,
+): Promise<{ value: string; revealedAt: string }> {
+  const { data } = await request<{ value: string; revealedAt: string }>(`/v1/customers/${id}/reveal`, {
+    method: 'POST',
+    body: JSON.stringify({ field, reason }),
+  });
+  return data;
+}
+
+export async function listCustomerAddresses(id: string): Promise<CustomerAddressView[]> {
+  const { data } = await request<{ data: CustomerAddressView[] }>(`/v1/customers/${id}/addresses`);
+  return data.data;
+}
+
+export async function addCustomerAddress(id: string, payload: CustomerAddressCreateInput): Promise<CustomerAddressView> {
+  const { data } = await request<CustomerAddressView>(`/v1/customers/${id}/addresses`, {
+    method: 'POST',
+    idempotencyKey: generateIdempotencyKey(),
+    body: JSON.stringify(payload),
+  });
+  return data;
+}
+
+export async function updateCustomerAddress(
+  id: string,
+  address: CustomerAddressView,
+  payload: CustomerAddressUpdateInput,
+): Promise<CustomerAddressView> {
+  const { data } = await request<CustomerAddressView>(`/v1/customers/${id}/addresses/${address.id}`, {
+    method: 'PATCH',
+    ifMatch: `"${address.lockVersion}"`,
+    body: JSON.stringify(payload),
+  });
+  return data;
+}
+
+export async function removeCustomerAddress(id: string, address: CustomerAddressView): Promise<void> {
+  await request<unknown>(`/v1/customers/${id}/addresses/${address.id}`, {
+    method: 'DELETE',
+    ifMatch: `"${address.lockVersion}"`,
+  });
 }
