@@ -543,6 +543,36 @@ describeLivePg('P1-06 POST /v1/verifications/checks: live PostgreSQL', () => {
     });
   });
 
+  it("P1-06 a consent made for another purpose (a lead's own CONTACT consent) is refused with CONSENT_PURPOSE_MISMATCH on the consent id, by both endpoints, before the vendor", async () => {
+    const subject = await seedSubject({ purpose: 'CONTACT' });
+    const { service, vendor } = build([panOk()]);
+    const expected = {
+      code: 'VALIDATION_ERROR',
+      details: [{ field: 'consentRecordId', issue: 'CONSENT_PURPOSE_MISMATCH' }],
+    };
+
+    await expect(service.runCheck(newCtx(), panRequest(subject), newKey())).rejects.toMatchObject(expected);
+    await expect(
+      service.createVerification(
+        newCtx(),
+        {
+          subjectType: 'CUSTOMER',
+          subjectId: subject.customerId,
+          checkType: 'PAN',
+          method: 'MANUAL',
+          purpose: 'KYC',
+          consentRecordId: subject.consentId,
+          result: 'VERIFIED',
+          minimalResult: { statusDescription: 'Checked by hand' },
+          evidenceRef: 'manual:evidence-2',
+        },
+        newKey(),
+      ),
+    ).rejects.toMatchObject(expected);
+    expect(vendor.calls).toHaveLength(0);
+    expect(await verificationRows(subject.customerId)).toHaveLength(0);
+  });
+
   it('P1-06 POST /v1/verifications still records a MANUAL result through the same consent gate (the refactor changed nothing)', async () => {
     const subject = await seedSubject();
     const { service, vendor } = build([panOk()]);

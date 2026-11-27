@@ -203,6 +203,25 @@ describe('P1-06 run a provider check: errors in plain words', () => {
     expect(view.canRetry).toBe(false);
   });
 
+  it('P1-06 a consent made for another purpose says that a verification consent is needed, and is not retried', () => {
+    const view = describeRunCheckError(
+      api(
+        'VALIDATION_ERROR',
+        422,
+        [{ field: 'consentRecordId', issue: 'CONSENT_PURPOSE_MISMATCH' }],
+        'corr_purpose',
+      ),
+    );
+
+    expect(view.title).toBe('This consent is for another purpose');
+    expect(view.message).toContain('verification checks');
+    expect(view.canRetry).toBe(false);
+    expect(view.correlationId).toBe('corr_purpose');
+    // The server's own text (which here mentions a PAN and an account) is never shown.
+    expect(JSON.stringify(view)).not.toContain(PAN);
+    expect(JSON.stringify(view)).not.toContain(ACCOUNT);
+  });
+
   it('P1-06 a consent of someone else, a missing or expired consent, and an unknown id each get their own message', () => {
     const mismatch = describeRunCheckError(
       api('VALIDATION_ERROR', 422, [{ field: 'consentRecordId', issue: 'CONSENT_SUBJECT_MISMATCH' }]),
@@ -331,5 +350,70 @@ describe('P1-06 run a provider check: reasons and the unknown outcome', () => {
     expect(warning).toContain('₹1 may or may not have been sent');
     expect(warning).toContain('Confirm with the provider before starting another check');
     expect(warning).toContain('(case: KARZA:idem_0123456789abcdef0123)');
+  });
+});
+
+describe('P1-06 run a provider check: an id of another kind than "Check is about" says', () => {
+  const LEAD = 'lead_01M8DS9KFG4FGQPBQ1D4Z12X3S';
+  const REAL_CUSTOMER = 'cust_01M8DS9KFG4FGQPBQ1D4Z12X3S';
+  const APPLICATION = 'app_01M8DS9KFG4FGQPBQ1D4Z12X3S';
+
+  const cases: [string, Partial<RunCheckForm>, string][] = [
+    [
+      'a lead id under Customer',
+      { subjectType: 'CUSTOMER', subjectId: LEAD },
+      'This looks like a lead id. Choose "Lead"',
+    ],
+    [
+      'a customer id under Lead',
+      { subjectType: 'LEAD', subjectId: REAL_CUSTOMER },
+      'This looks like a customer id. Choose "Customer"',
+    ],
+    [
+      'an application id under Customer',
+      { subjectType: 'CUSTOMER', subjectId: APPLICATION },
+      'This looks like a loan application id. Choose "Loan application"',
+    ],
+    [
+      'a lead id under Loan application',
+      { subjectType: 'LOAN_APPLICATION', subjectId: LEAD },
+      'This looks like a lead id. Choose "Lead"',
+    ],
+  ];
+  it.each(cases)(
+    'P1-06 %s is stopped with a message that names the right choice, and never repeats the id',
+    (_label, change, message) => {
+      const parsed = parseRunCheckForm(pan(change));
+
+      expect(parsed.ok).toBe(false);
+      if (parsed.ok) return;
+      expect(parsed.fieldErrors.subjectId).toContain(message);
+      expect(parsed.fieldErrors.subjectId).toContain('under "Check is about"');
+      expect(JSON.stringify(parsed.fieldErrors)).not.toContain(String(change.subjectId));
+    },
+  );
+
+  it('P1-06 an id of the right kind, and an id with a prefix nobody knows, go through to the server', () => {
+    expect(parseRunCheckForm(pan({ subjectType: 'LEAD', subjectId: LEAD })).ok).toBe(true);
+    expect(parseRunCheckForm(pan({ subjectType: 'CUSTOMER', subjectId: REAL_CUSTOMER })).ok).toBe(true);
+    expect(parseRunCheckForm(pan({ subjectType: 'LOAN_APPLICATION', subjectId: APPLICATION })).ok).toBe(true);
+    // Not mistaken for a customer id: the prefix has to be exactly "cust_", "lead_" or "app_".
+    expect(parseRunCheckForm(pan({ subjectType: 'LEAD', subjectId: CUSTOMER })).ok).toBe(true);
+    expect(
+      parseRunCheckForm(pan({ subjectType: 'CUSTOMER', subjectId: 'approval_01M8DS9KFG4FGQPBQ1D4Z12X3S' }))
+        .ok,
+    ).toBe(true);
+  });
+
+  it('P1-06 the id message does not hide another bad field: both are reported', () => {
+    const parsed = parseRunCheckForm(
+      pan({ subjectType: 'CUSTOMER', subjectId: LEAD, idNumber: 'QXZKW739L' }),
+    );
+
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(Object.keys(parsed.fieldErrors).sort()).toEqual(['idNumber', 'subjectId']);
+    expect(parsed.fieldErrors.subjectId).toContain('This looks like a lead id');
+    expect(parsed.fieldErrors.idNumber).toContain('valid PAN');
   });
 });

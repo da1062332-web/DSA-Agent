@@ -194,9 +194,11 @@ export class VerificationService {
       throw AppError.of('CONSENT_REQUIRED', `Consent record ${consent.id} has expired.`);
     }
     if (consent.purpose !== 'VERIFICATION_CHECK') {
+      // A code, so a screen can say why in plain words: a lead's own consent (CONTACT, LOAN_PROCESSING) is not a verification consent.
       throw AppError.of(
         'VALIDATION_ERROR',
         `Consent record purpose is ${consent.purpose}; expected VERIFICATION_CHECK.`,
+        [{ field: 'consentRecordId', issue: 'CONSENT_PURPOSE_MISMATCH' }],
       );
     }
 

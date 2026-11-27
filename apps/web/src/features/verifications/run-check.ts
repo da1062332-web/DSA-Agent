@@ -102,6 +102,32 @@ const FIELD_MESSAGES: Record<RunCheckField, (check: RunCheckKind) => string> = {
   name: () => 'The name must be plain text, with no PAN, Aadhaar or account number in it.',
 };
 
+/** The id prefix of each kind of subject (packages/contracts ids.ts), so an id of another kind is caught here, before the server refuses it. */
+const SUBJECT_ID_PREFIX: Record<VerificationSubjectType, string> = {
+  CUSTOMER: 'cust_',
+  LOAN_APPLICATION: 'app_',
+  LEAD: 'lead_',
+};
+const SUBJECT_ID_KIND: Record<VerificationSubjectType, string> = {
+  CUSTOMER: 'a customer id',
+  LOAN_APPLICATION: 'a loan application id',
+  LEAD: 'a lead id',
+};
+
+/**
+ * A message when the id typed is plainly of another kind than "Check is about" says (a lead_ id under Customer). It is made of fixed
+ * words, never the typed id. An id with a prefix nobody knows is left to the server.
+ */
+function subjectIdMismatch(form: RunCheckForm): string | null {
+  const id = form.subjectId.trim();
+  for (const type of Object.keys(SUBJECT_ID_PREFIX) as VerificationSubjectType[]) {
+    if (type !== form.subjectType && id.startsWith(SUBJECT_ID_PREFIX[type])) {
+      return `This looks like ${SUBJECT_ID_KIND[type]}. Choose "${SUBJECT_TYPE_LABELS[type]}" under "Check is about".`;
+    }
+  }
+  return null;
+}
+
 export type RunCheckFieldErrors = Partial<Record<RunCheckField, string>>;
 
 export type ParsedRunCheck =
@@ -113,14 +139,19 @@ export type ParsedRunCheck =
  */
 export function parseRunCheckForm(form: RunCheckForm): ParsedRunCheck {
   const parsed = RunVerificationCheckSchema.safeParse(buildBody(form));
-  if (parsed.success) return { ok: true, body: parsed.data };
+  const mismatch = subjectIdMismatch(form);
+  if (parsed.success && mismatch === null) return { ok: true, body: parsed.data };
   const fieldErrors: RunCheckFieldErrors = {};
-  for (const issue of parsed.error.issues) {
-    const field = issue.path[0];
-    if (typeof field === 'string' && field in FIELD_MESSAGES && !(field in fieldErrors)) {
-      fieldErrors[field as RunCheckField] = FIELD_MESSAGES[field as RunCheckField](form.check);
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if (typeof field === 'string' && field in FIELD_MESSAGES && !(field in fieldErrors)) {
+        fieldErrors[field as RunCheckField] = FIELD_MESSAGES[field as RunCheckField](form.check);
+      }
     }
   }
+  // The more specific message wins: it says what to change.
+  if (mismatch !== null) fieldErrors.subjectId = mismatch;
   // An issue on something that has no field (it cannot happen with the body built above) must still stop the request.
   if (Object.keys(fieldErrors).length === 0) fieldErrors.subjectId = FIELD_MESSAGES.subjectId(form.check);
   return { ok: false, fieldErrors };
@@ -215,6 +246,14 @@ export function describeRunCheckError(err: unknown): RunCheckErrorView {
         return view(
           'No provider is set up for this check',
           'Ask an administrator to set one up under Integrations, then run the check again.',
+          false,
+          err,
+        );
+      }
+      if (issues.includes('CONSENT_PURPOSE_MISMATCH')) {
+        return view(
+          'This consent is for another purpose',
+          'A provider check needs a consent given for verification checks. Record one for this person, then use its id.',
           false,
           err,
         );
