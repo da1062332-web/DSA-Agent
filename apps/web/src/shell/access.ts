@@ -1266,7 +1266,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   {
     id: 'compliance',
     title: 'Compliance & Security',
-    description: 'Inspect immutable audit trails, data consent records, and security incident investigations',
+    description: 'Inspect immutable audit trails and data consent records',
     iconName: 'ShieldIcon',
     items: [
       {

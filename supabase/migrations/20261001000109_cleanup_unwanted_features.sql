@@ -17,6 +17,7 @@
 --
 -- Safety: a table is dropped only when it holds no rows. If a table has rows, the migration stops and nothing is dropped.
 -- Idempotent: DELETE and DROP ... IF EXISTS can run again without effect.
+-- Each table has a public view from migration 0087; the view is dropped before the table.
 -- Verify: tools/sql/batch/109.verify.sql. Rollback: not provided; a removed feature is rebuilt from git history, not from this file.
 
 SET search_path = app, extensions, public;
@@ -36,7 +37,9 @@ $$;
 DELETE FROM app.role_permission WHERE permission_code IN ('security.read', 'security.incident', 'security.vuln');
 DELETE FROM app.permission WHERE code IN ('security.read', 'security.incident', 'security.vuln');
 
+DROP VIEW IF EXISTS public.incident_record;
 DROP TABLE IF EXISTS app.incident_record;
+DROP VIEW IF EXISTS public.security_event;
 DROP TABLE IF EXISTS app.security_event;
 
 -- 2. Access reviews -----------------------------------------------------------------------------------------------------
@@ -54,7 +57,9 @@ $$;
 DELETE FROM app.role_permission WHERE permission_code IN ('access_review.manage');
 DELETE FROM app.permission WHERE code IN ('access_review.manage');
 
+DROP VIEW IF EXISTS public.access_review_item;
 DROP TABLE IF EXISTS app.access_review_item;
+DROP VIEW IF EXISTS public.access_review;
 DROP TABLE IF EXISTS app.access_review;
 
 -- 3. API client registry --------------------------------------------------------------------------------------------------
@@ -66,6 +71,7 @@ BEGIN
 END
 $$;
 
+DROP VIEW IF EXISTS public.api_client;
 DROP TABLE IF EXISTS app.api_client;
 
 -- 4. Legal holds and document archives -----------------------------------------------------------------------------------
@@ -80,7 +86,9 @@ BEGIN
 END
 $$;
 
+DROP VIEW IF EXISTS public.document_archive;
 DROP TABLE IF EXISTS app.document_archive;
+DROP VIEW IF EXISTS public.legal_hold;
 DROP TABLE IF EXISTS app.legal_hold;
 
 -- 5. Data corrections -----------------------------------------------------------------------------------------------------
@@ -96,6 +104,7 @@ DELETE FROM app.role_permission WHERE permission_code IN ('data_correction.reque
 DELETE FROM app.permission WHERE code IN ('data_correction.request', 'data_correction.approve');
 
 DROP FUNCTION IF EXISTS app.approved_data_corrections(integer);
+DROP VIEW IF EXISTS public.data_correction_request;
 DROP TABLE IF EXISTS app.data_correction_request;
 
 -- 6. Delegations (leave cover) ------------------------------------------------------------------------------------------
@@ -107,4 +116,5 @@ BEGIN
 END
 $$;
 
+DROP VIEW IF EXISTS public.delegation;
 DROP TABLE IF EXISTS app.delegation;

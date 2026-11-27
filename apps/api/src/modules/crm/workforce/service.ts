@@ -11,30 +11,6 @@ export class WorkforceService {
   constructor(private readonly deps: WorkforceServiceDeps) {}
 
   /**
-   * API-USR-009: Self availability update (PATCH /v1/me/availability)
-   */
-
-  /**
-   * Manager updates capacity limit for an agent
-   */
-
-  /**
-   * Lists agents with availability, capacity, and active workload
-   */
-
-  /**
-   * API-WRK-001: Start coverage delegation
-   */
-
-  /**
-   * API-WRK-002: End coverage delegation
-   */
-
-  /**
-   * Lists delegations
-   */
-
-  /**
    * Attendance check-in
    */
   async checkIn(tx: Tx, ctx: RequestContext, notes?: string): Promise<AttendanceRecord> {
