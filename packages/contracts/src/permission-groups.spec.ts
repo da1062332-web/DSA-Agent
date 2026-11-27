@@ -13,11 +13,11 @@ import {
 } from './index';
 
 describe('sub-permission catalogue', () => {
-  it('TEST-PERM-06 the catalogue has the 119 original codes plus the 32 sub-permissions, with no duplicates', () => {
-    expect(SUB_PERMISSION_CODES).toHaveLength(32);
-    expect(PERMISSION_CODES).toHaveLength(151);
-    expect(new Set<string>(PERMISSION_CODES).size).toBe(151);
-    expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(32);
+  it('TEST-PERM-06 the catalogue has the 119 original codes plus the 30 sub-permissions, with no duplicates', () => {
+    expect(SUB_PERMISSION_CODES).toHaveLength(30);
+    expect(PERMISSION_CODES).toHaveLength(149);
+    expect(new Set<string>(PERMISSION_CODES).size).toBe(149);
+    expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(30);
   });
 
   it('TEST-PERM-06 every catalogue code is in exactly one feature of PERMISSION_GROUPS', () => {
@@ -48,7 +48,6 @@ describe('sub-permission catalogue', () => {
       'commission.plan.edit',
       'commission.plan.approve',
     ]);
-    expect(withLegacy('ledger.journal_post')).toEqual(['ledger.journal_post']);
     expect(withLegacy('lead.read')).toEqual(['lead.read']);
   });
 

@@ -47,14 +47,9 @@ export const LEGACY_PARENTS: Record<SubPermissionCode, readonly PermissionCode[]
   // Finance
   'commission.view': ['finance.view', 'commission.plan.edit', 'commission.plan.approve'],
   'payout.view': ['finance.view', 'payout.request', 'payout.approve', 'payout.record_payment'],
-  'ledger.view': ['finance.view'],
   'reconciliation.view': ['finance.view', 'finance.reconcile'],
   'invoice.view': ['finance.view', 'invoice.manage'],
   'payout.disburse': ['payout.record_payment'],
-  // Manual journal posting over the API is closed to every human session by design (LedgerService.assertManualPostingAllowed,
-  // pinned by TEST-HARD-LED-06) until the business decides who may post (audit decision D-03). The code is defined and granted
-  // to nobody, like customer.reveal_sensitive; wiring it into that check is a one-line change once D-03 is made. No parent.
-  'ledger.journal_post': [],
   // Connectors
   'connector.bank_account_manage': ['connector.manage'],
   'connector.agreement_manage': ['connector.manage'],
@@ -278,9 +273,9 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
         ],
       },
       {
-        id: 'ledger',
-        label: 'Ledger',
-        codes: ['ledger.view', 'ledger.journal_post', 'finance.period_close'],
+        id: 'period-close',
+        label: 'Period close',
+        codes: ['finance.period_close'],
       },
       {
         id: 'reconciliation',

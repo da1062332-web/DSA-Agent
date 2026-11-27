@@ -98,7 +98,6 @@ describe('F-08 direct URL access, by role', () => {
       '/leads/new',
       '/customers',
       '/commission',
-      '/ledger',
       '/payouts',
       '/sanctions',
       '/sanctions/lc1',
@@ -159,7 +158,6 @@ describe('F-08 direct URL access, by role', () => {
     expect(allowed('ROLE-RM', '/applications/a1')).toBe(true);
     expect(allowed('ROLE-RM', '/sanctions')).toBe(false);
     expect(allowed('ROLE-LOAN-OPS', '/sanctions')).toBe(true);
-    expect(allowed('ROLE-LOAN-OPS', '/ledger')).toBe(false);
     expect(allowed('ROLE-FINANCE-EXEC', '/invoices')).toBe(true);
     expect(allowed('ROLE-FINANCE-EXEC', '/leads')).toBe(false);
     expect(allowed('ROLE-COMPLIANCE', '/audit')).toBe(true);

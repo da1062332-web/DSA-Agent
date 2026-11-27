@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { decryptPaymentRef } from '../src/modules/finance/crypto';
-import { FinanceService, type SettlementJournalPort } from '../src/modules/finance/finance-service';
+import { FinanceService } from '../src/modules/finance/finance-service';
 import type {
   AdjustmentRow,
   CommissionCalculationRow,
@@ -2109,93 +2109,6 @@ describe('Module 30 Part B: Payouts (MOD-PAY)', () => {
     await expect(
       service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' }),
     ).rejects.toThrowError(/PAYABLE_ON_HOLD/);
-  });
-
-  it('TC-PAY-020 MOD-LED Settlement Journal Integration (double-entry atomic balancing)', async () => {
-    const repo = new InMemoryFinanceRepository();
-    const journalEntries: any[] = [];
-    const mockLedger: SettlementJournalPort = {
-      async postSettlementJournal(_tx, tenantId, entry) {
-        // Enforce double entry balancing
-        const totalDebit = entry.lines
-          .filter((l) => l.entryType === 'DEBIT')
-          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
-        const totalCredit = entry.lines
-          .filter((l) => l.entryType === 'CREDIT')
-          .reduce((sum, l) => sum + parseFloat(l.amount), 0);
-        if (Math.abs(totalDebit - totalCredit) > 0.001) {
-          throw new Error('LEDGER_UNBALANCED: Debits and credits must balance');
-        }
-        journalEntries.push({ tenantId, ...entry });
-        return { entryId: 'ent_080_test_journal_01' };
-      },
-    };
-
-    const service = new FinanceService({
-      repository: repo,
-      settlementJournalPort: mockLedger,
-    });
-
-    const makerCtx: RequestContext = {
-      principal: testPrincipal({
-        id: 'usr_maker_led_01',
-        grants: [
-          { code: 'payout.request', scope: 'TENANT', branchIds: [] },
-          { code: 'payout.record_payment', scope: 'TENANT', branchIds: [] },
-        ],
-      }),
-      correlationId: 'corr-led-01',
-      now: new Date(),
-    };
-    const checkerCtx: RequestContext = {
-      principal: testPrincipal({
-        id: 'usr_checker_led_01',
-        grants: [{ code: 'payout.approve', scope: 'TENANT', branchIds: [] }],
-      }),
-      correlationId: 'corr-led-02',
-      now: new Date(),
-    };
-    const tx = {} as Tx;
-
-    const pId = 'cpay_01JLED00000000000000000001';
-    await repo.insertCommissionPayable(tx, {
-      id: pId,
-      tenant_id: makerCtx.principal.tenantId,
-      calculation_id: 'ccal_01JLED00000000000000000001',
-      connector_id: 'con_led_01',
-      share_rate: '0.700000',
-      amount: '7500.00',
-      currency: 'INR',
-      state: 'ELIGIBLE',
-      hold_reasons: null,
-      eligibility_decision_id: null,
-      lock_version: 0,
-      created_at: new Date(),
-      created_by: makerCtx.principal.id,
-      updated_at: new Date(),
-      updated_by: makerCtx.principal.id,
-    });
-
-    const payout = await service.createPayoutRequest(tx, makerCtx, {
-      connectorId: 'con_led_01',
-      origin: 'FINANCE',
-      payableIds: [pId as any],
-    });
-    await service.approvePayoutRequest(tx, checkerCtx, payout.id, { decision: 'APPROVED' });
-
-    // Record payment triggers atomic settlement journal posting
-    await service.recordPayoutPayment(tx, makerCtx, payout.id, {
-      paymentRef: 'HDFCN26101389999',
-      paidOn: new Date().toISOString(),
-    });
-
-    expect(journalEntries.length).toBe(1);
-    const j = journalEntries[0]!;
-    expect(j.payoutId).toBe(payout.id);
-    expect(j.lines).toEqual([
-      { accountCode: '2100-COMMISSION-PAYABLE', entryType: 'DEBIT', amount: '7500.00' },
-      { accountCode: '1010-SETTLEMENT-BANK', entryType: 'CREDIT', amount: '7500.00' },
-    ]);
   });
 
   it('TC-PAY-021 Domain outbox and audit events emission on payout transitions', async () => {

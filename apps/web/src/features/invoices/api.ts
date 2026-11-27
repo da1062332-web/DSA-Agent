@@ -1,5 +1,5 @@
 // apps/web/src/features/invoices/api.ts — Module 33: Invoices API client
-import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
+import { ApiError as SharedApiError, apiDownload, apiRequest, type ApiRequest } from '../../api/client';
 import type {
   ConnectorStatement,
   CreateInvoiceInput,
@@ -134,4 +134,15 @@ export async function getPortalConnectorStatements(
     { method: 'GET' },
   );
   return res.data;
+}
+
+/**
+ * P0-06: the month's lender invoices and partner payouts as one CSV, for the DSA's books
+ * (Tally or Zoho). The ledger screen it replaces was removed with the ledger module.
+ */
+export async function downloadAccountingExport(month: string): Promise<void> {
+  await apiDownload(
+    `/v1/invoices/accounting-export?month=${encodeURIComponent(month)}`,
+    `accounting-${month}.csv`,
+  );
 }

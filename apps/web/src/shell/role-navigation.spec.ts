@@ -131,12 +131,12 @@ const EXPECT: Record<string, { sees: string[]; hidden: string[] }> = {
     ],
   },
   'ROLE-FINANCE-EXEC': {
-    sees: ['Commission', 'Ledger', 'Payouts', 'Reconciliation', 'Invoices'],
+    sees: ['Commission', 'Payouts', 'Reconciliation', 'Invoices'],
     hidden: ['Leads', 'Customers', 'Applications', 'Rule sets', 'Verification', 'Audit'],
   },
   'ROLE-COMMISSION-APPROVER': {
     // Approvals: the finance checker's queue (QA plan Module 13B, "open /approvals").
-    sees: ['Commission', 'Ledger', 'Payouts', 'Approvals'],
+    sees: ['Commission', 'Payouts', 'Approvals'],
     hidden: ['Leads', 'Customers', 'Applications', 'Rule sets', 'Verification'],
   },
   'ROLE-DOC-VERIFIER': {

@@ -25,7 +25,6 @@ import * as verification from './modules/verification/openapi';
 import * as partnerApi from './modules/partner-api/openapi';
 import * as audit from './modules/audit/openapi';
 import * as security from './modules/security/openapi';
-import * as ledger from './modules/ledger/openapi';
 import * as documentSharing from './modules/origination/document-sharing/openapi';
 import { registerPaths as paths_automation } from './modules/automation/openapi-paths';
 import { registerPaths as paths_compliance } from './modules/compliance/openapi-paths';
@@ -38,7 +37,6 @@ import { registerPaths as paths_crm_workforce } from './modules/crm/workforce/op
 import { registerPaths as paths_finance } from './modules/finance/openapi-paths';
 import { registerPaths as paths_integrations } from './modules/integrations/openapi-paths';
 import { registerPaths as paths_invoices } from './modules/invoices/openapi-paths';
-import { registerPaths as paths_ledger } from './modules/ledger/openapi-paths';
 import { registerPaths as paths_origination_connectors } from './modules/origination/connectors/openapi-paths';
 import { registerPaths as paths_origination_document_sharing } from './modules/origination/document-sharing/openapi-paths';
 import { registerPaths as paths_origination_lender_cases } from './modules/origination/lender-cases/openapi-paths';
@@ -61,7 +59,6 @@ const MODULES = [
   notifications,
   compliance,
   finance,
-  ledger,
   tasks,
   grievances,
   targets,
@@ -90,7 +87,6 @@ const PATH_MODULES = [
   paths_finance,
   paths_integrations,
   paths_invoices,
-  paths_ledger,
   paths_origination_connectors,
   paths_origination_document_sharing,
   paths_origination_lender_cases,

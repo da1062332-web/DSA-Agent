@@ -49,7 +49,11 @@ describe('permission catalogue', () => {
     expect(missing).toEqual([]);
   });
 
-  it('TEST-PERM-07 the 32 sub-permissions are defined by migration 98 and by no other migration', () => {
+  // Codes retired from the catalogue after these migrations shipped (P0-06 removed the ledger module).
+  // Merged migrations are immutable, so their rows stay; the contract no longer carries the codes.
+  const RETIRED_AFTER_MIGRATION: string[] = ['ledger.view', 'ledger.journal_post'];
+
+  it('TEST-PERM-07 the sub-permissions are defined by migration 98 and by no other migration', () => {
     for (const code of SUB_PERMISSION_CODES)
       expect(defined.get(code), code).toBe('20261001000098_permission_sub_permissions_expand.sql');
   });
@@ -63,7 +67,8 @@ describe('permission catalogue', () => {
     const fromContract = new Set<string>();
     for (const [child, parents] of Object.entries(LEGACY_PARENTS))
       for (const parent of parents) fromContract.add(`${parent} -> ${child}`);
-    expect([...fromSql].filter((p) => !fromContract.has(p))).toEqual([]);
+    const retired = (p: string) => RETIRED_AFTER_MIGRATION.some((c) => p.endsWith(`-> ${c}`));
+    expect([...fromSql].filter((p) => !fromContract.has(p) && !retired(p))).toEqual([]);
     expect([...fromContract].filter((p) => !fromSql.has(p))).toEqual([]);
   });
 
@@ -106,7 +111,11 @@ describe('permission catalogue', () => {
     expect([...fromSql].filter((p) => !fromSeed.has(p))).toEqual([]);
     expect([...fromSeed].filter((p) => !fromSql.has(p))).toEqual([]);
     const catalogue = new Set<string>(PERMISSION_CODES);
-    expect([...fromSql].map((p) => p.split(' ')[1]!).filter((c) => !catalogue.has(c))).toEqual([]);
+    expect(
+      [...fromSql]
+        .map((p) => p.split(' ')[1]!)
+        .filter((c) => !catalogue.has(c) && !RETIRED_AFTER_MIGRATION.includes(c)),
+    ).toEqual([]);
   });
 
   it('TEST-PERM-09 migration 104 only deletes role grants: it inserts, updates and drops nothing', () => {

@@ -232,7 +232,7 @@ const GATES: Gate[] = [
     method: 'get',
     path: '/v1/payout-requests',
     opens: ['payout.view', 'finance.view'],
-    refuses: ['lead.read', 'commission.view', 'ledger.view', 'invoice.view'],
+    refuses: ['lead.read', 'commission.view', 'invoice.view'],
   },
   {
     name: 'payout batches (create)',
@@ -247,28 +247,21 @@ const GATES: Gate[] = [
     method: 'get',
     path: '/v1/commission-plans',
     opens: ['commission.view', 'finance.view', 'commission.plan.edit'],
-    refuses: ['lead.read', 'payout.view', 'ledger.view'],
-  },
-  {
-    name: 'ledger journals (list)',
-    method: 'get',
-    path: '/v1/ledger/journals',
-    opens: ['ledger.view', 'finance.view'],
-    refuses: ['commission.view', 'payout.view', 'invoice.view'],
+    refuses: ['lead.read', 'payout.view'],
   },
   {
     name: 'lender statements (list)',
     method: 'get',
     path: '/v1/lender-statements',
     opens: ['reconciliation.view', 'finance.view'],
-    refuses: ['ledger.view', 'commission.view', 'invoice.view'],
+    refuses: ['commission.view', 'invoice.view'],
   },
   {
     name: 'invoices (list)',
     method: 'get',
     path: '/v1/invoices',
     opens: ['invoice.view', 'finance.view', 'invoice.manage'],
-    refuses: ['ledger.view', 'commission.view', 'payout.view'],
+    refuses: ['commission.view', 'payout.view'],
   },
 
   // Origination

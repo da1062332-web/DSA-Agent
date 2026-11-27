@@ -31,7 +31,13 @@ import {
   StatusBadge,
   type Column,
 } from '../../ui';
-import { createInvoice, getConnectorStatements, getInvoices, updateInvoiceStatus } from './api';
+import {
+  createInvoice,
+  downloadAccountingExport,
+  getConnectorStatements,
+  getInvoices,
+  updateInvoiceStatus,
+} from './api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
 import { ConnectorName, UserName } from '../../shell/display';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
@@ -44,6 +50,10 @@ export function InvoicesPage() {
   const { data: me } = useMe();
 
   const canManage = hasPermission(me, 'invoice.manage');
+  // P0-06: the accounting export stands in for the removed ledger. Taking data out of the system needs export.run.
+  const canExport = hasPermission(me, 'export.run');
+  const [exportMonth, setExportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [exporting, setExporting] = useState(false);
 
   // Navigation tab (0: Invoice Register, 1: Connector Statements)
   const [tabIndex, setTabIndex] = useState(0);
@@ -450,16 +460,54 @@ export function InvoicesPage() {
         title="Invoices & Statements"
         subtitle="Manage lender billing, connector invoices, and periodic payout account statements."
         actions={
-          canManage ? (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setRecordDialogOpen(true)}
-              sx={{ px: 3, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: 2 }}
-            >
-              + Record Invoice
-            </Button>
-          ) : undefined
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {canExport ? (
+              <>
+                <TextField
+                  type="month"
+                  size="small"
+                  label="Accounting month"
+                  value={exportMonth}
+                  onChange={(e) => setExportMonth(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ 'data-testid': 'invoices.accounting-export-month' }}
+                  sx={{ minWidth: 175 }}
+                />
+                <Button
+                  variant="outlined"
+                  disabled={!exportMonth || exporting}
+                  data-testid="invoices.accounting-export-download"
+                  onClick={async () => {
+                    setExporting(true);
+                    try {
+                      await downloadAccountingExport(exportMonth);
+                      toast.success(`Accounting export for ${exportMonth} downloaded.`);
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error ? err.message : 'Could not download the accounting export.',
+                      );
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                  sx={{ px: 2, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                  {exporting ? 'Preparing…' : 'Accounting export'}
+                </Button>
+              </>
+            ) : null}
+            {canManage ? (
+              <Button
+                variant="contained"
+                color="primary"
+                data-testid="invoices.record-invoice"
+                onClick={() => setRecordDialogOpen(true)}
+                sx={{ px: 3, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: 2 }}
+              >
+                + Record Invoice
+              </Button>
+            ) : null}
+          </Stack>
         }
       />
 
