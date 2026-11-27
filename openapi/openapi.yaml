@@ -142,7 +142,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a174
+          enum: &a175
             - ACTIVE
             - SUSPENDED
             - OFFBOARDING
@@ -334,7 +334,7 @@ components:
               attributes:
                 type: object
                 additionalProperties: {}
-                default: &a175 {}
+                default: &a176 {}
             required:
               - code
               - label
@@ -608,7 +608,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a177
+          enum: &a178
             - APPROVED
             - DENIED
         comments:
@@ -713,7 +713,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a178
+          enum: &a179
             - APPROVED
             - REJECTED
         comments:
@@ -780,7 +780,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a176
+          enum: &a177
             - CANDIDATE
             - STAGING
             - PUBLISHED
@@ -11663,7 +11663,7 @@ paths:
                     pattern: ^adj_[0-9A-HJKMNP-TV-Z]{26}$
                   adjustmentType:
                     type: string
-                    enum: &a182
+                    enum: &a183
                       - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
@@ -69205,7 +69205,7 @@ paths:
                     - PROVIDER_AUTOMATED
                 purpose:
                   type: string
-                  enum:
+                  enum: &a171
                     - KYC
                     - FINANCIAL_UNDERWRITING
                     - EMPLOYMENT_CHECK
@@ -69539,6 +69539,309 @@ paths:
           in: query
       responses:
         "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/verifications/checks:
+    post:
+      operationId: API-VER-003
+      summary: POST /v1/verifications/checks
+      tags:
+        - MOD-VER Verification
+      parameters:
+        - schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    subjectType:
+                      type: string
+                      enum: *a167
+                    subjectId:
+                      type: string
+                      minLength: 5
+                      maxLength: 64
+                    consentRecordId:
+                      type: string
+                      pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                    name:
+                      type: string
+                      minLength: 1
+                      maxLength: 120
+                    purpose:
+                      type: string
+                      enum: *a171
+                      default: KYC
+                    check:
+                      type: string
+                      enum:
+                        - PAN
+                    idNumber:
+                      type: string
+                  required:
+                    - subjectType
+                    - subjectId
+                    - consentRecordId
+                    - check
+                    - idNumber
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    subjectType:
+                      type: string
+                      enum: *a167
+                    subjectId:
+                      type: string
+                      minLength: 5
+                      maxLength: 64
+                    consentRecordId:
+                      type: string
+                      pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                    name:
+                      type: string
+                      minLength: 1
+                      maxLength: 120
+                    purpose:
+                      type: string
+                      enum: *a171
+                      default: KYC
+                    check:
+                      type: string
+                      enum:
+                        - GST
+                    idNumber:
+                      type: string
+                  required:
+                    - subjectType
+                    - subjectId
+                    - consentRecordId
+                    - check
+                    - idNumber
+                  additionalProperties: false
+      responses:
+        "201":
           description: Success
           content:
             application/json:
@@ -73429,7 +73732,7 @@ paths:
                 weeklyHours:
                   type: object
                   properties:
-                    MON: &a171
+                    MON: &a172
                       type: array
                       items:
                         type: object
@@ -73445,19 +73748,19 @@ paths:
                           - end
                         additionalProperties: false
                       maxItems: 4
-                    TUE: *a171
-                    WED: *a171
-                    THU: *a171
-                    FRI: *a171
-                    SAT: *a171
-                    SUN: *a171
+                    TUE: *a172
+                    WED: *a172
+                    THU: *a172
+                    FRI: *a172
+                    SAT: *a172
+                    SUN: *a172
                 holidays:
                   type: array
                   items:
                     type: string
                     pattern: ^\d{4}-\d{2}-\d{2}$
                   maxItems: 100
-                  default: &a173 []
+                  default: &a174 []
                 quietHours:
                   type:
                     - object
@@ -74516,7 +74819,7 @@ paths:
                       weeklyHours:
                         type: object
                         properties:
-                          MON: &a172
+                          MON: &a173
                             type: array
                             items:
                               type: object
@@ -74532,19 +74835,19 @@ paths:
                                 - end
                               additionalProperties: false
                             maxItems: 4
-                          TUE: *a172
-                          WED: *a172
-                          THU: *a172
-                          FRI: *a172
-                          SAT: *a172
-                          SUN: *a172
+                          TUE: *a173
+                          WED: *a173
+                          THU: *a173
+                          FRI: *a173
+                          SAT: *a173
+                          SUN: *a173
                       holidays:
                         type: array
                         items:
                           type: string
                           pattern: ^\d{4}-\d{2}-\d{2}$
                         maxItems: 100
-                        default: *a173
+                        default: *a174
                       quietHours:
                         type:
                           - object
@@ -74823,7 +75126,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a174
+            enum: *a175
           required: false
           name: status
           in: query
@@ -76776,7 +77079,7 @@ paths:
                       attributes:
                         type: object
                         additionalProperties: {}
-                        default: *a175
+                        default: *a176
                     required:
                       - code
                       - label
@@ -79123,7 +79426,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a176
+                  enum: *a177
                 gitTag:
                   type:
                     - string
@@ -79607,7 +79910,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a177
+                  enum: *a178
                 comments:
                   type: string
               required:
@@ -80565,7 +80868,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a178
+                  enum: *a179
                 comments:
                   type: string
               required:
@@ -81795,20 +82098,20 @@ paths:
                 modules:
                   type: object
                   properties:
-                    MOD-WFA: &a179
+                    MOD-WFA: &a180
                       type: boolean
-                    MOD-COM: *a179
-                    MOD-PAY: *a179
-                    MOD-REC: *a179
-                    MOD-INV: *a179
-                    MOD-RPT: *a179
-                    MOD-IMP: *a179
-                    MOD-CON: *a179
-                    MOD-CPT: *a179
-                    MOD-PERF: *a179
-                    MOD-VER: *a179
-                    MOD-DSH: *a179
-                    MOD-API: *a179
+                    MOD-COM: *a180
+                    MOD-PAY: *a180
+                    MOD-REC: *a180
+                    MOD-INV: *a180
+                    MOD-RPT: *a180
+                    MOD-IMP: *a180
+                    MOD-CON: *a180
+                    MOD-CPT: *a180
+                    MOD-PERF: *a180
+                    MOD-VER: *a180
+                    MOD-DSH: *a180
+                    MOD-API: *a180
               required:
                 - modules
               additionalProperties: false
@@ -84238,7 +84541,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: &a180
+                  enum: &a181
                     - MT940
                     - CSV
                   default: MT940
@@ -84491,7 +84794,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: *a180
+                  enum: *a181
                   default: MT940
                 rawFeedContent:
                   type: string
@@ -85213,7 +85516,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a181
+            enum: &a182
               - SHORT_REMITTANCE
               - OVER_REMITTANCE
               - MISSING_REMITTANCE
@@ -85468,7 +85771,7 @@ paths:
                     - INVESTIGATING
                 classification:
                   type: string
-                  enum: *a181
+                  enum: *a182
                 resolutionNote:
                   type: string
                   minLength: 5
@@ -85710,7 +86013,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: *a182
+                  enum: *a183
                 amount:
                   type: number
                   exclusiveMinimum: 0

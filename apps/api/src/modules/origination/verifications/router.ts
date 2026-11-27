@@ -5,10 +5,29 @@ import {
   AppError,
   CreateVerificationSchema,
   ListVerificationsQuerySchema,
+  RunVerificationCheckSchema,
   type RequestContext,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../../types';
 import { VerificationService } from './verification-service';
+
+/** The Idempotency-Key of a verification POST: required, 8 to 128 letters, digits, underscores or hyphens. */
+function readIdempotencyKey(req: Request): string {
+  const idempotencyKey = req.get('Idempotency-Key');
+  if (!idempotencyKey) {
+    throw AppError.of(
+      'VALIDATION_ERROR',
+      'Idempotency-Key header is required for creating verification checks.',
+      [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
+    );
+  }
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
+    throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [
+      { field: 'Idempotency-Key', issue: 'INVALID_FORMAT' },
+    ]);
+  }
+  return idempotencyKey;
+}
 
 export function createRouter(deps: ApiDeps, serviceOverride?: VerificationService): Router {
   const router = Router();
@@ -23,22 +42,32 @@ export function createRouter(deps: ApiDeps, serviceOverride?: VerificationServic
       if (!ctx || !ctx.principal) throw AppError.of('UNAUTHENTICATED', 'Authentication required.');
       deps.authz.requirePermission(ctx, 'verification.perform');
 
-      const idempotencyKey = req.get('Idempotency-Key');
-      if (!idempotencyKey) {
-        throw AppError.of(
-          'VALIDATION_ERROR',
-          'Idempotency-Key header is required for creating verification checks.',
-          [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
-        );
-      }
-      if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
-        throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [
-          { field: 'Idempotency-Key', issue: 'INVALID_FORMAT' },
-        ]);
-      }
+      const idempotencyKey = readIdempotencyKey(req);
 
       const input = CreateVerificationSchema.parse(req.body);
       const { verification, isReplayed } = await service.createVerification(ctx, input, idempotencyKey);
+
+      res.setHeader('ETag', `"${verification.lockVersion}"`);
+      if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');
+      res.status(isReplayed ? 200 : 201).json(verification);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * API-VER-003: POST /v1/verifications/checks
+   * The server runs a PAN or GST check at the tenant's provider and stores the result. The caller never states the result.
+   */
+  router.post('/verifications/checks', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = req.ctx as RequestContext | undefined;
+      if (!ctx || !ctx.principal) throw AppError.of('UNAUTHENTICATED', 'Authentication required.');
+      deps.authz.requirePermission(ctx, 'verification.perform');
+
+      const idempotencyKey = readIdempotencyKey(req);
+      const input = RunVerificationCheckSchema.parse(req.body);
+      const { verification, isReplayed } = await service.runCheck(ctx, input, idempotencyKey);
 
       res.setHeader('ETag', `"${verification.lockVersion}"`);
       if (isReplayed) res.setHeader('Idempotent-Replayed', 'true');

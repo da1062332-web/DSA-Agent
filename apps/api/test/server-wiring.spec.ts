@@ -20,6 +20,7 @@ describe('the production wiring provides what the routes require', () => {
     ['complaintSubjectPort', 'complaint intake (subjects must exist in the tenant)'],
     ['productVersionPort', 'application transitions (T-APP-01)'],
     ['lenderPort', 'complaint referrals to a lender (503 DEPENDENCY_UNAVAILABLE without it)'],
+    ['kycPort', 'PAN and GST checks through the KYC provider (503 DEPENDENCY_UNAVAILABLE without it)'],
     ['dataSharingPort', 'document sharing and consent'],
     ['apiClientRepository', 'API clients (kept in memory without it)'],
     [
