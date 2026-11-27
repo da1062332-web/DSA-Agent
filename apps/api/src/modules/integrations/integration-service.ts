@@ -250,6 +250,17 @@ export class IntegrationService {
     // 3. Validate provider against adapter implementation if present
     const adapter = this.registry.getAdapter(providerUpper);
     if (adapter) {
+      // A simulated provider never serves production: not as a PRODUCTION connection, and not when the API runs in production.
+      if (
+        this.registry.isSimulated(adapter) &&
+        (input.environment === 'PRODUCTION' || this.registry.isProductionRuntime())
+      ) {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `The ${providerUpper} provider is simulated and cannot be configured in production.`,
+          [{ field: 'environment', issue: 'SIMULATED_PROVIDER_IN_PRODUCTION' }],
+        );
+      }
       const validation = adapter.validateConfig(input.config);
       if (!validation.valid) {
         throw AppError.of(

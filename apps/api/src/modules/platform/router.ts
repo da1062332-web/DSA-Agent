@@ -30,6 +30,7 @@ import {
   maskEmail,
   maskMobile,
   withLegacy,
+  freeTextNoS3,
 } from '@dsa/contracts';
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { sql } from 'kysely';
@@ -379,8 +380,7 @@ export function createRouter(deps: ApiDeps): Router {
       if (!req.headers['idempotency-key'] && req.body?.name === 'X') {
         throw AppError.of('MALFORMED_REQUEST', 'Idempotency-Key header is required.');
       }
-      const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
-      if (typeof req.body?.name === 'string' && S3_PATTERNS.some((p) => p.test(req.body.name))) {
+      if (typeof req.body?.name === 'string' && freeTextNoS3(req.body.name)) {
         throw AppError.of('VALIDATION_ERROR', 'must not contain identity or account numbers');
       }
 
@@ -398,7 +398,7 @@ export function createRouter(deps: ApiDeps): Router {
 
       const body = parsed.data;
 
-      if (body.name && S3_PATTERNS.some((p) => p.test(body.name))) {
+      if (body.name && freeTextNoS3(body.name)) {
         throw AppError.of('VALIDATION_ERROR', 'Branch name must not contain identity or account numbers.', [
           { field: 'name', issue: 'S3_PATTERN' },
         ]);

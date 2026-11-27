@@ -1,17 +1,16 @@
 // Request and response schemas for MOD-APP Loan Applications (owner: Dev 3; DSA Notion MODULE 16). Money is a decimal
 // string (Contracts §5). Scope is applied by the handlers, not here.
-import { IdSchema } from '@dsa/contracts';
+import { IdSchema, freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 
 // Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 export const safeText = (min: number, max: number) =>
   z
     .string()
     .trim()
     .min(min)
     .max(max)
-    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 const Money = z
   .string()

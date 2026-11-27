@@ -7,6 +7,7 @@ import { Router, type Request, type Response } from 'express';
 import type { ZodError } from 'zod';
 import type { ApiDeps } from '../../types';
 import { registerCustomerExtraRoutes } from './customer-extras';
+import { registerCustomerProfileRoutes } from './customer-profile';
 import { CustomerService } from './customer-service';
 import { SqlCustomerRepository, type CustomerRepository } from './repository';
 import {
@@ -75,6 +76,8 @@ export function createRouter(
   });
   // API-CUST-007 contact points and API-CUST-008 merge (customer-extras.ts).
   registerCustomerExtraRoutes(router, deps, repository);
+  // P1-02 profile, encrypted identity, API-CUST-006 reveal and addresses (customer-profile.ts).
+  registerCustomerProfileRoutes(router, deps, repository);
 
   // API-CUST-001: POST /v1/customers — Create Customer
   router.post('/customers', async (req: Request, res: Response) => {
@@ -143,14 +146,6 @@ export function createRouter(
 
     res.setHeader('ETag', etag);
     res.status(200).json(resource);
-  });
-
-  // API-CUST-006: POST /v1/customers/:id/reveal — Reveal Sensitive Profile Fields
-  router.post('/customers/:id/reveal', async (_req: Request, _res: Response) => {
-    throw AppError.of(
-      'FORBIDDEN',
-      'Sensitive field reveal is disabled: awaiting approved step-up authentication and privacy infrastructure (TASK-421)',
-    );
   });
 
   // GET /v1/customers/:id/consents — List Customer Consents

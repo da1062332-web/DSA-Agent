@@ -68,6 +68,10 @@ export interface InvoiceRepository {
     toDate?: string,
     limit?: number,
   ): Promise<LedgerEntryRecord[]>;
+  /** P0-06 accounting export: every invoice dated in the month, both directions. */
+  listInvoicesBetween(tx: Tx, tenantId: string, fromDate: string, toDate: string): Promise<InvoiceRecord[]>;
+  /** P0-06 accounting export: partner payouts in the month, from the connector statement ledger. */
+  listPayoutEntriesBetween(tx: Tx, tenantId: string, fromDate: string, toDate: string): Promise<LedgerEntryRecord[]>;
   getOpeningBalance(tx: Tx, tenantId: string, connectorId: string, beforeDate: string): Promise<number>;
   getConnectorCommissionPayables(
     tx: Tx,
@@ -355,6 +359,39 @@ export class SqlInvoiceRepository implements InvoiceRepository {
     return res.rows.map(mapLedgerEntryRow);
   }
 
+  async listInvoicesBetween(
+    tx: Tx,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<InvoiceRecord[]> {
+    const res = await sql<InvoiceRow>`
+      SELECT * FROM invoice
+      WHERE tenant_id = ${tenantId}
+        AND date >= ${fromDate}::date
+        AND date <= ${toDate}::date
+      ORDER BY date ASC, number ASC, id ASC
+    `.execute(tx);
+    return res.rows.map(mapInvoiceRow);
+  }
+
+  async listPayoutEntriesBetween(
+    tx: Tx,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<LedgerEntryRecord[]> {
+    const res = await sql<LedgerEntryRow>`
+      SELECT * FROM connector_statement_entry
+      WHERE tenant_id = ${tenantId}
+        AND entry_type = 'PAYOUT_DISBURSED'
+        AND entry_date >= ${fromDate}::date
+        AND entry_date <= ${toDate}::date
+      ORDER BY entry_date ASC, created_at ASC, id ASC
+    `.execute(tx);
+    return res.rows.map(mapLedgerEntryRow);
+  }
+
   async getOpeningBalance(
     tx: Tx,
     tenantId: string,
@@ -597,6 +634,36 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
 
     items.sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.createdAt.localeCompare(b.createdAt));
     return items.slice(0, limit);
+  }
+
+  async listInvoicesBetween(
+    _tx: Tx,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<InvoiceRecord[]> {
+    return this.invoices
+      .filter((i) => i.tenantId === tenantId && i.date >= fromDate && i.date <= toDate)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number))
+      .map((i) => ({ ...i }));
+  }
+
+  async listPayoutEntriesBetween(
+    _tx: Tx,
+    tenantId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<LedgerEntryRecord[]> {
+    return this.ledgerEntries
+      .filter(
+        (e) =>
+          e.tenantId === tenantId &&
+          e.entryType === 'PAYOUT_DISBURSED' &&
+          e.entryDate >= fromDate &&
+          e.entryDate <= toDate,
+      )
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.createdAt.localeCompare(b.createdAt))
+      .map((e) => ({ ...e }));
   }
 
   async getOpeningBalance(

@@ -12,6 +12,8 @@ export interface MockConfig {
 
 export class MockTestAdapter implements BaseAdapter<MockConfig> {
   readonly providerId = 'MOCK';
+  /** Invents every result: the registry refuses this adapter in production and for any PRODUCTION connection. */
+  readonly simulated = true;
   readonly supportedCapabilities = [
     'MESSAGING.SMS',
     'MESSAGING.WHATSAPP',

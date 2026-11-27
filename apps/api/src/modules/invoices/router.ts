@@ -2,6 +2,7 @@
 import {
   AppError,
   CreateInvoiceInputSchema,
+  AccountingExportQuerySchema,
   InvoiceListQuerySchema,
   StatementQuerySchema,
   UpdateInvoiceStatusInputSchema,
@@ -11,7 +12,7 @@ import type { ZodError } from 'zod';
 import { requireCtx } from '../../http/request';
 import type { ApiDeps } from '../types';
 import { SqlInvoiceRepository, type InvoiceRepository } from './repository';
-import { InvoiceService } from './service';
+import { InvoiceService, accountingExportToCsv } from './service';
 
 function handleZodError(err: ZodError): never {
   const details = err.issues.map((i) => ({
@@ -72,6 +73,28 @@ export function createRouter(deps: ApiDeps): Router {
       });
 
       return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // P0-06: GET /v1/invoices/accounting-export?month=YYYY-MM
+  // Registered BEFORE /invoices/:id, or Express reads "accounting-export" as an invoice id.
+  // ==========================================
+  router.get('/invoices/accounting-export', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = requireCtx(req);
+      const parsed = AccountingExportQuerySchema.safeParse(req.query);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        return service.buildAccountingExport(tx, ctx, parsed.data.month);
+      });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      return res.status(200).send(accountingExportToCsv(result.rows));
     } catch (err) {
       next(err);
     }

@@ -1,16 +1,16 @@
 // MOD-GRV Grievances (owner: Dev 3; DSA Notion MODULE 13, SUB-GRV.01 and .02). Request and response schemas for ENT-034.
 // Complaints are about a lead or an application. Customer linking waits for MOD-CUST (Dev 5). The due date stays optional
 // until the deadline rules are confirmed.
+import { freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safeText = (min: number, max: number) =>
   z
     .string()
     .trim()
     .min(min)
     .max(max)
-    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 const Ref = z.string().trim().min(3).max(64);
 
 export const ComplainantType = z.enum(['LEAD', 'APPLICATION']);

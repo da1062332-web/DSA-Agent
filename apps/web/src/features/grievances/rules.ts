@@ -1,3 +1,4 @@
+import { freeTextNoS3 } from '@dsa/contracts';
 // Grievance screen rules (owner: Dev 3; DSA Notion MODULE 13). These mirror the API so the screen only offers actions the
 // API accepts. The API stays the authority: it re-checks every rule and returns 409 when a rule no longer holds.
 
@@ -38,9 +39,8 @@ export const canResolve = (status: ComplaintStatus) => status !== 'RESOLVED';
 export const canReopen = (status: ComplaintStatus) => status === 'RESOLVED';
 
 /** Identity or account-number patterns (PAN, Aadhaar, account numbers) forbidden by safeText. */
-export const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 
-export const containsSensitiveNumber = (text: string) => S3_PATTERNS.some((p) => p.test(text));
+export const containsSensitiveNumber = (text: string) => freeTextNoS3(text);
 
 /** Matches the API: 10 to 2000 characters after trimming, free of identity or account numbers. */
 export const isValidDescription = (text: string) => {

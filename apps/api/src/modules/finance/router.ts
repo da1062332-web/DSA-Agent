@@ -29,9 +29,6 @@ import { requireFinancialStepUp } from '../../http/financial-step-up';
 import type { ApiDeps } from '../types';
 import { FinanceService } from './finance-service';
 import { SqlFinanceRepository } from './repository';
-import { LedgerService } from '../ledger/ledger-service';
-import { SqlLedgerRepository } from '../ledger/repository';
-import { LedgerSettlementJournalAdapter } from '../ledger/adapter';
 
 function getRequestContext(req: Request): RequestContext {
   if (!req.ctx) {
@@ -73,19 +70,10 @@ function handleZodError(err: ZodError): never {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   const repository = new SqlFinanceRepository();
-  const ledgerRepo = new SqlLedgerRepository();
-  const ledgerService = new LedgerService({
-    repository: ledgerRepo,
-    audit: deps.audit,
-    outbox: deps.outboxPort,
-  });
-  const settlementJournalPort = new LedgerSettlementJournalAdapter(ledgerService);
-
   const service = new FinanceService({
     repository,
     audit: deps.audit,
     outbox: deps.outboxPort,
-    settlementJournalPort,
   });
 
   // --- COMMISSION PLANS ---

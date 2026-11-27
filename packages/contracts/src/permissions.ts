@@ -25,14 +25,12 @@ export const SUB_PERMISSION_CODES = [
   'activity.read',
   'complaint.read',
   'attendance.read',
-  // Finance (finance.view split per screen; payout.record_payment and manual journal posting split by action)
+  // Finance (finance.view split per screen; payout.record_payment split by action)
   'commission.view',
   'payout.view',
-  'ledger.view',
   'reconciliation.view',
   'invoice.view',
   'payout.disburse',
-  'ledger.journal_post',
   // Connectors (slices of connector.manage)
   'connector.bank_account_manage',
   'connector.agreement_manage',

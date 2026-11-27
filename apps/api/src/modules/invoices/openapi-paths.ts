@@ -2,6 +2,7 @@
 // validate with. Every /v1 operation here needs an isolation case naming its operationId (tests/isolation/cases).
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import {
+  AccountingExportQuerySchema,
   CreateInvoiceInputSchema,
   InvoiceListQuerySchema,
   StatementQuerySchema,
@@ -28,6 +29,14 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'GET /v1/invoices',
     tag,
     query: InvoiceListQuerySchema,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/invoices/accounting-export',
+    operationId: 'INV-GET-ACCOUNTING-EXPORT',
+    summary: 'GET /v1/invoices/accounting-export',
+    tag,
+    query: AccountingExportQuerySchema,
   });
   registerOperation(registry, {
     method: 'get',

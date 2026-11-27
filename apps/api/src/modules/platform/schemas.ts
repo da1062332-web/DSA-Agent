@@ -1,17 +1,16 @@
 // Request and response schemas for module platform (owner: Dev 1).
 // MOD-TEN (current tenant), MOD-ORG (organisation, branches, teams, work queues), MOD-USR read model, /v1/me.
-import { CursorQuery, IdSchema, PERMISSION_CODES, listResponse } from '@dsa/contracts';
+import { CursorQuery, IdSchema, PERMISSION_CODES, listResponse, freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 
 // Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safeText = (max: number) =>
   z
     .string()
     .trim()
     .min(1)
     .max(max)
-    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 const Version = z.number().int();
 const Timestamp = z.string();

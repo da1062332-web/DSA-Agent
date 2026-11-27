@@ -1,17 +1,16 @@
 // Request and response schemas for MOD-PRD Products (owner: Dev 3; DSA Notion MODULE 15). Products (ENT-043) and
 // their immutable, effective-dated versions (ENT-044). Money is a decimal string (Contracts §5).
-import { IdSchema } from '@dsa/contracts';
+import { IdSchema, freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 import { ProductCategory } from './schemas';
 
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safeText = (min: number, max: number) =>
   z
     .string()
     .trim()
     .min(min)
     .max(max)
-    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
 const Money = z.string().regex(/^\d{1,16}(\.\d{1,2})?$/, 'decimal amount, up to 2 places, e.g. "300000.00"');
 

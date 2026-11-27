@@ -1,8 +1,21 @@
 // apps/api/src/modules/integrations/adapter.ts
 // Module 28: Integration Management (MOD-INT) — Base Adapter Specification
 
-import type { AdapterResult, HealthCheckResult, IntegrationEnvironment } from '@dsa/contracts';
+import {
+  maskAccountNumber,
+  type AdapterResult,
+  type HealthCheckResult,
+  type IntegrationEnvironment,
+} from '@dsa/contracts';
 import type { ResolvedCredentials } from './vault-port';
+
+/** What the registry tells an adapter about the call it is making. */
+export interface AdapterCallContext {
+  correlationId: string;
+  tenantId: string;
+  /** The environment of the connection being called. Optional so adapters written before it existed keep compiling. */
+  environment?: IntegrationEnvironment;
+}
 
 /**
  * Base Adapter Contract required for all external providers.
@@ -11,6 +24,8 @@ export interface BaseAdapter<TConfig = Record<string, unknown>> {
   readonly providerId: string;
   readonly supportedCapabilities: readonly string[];
   readonly supportedEnvironments: readonly IntegrationEnvironment[];
+  /** True for an adapter that invents its results (the MOCK provider). The registry refuses it in production. */
+  readonly simulated?: boolean;
 
   validateConfig(config: unknown): { valid: boolean; errors?: string[] };
 
@@ -21,7 +36,7 @@ export interface BaseAdapter<TConfig = Record<string, unknown>> {
     input: TInput,
     config: TConfig,
     credentials: ResolvedCredentials,
-    metadata: { correlationId: string; tenantId: string },
+    metadata: AdapterCallContext,
   ): Promise<AdapterResult<TOutput>>;
 }
 
@@ -100,35 +115,47 @@ export function normalizeExternalError(err: unknown): {
   };
 }
 
+/** Keys whose value is a bank account number whatever it looks like: accountNumber, account_no, acctNum, bankAccount. */
+const ACCOUNT_KEY = /(?:account|acct)(?:number|no|num)$|^(?:bank)?account$/;
+/** Keys whose value is an Aadhaar number. */
+const AADHAAR_KEY = /aadhaar|aadhar/;
+
+function redactText(text: string): string {
+  return (
+    text
+      // GSTIN: characters 3 to 12 are the holder's PAN, so the PAN part is masked: 27ABCDE1234F1Z5 -> 27ABCDE****F1Z5
+      .replace(/\b(\d{2}[A-Z]{5})\d{4}([A-Z][1-9A-Z]Z[0-9A-Z])\b/g, '$1****$2')
+      // 10-character PAN: ABCDE1234F -> ABCDE****F
+      .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1****$2')
+      // 12-digit Aadhaar: only the last four digits are ever shown
+      .replace(/(?<![\w.])\d{8}(\d{4})(?!\w|\.\d)/g, 'XXXXXXXX$1')
+      // any other run of 9 to 18 digits (a bank account or a mobile number): ********1234. A decimal amount is left alone.
+      .replace(/(?<![\w.])\d{9,18}(?!\w|\.\d)/g, (digits) => maskAccountNumber(digits))
+      // Bearer / Token
+      .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
+      .replace(/(api[-_]?key|secret|password|auth[-_]?token)\s*[:=]\s*["']?[^"'\s,]+/gi, '$1=[REDACTED]')
+  );
+}
+
 /**
  * Sensitive Data Redactor for Provider Call Logs (ENT-104 & audit logs).
- * Masks PAN (10 chars), Aadhaar (12 digits), bank account numbers, passwords, and tokens.
+ * Masks PAN (ABCDE****F), the PAN inside a GSTIN, Aadhaar (last four digits only), bank account numbers (last four digits only),
+ * passwords, and tokens. The result is safe to store in a call log; the original payload is never changed.
  */
 export function sanitizeProviderPayload(payload: unknown): unknown {
   if (payload === null || payload === undefined) return payload;
 
-  if (typeof payload === 'string') {
-    return (
-      payload
-        // 12-digit Aadhaar
-        .replace(/\b(\d{4})\d{4}(\d{4})\b/g, '$1-XXXX-$2')
-        .replace(/\b\d{12}\b/g, 'XXXXXXXXXXXX')
-        // 10-char PAN
-        .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1XXXX$2')
-        // Bearer / Token
-        .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, 'Bearer [REDACTED]')
-        .replace(/(api[-_]?key|secret|password|auth[-_]?token)\s*[:=]\s*["']?[^"'\s,]+/gi, '$1=[REDACTED]')
-    );
-  }
+  if (typeof payload === 'string') return redactText(payload);
 
   if (Array.isArray(payload)) {
-    return payload.map(sanitizeProviderPayload);
+    return payload.map((item) => sanitizeProviderPayload(item));
   }
 
   if (typeof payload === 'object') {
     const cleaned: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
       const lower = k.toLowerCase();
+      const plain = lower.replace(/[^a-z0-9]/g, '');
       if (
         lower.includes('secret') ||
         lower.includes('password') ||
@@ -138,6 +165,11 @@ export function sanitizeProviderPayload(payload: unknown): unknown {
         lower === 'cookie'
       ) {
         cleaned[k] = '[REDACTED]';
+      } else if ((typeof v === 'string' || typeof v === 'number') && ACCOUNT_KEY.test(plain)) {
+        cleaned[k] = maskAccountNumber(String(v));
+      } else if ((typeof v === 'string' || typeof v === 'number') && AADHAAR_KEY.test(plain)) {
+        const digits = String(v).replace(/\D/g, '');
+        cleaned[k] = digits.length >= 4 ? `XXXXXXXX${digits.slice(-4)}` : 'XXXXXXXX';
       } else {
         cleaned[k] = sanitizeProviderPayload(v);
       }
