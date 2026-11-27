@@ -604,6 +604,12 @@ export function AddressesTab({ customerId, readOnly }: { customerId: string; rea
       <Dialog open={editing !== null} onClose={() => setEditing(null)} maxWidth="sm" fullWidth>
         <DialogTitle>{editing === 'new' ? 'Add address' : 'Edit address'}</DialogTitle>
         <DialogContent>
+          {/* While the dialog is open the tab's own message is hidden behind it, so a validation or save error is shown here. */}
+          {message && !message.ok && (
+            <Alert severity="error" sx={{ mb: 2 }} data-testid="customer.address.dialog-error">
+              {message.text}
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 0 }}>
             <Grid item xs={12} md={6}>
               {input('addressType', 'Type', {
