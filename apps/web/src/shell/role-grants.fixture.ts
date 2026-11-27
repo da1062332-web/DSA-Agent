@@ -26,6 +26,7 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'customer.create',
     'customer.read',
     'customer.update',
+    'data_correction.request',
     'disbursement.exception_approve',
     'disbursement.record',
     'disbursement.verify',
@@ -67,6 +68,8 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'audit.read',
     'customer.read',
     'lead.read',
+    'security.incident',
+    'security.vuln',
     'verification.read',
   ],
   'ROLE-DOC-VERIFIER': [
@@ -95,6 +98,7 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'connector.dispute_resolve',
     'connector.manage',
     'connector.read',
+    'data_correction.request',
     'disbursement.exception_approve',
     'disbursement.record',
     'disbursement.verify',
@@ -141,6 +145,8 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'customer.create',
     'customer.read',
     'customer.update',
+    'data_correction.approve',
+    'data_correction.request',
     'disbursement.exception_approve',
     'disbursement.record',
     'disbursement.verify',
@@ -172,6 +178,8 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'report.schedule',
     'role.manage',
     'sanction.record',
+    'security.incident',
+    'security.vuln',
     'share.create',
     'target.manage',
     'task.create',
@@ -258,6 +266,8 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'customer.create',
     'customer.read',
     'customer.update',
+    'data_correction.approve',
+    'data_correction.request',
     'disbursement.exception_approve',
     'disbursement.record',
     'disbursement.verify',
@@ -285,6 +295,8 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
     'report.schedule',
     'role.manage',
     'sanction.record',
+    'security.incident',
+    'security.vuln',
     'share.create',
     'target.manage',
     'task.create',
@@ -309,11 +321,25 @@ export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {
 export const RETIRED_ROLES: readonly string[] = ['ROLE-VERIFIER'];
 
 /**
- * The same roles after M-098 backfilled the sub-permissions and M-103 retired ROLE-VERIFIER: the 13 roles a migrated tenant holds
- * before the role matrix trims them.
+ * Permissions of features removed later (P0-02, migration 0109: data corrections, security incidents and events). The snapshot above
+ * keeps them because hosted held them when it was read (the 0085 rehearsal counts against it); a migrated tenant no longer has them.
+ */
+export const REMOVED_PERMISSIONS: readonly string[] = [
+  'data_correction.request',
+  'data_correction.approve',
+  'security.incident',
+  'security.vuln',
+];
+
+/**
+ * The same roles after M-098 backfilled the sub-permissions, M-103 retired ROLE-VERIFIER and P0-02 removed the REMOVED_PERMISSIONS:
+ * the 13 roles a migrated tenant holds before the role matrix trims them.
  */
 export const QLOAX_ROLE_GRANTS: Record<string, string[]> = Object.fromEntries(
   Object.entries(QLOAX_ROLE_GRANTS_PRE_M098)
     .filter(([role]) => !RETIRED_ROLES.includes(role))
-    .map(([role, grants]) => [role, withSubPermissionBackfill(grants)]),
+    .map(([role, grants]) => [
+      role,
+      withSubPermissionBackfill(grants.filter((code) => !REMOVED_PERMISSIONS.includes(code))),
+    ]),
 );
