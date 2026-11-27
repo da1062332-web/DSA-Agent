@@ -31,7 +31,7 @@ Manual counterpart: the Notion guide "DSA CRM Manual Testing" (one folder per ro
 - `TC-MATRIX-<ROLE>`: the sidebar shows exactly the screens that role may open, and none it may not.
 - `TC-MATRIX-<ROLE>-ROUTES`: each screen opens with its page header, or shows "You do not have permission" when the role is refused.
 
-Screens covered (47): Tasks, Approvals, Activity, Notifications, Leads, Customers, Messaging, Grievances, Applications, Documents, Document sharing, Verification, Verification workbench, Lender cases, Sanction and disbursement, Eligibility, Lenders, Products, Commission, Payouts, Ledger, Invoices, Reconciliation, Connectors, Workforce, Connector portal, Performance Dashboard, Targets, Leaderboard, Reports, Rule sets, Decisions, Automation rules, Users, Access control, Organisation, Branches, Teams, Work queues, Configuration, Audit, Privacy and consent, Security incidents, Integrations, API management, Import and export.
+Screens covered (47): Tasks, Approvals, Activity, Notifications, Leads, Customers, Messaging, Grievances, Applications, Documents, Document sharing, Verification, Verification workbench, Lender cases, Sanction and disbursement, Eligibility, Lenders, Products, Commission, Payouts, Ledger, Invoices, Reconciliation, Connectors, Workforce, Connector portal, Performance Dashboard, Targets, Leaderboard, Reports, Rule sets, Decisions, Automation rules, Users, Access control, Organisation, Branches, Teams, Work queues, Configuration, Audit, Privacy and consent, Integrations, Import and export.
 
 ## Known gaps (no automated test yet)
 

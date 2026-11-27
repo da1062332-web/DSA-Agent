@@ -96,14 +96,12 @@ const MFA_REQUIRED = [
   'platform.jobs',
   'platform.support_access',
   'platform.release',
-  'data_correction.approve',
   'finance.period_close',
   // Write-capable slices of the codes above (M-098); keep in step with packages/kernel/src/authz/mfa.ts.
   'org.manage',
   'settings.manage',
   'user.invite',
   'user.offboard',
-  'access_review.manage',
   'audit.seal',
   'payout.disburse',
 ];

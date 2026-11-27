@@ -180,7 +180,7 @@ export function createApp(opts: CreateAppOptions): Express {
   app.use('/public/v1', publicV1);
 
   // Platform realm (API-TEN-002, API-ADM-001..API-ADM-009) at /platform/v1. The tenant-realm part of platform-admin
-  // (support-access approvals, data corrections) is an ordinary module under /v1.
+  // (support-access approvals) is an ordinary module under /v1.
   const noStore: RequestHandler = (req, res, next) => {
     delete req.headers['if-none-match'];
     res.set('Cache-Control', 'no-store');

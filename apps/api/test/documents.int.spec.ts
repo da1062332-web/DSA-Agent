@@ -1,10 +1,8 @@
 // MOD-DOC documents against a real database (M-071), with the production wiring. Synthetic data only.
 import crypto from 'node:crypto';
-import { unzipSync } from 'fflate';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
-import { createDocumentArchiveHandler } from '../src/modules/origination/applications/documents';
 import { createProductionDeps } from '../src/wiring';
 import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/harness';
 import { testPrincipal } from './support/fake-auth';
@@ -230,52 +228,6 @@ describe('TEST-DOC-INT documents', () => {
     expect(res.body.error.code).toBe('STEP_UP_REQUIRED');
   });
 
-  it('TEST-DOC-INT-06 the archive job builds an encrypted zip of the clean current versions, served by a signed link', async () => {
-    const app = env.appAs(env.A, STAFF);
-    const queued = await request(app).post(`/v1/applications/${APP}/document-archive`).send({});
-    expect(queued.status, JSON.stringify(queued.body)).toBe(202);
-    expect(queued.body).toMatchObject({ status: 'QUEUED', documentCount: 1 });
-
-    // Run the queued job the way the worker does: in the archive's tenant.
-    const job = await env.admin.query(
-      `select id, payload from app.job_queue where job_type = 'document.archive'`,
-    );
-    expect(job.rows).toHaveLength(1);
-    // The same stores as the uploads above: the archive reads the clean files from where they were promoted.
-    const deps = createProductionDeps(createTxRunner(env.db), {
-      documentStore,
-      documentQuarantineStore,
-      documentScanner: new ReadyTestScanner(),
-    });
-    const handler = createDocumentArchiveHandler(deps);
-    await createTxRunner(env.db).withTenantTx(
-      {
-        principal: testPrincipal({ tenantId: env.A.tenantId, kind: 'SERVICE' }),
-        correlationId: 'job',
-        now: new Date(),
-      },
-      (tx) => handler(tx, env.A.tenantId, job.rows[0].payload),
-    );
-    const stored = await env.admin.query(
-      `select object_key, status from app.document_archive where id = $1`,
-      [queued.body.archiveId],
-    );
-    expect(stored.rows[0].status).toBe('READY');
-
-    const status = await request(app).get(`/v1/document-archives/${queued.body.archiveId}`);
-    expect(status.body.status).toBe('READY');
-    const zip = await request(app)
-      .get(status.body.url)
-      .buffer(true)
-      .parse((res, cb) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (c: Buffer) => chunks.push(c));
-        res.on('end', () => cb(null, Buffer.concat(chunks)));
-      });
-    const files = unzipSync(new Uint8Array(zip.body as Buffer));
-    expect(Object.keys(files).sort()).toEqual([`PAN_CARD/${versionId}-pan.pdf`, 'manifest.json']);
-  });
-
   it('TEST-DOC-INT-07 a waiver completes the checklist; the completeness check records the result', async () => {
     const app = env.appAs(env.A, STAFF);
     const before = await request(app).post(`/v1/applications/${APP}/completeness-checks`).send({});
@@ -293,18 +245,6 @@ describe('TEST-DOC-INT documents', () => {
     expect(after.body).toEqual({ result: 'COMPLETE', reasons: [] });
   });
 
-  it('TEST-DOC-INT-08 legal holds are placed by privacy.manage and listed', async () => {
-    const app = env.appAs(env.A, STAFF);
-    const hold = await request(app)
-      .post('/v1/legal-holds')
-      .set('Idempotency-Key', key('hold'))
-      .send({ subjectType: 'LOAN_APPLICATION', subjectId: APP, reason: 'Court order 2026/ABC (synthetic)' });
-    expect(hold.status, JSON.stringify(hold.body)).toBe(201);
-    const list = await request(app).get('/v1/legal-holds');
-    expect(list.body.data.map((h: { id: string }) => h.id)).toContain(hold.body.id);
-    expect((await request(env.appAs(env.A, ['application.read'])).get('/v1/legal-holds')).status).toBe(403);
-  });
-
   it('TEST-DOC-INT-09 tenant B, with every document permission, can see or open none of it', async () => {
     const b = env.appAs(env.B, STAFF);
     expect((await request(b).get(`/v1/documents/${documentId}`)).status).toBe(404);
@@ -317,7 +257,6 @@ describe('TEST-DOC-INT documents', () => {
           .send({ decision: 'ACCEPT' })
       ).status,
     ).toBe(404);
-    expect((await request(b).post(`/v1/applications/${APP}/document-archive`).send({})).status).toBe(404);
     const types = await request(b).get('/v1/document-types');
     expect(types.status).toBe(200);
   });

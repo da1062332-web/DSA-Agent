@@ -33,29 +33,6 @@ interface Gate {
 const IDEM = { 'Idempotency-Key': 'sub-permission-gate-test' };
 
 const GATES: Gate[] = [
-  // Security
-  {
-    name: 'security events (read)',
-    method: 'get',
-    path: '/v1/security/events',
-    opens: ['security.read', 'security.incident'],
-    refuses: ['lead.read', 'audit.read', 'privacy.read'],
-  },
-  {
-    name: 'incidents (read)',
-    method: 'get',
-    path: '/v1/incidents',
-    opens: ['security.read', 'security.incident'],
-    refuses: ['lead.read', 'audit.read'],
-  },
-  {
-    name: 'filing a security event stays security.incident',
-    method: 'post',
-    path: '/v1/security/events',
-    opens: ['security.incident'],
-    refuses: ['security.read'],
-  },
-
   // Platform: roles and permissions are read with role.read, written with role.manage / user.manage
   {
     name: 'roles (read)',
@@ -112,13 +89,6 @@ const GATES: Gate[] = [
     path: '/v1/users/usr_x/deactivation',
     opens: ['user.offboard', 'user.manage'],
     refuses: ['user.invite', 'user.read'],
-  },
-  {
-    name: 'access reviews (start)',
-    method: 'post',
-    path: '/v1/access-reviews',
-    opens: ['access_review.manage', 'user.manage'],
-    refuses: ['role.manage', 'user.invite'],
   },
 
   // Messaging templates

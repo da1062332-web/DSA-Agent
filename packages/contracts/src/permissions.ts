@@ -20,7 +20,6 @@ export const SUB_PERMISSION_CODES = [
   'user.invite',
   'user.offboard',
   'role.read',
-  'access_review.manage',
   // CRM
   'activity.read',
   'complaint.read',
@@ -40,7 +39,6 @@ export const SUB_PERMISSION_CODES = [
   'target.read',
   // Audit, security, privacy
   'audit.seal',
-  'security.read',
   'privacy.read',
   // Integrations and data
   'import.read',
@@ -145,12 +143,8 @@ export const PERMISSION_CODES = [
   'platform.tenant.suspend',
   'platform.tenant.offboard',
   'platform.tenant.entitlements',
-  'data_correction.request',
-  'data_correction.approve',
   'integration.read',
   'integration.manage',
-  'security.incident',
-  'security.vuln',
   'attendance.manage',
   'invoice.manage',
   // Added 2026-10-19 (additive; migration M-070): codes the DSA module pages name for endpoints built since.

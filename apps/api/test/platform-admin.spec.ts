@@ -43,21 +43,8 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     tenantId: 'ten_demo_01',
     grants: [
       { code: 'config.manage', scope: 'TENANT', branchIds: [] },
-      { code: 'data_correction.request', scope: 'TENANT', branchIds: [] },
-      { code: 'data_correction.approve', scope: 'TENANT', branchIds: [] },
     ],
   });
-
-  // Someone who may ask for a data correction but not approve one.
-  const tenantRequester = testPrincipal({
-    id: 'usr_branch_mgr_07',
-    tenantId: 'ten_demo_01',
-    grants: [{ code: 'data_correction.request', scope: 'TENANT', branchIds: [] }],
-  });
-
-  // The correction executor: a service identity bound to one tenant by its token.
-  const executorFor = (tenantId: string) =>
-    testPrincipal({ kind: 'SERVICE', id: 'SYSTEM:data-correction-executor', tenantId, grants: [] });
 
   // An administrator of a different customer tenant.
   const otherTenantAdmin = testPrincipal({
@@ -65,8 +52,6 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     tenantId: 'ten_other_01',
     grants: [
       { code: 'config.manage', scope: 'TENANT', branchIds: [] },
-      { code: 'data_correction.request', scope: 'TENANT', branchIds: [] },
-      { code: 'data_correction.approve', scope: 'TENANT', branchIds: [] },
     ],
   });
 
@@ -223,7 +208,6 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
       });
       const app = createTestApp(service);
       expect((await request(app).get('/platform/v1/tenants')).status).toBe(403);
-      expect((await request(app).get('/v1/data-corrections')).status).toBe(403);
     });
 
     it('TEST-REALM-003 a platform action is written to the audit trail with the reason and the permission used', async () => {
@@ -555,9 +539,6 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     });
   });
 
-  // ==========================================
-  // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
-  // ==========================================
   describe('SUB-ADM.06 — Break-glass support view (read-only, inside an approved window)', () => {
     // Files a 4-hour request (the maximum) as the operator, then has the target tenant's administrator approve it.
     // The longest window is used on purpose: the view opens the window that ends last, and this one is then the newest.
@@ -638,120 +619,6 @@ describe('Module 30 — Administration and Platform Operations (MOD-ADM)', () =>
     });
   });
 
-  describe('SUB-ADM.07 — Governed Data Correction & SOD-08', () => {
-    const body = {
-      justification: 'Remediate malformed pincode metadata in legacy imported customers',
-      scriptRef: 'SCR-2026-CORR-01',
-      targetEntity: 'CUSTOMER',
-      changeDescription: 'Set pincode to 400008 for orphaned branch records',
-    };
-
-    it('enforces dry-run diff preview and SOD-08 separation of duties inside one tenant', async () => {
-      const requesterApp = createTestApp(tenantRequester);
-
-      const createRes = await request(requesterApp)
-        .post('/v1/data-corrections')
-        .send({ ...body, tenantId: 'ten_demo_01' });
-      expect(createRes.status).toBe(201);
-      expect(createRes.body.status).toBe('PENDING');
-      expect(createRes.body.tenantId).toBe('ten_demo_01');
-      // No dry-run diff is invented: it stays null until the executor attaches a real one.
-      expect(createRes.body.dryRunDiffKey).toBeNull();
-      expect(createRes.body.dryRunDiff).toBeNull();
-      const corrId = createRes.body.id;
-
-      // The requester cannot approve (no approve permission at all)
-      expect(
-        (
-          await request(requesterApp)
-            .post(`/v1/data-corrections/${corrId}/approval`)
-            .send({ decision: 'APPROVED' })
-        ).status,
-      ).toBe(403);
-
-      // SOD-08: an administrator who also requested cannot approve their own correction
-      const adminApp = createTestApp(tenantAdmin);
-      const own = await request(adminApp).post('/v1/data-corrections').send(body);
-      const selfApproval = await request(adminApp)
-        .post(`/v1/data-corrections/${own.body.id}/approval`)
-        .send({ decision: 'APPROVED' });
-      expect(selfApproval.status).toBe(403);
-      expect(selfApproval.body.error.code).toBe('SOD_VIOLATION');
-
-      // A different administrator of the same tenant approves, then it executes
-      const approveRes = await request(adminApp)
-        .post(`/v1/data-corrections/${corrId}/approval`)
-        .send({ decision: 'APPROVED' });
-      expect(approveRes.status).toBe(200);
-      expect(approveRes.body.status).toBe('APPROVED');
-      // A person cannot mark it executed; only the executor service identity of that tenant can.
-      expect((await request(adminApp).post(`/v1/data-corrections/${corrId}/execute`)).status).toBe(403);
-      const execRes = await request(createTestApp(executorFor('ten_demo_01'))).post(
-        `/v1/data-corrections/${corrId}/execute`,
-      );
-      expect(execRes.status).toBe(200);
-      expect(execRes.body.status).toBe('EXECUTED');
-      // and not twice
-      expect(
-        (
-          await request(createTestApp(executorFor('ten_demo_01'))).post(
-            `/v1/data-corrections/${corrId}/execute`,
-          )
-        ).status,
-      ).toBe(409);
-    });
-
-    it('TEST-REALM-005 the tenant comes from the signed-in user: another tenant is refused and cannot see or act on the record', async () => {
-      const mine = await request(createTestApp(tenantRequester)).post('/v1/data-corrections').send(body);
-      expect(mine.status).toBe(201);
-
-      // Asking for a correction in someone else's tenant is refused
-      const forOther = await request(createTestApp(tenantRequester))
-        .post('/v1/data-corrections')
-        .send({ ...body, tenantId: 'ten_other_01' });
-      expect(forOther.status).toBe(422);
-
-      // Another tenant's administrator sees nothing and cannot approve or execute it (404, not 403)
-      const otherApp = createTestApp(otherTenantAdmin);
-      const list = await request(otherApp).get('/v1/data-corrections');
-      expect(list.body.data.map((c: { id: string }) => c.id)).not.toContain(mine.body.id);
-      expect(
-        (
-          await request(otherApp)
-            .post(`/v1/data-corrections/${mine.body.id}/approval`)
-            .send({ decision: 'APPROVED' })
-        ).status,
-      ).toBe(404);
-      expect((await request(otherApp).post(`/v1/data-corrections/${mine.body.id}/execute`)).status).toBe(403);
-      // another tenant's executor cannot see it either
-      expect(
-        (
-          await request(createTestApp(executorFor('ten_other_01'))).post(
-            `/v1/data-corrections/${mine.body.id}/execute`,
-          )
-        ).status,
-      ).toBe(404);
-    });
-
-    it('TEST-REALM-006 a platform operator cannot request, approve or list data corrections', async () => {
-      const app = createTestApp(platformAdmin);
-      expect((await request(app).get('/v1/data-corrections')).status).toBe(403);
-      expect((await request(app).post('/v1/data-corrections').send(body)).status).toBe(403);
-    });
-
-    it('TEST-REALM-007 requests and approvals are audited by the store, in the same transaction as the change', async () => {
-      store.audit.length = 0;
-      const created = await request(createTestApp(tenantRequester)).post('/v1/data-corrections').send(body);
-      await request(createTestApp(tenantAdmin))
-        .post(`/v1/data-corrections/${created.body.id}/approval`)
-        .send({ decision: 'APPROVED' });
-      expect(store.audit).toEqual(['data_correction.requested', 'data_correction.approved']);
-    });
-  });
-
-  // ==========================================
-  // SUB-ADM.08: Release Management (Release Register)
-  // ==========================================
   describe('SUB-ADM.08 — Release Management Register', () => {
     const freshOperator = { ...platformAdmin, authTime: new Date().toISOString() }; // passed an authenticator check just now
 

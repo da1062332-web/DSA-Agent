@@ -249,54 +249,6 @@ export const RevokeSupportAccessRequestSchema = z.object({
 export type RevokeSupportAccessRequest = z.infer<typeof RevokeSupportAccessRequestSchema>;
 
 // ==========================================
-// SUB-ADM.07: Data Correction (CMP-ADM.07.1 / API-ADM-008 / API-ADM-009)
-// ==========================================
-
-export const DataCorrectionStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'FAILED']);
-
-export type DataCorrectionStatus = z.infer<typeof DataCorrectionStatusSchema>;
-
-export const DataCorrectionRequestSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  justification: z.string(),
-  scriptRef: z.string(),
-  /** Set when the correction executor attaches a real dry-run diff. Null until then; never made up by the API. */
-  dryRunDiffKey: z.string().nullable(),
-  dryRunDiff: z.string().nullable(),
-  targetEntity: z.string().nullable().optional(),
-  changeDescription: z.string().nullable().optional(),
-  requestedBy: z.string(),
-  approvedBy: z.string().nullable().optional(),
-  status: DataCorrectionStatusSchema,
-  executedAt: z.string().nullable().optional(),
-  /** Why the executor could not carry the correction out; set only when status is FAILED. */
-  failureReason: z.string().nullable().optional(),
-  executorIdentity: z.string().default('SERVICE:data-correction-executor'),
-  createdAt: z.string(),
-});
-
-export type DataCorrectionRequest = z.infer<typeof DataCorrectionRequestSchema>;
-
-export const CreateDataCorrectionRequestSchema = z.object({
-  /** Never trusted: a correction belongs to the caller's own tenant. Accepted only if it equals that tenant. */
-  tenantId: z.string().min(1).optional(),
-  justification: z.string().min(10, 'Justification required (min 10 characters)'),
-  scriptRef: z.string().min(3, 'Script reference required (e.g. SCR-2026-001)'),
-  targetEntity: z.string().min(2),
-  changeDescription: z.string().min(5),
-});
-
-export type CreateDataCorrectionRequest = z.infer<typeof CreateDataCorrectionRequestSchema>;
-
-export const ApproveDataCorrectionRequestSchema = z.object({
-  decision: z.enum(['APPROVED', 'REJECTED']),
-  comments: z.string().optional(),
-});
-
-export type ApproveDataCorrectionRequest = z.infer<typeof ApproveDataCorrectionRequestSchema>;
-
-// ==========================================
 // SUB-ADM.08: Release Management (CMP-ADM.08.1)
 // ==========================================
 

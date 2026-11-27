@@ -1,14 +1,11 @@
 // OpenAPI registration for origination/applications (owner: Dev 3). Swagger group: MOD-APP Loan Applications.
 import {
   CompleteUploadResponseSchema,
-  CreateLegalHoldSchema,
   CreateUploadIntentSchema,
-  DocumentArchiveResponseSchema,
   DocumentLinkRequestSchema,
   DocumentLinkResponseSchema,
   DocumentResourceSchema,
   DocumentTypeSchema,
-  LegalHoldSchema,
   ReviewDocumentVersionSchema,
   UploadIntentResponseSchema,
   UpsertDocumentTypeSchema,
@@ -563,59 +560,6 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
       },
     });
   }
-
-  registry.registerPath({
-    method: 'post',
-    path: '/v1/applications/{id}/document-archive',
-    tags: doc,
-    operationId: 'API-DOC-009',
-    summary: 'Build an encrypted archive of the application documents in the background (document.download)',
-    responses: {
-      202: { description: 'Archive requested', content: json(DocumentArchiveResponseSchema) },
-      403: { description: 'FORBIDDEN' },
-      404: { description: 'NOT_FOUND' },
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/v1/document-archives/{id}',
-    tags: doc,
-    operationId: 'API-DOC-009-STATUS',
-    summary: 'Archive status, with a signed download link once READY (document.download)',
-    responses: {
-      200: { description: 'Archive', content: json(DocumentArchiveResponseSchema) },
-      403: { description: 'FORBIDDEN' },
-      404: { description: 'NOT_FOUND' },
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/v1/legal-holds',
-    tags: doc,
-    operationId: 'API-PRV-004',
-    summary: 'Place a legal hold: nothing in its scope is purged while it is active (privacy.manage)',
-    parameters: idem,
-    request: { body: { required: true, content: json(CreateLegalHoldSchema) } },
-    responses: {
-      201: { description: 'Hold placed', content: json(LegalHoldSchema) },
-      403: { description: 'FORBIDDEN' },
-      422: { description: 'VALIDATION_ERROR' },
-    },
-  });
-
-  registry.registerPath({
-    method: 'get',
-    path: '/v1/legal-holds',
-    tags: doc,
-    operationId: 'API-PRV-004-LIST',
-    summary: 'Legal holds of the tenant (privacy.manage)',
-    responses: {
-      200: { description: 'Holds', content: json(listResponse(LegalHoldSchema)) },
-      403: { description: 'FORBIDDEN' },
-    },
-  });
 
   registry.registerPath({
     method: 'put',

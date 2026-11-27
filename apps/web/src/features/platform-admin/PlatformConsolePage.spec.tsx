@@ -41,7 +41,7 @@ describe('PlatformConsolePage Frontend Component Rendering', () => {
     expect(html).toContain('Zero Business Data Projection');
   });
 
-  it('renders the 7 platform submodule tabs (data corrections belong to the customer tenant, see /approvals)', () => {
+  it('renders the 7 platform submodule tabs, and no data corrections tab', () => {
     const html = renderWithProviders(
       <Routes>
         <Route path="/platform-admin" element={<PlatformConsolePage />} />

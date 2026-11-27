@@ -23,7 +23,7 @@ export class ComplianceService {
       throw AppError.of('UNAUTHENTICATED', 'Authentication required.');
     }
     // The privacy register is its own permission: reading the audit trail or customers (audit.read, customer.read) no longer opens it.
-    // privacy.manage (the legal-hold and retention role) still does. Migration M-098 gave privacy.read to every role that held
+    // privacy.manage (the retention role) still does. Migration M-098 gave privacy.read to every role that held
     // audit.read or customer.read, so no current holder loses access.
     const allowed: PermissionCode[] = withLegacy('privacy.read');
     if (!ctx.principal.grants.some((g) => allowed.includes(g.code))) {

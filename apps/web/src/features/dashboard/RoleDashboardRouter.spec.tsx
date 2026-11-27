@@ -35,9 +35,6 @@ vi.mock('../payouts/api', () => ({
 vi.mock('../commission/api', () => ({
   fetchCommissionPlans: vi.fn().mockResolvedValue({ data: [], meta: { nextCursor: null, limit: 10 } }),
 }));
-vi.mock('../security/api', () => ({
-  listIncidents: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-}));
 vi.mock('../audit/api', () => ({
   searchAuditEvents: vi.fn().mockResolvedValue({ data: [], meta: { hasMore: false } }),
 }));
@@ -251,7 +248,7 @@ describe('RoleDashboardRouter & Persona Dashboards', () => {
 
     const html = renderRouter();
     expect(html).toContain('data-testid="compliance-dashboard"');
-    expect(html).toContain('Compliance &amp; Security Command Center');
+    expect(html).toContain('Compliance Command Center');
   });
 
   it('renders Executive HomePage overview for ROLE-TENANT-ADMIN and ROLE-ORG-OWNER', () => {

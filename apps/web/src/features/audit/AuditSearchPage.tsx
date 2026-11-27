@@ -635,7 +635,6 @@ export function AuditSearchPage() {
                 <MenuItem value="role">Role</MenuItem>
                 <MenuItem value="rule_set">Rule Set</MenuItem>
                 <MenuItem value="tenant_config">Configuration</MenuItem>
-                <MenuItem value="api_client">API Client</MenuItem>
               </Select>
             </FormControl>
           </Grid>

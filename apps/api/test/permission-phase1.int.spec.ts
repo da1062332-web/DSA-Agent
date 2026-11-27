@@ -75,8 +75,6 @@ const COMPLIANCE = P(
   'audit.read',
   'customer.read',
   'lead.read',
-  'security.incident',
-  'security.vuln',
   'verification.read',
 );
 
@@ -155,53 +153,3 @@ describe('F-02 sanction and disbursement reads need a sanction or disbursement p
   });
 });
 
-describe('F-04 security events can only be written by a holder of security.incident, and carry who filed them', () => {
-  const event = (extra: Record<string, unknown> = {}) => ({
-    type: 'SUSPICIOUS_ACCESS',
-    principal: 'someone-else',
-    ip: '203.0.113.7',
-    severity: 'HIGH',
-    details: { note: 'p1', ...extra },
-  });
-  const count = async (tenantId: string) =>
-    (
-      await env.admin.query(`SELECT count(*)::int AS n FROM app.security_event WHERE tenant_id = $1`, [
-        tenantId,
-      ])
-    ).rows[0].n as number;
-
-  it('TEST-P1-F04-01 no permissions, sales, RM, finance and loan operations are refused and no event is written', async () => {
-    const before = await count(env.A.tenantId);
-    for (const codes of [NONE, SALES_EXEC, RM, FINANCE_EXEC, LOAN_OPS]) {
-      refused((await request(as('A', codes)).post('/v1/security/events').send(event())).status);
-    }
-    expect(await count(env.A.tenantId)).toBe(before);
-  });
-
-  it('TEST-P1-F04-02 a security.incident holder (compliance) can file an event; the server decides principal, address and severity, and keeps what the caller sent as claims', async () => {
-    const res = await request(as('A', COMPLIANCE))
-      .post('/v1/security/events')
-      .send(event({ reportedBy: 'usr_forged', reporterKind: 'SERVICE' }));
-    expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body.details.reportedBy).toBe(env.A.userIds[0]);
-    expect(res.body.details.reporterKind).toBe('USER');
-    expect(res.body.principal).toBe(env.A.userIds[0]); // the filer, not the caller's 'someone-else'
-    expect(res.body.ip).not.toBe('203.0.113.7');
-    expect(res.body.severity).toBe('MEDIUM'); // chosen by the server, not the claimed HIGH
-    expect(res.body.details.claimed).toEqual({
-      principal: 'someone-else',
-      ip: '203.0.113.7',
-      severity: 'HIGH',
-    });
-  });
-
-  it('TEST-P1-F04-03 tenant isolation holds: tenant B (also a holder) never sees tenant A events, and the refused call in A wrote nothing there', async () => {
-    const list = await request(as('B', COMPLIANCE)).get('/v1/security/events');
-    expect(list.status).toBe(200);
-    expect(JSON.stringify(list.body)).not.toContain('someone-else');
-    // a tenant B writer writes to tenant B only
-    const before = await count(env.A.tenantId);
-    expect((await request(as('B', COMPLIANCE)).post('/v1/security/events').send(event())).status).toBe(201);
-    expect(await count(env.A.tenantId)).toBe(before);
-  });
-});

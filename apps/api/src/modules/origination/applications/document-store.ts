@@ -50,9 +50,9 @@ export const sha256Hex = (bytes: Buffer | string) => crypto.createHash('sha256')
 export interface FileLinkClaims {
   /** tenant */
   t: string;
-  /** what: 'v' = a document version, 'a' = an archive */
-  k: 'v' | 'a';
-  /** id of the version or archive */
+  /** what: 'v' = a document version */
+  k: 'v';
+  /** id of the version */
   i: string;
   /** disposition: inline (view) or attachment (download) */
   d: 'inline' | 'attachment';
@@ -93,18 +93,3 @@ export class FileLinkSigner {
   }
 }
 
-/** AES-256-GCM at rest for archives: iv (12) + tag (16) + ciphertext. */
-export function encryptArchive(plain: Buffer, secret: string): Buffer {
-  const key = crypto.createHmac('sha256', secret).update('dsa:document-archives:v1').digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const enc = Buffer.concat([cipher.update(plain), cipher.final()]);
-  return Buffer.concat([iv, cipher.getAuthTag(), enc]);
-}
-
-export function decryptArchive(sealed: Buffer, secret: string): Buffer {
-  const key = crypto.createHmac('sha256', secret).update('dsa:document-archives:v1').digest();
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, sealed.subarray(0, 12));
-  decipher.setAuthTag(sealed.subarray(12, 28));
-  return Buffer.concat([decipher.update(sealed.subarray(28)), decipher.final()]);
-}

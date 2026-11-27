@@ -108,7 +108,6 @@ describe('F-08 direct URL access, by role', () => {
       '/permissions',
       '/config',
       '/audit',
-      '/security',
       '/rules',
       '/admin/import-export',
       '/admin/branches',
@@ -161,7 +160,6 @@ describe('F-08 direct URL access, by role', () => {
     expect(allowed('ROLE-FINANCE-EXEC', '/invoices')).toBe(true);
     expect(allowed('ROLE-FINANCE-EXEC', '/leads')).toBe(false);
     expect(allowed('ROLE-COMPLIANCE', '/audit')).toBe(true);
-    expect(allowed('ROLE-COMPLIANCE', '/security')).toBe(true);
     expect(allowed('ROLE-COMPLIANCE', '/leads/new')).toBe(false); // read-only on leads
     expect(allowed('ROLE-RULE-AUTHOR', '/rules')).toBe(true);
     expect(allowed('ROLE-RULE-AUTHOR', '/leads')).toBe(false);
@@ -372,9 +370,7 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
       '/permissions',
       '/config',
       '/integrations',
-      '/api-management',
       '/audit',
-      '/security',
       '/platform-admin',
     ]) {
       expect(routeAllowed(adminPath, rmCan, false), `ROLE-RM cannot access ${adminPath}`).toBe(false);
@@ -387,7 +383,6 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
     const itemPaths = categories.flatMap((c) => c.items.map((i) => i.to));
     expect(itemPaths).toContain('/audit');
     expect(itemPaths).toContain('/privacy');
-    expect(itemPaths).toContain('/security');
     expect(itemPaths).toContain('/account/security');
     expect(itemPaths).not.toContain('/users');
     expect(itemPaths).not.toContain('/admin/organisation');

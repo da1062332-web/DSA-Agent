@@ -14,34 +14,10 @@ import {
   type PartnerSanctionOffersResponse,
   type PartnerUploadSessionRequest,
   type PartnerUploadSessionResponse,
-  type CreateApiClientInput,
-  type UpdateApiClientInput,
-  type ApiClientResponse,
-  type RotateClientSecretResponse,
   type RequestContext,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../types';
-import { InMemoryApiClientRepository, type ApiClientRepository } from './api-client-repository';
 import { hashApiKey, InMemoryApiKeyStore, type ApiKeyRecord, type ApiKeyStore } from './auth-middleware';
-
-export interface ApiClientRecord {
-  id: string;
-  tenantId: string;
-  clientId: string;
-  clientSecretHash: string;
-  name: string;
-  partnerName: string;
-  status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
-  scopes: string[];
-  rateLimitRpm: number;
-  allowedIps?: string[] | null;
-  lastUsedAt?: string | null;
-  lockVersion: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string;
-}
 
 export interface PartnerLeadRecord {
   id: string;
@@ -95,18 +71,11 @@ export class PartnerApiService {
   private leadsMap = new Map<string, PartnerLeadRecord>();
   private applicationsMap = new Map<string, PartnerApplicationRecord>();
   private idempotencyStore = new Map<string, { body: unknown; statusCode: number }>();
-  private readonly apiClients: ApiClientRepository;
 
   constructor(
     private deps: ApiDeps,
     private apiKeyStore: ApiKeyStore,
-    apiClients?: ApiClientRepository,
-  ) {
-    this.apiClients =
-      apiClients ??
-      (deps.apiClientRepository as ApiClientRepository | undefined) ??
-      new InMemoryApiClientRepository();
-  }
+  ) {}
 
   // Helper for masking
   private maskMobile(m: string): string {
@@ -551,110 +520,4 @@ export class PartnerApiService {
   // ==========================================================================
   // API Management (MOD-API)
   // ==========================================================================
-
-  private toClientResponse(r: ApiClientRecord): ApiClientResponse {
-    return {
-      id: r.id,
-      clientId: r.clientId,
-      tenantId: r.tenantId,
-      name: r.name,
-      partnerName: r.partnerName,
-      status: r.status,
-      scopes: r.scopes,
-      rateLimitRpm: r.rateLimitRpm,
-      allowedIps: r.allowedIps ?? null,
-      lastUsedAt: r.lastUsedAt ?? null,
-      lockVersion: r.lockVersion,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-    };
-  }
-
-  private requireApiRead(principal: RequestContext['principal']): void {
-    const hasAccess = principal.grants.some(
-      (g) => g.code === 'api.read' || g.code === 'api.manage' || g.code === 'config.manage',
-    );
-    if (!hasAccess && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.read or api.manage required.');
-    }
-  }
-
-  private requireApiManage(principal: RequestContext['principal']): void {
-    const hasManage = principal.grants.some((g) => g.code === 'api.manage' || g.code === 'config.manage');
-    if (!hasManage && principal.kind !== 'SERVICE') {
-      throw AppError.of('FORBIDDEN', 'Permission denied: api.manage required.');
-    }
-  }
-
-  async listApiClients(ctx: RequestContext): Promise<{ data: ApiClientResponse[] }> {
-    this.requireApiRead(ctx.principal);
-    const clients = await this.apiClients.list(ctx);
-    return { data: clients.map((c) => this.toClientResponse(c)) };
-  }
-
-  async createApiClient(ctx: RequestContext, input: CreateApiClientInput): Promise<ApiClientResponse> {
-    const { principal } = ctx;
-    this.requireApiManage(principal);
-
-    const secretRandom = crypto.randomBytes(24).toString('hex');
-    const clientSecret = `sec_${secretRandom}`;
-    const nowIso = ctx.now.toISOString();
-    const record: ApiClientRecord = {
-      id: this.nextId('clt'),
-      tenantId: principal.tenantId,
-      clientId: `clt_${crypto.randomBytes(12).toString('hex')}`,
-      clientSecretHash: crypto.createHash('sha256').update(clientSecret).digest('hex'),
-      name: input.name,
-      partnerName: input.partnerName,
-      status: 'ACTIVE',
-      scopes: input.scopes,
-      rateLimitRpm: input.rateLimitRpm ?? 120,
-      allowedIps: input.allowedIps ?? null,
-      lastUsedAt: null,
-      lockVersion: 1,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      createdBy: principal.id,
-      updatedBy: principal.id,
-    };
-    // A failure here is an error to the caller. It used to be swallowed, which left a client that existed only in memory.
-    await this.apiClients.create(ctx, record);
-    return { ...this.toClientResponse(record), clientSecret };
-  }
-
-  async getApiClient(ctx: RequestContext, id: string): Promise<ApiClientResponse> {
-    this.requireApiRead(ctx.principal);
-    const record = await this.apiClients.get(ctx, id);
-    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    return this.toClientResponse(record);
-  }
-
-  async updateApiClient(
-    ctx: RequestContext,
-    id: string,
-    input: UpdateApiClientInput,
-  ): Promise<ApiClientResponse> {
-    this.requireApiManage(ctx.principal);
-    const record = await this.apiClients.update(ctx, id, input);
-    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    return this.toClientResponse(record);
-  }
-
-  async deleteApiClient(ctx: RequestContext, id: string): Promise<void> {
-    this.requireApiManage(ctx.principal);
-    if (!(await this.apiClients.revoke(ctx, id)))
-      throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-  }
-
-  async rotateClientSecret(ctx: RequestContext, id: string): Promise<RotateClientSecretResponse> {
-    this.requireApiManage(ctx.principal);
-    const clientSecret = `sec_${crypto.randomBytes(24).toString('hex')}`;
-    const record = await this.apiClients.rotateSecret(
-      ctx,
-      id,
-      crypto.createHash('sha256').update(clientSecret).digest('hex'),
-    );
-    if (!record) throw AppError.of('NOT_FOUND', `API Client ${id} not found.`);
-    return { clientId: record.clientId, clientSecret, rotatedAt: record.updatedAt };
-  }
 }

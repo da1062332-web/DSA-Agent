@@ -10,6 +10,7 @@ import type {
   DataSharingPort,
   DecisionPort,
   IdGenerator,
+  KycCheckPort,
   OutboxPort,
   PartyPort,
   TaskPort,
@@ -37,6 +38,8 @@ export interface ApiDeps {
   productVersionPort?: ProductVersionPort;
   /** Confirms a lender exists in the tenant, for complaint referrals. Provided by origination/catalogue. */
   lenderPort?: LenderPort;
+  /** Runs provider KYC checks (PAN, GST) for POST /v1/verifications/checks. Provided by integrations. Fails closed (503) without it. */
+  kycPort?: KycCheckPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;
@@ -50,8 +53,6 @@ export interface ApiDeps {
   sanctionRepository?: unknown;
   apiKeyStore?: unknown;
   partnerService?: unknown;
-  /** Where API clients are stored (ApiClientRepository). Without it the service keeps them in memory, for unit tests only. */
-  apiClientRepository?: unknown;
   webhookService?: unknown;
   targetRepository?: unknown;
   reportingRepository?: unknown;

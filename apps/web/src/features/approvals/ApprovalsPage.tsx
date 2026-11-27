@@ -1,6 +1,5 @@
-// /approvals (owner: Dev 1; DSA Notion MODULE 40, SUB-ADM.06 and SUB-ADM.07). The customer-tenant side of two governed workflows:
+// /approvals (owner: Dev 1; DSA Notion MODULE 40, SUB-ADM.06). The customer-tenant side of two governed workflows:
 //   - support access: a platform operator asks, the tenant administrator approves, denies or revokes (SOD-06);
-//   - data corrections: tenant staff request, a different person approves (SOD-08), and the executor service runs it.
 //   - finance approvals (QA plan Module 13B): commission plans and payout requests waiting for an independent checker
 //     (SOD-02, SOD-03), listed with a link to the screen where the decision is taken.
 // It shows only this tenant's records (the API and the database enforce that). It is not part of the Platform Console, which only
@@ -28,7 +27,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import type { DataCorrectionRequest, SupportAccessGrant } from '@dsa/contracts';
+import type { SupportAccessGrant } from '@dsa/contracts';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -39,42 +38,22 @@ import { hasPermission, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { useCommand, useList } from '../admin/api';
 import { ErrorAlert, Loading, PageHeader, StatusChip } from '../admin/components';
-import {
-  CORRECTION_STATUS_LABELS,
-  GRANT_STATUS_LABELS,
-  NO_DIFF_NOTE,
-  canDecideCorrection,
-  grantAction,
-  grantWindowEnded,
-  isValidChangeDescription,
-  isValidCorrection,
-  isValidJustification,
-  isValidScriptRef,
-  isValidTargetEntity,
-} from './rules';
+import { GRANT_STATUS_LABELS, grantAction, grantWindowEnded } from './rules';
 
 const GRANTS = '/v1/support-access-requests';
-const CORRECTIONS = '/v1/data-corrections';
 const when = (iso: string) => new Date(iso).toLocaleString();
 
 export function ApprovalsPage() {
   const me = useMe();
   const canSupport = hasPermission(me.data, 'config.manage');
-  const canRequest = hasPermission(me.data, 'data_correction.request');
-  const canApprove = hasPermission(me.data, 'data_correction.approve');
-  const showCorrections = canRequest || canApprove || canSupport;
   const canPlans = hasPermission(me.data, 'commission.plan.approve');
   const canPayouts = hasPermission(me.data, 'payout.approve');
   const showFinance = canPlans || canPayouts;
 
-  const allowedTabs = [
-    canSupport && 'support',
-    showCorrections && 'corrections',
-    showFinance && 'finance',
-  ].filter(Boolean) as ('support' | 'corrections' | 'finance')[];
+  const allowedTabs = [canSupport && 'support', showFinance && 'finance'].filter(Boolean) as ('support' | 'finance')[];
 
-  const defaultTab = canSupport ? 'support' : showCorrections ? 'corrections' : 'finance';
-  const [tab, setTab] = useState<'support' | 'corrections' | 'finance'>(defaultTab);
+  const defaultTab = canSupport ? 'support' : 'finance';
+  const [tab, setTab] = useState<'support' | 'finance'>(defaultTab);
 
   useEffect(() => {
     if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) {
@@ -90,31 +69,20 @@ export function ApprovalsPage() {
     <>
       <PageHeader
         title="Approvals"
-        subtitle="Support access, data corrections and finance approvals for your organisation. Nobody approves their own request."
+        subtitle="Support access and finance approvals for your organisation. Nobody approves their own request."
       />
-      {!canSupport && !showCorrections && !showFinance && (
+      {!canSupport && !showFinance && (
         <Alert severity="warning" data-testid="approvals.noAccess">
           You don't have access to approvals. Ask your administrator to grant you the permission.
         </Alert>
       )}
-      {(canSupport || showCorrections || showFinance) && (
+      {(canSupport || showFinance) && (
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
           {canSupport && <Tab value="support" label="Support access" data-testid="approvals.tab.support" />}
-          {showCorrections && (
-            <Tab value="corrections" label="Data corrections" data-testid="approvals.tab.corrections" />
-          )}
           {showFinance && <Tab value="finance" label="Finance" data-testid="approvals.tab.finance" />}
         </Tabs>
       )}
       {canSupport && tab === 'support' && <SupportAccessTab canSupport={canSupport} />}
-      {showCorrections && tab === 'corrections' && (
-        <CorrectionsTab
-          meId={me.data?.id}
-          canRequest={canRequest}
-          canApprove={canApprove || canSupport}
-          canList={showCorrections}
-        />
-      )}
       {showFinance && tab === 'finance' && (
         <FinanceApprovalsTab meId={me.data?.id} canPlans={canPlans} canPayouts={canPayouts} />
       )}
@@ -400,221 +368,5 @@ function GrantRow({ grant }: { grant: SupportAccessGrant }) {
         )}
       </TableCell>
     </TableRow>
-  );
-}
-
-function CorrectionsTab({
-  meId,
-  canRequest,
-  canApprove,
-  canList = true,
-}: {
-  meId: string | undefined;
-  canRequest: boolean;
-  canApprove: boolean;
-  canList?: boolean;
-}) {
-  const list = useList<DataCorrectionRequest>(CORRECTIONS, {}, 100, canList);
-  const [creating, setCreating] = useState(false);
-  const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
-  return (
-    <>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        justifyContent="space-between"
-        alignItems={{ sm: 'center' }}
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
-          A correction changes business data, so one person asks and a different person approves (SOD-08). An
-          approved correction is run by the correction executor service, never by a person on this screen.
-        </Typography>
-        {canRequest && (
-          <Button
-            variant="contained"
-            onClick={() => setCreating(true)}
-            data-testid="approvals.corrections.new"
-          >
-            New correction request
-          </Button>
-        )}
-      </Stack>
-      <ErrorAlert error={list.error} />
-      {list.isPending ? (
-        <Loading />
-      ) : rows.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-          No data correction requests.
-        </Typography>
-      ) : (
-        <Stack spacing={2}>
-          {rows.map((c) => (
-            <CorrectionCard key={c.id} correction={c} meId={meId} canApprove={canApprove} />
-          ))}
-        </Stack>
-      )}
-      {creating && <NewCorrectionDialog onClose={() => setCreating(false)} />}
-    </>
-  );
-}
-
-function CorrectionCard({
-  correction: c,
-  meId,
-  canApprove,
-}: {
-  correction: DataCorrectionRequest;
-  meId: string | undefined;
-  canApprove: boolean;
-}) {
-  const decide = useCommand<{ decision: 'APPROVED' | 'REJECTED' }, DataCorrectionRequest>(
-    () => ({ path: `${CORRECTIONS}/${c.id}/approval`, method: 'POST' }),
-    [[CORRECTIONS]],
-    'Decision recorded.',
-  );
-  const may = canDecideCorrection(c, meId, canApprove);
-  const own = canApprove && c.status === 'PENDING' && c.requestedBy === meId;
-  return (
-    <Card variant="outlined" data-testid="approvals.correction">
-      <CardContent>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="subtitle1" fontWeight={700}>
-              {c.scriptRef}
-            </Typography>
-            <StatusChip
-              active={c.status === 'EXECUTED' || c.status === 'APPROVED'}
-              label={CORRECTION_STATUS_LABELS[c.status]}
-            />
-          </Stack>
-          {may && (
-            <Stack direction="row" spacing={1}>
-              <Button
-                size="small"
-                variant="contained"
-                color="success"
-                disabled={decide.isPending}
-                onClick={() => decide.mutate({ decision: 'APPROVED' })}
-              >
-                Approve
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                disabled={decide.isPending}
-                onClick={() => decide.mutate({ decision: 'REJECTED' })}
-              >
-                Reject
-              </Button>
-            </Stack>
-          )}
-          {own && (
-            <Tooltip title="You requested this correction. A different person must approve it (SOD-08).">
-              <span>
-                <Button size="small" variant="contained" disabled>
-                  Approve
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-        </Stack>
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          <strong>Justification:</strong> {c.justification}
-        </Typography>
-        {c.targetEntity && (
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            <strong>Target:</strong> {c.targetEntity}
-            {c.changeDescription ? `. ${c.changeDescription}` : ''}
-          </Typography>
-        )}
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-          {c.dryRunDiff ? `Dry-run diff (${c.dryRunDiffKey ?? 'no key'}) is attached.` : NO_DIFF_NOTE}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', color: 'text.secondary', fontSize: '0.75rem', alignItems: 'center' }}>
-          <span>Requested by: <UserName id={c.requestedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} /></span>
-          <span>Approved by: {c.approvedBy ? <UserName id={c.approvedBy} typographyProps={{ variant: 'caption', color: 'text.secondary' }} /> : 'not yet'}</span>
-          <span>Executor: {c.executorIdentity}</span>
-          {c.executedAt && <span>Executed: {when(c.executedAt)}</span>}
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
-
-function NewCorrectionDialog({ onClose }: { onClose: () => void }) {
-  const [scriptRef, setScriptRef] = useState('SCR-');
-  const [targetEntity, setTargetEntity] = useState('');
-  const [changeDescription, setChangeDescription] = useState('');
-  const [justification, setJustification] = useState('');
-  const create = useCommand<
-    { scriptRef: string; targetEntity: string; changeDescription: string; justification: string },
-    DataCorrectionRequest
-  >(() => ({ path: CORRECTIONS, method: 'POST' }), [[CORRECTIONS]], 'Correction requested.');
-  const draft = { scriptRef, targetEntity, changeDescription, justification };
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Request a data correction</DialogTitle>
-      <DialogContent>
-        <ErrorAlert error={create.error} />
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
-            label="Script reference"
-            value={scriptRef}
-            onChange={(e) => setScriptRef(e.target.value)}
-            error={!isValidScriptRef(scriptRef)}
-            helperText="The approved script that will make the change, for example SCR-2026-001."
-          />
-          <TextField
-            label="Target"
-            value={targetEntity}
-            onChange={(e) => setTargetEntity(e.target.value)}
-            error={targetEntity !== '' && !isValidTargetEntity(targetEntity)}
-            helperText="The kind of record, for example LEAD or CUSTOMER."
-          />
-          <TextField
-            label="What will change"
-            multiline
-            minRows={2}
-            value={changeDescription}
-            onChange={(e) => setChangeDescription(e.target.value)}
-            error={changeDescription !== '' && !isValidChangeDescription(changeDescription)}
-            helperText="At least 5 characters."
-          />
-          <TextField
-            label="Why it is needed"
-            multiline
-            minRows={3}
-            value={justification}
-            onChange={(e) => setJustification(e.target.value)}
-            error={justification !== '' && !isValidJustification(justification)}
-            helperText="At least 10 characters. Recorded in the audit trail."
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={create.isPending}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          disabled={create.isPending || !isValidCorrection(draft)}
-          onClick={() =>
-            create.mutate(
-              {
-                scriptRef: scriptRef.trim(),
-                targetEntity: targetEntity.trim(),
-                changeDescription: changeDescription.trim(),
-                justification: justification.trim(),
-              },
-              { onSuccess: onClose },
-            )
-          }
-        >
-          Request
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 }

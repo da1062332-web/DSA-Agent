@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { IncidentRecord } from '@dsa/contracts';
 import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
@@ -20,93 +19,22 @@ import {
 } from '@mui/material';
 import { GuardedRouterLink as RouterLink } from '../../shell/GuardedRouterLink';
 import { searchAuditEvents } from '../audit/api';
-import { listIncidents } from '../security/api';
 import {
   DashboardDateFilter,
   type DateRangeScope,
   KpiMetricCard,
-  PipelineFunnelChart,
-  TaskWorkQueue,
-  type TaskWorkQueueItem,
 } from './components';
 import { NotSet } from '../../ui/NotSet';
 
 export function ComplianceDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
 
-  const { data: incidentsData, isLoading: incidentsLoading, isError: incidentsError } = useQuery({
-    queryKey: ['compliance-dashboard-incidents', dateScope],
-    queryFn: () => listIncidents({}),
-  });
-
   const { data: auditData, isLoading: auditLoading, isError: auditError } = useQuery({
     queryKey: ['compliance-dashboard-audit', dateScope],
     queryFn: () => searchAuditEvents({ limit: 50 }),
   });
 
-  const incidents: IncidentRecord[] = incidentsData?.data ?? [];
   const auditEvents = auditData?.data ?? [];
-
-  const openIncidents = incidents.filter(
-    (i: IncidentRecord) => i.status === 'OPEN' || i.status === 'INVESTIGATING' || i.status === 'CONTAINED',
-  );
-  const openIncidentsCount = openIncidents.length;
-  const criticalCount = incidents.filter(
-    (i: IncidentRecord) => i.severity === 'CRITICAL' || i.severity === 'HIGH',
-  ).length;
-  const resolvedCount = incidents.filter(
-    (i: IncidentRecord) => i.status === 'RESOLVED' || i.status === 'CLOSED',
-  ).length;
-
-  const totalIncidents = incidents.length;
-  const resolutionRate = totalIncidents > 0 ? (resolvedCount / totalIncidents) * 100 : 100;
-
-  // Stages for security incidents
-  const incidentStages = [
-    {
-      key: 'open',
-      label: 'Open / Triage',
-      count: incidents.filter((i) => i.status === 'OPEN').length,
-      color: '#DC2626',
-      to: '/security',
-    },
-    {
-      key: 'investigating',
-      label: 'Under Investigation',
-      count: incidents.filter((i) => i.status === 'INVESTIGATING').length,
-      color: '#f59e0b',
-      to: '/security',
-    },
-    {
-      key: 'contained',
-      label: 'Contained',
-      count: incidents.filter((i) => i.status === 'CONTAINED').length,
-      color: '#3876BE',
-      to: '/security',
-    },
-    {
-      key: 'resolved',
-      label: 'Resolved & Closed',
-      count: resolvedCount,
-      color: '#16A34A',
-      to: '/security',
-    },
-  ];
-
-  // Map open incidents to TaskWorkQueueItem
-  const queueItems: TaskWorkQueueItem[] = openIncidents.slice(0, 8).map((inc) => ({
-    id: inc.id,
-    title: `Security Event: ${inc.type.replace(/_/g, ' ')} #${inc.id.slice(0, 6)}`,
-    category: inc.type,
-    priority: inc.severity === 'CRITICAL' ? 'URGENT' : inc.severity === 'HIGH' ? 'HIGH' : 'MEDIUM',
-    isOverdue: inc.severity === 'CRITICAL',
-    slaMinutesRemaining: inc.severity === 'CRITICAL' ? 30 : 180,
-    entityLink: {
-      label: `INC-${inc.id.slice(0, 6)}`,
-      to: `/security`,
-    },
-    actionLabel: 'Investigate',
-  }));
 
   return (
     <Box sx={{ width: '100%', py: 1 }} data-testid="compliance-dashboard">
@@ -130,7 +58,7 @@ export function ComplianceDashboard() {
         <Box>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
             <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: '-0.02em' }}>
-              Compliance &amp; Security Command Center
+              Compliance Command Center
             </Typography>
             <Chip
               label="Compliance & DPDP"
@@ -147,7 +75,7 @@ export function ComplianceDashboard() {
             />
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Regulatory compliance, DPDP consent tracking, audit surveillance, and security incident response.
+            Regulatory compliance, DPDP consent tracking, and audit surveillance.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
@@ -158,27 +86,11 @@ export function ComplianceDashboard() {
           <Button variant="outlined" component={RouterLink} to="/privacy">
             Privacy &amp; Consent
           </Button>
-          <Button variant="outlined" component={RouterLink} to="/security">
-            Security Incidents
-          </Button>
         </Stack>
       </Paper>
 
-      {/* KPI Overview Cards */}
+      {/* KPI Overview Card */}
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiMetricCard
-            title="Open Incidents"
-            value={openIncidentsCount}
-            format="number"
-            subtitle="Under active response"
-            status={openIncidentsCount > 0 ? 'error' : 'success'}
-            isLoading={incidentsLoading}
-            isError={incidentsError}
-            to="/security"
-            dataTestId="kpi-comp-open-incidents"
-          />
-        </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <KpiMetricCard
             title="Audit Events Logged"
@@ -190,55 +102,6 @@ export function ComplianceDashboard() {
             isError={auditError}
             to="/audit"
             dataTestId="kpi-comp-audit-count"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiMetricCard
-            title="High / Critical Severity"
-            value={criticalCount}
-            format="number"
-            subtitle="Urgent containment priority"
-            status={criticalCount > 0 ? 'warning' : 'success'}
-            isLoading={incidentsLoading}
-            isError={incidentsError}
-            to="/security"
-            dataTestId="kpi-comp-critical"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiMetricCard
-            title="Resolution Rate"
-            value={resolutionRate}
-            format="percent"
-            subtitle="Resolved / Total Reported"
-            status="info"
-            isLoading={incidentsLoading}
-            isError={incidentsError}
-            dataTestId="kpi-comp-resolution-rate"
-          />
-        </Grid>
-      </Grid>
-
-      {/* Middle Row: Balanced Funnel & Work Queue */}
-      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-        <Grid item xs={12} lg={7}>
-          <PipelineFunnelChart
-            variant="columns"
-            title="Security Incident Lifecycle"
-            subtitle="Incident resolution pipeline from reporting to closure"
-            stages={incidentStages}
-            isLoading={incidentsLoading}
-            dataTestId="compliance-incident-funnel"
-          />
-        </Grid>
-        <Grid item xs={12} lg={5}>
-          <TaskWorkQueue
-            title="Compliance Action Items"
-            subtitle="Open incidents and regulatory checks needing containment"
-            items={queueItems}
-            isLoading={incidentsLoading}
-            viewAllTo="/security"
-            dataTestId="compliance-work-queue"
           />
         </Grid>
       </Grid>

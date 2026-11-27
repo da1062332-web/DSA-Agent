@@ -69,10 +69,9 @@ describe('roles after migration M-099 (Notion Roles page)', () => {
     expect(may('ROLE-ORG-OWNER', 'user.offboard')).toBe(false);
   });
 
-  it('TEST-SUBPERM-08 Tenant Administrator opens Integrations and API management', () => {
+  it('TEST-SUBPERM-08 Tenant Administrator opens Integrations', () => {
     const seen = screens('ROLE-TENANT-ADMIN');
     expect(seen).toContain('Integrations');
-    expect(seen).toContain('API management');
   });
 
   it('TEST-SUBPERM-08 RM can upload documents and share them; Sales Executive can edit logged activity', () => {

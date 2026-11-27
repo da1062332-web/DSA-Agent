@@ -17,11 +17,12 @@ import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port'
 import { createConsentPort, createPartyPort } from './modules/crm/customers/consent-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { createTaskPort } from './modules/crm/tasks/task-port';
+import { IntegrationRegistry } from './modules/integrations/integration-registry';
+import { createKycCheckPort } from './modules/integrations/kyc-port';
 import { createApplicationPort } from './modules/origination/applications/application-port';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
-import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 import { createWebhookOutboxSubscriber } from './modules/partner-api/webhooks';
 import { globalJobQueue } from './modules/platform/job-queue';
 import type { OutboxSubscriber } from './modules/platform/outbox-relay';
@@ -72,8 +73,9 @@ export function createProductionDeps(
     productVersionPort: createProductVersionPort(),
     // Complaint referrals confirm the lender exists through this port; without it every referral is refused (503).
     lenderPort: createLenderPort(),
+    // PAN and GST checks (POST /v1/verifications/checks) run through this port; without it they fail closed (503).
+    kycPort: createKycCheckPort({ registry: new IntegrationRegistry() }),
     dataSharingPort: new PostgresDataSharingPort(),
-    apiClientRepository: new PgApiClientRepository(txRunner, audit),
     documentLinkSecret: options.documentLinkSecret,
     // Document files: an S3-compatible bucket and clamd when configured (config.ts), else local disk and the signature check.
     documentStore: options.documentStore,

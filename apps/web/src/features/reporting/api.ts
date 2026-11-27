@@ -100,13 +100,14 @@ export function useFinanceDashboard(period: string) {
   });
 }
 
-export function useConnectorDashboard(period: string) {
+export function useConnectorDashboard(period: string, enabled = true) {
   return useQuery<ConnectorDashboardDto>({
     queryKey: ['reporting', 'dashboard', 'CONNECTOR', period],
     queryFn: () =>
       apiFetch<ConnectorDashboardDto>('/v1/dashboards/CONNECTOR', {
         query: { period },
       }),
+    enabled,
   });
 }
 

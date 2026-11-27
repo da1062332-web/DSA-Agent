@@ -44,7 +44,7 @@ import { ERASED_EMAIL_DOMAIN, isErased } from './invitations';
 import { assertMayBecomeActive, assertNotDeleted, registerUserLifecycleRoutes } from './user-lifecycle';
 import { DELETED_REFUSED, statusChangeRefusal } from './user-status';
 import { registerDeadLetterRoutes } from './dead-letters';
-import { registerOrgChartAndReviewRoutes } from './org-chart';
+import { registerOrgChartRoutes } from './org-chart';
 import { registerConfigurationRoutes } from './configuration';
 import {
   assertAdministratorRemains,
@@ -1940,7 +1940,7 @@ export function createRouter(deps: ApiDeps): Router {
   registerTeamRoutes(router, deps);
   registerUserLifecycleRoutes(router, deps);
   registerDeadLetterRoutes(router, deps);
-  registerOrgChartAndReviewRoutes(router, deps);
+  registerOrgChartRoutes(router, deps);
   registerConfigurationRoutes(router, deps);
   registerQueueRoutes(router, deps);
 

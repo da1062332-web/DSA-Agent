@@ -52,7 +52,6 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'audit.export_evidence',
       'api.manage',
       'integration.manage',
-      'data_correction.approve',
       'connector.attribution_change',
       'lead.read',
       'lead.assign',
@@ -234,8 +233,6 @@ export const PERSONAS: Record<string, PersonaConfig> = {
       'audit.read',
       'audit.export_evidence',
       'customer.read',
-      'security.incident',
-      'security.vuln',
       'report.read',
       'privacy.manage',
     ],
@@ -333,7 +330,6 @@ export const VAIBHAV_PERSONAS: Record<string, PersonaConfig> = {
       'audit.export_evidence',
       'api.manage',
       'integration.manage',
-      'data_correction.approve',
       'connector.attribution_change',
       'lead.read',
       'lead.assign',
@@ -568,8 +564,6 @@ export const VAIBHAV_PERSONAS: Record<string, PersonaConfig> = {
       'audit.read',
       'audit.export_evidence',
       'customer.read',
-      'security.incident',
-      'security.vuln',
       'report.read',
       'privacy.manage',
     ],
@@ -647,7 +641,6 @@ export const ALPHA_PERSONAS: Record<string, PersonaConfig> = {
       'audit.export_evidence',
       'api.manage',
       'integration.manage',
-      'data_correction.approve',
       'connector.attribution_change',
       'lead.read',
       'lead.assign',
@@ -810,8 +803,6 @@ export const ALPHA_PERSONAS: Record<string, PersonaConfig> = {
       'audit.read',
       'audit.export_evidence',
       'customer.read',
-      'security.incident',
-      'security.vuln',
       'report.read',
       'privacy.manage',
     ],
@@ -857,7 +848,6 @@ export const ADITYA_PERSONAS: Record<string, PersonaConfig> = {
       'audit.export_evidence',
       'api.manage',
       'integration.manage',
-      'data_correction.approve',
       'connector.attribution_change',
       'lead.read',
       'lead.assign',
@@ -898,7 +888,6 @@ export const ADITYA_PERSONAS: Record<string, PersonaConfig> = {
       'audit.export_evidence',
       'api.manage',
       'integration.manage',
-      'data_correction.approve',
       'connector.attribution_change',
       'lead.read',
       'lead.assign',
@@ -1139,8 +1128,6 @@ export const ADITYA_PERSONAS: Record<string, PersonaConfig> = {
       'audit.read',
       'audit.export_evidence',
       'customer.read',
-      'security.incident',
-      'security.vuln',
       'report.read',
       'privacy.manage',
     ],
@@ -1529,14 +1516,6 @@ export async function setupPersonaSession(
   });
 
   await page.route('**/v1/commission-plans**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [], meta: { limit: 50, total: 0 } }),
-    });
-  });
-
-  await page.route('**/v1/incidents**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

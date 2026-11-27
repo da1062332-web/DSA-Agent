@@ -23,6 +23,17 @@ for (const f of files) {
     for (const c of m[0].matchAll(CODE)) granted.set(c[1]!, (granted.get(c[1]!) ?? new Set()).add(f));
 }
 
+/** Codes that a DELETE FROM app.permission in any migration removes from the catalogue. */
+function removedPermissionCodes(): string[] {
+  const out: string[] = [];
+  for (const file of readdirSync(DIR).sort()) {
+    const sql = readFileSync(path.join(DIR, file), 'utf8');
+    for (const m of sql.matchAll(/DELETE FROM (?:app\.)?permission\s+WHERE\s+code\s+IN\s*\(([^)]*)\)/gi))
+      for (const c of m[1]!.matchAll(/'([a-z_.]+)'/g)) out.push(c[1]!);
+  }
+  return out;
+}
+
 describe('permission catalogue', () => {
   it('TEST-PERM-01 every permission a migration grants is defined by the same or an earlier migration', () => {
     const problems: string[] = [];
@@ -67,8 +78,11 @@ describe('permission catalogue', () => {
     const fromContract = new Set<string>();
     for (const [child, parents] of Object.entries(LEGACY_PARENTS))
       for (const parent of parents) fromContract.add(`${parent} -> ${child}`);
+    // Codes a later migration removes from the catalogue are not in the contract any more; migration 98 is history and stays as it is.
+    const removed = removedPermissionCodes();
+    const live = (p: string) => !removed.some((c) => p.split(' -> ').includes(c));
     const retired = (p: string) => RETIRED_AFTER_MIGRATION.some((c) => p.endsWith(`-> ${c}`));
-    expect([...fromSql].filter((p) => !fromContract.has(p) && !retired(p))).toEqual([]);
+    expect([...fromSql].filter((p) => live(p) && !retired(p) && !fromContract.has(p))).toEqual([]);
     expect([...fromContract].filter((p) => !fromSql.has(p))).toEqual([]);
   });
 

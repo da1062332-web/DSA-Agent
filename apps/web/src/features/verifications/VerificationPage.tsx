@@ -35,6 +35,7 @@ import { DataTable, PageHeader } from '../../ui';
 import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
+import { RunCheckPanel } from './RunCheckPanel';
 import type {
   CreateVerificationInput,
   ListVerificationsResponse,
@@ -216,6 +217,9 @@ export function VerificationPage() {
         </Alert>
       )}
 
+      {/* P1-06: run a PAN, GST or bank penny-drop check at the provider (shown only with verification.perform) */}
+      <RunCheckPanel />
+
       {/* Metrics Row */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={4}>
@@ -287,6 +291,7 @@ export function VerificationPage() {
                 <MenuItem value="CIN">CIN (MCA)</MenuItem>
                 <MenuItem value="ITR">ITR (Tax Return)</MenuItem>
                 <MenuItem value="BANK_STATEMENT">Bank Statement</MenuItem>
+                <MenuItem value="BANK_ACCOUNT">Bank Account (penny drop)</MenuItem>
                 <MenuItem value="BUREAU">Credit Bureau</MenuItem>
                 <MenuItem value="IDENTITY_DOCUMENT">Identity Document</MenuItem>
                 <MenuItem value="EMPLOYMENT">Employment</MenuItem>
@@ -552,7 +557,6 @@ export function VerificationPage() {
                       onChange={(e) => setFormMethod(e.target.value as VerificationMethod)}
                     >
                       <MenuItem value="MANUAL">Manual Review (Operator)</MenuItem>
-                      <MenuItem value="PROVIDER_AUTOMATED">Automated Provider</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

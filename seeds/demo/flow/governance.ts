@@ -1,5 +1,5 @@
 // Governance flow for the demo seed: decisions and rule versions with their approvals and publication trail, audit,
-// security and incident records, privacy requests, legal holds, retention, support access and data sharing.
+// privacy requests, retention, support access and data sharing.
 // Synthetic data only (ASM-4D-06). Global catalogue rows (decision definitions, feature flags, releases) are
 // written once by buildGlobal.
 import type { Tables} from './types';
@@ -330,58 +330,6 @@ export function buildGovernance(
     }),
   );
 
-  // Security events and incidents (the incident row is the one that needs a post-mortem reference).
-  const secEvents: [string, string, string][] = [
-    ['LOGIN_FAILED', 'rmpune', 'HIGH'],
-    ['MFA_ENROLLED', 'owner', 'LOW'],
-    ['ROLE_CHANGED', 'admin', 'MEDIUM'],
-    ['EXPORT_DOWNLOADED', 'loanops', 'MEDIUM'],
-    ['SUSPICIOUS_ACCESS', 'sales1', 'HIGH'],
-    ['API_KEY_ROTATED', 'admin', 'LOW'],
-    ['PERMISSION_DENIED', 'rm1', 'LOW'],
-    ['SESSION_REVOKED', 'branchmgr', 'MEDIUM'],
-  ];
-  secEvents.forEach(([type, principal, severity], i) =>
-    out.add('security_event', {
-      id: idOf(t, 'sec', i + 1),
-      tenant_id: t.id,
-      type,
-      principal,
-      ip: `203.0.113.${20 + i}`,
-      severity,
-      details: { attempt: i + 1, channel: 'web' },
-      created_at: at(d, 16, i),
-    }),
-  );
-  const incidents: [string, string, string, boolean][] = [
-    ['CREDENTIAL_EXPOSURE_SUSPECTED', 'HIGH', 'RESOLVED', false],
-    ['ACCESS_REVIEW_OVERDUE', 'MEDIUM', 'CLOSED', false],
-    ['BREACH_SUSPECTED_DOCUMENT_LINK', 'CRITICAL', 'CONTAINED', true],
-    ['WEBHOOK_SIGNATURE_MISMATCH', 'LOW', 'OPEN', false],
-    ['EXPORT_EXCESS_ROWS', 'MEDIUM', 'INVESTIGATING', true],
-    ['DATA_CORRECTION_FAILED', 'LOW', 'RESOLVED', false],
-    ['PARTNER_RATE_LIMIT_ABUSE', 'MEDIUM', 'OPEN', false],
-    ['BACKUP_RESTORE_DRILL', 'LOW', 'CLOSED', false],
-  ];
-  incidents.forEach(([type, severity, status, personal], i) =>
-    out.add('incident_record', {
-      id: idOf(t, 'inc', i + 1),
-      tenant_id: t.id,
-      type,
-      severity,
-      detected_at: at(d, 17, i),
-      personal_data_involved: personal,
-      affected_tenants: [t.id],
-      notifications: { dpo: status !== 'OPEN', regulator: false },
-      status,
-      post_mortem_ref:
-        status === 'RESOLVED' || status === 'CLOSED' ? `PM-${t.tag.toUpperCase()}-${pad(i + 1)}` : null,
-      lock_version: 0,
-      created_by: staff.compliance,
-      updated_by: staff.compliance,
-    }),
-  );
-
   // Support access: time-boxed (at most four hours) grants for platform support staff.
   const grants: [string, string, string, number][] = [
     ['support-agent-1', 'Investigate failing lender sync (synthetic)', 'ACTIVE', 0],
@@ -413,33 +361,7 @@ export function buildGovernance(
     });
   });
 
-  // Privacy: legal holds, retention rules, data subject requests, corrections, data sharing and external shares.
-  const holdSubjects: [string, string][] = [
-    ['LOAN_APPLICATION', ix(o.apps, 0)],
-    ['CUSTOMER', ix(o.customers, 1)],
-    ['LEAD', ix(o.leads, 3)],
-    ['DOCUMENT', ix(o.documents, 0)],
-    ['LOAN_APPLICATION', ix(o.apps, 2)],
-    ['CUSTOMER', ix(o.customers, 2)],
-    ['LEAD', ix(o.leads, 1)],
-    ['LOAN_APPLICATION', ix(o.apps, 9)],
-  ];
-  holdSubjects.forEach(([subjectType, subjectId], i) =>
-    out.add('legal_hold', {
-      id: idOf(t, 'lhd', i + 1),
-      tenant_id: t.id,
-      subject_type: subjectType,
-      subject_id: subjectId,
-      reason: 'Litigation hold for the lender dispute (synthetic)',
-      reference: `CASE-${pad(i + 1, 4)}`,
-      placed_by: staff.compliance,
-      placed_at: at(d, 14, i),
-      released_by: i < 2 ? staff.owner : null,
-      released_at: i < 2 ? at(d, 22, i) : null,
-      release_reason: i < 2 ? 'Matter closed (synthetic)' : null,
-      lock_version: 0,
-    }),
-  );
+  // Privacy: retention rules, data subject requests, data sharing and external shares.
   const retention: [string, number, string, string][] = [
     ['R-LOAN', 96, 'LOAN_CLOSED', 'PURGE'],
     ['R-FIN', 84, 'RECORD_CLOSED', 'PURGE'],
@@ -502,43 +424,6 @@ export function buildGovernance(
       updated_by: staff.compliance,
     });
   });
-  for (let i = 0; i < 8; i += 1) {
-    const status = [
-      'APPROVED',
-      'EXECUTED',
-      'PENDING',
-      'REJECTED',
-      'FAILED',
-      'APPROVED',
-      'PENDING',
-      'EXECUTED',
-    ][i];
-    out.add('data_correction_request', {
-      id: idOf(t, 'dcr', i + 1),
-      tenant_id: t.id,
-      entity_type: 'customer',
-      entity_id: ix(o.customers, i),
-      field_name: i % 2 === 0 ? 'home_branch_id' : 'full_name',
-      old_value: i % 2 === 0 ? 'old-branch' : 'Old Name',
-      new_value: i % 2 === 0 ? 'new-branch' : 'New Name',
-      reason: 'Customer asked to correct a typo (synthetic)',
-      status,
-      submitted_by: staff.compliance,
-      approved_by: status === 'APPROVED' || status === 'EXECUTED' ? staff.owner : null,
-      approved_at: status === 'APPROVED' || status === 'EXECUTED' ? at(d, 18, i) : null,
-      lock_version: 1,
-      created_by: staff.compliance,
-      justification: 'Identity document shows the corrected spelling (synthetic)',
-      script_ref: `scripts/correction-${pad(i + 1)}.sql`,
-      target_entity: 'customer',
-      change_description: 'Correct the stored value after dual approval (synthetic)',
-      dry_run_diff_key: `diff/${t.tag}/${pad(i + 1)}.json`,
-      dry_run_diff: '{"changes":1}',
-      requested_by: staff.compliance,
-      executed_at: status === 'EXECUTED' ? at(d, 19, i) : null,
-      failure_reason: status === 'FAILED' ? 'Row locked by another process (synthetic)' : null,
-    });
-  }
   for (let i = 0; i < 8; i += 1) {
     out.add('data_sharing_record', {
       id: idOf(t, 'dsh', i + 1),

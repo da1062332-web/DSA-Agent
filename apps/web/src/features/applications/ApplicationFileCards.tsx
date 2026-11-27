@@ -1,19 +1,15 @@
 // Cards on /applications/:id for the rest of the loan file (owner: Dev 3; DSA Notion MODULE 16 and 20):
 //   PartiesCard     API-APP-006 / 006-LIST  co-applicants and guarantors (application.update)
 //   OwnersCard      API-APP-011             sales owner and operations owner (application.assign)
-//   ArchiveCard     API-DOC-009 / 009-STATUS encrypted archive of the documents (document.download)
-//   LegalHoldCard   API-PRV-004 / 004-LIST  legal hold on the application (privacy.manage)
 // Each card shows only what the caller's permissions and the application's status allow (rules.ts); the API re-checks everything.
-import { Alert, Box, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { useMutation } from '@tanstack/react-query';
+import { Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { CustomerName, UserName } from '../../shell/display';
 import { CustomerSelect, UserSelect } from '../../shell/selectors';
 import { AppButton, FieldGrid } from '../../ui';
 import { useCommand, useLookup } from '../admin/api';
-import { ErrorAlert, formatDate } from '../admin/components';
-import { openSignedLink, requestDocumentArchive, useDocumentArchive } from '../documents/api';
+import { ErrorAlert } from '../admin/components';
 import type { Application } from './ApplicationsPage';
 import {
   canAssignOwners,
@@ -21,7 +17,6 @@ import {
   canRemoveParty,
   hasRestrictedNumber,
   isValidAssignmentReason,
-  isValidLegalHoldReason,
   type PartyView,
 } from './rules';
 
@@ -247,162 +242,6 @@ export function OwnersCard({ app }: { app: Application }) {
               Change owners
             </AppButton>
           </Stack>
-        </FieldGrid>
-      </CardContent>
-    </Card>
-  );
-}
-
-/** An encrypted archive of the application's clean, current documents, built in the background. */
-export function ArchiveCard({ applicationId }: { applicationId: string }) {
-  const me = useMe();
-  const [archiveId, setArchiveId] = useState<string | null>(null);
-  const request = useMutation({
-    meta: { handled: true },
-    mutationFn: () => requestDocumentArchive(applicationId),
-    onSuccess: (a) => setArchiveId(a.archiveId),
-  });
-  const archive = useDocumentArchive(archiveId);
-  if (!hasPermission(me.data, 'document.download')) return null;
-  const state = archive.data;
-
-  return (
-    <Card sx={{ mb: 3 }} data-testid="application.archive">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Document archive
-        </Typography>
-        <ErrorAlert error={request.error ?? archive.error} />
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          One encrypted zip of every clean, current document of this application. The download link is
-          short-lived and logged.
-        </Typography>
-        {state?.status === 'QUEUED' && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Preparing {state.documentCount} document{state.documentCount === 1 ? '' : 's'}…
-          </Alert>
-        )}
-        {state?.status === 'FAILED' && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            The archive could not be built. Try again.
-          </Alert>
-        )}
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
-          {state?.status === 'READY' && state.url && (
-            <AppButton
-              variant="success"
-              dataTestId="application.archive-download"
-              onClick={() => openSignedLink(state.url!)}
-            >
-              Download archive{state.expiresAt ? ` (until ${formatDate(state.expiresAt)})` : ''}
-            </AppButton>
-          )}
-          <AppButton
-            variant="outlined"
-            loading={request.isPending || state?.status === 'QUEUED'}
-            dataTestId="application.archive-request"
-            onClick={() => request.mutate()}
-          >
-            {state ? 'Prepare a new archive' : 'Prepare archive'}
-          </AppButton>
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface LegalHold {
-  id: string;
-  subjectType: string;
-  subjectId: string;
-  reason: string;
-  reference: string | null;
-  placedBy: string;
-  placedAt: string;
-  releasedAt: string | null;
-}
-
-/** A legal hold stops the application and its documents from being purged. Only privacy.manage sees or places one. */
-export function LegalHoldCard({ applicationId }: { applicationId: string }) {
-  const me = useMe();
-  const allowed = hasPermission(me.data, 'privacy.manage');
-  const holds = useLookup<LegalHold>('/v1/legal-holds', {}, allowed);
-  const [reason, setReason] = useState('');
-  const [reference, setReference] = useState('');
-  const place = useCommand<
-    { subjectType: 'LOAN_APPLICATION'; subjectId: string; reason: string; reference?: string },
-    LegalHold
-  >(() => ({ path: '/v1/legal-holds', method: 'POST' }), [['/v1/legal-holds']], 'Legal hold placed.');
-  if (!allowed) return null;
-
-  const mine = (holds.data ?? []).filter(
-    (h) => h.subjectType === 'LOAN_APPLICATION' && h.subjectId === applicationId && h.releasedAt === null,
-  );
-  const restricted = hasRestrictedNumber(reason) || hasRestrictedNumber(reference);
-  return (
-    <Card sx={{ mb: 3 }} data-testid="application.legal-hold">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Legal hold
-        </Typography>
-        <ErrorAlert error={holds.error ?? place.error} />
-        {mine.map((h) => (
-          <Alert key={h.id} severity="warning" sx={{ mb: 1 }} data-testid={`application.legal-hold.${h.id}`}>
-            On hold since {formatDate(h.placedAt)}: {h.reason}
-            {h.reference ? ` (${h.reference})` : ''}. Placed by <UserName id={h.placedBy} />.
-          </Alert>
-        ))}
-        {mine.length === 0 && !holds.isPending && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            No legal hold. A hold stops this application and its documents from being purged.
-          </Typography>
-        )}
-        <FieldGrid minColumnWidth={260} spanNonFields>
-          <TextField
-            size="small"
-            label="Reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            error={hasRestrictedNumber(reason)}
-            helperText={
-              hasRestrictedNumber(reason)
-                ? 'Do not enter PAN, Aadhaar or account numbers.'
-                : '5 to 1000 characters.'
-            }
-          />
-          <TextField
-            size="small"
-            label="Reference (optional)"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            inputProps={{ maxLength: 200 }}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <AppButton
-              variant="danger"
-              loading={place.isPending}
-              disabled={!isValidLegalHoldReason(reason) || restricted}
-              dataTestId="application.legal-hold-place"
-              onClick={() =>
-                place.mutate(
-                  {
-                    subjectType: 'LOAN_APPLICATION',
-                    subjectId: applicationId,
-                    reason: reason.trim(),
-                    ...(reference.trim() ? { reference: reference.trim() } : {}),
-                  },
-                  {
-                    onSuccess: () => {
-                      setReason('');
-                      setReference('');
-                    },
-                  },
-                )
-              }
-            >
-              Place legal hold
-            </AppButton>
-          </Box>
         </FieldGrid>
       </CardContent>
     </Card>

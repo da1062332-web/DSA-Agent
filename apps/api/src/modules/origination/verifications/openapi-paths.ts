@@ -1,7 +1,11 @@
 // OpenAPI paths for origination/verifications (Contracts §1), registered by src/openapi.ts. Request schemas are the ones the routes
 // validate with. Every /v1 operation here needs an isolation case naming its operationId (tests/isolation/cases).
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
-import { CreateVerificationSchema, ListVerificationsQuerySchema } from '@dsa/contracts';
+import {
+  CreateVerificationSchema,
+  ListVerificationsQuerySchema,
+  RunVerificationCheckSchema,
+} from '@dsa/contracts';
 import { registerOperation } from '../../../http/openapi-op';
 
 const tag = 'MOD-VER Verification';
@@ -14,6 +18,16 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'POST /v1/verifications',
     tag,
     body: CreateVerificationSchema,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/verifications/checks',
+    operationId: 'API-VER-003',
+    summary: 'POST /v1/verifications/checks',
+    tag,
+    body: RunVerificationCheckSchema,
+    status: 201,
     idempotent: true,
   });
   registerOperation(registry, {

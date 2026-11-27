@@ -668,52 +668,6 @@ export function buildTenantCore(t: Tenant, out: Tables): void {
     });
   });
 
-  // Access reviews (four campaigns per tenant), each with items: certified, revoked or still open.
-  const reviewNames = [
-    'Q1 role recertification',
-    'Q2 role recertification',
-    'Q3 role recertification',
-    'Q4 role recertification',
-    'Branch manager access check',
-    'Lender-desk access check',
-    'Connector portal access check',
-    'Finance desk access check',
-  ];
-  reviewNames.forEach((name, r) => {
-    const reviewId = idOf(t, 'arv', r + 1);
-    const closed = r < 4;
-    out.add('access_review', {
-      id: reviewId,
-      tenant_id: t.id,
-      name,
-      branch_ids: [ix(t.branches, 'MUM01'), ix(t.branches, 'PUN01')],
-      status: closed ? 'CLOSED' : 'OPEN',
-      due_at: at(ANCHOR, 20 + r),
-      item_count: 8,
-      closed_at: closed ? at(ANCHOR, 15 + r) : null,
-      lock_version: 1,
-      created_by: t.actor,
-      updated_by: t.actor,
-    });
-    USERS.slice(0, 8).forEach((u, i) => {
-      const decided = i % 3 !== 2 || r < 4;
-      out.add('access_review_item', {
-        id: idOf(t, 'ari', r * 100 + i + 1),
-        tenant_id: t.id,
-        review_id: reviewId,
-        assignment_id: idOf(t, 'ura', i + 1),
-        user_id: ix(t.users, u.handle),
-        role_id: ix(t.roles, ix(u.roles, 0).code),
-        scope_type: ix(u.roles, 0).scope,
-        decision: decided ? (i % 2 === 0 ? 'CERTIFY' : 'REVOKE') : null,
-        reason: decided && i % 2 === 1 ? 'Role no longer needed for the branch (synthetic)' : null,
-        // A reviewer never certifies their own access (DB rule): the owner's own item is reviewed by the admin.
-        decided_by: decided ? (u.handle === 'owner' ? ix(t.users, 'admin') : ix(t.users, 'owner')) : null,
-        decided_at: decided ? at(ANCHOR, 5 + r, i) : null,
-      });
-    });
-  });
-
   // Attendance: one week of records for the branch team; one correction points at the original.
   const attendanceUsers = ['rm1', 'rm2', 'sales1', 'teammgr', 'loanops', 'branchmgr', 'rmpune', 'compliance'];
   attendanceUsers.forEach((h, i) => {
@@ -733,31 +687,6 @@ export function buildTenantCore(t: Tenant, out: Tables): void {
       updated_by: ix(t.users, h),
     });
   });
-
-  const delegations: [string, string, number, number, string][] = [
-    ['branchmgr', 'teammgr', 2, 9, 'Leave cover for branch manager (synthetic)'],
-    ['owner', 'branchmgr', 5, 7, 'Owner travelling to Pune (synthetic)'],
-    ['teammgr', 'rm1', 1, 3, 'Team lead cover (synthetic)'],
-    ['loanops', 'compliance', 4, 6, 'Sign-off cover (synthetic)'],
-    ['admin', 'owner', 10, 12, 'Admin cover during audit (synthetic)'],
-    ['rm2', 'sales1', 8, 9, 'RM cover during site visit (synthetic)'],
-    ['ruleauthor', 'ruleapprover', 15, 16, 'Rule review hand-off (synthetic)'],
-    ['rmpune', 'rm1', 3, 4, 'Cross-branch lead cover (synthetic)'],
-  ];
-  delegations.forEach(([from, to, start, end, reason], i) =>
-    out.add('delegation', {
-      id: idOf(t, 'dlg', i + 1),
-      tenant_id: t.id,
-      delegator_id: ix(t.users, from),
-      delegate_id: ix(t.users, to),
-      starts_at: at(ANCHOR, start - 1),
-      ends_at: at(ANCHOR, end - 1, 8),
-      reason,
-      status: end < 16 ? 'ENDED' : 'ACTIVE',
-      created_by: ix(t.users, from),
-      updated_by: ix(t.users, from),
-    }),
-  );
 
   // Draft configuration bundles, one per kind of setting the owner might export.
   for (let i = 0; i < 8; i += 1) {

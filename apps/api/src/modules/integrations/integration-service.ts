@@ -24,7 +24,7 @@ const NO_DB = Symbol('no-database');
 
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => (v instanceof Date ? v : new Date(String(v))).toISOString();
-const toConnection = (r: Row): IntegrationConnection => ({
+export const toConnection = (r: Row): IntegrationConnection => ({
   id: String(r.id),
   tenantId: String(r.tenant_id),
   provider: String(r.provider),

@@ -32,6 +32,8 @@ const NEEDS_PLATFORM_REALM = [
   '0068_tenant_feature_flag',
   'platform_queue_operations',
   'tenant_lifecycle',
+  // 0109 removes data_correction_request and other tables this runbook checks; it belongs after the rehearsed point.
+  '0109_cleanup_unwanted_features',
 ];
 beforeAll(async () => {
   container = await startPostgres();

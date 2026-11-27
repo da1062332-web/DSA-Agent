@@ -1,8 +1,10 @@
 // packages/contracts/src/verification.ts
 // Module 19 (Checklist & Field Investigation) & Module 22 (Identity & Underwriting Verification)
 import { z } from 'zod';
+import { GSTIN_PATTERN, PAN_PATTERN } from './customer-profile';
 import { IdSchema } from './ids';
 import { CursorQuery, listResponse } from './pagination';
+import { freeTextNoS3 } from './s3-text';
 
 // ==========================================
 // Module 19: Verification Cases & Checklist
@@ -177,6 +179,9 @@ export const VERIFICATION_CHECK_TYPES = [
   'IDENTITY_DOCUMENT',
   'EMPLOYMENT',
   'ADDRESS',
+  // The bank-account penny drop (P1-06): a Rs 1 transfer to the account, which returns the name the bank holds. Not BANK_STATEMENT,
+  // which is the analysis of an uploaded statement (P4-15). Added 2026-11-27 with migration 0138, which widens the table's CHECK.
+  'BANK_ACCOUNT',
 ] as const;
 export type VerificationCheckType = (typeof VERIFICATION_CHECK_TYPES)[number];
 
@@ -272,3 +277,85 @@ export type ListVerificationsQuery = z.infer<typeof ListVerificationsQuerySchema
 
 export const ListVerificationsResponseSchema = listResponse(VerificationSchema);
 export type ListVerificationsResponse = z.infer<typeof ListVerificationsResponseSchema>;
+
+// ==========================================
+// API-VER-003: POST /v1/verifications/checks (the server runs a provider check)
+// Added 2026-11-27 (additive, Contracts §15, P1-06). The caller never states the result: the server computes it from the
+// vendor's answer, so a provider-automated record cannot be forged.
+// ==========================================
+
+/**
+ * The provider checks the server can run. PAN and GST only read a register and can be repeated freely. BANK_ACCOUNT is the penny
+ * drop: it moves Rs 1, so it is never repeated by accident (see KycCheckPort for what an unknown outcome becomes).
+ */
+export const KYC_RUNNABLE_CHECKS = ['PAN', 'GST', 'BANK_ACCOUNT'] as const;
+export type KycRunnableCheck = (typeof KYC_RUNNABLE_CHECKS)[number];
+
+const upperMatching = (pattern: RegExp, message: string) =>
+  z
+    .string()
+    .trim()
+    .transform((s) => s.toUpperCase())
+    .refine((s) => pattern.test(s), message);
+
+/** An Indian bank account number: 9 to 18 digits. Spaces and hyphens typed between digits are removed first. */
+const BANK_ACCOUNT_NUMBER_PATTERN = /^[0-9]{9,18}$/;
+/** An IFSC code: four letters, a zero, six letters or digits (HDFC0001234). */
+const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+const runCheckCommon = {
+  subjectType: z.enum(VERIFICATION_SUBJECT_TYPES),
+  subjectId: z.string().min(5).max(64),
+  consentRecordId: IdSchema('cnst'),
+  /** Free text: compared with the name the vendor holds and never stored. */
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers')
+    .optional(),
+  purpose: z.enum(VERIFICATION_PURPOSES).default('KYC'),
+};
+
+/**
+ * `idNumber` is the full PAN or GSTIN, and `accountNumber` the full bank account number, typed for this check only: they go to the
+ * vendor and are never stored, logged or returned. `ifsc` is a public branch code. For BANK_ACCOUNT, `name` is the account holder's
+ * name that the bank's answer is compared with (without it the check stands on the bank's word that the Rs 1 credit went through).
+ * `.strict()`: an unknown key (an Aadhaar number, a date of birth) is a 422, never ignored.
+ */
+export const RunVerificationCheckSchema = z.discriminatedUnion('check', [
+  z
+    .object({
+      ...runCheckCommon,
+      check: z.literal('PAN'),
+      idNumber: upperMatching(PAN_PATTERN, 'must be a valid PAN'),
+    })
+    .strict(),
+  z
+    .object({
+      ...runCheckCommon,
+      check: z.literal('GST'),
+      idNumber: upperMatching(GSTIN_PATTERN, 'must be a valid GSTIN'),
+    })
+    .strict(),
+  z
+    .object({
+      ...runCheckCommon,
+      check: z.literal('BANK_ACCOUNT'),
+      accountNumber: z
+        .string()
+        .max(32)
+        .transform((s) => s.replace(/[\s-]/g, ''))
+        .refine(
+          (s) => BANK_ACCOUNT_NUMBER_PATTERN.test(s),
+          'must be a valid bank account number (9 to 18 digits)',
+        ),
+      ifsc: upperMatching(IFSC_PATTERN, 'must be a valid IFSC code'),
+    })
+    .strict(),
+]);
+/** What a caller sends. */
+export type RunVerificationCheckInput = z.input<typeof RunVerificationCheckSchema>;
+/** What the server works with after validation: the identifier upper-cased (the account number stripped of spaces), the purpose defaulted. */
+export type RunVerificationCheck = z.output<typeof RunVerificationCheckSchema>;
