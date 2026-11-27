@@ -76,12 +76,29 @@ export async function assertAdministratorRemains(
  */
 export const RESERVED_ROLE_CODE_PREFIX = 'ROLE-CONNECTOR';
 
+export const RETIRED_ROLE_CODES = [
+  'ROLE-VERIFIER',
+  'ROLE-DOC-VERIFIER',
+  'ROLE-RULE-AUTHOR',
+  'ROLE-RULE-APPROVER',
+  'ROLE-COMMISSION-APPROVER',
+] as const;
+
 export function isReservedRoleCode(roleCode: string): boolean {
   return roleCode.startsWith(RESERVED_ROLE_CODE_PREFIX);
 }
 
-/** Creating a role: a tenant administrator cannot name an internal role like a portal role (the check is by code, not by content). */
+export function isRetiredRoleCode(roleCode: string): boolean {
+  return RETIRED_ROLE_CODES.includes(roleCode as (typeof RETIRED_ROLE_CODES)[number]);
+}
+
+/** Creating a role: a tenant administrator cannot name an internal role like a portal role or recreate retired roles. */
 export function assertRoleCodeNotReserved(roleCode: string): void {
+  if (isRetiredRoleCode(roleCode)) {
+    throw AppError.of('VALIDATION_ERROR', 'This role code is retired and cannot be created.', [
+      { field: 'code', issue: 'RETIRED_ROLE_CODE' },
+    ]);
+  }
   if (isReservedRoleCode(roleCode)) {
     throw AppError.of('VALIDATION_ERROR', 'This role code is reserved for the connector portal.', [
       { field: 'code', issue: 'RESERVED_ROLE_CODE' },
@@ -96,6 +113,11 @@ export function assertRoleCodeNotReserved(roleCode: string): void {
  * never from the request, and migration 0097 enforces the same rule in the database for every writer.
  */
 export function assertRoleAllowedForUserType(userType: string, roleCode: string): void {
+  if (isRetiredRoleCode(roleCode)) {
+    throw AppError.of('VALIDATION_ERROR', 'A user cannot be assigned a retired role.', [
+      { field: 'roleId', issue: 'RETIRED_ROLE_NOT_ASSIGNABLE' },
+    ]);
+  }
   if (userType === 'CONNECTOR') {
     throw AppError.of(
       'VALIDATION_ERROR',

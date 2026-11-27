@@ -1,17 +1,16 @@
 // Request and response schemas for origination/catalogue (owner: Dev 3; this slice: Module 14 Lenders, DSA Notion
 // MODULE 14). Lenders (ENT-040), empanelments (ENT-041). Products (MODULE 15) are added to this file later.
-import { IdSchema } from '@dsa/contracts';
+import { IdSchema, freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 
 // Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
-const S3_PATTERNS = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safeText = (max: number) =>
   z
     .string()
     .trim()
     .min(2)
     .max(max)
-    .refine((s) => !S3_PATTERNS.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 export const LenderType = z.enum(['BANK', 'NBFC', 'HFC', 'SFB', 'OTHER']);
 export const LenderStatus = z.enum(['ACTIVE', 'PAUSED', 'TERMINATED']);

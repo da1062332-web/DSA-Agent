@@ -1,8 +1,15 @@
 // What the Users screens show for a STAFF account and for a CONNECTOR (partner portal) account: the role cell in the list, the tabs on the
 // detail page, and the account-type label. The rules are pure functions in account-type.ts, so both account types are tested here.
 import { describe, expect, it } from 'vitest';
-import { ACCOUNT_TYPE_LABEL, detailTabValues, isPartnerAccount, roleCell } from './account-type';
-import type { AccountType } from './types';
+import {
+  ACCOUNT_TYPE_LABEL,
+  contactText,
+  detailTabValues,
+  hasRoleDetail,
+  isPartnerAccount,
+  roleCell,
+} from './account-type';
+import type { AccountType, UserListItem } from './types';
 
 const staff = (assignedRoles: string[] = []) => ({ userType: 'STAFF' as AccountType, assignedRoles });
 const partner = () => ({ userType: 'CONNECTOR' as AccountType, assignedRoles: [] as string[] });
@@ -41,6 +48,40 @@ describe('role column in the user list (TEST-ACCT-ROLE)', () => {
       partner: true,
       labels: ['Partner portal'],
     });
+  });
+});
+
+// GET /v1/users returns the full row only to a user.manage holder (the DSA owner holds user.read but not user.manage). The short directory row
+// has no account type, roles or masked contact; the list page used to read assignedRoles.length from it and crashed (Application Error).
+describe('short directory row for a user.read holder without user.manage (TEST-ACCT-DIR)', () => {
+  const directoryRow: UserListItem = {
+    id: 'usr_1',
+    displayName: 'Qloax Rule Approver',
+    primaryBranchId: 'br_1',
+    status: 'ACTIVE',
+    availability: 'AVAILABLE',
+  };
+
+  it('TEST-ACCT-DIR-01 the role cell does not throw on a short row and gives no labels', () => {
+    expect(roleCell(directoryRow)).toEqual({ partner: false, labels: [] });
+  });
+
+  it('TEST-ACCT-DIR-02 only a row with role data counts as having role detail: a full staff row (even with no roles) or a partner login', () => {
+    expect(hasRoleDetail(directoryRow)).toBe(false);
+    expect(hasRoleDetail(staff())).toBe(true);
+    expect(hasRoleDetail(staff(['ROLE-RM']))).toBe(true);
+    expect(hasRoleDetail(partner())).toBe(true);
+  });
+
+  it('TEST-ACCT-DIR-03 the contact cell shows a dash when the row has no masked e-mail, and the masked e-mail when it has one', () => {
+    expect(contactText(directoryRow)).toBe('—');
+    expect(contactText({ emailMasked: null })).toBe('—');
+    expect(contactText({ emailMasked: 'r***r@qloax.com' })).toBe('r***r@qloax.com');
+  });
+
+  it('TEST-ACCT-DIR-04 the detail tabs and the partner check tolerate a row without an account type', () => {
+    expect(isPartnerAccount(directoryRow)).toBe(false);
+    expect(detailTabValues(directoryRow)).toEqual([0, 1, 2, 3]);
   });
 });
 

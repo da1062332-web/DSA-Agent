@@ -319,14 +319,105 @@ describe('Module 8 — Customers (MOD-CUST)', () => {
     });
   });
 
-  describe('SUB-CUST.01: Sensitive Field Reveal (API-CUST-006)', () => {
-    it('returns 403 FORBIDDEN indicating reveal is disabled awaiting privacy infrastructure', async () => {
-      const app = getApp();
-      const res = await request(app).post('/v1/customers/cust_001/reveal').send();
+  describe('SUB-CUST.01: Sensitive Field Reveal (API-CUST-006, P1-02)', () => {
+    const revealer = testPrincipal({
+      tenantId: tenantA,
+      grants: [
+        { code: 'customer.create', scope: 'TENANT', branchIds: [] },
+        { code: 'customer.read', scope: 'TENANT', branchIds: [] },
+        { code: 'customer.reveal_sensitive', scope: 'TENANT', branchIds: [] },
+      ],
+    });
 
+    async function createCustomer(): Promise<string> {
+      const res = await request(getApp(revealer))
+        .post('/v1/customers')
+        .set('Idempotency-Key', `idem-reveal-${Math.random().toString(36).slice(2, 10)}`)
+        .send(validCustomerPayload);
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res.body.id as string;
+    }
+
+    it('TEST-CUST-P102-01 a reveal without a reason is 422', async () => {
+      const res = await request(getApp(revealer))
+        .post('/v1/customers/cust_001/reveal')
+        .send({ field: 'PAN' });
+      expect(res.status).toBe(422);
+    });
+
+    it('TEST-CUST-P102-02 a reason carrying a PAN is 422 (free-text S3 guard)', async () => {
+      const res = await request(getApp(revealer))
+        .post('/v1/customers/cust_001/reveal')
+        .send({ field: 'PAN', reason: 'lender asked for ABCDE1234F' });
+      expect(res.status).toBe(422);
+    });
+
+    it('TEST-CUST-P102-03 without customer.reveal_sensitive the reveal is 403', async () => {
+      const res = await request(getApp(principalA))
+        .post('/v1/customers/cust_001/reveal')
+        .send({ field: 'PAN', reason: 'lender query 4471' });
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe('FORBIDDEN');
-      expect(res.body.error.message).toMatch(/TASK-421/);
+    });
+
+    it('TEST-CUST-P102-04 an unknown or other-tenant customer is 404', async () => {
+      const res = await request(getApp(revealer))
+        .post('/v1/customers/cust_unknown/reveal')
+        .send({ field: 'PAN', reason: 'lender query 4471' });
+      expect(res.status).toBe(404);
+    });
+
+    it('TEST-CUST-P102-05 while the project has no second factor the reveal is refused (403 PROJECT_SECOND_FACTOR_OFF)', async () => {
+      const id = await createCustomer();
+      const before = process.env.SUPABASE_MFA_ENABLED;
+      process.env.SUPABASE_MFA_ENABLED = 'false';
+      try {
+        const res = await request(getApp(revealer))
+          .post(`/v1/customers/${id}/reveal`)
+          .send({ field: 'PAN', reason: 'lender query 4471' });
+        expect(res.status).toBe(403);
+        expect(JSON.stringify(res.body.error.details)).toContain('PROJECT_SECOND_FACTOR_OFF');
+      } finally {
+        if (before === undefined) delete process.env.SUPABASE_MFA_ENABLED;
+        else process.env.SUPABASE_MFA_ENABLED = before;
+      }
+    });
+
+    it('TEST-CUST-P102-06 without a fresh step-up the reveal is 401 STEP_UP_REQUIRED', async () => {
+      const id = await createCustomer();
+      const before = process.env.SUPABASE_MFA_ENABLED;
+      process.env.SUPABASE_MFA_ENABLED = 'true';
+      try {
+        const res = await request(getApp(revealer))
+          .post(`/v1/customers/${id}/reveal`)
+          .send({ field: 'PAN', reason: 'lender query 4471' });
+        expect(res.status).toBe(401);
+        expect(res.body.error.code).toBe('STEP_UP_REQUIRED');
+      } finally {
+        if (before === undefined) delete process.env.SUPABASE_MFA_ENABLED;
+        else process.env.SUPABASE_MFA_ENABLED = before;
+      }
+    });
+
+    it('TEST-CUST-P102-07 the profile and identity bodies refuse S3 fields in the wrong place and bad formats (422)', async () => {
+      const app = getApp(principalA);
+      const profile = await request(app)
+        .put('/v1/customers/cust_001/profile')
+        .set('If-Match', '"0"')
+        .send({ pan: 'ABCDE1234F' });
+      expect(profile.status).toBe(422);
+      const aadhaar = await request(app)
+        .put('/v1/customers/cust_001/identity')
+        .set('If-Match', '"0"')
+        .send({ aadhaar: '1234 5678 9012' });
+      expect(aadhaar.status).toBe(422);
+      const badPan = await request(app)
+        .put('/v1/customers/cust_001/identity')
+        .set('If-Match', '"0"')
+        .send({ pan: 'ABC123' });
+      expect(badPan.status).toBe(422);
+      const noIfMatch = await request(app).put('/v1/customers/cust_001/identity').send({ pan: 'ABCDE1234F' });
+      expect(noIfMatch.status).toBe(400);
     });
   });
 
