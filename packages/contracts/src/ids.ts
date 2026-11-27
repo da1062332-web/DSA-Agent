@@ -132,6 +132,9 @@ export const ID_PREFIXES = [
   'dup',
   'otp',
   'tob',
+  // P2-01 (migration 0141): commission plan slab, invoice number series.
+  'cslb',
+  'invs',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

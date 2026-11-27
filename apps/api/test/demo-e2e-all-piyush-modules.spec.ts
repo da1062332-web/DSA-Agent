@@ -922,6 +922,8 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
         basisAmount: '3000000.00',
         currency: 'INR',
         connectorId: 'ptn_apex_consultancy',
+        // P2-01 removed the hard-coded 1.5% default; this demo states the rate it always meant.
+        customRate: 0.015,
       });
       expect(calcResult.calculation.grossAmount).toBe('45000.00'); // 1.5% of 30L
       expect(calcResult.payable).toBeDefined();
