@@ -5,6 +5,7 @@
 --
 -- Sections (one per removed feature, each in its own commit):
 --   1. Security incidents and events: security_event, incident_record; permissions security.read, security.incident, security.vuln.
+--   2. Access reviews: access_review_item, access_review; permission access_review.manage.
 --
 -- Safety: a table is dropped only when it holds no rows. If a table has rows, the migration stops and nothing is dropped.
 -- Idempotent: DELETE and DROP ... IF EXISTS can run again without effect.
@@ -29,3 +30,21 @@ DELETE FROM app.permission WHERE code IN ('security.read', 'security.incident', 
 
 DROP TABLE IF EXISTS app.incident_record;
 DROP TABLE IF EXISTS app.security_event;
+
+-- 2. Access reviews -----------------------------------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('app.access_review') IS NOT NULL AND EXISTS (SELECT 1 FROM app.access_review) THEN
+    RAISE EXCEPTION 'M-109: app.access_review holds rows; stop and review before dropping it';
+  END IF;
+  IF to_regclass('app.access_review_item') IS NOT NULL AND EXISTS (SELECT 1 FROM app.access_review_item) THEN
+    RAISE EXCEPTION 'M-109: app.access_review_item holds rows; stop and review before dropping it';
+  END IF;
+END
+$$;
+
+DELETE FROM app.role_permission WHERE permission_code IN ('access_review.manage');
+DELETE FROM app.permission WHERE code IN ('access_review.manage');
+
+DROP TABLE IF EXISTS app.access_review_item;
+DROP TABLE IF EXISTS app.access_review;

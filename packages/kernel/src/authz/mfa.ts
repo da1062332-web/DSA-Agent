@@ -35,7 +35,6 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'settings.manage',
   'user.invite',
   'user.offboard',
-  'access_review.manage',
   'audit.seal',
   'payout.disburse',
   'ledger.journal_post',

@@ -90,13 +90,6 @@ const GATES: Gate[] = [
     opens: ['user.offboard', 'user.manage'],
     refuses: ['user.invite', 'user.read'],
   },
-  {
-    name: 'access reviews (start)',
-    method: 'post',
-    path: '/v1/access-reviews',
-    opens: ['access_review.manage', 'user.manage'],
-    refuses: ['role.manage', 'user.invite'],
-  },
 
   // Messaging templates
   {

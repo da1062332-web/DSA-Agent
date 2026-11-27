@@ -668,52 +668,6 @@ export function buildTenantCore(t: Tenant, out: Tables): void {
     });
   });
 
-  // Access reviews (four campaigns per tenant), each with items: certified, revoked or still open.
-  const reviewNames = [
-    'Q1 role recertification',
-    'Q2 role recertification',
-    'Q3 role recertification',
-    'Q4 role recertification',
-    'Branch manager access check',
-    'Lender-desk access check',
-    'Connector portal access check',
-    'Finance desk access check',
-  ];
-  reviewNames.forEach((name, r) => {
-    const reviewId = idOf(t, 'arv', r + 1);
-    const closed = r < 4;
-    out.add('access_review', {
-      id: reviewId,
-      tenant_id: t.id,
-      name,
-      branch_ids: [ix(t.branches, 'MUM01'), ix(t.branches, 'PUN01')],
-      status: closed ? 'CLOSED' : 'OPEN',
-      due_at: at(ANCHOR, 20 + r),
-      item_count: 8,
-      closed_at: closed ? at(ANCHOR, 15 + r) : null,
-      lock_version: 1,
-      created_by: t.actor,
-      updated_by: t.actor,
-    });
-    USERS.slice(0, 8).forEach((u, i) => {
-      const decided = i % 3 !== 2 || r < 4;
-      out.add('access_review_item', {
-        id: idOf(t, 'ari', r * 100 + i + 1),
-        tenant_id: t.id,
-        review_id: reviewId,
-        assignment_id: idOf(t, 'ura', i + 1),
-        user_id: ix(t.users, u.handle),
-        role_id: ix(t.roles, ix(u.roles, 0).code),
-        scope_type: ix(u.roles, 0).scope,
-        decision: decided ? (i % 2 === 0 ? 'CERTIFY' : 'REVOKE') : null,
-        reason: decided && i % 2 === 1 ? 'Role no longer needed for the branch (synthetic)' : null,
-        // A reviewer never certifies their own access (DB rule): the owner's own item is reviewed by the admin.
-        decided_by: decided ? (u.handle === 'owner' ? ix(t.users, 'admin') : ix(t.users, 'owner')) : null,
-        decided_at: decided ? at(ANCHOR, 5 + r, i) : null,
-      });
-    });
-  });
-
   // Attendance: one week of records for the branch team; one correction points at the original.
   const attendanceUsers = ['rm1', 'rm2', 'sales1', 'teammgr', 'loanops', 'branchmgr', 'rmpune', 'compliance'];
   attendanceUsers.forEach((h, i) => {

@@ -39,7 +39,6 @@ export const LEGACY_PARENTS: Record<SubPermissionCode, readonly PermissionCode[]
   'user.invite': ['user.manage'],
   'user.offboard': ['user.manage'],
   'role.read': ['role.manage', 'user.manage'],
-  'access_review.manage': ['user.manage'],
   // CRM
   'activity.read': ['lead.read', 'customer.read', 'application.read', 'activity.create'],
   'complaint.read': ['complaint.create', 'complaint.manage'],
@@ -370,7 +369,7 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
       {
         id: 'users',
         label: 'Users',
-        codes: ['user.read', 'user.invite', 'user.offboard', 'user.manage', 'access_review.manage'],
+        codes: ['user.read', 'user.invite', 'user.offboard', 'user.manage'],
       },
       { id: 'roles', label: 'Roles', codes: ['role.read', 'role.manage'] },
       {

@@ -20,7 +20,6 @@ export const SUB_PERMISSION_CODES = [
   'user.invite',
   'user.offboard',
   'role.read',
-  'access_review.manage',
   // CRM
   'activity.read',
   'complaint.read',
