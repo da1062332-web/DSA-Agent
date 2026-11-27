@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { IdSchema } from './ids';
 import { ListMeta, CursorQuery } from './pagination';
 import { MoneySchema, type Money } from './money';
+import { PRODUCT_APPLICANT_TYPES } from './products';
 
 // ---- Enumerations -------------------------------------------------------------------------------------------------------------
 
@@ -17,13 +18,9 @@ export const LENDER_POLICY_ACTIONS = ['ACTIVATE', 'RETIRE'] as const;
 export type LenderPolicyAction = (typeof LENDER_POLICY_ACTIONS)[number];
 
 /** The application's applicant_type values, which a policy can allow or exclude. */
-export const EMPLOYMENT_TYPES = [
-  'SALARIED',
-  'SELF_EMPLOYED_PROFESSIONAL',
-  'SELF_EMPLOYED_BUSINESS',
-  'NON_INDIVIDUAL',
-] as const;
-export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+// Not EMPLOYMENT_TYPES: that name is the customer-profile list (P1-02), which has more values. A policy filters on applicant_type.
+export const LENDER_POLICY_EMPLOYMENT_TYPES = PRODUCT_APPLICANT_TYPES;
+export type LenderPolicyEmploymentType = (typeof LENDER_POLICY_EMPLOYMENT_TYPES)[number];
 
 export const LENDER_MATCH_OUTCOMES = ['ELIGIBLE', 'NOT_ELIGIBLE', 'NEEDS_DATA'] as const;
 export type LenderMatchOutcomeCode = (typeof LENDER_MATCH_OUTCOMES)[number];
@@ -115,7 +112,9 @@ const PolicyTermsShape = {
   processingFeeBps: Bps.nullable(),
   serviceablePincodes: z.array(PincodeEntry).max(2000),
   allowedConstitutions: z.array(Constitution).max(20),
-  allowedEmployment: z.array(z.enum(EMPLOYMENT_TYPES)).max(EMPLOYMENT_TYPES.length),
+  allowedEmployment: z
+    .array(z.enum(LENDER_POLICY_EMPLOYMENT_TYPES))
+    .max(LENDER_POLICY_EMPLOYMENT_TYPES.length),
   minVintageMonths: z.number().int().min(0).max(1200).nullable(),
   documentProfileId: z.string().min(1).max(64).nullable(),
   effectiveFrom: IsoInstant,
@@ -223,7 +222,7 @@ const InputsShape = {
     .nullable(),
   bureauScore: z.number().int().min(300).max(900).nullable(),
   collateralValue: InrMoneySchema.nullable(),
-  employmentType: z.enum(EMPLOYMENT_TYPES).nullable(),
+  employmentType: z.enum(LENDER_POLICY_EMPLOYMENT_TYPES).nullable(),
   constitution: Constitution.nullable(),
   vintageMonths: z.number().int().min(0).max(1200).nullable(),
 };
