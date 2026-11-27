@@ -28,6 +28,7 @@ import { ErrorAlert, LoadMore, Loading, PageHeader, formatDate } from '../admin/
 import { DataTable } from '../../ui';
 import { fetchLeadById, resolveDuplicateReview, type DuplicateReview } from './api';
 import { RecordLink } from '../../ui/RecordLink';
+import { displayMobile } from '../../shell/display';
 
 type Status = DuplicateReview['status'];
 
@@ -41,7 +42,7 @@ function LeadCell({ id }: { id: string }) {
       </RecordLink>
       {lead && (
         <Typography variant="caption" color="text.secondary">
-          {lead.mobileMasked} · {lead.state} · {formatDate(lead.createdAt)}
+          {displayMobile(lead.mobileMasked)} · {lead.state} · {formatDate(lead.createdAt)}
         </Typography>
       )}
       {q.isError && (

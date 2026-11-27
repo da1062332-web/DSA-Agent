@@ -16,6 +16,7 @@ import {
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { fetchBranches, fetchUsers, updateUser } from './api';
 import { Can } from '../../shell/Can';
+import { displayMobile } from '../../shell/display';
 import {
   ConfirmDialog,
   DataTable,
@@ -170,7 +171,7 @@ export function UserListPage() {
           <Typography variant="body2">{contactText(user)}</Typography>
           {user.mobileMasked && (
             <Typography variant="caption" color="text.secondary">
-              {user.mobileMasked}
+              {displayMobile(user.mobileMasked)}
             </Typography>
           )}
         </Box>

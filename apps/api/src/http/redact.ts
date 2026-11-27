@@ -53,12 +53,16 @@ export function redactRequestPath(url: string): string {
 /**
  * Identity data (S3) that must never reach a log or an error response (task P1-01). PAN keeps its first five letters and its last
  * letter, so `ABCDE1234F` becomes `ABCDE****F`. An Aadhaar-shaped number keeps only its last four digits. A date of birth is hidden
- * when it follows a dob-style key.
+ * when it follows a dob-style key (dob, date of birth, dateOfBirth, date_of_birth, date-of-birth), either with `=` or `:`, or with a
+ * space and a numeric date. A bare date with no key is not identity data on its own and is left alone.
  */
+const DOB_KEY = 'dob|date[\\s_-]?of[\\s_-]?birth';
 const PII_SHAPES: Array<[RegExp, string]> = [
   [/\b([A-Z]{5})[0-9]{4}([A-Z])\b/gi, '$1****$2'],
   [/\b\d{4}[\s-]?\d{4}[\s-]?(\d{4})\b/g, '**** **** $1'],
-  [/\b(dob|dateOfBirth|date_of_birth)(\s*[=:]\s*)["']?[^\s&;,'"]+/gi, '$1$2[redacted]'],
+  [new RegExp(`\\b(${DOB_KEY})(\\s*[=:]\\s*)["']?[^\\s&;,'"]+`, 'gi'), '$1$2[redacted]'],
+  // The spaced form: the key, a space, then a date shaped like 01/01/1990, 1990-01-01 or 01.01.90.
+  [new RegExp(`\\b(${DOB_KEY})(\\s+)["']?\\d{1,4}[-/.]\\d{1,2}[-/.]\\d{1,4}\\b`, 'gi'), '$1$2[redacted]'],
 ];
 
 /** The text with every registered secret, every credential-shaped part and every identity-data pattern replaced. */

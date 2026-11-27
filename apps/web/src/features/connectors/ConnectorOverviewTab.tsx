@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ConnectorActivityResource, ConnectorReferralResource, ConnectorResource } from '@dsa/contracts';
 import { apiFetch, errorText } from '../../api/client';
 import { StatCard, StatCardGrid } from '../../ui';
+import { displayEmail, displayMobile } from '../../shell/display';
 import { connectorPortalUsersQuery } from './ConnectorPortalUsers';
 import { activityLabel } from './connector-workspace-model';
 
@@ -58,8 +59,8 @@ export function ConnectorOverviewTab({
             value={<Chip size="small" label={connector.connectorType} variant="outlined" />}
           />
           <Field label="Contact person" value={connector.contactPerson} />
-          <Field label="Mobile" value={connector.mobileE164} />
-          <Field label="Email" value={connector.email} />
+          <Field label="Mobile" value={displayMobile(connector.mobileE164)} />
+          <Field label="Email" value={displayEmail(connector.email)} />
           <Field label="Branch" value={connector.primaryBranchId} />
           <Field label="Relationship manager" value={connector.relationshipOwnerUserId} />
           <Field label="Created" value={new Date(connector.createdAt).toLocaleDateString('en-IN')} />

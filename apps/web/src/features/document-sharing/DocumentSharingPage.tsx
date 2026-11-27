@@ -42,7 +42,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
 import { useMe, hasPermission } from '../../api/useMe';
-import { ApplicationName } from '../../shell/display';
+import { ApplicationName, displayEmail } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 import { useLookup } from '../admin/api';
 import { ApplicationSelect } from '../applications/ApplicationSelect';
@@ -464,7 +464,7 @@ export function DocumentSharingPage() {
                           {share.recipientContact.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {share.recipientContact.email}
+                          {displayEmail(share.recipientContact.email)}
                         </Typography>
                       </>
                     ),

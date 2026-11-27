@@ -38,7 +38,7 @@ import { DataTable, PageHeader } from '../../ui';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
-import { ApplicationName, LenderName } from '../../shell/display';
+import { ApplicationName, LenderName, displayEmail, displayMobile, displayPan } from '../../shell/display';
 
 const KNOWN_FIELD_LABELS: Record<string, string> = {
   name: 'Full Name',
@@ -154,30 +154,6 @@ export function PrivacyDashboard(): React.ReactElement {
       purpose: verifyPurpose,
       purposeTarget: verifyPurposeTarget.trim() || undefined,
     });
-  };
-
-  // Masking Helpers for Sandbox
-  const maskPhone = (phone: string): string => {
-    const cleaned = phone.replace(/[^0-9+]/g, '');
-    if (cleaned.length < 8) return cleaned;
-    const prefix = cleaned.slice(0, 3);
-    const suffix = cleaned.slice(-4);
-    return `${prefix} ******${suffix}`;
-  };
-
-  const maskEmail = (email: string): string => {
-    const parts = email.split('@');
-    if (parts.length !== 2 || !parts[0] || !parts[1]) return email;
-    const user = parts[0];
-    const domain = parts[1];
-    const maskedUser = user.length <= 2 ? `${user}***` : `${user[0]}***${user[user.length - 1]}`;
-    return `${maskedUser}@${domain}`;
-  };
-
-  const maskPan = (pan: string): string => {
-    const cleaned = pan.toUpperCase().trim();
-    if (cleaned.length !== 10) return cleaned;
-    return `${cleaned.slice(0, 5)}****${cleaned.slice(-1)}`;
   };
 
   const detectAadhaarLeak = (text: string): boolean => {
@@ -836,7 +812,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Mobile Number (E.164)"
                     value={sandboxPhone}
                     onChange={(e) => setSandboxPhone(e.target.value)}
-                    helperText={`Masked output: ${maskPhone(sandboxPhone)}`}
+                    helperText={`Masked output: ${displayMobile(sandboxPhone) ?? ''}`}
                   />
                 </Grid>
 
@@ -847,7 +823,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Email Address"
                     value={sandboxEmail}
                     onChange={(e) => setSandboxEmail(e.target.value)}
-                    helperText={`Masked output: ${maskEmail(sandboxEmail)}`}
+                    helperText={`Masked output: ${displayEmail(sandboxEmail) ?? ''}`}
                   />
                 </Grid>
 
@@ -858,7 +834,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Permanent Account Number (PAN)"
                     value={sandboxPan}
                     onChange={(e) => setSandboxPan(e.target.value)}
-                    helperText={`Masked output: ${maskPan(sandboxPan)}`}
+                    helperText={`Masked output: ${displayPan(sandboxPan) ?? ''}`}
                   />
                 </Grid>
 

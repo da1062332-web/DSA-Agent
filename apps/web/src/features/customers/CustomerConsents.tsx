@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { displayEmail, displayMobile } from '../../shell/display';
 import {
   Alert,
   Box,
@@ -244,7 +245,7 @@ export function CustomerConsents(): React.ReactElement {
                       Registered Mobile
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {customer.primaryMobileMasked || 'N/A'}
+                      {displayMobile(customer.primaryMobileMasked) || 'N/A'}
                     </Typography>
                   </Box>
                 </Grid>
@@ -267,7 +268,7 @@ export function CustomerConsents(): React.ReactElement {
                       Registered Email
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {customer.primaryEmailMasked || 'N/A'}
+                      {displayEmail(customer.primaryEmailMasked) || 'N/A'}
                     </Typography>
                   </Box>
                 </Grid>

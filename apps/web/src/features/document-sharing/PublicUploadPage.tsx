@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@mui/material';
 import { PageHeader } from '../../ui';
+import { displayContact } from '../../shell/display';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '../../api/client';
 import type { PublicUploadLinkStatus, VerifyUploadOtpResponse, UploadFileResponse } from '@dsa/contracts';
@@ -387,7 +388,7 @@ export function PublicUploadPage() {
               }}
             >
               <Typography variant="subtitle1" fontWeight={700} color="#1e293b">
-                {linkStatus.maskedContact || 'Your Registered Contact'}
+                {displayContact(linkStatus.maskedContact) || 'Your Registered Contact'}
               </Typography>
             </Box>
 

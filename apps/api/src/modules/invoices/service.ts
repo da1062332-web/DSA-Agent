@@ -1,4 +1,5 @@
 // apps/api/src/modules/invoices/service.ts — Module 33: Invoices & Statements Service
+import { redactSecrets } from '../../http/redact';
 import {
   AppError,
   withLegacy,
@@ -57,9 +58,11 @@ const csvCell = (value: string): string =>
 export function accountingExportToCsv(rows: AccountingExportRow[]): string {
   const lines = [ACCOUNTING_EXPORT_HEADER.join(',')];
   for (const r of rows) {
+    // Every cell goes through the shared redactor: a party name or reference typed with a PAN or Aadhaar number is masked in the
+    // export, including rows stored before the write-side check (TEST-SECRETS-04).
     lines.push(
       [r.recordType, r.number, r.date, r.party, r.taxableValue, r.gst, r.tds, r.total, r.paymentStatus]
-        .map(csvCell)
+        .map((cell) => csvCell(redactSecrets(String(cell))))
         .join(','),
     );
   }
