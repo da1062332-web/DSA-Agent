@@ -60,7 +60,6 @@ describe('TEST-ACC-P0-07 migration 104 removes the screens each role does not us
       [
         'Applications',
         'Customers',
-        'Eligibility',
         'Leads',
         'Lender cases',
         'Sanction and disbursement',

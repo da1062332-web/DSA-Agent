@@ -7,6 +7,7 @@ import { registerApplicationRoutes } from './applications';
 import { registerChecklistRoutes } from './checklist';
 import { registerDocumentRoutes } from './documents';
 import { registerEligibilityRoutes } from './eligibility';
+import { registerLenderMatchRoutes } from './lender-matches';
 import { registerPartyRoutes } from './parties';
 import { registerTransitionRoutes } from './transitions';
 
@@ -16,6 +17,7 @@ export function createRouter(deps: ApiDeps): Router {
   registerApplicationRoutes(router, deps);
   registerTransitionRoutes(router, deps);
   registerEligibilityRoutes(router, deps);
+  registerLenderMatchRoutes(router, deps); // P1-04 (Dipanshu)
   registerChecklistRoutes(router, deps);
   registerDocumentRoutes(router, deps);
   return router;

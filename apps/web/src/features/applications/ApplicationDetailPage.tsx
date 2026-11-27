@@ -27,6 +27,7 @@ import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { ArchiveCard, LegalHoldCard, OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { EligibilityCard } from './EligibilityCard';
+import { LenderMatchesCard } from './LenderMatchesCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
 import { AppButton, AppCard, FieldGrid } from '../../ui';
 import {
@@ -110,6 +111,7 @@ export function ApplicationDetailPage() {
         updatedAt={a.updatedAt}
         status={a.status}
       />
+      <LenderMatchesCard applicationId={a.id} productCategory={a.productCategory} />
       <ChecklistCard applicationId={a.id} />
       <ArchiveCard applicationId={a.id} />
       <LegalHoldCard applicationId={a.id} />

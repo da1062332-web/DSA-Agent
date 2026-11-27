@@ -137,8 +137,8 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/sanctions',
         anyOf: opens('sanction.read', 'disbursement.read'),
       },
-      { label: 'Eligibility', to: '/eligibility', anyOf: opens('eligibility.read') },
-      { label: 'Lenders', to: '/lenders', anyOf: ['lender.read'] },
+      // P1-04: lender_policy.read opens the lender page too, so a Lender policy manager (the SOD-01 checker) reaches the policy card.
+      { label: 'Lenders', to: '/lenders', anyOf: ['lender.read', 'lender_policy.read'] },
       { label: 'Products', to: '/products', anyOf: ['product.read'] },
     ],
   },
@@ -538,15 +538,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     anyOf: ['sanction.record', 'disbursement.record', 'disbursement.verify'],
     description: 'Sanction letter issuance and disbursement tracking',
     keywords: ['sanction letter', 'disbursement', 'payout', 'loan sanction'],
-  },
-  {
-    id: 'eligibility',
-    label: 'Eligibility',
-    category: 'Loan Origination',
-    to: '/eligibility',
-    anyOf: ['application.read'],
-    description: 'Preliminary checks of applications against the approved eligibility rules',
-    keywords: ['eligibility check', 'eligibility rules', 'preliminary eligibility', 'credit rules'],
   },
   {
     id: 'lenders',

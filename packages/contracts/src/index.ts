@@ -51,5 +51,6 @@ export type * from './ports/application-port';
 export type * from './ports/complaint-subject-port';
 export type * from './ports/product-version-port';
 export type * from './ports/lender-port';
+export type * from './ports/lender-policy-port'; // P1-04 (Dipanshu)
 export * from './s3-text';
 export * from './customer-profile';

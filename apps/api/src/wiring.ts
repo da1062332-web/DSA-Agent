@@ -19,6 +19,7 @@ import { createTaskPort } from './modules/crm/tasks/task-port';
 import { createApplicationPort } from './modules/origination/applications/application-port';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
+import { createLenderPolicyPort } from './modules/origination/catalogue/lender-policy-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
 import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 import { createWebhookOutboxSubscriber } from './modules/partner-api/webhooks';
@@ -71,6 +72,8 @@ export function createProductionDeps(
     productVersionPort: createProductVersionPort(),
     // Complaint referrals confirm the lender exists through this port; without it every referral is refused (503).
     lenderPort: createLenderPort(),
+    // Lender matching (P1-04) loads the ACTIVE policies through this port; without it a match run is refused (503).
+    lenderPolicyPort: createLenderPolicyPort(),
     dataSharingPort: new PostgresDataSharingPort(),
     apiClientRepository: new PgApiClientRepository(txRunner, audit),
     documentLinkSecret: options.documentLinkSecret,

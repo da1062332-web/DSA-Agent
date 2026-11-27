@@ -3,6 +3,7 @@ import type {
   AuditPort,
   ComplaintSubjectPort,
   LenderPort,
+  LenderPolicyPort,
   ProductVersionPort,
   Authz,
   Clock,
@@ -37,6 +38,8 @@ export interface ApiDeps {
   productVersionPort?: ProductVersionPort;
   /** Confirms a lender exists in the tenant, for complaint referrals. Provided by origination/catalogue. */
   lenderPort?: LenderPort;
+  /** The ACTIVE lender policies a match run evaluates (P1-04). Provided by origination/catalogue; matching fails closed without it. */
+  lenderPolicyPort?: LenderPolicyPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;
