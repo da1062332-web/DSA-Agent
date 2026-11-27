@@ -1,6 +1,6 @@
 // apps/api/src/modules/crm/customers/customer-profile.ts — owner: Bhushan (MOD-CUST, task P1-02; migration 0110).
 //   GET    /v1/customers/{id}/profile                    customer.read
-//   PUT    /v1/customers/{id}/profile                    customer.update; If-Match (0 before the first save)
+//   PUT    /v1/customers/{id}/profile                    customer.update; If-Match ("0" = no saved profile yet; the first save makes it 1)
 //   GET    /v1/customers/{id}/identity                   customer.read; PAN masked, date of birth never returned
 //   PUT    /v1/customers/{id}/identity                   customer.update; If-Match; PAN and date of birth encrypted
 //   POST   /v1/customers/{id}/reveal                     customer.reveal_sensitive; reason + fresh step-up; audited; no-store
@@ -243,10 +243,10 @@ export function registerCustomerProfileRoutes(router: Router, deps: ApiDeps, rep
         : await sql<Row>`
             insert into customer_profile (tenant_id, customer_id, constitution, employment_type, employer_name, business_name,
                                           vintage_months, gstin, udyam_number, monthly_income, monthly_obligations,
-                                          created_at, created_by, updated_at, updated_by)
+                                          lock_version, created_at, created_by, updated_at, updated_by)
             values (${tenantId}, ${customer.id}, ${values.constitution}, ${values.employmentType}, ${values.employerName},
                     ${values.businessName}, ${values.vintageMonths}, ${values.gstin}, ${values.udyamNumber}, ${income},
-                    ${obligations}, ${ctx.now}, ${ctx.principal.id}, ${ctx.now}, ${ctx.principal.id})
+                    ${obligations}, 1, ${ctx.now}, ${ctx.principal.id}, ${ctx.now}, ${ctx.principal.id})
             returning *`.execute(tx);
       const changed = Object.keys(input).filter((k) => !['pan', 'aadhaar', 'dateOfBirth'].includes(k));
       await deps.audit.record(tx, ctx, {
@@ -334,9 +334,9 @@ export function registerCustomerProfileRoutes(router: Router, deps: ApiDeps, rep
              returning *`.execute(tx)
         : await sql<Row>`
             insert into customer_identity (tenant_id, customer_id, pan_ciphertext, pan_hash, pan_masked, dob_ciphertext, birth_year,
-                                           created_at, created_by, updated_at, updated_by)
+                                           lock_version, created_at, created_by, updated_at, updated_by)
             values (${tenantId}, ${customer.id}, ${panCipher}, ${panHashValue}, ${panMasked}, ${dobCipher}, ${birthYear},
-                    ${ctx.now}, ${ctx.principal.id}, ${ctx.now}, ${ctx.principal.id})
+                    1, ${ctx.now}, ${ctx.principal.id}, ${ctx.now}, ${ctx.principal.id})
             returning *`.execute(tx);
 
       const dups =

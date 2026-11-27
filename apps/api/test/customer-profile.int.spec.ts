@@ -69,6 +69,12 @@ describe('TEST-CUST-P102-INT customer profile and identity', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.panMasked).toBe('ZZZPZ****Z');
     expect(res.body.birthYear).toBe(1990);
+    expect(res.body.lockVersion).toBe(1);
+    const stale = await request(app)
+      .put(`/v1/customers/${C1}/identity`)
+      .set('If-Match', '"0"')
+      .send({ pan: PAN });
+    expect(stale.status).toBe(409);
     expect(JSON.stringify(res.body)).not.toContain(PAN);
     expect(JSON.stringify(res.body)).not.toContain('1990-01-31');
     const stored = await env.admin.query(

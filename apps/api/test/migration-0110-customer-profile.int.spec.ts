@@ -1,5 +1,5 @@
 // TEST-CUST-M110: rehearsal for migration 0110 (customer profile, encrypted identity and addresses, task P1-02). The database is built
-// from the migrations before 0110; then the verify script FAILs, 0110 is applied twice (idempotent), the verify script passes, and the
+// from the migrations before 0110; then the verify script FAILs, 0110 is applied (a second run is refused cleanly), the verify script passes, and the
 // rollback script restores the state before 0110 while it holds no rows and refuses once a row exists. Synthetic data only.
 import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
@@ -45,11 +45,15 @@ describe('TEST-CUST-M110 migration 0110 rehearsal', () => {
     expect(failures(await verify()).length).toBeGreaterThan(0);
   });
 
-  it('TEST-CUST-M110-02 applying 0110 twice leaves every verify row PASS', async () => {
-    await exec(sql(path.join(MIGRATIONS, M110)));
+  it('TEST-CUST-M110-02 applying 0110 leaves every verify row PASS; a second run is refused and changes nothing', async () => {
     await exec(sql(path.join(MIGRATIONS, M110)));
     const rows = await verify();
     expect(failures(rows), JSON.stringify(failures(rows))).toEqual([]);
+    // 0110 is not re-runnable: enable_tenant_rls creates the tenant_isolation policy unconditionally. The file runs as one implicit
+    // transaction, so the second run stops there and rolls back without a partial change (MANIFEST row M-110).
+    await expect(exec(sql(path.join(MIGRATIONS, M110)))).rejects.toThrow(/tenant_isolation/);
+    const again = await verify();
+    expect(failures(again), JSON.stringify(failures(again))).toEqual([]);
   });
 
   it('TEST-CUST-M110-03 the database refuses a half-stored PAN and an invalid pincode', async () => {

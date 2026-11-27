@@ -1,5 +1,6 @@
 -- Verify migration 0110 (customer profile, encrypted identity and addresses, task P1-02). Read-only. Each row is PASS or FAIL; a missing
--- object is a FAIL row, never an error. Expect no FAIL row after the apply (before it, the structure rows FAIL).
+-- object is a FAIL row, never an error (no row reads the new tables directly, so the script also runs before the apply).
+-- Expect no FAIL row after the apply; before it, the structure rows FAIL.
 WITH t AS (
   SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -29,8 +30,10 @@ UNION ALL SELECT 'customer_identity has no Aadhaar column and no clear PAN or da
                               AND (attname ILIKE '%aadhaar%' OR attname IN ('pan', 'dob', 'date_of_birth')))
             THEN 'PASS' ELSE 'FAIL' END, ''
 UNION ALL SELECT 'customer_identity keeps PAN and date-of-birth parts complete (two CHECK constraints)',
-       CASE WHEN (SELECT count(*) FROM pg_constraint WHERE conrelid = 'app.customer_identity'::regclass
-                   AND conname IN ('customer_identity_pan_complete', 'customer_identity_dob_complete')) = 2
+       CASE WHEN (SELECT count(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                   WHERE n.nspname = 'app' AND c.relname = 'customer_identity'
+                     AND k.conname IN ('customer_identity_pan_complete', 'customer_identity_dob_complete')) = 2
             THEN 'PASS' ELSE 'FAIL' END, ''
 UNION ALL SELECT 'one live address per type (customer_address_one_live_per_type)',
        CASE WHEN EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'app' AND indexname = 'customer_address_one_live_per_type')
@@ -48,8 +51,4 @@ UNION ALL SELECT 'every customer-tenant ROLE-LOAN-OPS holds customer.reveal_sens
                  AND NOT EXISTS (SELECT 1 FROM app.role_permission rp
                                   WHERE rp.tenant_id = r.tenant_id AND rp.role_id = r.id
                                     AND rp.permission_code = 'customer.reveal_sensitive'))
-            THEN 'PASS' ELSE 'FAIL' END, ''
-UNION ALL SELECT 'INFO rows stored', 'INFO',
-       format('profiles=%s identities=%s addresses=%s',
-              (SELECT count(*) FROM app.customer_profile), (SELECT count(*) FROM app.customer_identity),
-              (SELECT count(*) FROM app.customer_address));
+            THEN 'PASS' ELSE 'FAIL' END, '';
