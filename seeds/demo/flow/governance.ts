@@ -1,5 +1,5 @@
 // Governance flow for the demo seed: decisions and rule versions with their approvals and publication trail, audit,
-// security and incident records, privacy requests, legal holds, retention, support access and data sharing.
+// privacy requests, legal holds, retention, support access and data sharing.
 // Synthetic data only (ASM-4D-06). Global catalogue rows (decision definitions, feature flags, releases) are
 // written once by buildGlobal.
 import type { Tables} from './types';
@@ -327,58 +327,6 @@ export function buildGovernance(
       user_agent: 'dsa-web/demo (synthetic)',
       prev_hash: null,
       hash: null,
-    }),
-  );
-
-  // Security events and incidents (the incident row is the one that needs a post-mortem reference).
-  const secEvents: [string, string, string][] = [
-    ['LOGIN_FAILED', 'rmpune', 'HIGH'],
-    ['MFA_ENROLLED', 'owner', 'LOW'],
-    ['ROLE_CHANGED', 'admin', 'MEDIUM'],
-    ['EXPORT_DOWNLOADED', 'loanops', 'MEDIUM'],
-    ['SUSPICIOUS_ACCESS', 'sales1', 'HIGH'],
-    ['API_KEY_ROTATED', 'admin', 'LOW'],
-    ['PERMISSION_DENIED', 'rm1', 'LOW'],
-    ['SESSION_REVOKED', 'branchmgr', 'MEDIUM'],
-  ];
-  secEvents.forEach(([type, principal, severity], i) =>
-    out.add('security_event', {
-      id: idOf(t, 'sec', i + 1),
-      tenant_id: t.id,
-      type,
-      principal,
-      ip: `203.0.113.${20 + i}`,
-      severity,
-      details: { attempt: i + 1, channel: 'web' },
-      created_at: at(d, 16, i),
-    }),
-  );
-  const incidents: [string, string, string, boolean][] = [
-    ['CREDENTIAL_EXPOSURE_SUSPECTED', 'HIGH', 'RESOLVED', false],
-    ['ACCESS_REVIEW_OVERDUE', 'MEDIUM', 'CLOSED', false],
-    ['BREACH_SUSPECTED_DOCUMENT_LINK', 'CRITICAL', 'CONTAINED', true],
-    ['WEBHOOK_SIGNATURE_MISMATCH', 'LOW', 'OPEN', false],
-    ['EXPORT_EXCESS_ROWS', 'MEDIUM', 'INVESTIGATING', true],
-    ['DATA_CORRECTION_FAILED', 'LOW', 'RESOLVED', false],
-    ['PARTNER_RATE_LIMIT_ABUSE', 'MEDIUM', 'OPEN', false],
-    ['BACKUP_RESTORE_DRILL', 'LOW', 'CLOSED', false],
-  ];
-  incidents.forEach(([type, severity, status, personal], i) =>
-    out.add('incident_record', {
-      id: idOf(t, 'inc', i + 1),
-      tenant_id: t.id,
-      type,
-      severity,
-      detected_at: at(d, 17, i),
-      personal_data_involved: personal,
-      affected_tenants: [t.id],
-      notifications: { dpo: status !== 'OPEN', regulator: false },
-      status,
-      post_mortem_ref:
-        status === 'RESOLVED' || status === 'CLOSED' ? `PM-${t.tag.toUpperCase()}-${pad(i + 1)}` : null,
-      lock_version: 0,
-      created_by: staff.compliance,
-      updated_by: staff.compliance,
     }),
   );
 
