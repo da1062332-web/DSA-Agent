@@ -38,6 +38,16 @@ export class VerificationService {
   ): Promise<{ verification: VerificationRecord; isReplayed?: boolean }> {
     this.deps.authz.requirePermission(ctx, 'verification.perform');
 
+    // A PROVIDER_AUTOMATED record states that a vendor answered. Only the server may create one (runCheck, API-VER-003): a caller who
+    // could type method PROVIDER_AUTOMATED and result VERIFIED here could forge a check that never happened. Old records stay readable.
+    if (input.method === 'PROVIDER_AUTOMATED') {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'Provider-automated verifications are created by the server only: run the check with POST /v1/verifications/checks.',
+        [{ field: 'method', issue: 'PROVIDER_AUTOMATED_IS_SERVER_ONLY' }],
+      );
+    }
+
     // Strict Legal & Security Guard: Block any payload containing a 12-digit Aadhaar number
     const payloadStr = JSON.stringify({
       minimalResult: input.minimalResult,

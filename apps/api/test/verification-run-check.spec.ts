@@ -109,3 +109,43 @@ describe('P1-06 POST /v1/verifications/checks (API-VER-003): before the database
     expect(res.status).toBe(403);
   });
 });
+
+describe('P1-06 POST /v1/verifications cannot be used to forge a provider-automated record', () => {
+  const manualBody = {
+    subjectType: 'CUSTOMER',
+    subjectId: 'cus_01M4V6DFM0TFA9D04QJTW32ETD',
+    checkType: 'PAN',
+    method: 'PROVIDER_AUTOMATED',
+    purpose: 'KYC',
+    consentRecordId: 'cnst_01M4V6DFM0TFA9D04QJTW32ETD',
+    result: 'VERIFIED',
+    minimalResult: { statusDescription: 'Typed by hand', maskedIdentifier: 'QXZKW****L' },
+    evidenceRef: 'karza:typed-by-hand',
+  };
+
+  it('P1-06 answers 422 PROVIDER_AUTOMATED_IS_SERVER_ONLY for a hand-made automated record, and names the way to run a check', async () => {
+    const { app } = appWith();
+
+    const res = await request(app).post('/v1/verifications').set('Idempotency-Key', KEY).send(manualBody);
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.details).toEqual([{ field: 'method', issue: 'PROVIDER_AUTOMATED_IS_SERVER_ONLY' }]);
+    expect(res.body.error.message).toContain('POST /v1/verifications/checks');
+  });
+
+  it('P1-06 a MANUAL record gets past the guard (it then needs the database, which this spec does not have)', async () => {
+    const { app } = appWith();
+
+    const res = await request(app)
+      .post('/v1/verifications')
+      .set('Idempotency-Key', KEY)
+      .send({ ...manualBody, method: 'MANUAL' });
+
+    // Not the guard's 422: the request went on to the transaction, which a unit test does not provide.
+    expect(res.body.error?.details ?? []).not.toContainEqual({
+      field: 'method',
+      issue: 'PROVIDER_AUTOMATED_IS_SERVER_ONLY',
+    });
+  });
+});

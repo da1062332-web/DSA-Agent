@@ -552,7 +552,6 @@ export function VerificationPage() {
                       onChange={(e) => setFormMethod(e.target.value as VerificationMethod)}
                     >
                       <MenuItem value="MANUAL">Manual Review (Operator)</MenuItem>
-                      <MenuItem value="PROVIDER_AUTOMATED">Automated Provider</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
