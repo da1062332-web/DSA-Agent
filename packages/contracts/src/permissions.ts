@@ -171,6 +171,10 @@ export const PERMISSION_CODES = [
   'decision.evaluate',
   // Added 2026-11-02 (additive; migration M-098): the sub-permissions above.
   ...SUB_PERMISSION_CODES,
+  // Added 2026-11-26 (additive; migration M-120, P1-04 lender policy grid and matching, owner Dipanshu).
+  'lender_policy.read',
+  'lender_policy.manage',
+  'lender_match.run',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

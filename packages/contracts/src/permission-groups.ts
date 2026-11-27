@@ -232,6 +232,11 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
     label: 'Lenders, products and lender cases',
     features: [
       { id: 'lenders', label: 'Lenders', codes: ['lender.read', 'lender.manage'] },
+      {
+        id: 'lender-policies',
+        label: 'Lender policies and matching',
+        codes: ['lender_policy.read', 'lender_policy.manage', 'lender_match.run'],
+      },
       { id: 'products', label: 'Products', codes: ['product.read', 'product.manage'] },
       {
         id: 'lender-cases',

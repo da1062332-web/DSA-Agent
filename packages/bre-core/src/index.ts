@@ -4,3 +4,4 @@ export * from './canonical-json';
 export * from './validate/validator';
 export * from './compile/compiler';
 export * from './evaluate/evaluator';
+export * from './match/lender-match'; // P1-04 (Dipanshu)
