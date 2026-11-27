@@ -217,7 +217,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Configuration', to: '/config', anyOf: opens('settings.manage') },
       { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: opens('privacy.read') },
-      { label: 'Security events and incidents', to: '/security', anyOf: opens('security.read') },
       { label: 'Security', to: '/account/security' },
       {
         label: 'Integrations',
@@ -820,15 +819,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     keywords: ['dpdp', 'consent management', 'gdpr', 'privacy dashboard'],
   },
   {
-    id: 'security',
-    label: 'Security events and incidents',
-    category: 'Governance & Administration',
-    to: '/security',
-    anyOf: ['security.incident'],
-    description: 'Security incident monitoring and suspicious activity review',
-    keywords: ['threats', 'soc', 'incident log', 'breaches', 'security alerts'],
-  },
-  {
     id: 'account-security',
     label: 'Security',
     category: 'Governance & Administration',
@@ -1029,7 +1019,6 @@ export type ActionId =
   | 'export.run'
   | 'audit.export_evidence'
   | 'audit.seal'
-  | 'security.incident'
   | 'target.manage'
   | 'message.send'
   // Sub-permissions (M-098): the actions whose buttons used to check the broader code
@@ -1135,7 +1124,6 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'export.run': ['export.run'],
   'audit.export_evidence': ['audit.export_evidence'],
   'audit.seal': ['audit.seal'],
-  'security.incident': ['security.incident'],
   'target.manage': ['target.manage'],
   'message.send': ['message.send'],
   'message_template.manage': opens('message_template.manage'),
@@ -1326,15 +1314,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         description: 'Customer data consent history, DPDP compliance logs & data subject records',
         iconName: 'VerifiedUserIcon',
         anyOf: ['audit.read', 'customer.read'],
-      },
-      {
-        id: 'security-incidents',
-        label: 'Security Incidents',
-        category: 'Compliance & Security',
-        to: '/security',
-        description: 'Security incident monitoring, anomalous event investigations & threat tracking',
-        iconName: 'ShieldIcon',
-        anyOf: ['security.incident'],
       },
     ],
   },

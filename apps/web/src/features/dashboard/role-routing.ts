@@ -94,7 +94,7 @@ export function resolveUserRoles(me: Me | undefined): DashboardRole[] {
   if (grantCodes.has('payout.approve') || grantCodes.has('commission.plan.approve')) {
     inferred.push('ROLE-COMMISSION-APPROVER');
   }
-  if (grantCodes.has('audit.read') && grantCodes.has('security.incident') && !grantCodes.has('lead.create')) {
+  if (grantCodes.has('audit.read') && grantCodes.has('privacy.read') && !grantCodes.has('lead.create')) {
     inferred.push('ROLE-COMPLIANCE');
   }
   if (

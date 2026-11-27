@@ -84,7 +84,7 @@ describe('hosted migration batch', () => {
     expect(await has(`SELECT to_regclass('app.security_event') IS NOT NULL AS ok`)).toBe(true);
     expect(await has(`SELECT to_regclass('app.ledger_account') IS NULL AS ok`)).toBe(true); // Release 3: not in the batch
     const perms = await r.db.query(
-      `SELECT count(*)::int AS n FROM app.permission WHERE code IN ('role.manage','security.incident','security.vuln','lead.reopen','lender.read','lender.manage','product.read','product.manage','commission.calculate','commission.plan.edit','commission.plan.approve','customer.reveal_sensitive')`,
+      `SELECT count(*)::int AS n FROM app.permission WHERE code IN ('role.manage','lead.reopen','lender.read','lender.manage','product.read','product.manage','commission.calculate','commission.plan.edit','commission.plan.approve','customer.reveal_sensitive')`,
     );
     expect(perms.rows[0].n).toBe(12);
     await r.db.end();

@@ -42,7 +42,6 @@ export const SUB_PERMISSION_CODES = [
   'target.read',
   // Audit, security, privacy
   'audit.seal',
-  'security.read',
   'privacy.read',
   // Integrations and data
   'import.read',
@@ -151,8 +150,6 @@ export const PERMISSION_CODES = [
   'data_correction.approve',
   'integration.read',
   'integration.manage',
-  'security.incident',
-  'security.vuln',
   'attendance.manage',
   'invoice.manage',
   // Added 2026-10-19 (additive; migration M-070): codes the DSA module pages name for endpoints built since.

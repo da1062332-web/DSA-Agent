@@ -29,7 +29,6 @@ import * as automation from './automation/router';
 import * as partnerApi from './partner-api/router';
 import * as audit from './audit/router';
 import * as imports from './platform/imports/router';
-import * as security from './security/router';
 import * as reconciliation from './reconciliation/router';
 import * as workforce from './crm/workforce/router';
 import * as invoices from './invoices/router';
@@ -71,7 +70,6 @@ export const apiModules: readonly ApiModule[] = [
   { name: 'automation', owner: 'Prathamesh', createRouter: automation.createRouter },
   { name: 'partner-api', owner: 'Vaibhav', createRouter: partnerApi.createRouter },
   { name: 'audit', owner: 'Vaibhav', createRouter: audit.createRouter },
-  { name: 'security', owner: 'Vaibhav', createRouter: security.createRouter },
   { name: 'reconciliation', owner: 'Devyani', createRouter: reconciliation.createRouter },
 ];
 // rules/engine (Dipanshu, with packages/bre-core) has no router: the engine is in-process behind DecisionPort.

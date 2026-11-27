@@ -51,7 +51,6 @@ describe('a sub-permission opens exactly its own screen', () => {
     ['performance.read', 'Performance Dashboard', null],
     ['target.read', 'Targets', 'target.manage'],
     ['privacy.read', 'Privacy and consent', 'privacy.manage'],
-    ['security.read', 'Security events and incidents', 'security.incident'],
     ['import.read', 'Import and export', 'import.run'],
   ];
 
@@ -250,12 +249,11 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
       'audit.read',
       'audit.export_evidence',
       'privacy.read',
-      'security.read',
       'customer.read',
       'complaint.read',
     ]);
     expect(shown).toEqual(
-      expect.arrayContaining(['Audit', 'Privacy and consent', 'Security events and incidents', 'Grievances']),
+      expect.arrayContaining(['Audit', 'Privacy and consent', 'Grievances']),
     );
     for (const hidden of ['Lender cases', 'Commission', 'Ledger', 'Documents', 'Applications'])
       expect(shown, hidden).not.toContain(hidden);

@@ -30,6 +30,11 @@ function migrationPermissionCodes(): Map<string, string> {
       }
     }
   }
+  for (const file of readdirSync(MIGRATIONS_DIR).sort()) {
+    const sql = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+    for (const statement of sql.matchAll(/DELETE FROM (?:app\.)?permission\s+WHERE\s+code\s+IN\s*\(([^)]*)\)/gi))
+      for (const c of statement[1]!.matchAll(/'([a-z_.]+)'/g)) defined.delete(c[1]!);
+  }
   return defined;
 }
 

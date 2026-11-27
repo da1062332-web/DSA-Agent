@@ -64,7 +64,6 @@ export const LEGACY_PARENTS: Record<SubPermissionCode, readonly PermissionCode[]
   'target.read': ['report.read', 'target.manage'],
   // Audit, security, privacy
   'audit.seal': ['audit.read'],
-  'security.read': ['security.incident'],
   'privacy.read': ['audit.read', 'customer.read', 'privacy.manage'],
   // Integrations and data
   'import.read': ['import.run', 'config.manage'],
@@ -358,7 +357,6 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
     label: 'Audit, security and privacy',
     features: [
       { id: 'audit', label: 'Audit', codes: ['audit.read', 'audit.export_evidence', 'audit.seal'] },
-      { id: 'security', label: 'Security', codes: ['security.read', 'security.incident', 'security.vuln'] },
       { id: 'privacy', label: 'Privacy', codes: ['privacy.read', 'privacy.manage'] },
     ],
   },

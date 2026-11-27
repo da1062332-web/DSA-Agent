@@ -24,7 +24,6 @@ import * as rulesApi from './modules/rules/api/openapi';
 import * as verification from './modules/verification/openapi';
 import * as partnerApi from './modules/partner-api/openapi';
 import * as audit from './modules/audit/openapi';
-import * as security from './modules/security/openapi';
 import * as ledger from './modules/ledger/openapi';
 import * as documentSharing from './modules/origination/document-sharing/openapi';
 import { registerPaths as paths_automation } from './modules/automation/openapi-paths';
@@ -74,7 +73,6 @@ const MODULES = [
   verification,
   partnerApi,
   audit,
-  security,
   documentSharing,
 ];
 
