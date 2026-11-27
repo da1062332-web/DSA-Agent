@@ -6,6 +6,10 @@
 // QLOAX_ROLE_GRANTS_PRE_M098 is that snapshot as read. QLOAX_ROLE_GRANTS is the same roles after migration M-098 has backfilled the
 // sub-permissions (withSubPermissionBackfill, which the migration mirrors): what a migrated tenant holds before the role matrix trims it.
 // The specs use the migrated view, because the web app gates screens by the sub-permissions.
+//
+// A snapshot, not today's roles: it predates M-099, M-104, M-105 (which merged the rule roles into ROLE-POLICY-MGR and retired the doc
+// verifier and commission approver) and M-120. Specs that need the current grants layer those migrations on it from the SQL files;
+// see role-grants-m104.spec.ts and role-grants-m120.spec.ts.
 import { withSubPermissionBackfill } from '@dsa/contracts';
 
 export const QLOAX_ROLE_GRANTS_PRE_M098: Record<string, string[]> = {

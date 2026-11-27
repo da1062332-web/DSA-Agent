@@ -372,13 +372,15 @@ export const USERS: UserSeed[] = [
     handle: 'ruleauthor',
     displayName: 'Rekha Author',
     branch: 'MUM01',
-    roles: [{ code: 'ROLE-RULE-AUTHOR', scope: 'TENANT' }],
+    // M-105 merged Rule author and Rule approver into Lender policy manager; both demo users hold it, as on hosted. SOD-01 still
+    // keeps each from approving what they drafted, so one authors and the other approves.
+    roles: [{ code: 'ROLE-POLICY-MGR', scope: 'TENANT' }],
   },
   {
     handle: 'ruleapprover',
     displayName: 'Ravi Approver',
     branch: 'MUM01',
-    roles: [{ code: 'ROLE-RULE-APPROVER', scope: 'TENANT' }],
+    roles: [{ code: 'ROLE-POLICY-MGR', scope: 'TENANT' }],
   },
   { handle: 'rmpune', displayName: 'Pooja RM', branch: 'PUN01', roles: [{ code: 'ROLE-RM', scope: 'OWN' }] },
 ];

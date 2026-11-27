@@ -61,7 +61,7 @@ export interface LoanProduct {
   activeVersionNo?: number;
   activeVersion?: ProductVersion;
   versions?: ProductVersion[];
-  lockVersion: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }

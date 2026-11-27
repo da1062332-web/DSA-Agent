@@ -142,7 +142,7 @@ export function LenderDetailPage() {
         status: editStatus,
         statusReason: editStatus !== 'ACTIVE' ? editStatusReason.trim() : undefined,
       };
-      const updated = await updateLender(lender.id, lender.lockVersion, input);
+      const updated = await updateLender(lender.id, lender.version, input);
       setLender(updated);
       setSuccessMsg('Lender profile updated successfully.');
       setEditProfileOpen(false);
@@ -186,7 +186,7 @@ export function LenderDetailPage() {
   const handleToggleEmpanelmentStatus = async (emp: Empanelment, nextStatus: EmpanelmentStatus) => {
     try {
       setError(null);
-      await updateEmpanelment(emp.id, emp.lockVersion, { status: nextStatus });
+      await updateEmpanelment(emp.id, emp.version, { status: nextStatus });
       setSuccessMsg(`Empanelment ${emp.dsaCode} updated to ${nextStatus}.`);
       await loadLender();
     } catch (err) {
@@ -229,7 +229,7 @@ export function LenderDetailPage() {
     try {
       setSavingContacts(true);
       setContactsError(null);
-      await setLenderContacts(lender.id, lender.lockVersion, {
+      await setLenderContacts(lender.id, lender.version, {
         contacts: contactRows,
       });
       setSuccessMsg('Lender contacts and escalation hierarchy updated.');
@@ -325,7 +325,7 @@ export function LenderDetailPage() {
             />
           </Stack>
         }
-        subtitle={`Lock Version: ${lender.lockVersion}`}
+        subtitle={`Version ${lender.version}`}
         actions={
           canManage && (
             <Button variant="outlined" size="small" onClick={() => setEditProfileOpen(true)}>

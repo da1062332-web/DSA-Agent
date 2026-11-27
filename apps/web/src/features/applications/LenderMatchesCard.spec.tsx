@@ -123,6 +123,14 @@ describe('P1-04 Lender matches card', () => {
     expect(html).toContain('Not an offer or a sanction');
   });
 
+  it('P1-04 figures that do not apply to a row are left blank, not shown as "Not set"; a policy with no fee says None', () => {
+    const html = render();
+    expect(html).not.toContain('Not set');
+    expect(html).toContain('None');
+    setMe(['lender_match.run']); // no case button: the action cell is empty too
+    expect(render()).not.toContain('Not set');
+  });
+
   it('P1-04 only an ELIGIBLE row offers Create lender case, and only with lender_case.submit', () => {
     expect(render()).toContain('data-testid="lenderMatches.createCase.lpo_A"');
     expect(render()).not.toContain('lenderMatches.createCase.lpo_B');

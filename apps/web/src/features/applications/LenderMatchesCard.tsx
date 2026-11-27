@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import type { LenderMatchPrefill, LenderMatchResultView, LenderMatchRun } from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError, apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { hasPermission, useMe } from '../../api/useMe';
 import { createLenderCase } from '../lender-cases/api';
@@ -228,6 +228,13 @@ export function LenderMatchesCard({
   );
 }
 
+/**
+ * A figure that only an ELIGIBLE row has. Other rows get an empty fragment, not null: the DataTable shows "Not set" for a blank
+ * cell, which would read as missing data when the figure simply does not apply.
+ */
+const figure = (r: LenderMatchResultView, text: string | null | undefined): ReactNode =>
+  r.outcome === 'ELIGIBLE' ? (text ?? null) : <></>;
+
 function MatchResults({
   run,
   applicationId,
@@ -295,25 +302,29 @@ function MatchResults({
             id: 'amount',
             header: 'Eligible amount',
             align: 'right',
-            render: (r) => rupees(r.eligibleAmount) ?? '—',
+            render: (r) => figure(r, rupees(r.eligibleAmount)),
           },
           {
             id: 'emi',
             header: 'EMI',
             align: 'right',
             render: (r) =>
-              r.emiMin && r.emiMax
-                ? r.emiMin.amount === r.emiMax.amount
-                  ? rupees(r.emiMin)
-                  : `${rupees(r.emiMin)} – ${rupees(r.emiMax)}`
-                : '—',
+              figure(
+                r,
+                r.emiMin && r.emiMax
+                  ? r.emiMin.amount === r.emiMax.amount
+                    ? rupees(r.emiMin)
+                    : `${rupees(r.emiMin)} – ${rupees(r.emiMax)}`
+                  : null,
+              ),
           },
-          { id: 'foir', header: 'FOIR', align: 'right', render: (r) => bpsText(r.foirBps) ?? '—' },
+          { id: 'foir', header: 'FOIR', align: 'right', render: (r) => figure(r, bpsText(r.foirBps)) },
           {
             id: 'fee',
             header: 'Processing fee',
             align: 'right',
-            render: (r) => rupees(r.processingFee) ?? '—',
+            // An eligible row without a fee is a policy that charges none, not a missing value.
+            render: (r) => figure(r, r.processingFee ? rupees(r.processingFee) : 'None'),
           },
           {
             id: 'action',
@@ -322,7 +333,9 @@ function MatchResults({
             render: (r) =>
               r.outcome === 'ELIGIBLE' && canCreateCase ? (
                 <CreateCaseButton result={r} applicationId={applicationId} category={category} />
-              ) : null,
+              ) : (
+                <></>
+              ),
           },
         ]}
       />
