@@ -57,10 +57,13 @@ import type {
   ReportCatalogueItem,
 } from '@dsa/contracts';
 import { apiDownload, errorText } from '../../api/client';
+import { moduleEnabled, useMe } from '../../api/useMe';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
 
 export function ReportingPage() {
+  // The connector dashboard is offered only while the tenant has connectors switched on (MOD-CON).
+  const connectorsOn = moduleEnabled(useMe().data, 'MOD-CON');
   const [activeTab, setActiveTab] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState('2026-10');
   const [selectedDate, setSelectedDate] = useState('2026-10-12');
@@ -102,7 +105,7 @@ export function ReportingPage() {
   const { data: branchData, isLoading: branchLoading } = useBranchDashboard(selectedPeriod);
   const { data: opsData, isLoading: opsLoading } = useOperationsDashboard(selectedPeriod);
   const { data: finData, isLoading: finLoading } = useFinanceDashboard(selectedPeriod);
-  const { data: conData, isLoading: conLoading } = useConnectorDashboard(selectedPeriod);
+  const { data: conData, isLoading: conLoading } = useConnectorDashboard(selectedPeriod, connectorsOn);
 
   // Mutations
   const startRunMutation = useStartReportRun();
@@ -371,7 +374,9 @@ export function ReportingPage() {
             }}
           >
             <Box sx={{ display: 'flex', gap: 1 }}>
-              {(['EXECUTIVE', 'BRANCH', 'OPERATIONS', 'FINANCE', 'CONNECTOR'] as const).map((cat) => (
+              {(['EXECUTIVE', 'BRANCH', 'OPERATIONS', 'FINANCE', 'CONNECTOR'] as const)
+                .filter((cat) => cat !== 'CONNECTOR' || connectorsOn)
+                .map((cat) => (
                 <Button
                   key={cat}
                   variant={dashboardCategory === cat ? 'contained' : 'outlined'}
@@ -675,7 +680,7 @@ export function ReportingPage() {
           )}
 
           {/* CONNECTOR DASHBOARD */}
-          {dashboardCategory === 'CONNECTOR' && (
+          {dashboardCategory === 'CONNECTOR' && connectorsOn && (
             <Box>
               {conLoading ? (
                 <CircularProgress />

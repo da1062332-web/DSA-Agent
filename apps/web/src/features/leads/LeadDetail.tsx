@@ -29,7 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { hasPermission, useMe } from '../../api/useMe';
+import { hasPermission, moduleEnabled, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { UserPicker } from '../admin/components';
 import type { UserSummary } from '../admin/api';
@@ -773,14 +773,16 @@ export function LeadDetail() {
                   </Typography>
                   <Typography variant="body1">{lead.campaign || <NotSet />}</Typography>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Connector / Partner
-                  </Typography>
-                  <Box sx={{ mt: 0.5 }}>
-                    <ConnectorName id={lead.connectorId} fallback="Direct / Organic" typographyProps={{ variant: 'body1' }} />
+                {moduleEnabled(me.data, 'MOD-CON') && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Connector / Partner
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <ConnectorName id={lead.connectorId} fallback="Direct / Organic" typographyProps={{ variant: 'body1' }} />
+                    </Box>
                   </Box>
-                </Box>
+                )}
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Referred At
