@@ -1,21 +1,7 @@
 // apps/api/src/modules/crm/workforce/service.ts — Module 26: Workforce Service
 import { AppError, type RequestContext, type Tx } from '@dsa/contracts';
 import type { WorkforceRepository } from './repository';
-import type {
-  AgentWorkforceSummary,
-  AttendanceRecord,
-  AvailabilityStatus,
-  CreateDelegationInput,
-  DelegationRecord,
-} from './types';
-
-function parseLockVersion(ifMatch: string): number {
-  const match = ifMatch.replace(/^W\//, '').match(/^"?(\d+)"?$/);
-  if (!match || !match[1]) {
-    throw AppError.of('MALFORMED_REQUEST', 'Invalid If-Match header format');
-  }
-  return parseInt(match[1], 10);
-}
+import type { AttendanceRecord } from './types';
 
 export interface WorkforceServiceDeps {
   repository: WorkforceRepository;
@@ -27,193 +13,26 @@ export class WorkforceService {
   /**
    * API-USR-009: Self availability update (PATCH /v1/me/availability)
    */
-  async updateMyAvailability(
-    tx: Tx,
-    ctx: RequestContext,
-    ifMatch: string | undefined,
-    availability: AvailabilityStatus,
-  ): Promise<{ user: any; etag: string }> {
-    const tenantId = ctx.principal.tenantId;
-    const userId = ctx.principal.id;
-
-    const user = await this.deps.repository.findUserById(tx, tenantId, userId);
-    if (!user) {
-      throw AppError.of('NOT_FOUND', 'User record not found.');
-    }
-
-    const expectedVersion = ifMatch ? parseLockVersion(ifMatch) : user.lock_version;
-    const updated = await this.deps.repository.updateUserAvailability(
-      tx,
-      tenantId,
-      userId,
-      availability,
-      expectedVersion,
-      userId,
-    );
-
-    return {
-      user: {
-        id: updated.id,
-        email: updated.email,
-        displayName: updated.display_name,
-        availability: updated.availability,
-        capacity: updated.capacity ?? 10,
-        lockVersion: updated.lock_version,
-      },
-      etag: `"${updated.lock_version}"`,
-    };
-  }
 
   /**
    * Manager updates capacity limit for an agent
    */
-  async updateAgentCapacity(
-    tx: Tx,
-    ctx: RequestContext,
-    targetUserId: string,
-    capacity: number,
-  ): Promise<{ user: any; etag: string }> {
-    const tenantId = ctx.principal.tenantId;
-    const isSelf = ctx.principal.id === targetUserId;
-    const hasManage = ctx.principal.grants?.some(
-      (g) => g.code === 'user.manage' || g.code === 'config.manage',
-    );
-
-    if (!isSelf && !hasManage) {
-      throw AppError.of('FORBIDDEN', 'Permission denied: user.manage required to modify agent capacity.');
-    }
-
-    const updated = await this.deps.repository.updateUserCapacity(
-      tx,
-      tenantId,
-      targetUserId,
-      capacity,
-      ctx.principal.id,
-    );
-
-    return {
-      user: {
-        id: updated.id,
-        displayName: updated.display_name,
-        capacity: updated.capacity ?? capacity,
-        lockVersion: updated.lock_version,
-      },
-      etag: `"${updated.lock_version}"`,
-    };
-  }
 
   /**
    * Lists agents with availability, capacity, and active workload
    */
-  async listWorkforceAgents(
-    tx: Tx,
-    ctx: RequestContext,
-    branchId?: string,
-  ): Promise<AgentWorkforceSummary[]> {
-    const tenantId = ctx.principal.tenantId;
-    return this.deps.repository.listWorkforceAgents(tx, tenantId, branchId);
-  }
 
   /**
    * API-WRK-001: Start coverage delegation
    */
-  async createDelegation(
-    tx: Tx,
-    ctx: RequestContext,
-    input: CreateDelegationInput,
-  ): Promise<DelegationRecord> {
-    const tenantId = ctx.principal.tenantId;
-    const isSelfDelegating = ctx.principal.id === input.delegatorId;
-    const hasManage = ctx.principal.grants?.some(
-      (g) => g.code === 'user.manage' || g.code === 'config.manage',
-    );
-
-    if (!isSelfDelegating && !hasManage) {
-      throw AppError.of('FORBIDDEN', 'Permission denied: user.manage required to delegate for another user.');
-    }
-
-    // Verify both users exist in the same tenant
-    const delegator = await this.deps.repository.findUserById(tx, tenantId, input.delegatorId);
-    if (!delegator) {
-      throw AppError.of('VALIDATION_ERROR', `Delegator ${input.delegatorId} does not exist.`);
-    }
-
-    const delegate = await this.deps.repository.findUserById(tx, tenantId, input.delegateId);
-    if (!delegate) {
-      throw AppError.of('VALIDATION_ERROR', `Delegate ${input.delegateId} does not exist.`);
-    }
-
-    // Check for overlapping active delegation for this delegator
-    const overlap = await this.deps.repository.findOverlappingDelegation(
-      tx,
-      tenantId,
-      input.delegatorId,
-      input.startsAt,
-      input.endsAt,
-    );
-    if (overlap) {
-      throw AppError.of(
-        'EFFECTIVE_OVERLAP',
-        `Delegator already has an active delegation from ${overlap.startsAt} to ${overlap.endsAt}.`,
-      );
-    }
-
-    const now = new Date().toISOString();
-    const record: DelegationRecord = {
-      id: 'dlg_' + Math.random().toString(36).substring(2, 12),
-      tenantId,
-      delegatorId: input.delegatorId,
-      delegateId: input.delegateId,
-      startsAt: input.startsAt,
-      endsAt: input.endsAt,
-      reason: input.reason ?? null,
-      status: 'ACTIVE',
-      lockVersion: 0,
-      createdAt: now,
-      createdBy: ctx.principal.id,
-      updatedAt: now,
-      updatedBy: ctx.principal.id,
-      delegatorName: delegator.display_name,
-      delegateName: delegate.display_name,
-    };
-
-    await this.deps.repository.createDelegation(tx, record);
-    return record;
-  }
 
   /**
    * API-WRK-002: End coverage delegation
    */
-  async endDelegation(tx: Tx, ctx: RequestContext, delegationId: string): Promise<DelegationRecord> {
-    const tenantId = ctx.principal.tenantId;
-    const delegation = await this.deps.repository.getDelegationById(tx, tenantId, delegationId);
-    if (!delegation) {
-      throw AppError.of('NOT_FOUND', 'Delegation record not found.');
-    }
-
-    const isDelegator = ctx.principal.id === delegation.delegatorId;
-    const hasManage = ctx.principal.grants?.some(
-      (g) => g.code === 'user.manage' || g.code === 'config.manage',
-    );
-
-    if (!isDelegator && !hasManage) {
-      throw AppError.of('FORBIDDEN', 'Permission denied: user.manage required to end delegation.');
-    }
-
-    return this.deps.repository.endDelegation(tx, tenantId, delegationId, ctx.principal.id);
-  }
 
   /**
    * Lists delegations
    */
-  async listDelegations(
-    tx: Tx,
-    ctx: RequestContext,
-    filter?: { delegatorId?: string; delegateId?: string; status?: string },
-  ): Promise<DelegationRecord[]> {
-    const tenantId = ctx.principal.tenantId;
-    return this.deps.repository.listDelegations(tx, tenantId, filter);
-  }
 
   /**
    * Attendance check-in

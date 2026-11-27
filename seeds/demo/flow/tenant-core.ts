@@ -688,31 +688,6 @@ export function buildTenantCore(t: Tenant, out: Tables): void {
     });
   });
 
-  const delegations: [string, string, number, number, string][] = [
-    ['branchmgr', 'teammgr', 2, 9, 'Leave cover for branch manager (synthetic)'],
-    ['owner', 'branchmgr', 5, 7, 'Owner travelling to Pune (synthetic)'],
-    ['teammgr', 'rm1', 1, 3, 'Team lead cover (synthetic)'],
-    ['loanops', 'compliance', 4, 6, 'Sign-off cover (synthetic)'],
-    ['admin', 'owner', 10, 12, 'Admin cover during audit (synthetic)'],
-    ['rm2', 'sales1', 8, 9, 'RM cover during site visit (synthetic)'],
-    ['ruleauthor', 'ruleapprover', 15, 16, 'Rule review hand-off (synthetic)'],
-    ['rmpune', 'rm1', 3, 4, 'Cross-branch lead cover (synthetic)'],
-  ];
-  delegations.forEach(([from, to, start, end, reason], i) =>
-    out.add('delegation', {
-      id: idOf(t, 'dlg', i + 1),
-      tenant_id: t.id,
-      delegator_id: ix(t.users, from),
-      delegate_id: ix(t.users, to),
-      starts_at: at(ANCHOR, start - 1),
-      ends_at: at(ANCHOR, end - 1, 8),
-      reason,
-      status: end < 16 ? 'ENDED' : 'ACTIVE',
-      created_by: ix(t.users, from),
-      updated_by: ix(t.users, from),
-    }),
-  );
-
   // Draft configuration bundles, one per kind of setting the owner might export.
   for (let i = 0; i < 8; i += 1) {
     out.add('config_bundle_draft', {

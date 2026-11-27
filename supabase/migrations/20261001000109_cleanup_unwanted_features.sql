@@ -10,6 +10,8 @@
 --      and webhook subscriptions still use them.
 --   4. Legal holds and document archives: legal_hold, document_archive. Permissions privacy.manage and document.download stay:
 --      privacy requests and document downloads still use them.
+--   6. Delegations, capacity and availability: delegation table. Attendance, the users availability and capacity columns and the
+--      permission attendance.manage stay (the user directory and attendance still use them).
 --   5. Data corrections: data_correction_request, function approved_data_corrections(integer); permissions data_correction.request,
 --      data_correction.approve.
 --
@@ -95,3 +97,14 @@ DELETE FROM app.permission WHERE code IN ('data_correction.request', 'data_corre
 
 DROP FUNCTION IF EXISTS app.approved_data_corrections(integer);
 DROP TABLE IF EXISTS app.data_correction_request;
+
+-- 6. Delegations (leave cover) ------------------------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('app.delegation') IS NOT NULL AND EXISTS (SELECT 1 FROM app.delegation) THEN
+    RAISE EXCEPTION 'M-109: app.delegation holds rows; stop and review before dropping it';
+  END IF;
+END
+$$;
+
+DROP TABLE IF EXISTS app.delegation;

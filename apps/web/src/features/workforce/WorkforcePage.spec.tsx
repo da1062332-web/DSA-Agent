@@ -22,26 +22,8 @@ vi.mock('../../api/useMe', () => ({
 }));
 
 vi.mock('./api', () => ({
-  getAgents: vi.fn().mockResolvedValue([
-    {
-      id: 'usr_01JTESTAGENT',
-      displayName: 'Vikram Mehta',
-      email: 'vikram@dsa.com',
-      availability: 'AVAILABLE',
-      capacity: 10,
-      activeLeadCount: 3,
-      activeApplicationCount: 1,
-      primaryBranchId: 'br_mumbai',
-      status: 'ACTIVE',
-    },
-  ]),
-  getDelegations: vi.fn().mockResolvedValue([]),
   getMyTodayAttendance: vi.fn().mockResolvedValue(null),
   getAttendance: vi.fn().mockResolvedValue([]),
-  updateMyAvailability: vi.fn().mockResolvedValue({ user: {}, etag: '"1"' }),
-  updateAgentCapacity: vi.fn().mockResolvedValue({ user: {}, etag: '"1"' }),
-  createDelegation: vi.fn().mockResolvedValue({}),
-  endDelegation: vi.fn().mockResolvedValue({}),
   checkIn: vi.fn().mockResolvedValue({}),
   checkOut: vi.fn().mockResolvedValue({}),
 }));
@@ -65,37 +47,14 @@ describe('Module 26 — WorkforcePage Frontend Component (MOD-WRK)', () => {
     const html = renderWorkforcePage();
 
     expect(html).toContain('Workforce Management');
-    expect(html).toContain(
-      'Availability &amp; capacity routing, leave coverage planner, and daily attendance.',
-    );
+    expect(html).toContain('Daily attendance and check-in.');
   });
 
-  it('renders quick self-availability switcher chips', () => {
+  it('TEST-P0-02 shows attendance only: no availability switcher, capacity table or leave coverage planner', () => {
     const html = renderWorkforcePage();
 
-    expect(html).toContain('My Status:');
-    expect(html).toContain('Available');
-    expect(html).toContain('Busy');
-    expect(html).toContain('Off Duty');
-    expect(html).toContain('On Leave');
-  });
-
-  it('renders all 3 submodule tabs: Capacity, Leave Coverage, Attendance', () => {
-    const html = renderWorkforcePage();
-
-    expect(html).toContain('Capacity &amp; Availability');
-    expect(html).toContain('Leave Coverage Planner');
-    expect(html).toContain('Attendance &amp; Check-in');
-  });
-
-  it('renders capacity & availability table headers on initial load', () => {
-    const html = renderWorkforcePage();
-
-    expect(html).toContain('Agent');
-    expect(html).toContain('Branch');
-    expect(html).toContain('Working Status');
-    expect(html).toContain('Active Workload');
-    expect(html).toContain('Capacity Meter');
-    expect(html).toContain('Actions');
+    expect(html).not.toContain('My Status:');
+    expect(html).not.toContain('Capacity Meter');
+    expect(html).not.toContain('Leave Coverage Planner');
   });
 });

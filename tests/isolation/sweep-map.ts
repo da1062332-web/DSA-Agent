@@ -32,7 +32,6 @@ export const SEGMENT_TABLE: Record<string, string> = {
   'data-subject-requests': 'data_subject_request',
   'dead-letters': 'wfa_dead_letter',
   'decision-records': 'decision_record',
-  delegations: 'delegation',
   disputes: 'dispute',
   'duplicate-reviews': 'duplicate_review',
   'document-versions': 'document_version',
