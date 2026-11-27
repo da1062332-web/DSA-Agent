@@ -50,6 +50,18 @@ import {
 const label = (code: string) => code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' ');
 const errorText = (err: unknown) =>
   err instanceof ApiError ? `${err.message}` : err instanceof Error ? err.message : 'Something went wrong.';
+const isConflict = (err: unknown) => err instanceof ApiError && err.code === 'VERSION_CONFLICT';
+/**
+ * The message for a failed save. On 409 VERSION_CONFLICT someone else saved first: the latest data is reloaded (`reload`) and the
+ * user is told to check it and save again, so a stale form never overwrites another person's change.
+ */
+export function saveErrorMessage(err: unknown, what: string, reload: () => void): string {
+  if (isConflict(err)) {
+    reload();
+    return `Someone else changed this ${what} while you were editing. The latest version has been loaded; check it and save again.`;
+  }
+  return errorText(err);
+}
 /** Rupees typed by the user → the API's money string. Empty means "not given". */
 const toMoney = (rupees: string) =>
   rupees.trim() === ''
@@ -119,10 +131,9 @@ export function ProfileTab({ customerId, readOnly }: { customerId: string; readO
     onError: (err) =>
       setMessage({
         ok: false,
-        text:
-          err instanceof ApiError && err.code === 'VERSION_CONFLICT'
-            ? 'Someone else changed this profile. Reload and try again.'
-            : errorText(err),
+        text: saveErrorMessage(err, 'profile', () =>
+          qc.invalidateQueries({ queryKey: ['customer-profile', customerId] }),
+        ),
       }),
   });
 
@@ -263,7 +274,13 @@ export function IdentityTab({ customerId, readOnly }: { customerId: string; read
       });
       qc.invalidateQueries({ queryKey: ['customer-identity', customerId] });
     },
-    onError: (err) => setMessage({ ok: false, text: errorText(err) }),
+    onError: (err) =>
+      setMessage({
+        ok: false,
+        text: saveErrorMessage(err, 'identity', () =>
+          qc.invalidateQueries({ queryKey: ['customer-identity', customerId] }),
+        ),
+      }),
   });
 
   const reveal = useMutation({
@@ -461,7 +478,11 @@ export function AddressesTab({ customerId, readOnly }: { customerId: string; rea
       setMessage({ ok: true, text: 'Address saved.' });
       refresh();
     },
-    onError: (err) => setMessage({ ok: false, text: errorText(err) }),
+    onError: (err) => {
+      // On a conflict the dialog closes so the reloaded address is shown, not the stale form.
+      if (isConflict(err)) setEditing(null);
+      setMessage({ ok: false, text: saveErrorMessage(err, 'address', refresh) });
+    },
   });
   const remove = useMutation({
     mutationFn: (a: CustomerAddressView) => removeCustomerAddress(customerId, a),
@@ -469,7 +490,7 @@ export function AddressesTab({ customerId, readOnly }: { customerId: string; rea
       setMessage({ ok: true, text: 'Address removed.' });
       refresh();
     },
-    onError: (err) => setMessage({ ok: false, text: errorText(err) }),
+    onError: (err) => setMessage({ ok: false, text: saveErrorMessage(err, 'address', refresh) }),
   });
 
   if (q.isLoading) return <CircularProgress size={24} />;
