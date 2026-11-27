@@ -53,7 +53,6 @@ import {
   assertRoleAllowedForUserType,
   assertRoleCodeNotReserved,
   countActiveAdministrators,
-  isRetiredRoleCode,
 } from './role-guards';
 
 const nextUlid = monotonicFactory();
@@ -949,19 +948,15 @@ export function createRouter(deps: ApiDeps): Router {
           ORDER BY r.name ASC
         `.execute(tx);
 
-        // Retired roles (M-103, M-105) stay in the database only for assignment history: they hold no permissions and can be neither
-        // created nor assigned, so the list does not offer them. GET /v1/roles/{id} still answers for one.
-        return result.rows
-          .filter((r) => !isRetiredRoleCode(r.code))
-          .map((r) => ({
-            id: r.id,
-            tenantId: r.tenant_id,
-            code: r.code,
-            name: r.name,
-            isTemplate: r.is_template,
-            version: r.version,
-            permissions: r.permissions ?? [],
-          }));
+        return result.rows.map((r) => ({
+          id: r.id,
+          tenantId: r.tenant_id,
+          code: r.code,
+          name: r.name,
+          isTemplate: r.is_template,
+          version: r.version,
+          permissions: r.permissions ?? [],
+        }));
       });
 
       res.json({ data: roles, meta: { nextCursor: null, limit: roles.length } });

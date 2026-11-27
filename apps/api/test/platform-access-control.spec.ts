@@ -102,29 +102,6 @@ describe('Module 5: Access Control (RBAC API)', () => {
       expect(res.body.data[0].code).toBe('ROLE-ADMIN');
     });
 
-    it('TEST-ACL-RET-01 the roles list leaves out retired roles kept for history; the role itself still reads by ID', async () => {
-      const store = createMockPlatformStore();
-      store.roles.push({
-        id: 'rol_retired_rule_author',
-        tenant_id: 'ten_01JTESTTENANT00000000000000',
-        code: 'ROLE-RULE-AUTHOR',
-        name: 'Rule author (retired)',
-        is_template: false,
-        version: 2,
-        permissions: [],
-      });
-      const app = createTestApp({ auth: fakeAuth(adminPrincipal), deps: { txRunner: store.runner } });
-      const list = await request(app).get('/v1/roles');
-      expect(list.status).toBe(200);
-      expect(list.body.data.map((r: { code: string }) => r.code)).toEqual([
-        'ROLE-ADMIN',
-        'ROLE-LOAN-OFFICER',
-      ]);
-      const one = await request(app).get('/v1/roles/rol_retired_rule_author');
-      expect(one.status).toBe(200);
-      expect(one.body.code).toBe('ROLE-RULE-AUTHOR');
-    });
-
     it('gets role by ID with ETag', async () => {
       const store = createMockPlatformStore();
       const app = createTestApp({
