@@ -2,6 +2,7 @@
 import {
   AppError,
   withLegacy,
+  type AccountingExportRow,
   type AuditPort,
   type Authz,
   type ConnectorStatement,
@@ -25,6 +26,44 @@ export interface InvoiceServiceDeps {
   authz: Authz;
   audit?: AuditPort;
   ids?: IdGenerator;
+}
+
+
+/** Inclusive first and last day of a YYYY-MM month, as ISO dates. */
+export function monthBounds(month: string): { from: string; to: string } {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` };
+}
+
+const money = (n: number): string => (Number.isFinite(n) ? n : 0).toFixed(2);
+
+const ACCOUNTING_EXPORT_HEADER = [
+  'Record type',
+  'Number',
+  'Date',
+  'Party',
+  'Taxable value',
+  'GST',
+  'TDS',
+  'Total',
+  'Payment status',
+] as const;
+
+const csvCell = (value: string): string =>
+  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+/** RFC 4180 CSV for the accounting export. Exported so it can be unit tested without a database. */
+export function accountingExportToCsv(rows: AccountingExportRow[]): string {
+  const lines = [ACCOUNTING_EXPORT_HEADER.join(',')];
+  for (const r of rows) {
+    lines.push(
+      [r.recordType, r.number, r.date, r.party, r.taxableValue, r.gst, r.tds, r.total, r.paymentStatus]
+        .map(csvCell)
+        .join(','),
+    );
+  }
+  return `${lines.join('\r\n')}\r\n`;
 }
 
 export class InvoiceService {
@@ -233,6 +272,80 @@ export class InvoiceService {
    * SUB-INV.02 GET /v1/connectors/:id/invoice-statements and API-CPT-004 GET /v1/portal/connectors/:id/statements
    * Generates periodic statement derived from ENT-081 ledger_entry and ENT-078 commission_payable
    */
+  /**
+   * P0-06: GET /v1/invoices/accounting-export?month=YYYY-MM
+   *
+   * The CRM no longer keeps its own ledger — a DSA's books live in Tally or Zoho. This hands the
+   * accountant one month in a form they can import: every invoice dated in the month, plus the
+   * partner payouts recorded on the connector statement ledger.
+   *
+   * Needs invoice.view (to see the invoices) and export.run (to take data out of the system).
+   */
+  async buildAccountingExport(
+    tx: Tx,
+    ctx: RequestContext,
+    month: string,
+  ): Promise<{ filename: string; rows: AccountingExportRow[] }> {
+    this.checkViewPermission(ctx);
+    const allowedExport: PermissionCode[] = withLegacy('export.run');
+    if (!ctx.principal.grants.some((g) => allowedExport.includes(g.code))) {
+      this.deps.authz.requirePermission(ctx, 'export.run');
+    }
+
+    const tenantId = ctx.principal.tenantId;
+    const { from, to } = monthBounds(month);
+
+    const [invoices, payouts] = await Promise.all([
+      this.deps.repository.listInvoicesBetween(tx, tenantId, from, to),
+      this.deps.repository.listPayoutEntriesBetween(tx, tenantId, from, to),
+    ]);
+
+    const invoiceRows: AccountingExportRow[] = invoices.map((inv) => {
+      const gst = Number(inv.taxFields?.gstAmount ?? 0);
+      const tds = Number(inv.taxFields?.tdsAmount ?? 0);
+      // Indian invoice arithmetic: the recorded amount is the taxable value, GST is added, TDS withheld.
+      return {
+        recordType: 'INVOICE',
+        number: inv.number,
+        date: inv.date,
+        party: inv.partyName ?? inv.partyId,
+        taxableValue: money(inv.amount),
+        gst: money(gst),
+        tds: money(tds),
+        total: money(inv.amount + gst - tds),
+        paymentStatus: inv.status,
+      };
+    });
+
+    const payoutRows: AccountingExportRow[] = payouts.map((entry) => ({
+      recordType: 'PAYOUT',
+      number: entry.referenceId ?? entry.id,
+      date: entry.entryDate,
+      party: entry.connectorId,
+      taxableValue: money(entry.amount),
+      gst: money(0),
+      tds: money(0),
+      total: money(entry.amount),
+      paymentStatus: 'DISBURSED',
+    }));
+
+    const rows = [...invoiceRows, ...payoutRows].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number),
+    );
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'invoice.export_run',
+        entityType: 'invoice_export',
+        entityId: month,
+        after: { month, invoiceRows: invoiceRows.length, payoutRows: payoutRows.length },
+        permissionUsed: 'export.run',
+      });
+    }
+
+    return { filename: `accounting-${month}.csv`, rows };
+  }
+
   async generateConnectorStatement(
     tx: Tx,
     ctx: RequestContext,

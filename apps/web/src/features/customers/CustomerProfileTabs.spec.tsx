@@ -5,7 +5,8 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import * as useMeModule from '../../api/useMe';
-import { AddressesTab, IdentityTab, ProfileTab } from './CustomerProfileTabs';
+import { ApiError } from './api';
+import { AddressesTab, IdentityTab, ProfileTab, saveErrorMessage } from './CustomerProfileTabs';
 
 vi.mock('../../api/useMe', async () => {
   const actual = await vi.importActual<typeof useMeModule>('../../api/useMe');
@@ -129,5 +130,15 @@ describe('TEST-UI-CUST-P102 customer profile tabs', () => {
     expect(addresses).toContain('Flat 4, Shanti Nagar');
     expect(addresses).toContain('411001');
     expect(addresses).not.toContain('customer.address.add');
+  });
+
+  it('TEST-UI-CUST-P102-05 a 409 conflict reloads the latest data and says so; other errors do not reload', () => {
+    const reload = vi.fn();
+    const conflict = new ApiError('VERSION_CONFLICT', 'stale', 409);
+    expect(saveErrorMessage(conflict, 'address', reload)).toContain('Someone else changed this address');
+    expect(reload).toHaveBeenCalledTimes(1);
+    const other = new ApiError('VALIDATION_ERROR', 'pincode: must be a six-digit pincode', 422);
+    expect(saveErrorMessage(other, 'address', reload)).toBe('pincode: must be a six-digit pincode');
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });

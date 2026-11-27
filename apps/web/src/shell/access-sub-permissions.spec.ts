@@ -45,7 +45,6 @@ describe('a sub-permission opens exactly its own screen', () => {
     ['attendance.read', 'Workforce', 'attendance.manage'],
     ['commission.view', 'Commission', 'finance.view'],
     ['payout.view', 'Payouts', 'finance.view'],
-    ['ledger.view', 'Ledger', 'finance.view'],
     ['reconciliation.view', 'Reconciliation', 'finance.view'],
     ['invoice.view', 'Invoices', 'finance.view'],
     ['performance.read', 'Performance Dashboard', null],
@@ -89,12 +88,11 @@ describe('a sub-permission opens exactly its own screen', () => {
   });
 
   it('TEST-SUBPERM-01 a sub-permission opens its screen and not a sibling screen that used to share its parent', () => {
-    // finance.view opened all five finance screens; each sub-permission opens one.
-    const finance = ['Commission', 'Payouts', 'Ledger', 'Invoices', 'Reconciliation'];
+    // finance.view opened all four finance screens; each sub-permission opens one.
+    const finance = ['Commission', 'Payouts', 'Invoices', 'Reconciliation'];
     for (const [sub, screen] of [
       ['commission.view', 'Commission'],
       ['payout.view', 'Payouts'],
-      ['ledger.view', 'Ledger'],
       ['invoice.view', 'Invoices'],
       ['reconciliation.view', 'Reconciliation'],
     ] as const) {
@@ -122,15 +120,14 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
       'adjustment.approve',
     ]);
     expect(shown).toEqual(expect.arrayContaining(['Commission', 'Payouts', 'Approvals']));
-    for (const hidden of ['Ledger', 'Invoices', 'Reconciliation', 'Leads', 'Applications', 'Lender cases'])
+    for (const hidden of ['Invoices', 'Reconciliation', 'Leads', 'Applications', 'Lender cases'])
       expect(shown, hidden).not.toContain(hidden);
   });
 
-  it('TEST-SUBPERM-02 a Finance Executive sees the five finance screens and nothing of origination', () => {
+  it('TEST-SUBPERM-02 a Finance Executive sees the four finance screens and nothing of origination', () => {
     const shown = labelsFor([
       'commission.view',
       'payout.view',
-      'ledger.view',
       'reconciliation.view',
       'invoice.view',
       'payout.request',
@@ -138,7 +135,7 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
       'invoice.manage',
     ]);
     expect(shown).toEqual(
-      expect.arrayContaining(['Commission', 'Payouts', 'Ledger', 'Reconciliation', 'Invoices']),
+      expect.arrayContaining(['Commission', 'Payouts', 'Reconciliation', 'Invoices']),
     );
     for (const hidden of [
       'Leads',
@@ -179,7 +176,6 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
     for (const hidden of [
       'Commission',
       'Payouts',
-      'Ledger',
       'Invoices',
       'Lender cases',
       'Privacy and consent',
@@ -237,7 +233,6 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
     for (const hidden of [
       'Commission',
       'Payouts',
-      'Ledger',
       'Invoices',
       'Reconciliation',
       'Privacy and consent',
@@ -257,7 +252,7 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
     expect(shown).toEqual(
       expect.arrayContaining(['Audit', 'Privacy and consent', 'Security events and incidents', 'Grievances']),
     );
-    for (const hidden of ['Lender cases', 'Commission', 'Ledger', 'Documents', 'Applications'])
+    for (const hidden of ['Lender cases', 'Commission', 'Documents', 'Applications'])
       expect(shown, hidden).not.toContain(hidden);
   });
 });
@@ -289,7 +284,6 @@ describe('tenant module entitlements', () => {
         'Verification',
         'Verification workbench',
         'Commission',
-        'Ledger',
         'Document sharing',
       ]),
     );
@@ -297,14 +291,11 @@ describe('tenant module entitlements', () => {
     const off = labelsFor(held, { disabledModules: ['MOD-VER', 'MOD-COM', 'MOD-DSH'] });
     for (const gone of ['Verification', 'Verification workbench', 'Commission', 'Document sharing'])
       expect(off, gone).not.toContain(gone);
-    // The ledger is not a gated module, so it stays.
-    expect(off).toContain('Ledger');
 
     const can = (c: string) => held.includes(c);
     expect(routeAllowed('/verifications', can, false, [])).toBe(true);
     expect(routeAllowed('/verifications', can, false, ['MOD-VER'])).toBe(false);
     expect(routeAllowed('/verifications/workbench', can, false, ['MOD-VER'])).toBe(false);
-    expect(routeAllowed('/ledger', can, false, ['MOD-VER'])).toBe(true);
   });
 
   it('TEST-SUBPERM-04 search and the route guard agree with the sidebar on a switched-off module', () => {

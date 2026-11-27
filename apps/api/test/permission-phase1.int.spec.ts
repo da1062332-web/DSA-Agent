@@ -8,8 +8,6 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startIsolationEnv, type IsolationEnv } from '../../../tests/isolation/harness';
 import { createTxRunner } from '../src/kernel-min/tx-runner';
-import { LEDGER_AUDIT_ACTIONS, LedgerService } from '../src/modules/ledger/ledger-service';
-import { SqlLedgerRepository } from '../src/modules/ledger/repository';
 import { testPrincipal } from './support/fake-auth';
 
 const P = (...c: string[]) => c as PermissionCode[];
@@ -88,11 +86,6 @@ const idem = () => 'p1-' + Math.random().toString(36).slice(2, 12);
 
 beforeAll(async () => {
   env = await startIsolationEnv();
-  await env.admin.query(
-    `INSERT INTO app.ledger_account (id, tenant_id, code, name, type) VALUES
-       ('acc_p1_bank', $1, '1010-P1-BANK', 'Bank', 'ASSET'), ('acc_p1_pay', $1, '2100-P1-PAYABLE', 'Payable', 'LIABILITY')`,
-    [env.A.tenantId],
-  );
 }, 240_000);
 
 afterAll(async () => {
@@ -159,110 +152,6 @@ describe('F-02 sanction and disbursement reads need a sanction or disbursement p
     ]) {
       for (const path of reads) passedGate((await request(as('A', codes)).get(path)).status);
     }
-  });
-});
-
-describe('F-03 manual ledger posting is closed to human sessions; the ledger audit actions are valid', () => {
-  const body = () => ({
-    referenceType: 'MANUAL' as const,
-    referenceId: 'p1-manual-1',
-    period: '2026-10',
-    lines: [
-      { accountCode: '1010-P1-BANK', entryType: 'DEBIT' as const, amount: '100.00' },
-      { accountCode: '2100-P1-PAYABLE', entryType: 'CREDIT' as const, amount: '100.00' },
-    ],
-  });
-
-  it('TEST-P1-F03-01 no permissions, sales, finance executive, commission approver, and a user holding every ledger permission are all refused, and nothing is written', async () => {
-    const everyLedgerPermission = P(
-      'finance.view',
-      'finance.period_close',
-      'export.run',
-      'adjustment.create',
-      'adjustment.approve',
-      'payout.record_payment',
-      'invoice.manage',
-    );
-    for (const codes of [NONE, SALES_EXEC, FINANCE_EXEC, COMMISSION_APPROVER, everyLedgerPermission]) {
-      const res = await request(as('A', codes))
-        .post('/v1/ledger/journals')
-        .set('Idempotency-Key', idem())
-        .send(body());
-      refused(res.status);
-    }
-    // refused before the body is read: an empty body gets 403, not a validation message
-    refused(
-      (await request(as('A', NONE)).post('/v1/ledger/journals').set('Idempotency-Key', idem()).send({}))
-        .status,
-    );
-    const rows = await env.admin.query(
-      `SELECT count(*)::int AS n FROM app.ledger_journal WHERE tenant_id = $1 AND reference_id = 'p1-manual-1'`,
-      [env.A.tenantId],
-    );
-    expect(rows.rows[0].n).toBe(0);
-  });
-
-  it('TEST-P1-F03-02 the reads of the same module are unchanged: finance.view still lists journals, a sales user does not', async () => {
-    passedGate((await request(as('A', FINANCE_EXEC)).get('/v1/ledger/journals')).status);
-    refused((await request(as('A', SALES_EXEC)).get('/v1/ledger/journals')).status);
-  });
-
-  it('TEST-P1-F03-03 the database constraint is NOT weakened: the old three-part action names are still rejected, the new ones are accepted', async () => {
-    const ids = createIdGenerator();
-    const audit = createAuditPort(ids);
-    const txRunner = createTxRunner(env.db);
-    const ctx: RequestContext = {
-      principal: testPrincipal({ kind: 'SERVICE', id: 'SYSTEM:test', tenantId: env.A.tenantId, grants: [] }),
-      correlationId: 'corr-p1',
-      now: new Date(),
-    };
-    const record = (action: string) =>
-      txRunner.withTenantTx(ctx, (tx) =>
-        audit.record(tx, ctx, { action, entityType: 'ledger_test', entityId: 'x' }),
-      );
-
-    for (const old of ['ledger.journal.post', 'ledger.period.close', 'ledger.export.run']) {
-      await expect(record(old), old).rejects.toThrow();
-    }
-    for (const action of Object.values(LEDGER_AUDIT_ACTIONS)) {
-      expect(action).toMatch(/^[a-z_]+\.[a-z_]+$/);
-      await record(action);
-    }
-    const written = await env.admin.query(
-      `SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_type = 'ledger_test' ORDER BY action`,
-      [env.A.tenantId],
-    );
-    expect(written.rows.map((r) => r.action)).toEqual([
-      'ledger.export_run',
-      'ledger.journal_posted',
-      'ledger.period_closed',
-    ]);
-  });
-
-  it('TEST-P1-F03-04 a system identity can still post: the journal and its audit event are written together, as the settlement adapter does', async () => {
-    const ids = createIdGenerator();
-    const txRunner = createTxRunner(env.db);
-    const service = new LedgerService({ repository: new SqlLedgerRepository(), audit: createAuditPort(ids) });
-    const ctx: RequestContext = {
-      principal: testPrincipal({
-        kind: 'SERVICE',
-        id: 'SYSTEM:ledger-adapter',
-        tenantId: env.A.tenantId,
-        grants: [{ code: 'finance.view', scope: 'TENANT', branchIds: [] }],
-      }),
-      correlationId: 'corr-p1-svc',
-      now: new Date(),
-    };
-    service.assertManualPostingAllowed(ctx); // does not throw for a SERVICE principal
-    const journal = await txRunner.withTenantTx(ctx, (tx) =>
-      service.postJournal(tx, ctx, { ...body(), referenceId: 'p1-service-1' }),
-    );
-    expect(journal.referenceId).toBe('p1-service-1');
-    const audited = await env.admin.query(
-      `SELECT action FROM app.audit_event WHERE tenant_id = $1 AND entity_id = $2`,
-      [env.A.tenantId, journal.id],
-    );
-    expect(audited.rows.map((r) => r.action)).toEqual([LEDGER_AUDIT_ACTIONS.journalPosted]);
   });
 });
 

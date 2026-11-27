@@ -50,33 +50,11 @@ import type {
 } from './repository';
 import { generateBankFileCsv, InMemoryFinancialStorage, type FinancialStoragePort } from './storage';
 
-export interface SettlementJournalEntry {
-  sourceRef: string;
-  payoutId: string;
-  amount: string;
-  currency: string;
-  paidOn: Date;
-  lines: Array<{
-    accountCode: string;
-    entryType: 'DEBIT' | 'CREDIT';
-    amount: string;
-  }>;
-}
-
-export interface SettlementJournalPort {
-  postSettlementJournal(
-    tx: Tx,
-    tenantId: string,
-    entry: SettlementJournalEntry,
-  ): Promise<{ entryId: string }>;
-}
-
 export interface FinanceServiceDeps {
   repository: FinanceRepository;
   audit?: AuditPort;
   outbox?: OutboxPort;
   storage?: FinancialStoragePort;
-  settlementJournalPort?: SettlementJournalPort;
 }
 
 // Deterministic fixed-point integer math (scale: paise = 1/100 INR)
@@ -1145,23 +1123,6 @@ export class FinanceService {
     const ciphertext = encryptPaymentRef(input.paymentRef);
     const masked = maskPaymentRef(input.paymentRef) || `******${input.paymentRef.slice(-4)}`;
     const paidOn = input.paidOn ? new Date(input.paidOn) : ctx.now;
-
-    // MOD-LED Settlement Journal Integration (ENT-080 / ENT-081)
-    if (this.deps.settlementJournalPort) {
-      const debitAccount = '2100-COMMISSION-PAYABLE';
-      const creditAccount = '1010-SETTLEMENT-BANK';
-      await this.deps.settlementJournalPort.postSettlementJournal(tx, tenantId, {
-        sourceRef: id,
-        payoutId: id,
-        amount: payout.total,
-        currency: payout.currency,
-        paidOn,
-        lines: [
-          { accountCode: debitAccount, entryType: 'DEBIT', amount: payout.total },
-          { accountCode: creditAccount, entryType: 'CREDIT', amount: payout.total },
-        ],
-      });
-    }
 
     const updated = await this.deps.repository.updatePayoutStatus(tx, tenantId, id, 'PAYMENT_RECORDED', {
       paidOn,

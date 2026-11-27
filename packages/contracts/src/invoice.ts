@@ -157,3 +157,31 @@ export interface ConnectorStatement {
   closingBalance: number;
   entries: ConnectorStatementLine[];
 }
+
+/**
+ * P0-06: the monthly accounting export. A DSA keeps its books in Tally or Zoho, so instead of an
+ * in-app ledger the accountant takes one CSV per calendar month.
+ */
+export const AccountingExportQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM'),
+});
+export type AccountingExportQuery = z.infer<typeof AccountingExportQuerySchema>;
+
+export const ACCOUNTING_EXPORT_RECORD_TYPES = ['INVOICE', 'PAYOUT'] as const;
+export type AccountingExportRecordType = (typeof ACCOUNTING_EXPORT_RECORD_TYPES)[number];
+
+/**
+ * One line of the export. Money is a plain decimal string so a spreadsheet cannot round it,
+ * and `recordType` tells the accountant whether the line is an invoice or a partner payout.
+ */
+export interface AccountingExportRow {
+  recordType: AccountingExportRecordType;
+  number: string;
+  date: string;
+  party: string;
+  taxableValue: string;
+  gst: string;
+  tds: string;
+  total: string;
+  paymentStatus: string;
+}

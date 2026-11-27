@@ -221,6 +221,17 @@ export const ROLE_GRANT_FIXES: Record<string, string[]> = {
 // What migration M-104 removes from the template roles (task P0-07, role-based UI cleanup): grants that open screens the role's job does
 // not use. A test (TEST-PERM-09) compares this list with the migration's rows. Roles the demo seed does not define are listed too, so the
 // two stay identical; a code a seeded role does not hold is simply not there to remove.
+// What migration M-120 (P1-04 lender policy grid and matching, owner Dipanshu) grants. Additive; a test compares this list with the
+// migration's rows and with tools/sql/batch/120.verify.sql. Activating a policy also needs rule.approve (maker-checker, SOD-01), which
+// the DSA owner gets here so the owner can approve a policy someone else drafted.
+export const ROLE_GRANTS_M120: Record<string, string[]> = {
+  'ROLE-ORG-OWNER': ['lender_policy.read', 'lender_policy.manage', 'lender_match.run', 'rule.approve'],
+  'ROLE-POLICY-MGR': ['lender_policy.read', 'lender_policy.manage'],
+  'ROLE-LOAN-OPS': ['lender_policy.read', 'lender_match.run'],
+  'ROLE-BRANCH-MGR': ['lender_policy.read', 'lender_match.run'],
+  'ROLE-RM': ['lender_policy.read', 'lender_match.run'],
+};
+
 export const ROLE_GRANT_TRIMS: Record<string, string[]> = {
   'ROLE-BRANCH-MGR': [
     'verification.perform',
@@ -297,7 +308,11 @@ export const ROLE_GRANT_TRIMS: Record<string, string[]> = {
 export const ROLES: RoleSeed[] = BASE_ROLES.map((r) => ({
   ...r,
   permissions: [
-    ...new Set([...withSubPermissionBackfill(r.permissions), ...(ROLE_GRANT_FIXES[r.code] ?? [])]),
+    ...new Set([
+      ...withSubPermissionBackfill(r.permissions),
+      ...(ROLE_GRANT_FIXES[r.code] ?? []),
+      ...(ROLE_GRANTS_M120[r.code] ?? []),
+    ]),
   ].filter((p) => !(ROLE_GRANT_TRIMS[r.code] ?? []).includes(p)),
 }));
 

@@ -132,6 +132,10 @@ export const ID_PREFIXES = [
   'dup',
   'otp',
   'tob',
+  // P1-04 lender policy grid and matching (M-120): lender policy, match run, match result.
+  'lpo',
+  'lmr',
+  'lmx',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
