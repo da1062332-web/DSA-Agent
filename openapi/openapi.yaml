@@ -68219,6 +68219,7 @@ paths:
                     - IDENTITY_DOCUMENT
                     - EMPLOYMENT
                     - ADDRESS
+                    - BANK_ACCOUNT
                 method:
                   type: string
                   enum: &a164
@@ -68860,6 +68861,43 @@ paths:
                     - consentRecordId
                     - check
                     - idNumber
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    subjectType:
+                      type: string
+                      enum: *a161
+                    subjectId:
+                      type: string
+                      minLength: 5
+                      maxLength: 64
+                    consentRecordId:
+                      type: string
+                      pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                    name:
+                      type: string
+                      minLength: 1
+                      maxLength: 120
+                    purpose:
+                      type: string
+                      enum: *a165
+                      default: KYC
+                    check:
+                      type: string
+                      enum:
+                        - BANK_ACCOUNT
+                    accountNumber:
+                      type: string
+                      maxLength: 32
+                    ifsc:
+                      type: string
+                  required:
+                    - subjectType
+                    - subjectId
+                    - consentRecordId
+                    - check
+                    - accountNumber
+                    - ifsc
                   additionalProperties: false
       responses:
         "201":

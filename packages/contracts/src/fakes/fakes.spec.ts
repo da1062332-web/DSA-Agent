@@ -105,4 +105,32 @@ describe('P1-06 FakeKycCheckPort (Contracts)', () => {
     expect(JSON.stringify(result)).not.toContain(request.idNumber);
     expect(result.identifierMasked).toBe('ABCDE****F');
   });
+
+  it('P1-06 takes a bank-account request, and an unknown outcome of the penny drop can be scripted as INCONCLUSIVE', async () => {
+    const bank = {
+      check: 'BANK_ACCOUNT' as const,
+      accountNumber: '123456789012',
+      ifsc: 'HDFC0001234',
+      caseId: request.caseId,
+    };
+    const port = new FakeKycCheckPort().respondWith(
+      fakeKycResult({
+        outcome: 'FAILED',
+        verificationResult: 'INCONCLUSIVE',
+        reason: 'OUTCOME_UNKNOWN',
+        identifierMasked: '********9012',
+      }),
+    );
+
+    const result = await port.run(tx, ctx, bank);
+
+    expect(port.requests).toEqual([bank]);
+    expect(result).toMatchObject({
+      outcome: 'FAILED',
+      verificationResult: 'INCONCLUSIVE',
+      reason: 'OUTCOME_UNKNOWN',
+      identifierMasked: '********9012',
+    });
+    expect(JSON.stringify(result)).not.toContain(bank.accountNumber);
+  });
 });
