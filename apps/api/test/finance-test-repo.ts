@@ -209,6 +209,27 @@ export class InMemoryFinanceRepository implements FinanceRepository {
     return (total / 100).toFixed(2);
   }
 
+  async listEarnedCalculationsForMonth(
+    _tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<CommissionCalculationRow[]> {
+    return this.calculations
+      .filter(
+        (c) =>
+          c.tenant_id === tenantId &&
+          c.lender_id === lenderId &&
+          c.calc_kind === 'EARNED' &&
+          c.status !== 'REVERSED' &&
+          c.status !== 'SUPERSEDED' &&
+          c.event_date >= monthStart &&
+          c.event_date < monthEndExclusive,
+      )
+      .sort((a, b) => a.event_date.getTime() - b.event_date.getTime());
+  }
+
   async insertCommissionCalculation(_tx: Tx, row: CommissionCalculationRow): Promise<void> {
     this.calculations.push(row);
   }

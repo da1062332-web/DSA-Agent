@@ -108,6 +108,8 @@ export interface InvoiceRecord {
   partyId: string;
   partyName: string | null;
   notes: string | null;
+  /** P2-01: the month a commission invoice bills, YYYY-MM. Absent on invoices recorded by hand. */
+  periodMonth?: string | null;
   lockVersion: number;
   createdAt: string;
   createdBy: string;
@@ -166,6 +168,13 @@ export const AccountingExportQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM'),
 });
 export type AccountingExportQuery = z.infer<typeof AccountingExportQuerySchema>;
+
+/** P2-01: generate the monthly commission invoice to one lender. */
+export const GenerateLenderInvoiceSchema = z.object({
+  lenderId: z.string().min(1),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM'),
+});
+export type GenerateLenderInvoiceInput = z.infer<typeof GenerateLenderInvoiceSchema>;
 
 export const ACCOUNTING_EXPORT_RECORD_TYPES = ['INVOICE', 'PAYOUT'] as const;
 export type AccountingExportRecordType = (typeof ACCOUNTING_EXPORT_RECORD_TYPES)[number];
