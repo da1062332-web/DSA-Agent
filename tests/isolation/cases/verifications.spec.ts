@@ -95,6 +95,65 @@ describe('TEST-SEC-001 origination/verifications: tenants never cross', () => {
     expect(await verificationCount('cus_iso_ver_b1')).toBe(0);
   });
 
+  it('API-VER-003: tenant B cannot run a bank-account check on a tenant A customer with tenant A consent (404, not 403) and nothing is stored', async () => {
+    const consent = consentId('01JVERA3');
+    await seedSubject(env.A, 'cus_iso_ver_a3', consent);
+    const b = env.appAs(env.B, VER);
+
+    const res = await request(b)
+      .post('/v1/verifications/checks')
+      .set('Idempotency-Key', 'iso-ver-check-04')
+      .send({
+        check: 'BANK_ACCOUNT',
+        subjectType: 'CUSTOMER',
+        subjectId: 'cus_iso_ver_a3',
+        consentRecordId: consent,
+        accountNumber: '918273645019',
+        ifsc: 'HDFC0001234',
+      });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(JSON.stringify(res.body)).not.toContain(env.A.tenantId);
+    expect(JSON.stringify(res.body)).not.toContain('918273645019');
+    expect(await verificationCount('cus_iso_ver_a3')).toBe(0);
+  });
+
+  it("API-VER-003: tenant B cannot use tenant A's bank connection either: B has none, so a bank check is 422 NO_ACTIVE_CONNECTION", async () => {
+    // Tenant A has an active Karza bank connection; tenant B has a valid subject and consent of its own, and no connection.
+    await env.admin.query(
+      `insert into app.integration_connection (id, tenant_id, provider, capability, environment, credential_ref, config, status,
+                                               created_by, updated_by)
+       values ('itc_iso_ver_a2', $1, 'KARZA', 'VERIFICATION.BANK', 'SANDBOX', $2, $3::jsonb, 'ACTIVE', $4, $4)`,
+      [
+        env.A.tenantId,
+        `vault://tenants/${env.A.tenantId}/sandbox/karza/credentials`,
+        JSON.stringify({ apiEndpoint: 'https://kyc.example.invalid/v3/bank' }),
+        env.A.userIds[0],
+      ],
+    );
+    const consent = consentId('01JVERB3');
+    await seedSubject(env.B, 'cus_iso_ver_b3', consent);
+    const b = env.appAs(env.B, VER);
+
+    const res = await request(b)
+      .post('/v1/verifications/checks')
+      .set('Idempotency-Key', 'iso-ver-check-05')
+      .send({
+        check: 'BANK_ACCOUNT',
+        subjectType: 'CUSTOMER',
+        subjectId: 'cus_iso_ver_b3',
+        consentRecordId: consent,
+        accountNumber: '918273645019',
+        ifsc: 'HDFC0001234',
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.details).toEqual([{ field: 'check', issue: 'NO_ACTIVE_CONNECTION' }]);
+    expect(JSON.stringify(res.body)).not.toContain(env.A.tenantId);
+    expect(await verificationCount('cus_iso_ver_b3')).toBe(0);
+  });
+
   it('API-VER-003: a user without verification.perform is refused (403) before anything is read, in either tenant', async () => {
     const consent = consentId('01JVERB2');
     await seedSubject(env.B, 'cus_iso_ver_b2', consent);

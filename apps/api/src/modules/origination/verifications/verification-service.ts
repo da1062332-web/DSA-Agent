@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {
   AppError,
   type CreateVerificationInput,
+  type KycCheckRequest,
   type ListVerificationsQuery,
   type ListVerificationsResponse,
   type RequestContext,
@@ -21,6 +22,14 @@ const nextUlid = monotonicFactory();
 
 /** Used when no deployment secret is configured (development and tests), like the documents module does. */
 const processSecret = crypto.randomBytes(32).toString('hex');
+
+/**
+ * True when every CHECK constraint definition on verification.check_type lists `checkType` (no such constraint means no restriction).
+ * `definitions` come from pg_get_constraintdef, which prints the allowed values as quoted literals.
+ */
+export function checkTypeIsListed(definitions: readonly string[], checkType: string): boolean {
+  return definitions.every((definition) => definition.includes(`'${checkType}'`));
+}
 
 export class VerificationService {
   constructor(private readonly deps: ApiDeps) {}
@@ -213,10 +222,15 @@ export class VerificationService {
 
   /**
    * API-VER-003: POST /v1/verifications/checks
-   * The server runs a provider check (PAN or GST) and stores the result as a PROVIDER_AUTOMATED verification (ENT-064). The caller
-   * never states the result. Everything happens in ONE tenant transaction under the Idempotency-Key, so a concurrent duplicate
-   * request waits on the idempotency row and then replays: one key never calls the vendor twice. A vendor error is thrown, so
-   * nothing is stored and the same key can be retried; a retryable error is never stored as a result.
+   * The server runs a provider check (PAN, GST or the bank-account penny drop) and stores the result as a PROVIDER_AUTOMATED
+   * verification (ENT-064). The caller never states the result. Everything happens in ONE tenant transaction under the
+   * Idempotency-Key, so a concurrent duplicate request waits on the idempotency row and then replays: one key never calls the vendor
+   * twice. A vendor error is thrown, so nothing is stored and the same key can be retried; a retryable error is never stored as a
+   * result.
+   *
+   * The bank-account check moves Rs 1, so it follows the money rule (see KycCheckPort): when it cannot be known whether the transfer
+   * was sent, the port returns an INCONCLUSIVE / OUTCOME_UNKNOWN result instead of throwing. It is stored like any other result, so
+   * the key is used up and a retry with it replays the record without calling the vendor. A new key is a deliberate new attempt.
    */
   async runCheck(
     ctx: RequestContext,
@@ -229,18 +243,23 @@ export class VerificationService {
       throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Provider KYC checks are not configured on this server.');
     }
 
-    // withIdempotency stores a plain SHA-256 of the whole request, and a PAN hashed that way can be brute-forced offline. So it is
-    // given a body in which the identifier and the name are replaced by keyed hashes (the key comes from the deployment secret).
+    // withIdempotency stores a plain SHA-256 of the whole request, and a PAN or an account number hashed that way can be brute-forced
+    // offline. So it is given a body in which the identifier (PAN, GSTIN or account number) and the name are replaced by keyed hashes
+    // (the key comes from the deployment secret). The IFSC code is a public branch code and stays as it is.
     const key = this.kycKey();
     const keyed = (label: string, value: string) =>
       crypto.createHmac('sha256', key).update(`${label}\n${value}`).digest('hex');
+    const identifier =
+      input.check === 'BANK_ACCOUNT'
+        ? { accountNumber: keyed('accountNumber', input.accountNumber), ifsc: input.ifsc }
+        : { idNumber: keyed('idNumber', input.idNumber) };
     const keyedBody = {
       check: input.check,
       subjectType: input.subjectType,
       subjectId: input.subjectId,
       consentRecordId: input.consentRecordId,
       purpose: input.purpose,
-      idNumber: keyed('idNumber', input.idNumber),
+      ...identifier,
       ...(input.name !== undefined ? { name: keyed('name', input.name) } : {}),
     };
     // The vendor's case id is stable for one Idempotency-Key (the same scope the key has: tenant, user, key), so a retry after a
@@ -256,13 +275,22 @@ export class VerificationService {
           // 1. No check is paid for without an active VERIFICATION_CHECK consent of this subject.
           await this.assertConsentFor(tx, ctx, input);
 
-          // 2. The vendor call. The full identifier leaves here and nowhere else; a vendor error is thrown from here.
-          const outcome = await kycPort.run(tx, ctx, {
-            check: input.check,
-            idNumber: input.idNumber,
-            ...(input.name !== undefined ? { name: input.name } : {}),
-            caseId,
-          });
+          // 2. The vendor call. The full identifier leaves here and nowhere else; a vendor error is thrown from here (for a bank check
+          //    only an error that proves nothing was sent; an unknown outcome comes back as a result, see the money rule above).
+          //    A bank check sends Rs 1 before its record exists, so the database is asked first whether it can store the check type.
+          if (input.check === 'BANK_ACCOUNT') await this.assertCheckTypeStorable(tx, input.check);
+          const named = input.name !== undefined ? { name: input.name } : {};
+          const request: KycCheckRequest =
+            input.check === 'BANK_ACCOUNT'
+              ? {
+                  check: 'BANK_ACCOUNT',
+                  accountNumber: input.accountNumber,
+                  ifsc: input.ifsc,
+                  ...named,
+                  caseId,
+                }
+              : { check: input.check, idNumber: input.idNumber, ...named, caseId };
+          const outcome = await kycPort.run(tx, ctx, request);
 
           // 3. Store the result: masked values only, immutable (ENT-064).
           const verId = `ver_${nextUlid()}`;
@@ -327,6 +355,30 @@ export class VerificationService {
       );
       return { verification: result.body, isReplayed: result.replayed };
     });
+  }
+
+  /**
+   * A bank check sends Rs 1 BEFORE its record is stored. If the database does not accept the check type yet (migration 0138 not applied),
+   * the insert would fail after the transfer, the key would stay unused and a retry would send the Rs 1 again. So the constraint is read
+   * first and the check is refused before anything is sent. A pg_constraint read needs no privilege beyond the connection.
+   */
+  private async assertCheckTypeStorable(tx: Tx, checkType: string): Promise<void> {
+    const rules = await sql<{ def: string }>`
+      SELECT pg_get_constraintdef(k.oid) AS def
+        FROM pg_constraint k
+       WHERE k.conrelid = 'app.verification'::regclass AND k.contype = 'c'
+         AND pg_get_constraintdef(k.oid) LIKE '%check_type%'`.execute(tx);
+    if (
+      !checkTypeIsListed(
+        rules.rows.map((r) => r.def),
+        checkType,
+      )
+    ) {
+      throw AppError.of(
+        'INTERNAL_ERROR',
+        'Bank account checks are not ready on this server: the database update 0138 has not been applied. Nothing was sent to the provider.',
+      );
+    }
   }
 
   /** A key of its own, derived from the deployment secret (as document-store.ts derives its keys), for the keyed hashes above. */

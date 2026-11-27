@@ -14,6 +14,14 @@ const body = {
   consentRecordId: 'cnst_01M4V6DFM0TFA9D04QJTW32ETD',
   idNumber: PAN,
 };
+const bankBody = {
+  check: 'BANK_ACCOUNT',
+  subjectType: 'CUSTOMER',
+  subjectId: 'cus_01M4V6DFM0TFA9D04QJTW32ETD',
+  consentRecordId: 'cnst_01M4V6DFM0TFA9D04QJTW32ETD',
+  accountNumber: '918273645019',
+  ifsc: 'HDFC0001234',
+};
 const KEY = 'idem_unit_test_0001';
 
 const performer = testPrincipal({
@@ -75,7 +83,40 @@ describe('P1-06 POST /v1/verifications/checks (API-VER-003): before the database
       ['a GSTIN given for a PAN check', { ...body, idNumber: '27QXZKW7391L1Z5' }, '27QXZKW7391L1Z5'],
       ['a PAN in the free-text name', { ...body, name: `Ravi ${PAN}` }, PAN],
       ['an Aadhaar-shaped number in the name', { ...body, name: 'Ravi 1234 5678 9012' }, '1234 5678 9012'],
-      ['a check type that cannot be run yet', { ...body, check: 'BANK_ACCOUNT' }, 'BANK_ACCOUNT'],
+      ['a check type that cannot be run yet', { ...body, check: 'BANK_STATEMENT' }, 'BANK_STATEMENT'],
+      [
+        'a bank check without an account number',
+        { ...bankBody, accountNumber: undefined },
+        'zzz-not-in-the-response',
+      ],
+      [
+        'a bank check with an account number of 8 digits',
+        { ...bankBody, accountNumber: '48201937' },
+        '48201937',
+      ],
+      [
+        'a bank check with letters in the account number',
+        { ...bankBody, accountNumber: '4820AB193746' },
+        '4820AB193746',
+      ],
+      [
+        'a bank check with an IFSC whose fifth character is not zero',
+        { ...bankBody, ifsc: 'HDFC1001234' },
+        'HDFC1001234',
+      ],
+      ['a bank check without an IFSC', { ...bankBody, ifsc: undefined }, 'zzz-not-in-the-response'],
+      ['a PAN given to a bank check', { ...bankBody, idNumber: PAN }, PAN],
+      ['an account number given to a PAN check', { ...body, accountNumber: '482019374651' }, '482019374651'],
+      [
+        'an account number in the free-text name of a bank check',
+        { ...bankBody, name: 'Sunita 482019374651' },
+        '482019374651',
+      ],
+      [
+        'a result stated by the caller of a bank check',
+        { ...bankBody, result: 'VERIFIED' },
+        'zzz-not-in-the-response',
+      ],
       ['an Aadhaar number as an extra key', { ...body, aadhaar: '123456789012' }, '123456789012'],
       ['a result stated by the caller', { ...body, result: 'VERIFIED' }, 'zzz-not-in-the-response'],
       ['a method stated by the caller', { ...body, method: 'PROVIDER_AUTOMATED' }, 'zzz-not-in-the-response'],

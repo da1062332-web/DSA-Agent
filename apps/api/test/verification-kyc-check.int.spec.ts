@@ -27,10 +27,24 @@ const BRANCH = 'br_demo_01';
 const PAN = 'QXZKW7391L';
 const GSTIN = '27QXZKW7391L1Z5';
 const NAME_ON_RECORD = 'RAVI KUMAR SHARMA';
+// The bank penny drop: a synthetic account number and holder name that no other spec uses.
+const ACCOUNT = '731904826517';
+const ACCOUNT_MASKED = '********6517';
+const IFSC = 'HDFC0001234';
+const HOLDER_ON_RECORD = 'SUNITA DEVI VERMA';
+const HOLDER_TYPED = 'Sunita Devi Verma';
 
 type Reply = { status: number; body: unknown } | Error;
 const answer = (status: number, body: unknown): Reply => ({ status, body });
 const timeout = (): Reply => Object.assign(new Error('timed out'), { name: 'TimeoutError' });
+const dropped = (): Reply => Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } });
+const bankOk = (result: Record<string, unknown> = {}) =>
+  answer(200, {
+    request_id: 'req_bank_int_1',
+    'status-code': '101',
+    result: { bankTxnStatus: true, accountName: HOLDER_ON_RECORD, ...result },
+  });
+const vendorCode = (code: string) => answer(200, { request_id: 'req_x', 'status-code': code, result: {} });
 const panOk = (extra: Record<string, unknown> = {}) =>
   answer(200, {
     request_id: 'req_pan_int_1',
@@ -151,6 +165,24 @@ describeLivePg('P1-06 POST /v1/verifications/checks: live PostgreSQL', () => {
       ...extra,
     }) as RunVerificationCheck;
 
+  const bankRequest = (
+    s: { customerId: string; consentId: string },
+    extra: Record<string, unknown> = {},
+  ): RunVerificationCheck =>
+    ({
+      check: 'BANK_ACCOUNT',
+      subjectType: 'CUSTOMER',
+      subjectId: s.customerId,
+      consentRecordId: s.consentId,
+      accountNumber: ACCOUNT,
+      ifsc: IFSC,
+      purpose: 'KYC',
+      ...extra,
+    }) as RunVerificationCheck;
+
+  const caseIdsOf = (calls: VendorCall[]) =>
+    calls.map((c) => (c.body.clientData as { caseId: string }).caseId);
+
   const verificationRows = async (subjectId: string) =>
     (
       await sql<{
@@ -187,6 +219,7 @@ describeLivePg('P1-06 POST /v1/verifications/checks: live PostgreSQL', () => {
     for (const [capability, path] of [
       ['VERIFICATION.PAN', 'pan'],
       ['VERIFICATION.GST', 'gst'],
+      ['VERIFICATION.BANK', 'bank'],
     ] as const) {
       await sql`
         INSERT INTO app.integration_connection (id, tenant_id, provider, capability, environment, credential_ref, config,
@@ -622,20 +655,305 @@ describeLivePg('P1-06 POST /v1/verifications/checks: live PostgreSQL', () => {
     expect(await verificationRows(subject.customerId)).toHaveLength(0);
   });
 
-  // ── the leak test ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-  it('P1-06 after all of the above, the full PAN and GSTIN are in no table of the database', async () => {
-    // One more run of each check, so the scan has fresh rows to look at even when this test runs alone.
+  // ── the bank-account penny drop (it moves Rs 1) ────────────────────────────────────────────────────────────────────────────
+  it('P1-06 a bank account whose holder name matches is stored as a PROVIDER_AUTOMATED BANK_ACCOUNT VERIFIED record with the masked account only', async () => {
     const subject = await seedSubject();
-    const { service, vendor } = build([panOk(), gstOk]);
+    const { service, vendor } = build([bankOk()]);
+
+    const { verification, isReplayed } = await service.runCheck(
+      newCtx(),
+      bankRequest(subject, { name: HOLDER_TYPED }),
+      newKey(),
+    );
+
+    expect(isReplayed).toBeFalsy();
+    expect(verification).toMatchObject({
+      checkType: 'BANK_ACCOUNT',
+      method: 'PROVIDER_AUTOMATED',
+      result: 'VERIFIED',
+      subjectType: 'CUSTOMER',
+      subjectId: subject.customerId,
+      consentRecordId: subject.consentId,
+      purpose: 'KYC',
+      performedBy: USER,
+      lockVersion: 0,
+      evidenceRef: 'KARZA:req_bank_int_1',
+      minimalResult: {
+        maskedIdentifier: ACCOUNT_MASKED,
+        nameMatchScore: 100,
+        providerReference: 'req_bank_int_1',
+        discrepancies: [],
+      },
+    });
+    const rows = await verificationRows(subject.customerId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: verification.id,
+      check_type: 'BANK_ACCOUNT',
+      method: 'PROVIDER_AUTOMATED',
+      result: 'VERIFIED',
+    });
+    // The vendor received the full account number once, with the IFSC and the consent flag; the key came from the vault, in a header.
+    expect(vendor.calls).toHaveLength(1);
+    expect(vendor.calls[0]?.url).toBe('https://kyc.example.test/v3/bank');
+    expect(vendor.calls[0]?.body).toMatchObject({ accountNumber: ACCOUNT, ifsc: IFSC, consent: 'Y' });
+    expect(vendor.calls[0]?.headers['x-karza-key']).toBe('mock_karza_api_key_sand_99999');
+    // The response holds neither the account number nor the name the bank holds.
+    expect(JSON.stringify(verification)).not.toContain(ACCOUNT);
+    expect(JSON.stringify(verification)).not.toContain(HOLDER_ON_RECORD);
+  });
+
+  it('P1-06 a bank check without a name stands on the bank saying the Rs 1 credit went through, and its audit event carries the masked account only', async () => {
+    const subject = await seedSubject();
+    const { verification } = await build([bankOk()]).service.runCheck(
+      newCtx(),
+      bankRequest(subject),
+      newKey(),
+    );
+
+    expect(verification.result).toBe('VERIFIED');
+    expect(verification.minimalResult).not.toHaveProperty('nameMatchScore');
+    const audit = await sql<{ action: string; after: Record<string, unknown> }>`
+      SELECT action, after FROM app.audit_event WHERE entity_id = ${verification.id}`.execute(admin);
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]?.after).toMatchObject({
+      checkType: 'BANK_ACCOUNT',
+      method: 'PROVIDER_AUTOMATED',
+      result: 'VERIFIED',
+      provider: 'KARZA',
+      maskedIdentifier: ACCOUNT_MASKED,
+    });
+    expect(JSON.stringify(audit.rows[0]?.after)).not.toContain(ACCOUNT);
+    expect(JSON.stringify(audit.rows[0]?.after)).not.toContain(HOLDER_ON_RECORD);
+  });
+
+  it("P1-06 the bank's decisions are stored: a name mismatch and an invalid account are REJECTED, a failed Rs 1 credit and a missing name are INCONCLUSIVE", async () => {
+    const decisions: [string, Reply, Record<string, unknown>, string, string][] = [
+      ['a name that does not match', bankOk(), { name: 'Mohan Lal Gupta' }, 'REJECTED', 'NAME_MISMATCH'],
+      ['an invalid account (102)', vendorCode('102'), {}, 'REJECTED', 'ID_INVALID'],
+      ['an account the bank does not know (103)', vendorCode('103'), {}, 'REJECTED', 'NOT_FOUND'],
+      [
+        'a bank that does not support the check (107)',
+        vendorCode('107'),
+        {},
+        'INCONCLUSIVE',
+        'NOT_SUPPORTED',
+      ],
+      ['the Rs 1 credit failed', bankOk({ bankTxnStatus: false }), {}, 'INCONCLUSIVE', 'BANK_TXN_FAILED'],
+      [
+        'a name asked for but not returned',
+        bankOk({ accountName: undefined }),
+        { name: HOLDER_TYPED },
+        'INCONCLUSIVE',
+        'NAME_NOT_RETURNED',
+      ],
+    ];
+    for (const [label, reply, extra, result, reason] of decisions) {
+      const subject = await seedSubject();
+      const { service, vendor } = build([reply, bankOk()]);
+      const key = newKey();
+
+      const first = await service.runCheck(newCtx(), bankRequest(subject, extra), key);
+      expect(first.verification, label).toMatchObject({
+        checkType: 'BANK_ACCOUNT',
+        result,
+        minimalResult: { maskedIdentifier: ACCOUNT_MASKED, discrepancies: [reason] },
+      });
+      expect(await verificationRows(subject.customerId), label).toHaveLength(1);
+
+      // A decision uses the key up as well: the same key replays it and the Rs 1 is not sent again.
+      const replay = await service.runCheck(newCtx(), bankRequest(subject, extra), key);
+      expect(replay.isReplayed, label).toBe(true);
+      expect(replay.verification, label).toEqual(first.verification);
+      expect(vendor.calls, label).toHaveLength(1);
+    }
+  });
+
+  it('P1-06 THE MONEY RULE: when it cannot be known whether the Rs 1 was sent, the check is stored INCONCLUSIVE / OUTCOME_UNKNOWN and the key is used up', async () => {
+    const unknown: [string, Reply][] = [
+      ['a timeout', timeout()],
+      ['a dropped connection', dropped()],
+      ['HTTP 503', answer(503, {})],
+      ['HTTP 500', answer(500, {})],
+      ['HTTP 408', answer(408, {})],
+      ['an answer that is not a JSON object', answer(200, 'upstream gateway timeout')],
+      [
+        'an answer the adapter does not recognise (status-code 999)',
+        answer(200, { 'status-code': '999', result: {} }),
+      ],
+      [
+        'a positive answer that does not say whether the Rs 1 went through',
+        answer(200, { request_id: 'req_u', 'status-code': '101', result: { accountName: HOLDER_ON_RECORD } }),
+      ],
+    ];
+    for (const [label, reply] of unknown) {
+      const subject = await seedSubject();
+      // The second answer would VERIFY the account: it is only ever used by a deliberate new attempt, never by a retry of the key.
+      const { service, vendor } = build([reply, bankOk()]);
+      const key = newKey();
+
+      const first = await service.runCheck(newCtx(), bankRequest(subject, { name: HOLDER_TYPED }), key);
+
+      expect(first.isReplayed, label).toBeFalsy();
+      expect(first.verification, label).toMatchObject({
+        checkType: 'BANK_ACCOUNT',
+        method: 'PROVIDER_AUTOMATED',
+        result: 'INCONCLUSIVE',
+        minimalResult: {
+          maskedIdentifier: ACCOUNT_MASKED,
+          discrepancies: ['OUTCOME_UNKNOWN'],
+          statusDescription: expect.stringContaining('Rs 1'),
+        },
+      });
+      // The evidence reference carries the vendor's case id, so the transfer can be looked up with the provider.
+      expect(first.verification.evidenceRef, label).toMatch(/^KARZA:(idem_[0-9a-f]{20}|req_u)$/);
+      expect(await verificationRows(subject.customerId), label).toHaveLength(1);
+      expect(await idempotencyRows(key), label).toHaveLength(1);
+      expect(JSON.stringify(first.verification), label).not.toContain(ACCOUNT);
+
+      // The same key replays the stored record. The vendor is not asked again, so the Rs 1 cannot be sent twice.
+      const retry = await service.runCheck(newCtx(), bankRequest(subject, { name: HOLDER_TYPED }), key);
+      expect(retry.isReplayed, label).toBe(true);
+      expect(retry.verification, label).toEqual(first.verification);
+      expect(vendor.calls, label).toHaveLength(1);
+      expect(await verificationRows(subject.customerId), label).toHaveLength(1);
+
+      // A new key is a deliberate new attempt: it reaches the vendor again, with another case id.
+      const again = await service.runCheck(newCtx(), bankRequest(subject, { name: HOLDER_TYPED }), newKey());
+      expect(again.verification.result, label).toBe('VERIFIED');
+      expect(vendor.calls, label).toHaveLength(2);
+      const caseIds = caseIdsOf(vendor.calls);
+      expect(caseIds[0], label).not.toBe(caseIds[1]);
+    }
+  });
+
+  it('P1-06 an answer that proves nothing was sent is thrown: nothing is stored, and the same key can be retried with the same case id', async () => {
+    const notSent: [string, Reply, string][] = [
+      ['HTTP 429', answer(429, {}), 'RATE_LIMITED'],
+      ['HTTP 401', answer(401, {}), 'INTERNAL_ERROR'],
+      ['HTTP 403', answer(403, {}), 'INTERNAL_ERROR'],
+      ['HTTP 404', answer(404, {}), 'NOT_FOUND'],
+      ['HTTP 400', answer(400, {}), 'VALIDATION_ERROR'],
+      ['HTTP 422', answer(422, {}), 'VALIDATION_ERROR'],
+      ['the source being busy (104)', vendorCode('104'), 'DEPENDENCY_UNAVAILABLE'],
+      ['the source being unavailable (108)', vendorCode('108'), 'DEPENDENCY_UNAVAILABLE'],
+    ];
+    for (const [label, reply, code] of notSent) {
+      const subject = await seedSubject();
+      const { service, vendor } = build([reply, bankOk()]);
+      const key = newKey();
+
+      await expect(service.runCheck(newCtx(), bankRequest(subject), key), label).rejects.toMatchObject({
+        code,
+      });
+      expect(await verificationRows(subject.customerId), label).toHaveLength(0);
+      expect(await idempotencyRows(key), label).toHaveLength(0);
+
+      const retry = await service.runCheck(newCtx(), bankRequest(subject), key);
+      expect(retry.verification.result, label).toBe('VERIFIED');
+      expect(retry.isReplayed, label).toBeFalsy();
+      const caseIds = caseIdsOf(vendor.calls);
+      expect(caseIds, label).toHaveLength(2);
+      expect(caseIds[0], label).toBe(caseIds[1]);
+    }
+  });
+
+  it('P1-06 our own validation and a missing connection stop a bank check before the vendor: thrown, nothing stored', async () => {
+    const subject = await seedSubject();
+    const { service, vendor } = build([bankOk()]);
+
+    // The request schema normally catches this; the adapter checks again, so a caller that skipped it still sends nothing.
+    await expect(
+      service.runCheck(newCtx(), bankRequest(subject, { ifsc: 'HDFC1001234' }), newKey()),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    await setConnectionStatus('VERIFICATION.BANK', 'INACTIVE');
+    try {
+      await expect(service.runCheck(newCtx(), bankRequest(subject), newKey())).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        details: [{ field: 'check', issue: 'NO_ACTIVE_CONNECTION' }],
+      });
+    } finally {
+      await setConnectionStatus('VERIFICATION.BANK', 'ACTIVE');
+    }
+    expect(vendor.calls).toHaveLength(0);
+    expect(await verificationRows(subject.customerId)).toHaveLength(0);
+  });
+
+  it('P1-06 bank: the same key twice sends the Rs 1 once; a different account or name under that key is refused (422 IDEMPOTENCY_KEY_REUSED)', async () => {
+    const subject = await seedSubject();
+    const { service, vendor } = build([bankOk()]);
+    const key = newKey();
+
+    const first = await service.runCheck(newCtx(), bankRequest(subject), key);
+    const second = await service.runCheck(newCtx(), bankRequest(subject), key);
+
+    expect(first.isReplayed).toBeFalsy();
+    expect(second.isReplayed).toBe(true);
+    expect(second.verification).toEqual(first.verification);
+    await expect(
+      service.runCheck(newCtx(), bankRequest(subject, { accountNumber: '918273645019' }), key),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    await expect(
+      service.runCheck(newCtx(), bankRequest(subject, { name: 'Someone Else' }), key),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    await expect(
+      service.runCheck(newCtx(), bankRequest(subject, { ifsc: 'SBIN0001234' }), key),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect(vendor.calls).toHaveLength(1);
+    expect(await verificationRows(subject.customerId)).toHaveLength(1);
+  });
+
+  it('P1-06 bank: two concurrent requests with one key send the Rs 1 once (the second waits, then replays)', async () => {
+    const subject = await seedSubject();
+    const { service, vendor } = build([bankOk()], { delayMs: 400 });
+    const key = newKey();
+
+    const [a, b] = await Promise.all([
+      service.runCheck(newCtx(), bankRequest(subject), key),
+      service.runCheck(newCtx(), bankRequest(subject), key),
+    ]);
+
+    expect(vendor.calls).toHaveLength(1);
+    expect([Boolean(a.isReplayed), Boolean(b.isReplayed)].sort()).toEqual([false, true]);
+    expect(a.verification.id).toBe(b.verification.id);
+    expect(await verificationRows(subject.customerId)).toHaveLength(1);
+  });
+
+  it('P1-06 bank: the idempotency row holds a keyed hash, not the plain SHA-256 of a request that carries an account number', async () => {
+    const subject = await seedSubject();
+    const key = newKey();
+    const request = bankRequest(subject, { name: HOLDER_TYPED });
+    await build([bankOk()]).service.runCheck(newCtx(), request, key);
+
+    const rows = await idempotencyRows(key);
+    expect(rows).toHaveLength(1);
+    const plain = requestHash({ key, method: 'POST', path: '/v1/verifications/checks', body: request });
+    expect(rows[0]?.request_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(rows[0]?.request_hash).not.toBe(plain);
+  });
+
+  // ── the leak test ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+  it('P1-06 after all of the above, the full PAN, GSTIN and account number, and the holder name, are in no table of the database', async () => {
+    // One more run of each check, so the scan has fresh rows to look at even when this test runs alone. The last bank answer is an
+    // unknown outcome (a dropped connection), which is stored as well.
+    const subject = await seedSubject();
+    const { service, vendor } = build([panOk(), gstOk, bankOk(), dropped()]);
     await service.runCheck(newCtx(), panRequest(subject, { name: 'Ravi Kumar Sharma' }), newKey());
     await service.runCheck(
       newCtx(),
       { ...panRequest(subject), check: 'GST', idNumber: GSTIN } as RunVerificationCheck,
       newKey(),
     );
-    // The vendor, and only the vendor, was given the PAN and the GSTIN.
+    const bank = await service.runCheck(newCtx(), bankRequest(subject, { name: HOLDER_TYPED }), newKey());
+    const unknown = await service.runCheck(newCtx(), bankRequest(subject, { name: HOLDER_TYPED }), newKey());
+    expect(bank.verification.result).toBe('VERIFIED');
+    expect(unknown.verification.result).toBe('INCONCLUSIVE');
+    // The vendor, and only the vendor, was given the PAN, the GSTIN and the account number.
     expect(vendor.calls.filter((c) => c.body.pan === PAN)).toHaveLength(1);
     expect(vendor.calls.filter((c) => c.body.gstin === GSTIN)).toHaveLength(1);
+    expect(vendor.calls.filter((c) => c.body.accountNumber === ACCOUNT)).toHaveLength(2);
 
     const tables = await sql<{ table_schema: string; table_name: string }>`
       SELECT table_schema, table_name FROM information_schema.tables
@@ -643,7 +961,7 @@ describeLivePg('P1-06 POST /v1/verifications/checks: live PostgreSQL', () => {
     expect(tables.rows.length).toBeGreaterThan(50);
     const hits: string[] = [];
     for (const t of tables.rows) {
-      for (const secret of [PAN, GSTIN]) {
+      for (const secret of [PAN, GSTIN, ACCOUNT, HOLDER_ON_RECORD]) {
         const found = await sql<{ n: number }>`
           SELECT count(*)::int AS n FROM ${sql.id(t.table_schema, t.table_name)} AS t
            WHERE t::text ILIKE ${`%${secret}%`}`.execute(admin);

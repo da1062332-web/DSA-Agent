@@ -57,7 +57,8 @@ export function createRouter(deps: ApiDeps, serviceOverride?: VerificationServic
 
   /**
    * API-VER-003: POST /v1/verifications/checks
-   * The server runs a PAN or GST check at the tenant's provider and stores the result. The caller never states the result.
+   * The server runs a PAN, GST or bank-account (Rs 1 penny drop) check at the tenant's provider and stores the result. The caller
+   * never states the result.
    */
   router.post('/verifications/checks', async (req: Request, res: Response, next) => {
     try {
