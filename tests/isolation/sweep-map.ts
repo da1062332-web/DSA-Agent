@@ -8,6 +8,7 @@ export const SEGMENT_TABLE: Record<string, string> = {
   'access-reviews': 'access_review',
   accounts: 'ledger_account',
   activities: 'activity',
+  addresses: 'customer_address',
   adjustments: 'adjustment',
   agents: 'app_user',
   'api-clients': 'api_client',

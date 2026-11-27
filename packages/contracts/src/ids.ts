@@ -33,6 +33,7 @@ export const ID_PREFIXES = [
   'grv',
   'cust',
   'ccp',
+  'cad', // customer_address (P1-02)
   'cnst',
   'pty',
   'ash',
