@@ -834,6 +834,9 @@ components:
             - STORAGE
             - BANKING
             - BUREAU
+            - TELEPHONY
+            - FRAUD
+            - LENDER
         description:
           type: string
         requiredConfigFields:
