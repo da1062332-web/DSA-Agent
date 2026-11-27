@@ -12,6 +12,7 @@ import {
 import { AutomationEngine } from './modules/automation/engine';
 import { AutomationTriggerService } from './modules/automation/triggers';
 import { createNotificationSubscriber } from './modules/crm/notifications/event-subscriber';
+import { createCommissionSubscriber } from './modules/finance/commission-subscriber';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 import { createConsentPort, createPartyPort } from './modules/crm/customers/consent-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
@@ -103,5 +104,7 @@ export function createOutboxSubscribers(deps: ApiDeps): OutboxSubscriber[] {
     createWebhookOutboxSubscriber(deps),
     // In-app notifications for the events that name a recipient (CMP-NTF.01.1).
     createNotificationSubscriber(deps),
+    // P2-01: a verified disbursement tranche is priced from the lender's payout grid without anyone pressing calculate.
+    createCommissionSubscriber(deps),
   ];
 }
