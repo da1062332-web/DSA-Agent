@@ -10,10 +10,10 @@ WHERE n.nspname = 'app' AND c.relkind = 'r'
   AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
        OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid));
 
--- (b) No DELETE privilege for dsa_app anywhere (except guarded role and api_client tables): must return zero rows
+-- (b) No DELETE privilege for dsa_app anywhere (except guarded role tables): must return zero rows
 SELECT table_name FROM information_schema.role_table_grants
 WHERE grantee = 'dsa_app' AND privilege_type IN ('DELETE','TRUNCATE')
-  AND table_name NOT IN ('role', 'role_permission', 'api_client');
+  AND table_name NOT IN ('role', 'role_permission');
 
 -- (c) Tables without tenant_id must be on the global allow-list {tenant, permission, decision_definition, decision_dependency, feature_flag, master_data_item, platform_release, worker_queue_state}
 SELECT table_name FROM information_schema.tables t

@@ -128,14 +128,6 @@ describe('Phase 5: Persona Verification Matrix across 13 Live Roles', () => {
       expect(allowedRoles).not.toContain('ROLE-SALES-EXEC');
     });
 
-    it('verifies security.incident permission gate', () => {
-      const allowedRoles = roles.filter((r) =>
-        canPerformAction('security.incident', (c) => QLOAX_ROLE_GRANTS[r]!.includes(c)),
-      );
-      expect(allowedRoles).toContain('ROLE-COMPLIANCE');
-      expect(allowedRoles).not.toContain('ROLE-SALES-EXEC');
-      expect(allowedRoles).not.toContain('ROLE-DOC-VERIFIER');
-    });
   });
 
   describe('Multi-Role Switching Simulation', () => {
@@ -152,7 +144,6 @@ describe('Phase 5: Persona Verification Matrix across 13 Live Roles', () => {
 
       // But does not have finance or compliance actions
       expect(canPerformAction('commission.calculate', has)).toBe(false);
-      expect(canPerformAction('security.incident', has)).toBe(false);
     });
   });
 });

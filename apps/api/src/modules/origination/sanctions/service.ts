@@ -49,6 +49,43 @@ export class SanctionService {
     });
   }
 
+  /**
+   * What the commission subscriber needs to price a verified tranche (P2-01). Resolved here, in the module that owns
+   * sanctions and lender cases, so the subscriber reads the event and nothing else: finance never queries origination's
+   * tables. Any field that cannot be resolved is emitted as null rather than guessed; the subscriber refuses to price a
+   * tranche it cannot band, which dead-letters the event with a readable reason instead of billing a wrong rate.
+   */
+  private async resolveCommissionContext(
+    tx: Tx,
+    ctx: RequestContext,
+    tranche: DisbursementTrancheRow,
+  ): Promise<{
+    lenderId: string | null;
+    lenderCaseId: string | null;
+    applicationId: string | null;
+    productCategory: string | null;
+  }> {
+    const empty = { lenderId: null, lenderCaseId: null, applicationId: null, productCategory: null };
+    const sanction = await this.repo.findSanctionById(tx, ctx.principal.tenantId, tranche.sanction_id);
+    if (!sanction) return empty;
+
+    const lenderCase = await this.repo.findLenderCase(tx, ctx.principal.tenantId, sanction.lender_case_id);
+    if (!lenderCase) return { ...empty, lenderCaseId: sanction.lender_case_id };
+
+    let productCategory: string | null = null;
+    if (this.applicationPort) {
+      const application = await this.applicationPort.getApplicationSummary(tx, ctx, lenderCase.application_id);
+      productCategory = application?.productCategory ?? null;
+    }
+
+    return {
+      lenderId: lenderCase.lender_id,
+      lenderCaseId: lenderCase.id,
+      applicationId: lenderCase.application_id,
+      productCategory,
+    };
+  }
+
   private checkPermission(ctx: RequestContext, requiredPermission: string): void {
     const hasGrant = ctx.principal.grants.some((g) => g.code === requiredPermission);
     if (!hasGrant) {
@@ -487,7 +524,9 @@ export class SanctionService {
           updated_by: ctx.principal.id,
         });
 
-        // Emit disbursement.verified (Qualifying event for commission!)
+        // Emit disbursement.verified (the qualifying event for commission, P2-01). The payload carries everything the
+        // commission subscriber needs, so it never reaches into this module's tables.
+        const commissionContext = await this.resolveCommissionContext(tx, ctx, tranche);
         await this.repo.emitOutboxEvent(tx, {
           id: `evt_${ulid()}`,
           tenantId,
@@ -499,9 +538,13 @@ export class SanctionService {
             sanctionId: tranche.sanction_id,
             trancheNo: tranche.tranche_no,
             amount: Number(tranche.amount),
+            // The money value as a string. `amount` above is a float kept for existing consumers; commission sums in
+            // whole paise and must not go through one.
+            basisAmount: String(tranche.amount),
             currency: tranche.currency,
             verifiedBy: ctx.principal.id,
             verifiedAt: now,
+            ...commissionContext,
           },
           occurredAt: now,
         });

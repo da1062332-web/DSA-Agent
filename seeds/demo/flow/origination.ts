@@ -847,22 +847,6 @@ export function buildOrigination(
     });
   });
 
-  // Document archives: one per application, in different states.
-  apps.forEach((appId, i) => {
-    const status = i < 3 ? 'READY' : i === 5 ? 'FAILED' : 'QUEUED';
-    out.add('document_archive', {
-      id: idOf(t, 'arc', i + 1),
-      tenant_id: t.id,
-      application_id: appId,
-      status,
-      object_key: status === 'READY' ? `archives/${t.tag}/${appId}.zip` : null,
-      document_count: 2,
-      failure_reason: status === 'FAILED' ? 'Object store timeout (synthetic)' : null,
-      requested_by: staff.loanops,
-      completed_at: status === 'READY' || status === 'FAILED' ? at(d, 15, i) : null,
-    });
-  });
-
   // Upload links, intents and uploaded files for the applicants’ document requests.
   for (let i = 0; i < 8; i += 1) {
     out.add('upload_link', {

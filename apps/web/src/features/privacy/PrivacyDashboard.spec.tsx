@@ -53,7 +53,7 @@ describe('PrivacyDashboard Frontend Component Rendering', () => {
     expect(html).toContain('Data Sharing Inventory (ENT-100)');
     expect(html).toContain('Consent Verification Auditor');
     expect(html).toContain('Data Classification &amp; Masking');
-    expect(html).toContain('Retention &amp; Legal Hold');
+    expect(html).toContain('Retention (OD-008)');
     expect(html).toContain('Data-Principal Rights (DSR)');
   });
 });

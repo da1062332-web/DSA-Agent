@@ -2,9 +2,7 @@
 // validate with. Every /v1 operation here needs an isolation case naming its operationId (tests/isolation/cases).
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import {
-  ApproveDataCorrectionRequestSchema,
   ApproveSupportAccessRequestSchema,
-  CreateDataCorrectionRequestSchema,
   CreateSupportAccessRequestSchema,
   ListPlatformTenantsQuerySchema,
   MasterDataImportRequestSchema,
@@ -178,37 +176,6 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'POST /v1/support-access-requests/:id/revocation',
     tag,
     body: RevokeSupportAccessRequestSchema,
-  });
-  registerOperation(registry, {
-    method: 'get',
-    path: '/v1/data-corrections',
-    operationId: 'API-ADM-009',
-    summary: 'GET /v1/data-corrections',
-    tag,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/data-corrections',
-    operationId: 'ADM-POST-DATA-CORRECTIONS',
-    summary: 'POST /v1/data-corrections',
-    tag,
-    body: CreateDataCorrectionRequestSchema,
-    status: 201,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/data-corrections/:id/approval',
-    operationId: 'ADM-POST-DATA-CORRECTIONS-BY-ID-APPROVAL',
-    summary: 'POST /v1/data-corrections/:id/approval',
-    tag,
-    body: ApproveDataCorrectionRequestSchema,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/data-corrections/:id/execute',
-    operationId: 'ADM-POST-DATA-CORRECTIONS-BY-ID-EXECUTE',
-    summary: 'POST /v1/data-corrections/:id/execute',
-    tag,
   });
   const ten = 'MOD-TEN Tenants';
   registerOperation(registry, {

@@ -77,10 +77,7 @@ import { createRouter as createIntegrationsRouter } from '../src/modules/integra
 // Module 33: Platform Admin
 import { PlatformAdminService } from '../src/modules/platform-admin/platform-admin-service';
 import { InMemoryPlatformStore } from '../src/modules/platform-admin/platform-store';
-import {
-  createPlatformRouter as createPlatformRealmRouter,
-  createRouter as createPlatformAdminRouter,
-} from '../src/modules/platform-admin/router';
+import { createPlatformRouter as createPlatformRealmRouter } from '../src/modules/platform-admin/router';
 
 // Module 26/35: Verifications
 import { VerificationService } from '../src/modules/origination/verifications/verification-service';
@@ -1096,29 +1093,11 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
   // 8. MODULE 33: PLATFORM ADMINISTRATION (MOD-ADM)
   // =========================================================================
   describe('8. Module 33: Platform Administration (MOD-ADM)', () => {
-    it('DEMO-ADM-01: Inspects platform flags and verifies 4-eyes data correction request workflow', async () => {
+    it('DEMO-ADM-01: Inspects platform flags', async () => {
       const adminService = new PlatformAdminService(
         createTestDeps({ txRunner: dummyTxRunner }),
         new InMemoryPlatformStore(),
       );
-      const adminApp = express();
-      adminApp.use(express.json());
-      const superAdminPrincipal = testPrincipal({
-        id: DEMO_USER_ADMIN,
-        tenantId: DEMO_TENANT_ID,
-        grants: [
-          { code: 'platform.flags', scope: 'TENANT', branchIds: [] },
-          { code: 'platform.master_data', scope: 'TENANT', branchIds: [] },
-          { code: 'data_correction.request', scope: 'TENANT', branchIds: [] },
-          { code: 'data_correction.approve', scope: 'TENANT', branchIds: [] },
-        ],
-      });
-      adminApp.use(fakeAuth(superAdminPrincipal));
-      adminApp.use(
-        '/v1',
-        createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService),
-      );
-      adminApp.use(errorHandler());
 
       // Feature flags belong to the platform realm: they are read by a platform principal, not by a customer tenant user
       // (Module 1: platform endpoints refuse every customer tenant).
@@ -1148,39 +1127,6 @@ describe('DSA CRM — Comprehensive End-to-End Demo Data Verification for All Pi
       const getFlagRes = await request(platformApp).get('/platform/v1/flags/bre.v2_engine');
       expect(getFlagRes.status).toBe(200);
       expect(getFlagRes.body.key).toBe('bre.v2_engine');
-
-      // Submit Data Correction Request
-      const corrRes = await request(adminApp).post('/v1/data-corrections').send({
-        tenantId: DEMO_TENANT_ID,
-        justification: 'Correction of typographical error in applicant mobile number.',
-        scriptRef: 'SCR-2026-CORR-01',
-        targetEntity: 'LEAD',
-        changeDescription: 'Set primary mobile number for Lead Vikram Singhania',
-      });
-      expect(corrRes.status).toBe(201);
-      expect(corrRes.body.status).toBe('PENDING');
-      const corrId = corrRes.body.id;
-
-      // Four-Eyes Approval by Checker (different user)
-      const checkerAdminPrincipal = testPrincipal({
-        id: DEMO_USER_FIN_CHECKER,
-        tenantId: DEMO_TENANT_ID,
-        grants: [{ code: 'data_correction.approve', scope: 'TENANT', branchIds: [] }],
-      });
-      const checkerApp = express();
-      checkerApp.use(express.json());
-      checkerApp.use(fakeAuth(checkerAdminPrincipal));
-      checkerApp.use(
-        '/v1',
-        createPlatformAdminRouter(createTestDeps({ txRunner: dummyTxRunner }), adminService),
-      );
-      checkerApp.use(errorHandler());
-
-      const approveRes = await request(checkerApp)
-        .post(`/v1/data-corrections/${corrId}/approval`)
-        .send({ decision: 'APPROVED', comment: 'Verified against signed customer request letter.' });
-      expect(approveRes.status).toBe(200);
-      expect(approveRes.body.status).toBe('APPROVED');
     });
   });
 

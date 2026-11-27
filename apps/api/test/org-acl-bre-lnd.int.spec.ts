@@ -1,4 +1,4 @@
-// Org chart (API-ORG-010), access reviews (API-ACL-005/006, M-081), BRE reference lists (API-BRE-028/029, M-080) and the
+// Org chart (API-ORG-010), BRE reference lists (API-BRE-028/029, M-080) and the
 // lender reason map (API-LND-007, M-079) against a real database, with the production wiring. Synthetic data only.
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,7 +29,7 @@ afterAll(async () => {
   await env?.stop();
 });
 
-describe('TEST-OAB-INT org chart, access reviews, reference lists, reason map', () => {
+describe('TEST-OAB-INT org chart, reference lists, reason map', () => {
   it('TEST-OAB-INT-01 API-ORG-010 shows branches, teams, managers and members as of a date', async () => {
     const res = await request(env.appAs(env.A, [])).get('/v1/org-chart');
     expect(res.status).toBe(200);
@@ -38,29 +38,6 @@ describe('TEST-OAB-INT org chart, access reviews, reference lists, reason map', 
     expect(team.members.map((m: { userId: string }) => m.userId)).toContain(env.A.userIds[1]);
     const before = await request(env.appAs(env.A, [])).get('/v1/org-chart?asOf=2020-01-01T00:00:00Z');
     expect(before.body.branches[0].teams[0].members).toEqual([]);
-  });
-
-  it("TEST-OAB-INT-02 API-ACL-005/006 snapshots assignments; SOD-10 refuses one's own; REVOKE ends the assignment", async () => {
-    const app = env.appAs(env.A, ['user.manage']);
-    const started = await request(app)
-      .post('/v1/access-reviews')
-      .set('Idempotency-Key', 'oab_review_0001')
-      .send({ name: 'Quarterly review', dueAt: '2030-01-01T00:00:00Z' });
-    expect(started.status, JSON.stringify(started.body)).toBe(201);
-    const own = started.body.items.find((i: { userId: string }) => i.userId === env.A.userIds[0]);
-    const other = started.body.items.find((i: { userId: string }) => i.userId === env.A.userIds[1]);
-    const self = await request(app)
-      .post(`/v1/access-reviews/${started.body.id}/decisions`)
-      .send({ decisions: [{ itemId: own.id, decision: 'CERTIFY' }] });
-    expect(self.status).toBe(403);
-    const revoke = await request(app)
-      .post(`/v1/access-reviews/${started.body.id}/decisions`)
-      .send({ decisions: [{ itemId: other.id, decision: 'REVOKE', reason: 'Moved teams' }] });
-    expect(revoke.status, JSON.stringify(revoke.body)).toBe(200);
-    const live = await env.admin.query(
-      `select count(*)::int as n from app.user_role_assignment where id = 'ura_oab_2' and effective_range @> now()`,
-    );
-    expect(live.rows[0].n).toBe(0);
   });
 
   it('TEST-OAB-INT-03 API-BRE-028/029 creates a list by code, publishes versions, refuses wrong types and oversize lists', async () => {

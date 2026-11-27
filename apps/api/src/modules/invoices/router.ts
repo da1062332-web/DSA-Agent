@@ -3,6 +3,7 @@ import {
   AppError,
   CreateInvoiceInputSchema,
   AccountingExportQuerySchema,
+  GenerateLenderInvoiceSchema,
   InvoiceListQuerySchema,
   StatementQuerySchema,
   UpdateInvoiceStatusInputSchema,
@@ -37,6 +38,7 @@ export function createRouter(deps: ApiDeps): Router {
     authz: deps.authz,
     audit: deps.audit,
     ids: deps.ids,
+    commissionPort: deps.commissionPort,
   });
 
   // ==========================================
@@ -95,6 +97,27 @@ export function createRouter(deps: ApiDeps): Router {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
       return res.status(200).send(accountingExportToCsv(result.rows));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // P2-01: POST /v1/invoices/lender-commission — the monthly commission invoice to one lender.
+  // Registered BEFORE /invoices/:id for the same reason as the export above.
+  // ==========================================
+  router.post('/invoices/lender-commission', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ctx = requireCtx(req);
+      const parsed = GenerateLenderInvoiceSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const invoice = await deps.txRunner.withTenantTx(ctx, async (tx) => {
+        return service.buildLenderCommissionInvoice(tx, ctx, parsed.data);
+      });
+
+      res.setHeader('ETag', `"${invoice.lockVersion}"`);
+      return res.status(201).json(invoice);
     } catch (err) {
       next(err);
     }

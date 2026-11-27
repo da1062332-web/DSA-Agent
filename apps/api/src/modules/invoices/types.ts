@@ -29,6 +29,8 @@ export interface InvoiceRow {
   party_id: string;
   party_name: string | null;
   notes: string | null;
+  /** P2-01: the month a commission invoice bills, YYYY-MM. Null on invoices recorded by hand. */
+  period_month: string | null;
   lock_version: number;
   created_at: string | Date;
   created_by: string;

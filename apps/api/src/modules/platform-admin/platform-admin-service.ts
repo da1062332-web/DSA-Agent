@@ -2,11 +2,8 @@
 // Module: platform-admin — owner: Platform squad (MOD-ADM: SUB-ADM.01 to SUB-ADM.08)
 import {
   AppError,
-  type ApproveDataCorrectionRequest,
   type ApproveSupportAccessRequest,
-  type CreateDataCorrectionRequest,
   type CreateSupportAccessRequest,
-  type DataCorrectionRequest,
   type DeadLetterItem,
   type FeatureFlag,
   type JobQueueInfo,
@@ -45,7 +42,7 @@ export class PlatformAdminService {
 
   private readonly store: PlatformStore;
 
-  /** Tenant metadata, support access, data corrections, flags, master data and the release register are stored through the platform store (platform-store.ts). Queues and dead letters are still sample data held in memory (Release 2). */
+  /** Tenant metadata, support access, flags, master data and the release register are stored through the platform store (platform-store.ts). Queues and dead letters are still sample data held in memory (Release 2). */
   constructor(
     private readonly deps: ApiDeps,
     store?: PlatformStore,
@@ -133,8 +130,7 @@ export class PlatformAdminService {
       this.deadLetters.set(dl.id, dl);
     }
 
-    // Support-access requests live in the database (platform-store.ts). Data corrections start empty: a record that
-    // looks approved must come from a real request.
+    // Support-access requests live in the database (platform-store.ts).
   }
 
   // ==========================================
@@ -461,43 +457,6 @@ export class PlatformAdminService {
     req: ApproveSupportAccessRequest,
   ): Promise<SupportAccessGrant> {
     return this.store.decideSupportGrant(ctx, grantId, req.decision);
-  }
-
-  // ==========================================
-  // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009)
-  // ==========================================
-
-  async listDataCorrections(
-    ctx: RequestContext,
-  ): Promise<{ data: DataCorrectionRequest[]; meta: { total: number } }> {
-    const list = await this.store.listDataCorrections(ctx);
-    return { data: list, meta: { total: list.length } };
-  }
-
-  /** A correction belongs to one tenant, taken from the signed-in user. A tenantId in the body is accepted only if it matches. */
-  async createDataCorrectionRequest(
-    ctx: RequestContext,
-    req: CreateDataCorrectionRequest,
-  ): Promise<DataCorrectionRequest> {
-    if (req.tenantId !== undefined && req.tenantId !== ctx.principal.tenantId) {
-      throw AppError.of('VALIDATION_ERROR', 'A data correction can only be requested for your own tenant.', [
-        { field: 'tenantId', issue: 'NOT_YOUR_TENANT' },
-      ]);
-    }
-    return this.store.createDataCorrection(ctx, req);
-  }
-
-  async approveDataCorrectionRequest(
-    ctx: RequestContext,
-    correctionId: string,
-    req: ApproveDataCorrectionRequest,
-  ): Promise<DataCorrectionRequest> {
-    return this.store.decideDataCorrection(ctx, correctionId, req.decision);
-  }
-
-  /** Called by the correction executor (a service identity) once it has applied an approved correction. */
-  async executeDataCorrection(ctx: RequestContext, correctionId: string): Promise<DataCorrectionRequest> {
-    return this.store.markDataCorrectionExecuted(ctx, correctionId);
   }
 
   async revokeSupportAccessRequest(ctx: RequestContext, grantId: string): Promise<SupportAccessGrant> {

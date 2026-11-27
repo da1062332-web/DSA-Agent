@@ -5,12 +5,10 @@
 
 /** `<segment>/{param}` → the table whose tenant A rows fill it. */
 export const SEGMENT_TABLE: Record<string, string> = {
-  'access-reviews': 'access_review',
   activities: 'activity',
   addresses: 'customer_address',
   adjustments: 'adjustment',
   agents: 'app_user',
-  'api-clients': 'api_client',
   applications: 'loan_application',
   'message-templates': 'message_template',
   messages: 'message',
@@ -31,14 +29,11 @@ export const SEGMENT_TABLE: Record<string, string> = {
   consents: 'consent_record',
   contacts: 'customer_contact_point',
   customers: 'customer',
-  'data-corrections': 'data_correction_request',
   'data-subject-requests': 'data_subject_request',
   'dead-letters': 'wfa_dead_letter',
   'decision-records': 'decision_record',
-  delegations: 'delegation',
   disputes: 'dispute',
   'duplicate-reviews': 'duplicate_review',
-  'document-archives': 'document_archive',
   'document-versions': 'document_version',
   documents: 'document',
   'eligibility-assessments': 'eligibility_assessment',

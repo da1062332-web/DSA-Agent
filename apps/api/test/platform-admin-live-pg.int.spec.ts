@@ -31,7 +31,7 @@ describeLivePg('Module 40 (MOD-ADM): Live PostgreSQL Verification', () => {
     if (adminDb) await adminDb.destroy();
   });
 
-  it('PG-ADM-001: Verifies permissions for platform admin and data correction exist in catalog', async () => {
+  it('PG-ADM-001: Verifies the platform admin permissions exist in the catalog', async () => {
     const rows = await sql<{ code: string }>`
       SELECT code FROM app.permission
        WHERE code IN (
@@ -40,9 +40,7 @@ describeLivePg('Module 40 (MOD-ADM): Live PostgreSQL Verification', () => {
          'platform.master_data',
          'platform.jobs',
          'platform.support_access',
-         'platform.release',
-         'data_correction.request',
-         'data_correction.approve'
+         'platform.release'
        )
        ORDER BY code
     `.execute(db);
@@ -54,8 +52,6 @@ describeLivePg('Module 40 (MOD-ADM): Live PostgreSQL Verification', () => {
     expect(codes).toContain('platform.jobs');
     expect(codes).toContain('platform.support_access');
     expect(codes).toContain('platform.release');
-    expect(codes).toContain('data_correction.request');
-    expect(codes).toContain('data_correction.approve');
   });
 
   it('PG-ADM-002: Verifies feature_flag table exists and supports global and tenant scopes', async () => {
@@ -99,24 +95,6 @@ describeLivePg('Module 40 (MOD-ADM): Live PostgreSQL Verification', () => {
     `.execute(adminDb);
 
     expect(res.rows[0]?.id).toBe(grantId);
-    expect(res.rows[0]?.status).toBe('PENDING');
-  });
-
-  it('PG-ADM-005: Verifies data_correction_request table enforces tenant RLS and status checks', async () => {
-    const corrId = `dcr_${nextUlid()}`;
-    await sql`
-      INSERT INTO app.data_correction_request (
-        id, tenant_id, entity_type, entity_id, field_name, old_value, new_value, reason, status, submitted_by, lock_version, created_by
-      ) VALUES (
-        ${corrId}, ${TENANT_A}, 'LEAD', 'lead_test_01', 'phone', '9876543210', '9876543211', 'Incorrect phone', 'PENDING', 'usr_maker', 1, 'usr_maker'
-      )
-    `.execute(adminDb);
-
-    const res = await sql<{ id: string; status: string }>`
-      SELECT id, status FROM app.data_correction_request WHERE id = ${corrId}
-    `.execute(adminDb);
-
-    expect(res.rows[0]?.id).toBe(corrId);
     expect(res.rows[0]?.status).toBe('PENDING');
   });
 });

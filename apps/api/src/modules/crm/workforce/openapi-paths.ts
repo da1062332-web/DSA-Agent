@@ -7,49 +7,6 @@ const tag = 'MOD-WRK Workforce';
 
 export function registerPaths(registry: OpenAPIRegistry): void {
   registerOperation(registry, {
-    method: 'patch',
-    path: '/v1/me/availability',
-    operationId: 'WRK-PATCH-ME-AVAILABILITY',
-    summary: 'PATCH /v1/me/availability',
-    tag,
-  });
-  registerOperation(registry, {
-    method: 'get',
-    path: '/v1/workforce/agents',
-    operationId: 'WRK-GET-WORKFORCE-AGENTS',
-    summary: 'GET /v1/workforce/agents',
-    tag,
-  });
-  registerOperation(registry, {
-    method: 'patch',
-    path: '/v1/workforce/agents/:id/capacity',
-    operationId: 'WRK-PATCH-WORKFORCE-AGENTS-BY-ID-CAPACITY',
-    summary: 'PATCH /v1/workforce/agents/:id/capacity',
-    tag,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/delegations',
-    operationId: 'API-WRK-001',
-    summary: 'POST /v1/delegations',
-    tag,
-    status: 201,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/delegations/:id/end',
-    operationId: 'API-WRK-002',
-    summary: 'POST /v1/delegations/:id/end',
-    tag,
-  });
-  registerOperation(registry, {
-    method: 'get',
-    path: '/v1/delegations',
-    operationId: 'WRK-GET-DELEGATIONS',
-    summary: 'GET /v1/delegations',
-    tag,
-  });
-  registerOperation(registry, {
     method: 'post',
     path: '/v1/attendance/check-in',
     operationId: 'WRK-POST-ATTENDANCE-CHECK-IN',

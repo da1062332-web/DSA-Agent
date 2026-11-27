@@ -72,8 +72,6 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/approvals',
         anyOf: [
           'config.manage',
-          'data_correction.approve',
-          'data_correction.request',
           'commission.plan.approve',
           'payout.approve',
         ],
@@ -216,18 +214,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Configuration', to: '/config', anyOf: opens('settings.manage') },
       { label: 'Audit', to: '/audit', anyOf: ['audit.read', 'audit.export_evidence'] },
       { label: 'Privacy and consent', to: '/privacy', anyOf: opens('privacy.read') },
-      { label: 'Security events and incidents', to: '/security', anyOf: opens('security.read') },
       { label: 'Security', to: '/account/security' },
       {
         label: 'Integrations',
         to: '/integrations',
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
-      },
-      {
-        label: 'API management',
-        to: '/api-management',
-        anyOf: ['api.read', 'api.manage', 'config.manage'],
-        module: 'MOD-API',
       },
       {
         label: 'Import and export',
@@ -380,13 +371,11 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     to: '/approvals',
     anyOf: [
       'config.manage',
-      'data_correction.request',
-      'data_correction.approve',
       'commission.plan.approve',
       'payout.approve',
     ],
-    description: 'Pending approvals for payouts, corrections, and plans',
-    keywords: ['review', 'approve', 'signoff', 'corrections', 'payout review'],
+    description: 'Pending approvals for support access, payouts and plans',
+    keywords: ['review', 'approve', 'signoff', 'support access', 'payout review'],
   },
   {
     id: 'activities',
@@ -810,15 +799,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     keywords: ['dpdp', 'consent management', 'gdpr', 'privacy dashboard'],
   },
   {
-    id: 'security',
-    label: 'Security events and incidents',
-    category: 'Governance & Administration',
-    to: '/security',
-    anyOf: ['security.incident'],
-    description: 'Security incident monitoring and suspicious activity review',
-    keywords: ['threats', 'soc', 'incident log', 'breaches', 'security alerts'],
-  },
-  {
     id: 'account-security',
     label: 'Security',
     category: 'Governance & Administration',
@@ -834,15 +814,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     anyOf: ['integration.read', 'integration.manage', 'config.manage'],
     description: 'Lender APIs, document OCR, bureaus, and external webhooks',
     keywords: ['webhooks', 'api connectors', 'third party services'],
-  },
-  {
-    id: 'api-management',
-    label: 'API management',
-    category: 'Governance & Administration',
-    to: '/api-management',
-    anyOf: ['api.read', 'api.manage', 'config.manage'],
-    description: 'API client credentials, webhook subscriptions, and token access',
-    keywords: ['api credentials', 'client keys', 'tokens', 'developer api'],
   },
   {
     id: 'import-export',
@@ -1019,7 +990,6 @@ export type ActionId =
   | 'export.run'
   | 'audit.export_evidence'
   | 'audit.seal'
-  | 'security.incident'
   | 'target.manage'
   | 'message.send'
   // Sub-permissions (M-098): the actions whose buttons used to check the broader code
@@ -1125,7 +1095,6 @@ export const ACTION_RULES: Record<ActionId, string[]> = {
   'export.run': ['export.run'],
   'audit.export_evidence': ['audit.export_evidence'],
   'audit.seal': ['audit.seal'],
-  'security.incident': ['security.incident'],
   'target.manage': ['target.manage'],
   'message.send': ['message.send'],
   'message_template.manage': opens('message_template.manage'),
@@ -1274,15 +1243,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
       },
       {
-        id: 'api-management',
-        label: 'API Management',
-        category: 'System & Integration',
-        to: '/api-management',
-        description: 'API keys, token rotation, rate limits, developer credentials & outgoing webhooks',
-        iconName: 'KeyIcon',
-        anyOf: ['api.read', 'api.manage', 'config.manage'],
-      },
-      {
         id: 'admin-import-export',
         label: 'Data Import & Export',
         category: 'System & Integration',
@@ -1296,7 +1256,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   {
     id: 'compliance',
     title: 'Compliance & Security',
-    description: 'Inspect immutable audit trails, data consent records, and security incident investigations',
+    description: 'Inspect immutable audit trails and data consent records',
     iconName: 'ShieldIcon',
     items: [
       {
@@ -1316,15 +1276,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         description: 'Customer data consent history, DPDP compliance logs & data subject records',
         iconName: 'VerifiedUserIcon',
         anyOf: ['audit.read', 'customer.read'],
-      },
-      {
-        id: 'security-incidents',
-        label: 'Security Incidents',
-        category: 'Compliance & Security',
-        to: '/security',
-        description: 'Security incident monitoring, anomalous event investigations & threat tracking',
-        iconName: 'ShieldIcon',
-        anyOf: ['security.incident'],
       },
     ],
   },

@@ -26,8 +26,9 @@ beforeAll(async () => {
   container = await startPostgres();
   admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
+  // The 0050 scripts check data_correction_request, which migration 0109 removes, so they are rehearsed on the state before 0109.
   for (const file of readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
+    .filter((f) => f.endsWith('.sql') && !f.includes('0109_cleanup_unwanted_features'))
     .sort()) {
     await admin.query(readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8'));
   }

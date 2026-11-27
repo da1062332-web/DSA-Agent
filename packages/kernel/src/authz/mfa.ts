@@ -20,14 +20,13 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'export.run',
   'payout.approve',
   'payout.record_payment',
-  // Platform realm (MODULE 1: MFA mandatory for platform roles) and four-eyes data correction approval.
+  // Platform realm (MODULE 1: MFA mandatory for platform roles).
   'platform.console',
   'platform.flags',
   'platform.master_data',
   'platform.jobs',
   'platform.support_access',
   'platform.release',
-  'data_correction.approve',
   'finance.period_close',
   // Write-capable slices of the codes above (M-098). Once a role is trimmed it may hold the slice without the parent, so the slice
   // must demand the same second factor. The read-only slices (user.read, role.read, import.read and the *.view codes) do not.
@@ -35,7 +34,6 @@ export const MFA_REQUIRED_PERMISSIONS: readonly PermissionCode[] = [
   'settings.manage',
   'user.invite',
   'user.offboard',
-  'access_review.manage',
   'audit.seal',
   'payout.disburse',
 ];

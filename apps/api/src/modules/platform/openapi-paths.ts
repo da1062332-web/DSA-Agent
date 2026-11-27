@@ -4,7 +4,7 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { UpdateTenantConfigRequest } from '@dsa/contracts';
 import { registerOperation } from '../../http/openapi-op';
 import { DeadLetterDiscard, DeadLetterQuery } from './dead-letters';
-import { AccessReviewCreate, AccessReviewDecisions, OrgChartQuery } from './org-chart';
+import { OrgChartQuery } from './org-chart';
 import {
   CalendarPut,
   ConfigBundle,
@@ -68,32 +68,6 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'Branches, teams, managers and members as of a date (any staff, within scope)',
     tag: 'MOD-ORG Organisation',
     query: OrgChartQuery,
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/access-reviews',
-    operationId: 'API-ACL-005',
-    summary: 'Start an access review: one item per role assignment in force (user.manage)',
-    tag: 'MOD-ACL Access Control',
-    body: AccessReviewCreate,
-    status: 201,
-    idempotent: true,
-  });
-  registerOperation(registry, {
-    method: 'get',
-    path: '/v1/access-reviews/:id',
-    operationId: 'API-ACL-005-GET',
-    summary: 'An access review and its items (user.manage)',
-    tag: 'MOD-ACL Access Control',
-  });
-  registerOperation(registry, {
-    method: 'post',
-    path: '/v1/access-reviews/:id/decisions',
-    operationId: 'API-ACL-006',
-    summary:
-      'Certify or revoke items; never your own access (SOD-10); revoking ends the assignment (user.manage)',
-    tag: 'MOD-ACL Access Control',
-    body: AccessReviewDecisions,
   });
   const cfg = 'MOD-CFG Configuration';
   registerOperation(registry, {

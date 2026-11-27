@@ -1,11 +1,8 @@
 // apps/api/src/modules/platform-admin/openapi.ts
 // OpenAPI registration for Module 30: Administration and Platform Operations (MOD-ADM)
 import {
-  ApproveDataCorrectionRequestSchema,
   ApproveSupportAccessRequestSchema,
-  CreateDataCorrectionRequestSchema,
   CreateSupportAccessRequestSchema,
-  DataCorrectionRequestSchema,
   DeadLetterItemSchema,
   FeatureFlagSchema,
   JobQueueInfoSchema,
@@ -44,9 +41,6 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('CreateSupportAccessRequest', CreateSupportAccessRequestSchema);
   registry.register('ApproveSupportAccessRequest', ApproveSupportAccessRequestSchema);
   registry.register('RevokeSupportAccessRequest', RevokeSupportAccessRequestSchema);
-  registry.register('DataCorrectionRequest', DataCorrectionRequestSchema);
-  registry.register('CreateDataCorrectionRequest', CreateDataCorrectionRequestSchema);
-  registry.register('ApproveDataCorrectionRequest', ApproveDataCorrectionRequestSchema);
   registry.register('ReleaseRegisterItem', ReleaseRegisterItemSchema);
   registry.register('UpdateReleaseRequest', UpdateReleaseRequestSchema);
 }

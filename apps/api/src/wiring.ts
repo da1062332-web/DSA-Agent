@@ -12,6 +12,7 @@ import {
 import { AutomationEngine } from './modules/automation/engine';
 import { AutomationTriggerService } from './modules/automation/triggers';
 import { createNotificationSubscriber } from './modules/crm/notifications/event-subscriber';
+import { createCommissionSubscriber } from './modules/finance/commission-subscriber';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 import { createConsentPort, createPartyPort } from './modules/crm/customers/consent-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
@@ -19,10 +20,10 @@ import { createTaskPort } from './modules/crm/tasks/task-port';
 import { IntegrationRegistry } from './modules/integrations/integration-registry';
 import { createKycCheckPort } from './modules/integrations/kyc-port';
 import { createApplicationPort } from './modules/origination/applications/application-port';
+import { createCommissionPort } from './modules/finance/commission-port';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
-import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 import { createWebhookOutboxSubscriber } from './modules/partner-api/webhooks';
 import { globalJobQueue } from './modules/platform/job-queue';
 import type { OutboxSubscriber } from './modules/platform/outbox-relay';
@@ -63,6 +64,7 @@ export function createProductionDeps(
     taskPort,
     // Lead conversion creates applications through this port; lender cases read the document checklist through it.
     applicationPort: createApplicationPort({ ids, audit }),
+    commissionPort: createCommissionPort(),
     // Lender packages and submissions fail closed (503) without it: nothing is shared without consent.
     consentPort: createConsentPort(),
     // Applications created from a customer (API-APP-001) and added parties (API-APP-006) read the customer through it.
@@ -76,7 +78,6 @@ export function createProductionDeps(
     // PAN and GST checks (POST /v1/verifications/checks) run through this port; without it they fail closed (503).
     kycPort: createKycCheckPort({ registry: new IntegrationRegistry() }),
     dataSharingPort: new PostgresDataSharingPort(),
-    apiClientRepository: new PgApiClientRepository(txRunner, audit),
     documentLinkSecret: options.documentLinkSecret,
     // Document files: an S3-compatible bucket and clamd when configured (config.ts), else local disk and the signature check.
     documentStore: options.documentStore,
@@ -107,5 +108,7 @@ export function createOutboxSubscribers(deps: ApiDeps): OutboxSubscriber[] {
     createWebhookOutboxSubscriber(deps),
     // In-app notifications for the events that name a recipient (CMP-NTF.01.1).
     createNotificationSubscriber(deps),
+    // P2-01: a verified disbursement tranche is priced from the lender's payout grid without anyone pressing calculate.
+    createCommissionSubscriber(deps),
   ];
 }

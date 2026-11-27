@@ -68,19 +68,7 @@ const SCREENS: { to: string; label: string; title: string; feature: string }[] =
   { to: '/config', label: 'Configuration', title: 'Tenant Configuration & Settings', feature: 'Configuration' },
   { to: '/audit', label: 'Audit', title: 'Audit Trail & Cryptographic Verification', feature: 'Audit trail' },
   { to: '/privacy', label: 'Privacy and consent', title: 'Privacy & Consent Governance', feature: 'Privacy and consent' },
-  {
-    to: '/security',
-    label: 'Security events and incidents',
-    title: 'Security events and incidents',
-    feature: 'Security incidents',
-  },
   { to: '/integrations', label: 'Integrations', title: 'Integration Management', feature: 'Integrations' },
-  {
-    to: '/api-management',
-    label: 'API management',
-    title: 'API Management & Credentials',
-    feature: 'API management',
-  },
   { to: '/admin/import-export', label: 'Import and export', title: 'Import and Export', feature: 'Import and export' },
 ];
 

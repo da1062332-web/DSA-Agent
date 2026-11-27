@@ -1,20 +1,17 @@
 // Persistence for the cross-tenant and tenant-governed parts of platform administration (owner: Dev 1; DSA Notion MODULE 1
-// and MODULE 40). Tenant metadata, support-access requests and data corrections live in the database; feature
+// and MODULE 40). Tenant metadata and support-access requests live in the database; feature
 // flags (app.feature_flag), master data (app.master_data_item) and the release register (app.platform_release) too. Queues and dead letters are
 // still sample data in the service: they belong to Release 2 (SUB-ADM.04) and need a design decision, see docs/COMPLETION_TRACKER.md.
 // PgPlatformStore runs everything through withTenantTx, so the policies in migration 0050 decide what a session sees:
 //   - tenant metadata and active-user counts are readable in the platform realm only;
 //   - a platform session can file and read support-access requests, but cannot approve, deny or revoke them;
 //   - the target tenant's own session approves, denies or revokes;
-//   - data corrections are tenant-isolated: the platform realm cannot read them, and a tenant sees only its own.
 // Every call records an audit event in the same transaction as the change. InMemoryPlatformStore backs unit tests only.
 import { PgQueueOps, type QueueOps } from './queue-ops';
 import {
   AppError,
   PLATFORM_TENANT_ID,
-  type CreateDataCorrectionRequest,
   type CreateSupportAccessRequest,
-  type DataCorrectionRequest,
   type FeatureFlag,
   type MasterDataImportRequest,
   type MasterDataItem,
@@ -100,16 +97,6 @@ export interface PlatformStore {
   ): Promise<ReleaseRegisterItem>;
 
   /** The caller's own tenant only. */
-  listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]>;
-  createDataCorrection(ctx: RequestContext, req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest>;
-  /** SOD-08: the approver is not the requester. */
-  decideDataCorrection(
-    ctx: RequestContext,
-    id: string,
-    decision: 'APPROVED' | 'REJECTED',
-  ): Promise<DataCorrectionRequest>;
-  /** Only the correction executor (a service identity) calls this, on an APPROVED correction. */
-  markDataCorrectionExecuted(ctx: RequestContext, id: string): Promise<DataCorrectionRequest>;
 }
 
 type Row = Record<string, unknown>;
@@ -136,24 +123,6 @@ const toGrant = (r: Row, now: Date): SupportAccessGrant => ({
   status: grantStatus(String(r.status), r.expires_at, now),
   createdAt: iso(r.created_at),
   updatedAt: iso(r.revoked_at ?? r.approved_at ?? r.created_at),
-});
-
-const toCorrection = (r: Row): DataCorrectionRequest => ({
-  id: String(r.id),
-  tenantId: String(r.tenant_id),
-  justification: String(r.justification ?? r.reason ?? ''),
-  scriptRef: String(r.script_ref ?? ''),
-  dryRunDiffKey: (r.dry_run_diff_key as string | null) ?? null,
-  dryRunDiff: (r.dry_run_diff as string | null) ?? null,
-  targetEntity: (r.target_entity as string | null) ?? (r.entity_type as string | null) ?? null,
-  changeDescription: (r.change_description as string | null) ?? null,
-  requestedBy: String(r.requested_by ?? r.submitted_by ?? r.created_by),
-  approvedBy: (r.approved_by as string | null) ?? null,
-  status: r.status as DataCorrectionRequest['status'],
-  executedAt: r.executed_at ? iso(r.executed_at) : null,
-  failureReason: (r.failure_reason as string | null) ?? null,
-  executorIdentity: String(r.executor_identity ?? 'SERVICE:data-correction-executor'),
-  createdAt: iso(r.created_at),
 });
 
 const GRANT_COLUMNS = sql`g.id, g.tenant_id, t.legal_name AS tenant_name, g.support_user_id, g.reason, g.scope, g.incident_ref,
@@ -536,7 +505,6 @@ export class PgPlatformStore implements PlatformStore {
     });
   }
 
-  // ---- data corrections (tenant realm) ----------------------------------------------------------------------------
   async listFlags(ctx: RequestContext): Promise<FeatureFlag[]> {
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const r =
@@ -827,113 +795,6 @@ export class PgPlatformStore implements PlatformStore {
       return toRelease(updated.rows[0]);
     });
   }
-
-  async listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]> {
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const r = await sql<Row>`SELECT * FROM data_correction_request ORDER BY created_at DESC, id`.execute(
-        tx,
-      );
-      return r.rows.map(toCorrection);
-    });
-  }
-
-  async createDataCorrection(
-    ctx: RequestContext,
-    req: CreateDataCorrectionRequest,
-  ): Promise<DataCorrectionRequest> {
-    const id = this.deps.ids.next('dcr');
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      // The tenant is the caller's own: set by the session, never by the body.
-      const r = await sql<Row>`
-        INSERT INTO data_correction_request (id, tenant_id, justification, script_ref, target_entity, change_description,
-                                             requested_by, status, created_by)
-        VALUES (${id}, ${ctx.principal.tenantId}, ${req.justification}, ${req.scriptRef}, ${req.targetEntity},
-                ${req.changeDescription}, ${ctx.principal.id}, 'PENDING', ${ctx.principal.id})
-        RETURNING *`.execute(tx);
-      await this.deps.audit.record(tx, ctx, {
-        action: 'data_correction.requested',
-        entityType: 'DATA_CORRECTION',
-        entityId: id,
-        after: { scriptRef: req.scriptRef, targetEntity: req.targetEntity },
-        reason: req.justification,
-        permissionUsed: 'data_correction.request',
-      });
-      return toCorrection(r.rows[0]!);
-    });
-  }
-
-  private async ownCorrectionForUpdate(
-    tx: Parameters<Parameters<ApiDeps['txRunner']['withTenantTx']>[1]>[0],
-    ctx: RequestContext,
-    id: string,
-  ): Promise<Row> {
-    const found = await sql<Row>`SELECT * FROM data_correction_request WHERE id = ${id} FOR UPDATE`.execute(
-      tx,
-    );
-    const row = found.rows[0];
-    if (!row || row.tenant_id !== ctx.principal.tenantId) {
-      throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
-    }
-    return row;
-  }
-
-  async decideDataCorrection(
-    ctx: RequestContext,
-    id: string,
-    decision: 'APPROVED' | 'REJECTED',
-  ): Promise<DataCorrectionRequest> {
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const row = await this.ownCorrectionForUpdate(tx, ctx, id);
-      const requester = (row.requested_by ?? row.submitted_by ?? row.created_by) as string;
-      if (requester === ctx.principal.id) {
-        throw AppError.of(
-          'SOD_VIOLATION',
-          'Separation of Duties violation (SOD-08): the approver must differ from the requester.',
-        );
-      }
-      if (row.status !== 'PENDING') {
-        throw AppError.of('INVALID_STATE', `Data correction '${id}' is already in state '${row.status}'.`);
-      }
-      const r = await sql<Row>`
-        UPDATE data_correction_request
-           SET status = ${decision}, approved_by = ${ctx.principal.id}, approved_at = ${ctx.now}, lock_version = lock_version + 1
-         WHERE id = ${id} RETURNING *`.execute(tx);
-      await this.deps.audit.record(tx, ctx, {
-        action: decision === 'APPROVED' ? 'data_correction.approved' : 'data_correction.rejected',
-        entityType: 'DATA_CORRECTION',
-        entityId: id,
-        before: { status: 'PENDING' },
-        after: { status: decision },
-        permissionUsed: 'data_correction.approve',
-      });
-      return toCorrection(r.rows[0]!);
-    });
-  }
-
-  async markDataCorrectionExecuted(ctx: RequestContext, id: string): Promise<DataCorrectionRequest> {
-    return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const row = await this.ownCorrectionForUpdate(tx, ctx, id);
-      if (row.status !== 'APPROVED') {
-        throw AppError.of(
-          'INVALID_STATE',
-          `Data correction must be APPROVED prior to execution (current: ${row.status}).`,
-        );
-      }
-      const r = await sql<Row>`
-        UPDATE data_correction_request
-           SET status = 'EXECUTED', executed_at = ${ctx.now}, lock_version = lock_version + 1
-         WHERE id = ${id} RETURNING *`.execute(tx);
-      await this.deps.audit.record(tx, ctx, {
-        action: 'data_correction.executed',
-        entityType: 'DATA_CORRECTION',
-        entityId: id,
-        before: { status: 'APPROVED' },
-        after: { status: 'EXECUTED' },
-        permissionUsed: 'SERVICE:data-correction-executor',
-      });
-      return toCorrection(r.rows[0]!);
-    });
-  }
 }
 
 /** The flags a unit-test store starts with (the database gets the same ones from migrations 0046 and 0058). */
@@ -1057,7 +918,6 @@ export class InMemoryPlatformStore implements PlatformStore {
     }
   }
   private grants = new Map<string, SupportAccessGrant>();
-  private corrections = new Map<string, DataCorrectionRequest>();
   private seq = 0;
 
   async listFlags(): Promise<FeatureFlag[]> {
@@ -1372,74 +1232,5 @@ export class InMemoryPlatformStore implements PlatformStore {
     grant.updatedAt = ctx.now.toISOString();
     this.audit.push('platform.support_access_revoked');
     return grant;
-  }
-
-  async listDataCorrections(ctx: RequestContext): Promise<DataCorrectionRequest[]> {
-    return [...this.corrections.values()].filter((c) => c.tenantId === ctx.principal.tenantId);
-  }
-
-  async createDataCorrection(
-    ctx: RequestContext,
-    req: CreateDataCorrectionRequest,
-  ): Promise<DataCorrectionRequest> {
-    this.seq += 1;
-    const record: DataCorrectionRequest = {
-      id: `dcr_test_${this.seq}`,
-      tenantId: ctx.principal.tenantId,
-      justification: req.justification,
-      scriptRef: req.scriptRef,
-      dryRunDiffKey: null,
-      dryRunDiff: null,
-      targetEntity: req.targetEntity,
-      changeDescription: req.changeDescription,
-      requestedBy: ctx.principal.id,
-      approvedBy: null,
-      status: 'PENDING',
-      executedAt: null,
-      executorIdentity: 'SERVICE:data-correction-executor',
-      createdAt: ctx.now.toISOString(),
-    };
-    this.corrections.set(record.id, record);
-    this.audit.push('data_correction.requested');
-    return record;
-  }
-
-  private ownCorrection(ctx: RequestContext, id: string): DataCorrectionRequest {
-    const record = this.corrections.get(id);
-    if (!record || record.tenantId !== ctx.principal.tenantId)
-      throw AppError.of('NOT_FOUND', `Data correction request '${id}' not found.`);
-    return record;
-  }
-
-  async decideDataCorrection(
-    ctx: RequestContext,
-    id: string,
-    decision: 'APPROVED' | 'REJECTED',
-  ): Promise<DataCorrectionRequest> {
-    const record = this.ownCorrection(ctx, id);
-    if (record.requestedBy === ctx.principal.id)
-      throw AppError.of(
-        'SOD_VIOLATION',
-        'Separation of Duties violation (SOD-08): the approver must differ from the requester.',
-      );
-    if (record.status !== 'PENDING')
-      throw AppError.of('INVALID_STATE', `Data correction '${id}' is already in state '${record.status}'.`);
-    record.status = decision;
-    record.approvedBy = ctx.principal.id;
-    this.audit.push(decision === 'APPROVED' ? 'data_correction.approved' : 'data_correction.rejected');
-    return record;
-  }
-
-  async markDataCorrectionExecuted(ctx: RequestContext, id: string): Promise<DataCorrectionRequest> {
-    const record = this.ownCorrection(ctx, id);
-    if (record.status !== 'APPROVED')
-      throw AppError.of(
-        'INVALID_STATE',
-        `Data correction must be APPROVED prior to execution (current: ${record.status}).`,
-      );
-    record.status = 'EXECUTED';
-    record.executedAt = ctx.now.toISOString();
-    this.audit.push('data_correction.executed');
-    return record;
   }
 }

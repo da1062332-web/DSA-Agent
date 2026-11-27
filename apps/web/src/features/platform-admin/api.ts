@@ -1,11 +1,8 @@
 // apps/web/src/features/platform-admin/api.ts
 // Module 30: Administration and Platform Operations (MOD-ADM) Client API
 import type {
-  ApproveDataCorrectionRequest,
   ApproveSupportAccessRequest,
-  CreateDataCorrectionRequest,
   CreateSupportAccessRequest,
-  DataCorrectionRequest,
   DeadLetterItem,
   FeatureFlag,
   JobQueueInfo,
@@ -209,39 +206,6 @@ export async function approveSupportAccessRequest(
   return apiFetch<SupportAccessGrant>(`/v1/support-access-requests/${encodeURIComponent(id)}/approval`, {
     method: 'POST',
     body,
-  });
-}
-
-// SUB-ADM.07: Data Corrections
-export async function fetchDataCorrections(): Promise<{
-  data: DataCorrectionRequest[];
-  meta: { total: number };
-}> {
-  return apiFetch<{ data: DataCorrectionRequest[]; meta: { total: number } }>('/v1/data-corrections');
-}
-
-export async function createDataCorrection(req: CreateDataCorrectionRequest): Promise<DataCorrectionRequest> {
-  return apiFetch<DataCorrectionRequest>('/v1/data-corrections', {
-    method: 'POST',
-    body: req,
-  });
-}
-
-export async function approveDataCorrection(
-  id: string,
-  decision: 'APPROVED' | 'REJECTED',
-  comments?: string,
-): Promise<DataCorrectionRequest> {
-  const body: ApproveDataCorrectionRequest = { decision, comments };
-  return apiFetch<DataCorrectionRequest>(`/v1/data-corrections/${encodeURIComponent(id)}/approval`, {
-    method: 'POST',
-    body,
-  });
-}
-
-export async function executeDataCorrection(id: string): Promise<DataCorrectionRequest> {
-  return apiFetch<DataCorrectionRequest>(`/v1/data-corrections/${encodeURIComponent(id)}/execute`, {
-    method: 'POST',
   });
 }
 
