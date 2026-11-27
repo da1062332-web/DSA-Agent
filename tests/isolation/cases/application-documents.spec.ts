@@ -1,8 +1,8 @@
-// TEST-SEC-001 cases for application documents and legal holds (owner: Dev 3, MOD-DOC slice of Module 16; MOD-PRV legal holds).
+// TEST-SEC-001 cases for application documents (owner: Dev 3, MOD-DOC slice of Module 16).
 // Tenant A creates its records through the real API (uploads are kept in memory, not on disk). Tenant B, holding every document,
-// application and privacy permission, must not create, read, open, download, review, archive or hold any of them.
+// application and privacy permission, must not create, read, open, download or review any of them.
 // Named operationIds: API-DOC-001, API-DOC-001-PUT, API-DOC-002, API-DOC-003, API-DOC-004, API-DOC-004-GET, API-DOC-005,
-// API-DOC-006, API-DOC-007, API-DOC-008, API-DOC-009, API-DOC-009-STATUS, API-PRV-004, API-PRV-004-LIST.
+// API-DOC-006, API-DOC-007 and API-DOC-008. Archives and legal holds were removed with task P0-02.
 import crypto from 'node:crypto';
 import type { PermissionCode } from '@dsa/contracts';
 import request from 'supertest';
@@ -37,8 +37,6 @@ let documentId = '';
 let versionId = '';
 let pendingIntentId = '';
 let pendingUploadUrl = '';
-let archiveId = '';
-let holdId = '';
 let viewUrl = '';
 
 /** Keeps uploaded files in memory for the test, so nothing is written under ./uploads. */
@@ -138,16 +136,6 @@ beforeAll(async () => {
   expect(view.status, JSON.stringify(view.body)).toBe(200);
   viewUrl = view.body.url;
 
-  const archive = await request(app).post(`/v1/applications/${APP}/document-archive`).send({});
-  expect(archive.status, JSON.stringify(archive.body)).toBe(202);
-  archiveId = archive.body.archiveId;
-
-  const hold = await request(app)
-    .post('/v1/legal-holds')
-    .set('Idempotency-Key', key('a-hold'))
-    .send({ subjectType: 'LOAN_APPLICATION', subjectId: APP, reason: 'Court order 2026/ISO (synthetic)' });
-  expect(hold.status, JSON.stringify(hold.body)).toBe(201);
-  holdId = hold.body.id;
 }, 240_000);
 
 afterAll(async () => {
@@ -233,37 +221,6 @@ describe('TEST-SEC-001 application documents: tenants never cross', () => {
     expect((await one(`select status from app.checklist_item where id = $1`, [ITEM_DONE])).status).toBe(
       'SUBMITTED',
     );
-  });
-
-  it('API-DOC-009 API-DOC-009-STATUS: tenant B cannot archive tenant A documents or read a tenant A archive', async () => {
-    const b = tenantB();
-    const count = async () =>
-      (await one(`select count(*)::int as n from app.document_archive where application_id = $1`, [APP])).n;
-    const before = await count();
-    expect((await request(b).post(`/v1/applications/${APP}/document-archive`).send({})).status).toBe(404);
-    expect((await request(b).get(`/v1/document-archives/${archiveId}`)).status).toBe(404);
-    expect(await count()).toBe(before);
-  });
-
-  it('API-PRV-004 API-PRV-004-LIST: tenant B cannot place a hold on a tenant A record or see tenant A holds', async () => {
-    const b = tenantB();
-    for (const [subjectType, subjectId] of [
-      ['LOAN_APPLICATION', APP],
-      ['CUSTOMER', CUST],
-      ['DOCUMENT', documentId],
-    ]) {
-      const res = await request(b)
-        .post('/v1/legal-holds')
-        .set('Idempotency-Key', key(`b-hold-${subjectType}`))
-        .send({ subjectType, subjectId, reason: 'Hostile hold attempt' });
-      expect(res.status, subjectType).toBe(404);
-    }
-    const list = await request(b).get('/v1/legal-holds');
-    expect(list.status).toBe(200);
-    expect(list.body.data.map((h: { id: string }) => h.id)).not.toContain(holdId);
-    expect(
-      (await one(`select count(*)::int as n from app.legal_hold where tenant_id = $1`, [env.B.tenantId])).n,
-    ).toBe(0);
   });
 
   it('API-DOC-001-PUT API-DOC-004-GET: a signed link reaches only the record it was issued for; a forged one reaches nothing', async () => {

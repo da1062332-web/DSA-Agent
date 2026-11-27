@@ -8,6 +8,8 @@
 --   2. Access reviews: access_review_item, access_review; permission access_review.manage.
 --   3. API client registry: api_client. Permissions api.read and api.manage stay: the partner API keys, partner lead reads
 --      and webhook subscriptions still use them.
+--   4. Legal holds and document archives: legal_hold, document_archive. Permissions privacy.manage and document.download stay:
+--      privacy requests and document downloads still use them.
 --
 -- Safety: a table is dropped only when it holds no rows. If a table has rows, the migration stops and nothing is dropped.
 -- Idempotent: DELETE and DROP ... IF EXISTS can run again without effect.
@@ -61,3 +63,18 @@ END
 $$;
 
 DROP TABLE IF EXISTS app.api_client;
+
+-- 4. Legal holds and document archives -----------------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('app.legal_hold') IS NOT NULL AND EXISTS (SELECT 1 FROM app.legal_hold) THEN
+    RAISE EXCEPTION 'M-109: app.legal_hold holds rows; stop and review before dropping it';
+  END IF;
+  IF to_regclass('app.document_archive') IS NOT NULL AND EXISTS (SELECT 1 FROM app.document_archive) THEN
+    RAISE EXCEPTION 'M-109: app.document_archive holds rows; stop and review before dropping it';
+  END IF;
+END
+$$;
+
+DROP TABLE IF EXISTS app.document_archive;
+DROP TABLE IF EXISTS app.legal_hold;

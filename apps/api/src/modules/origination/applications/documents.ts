@@ -8,17 +8,13 @@
 //   API-DOC-006 POST /v1/document-versions/{id}/reviews         document.review; Idempotency-Key; accept or reject
 //   API-DOC-004 POST /v1/document-versions/{id}/view-url        document.view; logged
 //   API-DOC-005 POST /v1/document-versions/{id}/download-url    document.download; logged; step-up for S3 documents
-//   (signed url) GET /public/v1/document-files/{token}          serves a version or an archive while the link is valid
-//   API-DOC-009 POST /v1/applications/{id}/document-archive     document.download; async encrypted archive (202)
-//               GET  /v1/document-archives/{id}                 document.download; archive status and link
+//   (signed url) GET /public/v1/document-files/{token}          serves a version while the link is valid
 //   API-APP-009 POST /v1/applications/{id}/waivers              document.waive; marks a checklist item WAIVED or NOT_APPLICABLE
 //   API-APP-008 POST /v1/applications/{id}/completeness-checks  application.read; the checklist decides completeness
-//   API-PRV-004 POST /v1/legal-holds                            privacy.manage; GET /v1/legal-holds lists them
 // Documents belong to an application: every call is scoped through the application (out of scope or another tenant: 404).
 // Audit and outbox events are written in the same transaction as the change.
 import {
   AppError,
-  CreateLegalHoldSchema,
   CreateUploadIntentSchema,
   DocumentLinkRequestSchema,
   ReviewDocumentVersionSchema,
@@ -28,14 +24,12 @@ import {
   type CreateUploadIntentInput,
   type DocumentType,
   type DocumentVersion,
-  type LegalHold,
   type PermissionCode,
   type RequestContext,
   type Tx,
 } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import express, { type Router } from 'express';
-import { zipSync } from 'fflate';
 import { sql } from 'kysely';
 import crypto from 'node:crypto';
 import { rateLimit } from '../../../http/rate-limit';
@@ -49,8 +43,6 @@ import { EncryptedDocumentObjectStore } from './document-backends';
 import { applicationScope } from './applications';
 import { iso, type Row } from './db';
 import {
-  decryptArchive,
-  encryptArchive,
   FileLinkSigner,
   LocalDocumentObjectStore,
   sha256Hex,
@@ -93,7 +85,7 @@ export const DEFAULT_TYPES: Omit<DocumentType, 'custom' | 'version'>[] = (
 }));
 
 export interface DocumentDeps {
-  /** Scanned, clean files. Read only through paths that require a CLEAN version: signed links and archives. */
+  /** Scanned, clean files. Read only through paths that require a CLEAN version: signed links. */
   store: DocumentObjectStore;
   /** Uploaded bytes awaiting their verdict. Nothing reads from here except completion, and it is never served. */
   quarantine: DocumentObjectStore;
@@ -685,68 +677,6 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
   router.post('/document-versions/:id/view-url', issueLink('inline', 'document.view'));
   router.post('/document-versions/:id/download-url', issueLink('attachment', 'document.download'));
 
-  // ---- API-DOC-009: archive ---------------------------------------------------------------------------------------------
-  router.post('/applications/:id/document-archive', async (req, res) => {
-    const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'document.download');
-    deps.authz.requireStepUp(ctx);
-    const body = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      await scopedApplication(tx, ctx, 'document.download', req.params.id);
-      const count = (
-        await sql<{ n: number }>`
-          select count(*)::int as n from document d join document_version v on v.id = d.current_version_id
-           where d.application_id = ${req.params.id} and v.scan_status = 'CLEAN' and v.purged_at is null`.execute(
-          tx,
-        )
-      ).rows[0]!.n;
-      const archiveId = deps.ids.next('arc');
-      await sql`
-        insert into document_archive (id, tenant_id, application_id, document_count, requested_by)
-        values (${archiveId}, ${ctx.principal.tenantId}, ${req.params.id}, ${count}, ${ctx.principal.id})`.execute(
-        tx,
-      );
-      if (!deps.enqueueJob) throw AppError.of('DEPENDENCY_UNAVAILABLE', 'Background jobs are not available.');
-      await deps.enqueueJob(tx, ctx.principal.tenantId, DOCUMENT_ARCHIVE_JOB, { archiveId });
-      await deps.audit.record(tx, ctx, {
-        action: 'document.archive_requested',
-        entityType: 'LOAN_APPLICATION',
-        entityId: req.params.id,
-        after: { archiveId, documentCount: count },
-        permissionUsed: 'document.download',
-      });
-      return { archiveId, status: 'QUEUED' as const, documentCount: count, url: null, expiresAt: null };
-    });
-    res.status(202).json(body);
-  });
-
-  router.get('/document-archives/:id', async (req, res) => {
-    const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'document.download');
-    const body = await deps.txRunner.withTenantTx(ctx, async (tx) => {
-      const a = (await sql<Row>`select * from document_archive where id = ${req.params.id}`.execute(tx))
-        .rows[0];
-      if (!a) throw AppError.of('NOT_FOUND', 'Archive not found.');
-      await scopedApplication(tx, ctx, 'document.download', String(a.application_id)).catch(() => {
-        throw AppError.of('NOT_FOUND', 'Archive not found.');
-      });
-      let url: string | null = null;
-      let expiresAt: string | null = null;
-      if (a.status === 'READY') {
-        const exp = Math.floor(ctx.now.getTime() / 1000) + LINK_TTL_SECONDS;
-        url = `/public/v1/document-files/${docs.signer.sign({ t: ctx.principal.tenantId, k: 'a', i: String(a.id), d: 'attachment', e: exp })}`;
-        expiresAt = new Date(exp * 1000).toISOString();
-      }
-      return {
-        archiveId: String(a.id),
-        status: a.status,
-        documentCount: Number(a.document_count),
-        url,
-        expiresAt,
-      };
-    });
-    res.json(body);
-  });
-
   // ---- API-APP-009: waivers / API-APP-008: completeness check -----------------------------------------------------------
   router.post('/applications/:id/waivers', async (req, res) => {
     const ctx = requireCtx(req);
@@ -836,69 +766,6 @@ export function registerDocumentRoutes(router: Router, deps: ApiDeps): void {
       };
     });
     res.json(body);
-  });
-
-  // ---- API-PRV-004: legal holds -----------------------------------------------------------------------------------------
-  const toHold = (r: Row): LegalHold => ({
-    id: String(r.id),
-    subjectType: String(r.subject_type),
-    subjectId: String(r.subject_id),
-    reason: String(r.reason),
-    reference: (r.reference as string | null) ?? null,
-    placedBy: String(r.placed_by),
-    placedAt: iso(r.placed_at),
-    releasedAt: r.released_at ? iso(r.released_at) : null,
-    version: Number(r.lock_version),
-  });
-
-  router.post('/legal-holds', async (req, res) => {
-    const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'privacy.manage');
-    const key = idempotencyKey(req);
-    const input = CreateLegalHoldSchema.parse(req.body);
-    const table: Record<string, string> = {
-      CUSTOMER: 'customer',
-      LOAN_APPLICATION: 'loan_application',
-      LEAD: 'lead',
-      DOCUMENT: 'document',
-    };
-    const result = await deps.txRunner.withTenantTx(ctx, (tx) =>
-      withIdempotency(tx, ctx, { key, method: 'POST', path: '/v1/legal-holds', body: input }, async () => {
-        const exists =
-          await sql<Row>`select 1 from ${sql.table(table[input.subjectType]!)} where id = ${input.subjectId}`.execute(
-            tx,
-          );
-        if (!exists.rows[0]) throw AppError.of('NOT_FOUND', 'Subject not found.');
-        const row = (
-          await sql<Row>`
-            insert into legal_hold (id, tenant_id, subject_type, subject_id, reason, reference, placed_by)
-            values (${deps.ids.next('lgh')}, ${ctx.principal.tenantId}, ${input.subjectType}, ${input.subjectId},
-                    ${input.reason}, ${input.reference ?? null}, ${ctx.principal.id})
-            returning *`.execute(tx)
-        ).rows[0]!;
-        await deps.audit.record(tx, ctx, {
-          action: 'legal_hold.placed',
-          entityType: input.subjectType,
-          entityId: input.subjectId,
-          after: { legalHoldId: row.id },
-          reason: input.reason,
-          permissionUsed: 'privacy.manage',
-        });
-        return { status: 201, body: toHold(row), resourceRef: String(row.id) };
-      }),
-    );
-    sendResource(res, result.status, result.body, result.replayed);
-  });
-
-  router.get('/legal-holds', async (req, res) => {
-    const ctx = requireCtx(req);
-    deps.authz.requirePermission(ctx, 'privacy.manage');
-    const data = await deps.txRunner.withTenantTx(ctx, async (tx) =>
-      (
-        await sql<Row>`select * from legal_hold order by placed_at desc, id desc limit 200`.execute(tx)
-      ).rows.map(toHold),
-    );
-    res.json({ data, meta: { nextCursor: null, limit: 200 } });
   });
 }
 
@@ -1105,7 +972,7 @@ export function createPublicDocumentRouter(deps: ApiDeps): Router {
     },
   );
 
-  // The target of API-DOC-004/005 links and of ready archives.
+  // The target of API-DOC-004/005 links.
   router.get('/document-files/:token', async (req, res, next) => {
     try {
       const claims = docs.signer.verify(String(req.params.token), Math.floor(Date.now() / 1000));
@@ -1119,16 +986,7 @@ export function createPublicDocumentRouter(deps: ApiDeps): Router {
           const bytes = await docs.store.get(claims.t, String(v.object_key));
           return bytes ? { bytes, type: String(v.detected_mime), name: String(v.file_name) } : null;
         }
-        const a = (await sql<Row>`select * from document_archive where id = ${claims.i}`.execute(tx)).rows[0];
-        if (!a || a.status !== 'READY') return null;
-        const sealed = await docs.store.get(claims.t, String(a.object_key));
-        return sealed
-          ? {
-              bytes: decryptArchive(sealed, docs.secret),
-              type: 'application/zip',
-              name: `${String(a.application_id)}-documents.zip`,
-            }
-          : null;
+        return null;
       });
       if (!file) throw AppError.of('NOT_FOUND', 'File not found.');
       res.set('Cache-Control', 'no-store');
@@ -1142,64 +1000,4 @@ export function createPublicDocumentRouter(deps: ApiDeps): Router {
   });
 
   return router;
-}
-
-// ---- the archive job (run by the background worker in the archive's tenant) --------------------------------------------
-export const DOCUMENT_ARCHIVE_JOB = 'document.archive';
-
-/** The job handler for DOCUMENT_ARCHIVE_JOB; server.ts registers it with the platform job queue. */
-export function createDocumentArchiveHandler(
-  deps: ApiDeps,
-): (tx: Tx, tenantId: string, payload: Record<string, unknown>) => Promise<void> {
-  const docs = documentDeps(deps);
-  return async (tx, tenantId, payload) => {
-    const archiveId = String(payload.archiveId);
-    const a = (await sql<Row>`select * from document_archive where id = ${archiveId} for update`.execute(tx))
-      .rows[0];
-    if (!a || a.status !== 'QUEUED') return;
-    try {
-      await buildArchive(tx, tenantId, a);
-    } catch (err) {
-      // The archive is marked FAILED with the reason; nothing half-built is kept.
-      const reason = (err instanceof Error ? err.message : 'unknown error').slice(0, 500);
-      await sql`update document_archive set status = 'FAILED', failure_reason = ${reason}, completed_at = now()
-                 where id = ${archiveId}`.execute(tx);
-    }
-  };
-
-  async function buildArchive(tx: Tx, tenantId: string, a: Row): Promise<void> {
-    const archiveId = String(a.id);
-    const versions = (
-      await sql<Row>`
-        select d.document_type_code, v.id, v.version_no, v.file_name, v.object_key, v.sha256
-          from document d join document_version v on v.id = d.current_version_id
-         where d.application_id = ${String(a.application_id)} and v.scan_status = 'CLEAN' and v.purged_at is null
-         order by d.document_type_code, v.id`.execute(tx)
-    ).rows;
-    const files: Record<string, Uint8Array> = {};
-    const manifest: object[] = [];
-    for (const v of versions) {
-      const bytes = await docs.store.get(tenantId, String(v.object_key));
-      if (!bytes || sha256Hex(bytes) !== v.sha256)
-        throw new Error(`Stored file of ${String(v.id)} is missing or altered.`);
-      const name = `${String(v.document_type_code)}/${String(v.id)}-${String(v.file_name)}`;
-      files[name] = bytes;
-      manifest.push({ path: name, versionId: v.id, sha256: v.sha256 });
-    }
-    files['manifest.json'] = Buffer.from(
-      JSON.stringify({ applicationId: a.application_id, files: manifest }, null, 2),
-    );
-    const sealed = encryptArchive(Buffer.from(zipSync(files)), docs.secret);
-    const objectKey = await docs.store.put(tenantId, `${archiveId}.zip.enc`, sealed);
-    await sql`
-      update document_archive set status = 'READY', object_key = ${objectKey}, document_count = ${versions.length},
-             completed_at = now()
-       where id = ${archiveId}`.execute(tx);
-    for (const v of versions) {
-      await sql`
-        insert into document_access_log (id, tenant_id, version_id, action, principal_id, purpose)
-        values (${deps.ids.next('dal')}, ${tenantId}, ${String(v.id)}, 'ARCHIVE', ${String(a.requested_by)},
-                ${`archive ${archiveId}`})`.execute(tx);
-    }
-  }
 }

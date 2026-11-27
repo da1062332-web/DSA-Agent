@@ -37,8 +37,6 @@ import {
   documentBackendsFromConfig,
 } from './modules/origination/applications/document-backends';
 import {
-  createDocumentArchiveHandler,
-  DOCUMENT_ARCHIVE_JOB,
 } from './modules/origination/applications/documents';
 import { globalJobQueue } from './modules/platform/job-queue';
 
@@ -124,7 +122,6 @@ const deps = createProductionDeps(txRunner, {
   ...documentBackends,
   documentScanner,
 });
-globalJobQueue.registerHandler(DOCUMENT_ARCHIVE_JOB, createDocumentArchiveHandler(deps));
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
 globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));
 

@@ -621,7 +621,6 @@ export function buildOperations(
     'lead.assign',
     'report.render',
     'export.build',
-    'document.archive',
     'commission.recalc',
     'sms.send',
     'email.send',

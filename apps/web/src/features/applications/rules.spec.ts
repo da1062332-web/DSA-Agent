@@ -10,7 +10,6 @@ import {
   isValidAmount,
   isValidAssignmentReason,
   isValidHoldReason,
-  isValidLegalHoldReason,
   isValidTenure,
   newApplicationProblem,
   CLOSABLE,
@@ -58,7 +57,7 @@ describe('applications: input rules (TEST-APP-WEB-002)', () => {
   });
 });
 
-describe('applications: parties, owners and legal hold rules (TEST-APP-WEB-003)', () => {
+describe('applications: parties and owners rules (TEST-APP-WEB-003)', () => {
   it('parties change in Draft, Documents pending and Under review only', () => {
     expect(canChangeParties('DRAFT')).toBe(true);
     expect(canChangeParties('UNDER_REVIEW')).toBe(true);
@@ -83,9 +82,7 @@ describe('applications: parties, owners and legal hold rules (TEST-APP-WEB-003)'
     expect(isValidAssignmentReason('x'.repeat(201))).toBe(false);
   });
 
-  it('a legal hold needs a reason of 5 to 1000 characters; free text must not carry PAN, Aadhaar or account numbers', () => {
-    expect(isValidLegalHoldReason('abcd')).toBe(false);
-    expect(isValidLegalHoldReason('Court order 2026/ABC')).toBe(true);
+  it('free text must not carry PAN, Aadhaar or account numbers', () => {
     expect(hasRestrictedNumber('PAN ABCDE1234F')).toBe(true);
     expect(hasRestrictedNumber('Aadhaar 2345 6789 0123')).toBe(true);
     expect(hasRestrictedNumber('Account 123456789012')).toBe(true);

@@ -265,35 +265,3 @@ export const checkCompleteness = (applicationId: string) =>
   apiFetch<CompletenessResult>(`/v1/applications/${encodeURIComponent(applicationId)}/completeness-checks`, {
     method: 'POST',
   });
-
-/** A bulk archive of an application's documents (API-DOC-009): built in the background, then served by a signed link. */
-export interface DocumentArchive {
-  archiveId: string;
-  status: 'QUEUED' | 'READY' | 'FAILED';
-  documentCount: number;
-  url: string | null;
-  expiresAt: string | null;
-}
-
-/** Queues an encrypted archive of the application's clean, current document versions (document.download). */
-export function requestDocumentArchive(applicationId: string): Promise<DocumentArchive> {
-  return apiFetch<DocumentArchive>(`/v1/applications/${encodeURIComponent(applicationId)}/document-archive`, {
-    method: 'POST',
-    body: {},
-  });
-}
-
-/** The archive's state, polled until it is READY or FAILED (API-DOC-009-STATUS). */
-export function useDocumentArchive(archiveId: string | null) {
-  return useQuery({
-    queryKey: ['document-archive', archiveId],
-    queryFn: () => apiFetch<DocumentArchive>(`/v1/document-archives/${encodeURIComponent(archiveId!)}`),
-    enabled: !!archiveId,
-    refetchInterval: (q) => (q.state.data?.status === 'QUEUED' ? 3000 : false),
-  });
-}
-
-/** Opens a signed file link (a ready archive) in a new tab. */
-export function openSignedLink(url: string): void {
-  window.open(apiUrl(url), '_blank', 'noopener');
-}

@@ -1,5 +1,5 @@
 // Governance flow for the demo seed: decisions and rule versions with their approvals and publication trail, audit,
-// privacy requests, legal holds, retention, support access and data sharing.
+// privacy requests, retention, support access and data sharing.
 // Synthetic data only (ASM-4D-06). Global catalogue rows (decision definitions, feature flags, releases) are
 // written once by buildGlobal.
 import type { Tables} from './types';
@@ -361,33 +361,7 @@ export function buildGovernance(
     });
   });
 
-  // Privacy: legal holds, retention rules, data subject requests, corrections, data sharing and external shares.
-  const holdSubjects: [string, string][] = [
-    ['LOAN_APPLICATION', ix(o.apps, 0)],
-    ['CUSTOMER', ix(o.customers, 1)],
-    ['LEAD', ix(o.leads, 3)],
-    ['DOCUMENT', ix(o.documents, 0)],
-    ['LOAN_APPLICATION', ix(o.apps, 2)],
-    ['CUSTOMER', ix(o.customers, 2)],
-    ['LEAD', ix(o.leads, 1)],
-    ['LOAN_APPLICATION', ix(o.apps, 9)],
-  ];
-  holdSubjects.forEach(([subjectType, subjectId], i) =>
-    out.add('legal_hold', {
-      id: idOf(t, 'lhd', i + 1),
-      tenant_id: t.id,
-      subject_type: subjectType,
-      subject_id: subjectId,
-      reason: 'Litigation hold for the lender dispute (synthetic)',
-      reference: `CASE-${pad(i + 1, 4)}`,
-      placed_by: staff.compliance,
-      placed_at: at(d, 14, i),
-      released_by: i < 2 ? staff.owner : null,
-      released_at: i < 2 ? at(d, 22, i) : null,
-      release_reason: i < 2 ? 'Matter closed (synthetic)' : null,
-      lock_version: 0,
-    }),
-  );
+  // Privacy: retention rules, data subject requests, corrections, data sharing and external shares.
   const retention: [string, number, string, string][] = [
     ['R-LOAN', 96, 'LOAN_CLOSED', 'PURGE'],
     ['R-FIN', 84, 'RECORD_CLOSED', 'PURGE'],

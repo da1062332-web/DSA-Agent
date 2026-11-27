@@ -375,7 +375,7 @@ export function PrivacyDashboard(): React.ReactElement {
           <Tab label="Data Sharing Inventory (ENT-100)" id="tab-sharing" />
           <Tab label="Consent Verification Auditor" id="tab-consent" />
           <Tab label="Data Classification & Masking" id="tab-masking" />
-          <Tab label="Retention & Legal Hold (OD-008)" id="tab-retention" />
+          <Tab label="Retention (OD-008)" id="tab-retention" />
           <Tab label="Data-Principal Rights (DSR)" id="tab-dsr" />
         </Tabs>
 
@@ -882,12 +882,12 @@ export function PrivacyDashboard(): React.ReactElement {
           </Box>
         )}
 
-        {/* TAB 3: Retention & Legal Hold Status */}
+        {/* TAB 3: Retention */}
         {activeTab === 3 && (
           <Box sx={{ p: 3 }}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                Retention Schedules &amp; Legal Hold Governance
+                Retention Schedules
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Compliance with statutory record-keeping periods under RBI, PMLA, and Limitation Act
@@ -899,7 +899,7 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" fontWeight={700}>
                 Retention notice: hard deletion is not yet enabled
               </Typography>
-              Retention schedules below are proposed baselines. Hard deletion and legal-hold records stay disabled until a formal legal opinion on retention is received.
+              Retention schedules below are proposed baselines. Hard deletion stays disabled until a formal legal opinion on retention is received.
             </Alert>
 
             <Grid container spacing={3}>

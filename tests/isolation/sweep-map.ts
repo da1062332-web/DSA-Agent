@@ -36,7 +36,6 @@ export const SEGMENT_TABLE: Record<string, string> = {
   delegations: 'delegation',
   disputes: 'dispute',
   'duplicate-reviews': 'duplicate_review',
-  'document-archives': 'document_archive',
   'document-versions': 'document_version',
   documents: 'document',
   'eligibility-assessments': 'eligibility_assessment',
